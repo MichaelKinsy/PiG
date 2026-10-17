@@ -32116,6 +32116,138 @@
       "shapeHash": "sha256:6ea6cf3373a782a91ee3166233e10eb866eaf405db09ceba20ba8a8a64af9567"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaseline",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaseline",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(record string) ([]byte, error)"
+      },
+      "shapeHash": "sha256:8819c15c97047beed342f3337b55ef8682eae32bd27a8be9997252794fea6b64"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync.Map"
+      },
+      "shapeHash": "sha256:d64e81f5103ff15868f4a7a5d41952a9e00a9fb2a3e644ee141ff4529c9fc487"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.Clear",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.Clear",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.CompareAndDelete",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.CompareAndDelete",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any, old any) (deleted bool)"
+      },
+      "shapeHash": "sha256:ea4b91ccf4351d015892811edc096eea8ce927dc596ba27e8808be2f8a89d276"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any, old any, new any) (swapped bool)"
+      },
+      "shapeHash": "sha256:558c75c21e9064aee0ebf3ead84e0be177ac6f9e7e58caba28a3366f1f6d4dfb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.Delete",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.Delete",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any)"
+      },
+      "shapeHash": "sha256:5898055c949e6ad46613fa09de608ee81910d126e0089f63e04f52483c93d8cb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.Load",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any) (value any, ok bool)"
+      },
+      "shapeHash": "sha256:8df3866036a96867ce259618a90f4230aee98ede59a3e6e7bae2018fed5fbbfe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.LoadAndDelete",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.LoadAndDelete",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any) (value any, loaded bool)"
+      },
+      "shapeHash": "sha256:ab3219ce9ad1995cecda112cd92f5e0319021e4a0d86a640182d87fb1c9cadd1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.LoadOrStore",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.LoadOrStore",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any, value any) (actual any, loaded bool)"
+      },
+      "shapeHash": "sha256:4397eb222592310dc2c7725346a9df67088da296ba16a73c91a088941141fd71"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.Range",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.Range",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(f func(key any, value any) bool)"
+      },
+      "shapeHash": "sha256:e543e8fd53cda6a6cb866119889dca959b82b7fd36dd8088d227a5f5974c7189"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.Store",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any, value any)"
+      },
+      "shapeHash": "sha256:c01374a14655e2341a84bc471e8c714f1854962bf8c6721a1514b136ad5da233"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.Swap",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogRecordBaselines.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any, value any) (previous any, loaded bool)"
+      },
+      "shapeHash": "sha256:ded09ab918cbba6deb906e9cb411feb510c97f4cddbe8668976aeb59e0a462d1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordJSON",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "catalogRecordJSON",
@@ -32125,127 +32257,6 @@
         "type": "func(record any) ([]catalogPair, error)"
       },
       "shapeHash": "sha256:b14c87a461822f9a85409205891f727f7ee0535f0f6d6f67ebf16c903af535c6"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "sync.Map"
-      },
-      "shapeHash": "sha256:d64e81f5103ff15868f4a7a5d41952a9e00a9fb2a3e644ee141ff4529c9fc487"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.Clear",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.Clear",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.CompareAndDelete",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.CompareAndDelete",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any, old any) (deleted bool)"
-      },
-      "shapeHash": "sha256:ea4b91ccf4351d015892811edc096eea8ce927dc596ba27e8808be2f8a89d276"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.CompareAndSwap",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.CompareAndSwap",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any, old any, new any) (swapped bool)"
-      },
-      "shapeHash": "sha256:558c75c21e9064aee0ebf3ead84e0be177ac6f9e7e58caba28a3366f1f6d4dfb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.Delete",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.Delete",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any)"
-      },
-      "shapeHash": "sha256:5898055c949e6ad46613fa09de608ee81910d126e0089f63e04f52483c93d8cb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.Load",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.Load",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any) (value any, ok bool)"
-      },
-      "shapeHash": "sha256:8df3866036a96867ce259618a90f4230aee98ede59a3e6e7bae2018fed5fbbfe"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.LoadAndDelete",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.LoadAndDelete",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any) (value any, loaded bool)"
-      },
-      "shapeHash": "sha256:ab3219ce9ad1995cecda112cd92f5e0319021e4a0d86a640182d87fb1c9cadd1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.LoadOrStore",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.LoadOrStore",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any, value any) (actual any, loaded bool)"
-      },
-      "shapeHash": "sha256:4397eb222592310dc2c7725346a9df67088da296ba16a73c91a088941141fd71"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.Range",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.Range",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(f func(key any, value any) bool)"
-      },
-      "shapeHash": "sha256:e543e8fd53cda6a6cb866119889dca959b82b7fd36dd8088d227a5f5974c7189"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.Store",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.Store",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any, value any)"
-      },
-      "shapeHash": "sha256:c01374a14655e2341a84bc471e8c714f1854962bf8c6721a1514b136ad5da233"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordShapes.Swap",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "catalogRecordShapes.Swap",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(key any, value any) (previous any, loaded bool)"
-      },
-      "shapeHash": "sha256:ded09ab918cbba6deb906e9cb411feb510c97f4cddbe8668976aeb59e0a462d1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogShape",
@@ -37674,6 +37685,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/ai#decodeCatalogModel",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "decodeCatalogModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) (model AnyModel, known bool, err error)"
+      },
+      "shapeHash": "sha256:ed6880899cc7f9c65e3f081a49d28406adc23937d33b8f5f567a367bcd002851"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#decodeCatalogTyped",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "decodeCatalogTyped",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -239444,6 +239466,17 @@
       "shapeHash": "sha256:bc26b77371e7c95be379495db482cd14374cea52339055ecfca4f033d62dc37a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#recordBlock.packed",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "recordBlock.packed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#recordBugReport",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "recordBugReport",
@@ -243347,6 +243380,17 @@
         "type": "func(lines ...[]byte) (int64, error)"
       },
       "shapeHash": "sha256:ad28bffaa3996e05f5c50cba65f02eb3a2b28d548a11df2e9652473669319b72"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionSnapshot.addRaw",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "sessionSnapshot.addRaw",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) (int64, error)"
+      },
+      "shapeHash": "sha256:56e2f77d08b552bcde1fcdc373e0e9f0840115f97c252ef116cedcfb7146c307"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionSnapshot.close",
