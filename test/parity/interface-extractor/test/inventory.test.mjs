@@ -221,6 +221,16 @@ test("normalizes compiler dependency source paths", () => {
   assert.equal(stableSourcePath(root, path.join(root, "packages", "agent", "src", "index.ts")), "packages/agent/src/index.ts");
   assert.equal(stableSourcePath(root, path.join(root, "..", "deps", "node_modules", "typescript", "lib", "lib.es5.d.ts")), "node_modules/typescript/lib/lib.es5.d.ts");
   assert.throws(() => stableSourcePath(root, path.join(root, "..", "vendor", "typescript", "lib.d.ts")), /stable dependency path/);
+  // A source build's workspace dependency (durable re-exports chord since Pi c268154c) resolves to the sibling package; it is named as the
+  // published install names it.
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "pig-interface-workspace-"));
+  const chord = path.join(workspace, "packages", "chord");
+  fs.mkdirSync(path.join(chord, "dist", "sqlite"), { recursive: true });
+  fs.writeFileSync(path.join(chord, "package.json"), JSON.stringify({ name: "@earendil-works/chord" }));
+  assert.equal(stableSourcePath(path.join(workspace, "packages", "durable"), path.join(chord, "dist", "sqlite", "migrations.d.ts")),
+    "node_modules/@earendil-works/chord/dist/sqlite/migrations.d.ts");
+  assert.throws(() => stableSourcePath(path.join(workspace, "packages", "durable"), path.join(workspace, "packages", "gone", "x.d.ts")), /stable dependency path/);
+  fs.rmSync(workspace, { recursive: true, force: true });
 });
 
 

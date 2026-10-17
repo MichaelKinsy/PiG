@@ -449,6 +449,13 @@ export function stableSourcePath(root, fileName) {
   const marker = "/node_modules/";
   const markerIndex = normalized.lastIndexOf(marker);
   if (markerIndex >= 0) return `node_modules/${normalized.slice(markerIndex + marker.length)}`;
+  // A workspace dependency of a source build (durable importing chord) resolves through its workspace link to the sibling package's
+  // directory; the published install holds the same files under node_modules/<name>/, so both origins name the file the same way.
+  const workspace = /\/packages\/([^/]+)\/(.+)$/.exec(normalized);
+  if (workspace) {
+    const manifestPath = path.join(normalized.slice(0, normalized.length - workspace[2].length), "package.json");
+    if (fs.existsSync(manifestPath)) return `node_modules/${readJSON(manifestPath).name}/${workspace[2]}`;
+  }
   throw new Error(`declaration source escapes inventory root without a stable dependency path: ${fileName}`);
 }
 
