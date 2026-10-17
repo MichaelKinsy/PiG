@@ -19,7 +19,12 @@ type resourceLoaderFixture struct {
 
 func newResourceLoaderFixture(t *testing.T) resourceLoaderFixture {
 	t.Helper()
-	root := t.TempDir()
+	// A physical root: a loader given a relative path resolves it against the working directory, which on macOS is the
+	// resolved /private/var form of the temporary directory, so expectations built from this root must be resolved too.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	f := resourceLoaderFixture{repo: filepath.Join(root, "repo"), agentDir: filepath.Join(root, "agent"), home: filepath.Join(root, "home")}
 	f.cwd = filepath.Join(f.repo, "packages", "app")
 	for _, dir := range []string{filepath.Join(f.repo, ".git"), f.cwd, f.agentDir, f.home} {
