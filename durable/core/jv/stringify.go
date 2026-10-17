@@ -85,7 +85,7 @@ func AppendString(dst []byte, s string) []byte {
 	}
 	dst = append(dst, '"')
 	start := 0
-	for i := plainEnd(s, 0); i < len(s); i = plainEnd(s, i) {
+	for i := PlainEnd(s, 0); i < len(s); i = PlainEnd(s, i) {
 		c := s[i]
 		if c < 0x80 {
 			dst = append(dst, s[start:i]...)
@@ -149,12 +149,13 @@ const (
 	swarMSB = 0x8080808080808080
 )
 
-// plainEnd is the index of the first byte at or after i that AppendString must
-// look at (below 0x20, '"', '\\' or from 0x80), or len(s). It reads eight bytes
+// PlainEnd is the index of the first byte at or after i that a JSON string scan
+// must look at (below 0x20, '"', '\\' or from 0x80), or len(s). AppendString and
+// the ai package's chunk decoder share it. It reads eight bytes
 // at a time with byte loads and shifts (no unsafe, so TinyGo builds it the same
 // way): lane k of the word is byte k, and a borrow can mark a lane above a
 // marked one falsely, never one below, so the lowest mark is exact.
-func plainEnd(s string, i int) int {
+func PlainEnd(s string, i int) int {
 	// Four independent words per branch: a long plain run, such as source text, keeps the ALUs busy and pays one branch
 	// per 32 bytes. The lowest marked lane of the first word with one is the stop, as in the word loop below.
 	for ; i+32 <= len(s); i += 32 {
@@ -180,8 +181,7 @@ func plainEnd(s string, i int) int {
 		block := s[i : i+8]
 		w := uint64(block[0]) | uint64(block[1])<<8 | uint64(block[2])<<16 | uint64(block[3])<<24 |
 			uint64(block[4])<<32 | uint64(block[5])<<40 | uint64(block[6])<<48 | uint64(block[7])<<56
-		// (w - 0x20 per lane) &^ w marks a lane below 0x20; w itself marks a lane from 0x80.
-		if stops := ((w-swarLSB*0x20)&^w | swarZero(w^(swarLSB*'"')) | swarZero(w^(swarLSB*'\\')) | w) & swarMSB; stops != 0 {
+		if stops := plainStops(w); stops != 0 {
 			return i + bits.TrailingZeros64(stops)>>3
 		}
 	}
@@ -194,6 +194,7 @@ func plainEnd(s string, i int) int {
 }
 
 // plainStops marks the lanes of w that end a plain run: below 0x20, '"', '\\', or from 0x80.
+// (w - 0x20 per lane) &^ w marks a lane below 0x20; w itself marks a lane from 0x80.
 func plainStops(w uint64) uint64 {
 	return ((w-swarLSB*0x20)&^w | swarZero(w^(swarLSB*'"')) | swarZero(w^(swarLSB*'\\')) | w) & swarMSB
 }

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/MichaelKinsy/PiG/internal/jsonscan"
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
 )
 
 // parseOpenAIChunkFast decodes the common streamed chat-completion chunk without reflection: an object whose members
@@ -475,7 +475,7 @@ func (p *chunkScanner) str() (string, bool) {
 	}
 	start := p.i
 	ascii := true
-	for i := jsonscan.PlainEnd(p.s, start); i < len(p.s); i = jsonscan.PlainEnd(p.s, i+1) {
+	for i := jv.PlainEnd(p.s, start); i < len(p.s); i = jv.PlainEnd(p.s, i+1) {
 		switch c := p.s[i]; {
 		case c == '"':
 			text := p.s[start:i]

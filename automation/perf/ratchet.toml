@@ -192,7 +192,7 @@
 "binary.pig.linux_arm64.bytes" = 66557152
 "binary.pig.darwin_arm64.bytes" = 68287152
 # windows_amd64: owner-approved 2026-10-16 for the Pi v1.3.0 pin. Stripped size 72,289,792 at 9db1ecc0a3 -> 72,310,272 (+20,480 B); symbol growth: type data +12.8 KB, ai +6.1 KB, go/types +2.8 KB, tui/widthx +1.5 KB, coding/cli +0.6 KB.
-"binary.pig.windows_amd64.bytes" = 72417152
+"binary.pig.windows_amd64.bytes" = 72415104
 
 # process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
 "process.interactive_first_frame.allocs" = 43125
