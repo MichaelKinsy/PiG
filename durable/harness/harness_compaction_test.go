@@ -3142,3 +3142,68 @@ func TestContextContributions(t *testing.T) {
 		chat.close(t)
 	})
 }
+
+// harness-compaction.test.ts:2394 (Pi c4cf7957, #10942): per-model compaction overrides.
+func TestPerModelCompactionOverrides(t *testing.T) {
+	t.Run("applies the current model's override to the blocking threshold", func(t *testing.T) {
+		for _, key := range []string{"faux/faux-1", "faux/other"} {
+			chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+			chat.history(t)
+			// Harness-wide: blocking only above the full window; the override for faux-1 blocks above 700.
+			policy := blockingPolicy()
+			policy.ReserveTokens = new(0)
+			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{key: {ReserveTokens: new(300)}}
+			chat.setPolicy(policy)
+			chat.faux.pushSummary(scriptSummary())
+			chat.turn(t, sized("u4", 200), "a4")
+			want := 0
+			if key == "faux/faux-1" {
+				want = 1
+			}
+			if got := len(chat.faux.summaryRequestsCopy()); got != want {
+				t.Fatalf("override %s: %d summary requests, want %d", key, got, want)
+			}
+			chat.close(t)
+		}
+	})
+
+	t.Run("applies the request model's override on a context overflow", func(t *testing.T) {
+		chat := openCompaction(t)
+		chat.history(t)
+		policy := manualPolicy()
+		policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{"faux/faux-1": {Enabled: new(true)}}
+		chat.setPolicy(policy)
+		chat.faux.pushSummary(scriptSummary())
+		chat.faux.pushAgent(scriptFailure(overflowText), scriptAnswer("fits"))
+		expectSettled(t, must(submitInput(t, chat.root, sized("u4", 100)).Wait(testContext)), durable.SubmissionDone, "")
+		if got := len(chat.faux.summaryRequestsCopy()); got != 1 {
+			t.Fatalf("%d summary requests, want 1", got)
+		}
+		chat.close(t)
+	})
+
+	t.Run("applies the model's override when a compaction selects and sizes its summary", func(t *testing.T) {
+		chat := openCompaction(t)
+		chat.history(t)
+		policy := manualPolicy()
+		policy.KeepRecentTokens = new(100_000)
+		policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{"faux/faux-1": {KeepRecentTokens: new(150), ReserveTokens: new(500)}}
+		chat.setPolicy(policy)
+		chat.faux.pushSummary(scriptSummary())
+		if outcome := chat.outcome(t, chat.compact(t, nil)); outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("outcome %s", jsonText(t, outcome))
+		}
+		// 0.8 * 500 from the override, below the model's 900.
+		if got := chat.faux.summaryRequestsCopy()[0].options.MaxTokens; got != 400 {
+			t.Fatalf("summary maxTokens %d, want 400", got)
+		}
+		var texts []string
+		for _, message := range must(chat.root.Context(testContext, nil)).Messages[1:] {
+			texts = append(texts, userText(message))
+		}
+		if want := []string{sized("u3", 100), sized("a3", 100)}; !slices.Equal(texts, want) {
+			t.Fatalf("kept %q, want %q", texts, want)
+		}
+		chat.close(t)
+	})
+}

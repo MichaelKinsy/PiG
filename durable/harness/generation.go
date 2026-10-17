@@ -232,7 +232,7 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		for _, entry := range entries {
 			planned = append(planned, entry.Model...)
 		}
-		threshold = thresholdCompaction(view, planned, resolved.Capabilities.ContextWindow, settings.Compaction)
+		threshold = thresholdCompaction(view, planned, resolved.Capabilities.ContextWindow, settings.Compaction.PolicyFor(*ref))
 	}
 	if threshold == "blocking" {
 		// Compact first and prepare again; the transcript is unchanged until the compaction appends.
@@ -799,13 +799,14 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 	// The retry and compaction policies govern the next attempt, so they are read now rather than pinned at
 	// preparation.
 	settings := runtime.Settings()
+	compaction := settings.Compaction.PolicyFor(ref)
 	overflow := message.StopReason == ai.StopReasonError && ai.IsContextOverflow(message, 0)
-	if overflow && compacted == nil && settings.Compaction.Enabled {
+	if overflow && compacted == nil && compaction.Enabled {
 		view, err := runtime.Context(ctx, conversationId, &durable.ContextOptions{At: &cutoff})
 		if err != nil {
 			return err
 		}
-		if _, ok := SelectCut(view, settings.Compaction.KeepRecentTokens); ok {
+		if _, ok := SelectCut(view, compaction.KeepRecentTokens); ok {
 			text := message.ErrorMessage
 			if text == "" {
 				text = "Context overflow"

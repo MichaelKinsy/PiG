@@ -24,6 +24,9 @@ type Settings struct {
 	MaxAgentDelayMs *float64
 
 	Compaction history.Policy
+	// CompactionOverrides is compaction.modelOverrides, keyed by exact "provider/modelId" (Pi c4cf7957); CompactionFor
+	// applies it.
+	CompactionOverrides map[string]history.PolicyOverride
 
 	// PartialIntervalMs is progress.partialIntervalMs: the throttle of streamed partials committed into pi.live.
 	PartialIntervalMs float64
@@ -220,3 +223,26 @@ type Host struct {
 type ResultFault struct{ Text string }
 
 func (e *ResultFault) Error() string { return e.Text }
+
+// CompactionFor is compaction.ts compactionPolicy: the model's modelOverrides entry over the Harness-wide policy, field by
+// field.
+func (s Settings) CompactionFor(model ModelRef) history.Policy {
+	policy := s.Compaction
+	override, ok := s.CompactionOverrides[model.Provider+"/"+model.ModelID]
+	if !ok {
+		return policy
+	}
+	if override.Enabled != nil {
+		policy.Enabled = *override.Enabled
+	}
+	if override.ReserveTokens != nil {
+		policy.ReserveTokens = *override.ReserveTokens
+	}
+	if override.KeepRecentTokens != nil {
+		policy.KeepRecentTokens = *override.KeepRecentTokens
+	}
+	if override.BackgroundTokens != nil {
+		policy.BackgroundTokens = *override.BackgroundTokens
+	}
+	return policy
+}

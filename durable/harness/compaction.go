@@ -156,7 +156,7 @@ func compactionSelectHandler(ctx context.Context, task compactionTask, runtime c
 	if ref == nil || model == nil {
 		return failCompactionNoModel(ctx, runtime, ref)
 	}
-	policy := settings.Compaction
+	policy := settings.Compaction.PolicyFor(*ref)
 	view, err := runtime.Context(ctx, conversationId, nil)
 	if err != nil {
 		return err

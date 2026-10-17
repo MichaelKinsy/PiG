@@ -471,6 +471,42 @@ type CompactionPolicy struct {
 	KeepRecentTokens int `json:"keepRecentTokens"`
 	// BackgroundTokens starts background compaction this far below the blocking threshold; 0 disables it.
 	BackgroundTokens int `json:"backgroundTokens"`
+	// ModelOverrides is the resolved CompactionSettings.modelOverrides, keyed by exact "provider/modelId"; nil without
+	// any. PolicyFor applies it.
+	//portlint:allow emptydrop a nil map is Pi's absent modelOverrides (Settings spreads only the keys a host set); an explicit {} is kept
+	ModelOverrides map[string]CompactionPolicyOverride `json:"modelOverrides,omitzero"`
+}
+
+// CompactionPolicyOverride is Partial<CompactionPolicy>: one model's entry of modelOverrides; nil fields keep the
+// Harness-wide value.
+type CompactionPolicyOverride struct {
+	Enabled          *bool `json:"enabled,omitempty"`
+	ReserveTokens    *int  `json:"reserveTokens,omitempty"`
+	KeepRecentTokens *int  `json:"keepRecentTokens,omitempty"`
+	BackgroundTokens *int  `json:"backgroundTokens,omitempty"`
+}
+
+// PolicyFor is compaction.ts compactionPolicy: the model's modelOverrides entry over the Harness-wide policy, field by
+// field. The result carries no overrides.
+func (policy CompactionPolicy) PolicyFor(model ModelRef) CompactionPolicy {
+	resolved := CompactionPolicy{Enabled: policy.Enabled, ReserveTokens: policy.ReserveTokens, KeepRecentTokens: policy.KeepRecentTokens, BackgroundTokens: policy.BackgroundTokens}
+	override, ok := policy.ModelOverrides[model.Provider+"/"+model.ModelId]
+	if !ok {
+		return resolved
+	}
+	if override.Enabled != nil {
+		resolved.Enabled = *override.Enabled
+	}
+	if override.ReserveTokens != nil {
+		resolved.ReserveTokens = *override.ReserveTokens
+	}
+	if override.KeepRecentTokens != nil {
+		resolved.KeepRecentTokens = *override.KeepRecentTokens
+	}
+	if override.BackgroundTokens != nil {
+		resolved.BackgroundTokens = *override.BackgroundTokens
+	}
+	return resolved
 }
 
 // ProgressPolicy is how often running progress is committed. Each progress commit is a storage write; a host whose

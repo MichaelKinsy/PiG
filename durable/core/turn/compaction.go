@@ -108,7 +108,11 @@ func (r *compactionRun) selectPhase() {
 			_, known = h.ContextWindow(*agent.Model)
 		}
 		r.context(0, func(view *history.View) {
-			params := &history.SelectParams{ModelPresent: agent.Model != nil, ModelKnown: known, Policy: settings.Compaction}
+			policy := settings.Compaction
+			if agent.Model != nil {
+				policy = settings.CompactionFor(*agent.Model)
+			}
+			params := &history.SelectParams{ModelPresent: agent.Model != nil, ModelKnown: known, Policy: policy}
 			if agent.Model != nil {
 				params.ModelProvider, params.ModelID = []byte(agent.Model.Provider), []byte(agent.Model.ModelID)
 				params.Model = []byte(jv.Stringify(agent.Model.object()))

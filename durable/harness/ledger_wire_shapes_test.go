@@ -5,6 +5,7 @@ package harness
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
@@ -84,7 +85,7 @@ func TestBuiltInRetryAndCompactionPolicies(t *testing.T) {
 		t.Fatalf("retry = %+v", DefaultRetryPolicy)
 	}
 	want := durable.CompactionPolicy{Enabled: true, ReserveTokens: 16384, KeepRecentTokens: 20000, BackgroundTokens: 32768}
-	if DefaultCompactionPolicy != want {
+	if !reflect.DeepEqual(DefaultCompactionPolicy, want) {
 		t.Fatalf("compaction = %+v, want %+v", DefaultCompactionPolicy, want)
 	}
 }

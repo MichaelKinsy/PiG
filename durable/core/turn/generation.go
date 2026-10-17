@@ -439,7 +439,7 @@ func (r *run) prepareRequest(agent *Agent, settings Settings, window, attempt fl
 						}
 					}
 				}
-				threshold = view.Threshold(planned, window, settings.Compaction)
+				threshold = view.Threshold(planned, window, settings.CompactionFor(*agent.Model))
 			}
 			if threshold == history.ThresholdBlocking {
 				// Compact first and prepare again; the transcript is unchanged until the compaction appends.

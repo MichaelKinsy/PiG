@@ -300,3 +300,29 @@ func TestCoreAFaultedBlockingCompactionFailsTheRunAndIsRecorded(t *testing.T) {
 		}
 	})
 }
+
+// harness-compaction.test.ts:2394 (Pi c4cf7957, #10942) over the core and the reference: the current model's
+// compaction.modelOverrides entry sets the blocking threshold. With the Harness-wide policy disabled, only an override
+// that enables compaction for faux/faux-1 makes the second turn compact first.
+func TestCorePerModelCompactionOverrideSetsTheBlockingThreshold(t *testing.T) {
+	eachEngine(t, func(t *testing.T, core bool) {
+		for _, key := range []string{"faux/faux-1", "faux/other"} {
+			r := openCompactionFailureRig(t, core,
+				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("SUMMARY")}, StopReason: "stop"}),
+				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ok")}, StopReason: "stop"}),
+			)
+			policy := thresholdPolicy()
+			policy.Enabled = new(false)
+			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{key: {Enabled: new(true)}}
+			r.settings.Compaction = policy
+			r.firstTurn(t)
+			if second := r.submit(t, strings.Repeat("y", 500)); second.Status != durable.SubmissionDone {
+				t.Fatalf("override %s: second turn %+v", key, second)
+			}
+			compacted := r.live(t).Compactions != nil || r.faux.CallCount() == 3
+			if want := key == "faux/faux-1"; compacted != want {
+				t.Fatalf("override %s: compacted %v (provider calls %d), want %v", key, compacted, r.faux.CallCount(), want)
+			}
+		}
+	})
+}

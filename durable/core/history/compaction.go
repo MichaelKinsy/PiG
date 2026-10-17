@@ -15,6 +15,12 @@ type Policy struct {
 	BackgroundTokens float64
 }
 
+// PolicyOverride is one model's entry of compaction.modelOverrides: nil fields keep the Harness-wide value.
+type PolicyOverride struct {
+	Enabled                                           *bool
+	ReserveTokens, KeepRecentTokens, BackgroundTokens *float64
+}
+
 // Threshold says which compaction preparation starts before a request.
 type Threshold uint8
 

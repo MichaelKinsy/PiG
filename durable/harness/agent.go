@@ -296,12 +296,15 @@ type RetryPolicyPatch struct {
 	MaxAgentDelayMs *int
 }
 
-// CompactionPolicyPatch is Partial<CompactionPolicy>; nil fields keep the defaults.
+// CompactionPolicyPatch is CompactionSettings: Partial<CompactionPolicy>, nil fields keep the defaults, plus ModelOverrides.
 type CompactionPolicyPatch struct {
 	Enabled          *bool
 	ReserveTokens    *int
 	KeepRecentTokens *int
 	BackgroundTokens *int
+	// ModelOverrides is keyed by exact "provider/modelId"; each field an entry sets replaces the Harness-wide one for that
+	// model, so small- and large-window models can share a Harness (types.ts CompactionSettings, Pi c4cf7957).
+	ModelOverrides map[string]durable.CompactionPolicyOverride
 }
 
 // ProgressPolicyPatch is Partial<ProgressPolicy>; nil fields keep the defaults.
@@ -348,6 +351,7 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 		assign(&resolved.Compaction.ReserveTokens, compaction.ReserveTokens)
 		assign(&resolved.Compaction.KeepRecentTokens, compaction.KeepRecentTokens)
 		assign(&resolved.Compaction.BackgroundTokens, compaction.BackgroundTokens)
+		resolved.Compaction.ModelOverrides = compaction.ModelOverrides
 	}
 	if progress := settings.Progress; progress != nil {
 		assign(&resolved.Progress.PartialIntervalMs, progress.PartialIntervalMs)

@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
@@ -16,7 +17,7 @@ func TestDefaultPoliciesMatchPiAndResolveByCopy(t *testing.T) {
 		t.Fatalf("compaction policy = %+v", c)
 	}
 	resolved := ResolveSettings(nil)
-	if resolved.Retry.MaxAgentDelayMs == nil || *resolved.Retry.MaxAgentDelayMs != 60000 || resolved.Compaction != DefaultCompactionPolicy {
+	if resolved.Retry.MaxAgentDelayMs == nil || *resolved.Retry.MaxAgentDelayMs != 60000 || !reflect.DeepEqual(resolved.Compaction, DefaultCompactionPolicy) {
 		t.Fatalf("resolved = %+v", resolved)
 	}
 	*resolved.Retry.MaxAgentDelayMs = 1

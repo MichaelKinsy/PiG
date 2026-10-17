@@ -96,6 +96,22 @@ func (h *handler) turnSettings() turn.Settings {
 	}
 	out.RetryEnabled, _ = boolOf(retry, "enabled")
 	out.Compaction.Enabled, _ = boolOf(compaction, "enabled")
+	if overrides := objOf(compaction, "modelOverrides"); overrides != nil {
+		out.CompactionOverrides = map[string]history.PolicyOverride{}
+		for i := range overrides.Len() {
+			key, entry := overrides.KeyAt(i), asObject(overrides.ValueAt(i))
+			var override history.PolicyOverride
+			if v, ok := boolOf(entry, "enabled"); ok {
+				override.Enabled = &v
+			}
+			for name, field := range map[string]**float64{"reserveTokens": &override.ReserveTokens, "keepRecentTokens": &override.KeepRecentTokens, "backgroundTokens": &override.BackgroundTokens} {
+				if v, ok := valueOf(entry, name).(float64); ok {
+					*field = &v
+				}
+			}
+			out.CompactionOverrides[key] = override
+		}
+	}
 	if v, ok := valueOf(retry, "maxAgentDelayMs").(float64); ok {
 		out.MaxAgentDelayMs = &v
 	}

@@ -82,12 +82,13 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 func (r *run) classifyFailure(req requestInfo, message *jv.Object, settings Settings) {
 	stop := str(message, "stopReason")
 	overflow := stop == "error" && IsContextOverflow(message)
-	if !overflow || req.compacted != 0 || !settings.Compaction.Enabled {
+	compaction := settings.CompactionFor(req.model)
+	if !overflow || req.compacted != 0 || !compaction.Enabled {
 		r.retryOrFail(req, message, settings, stop, overflow)
 		return
 	}
 	r.context(req.cutoff, func(view *history.View) {
-		if _, ok := view.SelectCut(settings.Compaction.KeepRecentTokens); ok {
+		if _, ok := view.SelectCut(compaction.KeepRecentTokens); ok {
 			text := "Context overflow"
 			if s, ok := stringField(message, "errorMessage"); ok {
 				text = s
