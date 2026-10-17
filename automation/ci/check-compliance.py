@@ -264,10 +264,11 @@ def go_pin_strays(root: pathlib.Path, go: str, files: list[str] | None = None) -
     return problems
 
 
-# Workflows read toolchain pins from files. The Node compatibility matrix reads
-# separate minimum/current runtime pins without changing the build runtime.
+# Workflows read toolchain pins from files. The Node compatibility runs read the
+# separate minimum/current runtime pins (automation/ci/node-*.version) without
+# changing the build runtime.
 SETUP_VERSION_FILES = {"setup-go": ("go-version", ".go-version"), "setup-node": ("node-version", ".node-version")}
-NODE_RUNTIME_MATRIX_INPUT = "node-version-file: ${{ matrix.node_version_file }}"
+NODE_COMPATIBILITY_INPUT = re.compile(r"^node-version-file: (automation/ci/node-[a-z-]+\.version)$")
 
 
 def workflow_step(lines: list[str], index: int) -> list[str]:
@@ -301,8 +302,11 @@ def check_workflow_version_files() -> list[str]:
                 continue
             key, want = SETUP_VERSION_FILES[match.group(1)]
             step = workflow_step(lines, number - 1)
-            if match.group(1) == "setup-node" and NODE_RUNTIME_MATRIX_INPUT in step:
-                continue
+            if match.group(1) == "setup-node":
+                pins = [m.group(1) for line in step if (m := NODE_COMPATIBILITY_INPUT.match(line))]
+                if pins:
+                    problems += [f"{name}:{number}: {pin} does not exist" for pin in pins if not (ROOT / pin).is_file()]
+                    continue
             if f"{key}-file: {want}" not in step:
                 problems.append(f"{name}:{number}: actions/{match.group(1)} does not set {key}-file: {want}")
     return problems

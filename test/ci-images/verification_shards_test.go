@@ -110,6 +110,26 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	for _, shard := range linux.Strategy.Matrix.Shard {
 		got = append(got, leaves("ci-"+shard)...)
 	}
+	// The preflight job runs the compile gates the Windows, macOS and Node loader jobs wait for; they count once, there.
+	preflight, ok := jobs["preflight"]
+	if !ok {
+		t.Fatal("ci.yml has no preflight job")
+	}
+	runsPreflight := false
+	for _, step := range preflight.Steps {
+		if strings.TrimSpace(step.Run) == "make ci-preflight" {
+			runsPreflight = true
+		}
+	}
+	if !runsPreflight {
+		t.Fatal("the preflight job does not run make ci-preflight")
+	}
+	got = append(got, leaves("ci-preflight")...)
+	for _, gated := range []string{"windows", "macos", "node-loader"} {
+		if !slices.Contains(jobs[gated].Needs, "preflight") {
+			t.Errorf("%s does not wait for the preflight job", gated)
+		}
+	}
 	slices.Sort(want)
 	slices.Sort(got)
 	if !slices.Equal(got, want) {

@@ -3,6 +3,8 @@
 package ciimages
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -13,20 +15,35 @@ import (
 // macOS runs the packages whose tests reached macOS-only failures (104-byte
 // socket paths, /var -> /private/var temporary directories, small PTY buffers,
 // fsnotify gaps) next to the native smoke run: every cmd/pig shard that make
-// test-cli runs on Linux, each on its own job, and each of the other packages.
+// test-cli runs on Linux, the extension host in three parts, and the other
+// packages. GitHub runs at most five macOS jobs at a time, so the units share
+// at most five jobs; each unit still runs in its own go test process.
 func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	job, ok := verificationJobs(t)["macos"]
 	if !ok {
 		t.Fatal("ci.yml has no macos job")
 	}
 	shards, cliPkg := cliShards(t)
-	wantMatrix := []string{"native"}
+	wantUnits := []string{"native"}
 	for shard := 1; shard <= shards; shard++ {
-		wantMatrix = append(wantMatrix, "cli-"+strconv.Itoa(shard))
+		wantUnits = append(wantUnits, "cli-"+strconv.Itoa(shard))
 	}
-	wantMatrix = append(wantMatrix, "extension-host-1", "extension-host-2", "extension-host-3", "packages")
-	if !slices.Equal(job.Strategy.Matrix.Shard, wantMatrix) {
-		t.Fatalf("macos shards = %v, want %v", job.Strategy.Matrix.Shard, wantMatrix)
+	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "packages")
+	var gotUnits []string
+	for _, entry := range job.Strategy.Matrix.Shard {
+		units := strings.Fields(entry)
+		if slices.Contains(units, "native") && len(units) != 1 {
+			t.Errorf("macos job %q groups native with other units; native has its own setup", entry)
+		}
+		gotUnits = append(gotUnits, units...)
+	}
+	slices.Sort(gotUnits)
+	slices.Sort(wantUnits)
+	if !slices.Equal(gotUnits, wantUnits) {
+		t.Fatalf("macos units = %v, want each of %v exactly once", gotUnits, wantUnits)
+	}
+	if n := len(job.Strategy.Matrix.Shard); n > 5 {
+		t.Errorf("macos has %d jobs; GitHub runs at most 5 macOS jobs at a time", n)
 	}
 	if job.Strategy.FailFast == nil || *job.Strategy.FailFast {
 		t.Error("macos shards must all run when one fails")
@@ -34,8 +51,6 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	if job.Timeout <= 0 || job.Timeout > 60 {
 		t.Errorf("macos timeout = %d minutes, want 1 to 60", job.Timeout)
 	}
-	cliStep := regexp.MustCompile(`(?m)^\s*run=\$\(automation/ci/test-shard-pattern\.sh "\$\{CLI_SHARD#cli-\}" ([0-9]+) ` + regexp.QuoteMeta(cliPkg) + `\)\n\s*go test -timeout 30m -run "\$run" ` + regexp.QuoteMeta(cliPkg) + `\n`)
-	hostStep := regexp.MustCompile(`test-shard-pattern\.sh "\$\{EXTENSION_SHARD##\*-\}" 3 \./coding/extension/host/subprocess\)\n\s*go test -timeout 30m -run "\$run" \./coding/extension/host/subprocess\n`)
 	steps := map[string]bool{}
 	for _, step := range job.Steps {
 		switch {
@@ -45,14 +60,11 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 			steps["rust"] = true
 		case step.If == "matrix.shard == 'native'" && strings.Contains(step.Run, "go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui\n"):
 			steps["native"] = true
-		case step.If == "startsWith(matrix.shard, 'cli-')" && cliStep.MatchString(step.Run):
-			if match := cliStep.FindStringSubmatch(step.Run); match[1] != strconv.Itoa(shards) {
-				t.Errorf("macos cmd/pig step runs of %s shards, want %d as make test-cli runs", match[1], shards)
-			}
+		case strings.Contains(step.If, "contains(matrix.shard, 'cli-')") && strings.TrimSpace(step.Run) == "automation/ci/macos-units.sh cli" && step.Env["UNITS"] == "${{ matrix.shard }}":
 			steps["cli"] = true
-		case step.If == "startsWith(matrix.shard, 'extension-host-')" && hostStep.MatchString(step.Run):
+		case strings.Contains(step.If, "contains(matrix.shard, 'extension-host-')") && strings.TrimSpace(step.Run) == "automation/ci/macos-units.sh extension-host" && step.Env["UNITS"] == "${{ matrix.shard }}":
 			steps["host"] = true
-		case step.If == "matrix.shard == 'packages'" && strings.Contains(step.Run, "go test -timeout 30m ./env ./coding/piglet\n"):
+		case strings.Contains(step.If, "contains(matrix.shard, 'packages')") && strings.TrimSpace(step.Run) == "automation/ci/macos-units.sh packages" && step.Env["UNITS"] == "${{ matrix.shard }}":
 			steps["packages"] = true
 		}
 	}
@@ -61,6 +73,23 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 		if !steps[name] {
 			t.Errorf("no macos step provides %s as declared", name)
 		}
+	}
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "automation/ci/macos-units.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := string(data)
+	cliRun := regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit#cli-\}" ([0-9]+) ` + regexp.QuoteMeta(cliPkg) + `\); then\n\s*go test -timeout 30m -run "\$run" ` + regexp.QuoteMeta(cliPkg) + ` \|\| failed=1\n`)
+	if match := cliRun.FindStringSubmatch(script); match == nil {
+		t.Error("macos-units.sh does not run a cmd/pig unit as its own go test of one test-shard-pattern.sh shard")
+	} else if match[1] != strconv.Itoa(shards) {
+		t.Errorf("macos-units.sh splits cmd/pig into %s shards, want %d as make test-cli runs", match[1], shards)
+	}
+	if !regexp.MustCompile(`test-shard-pattern\.sh "\$\{unit##\*-\}" 3 \./coding/extension/host/subprocess\); then\n\s*go test -timeout 30m -run "\$run" \./coding/extension/host/subprocess \|\| failed=1\n`).MatchString(script) {
+		t.Error("macos-units.sh does not run an extension host unit as its own go test of one third")
+	}
+	if !strings.Contains(script, "go test -timeout 30m ./env ./coding/piglet || failed=1\n") {
+		t.Error("macos-units.sh does not run the packages unit")
 	}
 }
 

@@ -97,6 +97,38 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: go run ./test/parity/cmd/testprune lint -base "$BASE_SHA" -head "$HEAD_SHA"
 
+  preflight:
+    name: Linux / preflight
+    # The compile gate: every package builds, vets for each shipped platform, and needs no go fix. Windows, macOS and the Node
+    # loader wait for it, so a change that cannot pass them does not spend their minutes; the Linux shards start at once.
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Build, vet and go fix every package
+        env:
+          CI: '1'
+          MAKEFLAGS: -k
+        run: make ci-preflight
+
   linux:
     name: Linux / ${{ matrix.shard }}
     needs: [changes]
@@ -106,7 +138,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [startup, build, test-fast, test-cli, test-subprocess, test-conformance, sdk, extensions, race, integration, parity-1, parity-2, drift, contracts, portmap, closure]
+        # Longest first, so the jobs that bound the run's end start first when the account's job slots are full.
+        shard: [test-fast, test-cli, portmap, test-conformance, build, test-subprocess, parity-2, parity-1, toolchains, checks, contracts]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -129,6 +162,7 @@ jobs:
       # the restored entries by two hours lets the save step keep only what this job used, so the saved cache does not grow
       # with every commit.
       - name: Age the restored Go build cache
+        id: age
         if: matrix.shard == 'test-fast'
         shell: bash
         run: automation/ci/gocache-trim.sh age
@@ -158,7 +192,7 @@ jobs:
       # make test-sdk-py keeps its hash-locked venv under $PIG_CACHE_HOME/pig-sdk-py (~/.cache here) and names it by
       # the lock and interpreter, so this key changes exactly when the script would build a new venv.
       - name: Restore the Python SDK venv
-        if: matrix.shard == 'sdk'
+        if: matrix.shard == 'toolchains'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-sdk-py
@@ -206,7 +240,7 @@ jobs:
           python3 automation/pin/pin.py check-oracle
       # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile.
       - name: Restore the Cargo registry and test targets
-        if: startsWith(matrix.shard, 'test-') || matrix.shard == 'sdk' || matrix.shard == 'race'
+        if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -221,39 +255,58 @@ jobs:
         env:
           CI: '1'
         run: make test-warm
+      # golangci-lint keys its analysis cache on file content, so a restored cache serves only unchanged packages. The key rolls weekly.
+      - name: Name the lint cache week
+        id: lintweek
+        if: matrix.shard == 'build'
+        shell: bash
+        run: echo "week=$(( $(date -u +%s) / 604800 ))" >> "$GITHUB_OUTPUT"
+      - name: Restore the golangci-lint cache
+        id: lintcache
+        if: matrix.shard == 'build'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ hashFiles('.go-version', '.golangci.yml', 'go.mod') }}-${{ steps.lintweek.outputs.week }}
+          restore-keys: |
+            golangci-lint-${{ runner.os }}-${{ hashFiles('.go-version', '.golangci.yml', 'go.mod') }}-
       - name: Run PiG verification shard
         env:
           CI: '1'
           SHARD: ${{ matrix.shard }}
+          # A shard that groups several gates runs every one of them and fails if any failed.
+          MAKEFLAGS: -k
         run: make "ci-$SHARD"
+      - name: Save the golangci-lint cache
+        if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ hashFiles('.go-version', '.golangci.yml', 'go.mod') }}-${{ steps.lintweek.outputs.week }}
       - name: Save the PORT_MAP coverage cache
         if: always() && matrix.shard == 'portmap'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/portmap-coverage
           key: portmap-coverage-${{ github.sha }}
+      # Go's build cache is content-addressed, so a failed run's compile output is as valid as a passing run's.
       - name: Keep only the Go build cache entries this job used
-        if: success() && matrix.shard == 'test-fast'
+        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
         shell: bash
         run: automation/ci/gocache-trim.sh trim
       - name: Save the Go build cache
-        if: success() && matrix.shard == 'test-fast'
+        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/go-build
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
   node-runtime:
-    name: Node extensions / ${{ matrix.node_version_file }}
+    name: Node extensions
     needs: [changes]
     if: needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        # Pi's engine floor, the qualified build runtime, and current Node.
-        node_version_file: [automation/ci/node-minimum.version, .node-version, automation/ci/node-current.version]
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -277,15 +330,44 @@ jobs:
           # ci-node-runtime runs the native clipboard upstream tests on each Node version.
           automation/ci/install-apt-packages.sh tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
       - name: Prepare the Pi oracle
+        id: oracle
         run: |
           set -euo pipefail
           automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           make upstream-mirror
+      # One job runs the suite under each Node version in turn: Pi's engine floor, the qualified build runtime, and current
+      # Node. Each version's run starts even when an earlier one failed, so every version reports.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
         with:
-          node-version-file: ${{ matrix.node_version_file }}
-      - name: Test Node extension runtime and TypeScript parity
+          node-version-file: automation/ci/node-minimum.version
+      - name: Test Node extension runtime and TypeScript parity on Pi's engine floor
+        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
+        env:
+          CI: '1'
+        run: |
+          set -euo pipefail
+          node --version
+          automation/ci/with-isolated-pig-home.sh make ci-node-runtime
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
+        with:
+          node-version-file: .node-version
+      - name: Test Node extension runtime and TypeScript parity on the qualified Node
+        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
+        env:
+          CI: '1'
+        run: |
+          set -euo pipefail
+          node --version
+          automation/ci/with-isolated-pig-home.sh make ci-node-runtime
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
+        with:
+          node-version-file: automation/ci/node-current.version
+      - name: Test Node extension runtime and TypeScript parity on current Node
+        if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
         env:
           CI: '1'
         run: |
@@ -293,42 +375,40 @@ jobs:
           node --version
           automation/ci/with-isolated-pig-home.sh make ci-node-runtime
   node-loader:
-    name: Node loader / ${{ matrix.os }} / ${{ matrix.node_version_file }}
-    needs: [changes]
+    name: Node loader / ${{ matrix.os }}
+    needs: [changes, preflight]
     if: needs.changes.outputs.product == 'true'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-latest, macos-15]
-        # Exercise PiG's minimum and the current Node major, independently of
-        # the qualified default toolchain used by the full suites.
-        node_version_file: [automation/ci/node-loader-minimum.version, automation/ci/node-current.version]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        id: go
         with:
           go-version-file: .go-version
           cache: true
+      # Exercise PiG's minimum and the current Node major, independently of the qualified default toolchain used by the full
+      # suites. One job runs both in turn; the second starts even when the first failed.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version-file: ${{ matrix.node_version_file }}
-      - name: Load TypeScript packages and check runtime preflight
+          node-version-file: automation/ci/node-loader-minimum.version
+      - name: Load TypeScript packages and check runtime preflight on PiG's minimum Node
         shell: bash
-        run: |
-          set -euo pipefail
-          # Keep Go's module and build caches outside the throwaway HOME: the module
-          # cache is read-only by design, and reusing it avoids a second download.
-          export GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)"
-          home=$(mktemp -d)
-          trap 'rm -rf "$home"' EXIT
-          export HOME="$home" PIG_HOME="$home/.pig"
-          export PIG_CODING_AGENT_DIR="$home/pig-agent" PI_CODING_AGENT_DIR="$home/pi-agent"
-          node --version
-          go test ./coding/extension/host/subprocess -count=1 -run '^(TestNodeLoaderUsesSynchronousHooksWhenAvailable|TestNodeIssuePackageForms|TestNodeRuntimePreflight.*)$'
+        run: automation/ci/node-loader-check.sh
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ !cancelled() && steps.go.outcome == 'success' }}
+        with:
+          node-version-file: automation/ci/node-current.version
+      - name: Load TypeScript packages and check runtime preflight on current Node
+        if: ${{ !cancelled() && steps.go.outcome == 'success' }}
+        shell: bash
+        run: automation/ci/node-loader-check.sh
 
   verify:
     name: Linux verification
@@ -348,7 +428,7 @@ jobs:
 
   windows:
     name: Windows ${{ matrix.shard }}
-    needs: [changes]
+    needs: [changes, preflight]
     if: needs.changes.outputs.product == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
@@ -382,6 +462,7 @@ jobs:
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - name: Age the restored Go build cache
+        id: age
         if: matrix.shard == 'native-1'
         shell: bash
         run: automation/ci/gocache-trim.sh age
@@ -569,11 +650,11 @@ jobs:
           go test -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
       - name: Keep only the Go build cache entries this job used
-        if: success() && matrix.shard == 'native-1'
+        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
         shell: bash
         run: automation/ci/gocache-trim.sh trim
       - name: Save the Go build cache
-        if: success() && matrix.shard == 'native-1'
+        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~\AppData\Local\go-build
@@ -581,22 +662,26 @@ jobs:
 
   macos:
     name: macOS ${{ matrix.shard }}
-    needs: [changes]
+    needs: [changes, preflight]
     if: needs.changes.outputs.product == 'true'
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
+    env:
+      # brew install would otherwise update every tap first and clean up afterwards.
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: '1'
     strategy:
       fail-fast: false
       matrix:
+        # GitHub runs at most five macOS jobs at a time, so the units are packed into five jobs (longest first, from
+        # measured run times) and run in one wave. Each unit still runs in its own go test process and timeout.
         # native: the smoke run of the packages with macOS-specific code.
-        # cli-1 to cli-8: one job for each of the eight cmd/pig shards that
-        # make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
-        # extension-host-1 to extension-host-3: the subprocess extension host
-        # tests, split in three. packages: the remaining
-        # packages whose tests bind Unix sockets, watch paths or resolve
-        # symlinked temporary directories, which macOS spells differently from
-        # Linux (104-byte socket paths, /var -> /private/var).
-        shard: [native, cli-1, cli-2, cli-3, cli-4, cli-5, cli-6, cli-7, cli-8, extension-host-1, extension-host-2, extension-host-3, packages]
+        # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
+        # extension-host-1 to extension-host-3: the subprocess extension host tests, split in three.
+        # packages: the remaining packages whose tests bind Unix sockets, watch paths or resolve symlinked temporary
+        # directories, which macOS spells differently from Linux (104-byte socket paths, /var -> /private/var).
+        shard: [native, cli-1 extension-host-3 packages, cli-2 cli-8 extension-host-2, cli-4 cli-7 extension-host-1, cli-3 cli-5 cli-6]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -651,12 +736,13 @@ jobs:
       - name: Install a current bash for the shard selection script
         # test-shard-pattern.sh needs bash 4; macOS ships 3.2 as /bin/bash.
         # Only the bash keg goes on PATH: the Homebrew bin directory also holds the image's default node and npm, which would shadow the pinned toolchain.
-        if: startsWith(matrix.shard, 'cli-') || startsWith(matrix.shard, 'extension-host-')
+        if: contains(matrix.shard, 'cli-') || contains(matrix.shard, 'extension-host-')
         run: |
           set -euo pipefail
           brew install bash
           echo "$(brew --prefix bash)/bin" >> "$GITHUB_PATH"
       - name: Verify toolchain identities
+        id: toolchain
         # The Pi oracle and the Node extensions run under the node on PATH, so every later step must see the pinned toolchain.
         shell: bash
         run: |
@@ -673,41 +759,24 @@ jobs:
           ./bin/pig --version
           # The ai package has about 2700 top-level tests and needs more than go test's default 10 minutes here: Linux splits it in two processes (automation/ci/test-grouped.sh) and Windows runs it alone under this timeout.
           go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
-      - name: Test cmd/pig, shard ${{ matrix.shard }} of 8
-        # Each cli-N shard is its own job running shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
-        if: startsWith(matrix.shard, 'cli-')
+      # A unit that fails does not stop the job: every unit of the job runs, and the step fails if any unit failed.
+      - name: Test cmd/pig shards ${{ matrix.shard }}
+        # Each cli-N unit runs shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' && contains(matrix.shard, 'cli-') }}
         env:
-          CLI_SHARD: ${{ matrix.shard }}
-        run: |
-          set -euo pipefail
-          acceptance="$RUNNER_TEMP/pig native acceptance"
-          mkdir -p "$acceptance"
-          export PIG_HOME="$acceptance/config with spaces"
-          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh "${CLI_SHARD#cli-}" 8 ./coding/cli)
-          go test -timeout 30m -run "$run" ./coding/cli
-      - name: Test the extension host, half ${{ matrix.shard }}
-        # Each extension-host-N job runs its third of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one of the three jobs.
-        if: startsWith(matrix.shard, 'extension-host-')
+          UNITS: ${{ matrix.shard }}
+        run: automation/ci/macos-units.sh cli
+      - name: Test the extension host units of ${{ matrix.shard }}
+        # Each extension-host-N unit runs its third of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one unit.
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' && contains(matrix.shard, 'extension-host-') }}
         env:
-          EXTENSION_SHARD: ${{ matrix.shard }}
-        run: |
-          set -euo pipefail
-          acceptance="$RUNNER_TEMP/pig native acceptance"
-          mkdir -p "$acceptance"
-          export PIG_HOME="$acceptance/config with spaces"
-          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" 3 ./coding/extension/host/subprocess)
-          go test -timeout 30m -run "$run" ./coding/extension/host/subprocess
+          UNITS: ${{ matrix.shard }}
+        run: automation/ci/macos-units.sh extension-host
       - name: Test env and coding/piglet
-        if: matrix.shard == 'packages'
-        run: |
-          set -euo pipefail
-          acceptance="$RUNNER_TEMP/pig native acceptance"
-          mkdir -p "$acceptance"
-          export PIG_HOME="$acceptance/config with spaces"
-          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
-          go test -timeout 30m ./env ./coding/piglet
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' && contains(matrix.shard, 'packages') }}
+        env:
+          UNITS: ${{ matrix.shard }}
+        run: automation/ci/macos-units.sh packages
 
   android:
     name: Android build
@@ -739,6 +808,8 @@ jobs:
     name: Prune superseded caches
     # Each run saves a Go build cache and the PORT_MAP coverage under a new per-commit key, and the repository's cache limit
     # evicts by age once it is full. Keeping only the newest entry of each per-commit prefix leaves room for every OS's cache.
+    # Caches are scoped to the ref that saved them (a pull request's merge ref, a branch), and a run falls back to its base
+    # and default branch, so the newest entry is kept per ref: a newer pull request entry never removes the default branch's.
     needs: [linux, windows, macos]
     # A fork's pull request gets a read-only token, so only same-repository events prune.
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
@@ -747,15 +818,16 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: Delete all but the newest cache of each per-commit prefix
+      - name: Delete all but the newest cache of each per-commit prefix and ref
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
-          for prefix in gocache-Linux- gocache-Windows- portmap-coverage- pi-oracle-Linux- pi-oracle-Windows- pi-oracle-macOS-; do
-            gh cache list --repo "$REPO" --key "$prefix" --sort created_at --order desc --limit 100 --json id --jq '.[1:][].id' |
+          for prefix in gocache-Linux- gocache-Windows- portmap-coverage- golangci-lint-Linux- pi-oracle-Linux- pi-oracle-Windows- pi-oracle-macOS-; do
+            gh cache list --repo "$REPO" --key "$prefix" --limit 100 --json id,ref,createdAt \
+              --jq 'group_by(.ref)[] | sort_by(.createdAt) | reverse | .[1:][] | .id' |
               while read -r id; do
                 # A concurrent run may have deleted the same superseded entry first.
                 gh cache delete "$id" --repo "$REPO" || echo "::warning::cache $id could not be deleted"
@@ -767,7 +839,7 @@ jobs:
     # The one required check for this workflow. It runs even when a job it
     # needs failed, because a skipped job would otherwise count as passing.
     # A job may be skipped only where its own condition skips it.
-    needs: [changes, docs, dco, verify, node-runtime, windows, macos, android, node-loader]
+    needs: [changes, docs, dco, preflight, verify, node-runtime, windows, macos, android, node-loader]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -786,6 +858,7 @@ jobs:
           MACOS: ${{ needs.macos.result }}
           ANDROID: ${{ needs.android.result }}
           NODE_LOADER: ${{ needs.node-loader.result }}
+          PREFLIGHT: ${{ needs.preflight.result }}
         shell: bash
         run: |
           set -euo pipefail
@@ -806,7 +879,8 @@ jobs:
           expect "Project documents" "$DOCS" "$docs_skip"
           expect "DCO" "$DCO" "$dco_skip"
           expect "Linux verification" "$VERIFY" false
-          expect "Node runtime matrix" "$NODE_RUNTIME" "$product_skip"
+          expect "Linux preflight" "$PREFLIGHT" "$product_skip"
+          expect "Node extensions" "$NODE_RUNTIME" "$product_skip"
           expect "Windows" "$WINDOWS" "$product_skip"
           expect "macOS" "$MACOS" "$product_skip"
           expect "Android" "$ANDROID" "$product_skip"

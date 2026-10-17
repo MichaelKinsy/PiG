@@ -1,8 +1,13 @@
 # SPDX-License-Identifier: MIT
 
-# Hosted Linux shards partition make check. test/ci-images checks this against the current prerequisite graph so adding a gate cannot silently omit it from CI.
+# Hosted Linux jobs (the preflight job and the Linux shards) partition make check. test/ci-images checks this against the current prerequisite graph so adding a gate cannot silently omit it from CI.
+# ci-preflight is the compile gate the Windows, macOS and Node loader jobs wait for, so a change that does not build or vet fails before they spend their minutes.
+ci-preflight: build vet go-fix-clean
 ci-startup: startup-proxies
-ci-build: module-publication build vet lint go-fix-clean
+ci-build: module-publication lint
+# Short gates share one hosted job each, so their setup is paid once. CI runs them with make -k, so one failing gate does not hide the others.
+ci-checks: ci-startup ci-drift ci-closure
+ci-toolchains: ci-race ci-integration ci-sdk ci-extensions
 ci-test-fast: test-fast
 ci-test-cli: test-cli
 ci-test-subprocess: test-subprocess
@@ -66,4 +71,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-startup ci-build ci-test-fast ci-test-cli ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap ci-closure test-fast test-cli test-subprocess test-conformance
+.PHONY: test-provenance test-expectation-lint ci-preflight ci-startup ci-build ci-checks ci-toolchains ci-test-fast ci-test-cli ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap ci-closure test-fast test-cli test-subprocess test-conformance
