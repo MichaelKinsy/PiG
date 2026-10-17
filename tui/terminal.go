@@ -910,7 +910,6 @@ func codingAgentAppTitle() string {
 	return "pig"
 }
 
-// StdinHungUp reports whether the process terminal's input has been hung up, as when the master side of its
-// pseudo-terminal closed. A read racing the hang-up reports EOF, and the device can still answer TIOCGWINSZ, so this is
-// the check that tells a dead terminal from a closed pipe.
-func StdinHungUp() bool { return terminalHungUp(os.Stdin) }
+// OutputTerminalHungUp reports whether the terminal the process writes to has been hung up, as when the master side of
+// its pseudo-terminal closed. Such a terminal can still answer TIOCGWINSZ while its hang-up completes.
+func OutputTerminalHungUp() bool { return terminalHungUp(os.Stdout) }
