@@ -118,7 +118,14 @@ count = 1
 
 [[hit]]
 file = "ai/streaming_json.go"
-func = "parseStreamingJsonValue"
+func = "parseStreamingJsonValueAfterFastPath"
+call = "sdkjson.Unmarshal"
+dest = "*ai.JsonObject"
+count = 1
+
+[[hit]]
+file = "ai/streaming_json.go"
+func = "parseValidJSONObject"
 call = "sdkjson.Unmarshal"
 dest = "*ai.JsonObject"
 count = 1

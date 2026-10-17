@@ -507,6 +507,23 @@ func readInventory(root string) (*inventory, error) {
 	scoped := regexp.MustCompile(`^node_modules/(@[^/]+/[^/]+)/dist/(.*)\.d\.ts$`)
 	local := regexp.MustCompile(`^dist/(.*)\.d\.ts$`)
 	source := regexp.MustCompile(`^packages/([^/]+)/src/(.*)\.tsx?$`)
+	// reexported holds each top-level ID whose own source lies in another package: a declaration re-exported from there.
+	reexported := map[string]bool{}
+	for _, e := range inv.Interfaces {
+		if strings.Contains(e.ID, "::") {
+			continue
+		}
+		rest, ok := strings.CutPrefix(e.ID, "pkg:")
+		if !ok {
+			continue
+		}
+		idKey, _, _ := strings.Cut(rest, "/")
+		if m := source.FindStringSubmatch(e.Source.Path); m != nil && m[1] != idKey {
+			reexported[e.ID] = true
+		} else if m := scoped.FindStringSubmatch(e.Source.Path); m != nil && keyOf[m[1]] != "" && keyOf[m[1]] != idKey {
+			reexported[e.ID] = true
+		}
+	}
 	for _, e := range inv.Interfaces {
 		var k string
 		switch m := scoped.FindStringSubmatch(e.Source.Path); {
@@ -525,9 +542,11 @@ func readInventory(root string) (*inventory, error) {
 		}
 		// A package that re-exports another tracked package's declaration (durable re-exports chord/sqlite since Pi
 		// c268154c) lists it under its own ID, with the declaring file as its source. That file's row is proven by the
-		// declaring package's members; the re-export is the barrel's, not an implementation of the file.
+		// declaring package's members; the re-export is the barrel's, not an implementation of the file. Only the
+		// re-exported declaration and its members are skipped: an inherited member of a subclass (coding-agent's
+		// KeybindingsManager extends tui's) is a member of the subclass, whose owner is declared in its own package.
 		if rest, ok := strings.CutPrefix(e.ID, "pkg:"); ok {
-			if idKey, _, _ := strings.Cut(rest, "/"); idKey != "" && !strings.HasPrefix(k, idKey+"/") {
+			if idKey, _, _ := strings.Cut(rest, "/"); idKey != "" && !strings.HasPrefix(k, idKey+"/") && reexported[strings.SplitN(e.ID, "::", 2)[0]] {
 				continue
 			}
 		}
