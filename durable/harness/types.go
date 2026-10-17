@@ -138,7 +138,7 @@ type HarnessOptions struct {
 	// replace its model configuration without reopening the Harness (HarnessOptions.models as a function, Pi 7ec1f648).
 	Models     durable.Models
 	ModelsFunc func() durable.Models
-	Registry RegistryReader
+	Registry   RegistryReader
 	// Settings returns the current settings at every resolution; nil uses the defaults. Upstream reads a settings object whose fields may be getters.
 	Settings func() *HarnessSettings
 	// Env builds a conversation's environment at each use. It never runs on the Session line. Nil means no environment.

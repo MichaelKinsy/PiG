@@ -16,7 +16,9 @@ func samplingParamsField() *Schema {
 	return Record(Unknown(), D("Fields merged into every request body. Applies only to OpenAI-compatible APIs."))
 }
 
-func headersSchema() *Schema { return Record(String(), D("Request headers. Values resolve like apiKey.")) }
+func headersSchema() *Schema {
+	return Record(String(), D("Request headers. Values resolve like apiKey."))
+}
 
 // Model fields shared by models entries and modelOverrides entries (ModelFieldDescriptions); defaults apply only to models entries.
 const (
