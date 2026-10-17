@@ -19,11 +19,11 @@ func CacheRetentionSchema() *Schema     { return Enum(cacheRetentions) }
 
 func ThinkingLevelMapSchema() *Schema {
 	value := Union([]*Schema{String(), Null()})
-	return Partial(RecordOf(modelThinkingLevels, value))
+	return Partial(RecordOf(modelThinkingLevels, value), D("Provider value sent for each thinking level. null marks a level unsupported. Levels the model does not map use the provider's default value through high; xhigh and max are unsupported."))
 }
 
 func ModelPromptCacheSchema() *Schema {
-	return Partial(RecordOf(modelPromptCacheRetentions, Number(Opt{"exclusiveMinimum", 0})), D("Best-effort prompt cache lifetime in seconds for each retention tier. A missing tier means the lifetime is unknown, so Pi does not warm it."))
+	return Partial(RecordOf(modelPromptCacheRetentions, Number(Opt{"exclusiveMinimum", 0})), D("Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Pi warms only tiers with a known lifetime."))
 }
 
 func modelCostRates() []Prop {

@@ -9,18 +9,30 @@ func samplingParamsByThinkingLevel() *Schema {
 	for _, level := range modelThinkingLevels {
 		props = append(props, Optional(level, samplingParams()))
 	}
-	return Object(props)
+	return Object(props, D("samplingParams per thinking level, merged over samplingParams."))
 }
 
-func positiveTokenCount() *Schema { return Number(Opt{"exclusiveMinimum", 0}) }
+func samplingParamsField() *Schema {
+	return Record(Unknown(), D("Fields merged into every request body. Applies only to OpenAI-compatible APIs."))
+}
 
-func nonEmptyString() *Schema { return String(Opt{"minLength", 1}) }
+func headersSchema() *Schema { return Record(String(), D("Request headers. Values resolve like apiKey.")) }
+
+// Model fields shared by models entries and modelOverrides entries (ModelFieldDescriptions); defaults apply only to models entries.
+const (
+	modelNameDescription          = "Display name, also matched by --model patterns."
+	modelReasoningDescription     = "Whether the model supports thinking."
+	modelContextWindowDescription = "Context window in tokens."
+	modelMaxTokensDescription     = "Maximum output tokens."
+)
+
+func nonEmptyString(opts ...Opt) *Schema { return String(append([]Opt{{"minLength", 1}}, opts...)...) }
 
 // modelSchemaParts holds the model-config.ts module constants that several schemas reference. Pi builds each once and the
 // schemas share it; ModelsConfigSchema does the same, so the tree holds one ProviderCompatSchema (about 750 objects) instead of
 // three. Validation and Render only read the tree.
 type modelSchemaParts struct {
-	compat, thinkingLevelMap, inputLimits, cost, promptCache, samplingParams, samplingParamsByThinkingLevel *Schema
+	compat, thinkingLevelMap, inputLimits, cost, promptCache, samplingParams, samplingParamsByThinkingLevel, headers *Schema
 }
 
 func newModelSchemaParts() modelSchemaParts {
@@ -30,60 +42,61 @@ func newModelSchemaParts() modelSchemaParts {
 		inputLimits:                   ModelInputLimitsSchema(),
 		cost:                          ModelCostSchema(),
 		promptCache:                   ModelPromptCacheSchema(),
-		samplingParams:                samplingParams(),
+		samplingParams:                samplingParamsField(),
 		samplingParamsByThinkingLevel: samplingParamsByThinkingLevel(),
+		headers:                       headersSchema(),
 	}
 }
 
 func modelDefinitionSchema(parts modelSchemaParts) *Schema {
 	return Object([]Prop{
-		P("id", nonEmptyString()),
-		Optional("name", nonEmptyString()),
-		Optional("api", nonEmptyString()),
-		Optional("baseUrl", nonEmptyString()),
-		Optional("reasoning", Boolean()),
+		P("id", nonEmptyString(D("Model ID sent to the API."))),
+		Optional("name", nonEmptyString(D(modelNameDescription))),
+		Optional("api", nonEmptyString(D("Overrides the provider api."))),
+		Optional("baseUrl", nonEmptyString(D("Overrides the provider baseUrl."))),
+		Optional("reasoning", Boolean(Default(false), D(modelReasoningDescription))),
 		Optional("thinkingLevelMap", parts.thinkingLevelMap),
-		Optional("input", Array(ModelInputModalitySchema())),
+		Optional("input", Array(ModelInputModalitySchema(), Default([]any{"text"}))),
 		Optional("inputLimits", parts.inputLimits),
 		Optional("cost", parts.cost),
 		Optional("promptCache", parts.promptCache),
-		Optional("contextWindow", positiveTokenCount()),
-		Optional("maxTokens", positiveTokenCount()),
+		Optional("contextWindow", Number(Opt{"exclusiveMinimum", 0}, Default(128000), D(modelContextWindowDescription))),
+		Optional("maxTokens", Number(Opt{"exclusiveMinimum", 0}, Default(16384), D(modelMaxTokensDescription))),
 		Optional("samplingParams", parts.samplingParams),
 		Optional("samplingParamsByThinkingLevel", parts.samplingParamsByThinkingLevel),
-		Optional("headers", Record(String())),
+		Optional("headers", parts.headers),
 		Optional("compat", parts.compat),
 	})
 }
 
 func modelOverrideSchema(parts modelSchemaParts) *Schema {
 	return Object([]Prop{
-		Optional("name", nonEmptyString()),
-		Optional("reasoning", Boolean()),
+		Optional("name", nonEmptyString(D(modelNameDescription))),
+		Optional("reasoning", Boolean(D(modelReasoningDescription))),
 		Optional("thinkingLevelMap", parts.thinkingLevelMap),
 		Optional("input", Array(ModelInputModalitySchema())),
 		Optional("inputLimits", parts.inputLimits),
 		Optional("cost", Partial(parts.cost)),
 		Optional("promptCache", parts.promptCache),
-		Optional("contextWindow", positiveTokenCount()),
-		Optional("maxTokens", positiveTokenCount()),
+		Optional("contextWindow", Number(Opt{"exclusiveMinimum", 0}, D(modelContextWindowDescription))),
+		Optional("maxTokens", Number(Opt{"exclusiveMinimum", 0}, D(modelMaxTokensDescription))),
 		Optional("samplingParams", parts.samplingParams),
 		Optional("samplingParamsByThinkingLevel", parts.samplingParamsByThinkingLevel),
-		Optional("headers", Record(String())),
+		Optional("headers", parts.headers),
 		Optional("compat", parts.compat),
 	})
 }
 
 func providerConfigSchema(parts modelSchemaParts) *Schema {
 	return Object([]Prop{
-		Optional("name", nonEmptyString()),
-		Optional("baseUrl", nonEmptyString()),
-		Optional("apiKey", nonEmptyString()),
-		Optional("api", nonEmptyString()),
-		Optional("oauth", Literal("radius")),
-		Optional("headers", Record(String())),
+		Optional("name", nonEmptyString(D("Display name."))),
+		Optional("baseUrl", nonEmptyString(D("API base URL. Also applies to the provider's built-in models."))),
+		Optional("apiKey", nonEmptyString(D(`Literal key, "$NAME" environment interpolation, or "!command" output.`))),
+		Optional("api", nonEmptyString(D(`API for the provider's models, such as "openai-completions", "openai-responses", "anthropic-messages", or "google-generative-ai".`))),
+		Optional("oauth", Literal("radius", D("OAuth login flow. Requires baseUrl."))),
+		Optional("headers", parts.headers),
 		Optional("compat", parts.compat),
-		Optional("authHeader", Boolean()),
+		Optional("authHeader", Boolean(Default(false), D("Whether to send the resolved API key as Authorization: Bearer."))),
 		Optional("models", Array(modelDefinitionSchema(parts))),
 		Optional("modelOverrides", Record(modelOverrideSchema(parts))),
 	})

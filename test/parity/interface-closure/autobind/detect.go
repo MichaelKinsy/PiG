@@ -660,6 +660,8 @@ func (d *detector) evalValueFunc(e *upstreamEntry, c *sym, chk *checker, out map
 	} else {
 		v = chk.agree(e.Shape.Type, sig.Results().At(0).Type())
 	}
+	// A reviewed exception closes a value no rule decided, as it does for a call, an alias, or a member.
+	v = d.reviewedVerdict(e.ID, c.Target(), v)
 	r := refute(v, reasonType, c.Target())
 	if r == nil {
 		r = d.exercise(c, []string{c.Key}, selfExclude(c.Name))

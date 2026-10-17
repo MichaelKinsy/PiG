@@ -44,9 +44,14 @@ func ProviderCompatSchema() *Schema {
 		optionalCompatBoolean("supportsOpenAIGrammarTools", D("Whether the provider supports OpenAI custom tools with Lark or regex grammar formats. When false, grammar-constrained tools fall back to normal function tools."), Default(false)),
 		optionalCompatBoolean("sendSessionAffinityHeaders", D("Whether to send session-affinity data from options.sessionId. Defaults are API-specific.")),
 	}
-	groups := [][]Prop{
-		propsOf(OpenAICompletionsCompatSchema()), propsOf(OpenAIResponsesCompatSchema()), propsOf(AnthropicMessagesCompatSchema()),
-		propsOf(BedrockCompatSchema()), propsOf(MistralConversationsCompatSchema()),
+	// [...new Set(Object.values(CompatSchemasByApi))]: each schema once, in first-key order.
+	var groups [][]Prop
+	seen := map[string]bool{}
+	for _, entry := range CompatSchemasByApi() {
+		if !seen[entry.Schema] {
+			seen[entry.Schema] = true
+			groups = append(groups, propsOf(compatSchemaNamed(entry.Schema)))
+		}
 	}
 	var merged []Prop
 	index := map[string]int{}
@@ -98,4 +103,37 @@ func propsOf(s *Schema) []Prop {
 		out = append(out, Prop{Name: kv.K, Schema: kv.V.(*Schema), Optional: !required[kv.K]})
 	}
 	return out
+}
+
+// CompatSchemaEntry is one entry of CompatSchemasByApi: an API and the name of its compat schema.
+type CompatSchemaEntry struct{ API, Schema string }
+
+// CompatSchemasByApi is compat-schema.ts CompatSchemasByApi: the compatibility schema of each API whose models accept compat,
+// in Pi's key order (Pi 4954d760 adds azure-openai-responses and openai-codex-responses, which share the Responses schema).
+func CompatSchemasByApi() []CompatSchemaEntry {
+	return []CompatSchemaEntry{
+		{"openai-completions", "OpenAICompletionsCompatSchema"},
+		{"openai-responses", "OpenAIResponsesCompatSchema"},
+		{"azure-openai-responses", "OpenAIResponsesCompatSchema"},
+		{"openai-codex-responses", "OpenAIResponsesCompatSchema"},
+		{"anthropic-messages", "AnthropicMessagesCompatSchema"},
+		{"bedrock-converse-stream", "BedrockCompatSchema"},
+		{"mistral-conversations", "MistralConversationsCompatSchema"},
+	}
+}
+
+func compatSchemaNamed(name string) *Schema {
+	switch name {
+	case "OpenAICompletionsCompatSchema":
+		return OpenAICompletionsCompatSchema()
+	case "OpenAIResponsesCompatSchema":
+		return OpenAIResponsesCompatSchema()
+	case "AnthropicMessagesCompatSchema":
+		return AnthropicMessagesCompatSchema()
+	case "BedrockCompatSchema":
+		return BedrockCompatSchema()
+	case "MistralConversationsCompatSchema":
+		return MistralConversationsCompatSchema()
+	}
+	panic("configschema: no compat schema " + name)
 }

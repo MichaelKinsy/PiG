@@ -99,6 +99,10 @@
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
   },
+  "pkg:ai/providers/compat-schema#CompatSchemasByApi": {
+    "go": "internal/codingagent/configschema/compat_b.go#CompatSchemasByApi",
+    "reason": "Pi 4954d760 compat-schema.ts:604 exports CompatSchemasByApi, an `as const` object of API name to TypeBox compat schema. PiG builds schemas as configschema *Schema values, so the export is CompatSchemasByApi(), the ordered API-to-schema list; ProviderCompatSchema merges it as Pi does ([...new Set(...)]). TestCompatSchemaExportsMatchPi compares its JSON text with Pi's export byte for byte."
+  },
   "pkg:ai/providers/compat-schema#OpenAICompletionsCompat::property:openRouterRouting": {
     "go": "ai/openai.go#OpenAICompat.OpenRouterRouting",
     "reason": "42a3497d compat-schema.ts OpenRouterRoutingSchema is an object of optional routing preferences (allow_fallbacks, order, only, sort, max_price, ...) that Pi forwards as the OpenRouter provider field of the request body. PiG's ai.OpenRouterRouting is map[string]any (ai/types_unions.go), forwarded the same way: the request body carries whatever the models.json object holds, and the models.json schema (internal/codingagent/configschema/validate.go) validates its known fields (TestModelsJSONSchemaErrorsMatchPi)."
