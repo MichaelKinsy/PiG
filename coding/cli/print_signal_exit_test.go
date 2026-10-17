@@ -72,6 +72,9 @@ func TestPrintModeSignalExitCodes(t *testing.T) {
 			if err := cmd.Process.Signal(tc.signal); err != nil {
 				t.Fatalf("signal %s: %v", tc.signal, err)
 			}
+			// SIGINT takes the default action, as in Pi: pig dies at once, and the faux call's shell, which runs in its own
+			// process group, keeps sleeping. The test kills what is left of it in its working directory when it ends.
+			t.Cleanup(func() { killProcessesIn(workDir) })
 
 			err := cmd.Wait()
 			var exitErr *exec.ExitError
