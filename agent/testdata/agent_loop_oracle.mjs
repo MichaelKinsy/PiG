@@ -3,10 +3,12 @@
 // usage: node agent_loop_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-ai)
 import module from "node:module";
 import { pathToFileURL } from "node:url";
+import { chordSourceURL } from "../../durable/internal/oraclesupport/chord_resolve.mjs";
 const packages = process.argv[2].replace(/\/?$/, "/");
 module.registerHooks({
 	resolve(specifier, context, next) {
-		if (specifier.startsWith("@earendil-works/chord")) return next(specifier === "@earendil-works/chord" ? pathToFileURL(`${packages}chord/src/index.ts`).href : pathToFileURL(`${packages}chord/src/${specifier.slice("@earendil-works/chord/".length)}/index.ts`).href, context);
+		const chordSource = chordSourceURL(packages, specifier);
+		if (chordSource) return next(chordSource, context);
 		if (specifier.startsWith("@earendil-works/pi-ai")) return next(specifier, { ...context, parentURL: pathToFileURL(process.env.PI_INTEROP_DIR).href });
 		return next(specifier, context);
 	},

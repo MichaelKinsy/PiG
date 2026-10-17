@@ -5,12 +5,12 @@
 // Program: {steps: [{op, ...}]}. Each step answers {ok: value} or {err: {name, message}}. A scan step may carry cursorFrom (the index of an earlier scan whose `next` becomes its cursor).
 import module from "node:module";
 import { pathToFileURL } from "node:url";
+import { chordSourceURL } from "../../internal/oraclesupport/chord_resolve.mjs";
 const packages = process.argv[2].replace(/\/?$/, "/");
 module.registerHooks({
 	resolve(specifier, context, next) {
-		if (specifier === "@earendil-works/chord") return next(pathToFileURL(`${packages}chord/src/index.ts`).href, context);
-		if (specifier === "@earendil-works/chord/output") return next(pathToFileURL(`${packages}chord/src/output.ts`).href, context);
-		if (specifier.startsWith("@earendil-works/chord/")) return next(pathToFileURL(`${packages}chord/src/${specifier.slice("@earendil-works/chord/".length)}/index.ts`).href, context);
+		const chordSource = chordSourceURL(packages, specifier);
+		if (chordSource) return next(chordSource, context);
 		return next(specifier, context);
 	},
 });
