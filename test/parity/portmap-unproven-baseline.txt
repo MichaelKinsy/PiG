@@ -295,7 +295,6 @@ packages/coding-agent/src/utils/tools-manager.ts
 packages/coding-agent/src/utils/version-check.ts
 packages/coding-agent/src/utils/windows-self-update.ts
 packages/durable/src/harness/context.ts
-packages/durable/src/harness/harness.ts
 packages/durable/src/harness/json.ts
 packages/durable/src/harness/prompt.ts
 packages/durable/src/harness/scheduler.ts
