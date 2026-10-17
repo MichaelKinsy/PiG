@@ -43,6 +43,11 @@ func parseToolCallArguments(text string) (JsonObject, schemaObjectOrder, string)
 	if jsstring.Trim(text) == "" {
 		return JsonObject{}, nil, ""
 	}
+	// The common case, a finished call whose text is a valid JSON object, is read once: JSON.parse succeeds on the text
+	// itself, so neither the repair nor a second parse can change the result.
+	if object, order, ok := parseValidJSONObject(text); ok {
+		return object, order, ""
+	}
 	candidate := text
 	var parseErr error
 	if _, ok := jsonParseValue(candidate); !ok {

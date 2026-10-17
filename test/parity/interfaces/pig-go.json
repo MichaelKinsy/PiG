@@ -52708,6 +52708,17 @@
       "shapeHash": "sha256:9502f4302f9894c1f738d46d240bc9969a0b6922b9ee83ac81cf8e908ecf5278"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#parseStreamingJsonValueAfterFastPath",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "parseStreamingJsonValueAfterFastPath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(input string) (JsonObject, schemaObjectOrder, encoding/json.RawMessage)"
+      },
+      "shapeHash": "sha256:9502f4302f9894c1f738d46d240bc9969a0b6922b9ee83ac81cf8e908ecf5278"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#parseToolCallArguments",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "parseToolCallArguments",
@@ -52717,6 +52728,17 @@
         "type": "func(text string) (JsonObject, schemaObjectOrder, string)"
       },
       "shapeHash": "sha256:0b20aea589952ee7c9b17bf7b9589280092b2a46e68558d8537b94b1a08164cc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#parseValidJSONObject",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "parseValidJSONObject",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(input string) (JsonObject, schemaObjectOrder, bool)"
+      },
+      "shapeHash": "sha256:1f8df38d5920c5ab7a3df3c7ece4b5b372de4263e89b5ed59081f6f1a155112b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#parseXaiDeviceCode",

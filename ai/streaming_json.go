@@ -42,6 +42,15 @@ func parseStreamingJsonValue(input string) (JsonObject, schemaObjectOrder, json.
 	if strings.TrimSpace(input) == "" {
 		return JsonObject{}, nil, nil
 	}
+	if object, order, ok := parseValidJSONObject(input); ok {
+		return object, order, nil
+	}
+	return parseStreamingJsonValueAfterFastPath(input)
+}
+
+// parseStreamingJsonValueAfterFastPath is parseStreamingJsonValue for text parseValidJSONObject did not read: the strict
+// parse of the text and of its repair, then the partial parse.
+func parseStreamingJsonValueAfterFastPath(input string) (JsonObject, schemaObjectOrder, json.RawMessage) {
 	candidates := []string{input, repairJSON(input)}
 	for _, candidate := range candidates {
 		if trimmed := jsstring.Trim(candidate); trimmed != "" && trimmed[0] != '{' && json.Valid([]byte(trimmed)) {
@@ -106,6 +115,25 @@ type partialJSONParser struct {
 	strings *resumableString
 	// objectProtoNull is the protoNull state of the object parseMembers returned last; parseMembers reads it right after a member value that is an object.
 	objectProtoNull bool
+}
+
+// parseValidJSONObject is the first candidate of parseStreamingJsonValue when it succeeds: input whose trimmed text is
+// valid JSON with an object at the top, decoded once with its member order. ok is false for anything else, which the
+// full path handles (a value that is not an object, a number out of float64 range, text the repair would change).
+func parseValidJSONObject(input string) (JsonObject, schemaObjectOrder, bool) {
+	trimmed := jsstring.Trim(input)
+	if trimmed == "" || trimmed[0] != '{' {
+		return nil, nil, false
+	}
+	var strict JsonObject
+	if sdkjson.Unmarshal([]byte(input), &strict) != nil || strict == nil {
+		return nil, nil, false
+	}
+	order, err := readSchemaObjectOrder([]byte(input))
+	if err != nil {
+		order = nil
+	}
+	return JsonObject(nonFiniteToNull(map[string]any(strict)).(map[string]any)), order, true
 }
 
 // nonFiniteToNull replaces the Infinity, -Infinity and NaN that partial-json produces (and JSON.parse produces for 1e400) with null, and -0 with 0.
