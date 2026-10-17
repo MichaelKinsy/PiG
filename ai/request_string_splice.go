@@ -17,6 +17,9 @@ type stringSplice struct {
 	quoted [][]byte
 	// tokenText is where the encoder's token is written.
 	tokenText []byte
+	// key and scratch are the message record and the encode buffer that tokenMessage reuses for each message.
+	key     messageKey
+	scratch bytes.Buffer
 	// walking holds the pointers, maps and slices the walk is inside, so a payload that refers to itself is left as it is below the repeat. It lives in walkingBuf until a payload nests deeper, so an ordinary payload allocates nothing for it.
 	walking    []walkedValue
 	walkingBuf [walkingInline]walkedValue
@@ -132,6 +135,9 @@ func opaque(t reflect.Type) bool {
 func marshalSpliced(payload any, cache *quotedStringCache, marshal func(any) ([]byte, error)) (*requestBody, error) {
 	if cache != nil {
 		cache.beginRequest()
+		if cache.messages != nil {
+			cache.messages.beginRequest()
+		}
 	}
 	splice := &stringSplice{cache: cache, nonce: newSpliceNonce()}
 	if cache != nil {

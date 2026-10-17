@@ -29,3 +29,8 @@ func (f oaiToolFunction) MarshalJSONTo(encoder *jsontext.Encoder) error {
 	}
 	return jsonv2.MarshalEncode(encoder, wire)
 }
+
+// spliceMessages is the marshaler that takes each message of the request from the message cache (requestMessageSplicer).
+func (oaiRequest) spliceMessages(s *stringSplice) *jsonv2.Marshalers {
+	return spliceMessages(s, oaiMessageKey)
+}

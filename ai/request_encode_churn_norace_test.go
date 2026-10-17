@@ -42,7 +42,7 @@ func encodeChurnText(index, size int) string {
 
 // Every completions request re-sends the whole history. The large tool results come from the request string cache, so what the
 // encode writes per request is the skeleton: every small string and every key of the history. Encoding it should allocate about
-// one skeleton per request (the body bytes it keeps); at e85ec79e85 encoding/json/v2 grows its buffer by doubling
+// one skeleton per request (the message cache serves the small messages, so a build allocates less than that) (the body bytes it keeps); at e85ec79e85 encoding/json/v2 grows its buffer by doubling
 // (jsonwire.AppendQuote -> slices.Grow) and then copies the result out (bytes.Clone in v2.Marshal), and the long-session profile
 // charges 236 MB + 70 MB of that to 75 prompts. The bound is 1.5 skeletons per build at 75 turns.
 func TestCompletionsRequestEncodeAllocatesAboutItsSkeleton(t *testing.T) {
@@ -68,6 +68,11 @@ func TestCompletionsRequestEncodeAllocatesAboutItsSkeleton(t *testing.T) {
 			}
 		}
 		_, allocated = requestBuildCost(build) // the first build fills the cache; the measured ones are steady-state requests
+		// The skeleton is what a build writes when it takes only the large strings from the cache: the small messages, encoded, are in the odd segments of a build that takes them from the message cache too.
+		messages := requestStrings.messages
+		requestStrings.messages = nil
+		build()
+		requestStrings.messages = messages
 		// join alternates skeleton runs (even segments) and cached large strings (odd segments).
 		for i, segment := range built.segments {
 			if i%2 == 0 {

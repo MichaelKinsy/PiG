@@ -52,10 +52,12 @@ type quotedStringCache struct {
 	// bySource indexes the same entries by the address and length of their source string. A Go string never changes and the entry keeps its source alive, so a string at that address with that length is the source: a request that re-sends the message strings of the previous one finds their encodings without hashing or comparing them.
 	bySource map[stringIdentity]*list.Element
 	// byData indexes the same entries by the first byte of their encoding, so a request that carries an encoding as raw JSON can be recognized.
-	byData  map[*byte]*list.Element
-	recency list.List // front is the most recently used *quotedString
-	held    int
-	misses  int
+	byData map[*byte]*list.Element
+	// messages holds the encodings of the request's small finalized messages (encodedMessageCache), which a request that has them does not encode again; nil keeps none, and a message is encoded as it is without the cache.
+	messages *encodedMessageCache
+	recency  list.List // front is the most recently used *quotedString
+	held     int
+	misses   int
 	// tokens is the number of large strings the last request build spliced, which sizes the next build's list of them.
 	tokens atomic.Int64
 	// gen counts request builds (beginRequest). A use stamps the entry with it, and recency moves the entry to the front, so the stamps
@@ -72,7 +74,7 @@ type stringIdentity struct {
 func identityOf(s string) stringIdentity { return stringIdentity{unsafe.StringData(s), len(s)} } //nolint:gosec // G103: the address and length identify a string in a cache key; the pointer is never dereferenced
 
 func newQuotedStringCache(limit int) *quotedStringCache {
-	return &quotedStringCache{seed: maphash.MakeSeed(), limit: limit, entries: map[quotedStringKey]*list.Element{}, bySource: map[stringIdentity]*list.Element{}, byData: map[*byte]*list.Element{}}
+	return &quotedStringCache{seed: maphash.MakeSeed(), limit: limit, entries: map[quotedStringKey]*list.Element{}, bySource: map[stringIdentity]*list.Element{}, byData: map[*byte]*list.Element{}, messages: newEncodedMessageCache(requestMessageCacheBytes)}
 }
 
 // requestStrings is the process-wide cache: each request builds a new provider, so a per-provider cache would never be reused.

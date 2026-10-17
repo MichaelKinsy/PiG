@@ -91,6 +91,9 @@ func (s *stringSplice) encode(payload any, marshal func(any) ([]byte, error)) ([
 		return nil, false, nil
 	}
 	tokens := jsonv2.JoinMarshalers(jsonv2.MarshalToFunc(s.tokenString), jsonv2.MarshalToFunc(s.tokenRaw))
+	if messages, ok := payload.(requestMessageSplicer); ok && s.cache.messages != nil {
+		tokens = jsonv2.JoinMarshalers(messages.spliceMessages(s), tokens)
+	}
 	skeleton, err := encodeRequestBody(payload, jsonv2.JoinOptions(requestBodyOptions, jsonv2.WithMarshalers(tokens)))
 	return skeleton, true, err
 }

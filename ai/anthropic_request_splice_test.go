@@ -253,3 +253,32 @@ func TestPrepareRequestKeepsAReplacementPayloadsParameters(t *testing.T) {
 		})
 	}
 }
+
+// A payload hook that edits the request's messages in place, after the cache has seen them, gets the body of the edited request.
+func TestPrepareRequestAfterAHookEditsCachedMessages(t *testing.T) {
+	provider := &anthropicProvider{cfg: AnthropicConfig{ProviderID: "anthropic"}}
+	request := anthHistory(10)
+	send := func(opts StreamOptions) {
+		t.Helper()
+		out, err := provider.prepareRequest(context.Background(), "https://example.invalid", anthropicClient{apiKey: "k"}, request, &Model{}, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, _, err := anthropicWireBody(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(out.body.Bytes(), want) {
+			t.Fatalf("body differs from the wire body of the request as the hook left it\n got %.300q\nwant %.300q", out.body.Bytes(), want)
+		}
+	}
+	send(StreamOptions{})
+	send(StreamOptions{})
+	send(StreamOptions{OnPayload: func(value any, _ *Model) (any, error) {
+		blocks := value.(anthRequest).Messages[3].Content.([]anthContentBlock)
+		blocks[0].Text = "edited by a hook"
+		blocks[0].CacheControl = &anthCacheControl{Type: "ephemeral"}
+		return nil, nil
+	}})
+	send(StreamOptions{})
+}
