@@ -19,7 +19,7 @@ func TestParentDirMatchesFilepathDir(t *testing.T) {
 		if raw == "" {
 			continue
 		}
-		for walks := 0; walks < 6; walks++ {
+		for range 6 {
 			if got, want := ParentDir(p, true), filepath.Dir(p); got != want {
 				t.Fatalf("ParentDir(%q) = %q, want %q", p, got, want)
 			}

@@ -29,7 +29,7 @@ func TestCoreToolRecordsItsPreparedArgumentsAndDefaultReplayBeforeExecuting(t *t
 		close(reached)
 		executed <- args
 		<-release
-		return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
+		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 	}
 	if err := setup.registry.Install(&durable.Extension{Name: "count", Tools: []*durable.ToolRegistration{tool}}); err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestCoreToolRefusesANonObjectPreparedResultAsInvalidArguments(t *testing.T)
 			tool.PrepareArguments = func(any) (any, error) { return tc.prepared, nil }
 			tool.Execute = func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				executed <- struct{}{}
-				return durable.ToolExecutionResult{Content: []ai.ToolResultMessageContent{}}, nil
+				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 			}
 			if err := setup.registry.Install(&durable.Extension{Name: "count", Tools: []*durable.ToolRegistration{tool}}); err != nil {
 				t.Fatal(err)
