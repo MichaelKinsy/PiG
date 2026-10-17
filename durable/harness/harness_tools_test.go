@@ -926,6 +926,26 @@ func TestToolResults(t *testing.T) {
 		}
 		mustClose(t, first.harness)
 	})
+
+	// harness-tools.test.ts:677 (Pi 6085986e, #10858) it("does not terminate on terminate: false"). Go's Terminate is a
+	// bool whose false is absent, so the control is no-op as Pi's `terminate?: boolean` false is.
+	t.Run("does not terminate on terminate: false", func(t *testing.T) {
+		setup := chatSetup(t)
+		keep := tlTool("keep", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Control: &durable.ToolControl{Terminate: false}}, nil
+		})
+		addTool(t, setup.Registry, keep)
+		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"keep", map[string]any{}, "c1"}), tlDone()}, func(_ Harness, root Conversation) {
+			mustConfigure(t, root, AgentChange{Tools: SetTo(ToolChange{List: []*durable.ToolRegistration{keep}})})
+		})
+		if run.status != durable.SubmissionDone {
+			t.Fatalf("status %s, want done", run.status)
+		}
+		if last := run.entries[len(run.entries)-1].Kind; last != "pi.assistant" {
+			t.Fatalf("last entry %s, want pi.assistant", last)
+		}
+		mustClose(t, run.harness)
+	})
 }
 
 func tlRoleText(message ai.Message) string {

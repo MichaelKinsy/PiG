@@ -465,17 +465,22 @@ func TestRemoteExecutionEnvAgainstNodeExecutionEnv(t *testing.T) {
 			{tools.CreateReadTool(nil), map[string]any{"path": "bom.txt"}},
 			{tools.CreateReadTool(nil), map[string]any{"path": "bad.txt"}},
 			{tools.CreateReadTool(nil), map[string]any{"path": "missing.txt"}},
-			// Upstream runs "cat text.txt; echo err >&2; exit 0" as one case. Output on two pipes has no order across them,
-			// in Node as in PiG, so the tool text of that case depends on which pipe the reader wakes on first. The two
-			// cases below cover the same output without a cross-pipe order: stdout then stderr through one pipe, and stderr
-			// alone.
-			{tools.CreateBashTool(nil), map[string]any{"command": "{ cat text.txt; echo err >&2; } 2>&1; exit 0"}},
+			// differential.test.ts (Pi 14ff455a): stdout and stderr are separate pipes, read concurrently, so their order
+			// relative to each other is not fixed; each case writes to one of them.
+			{tools.CreateBashTool(nil), map[string]any{"command": "cat text.txt; exit 0"}},
 			{tools.CreateBashTool(nil), map[string]any{"command": "echo err >&2; exit 0"}},
 			{tools.CreateBashTool(nil), map[string]any{"command": "exit 3"}},
 			{tools.CreateBashTool(nil), map[string]any{"command": "printf 'a\\nb'; ls"}},
 		}
 		for _, c := range cases {
 			expected := normalize(run(local, c.tool, c.args), roots[0])
+			// A bash case returns a result (a nonzero exit is an error result): a throw on both sides would compare equal
+			// (Pi 14ff455a).
+			if c.tool.Name == "bash" {
+				if object, _ := expected.(map[string]any); object == nil || object["result"] == nil {
+					t.Fatalf("%v: local gave no result: %v", c.args, expected)
+				}
+			}
 			actual := normalize(run(remote, c.tool, c.args), roots[1])
 			if !reflect.DeepEqual(actual, expected) {
 				t.Fatalf("%v:\nremote %v\nlocal  %v", c.args, actual, expected)
