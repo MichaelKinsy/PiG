@@ -322,6 +322,7 @@ func (s *Session) prepareNextTurn(ctx context.Context, turn agent.PrepareNextTur
 	var previous *agent.AgentLoopTurnUpdate
 	if s.previousPrepareNextTurn != nil {
 		// The projection is the session's own, read and never written; the hook may write the array it receives.
+		//perf:ok only when the supplied Agent has its own hook; Pi hands that hook the fresh array buildSessionProjection builds each call
 		turn.Context = *s.executableContext(slices.Clone(projected))
 		var err error
 		if previous, err = s.previousPrepareNextTurn(ctx, turn); err != nil {
