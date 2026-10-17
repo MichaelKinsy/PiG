@@ -220,3 +220,28 @@ func TestIntegerFastPathsAgreeWithStrconv(t *testing.T) {
 		}
 	}
 }
+
+// find compares a member's length before its bytes; keys of one length, the empty key and keys one byte apart each stay their own
+// member, below and above the size from which an object keeps an index.
+func TestObjectFindSeparatesKeysOfOneLength(t *testing.T) {
+	for _, members := range []int{3, indexThreshold + 4} {
+		o := NewObject()
+		keys := []string{"", "a", "b", "id", "ie", "to", "type", "tyqe", "name"}
+		for i := range members - len(keys) {
+			keys = append(keys, "pad"+strconv.Itoa(i))
+		}
+		for i, k := range keys[:members] {
+			o.Set(k, float64(i))
+		}
+		for i, k := range keys[:members] {
+			if v, ok := o.Get(k); !ok || v != float64(i) {
+				t.Fatalf("%d members: Get(%q) = %v, %v, want %d", members, k, v, ok, i)
+			}
+		}
+		for _, absent := range []string{"c", "ic", "tz", "typf", "nam", "names", "zzzzzzzz"} {
+			if o.Has(absent) {
+				t.Fatalf("%d members: Has(%q) is true", members, absent)
+			}
+		}
+	}
+}

@@ -70,7 +70,8 @@ func (h *handler) read(r hopcost.Read) {
 //go:noinline
 func (h *handler) jobCommit(writes []session.Write, actions map[session.ID]*mirrorAction, order []session.ID) {
 	w := &hopcost.Writes{}
-	copies := map[session.ID]bool{}
+	// The maps are made at their first entry: most commits copy no document and write no document action.
+	var copies map[session.ID]bool
 	h.job.settleRows += h.settleRows(writes) - h.sess.SettleCached()
 	h.job.settleCached += h.sess.SettleCached()
 	h.job.settleOwners += h.settleOwners(writes)
@@ -84,12 +85,15 @@ func (h *handler) jobCommit(writes []session.Write, actions map[session.ID]*mirr
 			w.DocCreates++
 		case session.WriteDocCopy:
 			w.DocCreates++
+			if copies == nil {
+				copies = map[session.ID]bool{}
+			}
 			copies[session.ID(numOf(wr.Record, "id"))] = true
 		case session.WriteDocChange, session.WriteDocRetire:
 			w.DocEdits++
 		}
 	}
-	seen := map[string]bool{}
+	var seen map[string]bool
 	for _, id := range order {
 		a := actions[id]
 		rec := a.create
@@ -112,6 +116,9 @@ func (h *handler) jobCommit(writes []session.Write, actions map[session.ID]*mirr
 			act.CurrentOnly = strOf(objOf(rec, "scope"), "kind") != "conversation" || strOf(rec, "history") == "latest"
 			key := recordAddrKey(rec)
 			act.KnownAddress = seen[key]
+			if seen == nil {
+				seen = map[string]bool{}
+			}
 			seen[key] = true
 		}
 		w.Actions = append(w.Actions, act)

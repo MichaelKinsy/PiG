@@ -741,6 +741,24 @@ func (m *mirror) resolveCopies(writes []session.Write) []session.Write {
 	return out
 }
 
+// writeTable is the table a record write lands in ("" for a kind that writes no record). A switch, not a map literal: the literal
+// builds a hash map (heap blocks for its buckets) on every call.
+func writeTable(k session.WriteKind) string {
+	switch k {
+	case session.WriteConversation:
+		return "conversation"
+	case session.WriteEntry:
+		return "entry"
+	case session.WriteTask:
+		return "task"
+	case session.WriteSubmission:
+		return "submission"
+	case session.WriteDocCreate, session.WriteDocCopy:
+		return "document"
+	}
+	return ""
+}
+
 //go:noinline
 func (m *mirror) checkGlobalIDs(writes []session.Write) error {
 	claimed := map[session.ID]string{}
@@ -748,7 +766,7 @@ func (m *mirror) checkGlobalIDs(writes []session.Write) error {
 		if w.Kind == session.WriteDocChange || w.Kind == session.WriteDocRetire {
 			continue
 		}
-		table := map[session.WriteKind]string{session.WriteConversation: "conversation", session.WriteEntry: "entry", session.WriteTask: "task", session.WriteSubmission: "submission", session.WriteDocCreate: "document", session.WriteDocCopy: "document"}[w.Kind]
+		table := writeTable(w.Kind)
 		id := num(w.Record, "id")
 		existing, earlier := m.recordType(id), claimed[id]
 		if table == "conversation" || table == "entry" || table == "document" {
@@ -778,7 +796,9 @@ func (m *mirror) checkGlobalIDs(writes []session.Write) error {
 
 //go:noinline
 func (m *mirror) prepareDocActions(writes []session.Write) (map[session.ID]*mirrorAction, []session.ID, error) {
-	actions := map[session.ID]*mirrorAction{}
+	// Most commits write no document: the map is made at the first document write, and a commit without one gets nil (lookups
+	// and ranges over a nil map are empty, and `order` is empty too).
+	var actions map[session.ID]*mirrorAction
 	var order []session.ID
 	for _, w := range writes {
 		var id session.ID
@@ -793,6 +813,9 @@ func (m *mirror) prepareDocActions(writes []session.Write) (map[session.ID]*mirr
 		a := actions[id]
 		if a == nil {
 			a = &mirrorAction{}
+			if actions == nil {
+				actions = map[session.ID]*mirrorAction{}
+			}
 			actions[id] = a
 			order = append(order, id)
 		}
@@ -821,6 +844,9 @@ func (m *mirror) prepareDocActions(writes []session.Write) (map[session.ID]*mirr
 
 //go:noinline
 func (m *mirror) checkDocActions(actions map[session.ID]*mirrorAction, order []session.ID) error {
+	if len(order) == 0 {
+		return nil
+	}
 	live := map[string]int{}
 	for _, id := range order {
 		a := actions[id]

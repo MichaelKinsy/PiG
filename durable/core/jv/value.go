@@ -63,8 +63,10 @@ func (o *Object) find(key string) int {
 		}
 		return -1
 	}
+	// Most members of a small object differ from key in length: compare it before the call TinyGo makes for a string comparison.
+	n := len(key)
 	for at, k := range o.keys {
-		if k == key {
+		if len(k) == n && k == key {
 			return at
 		}
 	}
