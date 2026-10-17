@@ -11,7 +11,17 @@ import (
 )
 
 // Current returns the calling goroutine's runtime ID, which is never zero.
-func Current() uint64 {
+//
+// Where the runtime's goroutine record can be read (fast_gc.go), a call loads the ID from it. The first call proves where the ID
+// lives in the record, and the proof stands only if exactly one word equals the stack header's ID on 17 goroutines alive at
+// once, which have 17 distinct IDs: a runtime that moved, renamed or stopped storing the field leaves no such word, or none
+// that stays equal across goroutines, and Current then formats the header, as it does on every other platform. A changed
+// layout therefore costs speed and never returns another goroutine's or a wrong ID. The header's cost grows with the depth of
+// the stack.
+func Current() uint64 { return current() }
+
+// stackID parses the ID from the header line runtime.Stack writes for the calling goroutine.
+func stackID() uint64 {
 	var buf [64]byte
 	header := buf[:runtime.Stack(buf[:], false)]
 	header, _ = bytes.CutPrefix(header, []byte("goroutine "))
