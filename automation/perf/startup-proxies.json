@@ -4,7 +4,9 @@
     "TestCloneCompatAvoidsScalarJSONRoundTrip",
     "TestCloneCompatPreservesSerializedCopy",
     "TestToModelCatalogAllocationBudget",
-    "TestToCapabilitiesMatchesSupportedThinkingLevelSelection"
+    "TestToCapabilitiesMatchesSupportedThinkingLevelSelection",
+    "TestBuiltinCatalogEncodeCost",
+    "TestChangedBuiltinModelEncodesAsItsDecodedRecord"
   ],
   "./coding/cli": [
     "TestLinkedPackagesCompileNoRegexpAtInit",

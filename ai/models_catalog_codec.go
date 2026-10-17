@@ -133,12 +133,33 @@ func marshalCatalogModel(model AnyModel) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+	var recordJSON []byte
+	if typed, ok := model.(*Model); ok && *shape == nil && typed.catalogRecord != "" {
+		// A built-in model nobody changed encodes as its record, and it is unchanged exactly when its typed record encodes as the typed record of the
+		// decoded catalog entry: every member is then at its decoded value, which is what the member-by-member merge below tests. Comparing the two
+		// encodings decides that without decoding the record into ordered members.
+		baseline, err := catalogRecordBaseline(typed.catalogRecord)
+		if err != nil {
+			return nil, err
+		}
+		if recordJSON, err = marshalStoreJSON(record); err != nil {
+			return nil, err
+		}
+		if bytes.Equal(recordJSON, baseline) {
+			return json.RawMessage(typed.catalogRecord), nil
+		}
+	}
 	built, err := modelCatalogShape(model, *shape)
 	if err != nil {
 		return nil, err
 	}
 	shape = &built
-	pairs, err := catalogRecordJSON(record)
+	var pairs []catalogPair
+	if recordJSON != nil {
+		pairs, err = orderedCatalogPairs(recordJSON)
+	} else {
+		pairs, err = catalogRecordJSON(record)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -188,24 +209,46 @@ func marshalCatalogModel(model AnyModel) (json.RawMessage, error) {
 }
 
 // modelCatalogShape is the shape of the record model came from: the one it was decoded with, or, for a built-in model,
-// the shape of its catalog entry, built here so the model itself is never written while it is encoded.
+// the shape of its catalog entry, built here so the model itself is never written while it is encoded. A changed built-in
+// model is rare (an unchanged one never reaches here), so the shape is decoded for each encoding and not retained.
 func modelCatalogShape(model AnyModel, decoded *catalogShape) (*catalogShape, error) {
 	typed, ok := model.(*Model)
 	if decoded != nil || !ok || typed.catalogRecord == "" {
 		return decoded, nil
 	}
-	if cached, found := catalogRecordShapes.Load(typed.catalogRecord); found {
-		return cached.(*catalogShape), nil
-	}
 	entry, _, err := decodeCatalogModel([]byte(typed.catalogRecord))
 	if err != nil {
 		return nil, err
 	}
-	shape := entry.(*Model).catalog
-	if _, builtin := builtinCatalogRecords()[typed.catalogRecord]; builtin {
-		catalogRecordShapes.Store(typed.catalogRecord, shape)
+	return entry.(*Model).catalog, nil
+}
+
+// catalogRecordBaseline is the typed record encoding of the model decoded from record, a catalog record: what the model
+// encodes as while every member is at its decoded value. A built-in record's baseline is kept, one small encoding per
+// record, so the cache is bounded by the catalog.
+func catalogRecordBaseline(record string) ([]byte, error) {
+	if cached, found := catalogRecordBaselines.Load(record); found {
+		return cached.([]byte), nil
 	}
-	return shape, nil
+	entry, known, err := decodeCatalogTyped([]byte(record))
+	if err != nil {
+		return nil, err
+	}
+	if !known {
+		return nil, fmt.Errorf("decode stored model: unknown model type in %q", record)
+	}
+	typedRecord, _, err := anyModelRecord(entry)
+	if err != nil {
+		return nil, err
+	}
+	baseline, err := marshalStoreJSON(typedRecord)
+	if err != nil {
+		return nil, err
+	}
+	if _, builtin := builtinCatalogRecords()[record]; builtin {
+		catalogRecordBaselines.Store(record, baseline)
+	}
+	return baseline, nil
 }
 
 // CatalogRecordOf is the catalog record model was made from, its built-in catalog entry or the models store record it was
@@ -276,11 +319,11 @@ func ExtensionModelRecord(definition json.RawMessage, api API, providerID, baseU
 	return compact.String()
 }
 
-// catalogRecordShapes holds the decoded shape of each built-in catalog record (GeneratedModel.Record) that has been
-// encoded, keyed by the record. A shape is read-only once decoded. Only records compiled into the binary are cached, so
-// the cache is bounded by the catalog: a models store record (a Radius gateway's catalog, CatalogRecordOf) changes with
-// each refresh and is decoded each time.
-var catalogRecordShapes sync.Map
+// catalogRecordBaselines holds the baseline ([]byte, see catalogRecordBaseline) of each built-in catalog record
+// (GeneratedModel.Record) that has been encoded, keyed by the record. A baseline is read-only once computed. Only records
+// compiled into the binary are cached, so the cache is bounded by the catalog: a models store record (a Radius gateway's
+// catalog, CatalogRecordOf) changes with each refresh and is decoded each time.
+var catalogRecordBaselines sync.Map
 
 // builtinCatalogRecords is the set of GeneratedModel.Record values.
 var builtinCatalogRecords = sync.OnceValue(func() map[string]struct{} {
@@ -379,8 +422,8 @@ func encodeCatalogPairs(pairs []catalogPair) (json.RawMessage, error) {
 	return buffer.Bytes(), nil
 }
 
-// decodeCatalogModel restores one persisted model. known is false for a model type this version does not know; such a record has no typed form.
-func decodeCatalogModel(data []byte) (model AnyModel, known bool, err error) {
+// decodeCatalogTyped is the typed model of one persisted record, without its shape. known is false for a model type this version does not know; such a record has no typed form.
+func decodeCatalogTyped(data []byte) (model AnyModel, known bool, err error) {
 	// The typed fields read the record as JSON.parse does (128000.0 is the integer 128000); the stored record keeps its own bytes.
 	typed := jsjson.NormalizeIntegers(data)
 	var kind struct {
@@ -410,6 +453,15 @@ func decodeCatalogModel(data []byte) (model AnyModel, known bool, err error) {
 		model = &ClassifierModel{ID: record.ID, Name: record.Name, API: record.API, Provider: record.Provider, BaseURL: record.BaseURL, Headers: record.Headers, Input: record.Input, InputLimits: record.InputLimits, Cost: record.Cost, ContextWindow: record.ContextWindow}
 	default:
 		return nil, false, nil
+	}
+	return model, true, nil
+}
+
+// decodeCatalogModel restores one persisted model. known is false for a model type this version does not know; such a record has no typed form.
+func decodeCatalogModel(data []byte) (model AnyModel, known bool, err error) {
+	model, known, err = decodeCatalogTyped(data)
+	if err != nil || !known {
+		return nil, false, err
 	}
 	original, err := orderedCatalogPairs(data)
 	if err != nil {

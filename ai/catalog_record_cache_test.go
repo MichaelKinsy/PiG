@@ -9,7 +9,7 @@ func TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords(t *testing.T) {
 	if _, ok, err := CatalogModelJSON(builtin); !ok || err != nil {
 		t.Fatalf("builtin: ok %t, %v", ok, err)
 	}
-	if _, cached := catalogRecordShapes.Load(GeneratedModels[0].Record); !cached {
+	if _, cached := catalogRecordBaselines.Load(GeneratedModels[0].Record); !cached {
 		t.Fatal("the built-in record's shape was not cached")
 	}
 
@@ -26,7 +26,7 @@ func TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords(t *testing.T) {
 	if _, ok, err := CatalogModelJSON(rebuilt); !ok || err != nil {
 		t.Fatalf("store record: ok %t, %v", ok, err)
 	}
-	if _, cached := catalogRecordShapes.Load(record); cached {
+	if _, cached := catalogRecordBaselines.Load(record); cached {
 		t.Fatal("a models store record's shape was cached")
 	}
 }
