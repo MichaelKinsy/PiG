@@ -2,7 +2,9 @@ package env
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -74,4 +76,19 @@ func readFIFOWithin(fifo string, exited <-chan struct{}, read func() outcome, in
 			return outcome{}, fmt.Errorf("did not return within %s although its writer had exited and end of file was signaled again", bound)
 		}
 	}
+}
+
+// redeliverFIFOEOF opens and closes a write end of the FIFO at path without blocking, which is what a writer that
+// closes does for a reader: the last close of a write end signals end of file. With no reader open the open fails
+// with ENXIO and there is nothing to signal. Windows has no FIFOs and the tests that use them skip there; the check
+// is made at run time so env carries no Windows-only test file (automation/ci/windows-test-packages.sh selects those).
+func redeliverFIFOEOF(path string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|nonBlock, 0)
+	if err != nil {
+		return
+	}
+	_ = file.Close()
 }

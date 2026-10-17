@@ -460,8 +460,11 @@ func TestDurableReExportsTheChordDriver(t *testing.T) {
 	}
 	opened, err := OpenNodeSqliteDatabase(":memory:", NodeSqliteDatabaseOptions{})
 	mustDo(t, err)
-	var chordOpened *chordnode.NodeSqliteDatabase = opened
-	mustDo(t, chordOpened.Close())
+	var chordOpened any = opened
+	if _, ok := chordOpened.(*chordnode.NodeSqliteDatabase); !ok {
+		t.Fatal("node.OpenNodeSqliteDatabase does not return Chord's NodeSqliteDatabase")
+	}
+	mustDo(t, opened.Close())
 	var cf any = (*durablecloudflare.DurableObjectSqliteDatabase)(nil)
 	if _, ok := cf.(*chordcloudflare.DurableObjectSqliteDatabase); !ok {
 		t.Fatal("cloudflare.DurableObjectSqliteDatabase is not Chord's DurableObjectSqliteDatabase")

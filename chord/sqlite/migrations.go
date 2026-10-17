@@ -84,8 +84,11 @@ func RowInt(row SqliteRow, column string) (int64, error) {
 	case int:
 		return int64(value), nil
 	case float64:
-		if value == float64(int64(value)) {
-			return int64(value), nil
+		// A driver returns a whole REAL as float64; only a value that round-trips through int64 is read, so NaN, the
+		// infinities and out-of-range values fall through to the error, where Pi's `row.version > currentVersion` would
+		// compare them as numbers.
+		if value == float64(int64(value)) { //portlint:allow numbers guarded: converts only a value that round-trips through int64
+			return int64(value), nil //portlint:allow numbers guarded by the round-trip check above
 		}
 	}
 	return 0, fmt.Errorf("SQLite column %s is not an integer: %v", column, row[column])
