@@ -11,7 +11,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import zlib from "node:zlib";
+import { writeGzipText } from "./write-gzip-text.mjs";
 
 const [packageArg, outDir] = process.argv.slice(2);
 const packageRoot = packageArg && path.resolve(packageArg);
@@ -253,7 +253,7 @@ for (let codePoint = 0; codePoint <= 0x10ffff; codePoint++) {
 
 const write = (name, value) => {
 	const file = path.join(outDir, name);
-	fs.writeFileSync(file, zlib.gzipSync(Buffer.from(`${JSON.stringify(value)}\n`), { level: 9 }));
+	writeGzipText(file, `${JSON.stringify(value)}\n`);
 };
 fs.mkdirSync(outDir, { recursive: true });
 write("grammars_eager.json.gz", {

@@ -12,7 +12,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import zlib from "node:zlib";
+import { writeGzipText } from "./write-gzip-text.mjs";
 
 const [packageArg, corpusFile, outFile] = process.argv.slice(2);
 if (!packageArg || !corpusFile || !outFile) {
@@ -113,5 +113,5 @@ for (const language of languages) {
 }
 
 const oracle = { pi: JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8")).version, languages, cases, mutations };
-fs.writeFileSync(outFile, zlib.gzipSync(Buffer.from(`${JSON.stringify(oracle)}\n`), { level: 9 }));
+writeGzipText(outFile, `${JSON.stringify(oracle)}\n`);
 console.log(`${cases.length} cases and ${mutations.length} mutated samples`);
