@@ -180,6 +180,10 @@ type Session struct {
 	blocks *blockCache
 	// blockList holds the compressed blocks eviction made, which slotCold.block names; a block holds the only copy of its records.
 	blockList []*recordBlock
+	// spill is the unnamed temporary file the blocks are written to, made by the first block; spillFailed records that it could not be
+	// made, so later blocks stay in memory without retrying.
+	spill       *sessionSnapshot
+	spillFailed bool
 	// handles holds, by slot, the LazyEntry whole-history reads return for a message that is not resident, made on the first read that
 	// returns it; records is the source of the ones in the backing file. handleMu guards both under a read lock of mu.
 	handleMu sync.Mutex

@@ -127,10 +127,28 @@ func coldChunkCap(chunk int) int {
 // blockAt is the offset of the cold part's record in its block.
 func (c *slotCold) blockAt() int64 { return -2 - c.off }
 
-// recordBlock is the compressed records of the entries one eviction took out of a session without a file, back to back.
+// recordBlock is the compressed records of the entries one eviction took out of a session without a file, back to back. They are written
+// to the Session's spill file, so a long session without a file holds only where each block lies; data holds them instead when the spill
+// file could not be created or written.
+// pig additive (D112): Pi holds every session entry in memory; a session without a file keeps their records in an unnamed temporary file.
 type recordBlock struct {
 	data  []byte
+	spill *sessionSnapshot
+	off   int64
+	size  int
 	cache *blockCache
+}
+
+// packed returns the block's compressed records.
+func (b *recordBlock) packed() ([]byte, error) {
+	if b.spill == nil {
+		return b.data, nil
+	}
+	buf := make([]byte, b.size)
+	if _, err := b.spill.ReadAt(buf, b.off); err != nil {
+		return nil, err
+	}
+	return buf, nil
 }
 
 // messageKind is a message's role and, for an assistant, its api.
@@ -713,7 +731,20 @@ func (s *Session) packLocked(records []packedRecord) {
 	if s.blocks == nil {
 		s.blocks = &blockCache{}
 	}
-	s.blockList = append(s.blockList, &recordBlock{data: data, cache: s.blocks})
+	block := &recordBlock{data: data, cache: s.blocks}
+	if s.spill == nil && !s.spillFailed {
+		if file, err := anonymousFile(os.TempDir()); err == nil {
+			s.spill = &sessionSnapshot{file: file}
+		} else {
+			s.spillFailed = true
+		}
+	}
+	if s.spill != nil {
+		if off, err := s.spill.addRaw(data); err == nil {
+			block.data, block.spill, block.off, block.size = nil, s.spill, off, len(data)
+		}
+	}
+	s.blockList = append(s.blockList, block)
 	ref := uint32(len(s.blockList))
 	at := 0
 	for _, record := range records {
@@ -750,7 +781,11 @@ const recordWindow = 1 << 20
 func (r *recordReader) record(cold *slotCold) (record []byte, ok bool) {
 	if cold.block != 0 {
 		if block := r.blocks[cold.block-1]; r.block != block {
-			plain, err := unpackRecord(block.data)
+			packed, err := block.packed()
+			if err != nil {
+				return nil, false
+			}
+			plain, err := unpackRecord(packed)
 			if err != nil {
 				return nil, false
 			}

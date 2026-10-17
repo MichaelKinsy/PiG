@@ -41,6 +41,18 @@ func (p *sessionSnapshot) add(lines ...[]byte) (int64, error) {
 	return off, nil
 }
 
+// addRaw writes data after the snapshot's last byte and returns its offset.
+func (p *sessionSnapshot) addRaw(data []byte) (int64, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	off := p.size
+	if _, err := p.file.WriteAt(data, off); err != nil {
+		return -1, err
+	}
+	p.size += int64(len(data))
+	return off, nil
+}
+
 func (p *sessionSnapshot) close() { _ = p.file.Close() }
 
 // newSessionSnapshot creates an empty snapshot for the session file at path in snapshotDir: beside it, where a clone of it can share its

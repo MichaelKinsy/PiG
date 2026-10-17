@@ -136,6 +136,7 @@ func (s *Session) replaceSessionLog(branched *Session) {
 	s.labels = branched.labels
 	s.searchTexts = branched.searchTexts
 	s.oddTimestamps, s.blocks, s.blockList = branched.oddTimestamps, branched.blocks, branched.blockList
+	s.spill, s.spillFailed = branched.spill, branched.spillFailed
 	s.handles, s.records = nil, nil
 	s.contextReplacedLocked()
 	s.branch, s.branchLeaf, s.ctxPath = branched.branch, branched.branchLeaf, branched.ctxPath

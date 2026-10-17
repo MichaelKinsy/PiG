@@ -80,7 +80,7 @@ func TestSessionKeepsNoSearchTextForEntriesNobodySearched(t *testing.T) {
 	}
 }
 
-// stored is the bytes the session's own index holds for its entries: the slots, the cold parts and the compressed record blocks, which is
+// stored is the bytes the session's own index holds for its entries: the slots, the cold parts and the compressed record blocks it holds in memory (none once they are spilled), which is
 // everything a session that has compacted its entries away and was never searched keeps for them besides its compaction entries and the id
 // table. Search text is not counted: an eviction must leave none.
 func (s *Session) stored() float64 {
@@ -106,5 +106,38 @@ func TestSessionLiveHeapPerExchange(t *testing.T) {
 	const compactionAndIDTable = 500
 	if grown > indexed+compactionAndIDTable {
 		t.Fatalf("live heap grows %.0f B per exchange, of which the index of the entries explains %.0f; want at most %d more", grown, indexed, compactionAndIDTable)
+	}
+}
+
+// A session without a file writes the records it compacted away to its spill file and holds none of their bytes, and every entry reads
+// back as it was appended.
+func TestSessionWithoutAFileSpillsItsCompactedRecords(t *testing.T) {
+	s := NewSession("soak", "/project")
+	run := &soakRun{s: s}
+	run.append(t, 0, 6)
+	appended := map[string]string{}
+	for _, entry := range s.allEntriesLocked() {
+		appended[entry.Base().ID] = string(entry.Raw())
+	}
+	run.append(t, 6, 600)
+	if s.spill == nil || len(s.blockList) == 0 {
+		t.Fatalf("spill file %v, %d blocks: the compactions spilled nothing", s.spill, len(s.blockList))
+	}
+	for i, block := range s.blockList {
+		if block.data != nil || block.spill == nil {
+			t.Fatalf("block %d holds %d bytes in memory", i, len(block.data))
+		}
+	}
+	read := 0
+	for _, entry := range s.allEntriesLocked() {
+		if want, ok := appended[entry.Base().ID]; ok {
+			read++
+			if got := string(entry.Raw()); got != want {
+				t.Fatalf("entry %s reads back %s, want %s", entry.Base().ID, got, want)
+			}
+		}
+	}
+	if read != len(appended) {
+		t.Fatalf("read back %d of the first %d entries", read, len(appended))
 	}
 }

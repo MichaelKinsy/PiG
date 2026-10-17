@@ -116,8 +116,11 @@ func (b *recordBlock) ReadRecords(ats []sessionentry.RecordAt, out []json.RawMes
 	b.cache.mu.Lock()
 	plain := b.cache.plain
 	if b.cache.block != b {
-		var err error
-		if plain, err = unpackRecord(b.data); err != nil {
+		packed, err := b.packed()
+		if err == nil {
+			plain, err = unpackRecord(packed)
+		}
+		if err != nil {
 			b.cache.mu.Unlock()
 			return -1, err
 		}
