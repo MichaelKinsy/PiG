@@ -332,10 +332,6 @@
     "id": "muse-spark-1.3"
   },
   {
-    "provider": "opencode",
-    "id": "muse-spark-1.3-contributor-free"
-  },
-  {
     "provider": "opencode-go",
     "id": "claude-haiku-5-5"
   },

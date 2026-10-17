@@ -101,7 +101,12 @@ func TestCatalogPin100(t *testing.T) {
 	if _, ok := LookupModelExact("nvidia/nvidia/nemotron-3-super-120b-a12b"); ok {
 		t.Fatal("1.2.0+b06c1f2c catalog still has NVIDIA Nemotron 3 Super")
 	}
-	for _, id := range []string{"cloudflare/clef", "cloudflare/clef-flash", "perplexity/pplx-decider-v1.1-27b"} {
+	// The pin 1.3.0+c268154c providers/data/openrouter.json (frozen in automation/pin/frozen) replaces the v1.1 Decider with
+	// pplx-decider-v1.2.
+	if GetBuiltinClassifierModel("openrouter", "perplexity/pplx-decider-v1.1-27b") != nil {
+		t.Fatal("1.3.0+c268154c catalog still has OpenRouter classifier perplexity/pplx-decider-v1.1-27b")
+	}
+	for _, id := range []string{"cloudflare/clef", "cloudflare/clef-flash", "perplexity/pplx-decider-v1.2"} {
 		if GetBuiltinClassifierModel("openrouter", id) == nil {
 			t.Fatalf("1.0.2 catalog is missing OpenRouter classifier %s", id)
 		}
