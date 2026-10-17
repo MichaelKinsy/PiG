@@ -133,8 +133,11 @@ type EnvTarget struct {
 
 // HarnessOptions are the options of OpenHarness.
 type HarnessOptions struct {
-	// Models is the pi-ai model access used by generation and compaction: a Model Runtime or a pi-ai collection.
-	Models   durable.Models
+	// Models is the pi-ai model access used by generation, compaction, hooks and tools: a Model Runtime or a pi-ai
+	// collection. ModelsFunc, when set, replaces it: it returns the current one and is called at each use, so a host can
+	// replace its model configuration without reopening the Harness (HarnessOptions.models as a function, Pi 7ec1f648).
+	Models     durable.Models
+	ModelsFunc func() durable.Models
 	Registry RegistryReader
 	// Settings returns the current settings at every resolution; nil uses the defaults. Upstream reads a settings object whose fields may be getters.
 	Settings func() *HarnessSettings
@@ -246,4 +249,12 @@ type Harness interface {
 	TaskGraph(ctx context.Context) (durable.AttachedReplicatedState[TaskGraph], error)
 	// WatchTaskGraph returns the task graph as a serialized exact-frame watch with bounded pending frames.
 	WatchTaskGraph(ctx context.Context) (TaskGraphWatch, error)
+}
+
+// CurrentModels is HarnessOptions.models at this use: ModelsFunc's answer when set, else Models.
+func (options HarnessOptions) CurrentModels() durable.Models {
+	if options.ModelsFunc != nil {
+		return options.ModelsFunc()
+	}
+	return options.Models
 }

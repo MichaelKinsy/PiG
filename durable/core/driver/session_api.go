@@ -52,7 +52,7 @@ func (i *invocation) Agent(ctx context.Context) (durable.Agent, error) {
 	return i.s.agent(ctx, i.conversation)
 }
 
-func (i *invocation) Models() durable.Models { return i.s.cfg.Harness.Models }
+func (i *invocation) Models() durable.Models { return i.s.cfg.Harness.CurrentModels() }
 
 func (i *invocation) Env() env.ExecutionEnv { return i.s.envs.Get(i.task) }
 

@@ -34,7 +34,7 @@ const (
 type Models struct {
 	// monotonic is the clock durations are measured on (performance.now in pi-ai); it defaults to now.
 	monotonic func() float64
-	models    durable.Models
+	models    func() durable.Models
 	report    func(error)
 	now       func() float64
 
@@ -60,7 +60,7 @@ type decodedRange struct {
 }
 
 // NewModels returns the executors. report receives failures that do not fail an effect; now stamps a synthesized error message.
-func NewModels(models durable.Models, now func() float64, report func(error)) *Models {
+func NewModels(models func() durable.Models, now func() float64, report func(error)) *Models {
 	if report == nil {
 		report = func(error) {}
 	}
@@ -221,7 +221,7 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 	if err != nil {
 		return err
 	}
-	model := m.models.GetModel(p.Model.Provider, p.Model.ModelID)
+	model := m.models().GetModel(p.Model.Provider, p.Model.ModelID)
 	if model == nil {
 		m.post(call, errorEvent(p.Model, fmt.Sprintf("Model %s/%s is not available", p.Model.Provider, p.Model.ModelID), m.now()))
 		return nil
@@ -237,7 +237,7 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 	startedAt, started := m.now(), m.mono()
 	// The decoded messages are shared with the next request of the conversation and nothing modifies them, so the provider
 	// layer need not copy the whole history for each call.
-	stream := m.models.StreamSimple(ctx, model, ai.Context{Messages: list, Frozen: true}, options)
+	stream := m.models().StreamSimple(ctx, model, ai.Context{Messages: list, Frozen: true}, options)
 	// The stream is consumed to its end, also after an abort: the provider ends it on its signal with the aborted message, which
 	// the core waits for (generation.ts consumes the stream to its end and classifies afterwards). Iterating under ctx would stop at
 	// the abort and leave the core's request unanswered, and its generation's abort invocation never runs.
@@ -346,7 +346,7 @@ func (m *Models) deferred(ctx context.Context, call *sqlhost.Call) error {
 		}
 		call.Post(abi.Event{Kind: abi.EventHookDone, ID: call.ID, Phase: phase, Payload: body})
 	}
-	model := m.models.GetModel(p.Model.Provider, p.Model.ModelID)
+	model := m.models().GetModel(p.Model.Provider, p.Model.ModelID)
 	if model == nil {
 		outcome(true, wireError(fmt.Errorf("Model %s/%s is not available", p.Model.Provider, p.Model.ModelID)))
 		return nil
@@ -357,14 +357,14 @@ func (m *Models) deferred(ctx context.Context, call *sqlhost.Call) error {
 		return nil
 	}
 	if p.Op == "cancel" {
-		if err := m.models.CancelDeferred(ctx, model, handle); err != nil {
+		if err := m.models().CancelDeferred(ctx, model, handle); err != nil {
 			outcome(true, wireError(err))
 			return nil
 		}
 		outcome(false, nil)
 		return nil
 	}
-	message := m.models.FetchDeferred(ctx, model, handle)
+	message := m.models().FetchDeferred(ctx, model, handle)
 	outcome(false, message)
 	return nil
 }

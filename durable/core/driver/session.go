@@ -111,7 +111,7 @@ func Open(ctx context.Context, cfg SessionConfig) (harness.Harness, error) {
 
 // Open cold-opens the core over cfg.DB and returns the session. The registry is read once now and again on every publication.
 func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
-	if cfg.Core == nil || cfg.DB == nil || cfg.Harness.Models == nil || cfg.Harness.Registry == nil {
+	if cfg.Core == nil || cfg.DB == nil || (cfg.Harness.Models == nil && cfg.Harness.ModelsFunc == nil) || cfg.Harness.Registry == nil {
 		return nil, errors.New("driver.Open needs Core, DB, Harness.Models and Harness.Registry")
 	}
 	// Pi harness.ts:178-179: `const report = safeReport(options.onReport); const now = safeNow(options.now, report)`.
@@ -131,7 +131,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		now = func() float64 { return 0 }
 	}
 	handlers := map[abi.EffectKind]sqlhost.Handler{}
-	models := NewModels(cfg.Harness.Models, now, report)
+	models := NewModels(cfg.Harness.CurrentModels, now, report)
 	models.monotonic = cfg.Monotonic
 	maps.Copy(handlers, models.Handlers())
 	var client *Client
@@ -163,6 +163,20 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		Core: cfg.Core, SQL: cfg.SQL, DB: cfg.DB, OwnDB: true, Clock: cfg.Harness.Now, TimerLead: cfg.TimerLead, Settle: cfg.Settle,
 		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, TimerFired: cfg.TimerFired,
 		OnRejected: func(kind abi.EventKind, err *sqlhost.RejectedError) { report(err) },
+		// Pi reads HarnessSettings at each use: the owner resends them to the core when they changed (sqlhost Options.Settings).
+		// A settings reader that throws fails the reads that need it (resolveAgent, the task runtime), not the owner: the
+		// core keeps the copy it has.
+		Settings: func() (text []byte) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					report(fmt.Errorf("Harness settings: %s", durable.ErrorMessage(recovered)))
+					text = nil
+				}
+			}()
+			//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads the settings members by name, as open's
+			text, _ = json.Marshal(s.settingsJSON())
+			return text
+		},
 		OnCancel: func(id uint32) {
 			if s.tasks != nil {
 				s.tasks.ended(id)
@@ -256,7 +270,7 @@ func (s *coreSession) openPayload() ([]byte, error) {
 func (s *coreSession) catalogue() []map[string]any {
 	models := s.cfg.ModelsInUse
 	if models == nil {
-		if lister, ok := s.cfg.Harness.Models.(interface {
+		if lister, ok := s.cfg.Harness.CurrentModels().(interface {
 			GetModels(provider ...string) []*ai.Model
 		}); ok {
 			models = lister.GetModels()
@@ -565,7 +579,7 @@ func (s *coreSession) completeHook(ctx context.Context, call *sqlhost.Call, raw 
 			return fmt.Errorf("complete options: %w", err)
 		}
 	}
-	models := s.cfg.Harness.Models
+	models := s.cfg.Harness.CurrentModels()
 	var model *ai.Model
 	if models != nil {
 		model = models.GetModel(in.Model.Provider, in.Model.ModelID)

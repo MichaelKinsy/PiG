@@ -3,6 +3,7 @@
 package sqlhost
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -151,6 +152,11 @@ type Options struct {
 	OnFatal func(error)
 	// OnRejected receives a rejected step that no caller waits on: an effect completion the core refused.
 	OnRejected func(kind abi.EventKind, err *RejectedError)
+	// Settings, when set, returns the host's current resolved settings as JSON, or nil when they cannot be read now. Pi reads HarnessSettings at each use; the
+	// core holds the copy open sent, so before each Send but open and close (every API call, not hops or effect
+	// completions, which keeps the hot path free of it) the owner compares and, when they changed, delivers a registry
+	// event {"settings": ...} first (host/cf/src/host.ts enqueue).
+	Settings func() []byte
 	// OnCommit observes every commit before it applies (trace capture).
 	OnCommit func(c abi.Commit, sql []string)
 	// OnCommitted observes every commit after the store applied it, in order. A trace that must hold exactly what the store
@@ -181,8 +187,10 @@ type Host struct {
 	// ID ever started, which grew with every effect of the handle's life.
 	lastEffect int64
 	running    map[uint32]context.CancelFunc
-	timers     map[uint32]*time.Timer
-	ranges     *history.Store // the transcript a model_context range segment derives from
+	// sentSettings is the settings JSON the core last received (open or a registry event); owner goroutine only.
+	sentSettings []byte
+	timers       map[uint32]*time.Timer
+	ranges       *history.Store // the transcript a model_context range segment derives from
 	// sent is each conversation's last model_context range (rangeContext), which the next one extends; rangeLineages numbers
 	// the arrays it hands out (MessageRange.Lineage).
 	sent          map[int64]*sentRange
@@ -275,6 +283,10 @@ func (h *Host) Send(ctx context.Context, ev abi.Event) error {
 	if !h.enqueue(func(dead error) {
 		if dead != nil {
 			reply <- dead
+			return
+		}
+		if err := h.syncSettings(ev.Kind); err != nil {
+			reply <- err
 			return
 		}
 		reply <- h.deliver(ev, true)
@@ -926,4 +938,26 @@ func (h *Host) Close(ctx context.Context) error {
 		sendErr = nil
 	}
 	return errors.Join(sendErr, closeErr)
+}
+
+// syncSettings sends the settings again before an event when Options.Settings reports a change since the last send. It runs
+// on the owner goroutine, as the cf host's enqueue does on its thread.
+func (h *Host) syncSettings(kind abi.EventKind) error {
+	if h.opts.Settings == nil || kind == abi.EventClose || kind == abi.EventRegistry {
+		return nil
+	}
+	text := h.opts.Settings()
+	if text == nil {
+		return nil
+	}
+	if kind == abi.EventOpen || h.sentSettings == nil {
+		h.sentSettings = text
+		return nil
+	}
+	if bytes.Equal(text, h.sentSettings) {
+		return nil
+	}
+	h.sentSettings = text
+	payload := append(append([]byte(`{"settings":`), text...), '}')
+	return h.deliver(abi.Event{Kind: abi.EventRegistry, Payload: payload, Now: h.opts.Clock()}, false)
 }

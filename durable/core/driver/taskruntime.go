@@ -299,7 +299,7 @@ func (r *taskRuntime) Agent(ctx context.Context) (durable.Agent, error) {
 
 func (r *taskRuntime) Settings() durable.Settings { return r.s.resolveSettings() }
 
-func (r *taskRuntime) Models() durable.Models { return r.s.cfg.Harness.Models }
+func (r *taskRuntime) Models() durable.Models { return r.s.cfg.Harness.CurrentModels() }
 
 func (r *taskRuntime) Env(ctx context.Context) (env.ExecutionEnv, error) {
 	if r.s.cfg.Harness.Env == nil {

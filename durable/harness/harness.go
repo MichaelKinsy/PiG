@@ -580,7 +580,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		Session:  harness.SessionImpl,
 		Storage:  storage,
 		Registry: options.Registry,
-		Models:   options.Models,
+		Models:   options.CurrentModels,
 		Agent: func(callCtx context.Context, id durable.ConversationId, snapshot durable.RegistrySnapshot) (durable.Agent, error) {
 			return harness.resolveAgent(callCtx, id, snapshot)
 		},

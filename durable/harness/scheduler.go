@@ -166,7 +166,8 @@ type TaskSchedulerOptions struct {
 	Session  *session.SessionImpl
 	Storage  durable.Storage
 	Registry RegistryReader
-	Models   durable.Models
+	// Models returns the host's current model access (HarnessOptions.models); read at each access.
+	Models func() durable.Models
 	// Agent resolves a conversation's agent against a snapshot; the runtime calls it at most once per phase.
 	Agent func(ctx context.Context, conversationId durable.ConversationId, snapshot durable.RegistrySnapshot) (durable.Agent, error)
 	// Settings resolves the settings; read at each access.
@@ -2098,7 +2099,7 @@ func (runtime *taskRuntime) Registry() durable.RegistrySnapshot {
 
 func (runtime *taskRuntime) Settings() durable.Settings { return runtime.scheduler.options.Settings() }
 
-func (runtime *taskRuntime) Models() durable.Models { return runtime.scheduler.options.Models }
+func (runtime *taskRuntime) Models() durable.Models { return runtime.scheduler.options.Models() }
 
 // resolveAgent resolves the agent at most once per phase handler, at first use, with the invocation's context; it is
 // fixed for the phase.

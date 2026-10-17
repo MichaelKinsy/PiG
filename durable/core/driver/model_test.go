@@ -83,7 +83,7 @@ func start(t *testing.T, core *funcCore, models durable.Models) *sqlhost.Host {
 	}
 	host := sqlhost.New(sqlhost.Options{
 		Core: core, DB: db, OwnDB: true, Clock: func() float64 { return 5000 },
-		Handlers: driver.NewModels(models, func() float64 { return 5000 }, nil).Handlers(),
+		Handlers: driver.NewModels(func() durable.Models { return models }, func() float64 { return 5000 }, nil).Handlers(),
 	})
 	t.Cleanup(func() { _ = host.Close(context.Background()) })
 	return host
@@ -293,7 +293,7 @@ func TestTheFinalMessageCarriesDurationMsAsPiMainTimesIt(t *testing.T) {
 			t.Fatal(err)
 		}
 		models := fauxModels(ai.FauxConfig{}, ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("hi")}, StopReason: "stop"}))
-		host := sqlhost.New(sqlhost.Options{Core: core, DB: db, OwnDB: true, Clock: func() float64 { return now }, Handlers: driver.NewModels(models, func() float64 { return now }, nil).Handlers()})
+		host := sqlhost.New(sqlhost.Options{Core: core, DB: db, OwnDB: true, Clock: func() float64 { return now }, Handlers: driver.NewModels(func() durable.Models { return models }, func() float64 { return now }, nil).Handlers()})
 		t.Cleanup(func() { _ = host.Close(context.Background()) })
 		if err := host.Send(t.Context(), abi.Event{Kind: abi.EventOpen, Payload: []byte(`{}`)}); err != nil {
 			t.Fatal(err)
