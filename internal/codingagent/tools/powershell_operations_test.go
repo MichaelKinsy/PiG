@@ -3,7 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"slices"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -74,9 +74,10 @@ func TestLocalPowerShellOperationsResolveTheShellWithGetPowerShellConfig(t *test
 	if ops.ResolveShell == nil {
 		t.Fatal("the local PowerShell operations have no shell resolver")
 	}
-	want, wantErr := GetPowerShellConfig()
-	got, gotErr := ops.ResolveShell()
-	if got.Path != want.Path || !slices.Equal(got.Args, want.Args) || (gotErr == nil) != (wantErr == nil) || gotErr != nil && gotErr.Error() != wantErr.Error() {
-		t.Fatalf("ResolveShell = %+v, %v, want GetPowerShellConfig's %+v, %v", got, gotErr, want, wantErr)
+	// The resolver is GetPowerShellConfig itself. Calling both and comparing their answers ran `where pwsh.exe` twice,
+	// and on a loaded Windows runner one lookup could hit its 5 s timeout (upstream's spawnSync timeout) and fall back to
+	// powershell.exe while the other found pwsh.exe.
+	if reflect.ValueOf(ops.ResolveShell).Pointer() != reflect.ValueOf(GetPowerShellConfig).Pointer() {
+		t.Fatal("the local PowerShell operations resolve the shell with something other than GetPowerShellConfig")
 	}
 }
