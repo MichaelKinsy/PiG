@@ -25,11 +25,19 @@ for (const test of JSON.parse(input)) {
   setKeybindings(new KeybindingsManager(test.bindings ?? {}));
   now = clockStart;
   const defs = createAllToolDefinitions(test.cwd);
-  const component = new ToolExecutionComponent(test.tool, "id1", test.args, { showImages: !test.noImages }, defs[test.tool], { requestRender() {} }, test.cwd);
+  // A probe that settles waits for the edit call's diff preview, which Pi computes after the arguments complete and then
+  // announces with context.invalidate(), the ui's requestRender. A fixed delay lost that race on a loaded runner and
+  // drew the pending card.
+  let rendered = () => {};
+  const component = new ToolExecutionComponent(test.tool, "id1", test.args, { showImages: !test.noImages }, defs[test.tool], { requestRender() { rendered(); } }, test.cwd);
   component.markExecutionStarted();
   component.setArgsComplete();
-  // A probe that settles waits for the edit call's diff preview, which Pi computes after the arguments complete.
-  if (test.settle) await new Promise((resolve) => setTimeout(resolve, 300));
+  if (test.settle) {
+    // Earlier requests come from construction; the preview's own invalidate is the one after the first render starts it.
+    const repaint = new Promise((resolve) => { rendered = resolve; });
+    component.render(test.width);
+    await repaint;
+  }
   now = clockStart + (test.elapsedMs ?? 0);
   if (test.result) component.updateResult(test.result, test.partial === true);
   component.setExpanded(test.expanded);
