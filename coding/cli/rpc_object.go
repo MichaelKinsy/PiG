@@ -3,7 +3,10 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"reflect"
+	"strconv"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
@@ -36,6 +39,76 @@ func (object rpcObject) MarshalJSON() ([]byte, error) {
 	}
 	out.WriteByte('}')
 	return out.Bytes(), nil
+}
+
+var rpcObjectType = reflect.TypeFor[rpcObject]()
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender), writing each member into dst itself instead of encoding it apart and compacting the result.
+//
+//pig:hotpath
+func (object rpcObject) AppendStringify(dst []byte) ([]byte, error) {
+	start := len(dst)
+	dst = append(dst, '{')
+	for i, field := range object {
+		if i > 0 {
+			dst = append(dst, ',')
+		}
+		dst = json.AppendStringifyString(dst, field.name)
+		dst = append(dst, ':')
+		var err error
+		if dst, err = appendRPCValue(dst, field.value); err != nil {
+			return dst[:start], err
+		}
+	}
+	return append(dst, '}'), nil
+}
+
+// appendRPCValue appends json.Marshal(value) in its JSON.stringify form: the member types an event holds most are written directly, anything else by the encoder. A nested object's error is wrapped as the encoder wraps what a nested MarshalJSON returns, so the text of an error does not depend on which route wrote it.
+func appendRPCValue(dst []byte, value any) ([]byte, error) {
+	switch value := value.(type) {
+	case nil:
+		return append(dst, "null"...), nil
+	case string:
+		return json.AppendStringifyString(dst, value), nil
+	case ai.AssistantEventType:
+		return json.AppendStringifyString(dst, string(value)), nil
+	case ai.StopReason:
+		return json.AppendStringifyString(dst, string(value)), nil
+	case ai.API:
+		return json.AppendStringifyString(dst, string(value)), nil
+	case ai.ModelThinkingLevel:
+		return json.AppendStringifyString(dst, string(value)), nil
+	case int:
+		return strconv.AppendInt(dst, int64(value), 10), nil
+	case int64:
+		return strconv.AppendInt(dst, value, 10), nil
+	case bool:
+		return strconv.AppendBool(dst, value), nil
+	case rpcObject:
+		out, err := value.AppendStringify(dst)
+		if err != nil {
+			return dst, &json.MarshalerError{Type: rpcObjectType, Err: err}
+		}
+		return out, nil
+	case []any:
+		if value == nil {
+			return append(dst, "null"...), nil
+		}
+		start := len(dst)
+		dst = append(dst, '[')
+		for i, element := range value {
+			if i > 0 {
+				dst = append(dst, ',')
+			}
+			var err error
+			if dst, err = appendRPCValue(dst, element); err != nil {
+				return dst[:start], err
+			}
+		}
+		return append(dst, ']'), nil
+	default:
+		return json.AppendStringify(dst, value)
+	}
 }
 
 func (object *rpcObject) UnmarshalJSON(data []byte) error {

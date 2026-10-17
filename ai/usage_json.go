@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // MarshalJSON emits the upstream Usage wire shape. A provider creates cacheWrite1h and reasoning on a usage object that already holds
@@ -14,27 +16,56 @@ import (
 // built as one literal (usage-totals.ts combineUsage) holds them before totalTokens.
 func (usage Usage) MarshalJSON() ([]byte, error) {
 	if usage.splitsAfterCost {
-		return json.Marshal(struct {
-			Input        int       `json:"input"`
-			Output       int       `json:"output"`
-			CacheRead    int       `json:"cacheRead"`
-			CacheWrite   int       `json:"cacheWrite"`
-			TotalTokens  int       `json:"totalTokens"`
-			Cost         UsageCost `json:"cost"`
-			CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
-			Reasoning    *int      `json:"reasoning,omitempty"`
-		}{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.TotalTokens, usage.Cost, usage.CacheWrite1h, usage.Reasoning})
+		return json.Marshal(usage.wireSplitsAfterCost())
 	}
-	return json.Marshal(struct {
-		Input        int       `json:"input"`
-		Output       int       `json:"output"`
-		CacheRead    int       `json:"cacheRead"`
-		CacheWrite   int       `json:"cacheWrite"`
-		CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
-		Reasoning    *int      `json:"reasoning,omitempty"`
-		TotalTokens  int       `json:"totalTokens"`
-		Cost         UsageCost `json:"cost"`
-	}{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.CacheWrite1h, usage.Reasoning, usage.TotalTokens, usage.Cost})
+	return json.Marshal(usage.wire())
+}
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (sdkjson.StringifyAppender). A non-finite cost is the error MarshalJSON reports.
+func (usage Usage) AppendStringify(dst []byte) ([]byte, error) {
+	cost := usage.Cost
+	for _, f := range [...]float64{cost.Input, cost.Output, cost.CacheRead, cost.CacheWrite, cost.Total} {
+		if math.IsNaN(f) || math.IsInf(f, 0) {
+			_, err := usage.MarshalJSON()
+			return dst, err
+		}
+	}
+	if usage.splitsAfterCost {
+		return sdkjson.AppendStringify(dst, usage.wireSplitsAfterCost())
+	}
+	return sdkjson.AppendStringify(dst, usage.wire())
+}
+
+// usageWire is Usage's members in the order a provider that builds the usage as one literal creates them.
+type usageWire struct {
+	Input        int       `json:"input"`
+	Output       int       `json:"output"`
+	CacheRead    int       `json:"cacheRead"`
+	CacheWrite   int       `json:"cacheWrite"`
+	CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
+	Reasoning    *int      `json:"reasoning,omitempty"`
+	TotalTokens  int       `json:"totalTokens"`
+	Cost         UsageCost `json:"cost"`
+}
+
+// usageWireSplitsAfterCost is Usage's members when the provider created cacheWrite1h and reasoning after cost.
+type usageWireSplitsAfterCost struct {
+	Input        int       `json:"input"`
+	Output       int       `json:"output"`
+	CacheRead    int       `json:"cacheRead"`
+	CacheWrite   int       `json:"cacheWrite"`
+	TotalTokens  int       `json:"totalTokens"`
+	Cost         UsageCost `json:"cost"`
+	CacheWrite1h *int      `json:"cacheWrite1h,omitempty"`
+	Reasoning    *int      `json:"reasoning,omitempty"`
+}
+
+func (usage Usage) wire() usageWire {
+	return usageWire{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.CacheWrite1h, usage.Reasoning, usage.TotalTokens, usage.Cost}
+}
+
+func (usage Usage) wireSplitsAfterCost() usageWireSplitsAfterCost {
+	return usageWireSplitsAfterCost{usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite, usage.TotalTokens, usage.Cost, usage.CacheWrite1h, usage.Reasoning}
 }
 
 // UnmarshalJSON decodes the upstream Usage wire shape and keeps where the source wrote cacheWrite1h and reasoning.

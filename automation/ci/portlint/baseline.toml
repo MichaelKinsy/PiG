@@ -7439,7 +7439,7 @@ snippet = "message: fmt.Sprintf(\"extension handler panicked: %v\", r),"
 check = "hotpathjson"
 file = "coding/cli/rpc_events.go"
 func = "rpcMessageUpdate"
-snippet = "encoded, err := json.Marshal(rpcAssistantEventFields(event.AssistantMessageEvent))"
+snippet = "encoded, err := json.Marshal(fields)"
 
 [[hit]]
 check = "hotpathjson"

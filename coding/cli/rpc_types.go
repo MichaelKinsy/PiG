@@ -13,6 +13,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
@@ -874,11 +875,21 @@ func rpcSessionInfoChanged(name string) RPCSessionInfoChangedEvent {
 	return RPCSessionInfoChangedEvent{Type: "session_info_changed", Name: name}
 }
 
-// writeJSONLine writes one JSON.stringify-compatible record. A broken writer is ignored because a dead stdout means the client has gone away.
+// pig additive (D112): maxPooledJSONLine bounds the line buffer writeJSONLine keeps between calls (golang/go#23199).
+const maxPooledJSONLine = 64 << 10
+
+var jsonLineBuffers = sync.Pool{New: func() any { return new([]byte) }}
+
+// writeJSONLine writes one JSON.stringify-compatible record. A broken writer is ignored because a dead stdout means the client has gone away. The record is encoded into a buffer that is reused, so w must not keep the slice it is given, as io.Writer requires.
 func writeJSONLine(w io.Writer, v any) {
-	line, err := rpcclient.SerializeJsonLine(v)
-	if err != nil {
-		return
+	buffer := jsonLineBuffers.Get().(*[]byte)
+	line, err := rpcclient.AppendJsonLine((*buffer)[:0], v)
+	if err == nil {
+		_, _ = w.Write(line)
+		*buffer = line
+		if cap(line) > maxPooledJSONLine {
+			*buffer = nil
+		}
 	}
-	_, _ = w.Write(line)
+	jsonLineBuffers.Put(buffer)
 }

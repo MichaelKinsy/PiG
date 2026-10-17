@@ -98,6 +98,35 @@ func fauxRPCComparable(t testing.TB, value any) []byte {
 
 func fauxRPCRecords(t testing.TB, fixture fauxRPCFixture) []json.RawMessage {
 	t.Helper()
+	var records []json.RawMessage
+	fauxRPCRun(t, fixture, func(frame any) {
+		raw, err := json.Marshal(frame)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		var head struct {
+			Type    string `json:"type"`
+			Message *struct {
+				Role string `json:"role"`
+			} `json:"message"`
+			AssistantMessageEvent json.RawMessage `json:"assistantMessageEvent"`
+		}
+		if err := json.Unmarshal(raw, &head); err != nil {
+			t.Error(err)
+			return
+		}
+		// probe.mjs `extension.mjs` records assistant message_start/message_end and message_update.
+		if (head.Type == "message_start" || head.Type == "message_end") && head.Message != nil && head.Message.Role == "assistant" || head.Type == "message_update" {
+			records = append(records, raw)
+		}
+	})
+	return records
+}
+
+// fauxRPCRun drives one faux fixture through a Session and hands every frame subscribeRPCEvents converts to onFrame.
+func fauxRPCRun(t testing.TB, fixture fauxRPCFixture, onFrame func(any)) {
+	t.Helper()
 	provider := ai.NewFauxProvider(ai.FauxConfig{API: "faux-probe", ProviderID: "faux-probe", TokenSize: &ai.FauxTokenSize{Min: new(fixture.TokenSize), Max: new(fixture.TokenSize)}, TokensPerSecond: int(fixture.TokensPerSecond)})
 	if !fixture.NoResponse {
 		response := ai.FauxResponse{StopReason: fixture.Message.StopReason, ErrorMessage: fixture.Message.ErrorMessage, ResponseID: fixture.Message.ResponseID, Timestamp: new(int64(1))}
@@ -138,29 +167,7 @@ func fauxRPCRecords(t testing.TB, fixture fauxRPCFixture) []json.RawMessage {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var records []json.RawMessage
-	unsubscribe := subscribeRPCEvents(session, func(frame any) {
-		raw, err := json.Marshal(frame)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		var head struct {
-			Type    string `json:"type"`
-			Message *struct {
-				Role string `json:"role"`
-			} `json:"message"`
-			AssistantMessageEvent json.RawMessage `json:"assistantMessageEvent"`
-		}
-		if err := json.Unmarshal(raw, &head); err != nil {
-			t.Error(err)
-			return
-		}
-		// probe.mjs `extension.mjs` records assistant message_start/message_end and message_update.
-		if (head.Type == "message_start" || head.Type == "message_end") && head.Message != nil && head.Message.Role == "assistant" || head.Type == "message_update" {
-			records = append(records, raw)
-		}
-	}, func(err error) { t.Error(err) })
+	unsubscribe := subscribeRPCEvents(session, onFrame, func(err error) { t.Error(err) })
 	defer unsubscribe()
 	if _, err := session.Send(t.Context(), "hello"); err != nil {
 		t.Fatal(err)
@@ -168,7 +175,6 @@ func fauxRPCRecords(t testing.TB, fixture fauxRPCFixture) []json.RawMessage {
 	if err := session.Close(); err != nil {
 		t.Fatal(err)
 	}
-	return records
 }
 
 func readFauxRPCOracle(t testing.TB) fauxRPCOracle {

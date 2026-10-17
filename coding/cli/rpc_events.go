@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
@@ -219,15 +220,21 @@ func rpcMessageUpdate(event agent.MessageUpdateEvent) (any, error) {
 	if event.AssistantMessageEvent == nil {
 		return nil, fmt.Errorf("message_update assistant event is nil")
 	}
-	encoded, err := json.Marshal(rpcAssistantEventFields(event.AssistantMessageEvent))
-	if err != nil {
-		return nil, fmt.Errorf("marshal message_update assistant event: %w", err)
-	}
 	var wire rpcObject
-	if err := json.Unmarshal(encoded, &wire); err != nil {
-		return nil, fmt.Errorf("decode message_update assistant event: %w", err)
+	fields := rpcAssistantEventFields(event.AssistantMessageEvent)
+	if object, ok := fields.(rpcObject); ok && !holdsToolCall(event.AssistantMessageEvent) {
+		// pig additive (D112): the members of these events are strings and integers, which encode without error, carry no partial, and read back from their encoding as they were written, so the object is the wire without the round trip through its encoding.
+		wire = object
+	} else {
+		encoded, err := json.Marshal(fields)
+		if err != nil {
+			return nil, fmt.Errorf("marshal message_update assistant event: %w", err)
+		}
+		if err := json.Unmarshal(encoded, &wire); err != nil {
+			return nil, fmt.Errorf("decode message_update assistant event: %w", err)
+		}
+		wire = slices.DeleteFunc(wire, func(field rpcField) bool { return field.name == "partial" })
 	}
-	wire = slices.DeleteFunc(wire, func(field rpcField) bool { return field.name == "partial" })
 	if start, ok := event.AssistantMessageEvent.(ai.ToolCallStartEvent); ok {
 		id, name, toolCall, indexValid := start.Partial.ObserveToolCallIdentity(start.ContentIndex)
 		if !indexValid {
@@ -239,6 +246,12 @@ func rpcMessageUpdate(event agent.MessageUpdateEvent) (any, error) {
 		wire = append(wire, rpcField{"id", id}, rpcField{"toolName", name})
 	}
 	return rpcObject{{"type", "message_update"}, {"usage", rpcUsage(event.Message.Assistant.ObserveUsage())}, {"assistantMessageEvent", wire}}, nil
+}
+
+// holdsToolCall reports whether the event carries a finished tool call, the one member of these events whose encoding can fail.
+func holdsToolCall(event ai.AssistantMessageEvent) bool {
+	_, ok := event.(ai.ToolCallEndEvent)
+	return ok
 }
 
 // rpcAssistantEventFields excludes cumulative partials before invoking any JSON marshaler. Retained fields keep their existing serialization, order and error handling.
@@ -544,6 +557,11 @@ func (u RPCUsage) MarshalJSON() ([]byte, error) {
 	if u.source != nil {
 		return json.Marshal(u.source)
 	}
+	return u.object().MarshalJSON()
+}
+
+// object is the usage as members in the order its producer created them.
+func (u RPCUsage) object() rpcObject {
 	object := rpcObject{{"input", u.Input}, {"output", u.Output}, {"cacheRead", u.CacheRead}, {"cacheWrite", u.CacheWrite}}
 	appended := u.CacheWrite1h != nil
 	if !appended && u.Reasoning != nil {
@@ -556,7 +574,15 @@ func (u RPCUsage) MarshalJSON() ([]byte, error) {
 			object = append(object, rpcField{"reasoning", *u.Reasoning})
 		}
 	}
-	return object.MarshalJSON()
+	return object
+}
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (u RPCUsage) AppendStringify(dst []byte) ([]byte, error) {
+	if u.source != nil {
+		return sdkjson.AppendStringify(dst, u.source)
+	}
+	return u.object().AppendStringify(dst)
 }
 
 func rpcUsage(usage *ai.Usage) *RPCUsage {

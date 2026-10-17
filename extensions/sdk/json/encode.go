@@ -268,6 +268,11 @@ func AppendStringify(dst []byte, v any) ([]byte, error) {
 	return out, nil
 }
 
+// AppendStringifyString appends the JSON.stringify text of the Go string s to dst: what [AppendStringify] writes for s without the reflection walk. pig additive (lw-json).
+func AppendStringifyString(dst []byte, s string) []byte {
+	return appendString(dst, s, stringifyOpts.stringEscapes())
+}
+
 // A StringifyAppender is a [Marshaler] that can also append its JSON.stringify text (what [MarshalStringify] of its MarshalJSON result
 // writes: compact, JSON.stringify escaping and numbers) to dst. In the JSON.stringify mode the encoder splices that text without reading it
 // again; every other mode calls MarshalJSON. Tests check each appended text against the compaction it skips.

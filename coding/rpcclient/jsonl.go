@@ -19,6 +19,15 @@ func SerializeJsonLine(value any) ([]byte, error) {
 	return append(encoded, '\n'), nil
 }
 
+// AppendJsonLine appends SerializeJsonLine(value) to dst, encoding into dst itself. On an error it returns dst with its original length.
+func AppendJsonLine(dst []byte, value any) ([]byte, error) {
+	dst, err := jsstring.AppendMarshalJSON(dst, value)
+	if err != nil {
+		return dst, err
+	}
+	return append(dst, '\n'), nil
+}
+
 // ReadJSONLLines reads strict JSONL records from r. It splits only on LF,
 // removes one trailing CR, delivers blank records, and delivers a final
 // unterminated record. Returning false from onLine stops the read.
