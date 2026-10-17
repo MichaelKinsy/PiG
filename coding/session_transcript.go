@@ -302,7 +302,8 @@ func (s *Session) exceedsCompactionThreshold(model *ai.Model, projection codinga
 // _compactBeforeNextAssistantResponse). It runs on the agent goroutine inside
 // Send, which holds s.mu.
 func (s *Session) prepareNextTurn(ctx context.Context, turn agent.PrepareNextTurnContext) (*agent.AgentLoopTurnUpdate, error) {
-	projection := s.inner.BuildSessionProjection()
+	// The projection is the session's own messages, as Pi's buildSessionContext returns the entries' objects: the loop reads them and the request that follows projects the session again, so a deep copy of every message before each request only grows with the history.
+	projection := s.inner.BuildSessionProjectionView()
 	// A virtual selection is checked in prepareRequest, against the model the request is routed to.
 	if model := s.Model(); model != nil && !IsVirtualModel(model) {
 		exceeds, err := s.exceedsCompactionThreshold(model, projection)
@@ -313,14 +314,15 @@ func (s *Session) prepareNextTurn(ctx context.Context, turn agent.PrepareNextTur
 			if _, err := s.runAutoCompaction(ctx, "threshold", false); err != nil {
 				return nil, err
 			}
-			projection = s.inner.BuildSessionProjection()
+			projection = s.inner.BuildSessionProjectionView()
 		}
 	}
 	projected := s.contextFromProjection(projection)
 	// The hook the supplied Agent had before the Session installed its own sees the refreshed context and may replace it and add messages (agent-session.ts _installAgentNextTurnRefresh).
 	var previous *agent.AgentLoopTurnUpdate
 	if s.previousPrepareNextTurn != nil {
-		turn.Context = *s.executableContext(projected)
+		// The projection is the session's own, read and never written; the hook may write the array it receives.
+		turn.Context = *s.executableContext(slices.Clone(projected))
 		var err error
 		if previous, err = s.previousPrepareNextTurn(ctx, turn); err != nil {
 			return nil, err
