@@ -5,6 +5,8 @@ import (
 	"iter"
 	"slices"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/stackprime"
 )
 
 type continuationExecutorKey struct{}
@@ -405,6 +407,7 @@ func (turn *continuationTurn) run(body func(*continuationTurn)) {
 	executor := turn.executor
 	next, stop := iter.Pull(func(yield func(turnStep) bool) {
 		turn.yield = yield
+		stackprime.Prime()
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				if _, stopped := recovered.(turnStopped); !stopped {

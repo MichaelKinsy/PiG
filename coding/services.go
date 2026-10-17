@@ -18,6 +18,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/stackprime"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -499,6 +501,7 @@ func (runtime *ModelRuntime) CompleteSimple(ctx context.Context, model *ai.Model
 }
 
 func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions, outer *ai.AssistantMessageEventStream, simple bool) {
+	stackprime.Prime()
 	if ctx == nil {
 		runtime.fail(ctx, outer, model, fmt.Errorf("model runtime: nil context"))
 		return

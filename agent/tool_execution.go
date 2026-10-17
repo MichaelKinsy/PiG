@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/stackprime"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
@@ -158,6 +160,7 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 			// Pi awaits Promise.all over every prepared call, so all calls run at
 			// once. A CPU-count cap would serialize I/O-bound tools on small machines.
 			wg.Go(func() {
+				stackprime.Prime()
 				var err error
 				finalized[i], err = r.h.runPreparedToolCall(callCtx, *outcome.prepared)
 				if err != nil {

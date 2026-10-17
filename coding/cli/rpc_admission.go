@@ -10,6 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/internal/stackprime"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
@@ -583,7 +585,7 @@ func (a *rpcAdmission) startPreparedPrompt(id rpcRequestID, start *coding.RunSta
 				}
 				hasStartHandler := a.runner != nil && a.runner.HasHandlers("agent_start")
 				rpcAwaitWork(a, hasStartHandler, start).then(func(_ struct{}, _ error) {
-					a.runs.Go(func() { _, _ = run.Run() })
+					a.runs.Go(func() { stackprime.Prime(); _, _ = run.Run() })
 				})
 			})
 		})
