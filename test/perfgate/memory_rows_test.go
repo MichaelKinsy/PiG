@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -508,6 +509,12 @@ const tmuxIdlePrompts = 6
 // tmuxModelLatency stands in for the human pace of the tmux row's model (one event every 10 ms, about 1.3 s a turn): each turn's response waits this long, so a run spans spinner ticks as it does in Pi-Bolt's row, and the run's end arms the idle collection.
 const tmuxModelLatency = 100 * time.Millisecond
 
+// tmuxIdleSamples is how many times the tmux row runs; its gate reads the minimum, as the fused dispatch gate does
+// (545fa6f364). What an idle pig holds moves by tens of kilobytes between runs of one build (a run's spinner ticks and
+// renders land differently: CI 39063579995 read 6,334,080 bytes where five runs of the same tree read 6,313,416 to
+// 6,318,392), so one run's reading crossed a ceiling no change had moved. The minimum is what the build holds at least.
+const tmuxIdleSamples = 3
+
 // idleCollectionWait is how long the tmux row leaves pig idle before it reads its memory: the interactive idle collection (D172) runs 2 s after a run ends.
 const idleCollectionWait = 3 * time.Second
 
@@ -517,6 +524,19 @@ func TestTmuxIdleMemoryGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	live, nonreleased := math.Inf(1), math.Inf(1)
+	for range tmuxIdleSamples {
+		l, n := tmuxIdleSample(t, binary)
+		live, nonreleased = min(live, l), min(nonreleased, n)
+	}
+	perfgate.Check(t, "process.mem_tmux_idle.heap_live_bytes", live)
+	perfgate.Check(t, "process.mem_tmux_idle.go_nonreleased_bytes", nonreleased)
+}
+
+// tmuxIdleSample runs the tmux row once and returns the idle process's live heap and the memory the runtime holds and has
+// not returned to the OS.
+func tmuxIdleSample(t *testing.T, binary string) (live, nonreleased float64) {
+	t.Helper()
 	home := newPigHome(t)
 	model := newBoltModel(t, false, tmuxModelLatency)
 	writeBoltHome(t, home, model, tmuxIdlePrompts)
@@ -549,9 +569,8 @@ func TestTmuxIdleMemoryGate(t *testing.T) {
 	pig.settle(idleCollectionWait)
 	values := pig.snapshot(snapshots, 1)
 	record := pig.exit()
-	live := float64(values["/gc/heap/live:bytes"])
-	nonreleased := float64(values["/memory/classes/total:bytes"]) - float64(values["/memory/classes/heap/released:bytes"])
+	live = float64(values["/gc/heap/live:bytes"])
+	nonreleased = float64(values["/memory/classes/total:bytes"]) - float64(values["/memory/classes/heap/released:bytes"])
 	t.Logf("perfgate: process.mem_tmux_idle idle runtime/metrics %v; exit record %+v", values, record)
-	perfgate.Check(t, "process.mem_tmux_idle.heap_live_bytes", live)
-	perfgate.Check(t, "process.mem_tmux_idle.go_nonreleased_bytes", nonreleased)
+	return live, nonreleased
 }
