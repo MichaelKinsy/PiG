@@ -1511,7 +1511,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	// deferred, so an initial active tool must anchor the placeholder.
 	params := anthropicParams{
 		conversation:        afterInitial,
-		tools:               GetCurrentTools(messages),
+		tools:               borrowedCurrentTools(messages),
 		cacheControl:        p.cacheControl(resolveAnthropicCacheRetention(opts.CacheRetention, env)),
 		allowEmptySignature: modelAllowsEmptySignature(model),
 		nativeToolChanges: supportsMidConversation &&

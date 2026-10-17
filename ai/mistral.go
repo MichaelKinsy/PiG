@@ -351,7 +351,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 		Stream:   true,
 		Messages: msgs,
 	}
-	tools := GetCurrentTools(messages)
+	tools := borrowedCurrentTools(messages)
 	if len(tools) > 0 {
 		convertedTools, err := p.convertTools(tools)
 		if err != nil {

@@ -60,3 +60,37 @@ func TestRequestBuildDoesNotCopyWhatItDoesNotSend(t *testing.T) {
 		})
 	}
 }
+
+// A request build reads the replayed tools and copies none of them: the replay and the system prompt allocate the same over deep tool schemas as over shallow ones, which a deep copy of every tool per replay would not, and the collapse copies fewer schemas than the copying construction.
+func TestToolReplayAllocationsDoNotGrowWithTheSchemas(t *testing.T) {
+	build := func(depth int) []Message {
+		schema := map[string]any{"type": "string"}
+		for i := range depth {
+			schema = map[string]any{"type": "object", "properties": map[string]any{fmt.Sprintf("p%d", i): schema, "q": []any{"a", "b"}}}
+		}
+		tools := make([]ToolSchema, 6)
+		for i := range tools {
+			tools[i] = ToolSchema{Name: fmt.Sprintf("tool%d", i), Description: "d", Parameters: schema, PromptGuidelines: []string{"g"}}
+		}
+		return []Message{SystemMessage{Content: SystemText("base"), ToolsAdded: tools}, UserMessage{Content: UserText("hi")}}
+	}
+	measure := func(depth int, run func(messages []Message)) float64 {
+		messages := build(depth)
+		return testing.AllocsPerRun(20, func() { run(messages) })
+	}
+	for name, run := range map[string]func([]Message){
+		"borrowedCurrentTools":   func(messages []Message) { _ = borrowedCurrentTools(messages) },
+		"GetCurrentSystemPrompt": func(messages []Message) { _ = GetCurrentSystemPrompt(messages) },
+	} {
+		if small, large := measure(1, run), measure(12, run); large > small {
+			t.Errorf("%s allocates %.0f times over deep tool schemas and %.0f over shallow ones: it copies the schemas", name, large, small)
+		}
+	}
+	// The collapse validates the leading message it builds, and the validation's allocations grow with the schemas; the replay and the collapse add none beyond it.
+	collapse := func(messages []Message) { _ = CollapseSystemMessages(TranscriptContext{messages: messages}) }
+	validate := func(messages []Message) { _ = validateTranscriptContext(TranscriptContext{messages: messages[:1]}) }
+	collapseGrowth := measure(12, collapse) - measure(1, collapse)
+	if validateGrowth := measure(12, validate) - measure(1, validate); collapseGrowth > validateGrowth {
+		t.Errorf("CollapseSystemMessages allocates %.0f more times over deep tool schemas, their validation alone %.0f: it copies the schemas", collapseGrowth, validateGrowth)
+	}
+}

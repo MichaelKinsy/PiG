@@ -31830,6 +31830,17 @@
       "shapeHash": "sha256:7d7fb5f69bead733abaadec1e6c398daab0180c68807a2a418b646ea6d7bad4e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#borrowedCurrentTools",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "borrowedCurrentTools",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[M RoleMessage](messages TranscriptMessages[M]) []ToolSchema"
+      },
+      "shapeHash": "sha256:6b76e5d57f3334de059e3d537621a64c0033979e6bd8ec03b4e1c85b8e7e960c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#buildBedrockAdditionalFields",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "buildBedrockAdditionalFields",
@@ -37218,6 +37229,17 @@
         "type": "func() uint64"
       },
       "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#currentSystemMessage",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "currentSystemMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[M RoleMessage](messages TranscriptMessages[M], cloneTools bool) *SystemMessage"
+      },
+      "shapeHash": "sha256:c40367bd230d54b0933e2abe5864c999f85e24fe92cff6d864a8ea57b4383d6f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#customOAuthProviders",

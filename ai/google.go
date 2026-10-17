@@ -903,7 +903,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 		}
 	}
 
-	tools := GetCurrentTools(messages)
+	tools := borrowedCurrentTools(messages)
 	if len(tools) > 0 {
 		convertedTools, err := geminiConvertTools(tools, false, supportsGoogleStrictToolSampling(model.ID))
 		if err != nil {

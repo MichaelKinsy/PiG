@@ -219,6 +219,13 @@ func GetCurrentTools[M RoleMessage](messages TranscriptMessages[M]) []ToolSchema
 	return replayTools(messages, true)
 }
 
+// borrowedCurrentTools is GetCurrentTools without the copy of every replayed tool: a request build only reads the declarations, and
+// the transcript it builds from does not change while the request is live (TranscriptContext.borrowed), so the copies cost a deep
+// clone of every tool schema per request and are read once.
+func borrowedCurrentTools[M RoleMessage](messages TranscriptMessages[M]) []ToolSchema {
+	return replayTools(messages, false)
+}
+
 // GetToolStateChangesFrom is GetToolStateChanges(GetCurrentTools(messages), current) without the copy of every replayed
 // tool: the replayed declarations are only compared, never returned.
 func GetToolStateChangesFrom[M RoleMessage](messages TranscriptMessages[M], current []ToolSchema) ToolStateChanges {
@@ -259,6 +266,12 @@ func replayTools[M RoleMessage](messages TranscriptMessages[M], clone bool) []To
 }
 
 func GetCurrentSystemMessage[M RoleMessage](messages TranscriptMessages[M]) *SystemMessage {
+	return currentSystemMessage(messages, true)
+}
+
+// currentSystemMessage is GetCurrentSystemMessage; with cloneTools false the message's ToolsAdded share the declarations of the
+// messages replayed, which the caller must not modify.
+func currentSystemMessage[M RoleMessage](messages TranscriptMessages[M], cloneTools bool) *SystemMessage {
 	content := []string{}
 	sections := OrderedSections{}
 	var timestamp int64
@@ -291,7 +304,7 @@ func GetCurrentSystemMessage[M RoleMessage](messages TranscriptMessages[M]) *Sys
 			}
 		}
 	}
-	tools := GetCurrentTools(messages)
+	tools := replayTools(messages, cloneTools)
 	if !hasSystem && len(tools) == 0 {
 		return nil
 	}
@@ -322,7 +335,7 @@ func GetCurrentSystemMessage[M RoleMessage](messages TranscriptMessages[M]) *Sys
 
 // GetCurrentSystemPrompt renders replayed instructions and nonempty sections in order.
 func GetCurrentSystemPrompt[M RoleMessage](messages TranscriptMessages[M]) string {
-	message := GetCurrentSystemMessage(messages)
+	message := currentSystemMessage(messages, false)
 	if message == nil {
 		return ""
 	}
@@ -366,14 +379,15 @@ func CollapseSystemMessages(context TranscriptContext) TranscriptContext {
 	if context.err == nil {
 		messages = context.messages
 	}
-	head := GetCurrentSystemMessage(messages)
+	head := currentSystemMessage(messages, false)
 	out := make([]Message, 0, len(messages))
 	if head != nil {
-		checked := newTranscriptContext([]Message{*head})
-		if checked.err != nil {
-			return checked
+		// The collapsed message is built here, and its tool declarations are shared with the transcript as the other messages are.
+		checked := normalizeMissingMessageContent([]Message{*head})
+		if err := validateTranscriptContext(TranscriptContext{messages: checked}); err != nil {
+			return TranscriptContext{err: err}
 		}
-		out = append(out, checked.messages[0])
+		out = append(out, checked[0])
 	}
 	for _, message := range messages {
 		if _, system := message.(SystemMessage); !system {

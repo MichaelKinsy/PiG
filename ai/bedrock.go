@@ -136,7 +136,7 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		return nil, fmt.Errorf("amazon-bedrock: convert messages: %w", err)
 	}
 	supportsStrictTools := modelMeta.ProviderMeta.Compat != nil && modelMeta.ProviderMeta.Compat.SupportsStrictMode != nil && *modelMeta.ProviderMeta.Compat.SupportsStrictMode
-	tools, err := convertBedrockTools(GetCurrentTools(messages), opts.ToolChoice, supportsStrictTools)
+	tools, err := convertBedrockTools(borrowedCurrentTools(messages), opts.ToolChoice, supportsStrictTools)
 	if err != nil {
 		return nil, fmt.Errorf("amazon-bedrock: convert tools: %w", err)
 	}
