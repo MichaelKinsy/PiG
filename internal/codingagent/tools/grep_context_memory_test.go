@@ -75,15 +75,7 @@ func TestGrepContextDoesNotLoadTheMatchedFile(t *testing.T) {
 		t.Fatalf("result = %+v", result)
 	}
 	if grown > uint64(info.Size())/4 {
-		message := fmt.Sprintf("grep with context grew the heap by %d bytes for a %d byte file; it must not load the file", grown, info.Size())
-		// TODO(0.5.1): the heap sample is noisy on the shared macOS and Windows runners (owner decision 2026-10-16,
-		// handoffs/owner-signoff.md); it reports there and blocks on Linux. Make it blocking everywhere again.
-		if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
-			t.Logf("TODO(0.5.1) report only on %s: %s", runtime.GOOS, message)
-			fmt.Printf("::warning title=grep heap (report only on %s)::%s: %s\n", runtime.GOOS, t.Name(), message)
-			return
-		}
-		t.Fatal(message)
+		t.Fatalf("grep with context grew the heap by %d bytes for a %d byte file; it must not load the file", grown, info.Size())
 	}
 }
 

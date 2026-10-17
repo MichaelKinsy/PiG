@@ -296,16 +296,8 @@ func measuredEnvironment(environ []string) []string {
 	return kept
 }
 
-// startupBudgetError fails the test on a startup allocation budget, except on Windows, where it reports instead.
-// TODO(0.5.1): the Windows budgets were set twice from a machine other than the CI runner (owner decision 2026-10-16,
-// handoffs/owner-signoff.md); measure them on windows-latest and make them blocking again. Linux and darwin block.
+// startupBudgetError fails the test on a startup allocation budget.
 func startupBudgetError(t *testing.T, format string, args ...any) {
 	t.Helper()
-	if runtime.GOOS == "windows" {
-		message := fmt.Sprintf(format, args...)
-		t.Logf("TODO(0.5.1) startup budget (report only on Windows): %s", message)
-		fmt.Printf("::warning title=startup budget (Windows, report only)::%s: %s\n", t.Name(), message)
-		return
-	}
 	t.Errorf(format, args...)
 }
