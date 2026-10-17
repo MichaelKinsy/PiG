@@ -39,6 +39,14 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		{"matches upstream request buffer exhaustion wording", "Error: exceeded request buffer limit while retrying upstream"},
 		// Pi 7efebff1 (#10920): gateway stream relay failure.
 		{"matches gateway upstream stream forwarding failure", "Unable to forward upstream stream"},
+		// Pi 0fbdbd3f retry.test.ts:82-88 (#10996, both rows): node-fetch errors from the google-vertex OAuth token refresh.
+		{"matches node-fetch request failure wording/empty reason", "request to https://oauth2.googleapis.com/token failed, reason:"},
+		{"matches node-fetch request failure wording/ECONNREFUSED", "request to https://oauth2.googleapis.com/token failed, reason: connect ECONNREFUSED 127.0.0.1:9"},
+		// Pi 698a2d23 retry.test.ts:90-98 (#10920, all four rows): gateway upstream failures sent as response.failed error codes.
+		{"matches gateway upstream failure wording/forward", "unknown: Unable to forward upstream stream"},
+		{"matches gateway upstream failure wording/request failed", "upstream_error: Upstream request failed"},
+		{"matches gateway upstream failure wording/stream interrupted", "upstream_stream_read_error: Upstream response stream was interrupted"},
+		{"matches gateway upstream failure wording/HTTP/2", "Upstream HTTP/2 stream failed"},
 		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:56 (all four table rows)
 		{"matches DNS transport failure wording/wrapped", "The pending stream has been canceled (caused by: getaddrinfo ENOTFOUND bedrock-runtime.us-east-1.amazonaws.com)"},
 		{"matches DNS transport failure wording/ENOTFOUND", "connect ENOTFOUND api.example.com"},

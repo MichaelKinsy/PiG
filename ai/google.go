@@ -628,8 +628,12 @@ func geminiConvertMessages(messages []Message, providerID, modelID string, suppo
 					}
 				}
 				text := strings.Join(textParts, "\n")
-				if text == "" && len(imageParts) > 0 {
-					text = "(see attached image)"
+				// Whitespace-only text counts as no text (google-shared.ts hasText: textResult.trim(), Pi 4dd2b149).
+				if trimJSWhitespace(text) == "" {
+					text = ""
+					if len(imageParts) > 0 {
+						text = "(see attached image)"
+					}
 				}
 				text = sanitizeSurrogates(text)
 				payload := map[string]any{"output": text}

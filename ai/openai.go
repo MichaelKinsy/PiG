@@ -862,7 +862,8 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 					}
 				}
 				textResult := strings.Join(textParts, "\n")
-				if textResult == "" {
+				// Whitespace-only text counts as no text (openai-completions.ts hasText: textResult.trim(), Pi 4dd2b149).
+				if trimJSWhitespace(textResult) == "" {
 					if hasImages {
 						textResult = "(see attached image)"
 					} else {

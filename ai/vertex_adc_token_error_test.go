@@ -47,8 +47,9 @@ func TestVertexADCTokenConnectFailureIsGaxiosTextLikePi(t *testing.T) {
 	// retry.ts also matches status codes such as "520" anywhere in the text, so a random port can make any message retryable; the
 	// probe's port 9 stands in for it.
 	text := strings.ReplaceAll(err.Error(), strconv.Itoa(address.Port), "9")
-	if IsRetryableAssistantError(AssistantMessage{StopReason: StopReasonError, ErrorMessage: text}) {
-		t.Fatalf("%q is retryable; Pi's retry.ts patterns do not match it", text)
+	// Pi 0fbdbd3f (#10996) retries this node-fetch wording ("request to \\S+ failed, reason:").
+	if !IsRetryableAssistantError(AssistantMessage{StopReason: StopReasonError, ErrorMessage: text}) {
+		t.Fatalf("%q is not retryable; Pi's retry.ts matches it", text)
 	}
 }
 

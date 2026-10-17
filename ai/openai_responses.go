@@ -656,7 +656,8 @@ func convertResponsesToolResultOutput(content []ToolResultMessageContent, modelS
 	if textBlocks > 1 {
 		joined = text.String()
 	}
-	hasText := joined != ""
+	// Whitespace-only text counts as no text (openai-responses-shared.ts hasText: textResult.trim(), Pi 4dd2b149).
+	hasText := trimJSWhitespace(joined) != ""
 	if len(images) == 0 || !modelSupportsImage {
 		var s string
 		switch {

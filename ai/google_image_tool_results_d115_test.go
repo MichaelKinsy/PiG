@@ -66,3 +66,31 @@ func TestGoogleImageToolResultOfASingleCallMatchesPiD115(t *testing.T) {
 		t.Fatalf("contents = %+v", contents)
 	}
 }
+
+// google-shared-image-tool-result-routing.test.ts:105 (Pi 4dd2b149, #8720): whitespace-only tool result text counts as no
+// text, so a result of only "\r\n" answers "" and an image result with " \n" before its image answers the image placeholder.
+func TestGoogleWhitespaceOnlyToolResultTextIsNoText(t *testing.T) {
+	result := func(id string, content ...ToolResultMessageContent) ToolResultMessage {
+		return ToolResultMessage{ToolCallID: id, ToolName: "read", Content: content}
+	}
+	messages := []Message{
+		UserMessage{Content: UserText("read the files")},
+		AssistantMessage{API: APIGoogleGenerativeAI, Provider: "google", Model: "gemini-3-pro-preview", StopReason: StopReasonToolUse, Content: []AssistantContentBlock{
+			ToolCall{ID: "call_a", Name: "read", Arguments: JsonObject{"path": "a.txt"}},
+			ToolCall{ID: "call_img", Name: "read", Arguments: JsonObject{"path": "image.png"}},
+			ToolCall{ID: "call_b", Name: "read", Arguments: JsonObject{"path": "b.txt"}},
+		}},
+		result("call_a", TextContent{Text: "\r\n"}),
+		result("call_img", TextContent{Text: " \n"}, ImageContent{MimeType: "image/png", Data: "abc"}),
+		result("call_b", TextContent{Text: "beta text"}),
+	}
+	contents := geminiConvertMessages(messages, "google", "gemini-3-pro-preview", true)
+	var responses []any
+	for _, part := range contents[2].Parts {
+		responses = append(responses, part.FunctionResponse.Response)
+	}
+	want := []any{map[string]any{"output": ""}, map[string]any{"output": "(see attached image)"}, map[string]any{"output": "beta text"}}
+	if !reflect.DeepEqual(responses, want) {
+		t.Fatalf("responses = %v, want %v", responses, want)
+	}
+}
