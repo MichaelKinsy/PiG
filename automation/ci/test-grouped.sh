@@ -226,10 +226,14 @@ run_group() {
   return "$status"
 }
 
-# run_cli_shards <parallel>: run every cmd/pig shard, continuing past a failing shard so one run reports all of them.
+# run_cli_shards <parallel> [<first> <last>]: run the cmd/pig shards first..last (default every shard), continuing past a failing shard so one run reports all of them.
 run_cli_shards() {
-  local parallel="$1" shard status=0 pattern
-  for ((shard = 1; shard <= CLI_SHARDS; shard++)); do
+  local parallel="$1" first="${2:-1}" last="${3:-$CLI_SHARDS}" shard status=0 pattern
+  if ! [[ "$first" =~ ^[0-9]+$ && "$last" =~ ^[0-9]+$ ]] || (( first < 1 || last > CLI_SHARDS || first > last )); then
+    echo "[test-grouped] cli: shard range $first..$last is not within 1..$CLI_SHARDS" >&2
+    return 2
+  fi
+  for ((shard = first; shard <= last; shard++)); do
     pattern=$("$ROOT/automation/ci/test-shard-pattern.sh" "$shard" "$CLI_SHARDS" "$CLI_PKG")
     RUN_FLAG=(-run "$pattern")
     run_group "cli shard $shard of $CLI_SHARDS" "$parallel" "$CLI_PKG" || status=$?
@@ -298,17 +302,26 @@ case "$MODE" in
     run_cli_shards "$SUBPROCESS_PARALLEL"
     run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}"
     ;;
-  fast)
-    run_group fast-parallel "$FAST_PARALLEL" "${FAST_PKGS[@]}"
-    # Every sharded package but the extension host and the conformance suite, which test-subprocess and test-conformance run.
-    fast_sharded=()
-    for pkg in "${!SHARD_COUNT[@]}"; do [[ "$pkg" == "$SUBPROCESS_PKG" || "$pkg" == "$CONFORMANCE_PKG" ]] || fast_sharded+=("$pkg"); done
-    [[ ${#fast_sharded[@]} -eq 0 ]] || run_sharded "$SUBPROCESS_PARALLEL" "${fast_sharded[@]}"
-    run_fault_group "$SERIAL_PARALLEL"
-    run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}"
+  fast|fast-parallel|fast-sharded)
+    # fast is fast-parallel and fast-sharded in one run. CI runs the two halves on separate jobs, because together they
+    # were the run's longest job.
+    if [[ "$MODE" != fast-sharded ]]; then
+      run_group fast-parallel "$FAST_PARALLEL" "${FAST_PKGS[@]}"
+    fi
+    if [[ "$MODE" != fast-parallel ]]; then
+      # Every sharded package but the extension host and the conformance suite, which test-subprocess and test-conformance run.
+      fast_sharded=()
+      for pkg in "${!SHARD_COUNT[@]}"; do [[ "$pkg" == "$SUBPROCESS_PKG" || "$pkg" == "$CONFORMANCE_PKG" ]] || fast_sharded+=("$pkg"); done
+      [[ ${#fast_sharded[@]} -eq 0 ]] || run_sharded "$SUBPROCESS_PARALLEL" "${fast_sharded[@]}"
+    fi
+    if [[ "$MODE" != fast-sharded ]]; then
+      run_fault_group "$SERIAL_PARALLEL"
+      run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}"
+    fi
     ;;
   cli)
-    run_cli_shards "$SUBPROCESS_PARALLEL"
+    # cli [<first> <last>]: CI runs the shards in two jobs; make test-cli runs all of them.
+    run_cli_shards "$SUBPROCESS_PARALLEL" "${2:-1}" "${3:-$CLI_SHARDS}"
     ;;
   subprocess|conformance)
     case "$MODE" in
@@ -368,7 +381,7 @@ case "$MODE" in
     if [[ ${#SERIAL_PKGS[@]} -eq 0 ]]; then echo '  (none)'; else printf '  %s\n' "${SERIAL_PKGS[@]}"; fi
     ;;
   *)
-    echo "usage: $0 [default|fast|cli|subprocess|conformance|changed|stress|report]" >&2
+    echo "usage: $0 [default|fast|fast-parallel|fast-sharded|cli [<first> <last>]|subprocess|conformance|changed|stress|report]" >&2
     exit 2
     ;;
 esac

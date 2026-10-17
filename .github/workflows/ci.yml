@@ -145,7 +145,7 @@ jobs:
       fail-fast: false
       matrix:
         # Longest first, so the jobs that bound the run's end start first when the account's job slots are full.
-        shard: [test-fast, test-cli, portmap, test-conformance, build, test-subprocess, parity-2, parity-1, toolchains, checks, contracts]
+        shard: [portmap, test-fast-sharded, test-fast, test-conformance, build, test-cli-1, test-cli-2, test-subprocess, parity-2, parity-1, toolchains, checks, contracts]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

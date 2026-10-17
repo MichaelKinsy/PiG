@@ -8,8 +8,11 @@ ci-build: module-publication lint
 # Short gates share one hosted job each, so their setup is paid once. CI runs them with make -k, so one failing gate does not hide the others.
 ci-checks: ci-startup ci-drift ci-closure
 ci-toolchains: ci-race ci-integration ci-sdk ci-extensions
-ci-test-fast: test-fast
-ci-test-cli: test-cli
+# CI runs test-fast and test-cli in halves on separate jobs; each pair together is the whole target.
+ci-test-fast: test-fast-parallel
+ci-test-fast-sharded: test-fast-sharded
+ci-test-cli-1: test-cli-1
+ci-test-cli-2: test-cli-2
 ci-test-subprocess: test-subprocess
 ci-test-conformance: test-conformance
 ci-sdk: test-go-modules test-sdk-rs test-sdk-py test-sdk-ts
@@ -54,6 +57,18 @@ test-fast: test-prereqs interface-deps parity-deps durable-interop-deps
 test-cli: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh cli
 
+test-fast-parallel: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh fast-parallel
+
+test-fast-sharded: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh fast-sharded
+
+test-cli-1: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh cli 1 4
+
+test-cli-2: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh cli 5 8
+
 test-subprocess: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh subprocess
 
@@ -71,4 +86,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-preflight ci-startup ci-build ci-checks ci-toolchains ci-test-fast ci-test-cli ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap ci-closure test-fast test-cli test-subprocess test-conformance
+.PHONY: test-provenance test-expectation-lint ci-preflight ci-startup ci-build ci-checks ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance

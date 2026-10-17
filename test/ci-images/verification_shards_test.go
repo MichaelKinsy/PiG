@@ -86,7 +86,8 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		switch name {
 		case "check", "check-core", "check-contracts-fast":
 		case "test":
-			return []string{"test-fast", "test-cli", "test-subprocess", "test-conformance"}
+			// CI runs test-fast and test-cli in halves (fast-parallel and fast-sharded; two cmd/pig shard ranges), which together are make test.
+			return []string{"test-fast-parallel", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "test-conformance"}
 		case "parity-fast":
 			// CI runs the hermetic parity scenarios as two hash shards (PARITY_SHARD), which together are parity-fast.
 			return []string{"parity-fast-1", "parity-fast-2"}
@@ -134,6 +135,29 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	slices.Sort(got)
 	if !slices.Equal(got, want) {
 		t.Fatalf("shards must partition all make check gates exactly once\ngot  %v\nwant %v", got, want)
+	}
+	// The two test-cli halves run the cmd/pig shard ranges that together are every shard, each once.
+	shards, _ := cliShards(t)
+	runs := make([]int, shards+1)
+	cliRange := regexp.MustCompile(`(?m)^(test-cli-[12]):[^\n]*\n\t@\./automation/ci/test-grouped\.sh cli ([0-9]+) ([0-9]+)$`)
+	halves := cliRange.FindAllStringSubmatch(readMakeSources(t, repoRoot(t)), -1)
+	if len(halves) != 2 {
+		t.Fatalf("found %d test-cli halves with a shard range, want test-cli-1 and test-cli-2", len(halves))
+	}
+	for _, half := range halves {
+		first, _ := strconv.Atoi(half[2])
+		last, _ := strconv.Atoi(half[3])
+		for shard := first; shard <= last; shard++ {
+			if shard < 1 || shard > shards {
+				t.Fatalf("%s runs cmd/pig shard %d of %d", half[1], shard, shards)
+			}
+			runs[shard]++
+		}
+	}
+	for shard := 1; shard <= shards; shard++ {
+		if runs[shard] != 1 {
+			t.Errorf("cmd/pig shard %d runs in %d test-cli halves, want exactly one", shard, runs[shard])
+		}
 	}
 }
 
