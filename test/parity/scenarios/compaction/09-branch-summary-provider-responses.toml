@@ -24,5 +24,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['BRANCH_SUMMARY 0 max=4096 error=""', 'BRANCH_SUMMARY 1 max=1024 error=""', 'error="Branch summarization attempted to call a tool"', 'error="Branch summarization failed: generation hit the token cap and the summary is incomplete"']
+both_contain = ['BRANCH_SUMMARY 0 max=0 error=""', 'BRANCH_SUMMARY 1 max=0 error="Branch summarization attempted to call a tool"', 'BRANCH_SUMMARY 2 max=0 error="Branch summarization failed: generation hit the token cap and the summary is incomplete"']
 runs = 3

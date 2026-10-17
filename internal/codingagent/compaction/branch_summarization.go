@@ -460,12 +460,7 @@ func summarizeBranchMessages(ctx context.Context, messages []agent.AgentMessage,
 		},
 	}
 
-	// The response budget is the model's output limit capped at 4096, not the
-	// input token budget (branch-summarization.ts generateBranchSummary).
-	maxTokens := 4096
-	if opts.Model != nil && opts.Model.Capabilities.MaxOutputTokens > 0 {
-		maxTokens = min(maxTokens, opts.Model.Capabilities.MaxOutputTokens)
-	}
-
-	return completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, opts.Callbacks, SummarizationSystemPrompt, req, ai.StreamOptions{MaxTokens: maxTokens, APIKey: opts.APIKey, Headers: ai.ProviderHeadersFromStrings(opts.Headers), Env: opts.Env})
+	// No maxTokens: the summary uses the model's output limit (#9512, Pi 6fcb4867; branch-summarization.ts
+	// generateBranchSummary).
+	return completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, opts.Callbacks, SummarizationSystemPrompt, req, ai.StreamOptions{APIKey: opts.APIKey, Headers: ai.ProviderHeadersFromStrings(opts.Headers), Env: opts.Env})
 }

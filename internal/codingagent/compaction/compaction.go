@@ -608,10 +608,11 @@ func capMaxTokens(budget int, model *ai.Model) int {
 }
 
 // createSummarizationOptions builds the request options for one summary
-// call. The thinking level applies only to reasoning-capable models.
+// call. The thinking level applies only to reasoning-capable models. No
+// maxTokens: summaries use the model's output limit (#9512, Pi 6fcb4867).
 // Mirrors upstream createSummarizationOptions (compaction.ts).
-func createSummarizationOptions(model *ai.Model, maxTokens int, apiKey string, headers, env map[string]string, thinkingLevel ai.ModelThinkingLevel, sessionID string) ai.StreamOptions {
-	options := ai.StreamOptions{MaxTokens: maxTokens, APIKey: apiKey, Headers: ai.ProviderHeadersFromStrings(headers), Env: env, SessionID: sessionID}
+func createSummarizationOptions(model *ai.Model, apiKey string, headers, env map[string]string, thinkingLevel ai.ModelThinkingLevel, sessionID string) ai.StreamOptions {
+	options := ai.StreamOptions{APIKey: apiKey, Headers: ai.ProviderHeadersFromStrings(headers), Env: env, SessionID: sessionID}
 	if model != nil && model.Capabilities.MaxThinking != "" {
 		options.IsReasoning = true
 		options.Thinking = thinkingLevel.ReasoningOption()
@@ -806,7 +807,12 @@ func splitForContextWindow(messages []agent.AgentMessage, model *ai.Model, reser
 	if model == nil || model.Capabilities.ContextWindow <= 0 || len(messages) < 2 {
 		return [][]agent.AgentMessage{messages}
 	}
-	maxTokens := capMaxTokens((8*reserveTokens)/10, model)
+	// The summary a request carries and the one it asks for are each bounded by the model's output limit, which summary
+	// requests use since Pi 6fcb4867; without a known limit, by the reserve as before.
+	maxTokens := capMaxTokens((8*reserveTokens)/10, nil)
+	if model.Capabilities.MaxOutputTokens > 0 {
+		maxTokens = model.Capabilities.MaxOutputTokens
+	}
 	overhead := ceilQuarter(len(SummarizationSystemPrompt)+len(UPDATE_SUMMARIZATION_PROMPT)+len(customInstructions)) + 2*maxTokens
 	room := int(float64(model.Capabilities.ContextWindow-overhead) * summarizationInputShare)
 	if room <= 0 {
@@ -886,8 +892,7 @@ func generateSummaryChunk(
 		},
 	}
 
-	maxTokens := capMaxTokens((8*reserveTokens)/10, model)
-	options := createSummarizationOptions(model, maxTokens, apiKey, headers, env, thinkingLevel, sessionID)
+	options := createSummarizationOptions(model, apiKey, headers, env, thinkingLevel, sessionID)
 	result, usage, err := completeSummarization(ctx, model, completer, streamFn, retry, callbacks, SummarizationSystemPrompt, req, options)
 	if err != nil {
 		return "", nil, summarizationFailure("Summarization", err)
@@ -926,8 +931,7 @@ func generateTurnPrefixSummary(
 			},
 		},
 	}
-	maxTokens := capMaxTokens(reserveTokens/2, model)
-	options := createSummarizationOptions(model, maxTokens, apiKey, headers, env, thinkingLevel, sessionID)
+	options := createSummarizationOptions(model, apiKey, headers, env, thinkingLevel, sessionID)
 	result, usage, err := completeSummarization(ctx, model, completer, streamFn, retry, callbacks, SummarizationSystemPrompt, req, options)
 	if err != nil {
 		return "", nil, summarizationFailure("Turn prefix summarization", err)

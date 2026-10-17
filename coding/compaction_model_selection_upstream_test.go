@@ -86,7 +86,7 @@ func TestCompactionNewModelPolicyUpstream(t *testing.T) {
 
 // Pi: packages/coding-agent/src/core/settings-manager.ts:19 (CompactionModelOverride.reserveTokens); packages/coding-agent/src/core/settings-manager.ts:20 (CompactionModelOverride.keepRecentTokens); packages/coding-agent/src/core/settings-manager.ts:32 (CompactionSettingsJSON.modelOverrides).
 func TestCompactionCapturesModelBeforeAuthUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts:177
+	// agent-session-compaction-model-overrides.test.ts:146 (Pi 6fcb4867 dropped its maxTokens assertion: summaries set none).
 	// Go provider auth resolves inside Stream; the callback changes the live model before the request reaches HTTP.
 	t.Run("captures model identity before awaiting summarization auth", func(t *testing.T) {
 		services := newTestServices(t)
@@ -141,7 +141,7 @@ func TestCompactionCapturesModelBeforeAuthUpstream(t *testing.T) {
 		}
 		select {
 		case got := <-requests:
-			if got.ID != "first" || got.MaxTokens != 1600 {
+			if got.ID != "first" {
 				t.Fatalf("request=%+v", got)
 			}
 		default:

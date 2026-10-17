@@ -569,8 +569,9 @@ func TestVirtualSuiteRoutesBugReportSummaries(t *testing.T) {
 	assertEqual(t, "summaries", summaries, []string{"large:low:4000"})
 }
 
-// upstream suite/virtual-models.test.ts:371-396
-func TestVirtualSuiteRoutesCompactionSummariesBeforeSizingThem(t *testing.T) {
+// upstream suite/virtual-models.test.ts:371-396 "routes compaction summaries to the resolved model" (Pi 6fcb4867: summaries
+// set no maxTokens, so the test records the model and thinking level only).
+func TestVirtualSuiteRoutesCompactionSummariesToTheResolvedModel(t *testing.T) {
 	var summaries []string
 	s := newVirtualSuite(t, defaultVirtualRoute, `"compaction":{"keepRecentTokens":1}`, nil)
 	summary := fauxFactory(func(options ai.StreamOptions, model *ai.Model) ai.FauxResponse {
@@ -578,7 +579,7 @@ func TestVirtualSuiteRoutesCompactionSummariesBeforeSizingThem(t *testing.T) {
 		if level == "" {
 			level = "off"
 		}
-		summaries = append(summaries, model.ID+":"+level+":"+strconv.Itoa(options.MaxTokens))
+		summaries = append(summaries, model.ID+":"+level)
 		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("summary")}, StopReason: "stop"}
 	})
 	// Compaction summarizes the history and the split turn prefix with one routed model.
@@ -592,6 +593,6 @@ func TestVirtualSuiteRoutesCompactionSummariesBeforeSizingThem(t *testing.T) {
 		t.Fatalf("result = %+v, %v", result, err)
 	}
 	assertEqual(t, "reasons", s.reasons(), []ModelRouteReason{"user", "user", "direct"})
-	// The router's thinking level applies, and the output budget respects the large model's 4000 tokens.
-	assertEqual(t, "summaries", summaries, []string{"large:low:4000", "large:low:4000"})
+	// The router's thinking level applies.
+	assertEqual(t, "summaries", summaries, []string{"large:low", "large:low"})
 }

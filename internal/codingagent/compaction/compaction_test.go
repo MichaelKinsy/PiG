@@ -465,7 +465,9 @@ func (*cancelledCompleter) CompleteSimple(context.Context, *ai.Model, string, []
 	return "", nil, context.Canceled
 }
 
-func TestCompact_UsesMaxTokensBudget(t *testing.T) {
+// Pi 6fcb4867 (#9512): a compaction summary sets no maxTokens; the model's output limit (600 here) applies at the
+// provider, not in the request.
+func TestCompact_SetsNoMaxTokens(t *testing.T) {
 	prep := CompactionPreparation{
 		FirstKeptEntryID:    "kept-entry-1",
 		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}}},
@@ -487,8 +489,8 @@ func TestCompact_UsesMaxTokensBudget(t *testing.T) {
 	if len(fc.maxTokens) != 1 {
 		t.Fatalf("CompleteSimple call count = %d, want 1", len(fc.maxTokens))
 	}
-	if fc.maxTokens[0] != 600 {
-		t.Fatalf("maxTokens = %d, want 600", fc.maxTokens[0])
+	if fc.maxTokens[0] != 0 {
+		t.Fatalf("maxTokens = %d, want none set", fc.maxTokens[0])
 	}
 }
 
@@ -503,8 +505,8 @@ func TestCompact_UsesStreamFnWhenProvided(t *testing.T) {
 	streamCalls := 0
 	streamFn := func(_ context.Context, _ *ai.Model, _ string, _ []agent.AgentMessage, options ai.StreamOptions) (string, *ai.Usage, error) {
 		streamCalls++
-		if options.MaxTokens <= 0 {
-			t.Fatalf("maxTokens = %d, want > 0", options.MaxTokens)
+		if options.MaxTokens != 0 {
+			t.Fatalf("maxTokens = %d, want none set (Pi 6fcb4867)", options.MaxTokens)
 		}
 		return "stream summary", nil, nil
 	}

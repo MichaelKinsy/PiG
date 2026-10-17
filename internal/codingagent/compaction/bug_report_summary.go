@@ -107,7 +107,9 @@ func GenerateBugReportSummary(ctx context.Context, opts GenerateBugReportSummary
 	if model.Capabilities.MaxOutputTokens > 0 {
 		maxTokens = min(maxTokens, model.Capabilities.MaxOutputTokens)
 	}
-	options := createSummarizationOptions(model, maxTokens, opts.APIKey, opts.Headers, opts.Env, opts.ThinkingLevel, opts.SessionID)
+	// bug-report.ts keeps its own 4096 cap on the summary (Pi 6fcb4867 dropped maxTokens only from compaction summaries).
+	options := createSummarizationOptions(model, opts.APIKey, opts.Headers, opts.Env, opts.ThinkingLevel, opts.SessionID)
+	options.MaxTokens = maxTokens
 	text, _, err := completeSummarization(ctx, model, opts.Completer, opts.StreamFn, opts.Retry, ai.RetryCallbacks{}, bugSummarySystemPrompt, request, options)
 	if ctx.Err() != nil {
 		return "", errors.New("Bug report summary was cancelled")

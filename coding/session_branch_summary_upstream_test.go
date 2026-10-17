@@ -254,21 +254,17 @@ func (p *upstreamBranchProvider) Stream(_ context.Context, _ ai.TranscriptContex
 }
 
 func TestBranchSummarizationUpstream(t *testing.T) {
+	// branch-summarization.test.ts at Pi 8efd314f: three cases; Pi 6fcb4867 dropped the output-cap case and the maxTokens
+	// assertion, since a branch summary sets no maxTokens.
 	cases := []struct {
 		name      string
 		max       int
 		response  ai.AssistantMessage
-		wantMax   int
 		wantError string
 	}{
-		// .upstream/v0.87.1/packages/coding-agent/test/branch-summarization.test.ts:47
-		{"does not override tool choice for branch summaries", 8192, ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}, 4096, ""},
-		// .upstream/v0.87.1/packages/coding-agent/test/branch-summarization.test.ts:68
-		{"clamps the branch summary output cap to the model limit", 1024, ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}, 1024, ""},
-		// .upstream/v0.87.1/packages/coding-agent/test/branch-summarization.test.ts:88
-		{"rejects tool calls from branch summaries", 8192, ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "tool-call-1", Name: "read", Arguments: ai.JsonObject{"path": "README.md"}}}, StopReason: ai.StopReasonToolUse}, 4096, "Branch summarization attempted to call a tool"},
-		// .upstream/v0.87.1/packages/coding-agent/test/branch-summarization.test.ts:112
-		{"rejects length-limited branch summaries", 8192, ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}, StopReason: ai.StopReasonLength}, 4096, "Branch summarization failed: generation hit the token cap and the summary is incomplete"},
+		{"does not override tool choice for branch summaries", 8192, ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}, ""},
+		{"rejects tool calls from branch summaries", 8192, ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "tool-call-1", Name: "read", Arguments: ai.JsonObject{"path": "README.md"}}}, StopReason: ai.StopReasonToolUse}, "Branch summarization attempted to call a tool"},
+		{"rejects length-limited branch summaries", 8192, ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}, StopReason: ai.StopReasonLength}, "Branch summarization failed: generation hit the token cap and the summary is incomplete"},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -286,7 +282,7 @@ func TestBranchSummarizationUpstream(t *testing.T) {
 			if result.Error != tc.wantError {
 				t.Fatalf("error = %q, want %q", result.Error, tc.wantError)
 			}
-			if len(provider.options) != 1 || provider.options[0].MaxTokens != tc.wantMax || provider.options[0].ToolChoice != nil {
+			if len(provider.options) != 1 || provider.options[0].MaxTokens != 0 || provider.options[0].ToolChoice != nil {
 				t.Fatalf("options = %+v", provider.options)
 			}
 			fmt.Printf("BRANCH_SUMMARY %d max=%d error=%q\n", i, provider.options[0].MaxTokens, result.Error)

@@ -110,7 +110,11 @@ func TestGenerateSummaryMatchesPi(t *testing.T) {
 					headers[name] = *value
 				}
 			}
-			record := map[string]any{"maxTokens": options.MaxTokens, "cacheRetention": string(options.CacheRetention)}
+			record := map[string]any{"cacheRetention": string(options.CacheRetention)}
+			// Go's zero MaxTokens is Pi's absent maxTokens (no limit set; summaries use the model's own since Pi 6fcb4867).
+			if options.MaxTokens != 0 {
+				record["maxTokens"] = options.MaxTokens
+			}
 			if options.APIKey != "" || scenario.APIKey != nil {
 				record["apiKey"] = options.APIKey
 			}

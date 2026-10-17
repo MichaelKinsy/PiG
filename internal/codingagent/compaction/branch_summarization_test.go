@@ -310,30 +310,21 @@ func TestGenerateBranchSummary_Success(t *testing.T) {
 // input token budget (context window minus reserve) must not reach the request.
 // Pi: packages/coding-agent/src/core/compaction/branch-summarization.ts:39 (BranchSummaryResult.aborted); packages/coding-agent/src/core/compaction/branch-summarization.ts:83 (GenerateBranchSummaryOptions.reserveTokens).
 func TestBranchSummaryMaxTokens(t *testing.T) {
-	cases := []struct {
-		name            string
-		maxOutputTokens int
-		want            int
-	}{
-		{name: "large output limit caps at 4096", maxOutputTokens: 64000, want: 4096},
-		{name: "small output limit wins", maxOutputTokens: 1024, want: 1024},
-		{name: "unknown output limit uses 4096", maxOutputTokens: 0, want: 4096},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			completer := &fakeCompleter{response: "summary"}
-			model := &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: tc.maxOutputTokens}}
-			result := GenerateBranchSummary(context.Background(), makeTestEntries(), GenerateBranchSummaryOptions{
-				Model:         model,
-				Completer:     completer,
-				ReserveTokens: 16384,
-			})
-			if result.Error != "" || result.Aborted {
-				t.Fatalf("unexpected result: %+v", result)
-			}
-			if !slices.Equal(completer.maxTokens, []int{tc.want}) {
-				t.Fatalf("maxTokens = %v, want [%d]", completer.maxTokens, tc.want)
-			}
+	// branch-summarization.test.ts (Pi 6fcb4867, #9512): a branch summary sets no maxTokens, whatever the model's output
+	// limit, so it uses the model's own.
+	for _, maxOutputTokens := range []int{64000, 1024, 0} {
+		completer := &fakeCompleter{response: "summary"}
+		model := &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: maxOutputTokens}}
+		result := GenerateBranchSummary(context.Background(), makeTestEntries(), GenerateBranchSummaryOptions{
+			Model:         model,
+			Completer:     completer,
+			ReserveTokens: 16384,
 		})
+		if result.Error != "" || result.Aborted {
+			t.Fatalf("unexpected result: %+v", result)
+		}
+		if !slices.Equal(completer.maxTokens, []int{0}) {
+			t.Fatalf("output limit %d: maxTokens = %v, want none set", maxOutputTokens, completer.maxTokens)
+		}
 	}
 }
