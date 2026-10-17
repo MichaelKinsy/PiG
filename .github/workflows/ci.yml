@@ -125,6 +125,13 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      # Go bumps an entry's mtime when a build reads it, at most once an hour (cmd/go/internal/cache mtimeInterval). Backdating
+      # the restored entries by two hours lets the save step keep only what this job used, so the saved cache does not grow
+      # with every commit.
+      - name: Age the restored Go build cache
+        if: matrix.shard == 'test-fast'
+        shell: bash
+        run: automation/ci/gocache-trim.sh age
       # portmap-check runs each proven PORT_MAP row's evidence tests under coverage and keeps the green results in
       # build/portmap-coverage, keyed by the digest of the cited files and tests; restored here so contracts reruns only changed rows.
       - name: Restore the PORT_MAP coverage cache
@@ -180,6 +187,12 @@ jobs:
           echo "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
+      # The oracle build is the same for every job of a pin; oracle.py reuses a restored build whose stamp matches.
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Prepare pinned Pi oracle
         run: make upstream-mirror
       - name: Verify toolchain identities
@@ -219,6 +232,10 @@ jobs:
         with:
           path: build/portmap-coverage
           key: portmap-coverage-${{ github.sha }}
+      - name: Keep only the Go build cache entries this job used
+        if: success() && matrix.shard == 'test-fast'
+        shell: bash
+        run: automation/ci/gocache-trim.sh trim
       - name: Save the Go build cache
         if: success() && matrix.shard == 'test-fast'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -364,6 +381,10 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: Age the restored Go build cache
+        if: matrix.shard == 'native-1'
+        shell: bash
+        run: automation/ci/gocache-trim.sh age
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
@@ -400,6 +421,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
           rg --version
           if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
+      # Without this every Windows job builds the oracle from source (5-12 minutes); oracle.py reuses a restored build whose stamp matches.
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Install pinned Pi test oracle
         shell: bash
         run: |
@@ -541,6 +568,10 @@ jobs:
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
           go test -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
+      - name: Keep only the Go build cache entries this job used
+        if: success() && matrix.shard == 'native-1'
+        shell: bash
+        run: automation/ci/gocache-trim.sh trim
       - name: Save the Go build cache
         if: success() && matrix.shard == 'native-1'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -592,6 +623,11 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       - name: Install native test tools and pinned Pi oracle
         shell: bash
         run: |
@@ -698,6 +734,33 @@ jobs:
           automation/release/android-binary.sh check "$RUNNER_TEMP/pig-android"
       - name: Vet the Android packages
         run: CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
+
+  cache-prune:
+    name: Prune superseded caches
+    # Each run saves a Go build cache and the PORT_MAP coverage under a new per-commit key, and the repository's cache limit
+    # evicts by age once it is full. Keeping only the newest entry of each per-commit prefix leaves room for every OS's cache.
+    needs: [linux, windows, macos]
+    # A fork's pull request gets a read-only token, so only same-repository events prune.
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Delete all but the newest cache of each per-commit prefix
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for prefix in gocache-Linux- gocache-Windows- portmap-coverage- pi-oracle-Linux- pi-oracle-Windows- pi-oracle-macOS-; do
+            gh cache list --repo "$REPO" --key "$prefix" --sort created_at --order desc --limit 100 --json id --jq '.[1:][].id' |
+              while read -r id; do
+                # A concurrent run may have deleted the same superseded entry first.
+                gh cache delete "$id" --repo "$REPO" || echo "::warning::cache $id could not be deleted"
+              done
+          done
 
   result:
     name: CI result
