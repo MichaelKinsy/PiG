@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
-	"github.com/MichaelKinsy/PiG/durable/storage/sqlite/cloudflare"
+	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/cloudflare"
 )
 
 // Pi packages/durable/src/storage/sqlite/cloudflare.ts:36-43 bindValue: a bigint binding is exact between Number.MIN_SAFE_INTEGER and Number.MAX_SAFE_INTEGER (±(2^53-1)) and a RangeError beyond; the check applies
@@ -47,14 +47,14 @@ func TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor(t *testing.T) {
 	database := cloudflare.NewDurableObjectSqliteDatabase(newFakeStorage(t))
 	check(t, database.Exec("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)"))
 	check(t, database.Exec("INSERT INTO items VALUES (1, 'a'); INSERT INTO items VALUES (2, 'b'); INSERT INTO items VALUES (3, 'c')"))
-	first := must(t, func() (durablesqlite.SqliteRow, error) { return database.Get("SELECT id, name FROM items ORDER BY id") })
+	first := must(t, func() (chordsqlite.SqliteRow, error) { return database.Get("SELECT id, name FROM items ORDER BY id") })
 	if first["id"] != int64(1) || first["name"] != "a" {
 		t.Fatalf("Get = %v, want the first row", first)
 	}
-	if none := must(t, func() (durablesqlite.SqliteRow, error) { return database.Get("SELECT id FROM items WHERE id > ?", 9) }); none != nil {
+	if none := must(t, func() (chordsqlite.SqliteRow, error) { return database.Get("SELECT id FROM items WHERE id > ?", 9) }); none != nil {
 		t.Fatalf("Get of no rows = %v, want nil", none)
 	}
-	all := must(t, func() ([]durablesqlite.SqliteRow, error) { return database.All("SELECT id FROM items ORDER BY id") })
+	all := must(t, func() ([]chordsqlite.SqliteRow, error) { return database.All("SELECT id FROM items ORDER BY id") })
 	if len(all) != 3 || all[0]["id"] != int64(1) || all[2]["id"] != int64(3) {
 		t.Fatalf("All = %v, want three rows in order", all)
 	}
@@ -117,7 +117,7 @@ func TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction(t *te
 			transactionDone := make(chan struct{})
 			go func() {
 				defer close(transactionDone)
-				check(t, database.Transaction(func(handle durablesqlite.SqliteExecutor) error {
+				check(t, database.Transaction(func(handle chordsqlite.SqliteExecutor) error {
 					close(inside)
 					<-gate
 					return nil
@@ -149,9 +149,9 @@ func TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction(t *te
 func TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles(t *testing.T) {
 	database := cloudflare.NewDurableObjectSqliteDatabase(newFakeStorage(t))
 	check(t, database.Exec("CREATE TABLE items (id INTEGER PRIMARY KEY)"))
-	var handle durablesqlite.SqliteExecutor
+	var handle chordsqlite.SqliteExecutor
 	ran := false
-	check(t, database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
+	check(t, database.Transaction(func(transaction chordsqlite.SqliteExecutor) error {
 		handle = transaction
 		ran = true
 		return transaction.Run("INSERT INTO items (id) VALUES (?)", 5)
@@ -159,7 +159,7 @@ func TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallba
 	if !ran {
 		t.Fatal("the transaction callback did not run")
 	}
-	if rows := must(t, func() ([]durablesqlite.SqliteRow, error) { return database.All("SELECT id FROM items") }); len(rows) != 1 {
+	if rows := must(t, func() ([]chordsqlite.SqliteRow, error) { return database.All("SELECT id FROM items") }); len(rows) != 1 {
 		t.Fatalf("rows %v, want the callback's insert committed", rows)
 	}
 	inactive := func(err error) bool { return err != nil && strings.Contains(err.Error(), "no longer active") }

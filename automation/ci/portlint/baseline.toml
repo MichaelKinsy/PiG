@@ -6309,43 +6309,43 @@ snippet = "id, err := durable.Commit(context.Background(), kernel, func(tx durab
 
 [[hit]]
 check = "ctxbackground"
-file = "durable/storage/sqlite/node/node.go"
+file = "chord/sqlite/node/node.go"
 func = "NewDatabaseSync"
 snippet = "conn, err := db.Conn(context.Background())"
 
 [[hit]]
 check = "ctxbackground"
-file = "durable/storage/sqlite/node/node.go"
+file = "chord/sqlite/node/node.go"
 func = "NewDatabaseSync"
 snippet = "context.Background(), fmt.Sprintf(\"PRAGMA busy_timeout = %d\", max(options.TimeoutMs, 0)),"
 
 [[hit]]
 check = "ctxbackground"
-file = "durable/storage/sqlite/node/node.go"
+file = "chord/sqlite/node/node.go"
 func = "DatabaseSync.Exec"
 snippet = "_, err = conn.ExecContext(context.Background(), sqlText)"
 
 [[hit]]
 check = "ctxbackground"
-file = "durable/storage/sqlite/node/node.go"
+file = "chord/sqlite/node/node.go"
 func = "DatabaseSync.Prepare"
 snippet = "statement, err := conn.PrepareContext(context.Background(), sqlText)"
 
 [[hit]]
 check = "ctxbackground"
-file = "durable/storage/sqlite/node/node.go"
+file = "chord/sqlite/node/node.go"
 func = "StatementSync.Run"
 snippet = "_, err := statement.statement.ExecContext(context.Background(), params...)"
 
 [[hit]]
 check = "ctxbackground"
-file = "durable/storage/sqlite/node/node.go"
+file = "chord/sqlite/node/node.go"
 func = "StatementSync.EachText"
 snippet = "rows, err := statement.statement.QueryContext(context.Background(), params...)"
 
 [[hit]]
 check = "ctxbackground"
-file = "durable/storage/sqlite/node/node.go"
+file = "chord/sqlite/node/node.go"
 func = "StatementSync.query"
 snippet = "rows, err := statement.statement.QueryContext(context.Background(), params...)"
 

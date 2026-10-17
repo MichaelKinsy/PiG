@@ -3,10 +3,7 @@ package sqlite
 // Ports packages/durable/src/storage/sqlite/schema.ts
 
 import (
-	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
+	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
 // SqliteTables are the table names of the durable schema. The values never change or disappear; a rename adds a new
@@ -50,19 +47,8 @@ type SqliteSchema struct {
 	Indexes SqliteIndexes
 }
 
-var sqliteSchemaPrefixPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-
-// ValidateSqliteSchemaPrefix checks a prefix before it becomes part of a SQLite identifier: it must be an identifier and
-// must not begin with SQLite's reserved `sqlite_` (any case).
-func ValidateSqliteSchemaPrefix(prefix string) error {
-	if !sqliteSchemaPrefixPattern.MatchString(prefix) {
-		return fmt.Errorf("Invalid SQLite schema prefix %s", jsonQuote(prefix))
-	}
-	if strings.HasPrefix(strings.ToLower(prefix), "sqlite_") {
-		return fmt.Errorf("SQLite schema prefix %s is reserved", jsonQuote(prefix))
-	}
-	return nil
-}
+// ValidateSqliteSchemaPrefix is Chord's prefix check, re-exported as Pi's durable schema entry point re-exports it.
+var ValidateSqliteSchemaPrefix = chordsqlite.ValidateSqliteSchemaPrefix
 
 // CreateSqliteSchema builds the identifiers of every migration and storage query. A nil prefix leaves the names as they
 // are; a present prefix, even an empty one, must pass ValidateSqliteSchemaPrefix.
@@ -116,13 +102,4 @@ func mustDefaultSchema() SqliteSchema {
 		panic(err)
 	}
 	return schema
-}
-
-// jsonQuote is JSON.stringify(text) for an error message.
-func jsonQuote(text string) string {
-	quoted, err := encodeJSON(text)
-	if err != nil {
-		return strconv.Quote(text)
-	}
-	return quoted
 }

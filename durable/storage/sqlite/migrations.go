@@ -3,16 +3,13 @@ package sqlite
 // Ports packages/durable/src/storage/sqlite/migrations.ts
 
 import (
-	"errors"
-	"fmt"
 	"strings"
+
+	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// SqliteMigration is one immutable schema version and the statements that create it from the previous version.
-type SqliteMigration struct {
-	Version    int
-	Statements []string
-}
+// SqliteMigration is Chord's migration type, re-exported as Pi's durable migrations entry point re-exports it.
+type SqliteMigration = chordsqlite.SqliteMigration
 
 // CreateSqliteMigrations builds the immutable, ordered schema history for a set of SQLite identifiers (createSqliteMigrations).
 func CreateSqliteMigrations(schema SqliteSchema) []SqliteMigration {
@@ -156,55 +153,5 @@ func ApplySqliteMigrationsForSchema(database SqliteDatabase, schema SqliteSchema
 	if migrations == nil {
 		migrations = CreateSqliteMigrations(schema)
 	}
-	for index, migration := range migrations {
-		if migration.Version != index+1 {
-			return errors.New("Durable SQLite migrations must have contiguous versions starting at 1")
-		}
-	}
-
-	durableSchema := schema.Tables.DurableSchema
-	return database.Transaction(func(transaction SqliteExecutor) error {
-		if err := transaction.Exec(`CREATE TABLE IF NOT EXISTS ` + durableSchema + ` (
-			singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
-			version INTEGER NOT NULL CHECK (version >= 0)
-		) STRICT`); err != nil {
-			return err
-		}
-		if err := transaction.Run("INSERT OR IGNORE INTO " + durableSchema + " (singleton, version) VALUES (1, 0)"); err != nil {
-			return err
-		}
-		row, err := transaction.Get("SELECT version FROM " + durableSchema + " WHERE singleton = 1")
-		if err != nil {
-			return err
-		}
-		if row == nil {
-			return errors.New("Durable SQLite schema metadata is missing")
-		}
-		version, err := rowInt(row, "version")
-		if err != nil {
-			return err
-		}
-		currentVersion := lastVersion(migrations)
-		if version > int64(currentVersion) {
-			return fmt.Errorf(
-				"Durable SQLite schema version %d is newer than supported version %d", version, currentVersion,
-			)
-		}
-		for _, migration := range migrations {
-			if int64(migration.Version) <= version {
-				continue
-			}
-			for _, statement := range migration.Statements {
-				if err := transaction.Exec(statement); err != nil {
-					return err
-				}
-			}
-			if err := transaction.Run(
-				"UPDATE "+durableSchema+" SET version = ? WHERE singleton = 1", migration.Version,
-			); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return chordsqlite.ApplySqliteMigrations(database, migrations, chordsqlite.ApplySqliteMigrationsOptions{Table: schema.Tables.DurableSchema})
 }

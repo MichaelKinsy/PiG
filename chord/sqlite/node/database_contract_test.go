@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
+	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
 // Pi 1.2.0 packages/durable/test/sqlite-facade.test.ts:112 "commits work done through the transaction handle and closes idempotently" and the SqliteDatabase contract (database.ts): a failed callback rolls the transaction back and Transaction returns that same error; Close is idempotent.
@@ -15,10 +15,10 @@ import (
 // mutation-checked: zeroing the results of SqliteDatabase.Transaction fails it
 // Pi: packages/durable/src/storage/sqlite/database.ts:5 (transaction)
 func TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently(t *testing.T) {
-	var database durablesqlite.SqliteDatabase = mustOpenMemory(t)
+	var database chordsqlite.SqliteDatabase = mustOpenMemory(t)
 	mustDo(t, database.Exec("CREATE TABLE contract_probe (value INTEGER)"))
 	failure := errors.New("callback failed")
-	err := database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
+	err := database.Transaction(func(transaction chordsqlite.SqliteExecutor) error {
 		if runErr := transaction.Run("INSERT INTO contract_probe (value) VALUES (?)", 1); runErr != nil {
 			return runErr
 		}
@@ -32,12 +32,12 @@ func TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently(
 	if len(rows) != 0 {
 		t.Fatalf("rows after a rolled-back transaction: %v", rows)
 	}
-	mustDo(t, database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
+	mustDo(t, database.Transaction(func(transaction chordsqlite.SqliteExecutor) error {
 		return transaction.Run("INSERT INTO contract_probe (value) VALUES (?)", 2)
 	}))
 	row, err := database.Get("SELECT value FROM contract_probe")
 	mustDo(t, err)
-	expectRow(t, row, durablesqlite.SqliteRow{"value": int64(2)})
+	expectRow(t, row, chordsqlite.SqliteRow{"value": int64(2)})
 	mustDo(t, database.Close())
 	mustDo(t, database.Close())
 }
@@ -50,7 +50,7 @@ func TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails(t *testing.T) 
 	database := mustOpenMemory(t)
 	mustDo(t, database.Exec("CREATE TABLE rollback_pair (value INTEGER)"))
 	failure := errors.New("callback failed after an escaped commit")
-	err := database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
+	err := database.Transaction(func(transaction chordsqlite.SqliteExecutor) error {
 		mustDo(t, transaction.Exec("INSERT INTO rollback_pair (value) VALUES (1)"))
 		mustDo(t, transaction.Exec("COMMIT"))
 		return failure

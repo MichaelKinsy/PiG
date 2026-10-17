@@ -59,7 +59,7 @@ var dirSeeds = map[string][]string{
 	"env":                         {"env"},
 	"telemetry":                   {"telemetry"},
 	"telemetry/testing":           {"telemetry/telemetrytest"},
-	"chord":                       {"internal/chord", "chord", "chord/host"},
+	"chord":                       {"internal/chord", "chord", "chord/host", "chord/sqlite", "chord/sqlite/node", "chord/sqlite/cloudflare"},
 	"chord/delta":                 {"chord/delta", "internal/chord/delta"},
 	"chord/context":               {"chord/context"},
 	"chord/node":                  {"chord/host"},

@@ -188,6 +188,15 @@ classification = "upstream"
 rationale = "pi-chord PROTOCOL_VERSION (packages/chord/src/wire.ts:24), announced in hello; peers of another version close the link. Pig speaks 2 while the pinned Pi speaks 4: protocols 3 and 4 are the owner-approved 0.5.0 Chord exception finished in 0.5.1."
 
 [[fields]]
+id = "chord/sqlite/migrations.go#SqliteMigration.Version:go:-"
+path = "chord/sqlite/migrations.go"
+owner = "SqliteMigration"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "Chord SQLite schema migration version (packages/chord/src/sqlite/migrations.ts), the migration type pi-durable re-exports."
+
+[[fields]]
 id = "cmd/check-model-data/model_data.go#ModelDataManifest.SchemaVersion:json:schemaVersion"
 path = "cmd/check-model-data/model_data.go"
 owner = "ModelDataManifest"
@@ -744,15 +753,6 @@ field = "Version"
 wire_name = "version"
 classification = "upstream"
 rationale = "pi-durable document content version in the JSONL storage line (packages/durable/src/storage/jsonl/storage.ts)."
-
-[[fields]]
-id = "durable/storage/sqlite/migrations.go#SqliteMigration.Version:go:-"
-path = "durable/storage/sqlite/migrations.go"
-owner = "SqliteMigration"
-field = "Version"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-durable SQLite schema migration version (packages/durable/src/storage/sqlite/migrations.ts)."
 
 [[fields]]
 id = "durable/tasks.go#AnyTaskDefinition.Version:go:-"

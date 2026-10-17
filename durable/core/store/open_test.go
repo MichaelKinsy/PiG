@@ -48,7 +48,7 @@ func TestOpenRefusesNewerSchema(t *testing.T) {
 	if !errors.As(err, &newer) || newer.Version != 2 {
 		t.Fatalf("err = %v", err)
 	}
-	if want := "Durable SQLite schema version 2 is newer than supported version 1"; err.Error() != want {
+	if want := "SQLite schema version 2 is newer than supported version 1"; err.Error() != want {
 		t.Fatalf("message %q, want %q", err.Error(), want)
 	}
 }

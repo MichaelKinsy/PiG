@@ -35,7 +35,7 @@ var ErrPending = errors.New("store: waiting for rows")
 type SchemaNewerError struct{ Version int64 }
 
 func (e SchemaNewerError) Error() string {
-	return "Durable SQLite schema version " + strconv.FormatInt(e.Version, 10) + " is newer than supported version 1"
+	return "SQLite schema version " + strconv.FormatInt(e.Version, 10) + " is newer than supported version 1"
 }
 
 // SupportedSchemaVersion is the newest durable_schema.version this build writes and reads (migrations.ts

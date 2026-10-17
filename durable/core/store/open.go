@@ -169,7 +169,7 @@ func (s *Store) onSchema(b *abi.Builder, rows [][]abi.Value) error {
 		// Version 0 (or no row) is a new database or a migration that never committed: applySqliteMigrations seeds the
 		// row, runs migration 1 and records its version, in one commit.
 		if !s.opts.EmptyNew {
-			return errors.New("Durable SQLite schema metadata is missing")
+			return errors.New("SQLite schema metadata is missing")
 		}
 		list := make([]abi.Stmt, 0, len(sqlSchemaV1)+2)
 		list = append(list, abi.Stmt{SQL: stmtSchemaSeed})

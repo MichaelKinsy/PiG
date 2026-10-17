@@ -51,31 +51,6 @@ func TestDurableSQLiteMigrations(t *testing.T) {
 		expectError(t, err, "is newer than supported version")
 	})
 
-	t.Run("rolls initial bootstrap and every pending migration back together", func(t *testing.T) {
-		database := openDatabase(t, databasePath(t))
-		defer func() { mustDo(t, database.Close()) }()
-		failed := []sqlite.SqliteMigration{
-			{Version: 1, Statements: []string{
-				"CREATE TABLE migration_first (value TEXT) STRICT",
-				"INSERT INTO migration_first (value) VALUES ('retained')",
-			}},
-			{Version: 2, Statements: []string{"CREATE TABLE migration_second (value TEXT) STRICT", "THIS IS NOT SQL"}},
-		}
-		if err := sqlite.ApplySqliteMigrations(database, failed); err == nil {
-			t.Fatal("failed migration succeeded")
-		}
-		expectRow(t, database,
-			"SELECT count(*) AS count FROM sqlite_schema WHERE name IN ('durable_schema', 'migration_first', 'migration_second')",
-			sqlite.SqliteRow{"count": 0})
-
-		mustDo(t, sqlite.ApplySqliteMigrations(database, []sqlite.SqliteMigration{
-			failed[0],
-			{Version: 2, Statements: []string{"CREATE TABLE migration_second (value TEXT) STRICT"}},
-		}))
-		expectRow(t, database, "SELECT version FROM durable_schema WHERE singleton = 1", sqlite.SqliteRow{"version": 2})
-		expectRow(t, database, "SELECT value FROM migration_first", sqlite.SqliteRow{"value": "retained"})
-	})
-
 	t.Run("rolls a failed migration back and preserves stored data for a successful retry", func(t *testing.T) {
 		path := databasePath(t)
 		storage := must(node.OpenNodeSqliteStorage(path, node.NodeSqliteStorageOptions{}))

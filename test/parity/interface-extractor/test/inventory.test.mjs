@@ -50,7 +50,7 @@ function buildFixture() {
       "./rpc-entry": { import: "./dist/bundle/rpc-entry.js" },
     },
   }));
-  write(source, "packages/coding-agent/src/index.ts", `export type { Command } from "./types.js";\nexport function main(options?: { cwd?: string }): Promise<void> { return Promise.resolve(); }\n`);
+  write(source, "packages/coding-agent/src/index.ts", `export type { Command } from "./types.js";\nexport { parse as parseFromAi } from "@earendil-works/pi-ai";\nexport function main(options?: { cwd?: string }): Promise<void> { return Promise.resolve(); }\n`);
   write(source, "packages/coding-agent/src/types.ts", `export interface Command { type: "prompt"; message: string; }\n`);
   write(source, "packages/coding-agent/src/rpc-entry.ts", `export function runRpc(...args: string[]): Promise<number> { return Promise.resolve(args.length); }\n`);
 
@@ -102,7 +102,7 @@ function buildFixture() {
       "./rpc-entry": { import: "./dist/bundle/rpc-entry.js" },
     },
   }));
-  write(roots.coding, "dist/index.d.ts", `export type { Command } from "./types.js";\nexport declare function main(options?: { cwd?: string }): Promise<void>;\n`);
+  write(roots.coding, "dist/index.d.ts", `export type { Command } from "./types.js";\nexport { parse as parseFromAi } from "@earendil-works/pi-ai";\nexport declare function main(options?: { cwd?: string }): Promise<void>;\n`);
   write(roots.coding, "dist/types.d.ts", `export interface Command { type: "prompt"; message: string; }\n`);
   write(roots.coding, "dist/rpc-entry.d.ts", `export declare function runRpc(...args: string[]): Promise<number>;\n`);
   write(roots.coding, "dist/bundle/rpc-entry.js", "export {};\n");
@@ -252,6 +252,10 @@ test("extracts package exports, re-exports, overloads, generics, members, and wi
   assert.ok(byID.has("pkg:agent/node#nodeOnly"));
   assert.ok(byID.has("pkg:ai/providers/demo#provider"), [...byID.keys()].filter((id) => id.includes("provider")).join("\n"));
   assert.equal(byID.get("pkg:ai/.#parse").shape.calls.length, 2);
+  // A re-export from another tracked Pi package is Pi's API (durable re-exports chord/sqlite): it resolves to the declaration,
+  // not to an external alias.
+  assert.notEqual(byID.get("pkg:coding-agent/.#parseFromAi").kind, "external");
+  assert.equal(byID.get("pkg:coding-agent/.#parseFromAi").shape.calls.length, 2);
   assert.equal(byID.get("pkg:ai/.#parse::call:0").parentId, "pkg:ai/.#parse");
   assert.equal(byID.get("pkg:ai/.#parse::call:1").role, "call-overload");
 
@@ -283,6 +287,9 @@ test("source/published comparison fails when a published overload disappears", (
   assert.deepEqual(problems, [
     "pkg:ai/.#parse: source/published shape mismatch",
     "pkg:ai/.#parse::call:1: missing from published inventory",
+    // coding-agent re-exports parse from pi-ai, so the lost overload reaches its re-export too.
+    "pkg:coding-agent/.#parseFromAi: source/published shape mismatch",
+    "pkg:coding-agent/.#parseFromAi::call:1: missing from published inventory",
   ]);
 });
 

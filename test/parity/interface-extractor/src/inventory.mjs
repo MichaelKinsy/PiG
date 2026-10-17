@@ -294,12 +294,20 @@ function enumMembers(checker, symbol) {
   }));
 }
 
+/** Whether a module specifier names a tracked Pi package or one of its subpaths. */
+function trackedPackageSpecifier(specifier) {
+  return PACKAGE_LIST.some(({ name }) => specifier === name || specifier.startsWith(`${name}/`));
+}
+
 function externalAlias(symbol) {
   for (const declaration of symbol.declarations ?? []) {
     if (!ts.isExportSpecifier(declaration)) continue;
     const exportDeclaration = declaration.parent?.parent;
     const moduleSpecifier = exportDeclaration?.moduleSpecifier;
     if (!moduleSpecifier || !ts.isStringLiteral(moduleSpecifier) || moduleSpecifier.text.startsWith(".")) continue;
+    // A re-export from another tracked Pi package (durable re-exports chord/sqlite since Pi c268154c) is Pi's own API: it
+    // resolves like a relative re-export, to the declaration in that package. Only a third-party module is external.
+    if (trackedPackageSpecifier(moduleSpecifier.text)) continue;
     return { module: moduleSpecifier.text, name: declaration.propertyName?.text ?? declaration.name.text };
   }
   return undefined;

@@ -386,6 +386,9 @@ var libraryEntries = map[string][]string{
 	"chord:./delta":                       {"./chord", "./chord/delta"},
 	"chord:./node":                        {"./chord/host"},
 	"chord:./output":                      {"./chord/output"},
+	"chord:./sqlite":                      {"./chord/sqlite"},
+	"chord:./sqlite/node":                 {"./chord/sqlite/node"},
+	"chord:./sqlite/cloudflare":           {"./chord/sqlite/cloudflare"},
 }
 
 // libraryPackages is the sorted, distinct Go packages of libraryEntries.

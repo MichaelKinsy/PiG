@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
+	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
 // packages/durable/src/storage/sqlite/database.ts SqliteExecutor.all: every row with positional bindings, in statement order, through
@@ -14,9 +14,9 @@ import (
 // packages/durable/src/storage/sqlite/database.ts:15: all(sql, ...params) resolves every row; database.ts:36 transaction(callback) commits when the callback resolves.
 func TestSqliteExecutorAllThroughDatabaseAndTransaction(t *testing.T) {
 	opened := mustOpenMemory(t)
-	var database durablesqlite.SqliteDatabase = opened
+	var database chordsqlite.SqliteDatabase = opened
 	t.Cleanup(func() { _ = database.Close() })
-	var executor durablesqlite.SqliteExecutor = database
+	var executor chordsqlite.SqliteExecutor = database
 	mustDo(t, executor.Exec("CREATE TABLE numbers (value INTEGER NOT NULL)"))
 	for _, value := range []int64{3, 1, 2} {
 		mustDo(t, executor.Run("INSERT INTO numbers (value) VALUES (?)", value))
@@ -41,7 +41,7 @@ func TestSqliteExecutorAllThroughDatabaseAndTransaction(t *testing.T) {
 	if row != nil {
 		t.Fatalf("Get with no match = %v, want nil", row)
 	}
-	mustDo(t, database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
+	mustDo(t, database.Transaction(func(transaction chordsqlite.SqliteExecutor) error {
 		if err := transaction.Run("INSERT INTO numbers (value) VALUES (?)", int64(4)); err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ func TestSqliteExecutorAllThroughDatabaseAndTransaction(t *testing.T) {
 	}))
 	// packages/durable/src/storage/sqlite/database.ts:23-36: a callback that rejects rolls the transaction back before the rejection reaches the caller.
 	rollback := errors.New("rollback")
-	if err := database.Transaction(func(transaction durablesqlite.SqliteExecutor) error {
+	if err := database.Transaction(func(transaction chordsqlite.SqliteExecutor) error {
 		if err := transaction.Run("INSERT INTO numbers (value) VALUES (?)", int64(99)); err != nil {
 			return err
 		}
