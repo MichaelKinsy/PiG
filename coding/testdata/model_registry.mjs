@@ -25,6 +25,15 @@ for (const scenario of JSON.parse(input)) {
     if (scenario.models !== null) writeFileSync(modelsPath, scenario.models);
     const runtime = await ModelRuntime.create({ authPath, modelsPath });
     const registry = new ModelRegistry(runtime);
+    // registerProvider, registerNativeProvider and unregisterProvider start `void this.refresh({ allowNetwork: false })` (model-runtime.ts). That pass and a following awaited refresh race to reach queueAvailabilityRefresh, so Pi's published snapshot depends on Node's I/O completion order. Pig orders them deterministically: a refresh over every provider first waits for the queued registration refresh (D84). The "refresh" op settles Pi's pending unawaited refreshes first, which is that order.
+    const pendingRefreshes = new Set();
+    const runtimeRefresh = runtime.refresh.bind(runtime);
+    runtime.refresh = (options) => {
+      const pending = runtimeRefresh(options);
+      pendingRefreshes.add(pending);
+      pending.then(() => pendingRefreshes.delete(pending), () => pendingRefreshes.delete(pending));
+      return pending;
+    };
     const find = (ref) => registry.getAll().find((m) => `${m.provider}/${m.id}` === ref);
     const outs = [];
     for (const op of scenario.ops) {
@@ -83,7 +92,7 @@ for (const scenario of JSON.parse(input)) {
           case "credentials": out = (await runtime.listCredentials()).map((c) => `${c.providerId}:${c.type}`).sort(); break;
           case "logout": await runtime.logout(op.provider); out = null; break;
           case "rewrite": writeFileSync(modelsPath, op.models); out = null; break;
-          case "refresh": { const r = await registry.refresh(); out = { aborted: r.aborted, errors: [...r.errors].map(([k, e]) => [k, String(e.message).replaceAll(dir, "<dir>")]) }; break; }
+          case "refresh": { await Promise.allSettled([...pendingRefreshes]); const r = await registry.refresh(); out = { aborted: r.aborted, errors: [...r.errors].map(([k, e]) => [k, String(e.message).replaceAll(dir, "<dir>")]) }; break; }
           default: throw new Error("op " + op.op);
         }
       } catch (error) { out = { thrown: String(error && error.message) }; }
