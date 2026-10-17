@@ -289810,7 +289810,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -289820,6 +289820,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#messageKey.ok",
         "go:github.com/MichaelKinsy/PiG/ai#radiusReply.ok",
         "go:github.com/MichaelKinsy/PiG/coding/cli#extensionUpgradeReport.Ok",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#fetchResponse.ok"
@@ -351993,7 +351994,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "18 normalized-name Pig candidates are ambiguous."
+        "19 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -352006,6 +352007,7 @@
         "go:github.com/MichaelKinsy/PiG/agent#AgentToolResult.Text",
         "go:github.com/MichaelKinsy/PiG/agent#ToolResultMessage.Text",
         "go:github.com/MichaelKinsy/PiG/ai#argumentSchema.text",
+        "go:github.com/MichaelKinsy/PiG/ai#messageKey.text",
         "go:github.com/MichaelKinsy/PiG/coding/cli#rpcJSValue.text",
         "go:github.com/MichaelKinsy/PiG/coding/extension#RemoteEditorComponent.Text",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentToolResult.Text",
