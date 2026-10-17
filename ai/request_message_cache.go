@@ -136,12 +136,16 @@ const (
 	keyParts
 )
 
+// tag, uvarint, text and raw are not inlined: the record writers call them at some hundred sites, and inlined each call site carried its own bounds check and append growth, which made the writers about 45 KB of the stripped binary (the size gate, test/perfgate) for a record whose cost is dwarfed by an encode.
+//
+//go:noinline
 func (k *messageKey) tag(tag byte) {
 	if !k.over {
 		k.buf = append(k.buf, tag)
 	}
 }
 
+//go:noinline
 func (k *messageKey) uvarint(n uint64) {
 	if !k.over {
 		k.buf = binary.AppendUvarint(k.buf, n)
@@ -149,6 +153,8 @@ func (k *messageKey) uvarint(n uint64) {
 }
 
 // text writes s, which is any string of the message.
+//
+//go:noinline
 func (k *messageKey) text(s string) {
 	if k.over {
 		return
@@ -161,6 +167,7 @@ func (k *messageKey) text(s string) {
 	k.buf = append(k.buf, s...)
 }
 
+//go:noinline
 func (k *messageKey) raw(raw []byte) {
 	if k.over {
 		return
