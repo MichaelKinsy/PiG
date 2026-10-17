@@ -2,6 +2,7 @@ package ai
 
 import (
 	"runtime"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -20,8 +21,22 @@ var ProductVersion = pigversion.Version
 // (<platform> <release>; <arch>)" (owner decision, delivery/OWNER-DECISIONS.md
 // Q4).
 func PiUserAgent() string {
-	return pigidentity.UserAgentProduct + "/" + ProductVersion + " (" + piUserAgentPlatform(runtime.GOOS) + " " + piUserAgentRelease() + "; " + piUserAgentArch(runtime.GOARCH) + ")"
+	return pigidentity.UserAgentProduct + "/" + ProductVersion + " (" + piUserAgentPlatform(runtime.GOOS) + " " + userAgentRelease.get() + "; " + piUserAgentArch(runtime.GOARCH) + ")"
 }
+
+// releaseCache reads the kernel release once: every request's User-Agent header reports it, and the release cannot change while the process runs, so the uname system call (five sysctls on darwin) is not repeated for each request.
+type releaseCache struct {
+	read  func() string
+	once  sync.Once
+	value string
+}
+
+func (cache *releaseCache) get() string {
+	cache.once.Do(func() { cache.value = cache.read() })
+	return cache.value
+}
+
+var userAgentRelease = &releaseCache{read: piUserAgentRelease}
 
 // piUserAgentPlatform maps runtime.GOOS to the vocabulary Node's
 // os.platform() uses, since upstream's user agent reports that value.
