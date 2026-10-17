@@ -105,11 +105,11 @@
   },
   {
     "provider": "opencode",
-    "id": "big-pickle"
+    "id": "beam-free"
   },
   {
     "provider": "opencode",
-    "id": "cat-jam-free"
+    "id": "big-pickle"
   },
   {
     "provider": "opencode",
@@ -150,6 +150,10 @@
   {
     "provider": "opencode",
     "id": "glm-5.3-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "glm-5.3-flash-free"
   },
   {
     "provider": "opencode",
@@ -210,10 +214,6 @@
   {
     "provider": "opencode",
     "id": "space-bunny-free"
-  },
-  {
-    "provider": "opencode",
-    "id": "step-5-preview-free"
   },
   {
     "provider": "opencode",
@@ -361,7 +361,7 @@
   },
   {
     "provider": "opencode-go",
-    "id": "cat-jam-free"
+    "id": "beam-free"
   },
   {
     "provider": "opencode-go",
@@ -429,7 +429,7 @@
   },
   {
     "provider": "opencode-go",
-    "id": "step-5-preview-free"
+    "id": "step-5-preview"
   },
   {
     "provider": "opencode-go",

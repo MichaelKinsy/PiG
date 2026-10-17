@@ -91,11 +91,11 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/compaction/branch-summarization.js",
-      "sha256": "6703ee5d49958fbd302aa4ade5b0fc4c3f882362c390fa959a3b9fc1c92d43f6"
+      "sha256": "5886f5f07f80e24d7ad3e20eb391d430c17145f4a9dee2f1e465c3d578ec2852"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/compaction/compaction.js",
-      "sha256": "69a5b91159645fc344de1ffeee0e677a90da2ea181d8d8186493395d373f2ac5"
+      "sha256": "ad8fbd258cb5335cd52bd5182845fd0c8665e2bc5aaa5fbbe12305f291e4837d"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/compaction/index.js",
@@ -195,7 +195,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-config.js",
-      "sha256": "344b46e224d35bd3f46194cf489f92bf2f655347d5d4e40e784ff189db76a3fe"
+      "sha256": "2cd3c0e623e76a3bb7b245ed4936a09fd69dad292af6f621b7aee49cf7d36d56"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-registry.js",
@@ -203,7 +203,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-resolver.js",
-      "sha256": "8f3b08f5a1f5b6468d47a319c501c392fb469cc430b779720902544b2745d606"
+      "sha256": "387fd5902b9d4632dca4d910bc772a55e6a8f0e3d02eabb2d77e1e3b871f93c3"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-runtime.js",

@@ -249493,9 +249493,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model, maxTokens int, apiKey string, headers map[string]string, env map[string]string, thinkingLevel github.com/MichaelKinsy/PiG/ai.ModelThinkingLevel, sessionID string) github.com/MichaelKinsy/PiG/ai.StreamOptions"
+        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model, apiKey string, headers map[string]string, env map[string]string, thinkingLevel github.com/MichaelKinsy/PiG/ai.ModelThinkingLevel, sessionID string) github.com/MichaelKinsy/PiG/ai.StreamOptions"
       },
-      "shapeHash": "sha256:6e112c2dfa93fe4c67820b6865cca118a32b90c810b11aff3f286991a18ef93d"
+      "shapeHash": "sha256:e23b1de0c0b29612cd157ec9838b9f0f62b2e3b20f5a2b003f4ab5af9b375832"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#customContentChars",
@@ -250046,6 +250046,28 @@
         "type": "func() *Schema"
       },
       "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#CompatSchemaEntry",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "CompatSchemaEntry",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "CompatSchemaEntry"
+      },
+      "shapeHash": "sha256:ac94ed1625300d074302ade3e9994f9a2e4e0e6752eed82d45f41581d1fc5258"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#CompatSchemasByApi",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "CompatSchemasByApi",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []CompatSchemaEntry"
+      },
+      "shapeHash": "sha256:a0a68a0a57266c2be01caee8caa0f903487a8cdd3e8703761900ebcee2f4a7e8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#D",
@@ -250708,6 +250730,17 @@
       "shapeHash": "sha256:42aa0ccc5818b7b3f2fd2a2ceae195fbeba6a6babee5d3e157d504f541dc3b4e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#compatSchemaNamed",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "compatSchemaNamed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) *Schema"
+      },
+      "shapeHash": "sha256:814c2616ca2c729ef7fefae0c1e05bde50b0f474b5b0e6193ec9180bcd6e05ba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#definitionName",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "definitionName",
@@ -250750,6 +250783,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#headersSchema",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "headersSchema",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *Schema"
+      },
+      "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#jsKeyOrder",
@@ -250884,6 +250928,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelContextWindowDescription",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "modelContextWindowDescription",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelCostRates",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "modelCostRates",
@@ -250928,6 +250983,28 @@
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelMaxTokensDescription",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "modelMaxTokensDescription",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelNameDescription",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "modelNameDescription",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelOverrideSchema",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "modelOverrideSchema",
@@ -250948,6 +251025,17 @@
         "type": "[]string"
       },
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelReasoningDescription",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "modelReasoningDescription",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelSchemaParts",
@@ -251022,9 +251110,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() *Schema"
+        "type": "func(opts ...Opt) *Schema"
       },
-      "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
+      "shapeHash": "sha256:691c7d3d379b81218ad3c14953061876e1fb9f0e071214f45ebb069dbeeb578b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#nonNegativeSafeInteger",
@@ -251104,17 +251192,6 @@
       "shapeHash": "sha256:c6b01ffd7a951f3e8876ee342b56ffed0c0a4f3199ca02b02eed50f6d61a6425"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#positiveTokenCount",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
-      "name": "positiveTokenCount",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() *Schema"
-      },
-      "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#priceUnion",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "priceUnion",
@@ -251173,6 +251250,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#samplingParamsByThinkingLevel",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
       "name": "samplingParamsByThinkingLevel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *Schema"
+      },
+      "shapeHash": "sha256:85b7a9cb76af224a912e703674404e5d443dabe176e1118e6fb666c8f1f3a7d7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#samplingParamsField",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
+      "name": "samplingParamsField",
       "kind": "function",
       "exported": false,
       "shape": {

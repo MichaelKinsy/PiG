@@ -60,7 +60,7 @@ func TestOverflowLengthStopsUpstream(t *testing.T) {
 		provider, model                             string
 	}{
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:148
-		{name: "detects Xiaomi-style overflow (length stop with zero output and filled context)", input: 58, cacheRead: 1048512, limit: 1048576, want: true, provider: "xiaomi", model: "mimo-v2.5-pro"},
+		{name: "detects Xiaomi-style overflow (length stop with zero output and filled context)", input: 58, cacheRead: 1048512, limit: 1048576, want: true, provider: "xiaomi", model: "mimo-v2.6-pro"},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:159
 		{name: "treats a length stop below the desired output limit as recoverable", input: 3, cacheRead: 253584, cacheWrite: 25554, output: 16, limit: 128000, recoverable: true, want: true, api: APIOpenAIResponses, provider: "openai", model: "gpt-5.6-sol"},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:172

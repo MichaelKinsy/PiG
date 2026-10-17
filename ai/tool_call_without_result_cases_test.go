@@ -35,13 +35,13 @@ func toolWithoutResultUpstreamCases() []toolWithoutResultCase {
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:228
 		{"should filter out tool calls without corresponding tool results", "minimax", "MiniMax-M2.7", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:236
-		{"should filter out tool calls without corresponding tool results", "xiaomi", "mimo-v2.5-pro", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "xiaomi", "mimo-v2.6-pro", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:244
-		{"should filter out tool calls without corresponding tool results", "xiaomi-token-plan-cn", "mimo-v2.5-pro", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "xiaomi-token-plan-cn", "mimo-v2.6-pro", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:252
-		{"should filter out tool calls without corresponding tool results", "xiaomi-token-plan-ams", "mimo-v2.5-pro", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "xiaomi-token-plan-ams", "mimo-v2.6-pro", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:260
-		{"should filter out tool calls without corresponding tool results", "xiaomi-token-plan-sgp", "mimo-v2.5-pro", "", false, ""},
+		{"should filter out tool calls without corresponding tool results", "xiaomi-token-plan-sgp", "mimo-v2.6-pro", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:268
 		{"should filter out tool calls without corresponding tool results", "qwen-token-plan", "qwen3.7-max", "", false, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:276

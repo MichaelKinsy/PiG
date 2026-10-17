@@ -1,0 +1,1 @@
+{"providers":{"routing-test":{"baseUrl":"http://127.0.0.1:1/v1","api":"openai-completions","apiKey":"fixture","models":[{"id":"routing-model","name":"Routing model","contextWindow":1024,"maxTokens":64,"reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}}]}}}

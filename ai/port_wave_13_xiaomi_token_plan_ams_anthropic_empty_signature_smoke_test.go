@@ -17,7 +17,7 @@ func TestPortWave13XiaomiEmptySignatureSmoke(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 		defer cancel()
 		// upstream: packages/ai/test/xiaomi-token-plan-ams-anthropic-empty-signature-smoke.test.ts:8-21 supplies a custom Anthropic model, not the catalog's same-ID API route.
-		model := &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro Anthropic smoke", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: APIAnthropicMessages, ProviderID: "xiaomi-token-plan-ams", BaseURL: "https://token-plan-ams.xiaomimimo.com/anthropic", Reasoning: true, Compat: &ModelCompat{AllowEmptySignature: new(true)}}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 1048576, MaxOutputTokens: 1024, InputCostPer1M: 1, OutputCostPer1M: 3, CacheReadCostPer1M: 0.2, CacheWriteCostPer1M: 0}}
+		model := &Model{ID: "mimo-v2.6-pro", DisplayName: "MiMo-V2.6-Pro Anthropic smoke", Input: []string{"text"}, ProviderMeta: ProviderMetadata{API: APIAnthropicMessages, ProviderID: "xiaomi-token-plan-ams", BaseURL: "https://token-plan-ams.xiaomimimo.com/anthropic", Reasoning: true, Compat: &ModelCompat{AllowEmptySignature: new(true)}}, Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 1048576, MaxOutputTokens: 1024, InputCostPer1M: 1, OutputCostPer1M: 3, CacheReadCostPer1M: 0.2, CacheWriteCostPer1M: 0}}
 		provider := NewAnthropicProvider(AnthropicConfig{APIKey: key, Model: model.ID, ProviderID: model.ProviderMeta.ProviderID, BaseURL: model.ProviderMeta.BaseURL, Compat: model.ProviderMeta.Compat, ModelMetadata: model})
 		defer func() {
 			if err := provider.Close(); err != nil {

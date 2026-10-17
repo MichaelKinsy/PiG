@@ -15,7 +15,7 @@ export const defaultModelPerProvider = {
     azure: "gpt-5.4",
     "openai-codex": "gpt-6.1-sol",
     radius: "balanced",
-    nvidia: "nvidia/nemotron-3-ultra-550b-a55b",
+    nvidia: "nvidia/nemotron-3.5-super-vl-120b-a12b",
     deepseek: "deepseek-v4-pro",
     google: "gemini-3.1-pro-preview",
     "google-vertex": "gemini-3.1-pro-preview",
@@ -45,10 +45,10 @@ export const defaultModelPerProvider = {
     "qwen-token-plan": "qwen3.7-max",
     "qwen-token-plan-cn": "qwen3.7-max",
     "qwen-token-plan-individual": "qwen3.8-max",
-    xiaomi: "mimo-v2.5-pro",
-    "xiaomi-token-plan-cn": "mimo-v2.5-pro",
-    "xiaomi-token-plan-ams": "mimo-v2.5-pro",
-    "xiaomi-token-plan-sgp": "mimo-v2.5-pro",
+    xiaomi: "mimo-v2.6-pro",
+    "xiaomi-token-plan-cn": "mimo-v2.6-pro",
+    "xiaomi-token-plan-ams": "mimo-v2.6-pro",
+    "xiaomi-token-plan-sgp": "mimo-v2.6-pro",
 };
 function splitThinkingSuffix(text) {
     const colonIndex = text.lastIndexOf(":");
@@ -140,7 +140,7 @@ function resolveText(text, request, pool, usable) {
 }
 /**
  * `provider/rest` is only a hint: the whole text may also be a model id on another provider, such as
- * gateway id `zai/glm-5` or commandcode id `xiaomi/mimo-v2.5-pro`. The named provider wins when usable,
+ * gateway id `zai/glm-5` or commandcode id `xiaomi/mimo-v2.6-pro`. The named provider wins when usable,
  * since that is what the syntax usually means; otherwise a sole usable raw match wins, since the named
  * provider could not serve the request. An unusable named match is still preferred over unusable raw
  * matches, so `--api-key` can set up the named provider.

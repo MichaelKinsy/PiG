@@ -1,4 +1,4 @@
-version = "1.3.0"
+version = "1.3.0+8efd314f"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -814,17 +814,17 @@ rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1;
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/compaction/branch_summarization.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/compaction.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/compaction/compaction.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/event-bus.ts"
@@ -877,10 +877,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/model-config.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/model_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/model-registry.ts"
@@ -1542,10 +1542,10 @@ rationale = "The agent-state commits of a tool round (addTools applied to tools 
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/context.ts"
@@ -1563,17 +1563,17 @@ rationale = "WatchEvents delivers batches to the listener in commit order and on
 
 [[files]]
 path = "packages/durable/src/harness/generation.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "microtask-ordering"]
-evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration", "test:durable/harness/harness_compaction_test.go#TestBlockingThresholdCompaction"]
-rationale = "The generation task awaits each step (context read, request, stream, poll, retry timer, tool round, compaction outcome) as a blocking call; the abort signal is a context cancellation that ends the stream and the retry wait, and the partial message is committed in order before the run settles. Waiting on the blocking compaction is the task's `waiting` checkpoint, resumed with the child's outcome."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/harness.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "detached-owned"]
-evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessOpen", "test:durable/harness/harness_lifecycle_test.go#TestHarnessClose", "test:durable/harness/scheduler_scale_test.go#TestSchedulerScaling"]
-rationale = "Open, Resume and Close are blocking calls that return their error: Close signals and joins the task invocations after the close listeners and before Storage closes, and a Harness that never calls Resume schedules nothing. The scheduler's background work is owned by the Harness and drained by Close; scans page through the Session line one page per call."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
@@ -1605,10 +1605,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
-evidence = ["test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall", "test:durable/harness/scheduler_retention_test.go#TestSchedulerRetention", "test:durable/harness/harness_context_ranges_test.go#TestTaskContextRanges", "test:durable/harness/scheduler_storage_failure_test.go#TestASchedulerChainReadThatFailsTheSessionEndsIt", "test:durable/core/session/sched_scenario_test.go#TestSchedulerMatchesPiDurable"]
-rationale = "The commit listener `#observe` runs synchronously inside the publication and queues its reservation, step and finalize work as jobs on the Session line (a promise chain upstream, the ticket queue here, the job taking its ticket in the listener, so it runs before any job queued later). The sweep of forgotten chains is a job of its own on the line, never inside an operation. Task invocations are owned goroutines, one per run, that `signalInvocations` cancels and Close joins after the close listeners and before Storage closes; an abort joins the run, and a run that ignores its signal ends with the Session failure instead of hanging. The idle-context expiry is one timer (time.AfterFunc) that closing stops, and kept contexts are only a cache. `abort`, `waitForTask`, `waitForIdle` and `ownedTasks` are blocking calls that return their error; a throw in the scheduler's own commits fails the Session, which reports it."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
@@ -1633,10 +1633,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:durable/harness/harness_tools_test.go#TestToolExecutionApi", "test:durable/harness/task_abort_owned_test.go#TestTaskRuntimeAbortOwned"]
-rationale = "The runtime handle's calls (commit, outcomes, abortOwned, ownedTasks, executeTool, retained output) are blocking calls that return their value or error and reject once the invocation has ended; abortOwned returns when the task is terminal, and ownedTasks reads the committed records."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
@@ -1871,10 +1871,10 @@ rationale = "The write awaits the per-file mutation queue and the file write as 
 
 [[files]]
 path = "packages/durable/src/types.ts"
-disposition = "translated"
-contracts = ["awaited"]
-evidence = ["test:durable/harness/task_abort_owned_test.go#TestTaskRuntimeAbortOwned"]
-rationale = "The type declarations add awaited task-runtime calls (abortOwned, ownedTasks) and transaction-callback read rules; they map to blocking Go calls that return their value or error."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/env/src/connection.ts"

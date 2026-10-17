@@ -3757,8 +3757,8 @@ function getSummarizationFailure(response, label) {
   return void 0;
 }
 __name(getSummarizationFailure, "getSummarizationFailure");
-function createSummarizationOptions(model, maxTokens, apiKey, headers, env, signal, thinkingLevel, sessionId) {
-  const options = { maxTokens, signal, apiKey, headers, env, sessionId };
+function createSummarizationOptions(model, apiKey, headers, env, signal, thinkingLevel, sessionId) {
+  const options = { signal, apiKey, headers, env, sessionId };
   if (model.reasoning && thinkingLevel && thinkingLevel !== "off") {
     options.reasoning = thinkingLevel;
   }
@@ -3775,8 +3775,8 @@ async function completeSummarization(model, context, options, streamFn, retry, c
   return retryAssistantCall(produce, retry, requestOptions.signal, callbacks);
 }
 __name(completeSummarization, "completeSummarization");
-async function generateSummary(currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
-  return (await generateSummaryWithUsage(currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId)).text;
+async function generateSummary(currentMessages, model, _reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
+  return (await generateSummaryWithUsage(currentMessages, model, _reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId)).text;
 }
 __name(generateSummary, "generateSummary");
 function buildSummarizationContext(promptText) {
@@ -3792,8 +3792,7 @@ function buildSummarizationContext(promptText) {
   });
 }
 __name(buildSummarizationContext, "buildSummarizationContext");
-async function generateSummaryWithUsage(currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
-  const maxTokens = Math.min(Math.floor(0.8 * reserveTokens), model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY);
+async function generateSummaryWithUsage(currentMessages, model, _reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
   let basePrompt = previousSummary ? UPDATE_SUMMARIZATION_PROMPT : SUMMARIZATION_PROMPT;
   if (customInstructions) {
     basePrompt = `${basePrompt}
@@ -3815,7 +3814,7 @@ ${previousSummary}
 `;
   }
   promptText += basePrompt;
-  const completionOptions = createSummarizationOptions(model, maxTokens, apiKey, headers, env, signal, thinkingLevel, sessionId);
+  const completionOptions = createSummarizationOptions(model, apiKey, headers, env, signal, thinkingLevel, sessionId);
   const response = await completeSummarization(model, buildSummarizationContext(promptText), completionOptions, streamFn, retry, callbacks);
   const failure = getSummarizationFailure(response, "Summarization");
   if (failure) {
@@ -3948,18 +3947,18 @@ Create a concise checkpoint of the user's request and the progress shown above. 
 
 Only summarize information explicitly present above. Do not infer or recreate later messages.`;
 async function compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, streamFn, env, retry, callbacks, sessionId) {
-  const { firstKeptEntryId, messagesToSummarize, turnPrefixMessages, isSplitTurn, tokensBefore, previousSummary, fileOps, settings } = preparation;
+  const { firstKeptEntryId, messagesToSummarize, turnPrefixMessages, isSplitTurn, tokensBefore, previousSummary, fileOps } = preparation;
   let summary;
   let summaryUsage;
   if (isSplitTurn && turnPrefixMessages.length > 0) {
     let historyText = previousSummary ?? "No prior history.";
     let historyUsage;
     if (messagesToSummarize.length > 0) {
-      const historyResult = await generateSummaryWithUsage(messagesToSummarize, model, settings.reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
+      const historyResult = await generateSummaryWithUsage(messagesToSummarize, model, void 0, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
       historyText = historyResult.text;
       historyUsage = historyResult.usage;
     }
-    const turnPrefixResult = await generateTurnPrefixSummary(turnPrefixMessages, model, settings.reserveTokens, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId);
+    const turnPrefixResult = await generateTurnPrefixSummary(turnPrefixMessages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId);
     summary = `${historyText}
 
 ---
@@ -3969,7 +3968,7 @@ async function compact(preparation, model, apiKey, headers, customInstructions, 
 ${turnPrefixResult.text}`;
     summaryUsage = historyUsage ? combineUsage(historyUsage, turnPrefixResult.usage) : turnPrefixResult.usage;
   } else {
-    const result = await generateSummaryWithUsage(messagesToSummarize, model, settings.reserveTokens, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
+    const result = await generateSummaryWithUsage(messagesToSummarize, model, void 0, apiKey, headers, signal, customInstructions, previousSummary, thinkingLevel, streamFn, env, retry, callbacks, sessionId);
     summary = result.text;
     summaryUsage = result.usage;
   }
@@ -3987,8 +3986,7 @@ ${turnPrefixResult.text}`;
   };
 }
 __name(compact, "compact");
-async function generateTurnPrefixSummary(messages, model, reserveTokens, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId) {
-  const maxTokens = Math.min(Math.floor(0.5 * reserveTokens), model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY);
+async function generateTurnPrefixSummary(messages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId) {
   const llmMessages = convertToLlm(messages);
   const conversationText = serializeConversation(llmMessages);
   const promptText = `# Conversation
@@ -3996,7 +3994,7 @@ ${conversationText}
 
 # Instructions
 ${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
-  const response = await completeSummarization(model, buildSummarizationContext(promptText), createSummarizationOptions(model, maxTokens, apiKey, headers, env, signal, thinkingLevel, sessionId), streamFn, retry, callbacks);
+  const response = await completeSummarization(model, buildSummarizationContext(promptText), createSummarizationOptions(model, apiKey, headers, env, signal, thinkingLevel, sessionId), streamFn, retry, callbacks);
   const failure = getSummarizationFailure(response, "Turn prefix summarization");
   if (failure) {
     throw new Error(failure);
@@ -4165,9 +4163,8 @@ ${instructions}`;
       timestamp: Date.now()
     }
   ];
-  const maxTokens = Math.min(4096, model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY);
   const context = normalizeContext2({ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages });
-  const requestOptions = { apiKey, headers, env, signal, maxTokens };
+  const requestOptions = { apiKey, headers, env, signal };
   const response = await completeSummarization(model, context, requestOptions, streamFn, retry, callbacks);
   if (response.stopReason === "aborted") {
     return { aborted: true };
@@ -12157,7 +12154,7 @@ var defaultModelPerProvider = {
   azure: "gpt-5.4",
   "openai-codex": "gpt-6.1-sol",
   radius: "balanced",
-  nvidia: "nvidia/nemotron-3-ultra-550b-a55b",
+  nvidia: "nvidia/nemotron-3.5-super-vl-120b-a12b",
   deepseek: "deepseek-v4-pro",
   google: "gemini-3.1-pro-preview",
   "google-vertex": "gemini-3.1-pro-preview",
@@ -12187,10 +12184,10 @@ var defaultModelPerProvider = {
   "qwen-token-plan": "qwen3.7-max",
   "qwen-token-plan-cn": "qwen3.7-max",
   "qwen-token-plan-individual": "qwen3.8-max",
-  xiaomi: "mimo-v2.5-pro",
-  "xiaomi-token-plan-cn": "mimo-v2.5-pro",
-  "xiaomi-token-plan-ams": "mimo-v2.5-pro",
-  "xiaomi-token-plan-sgp": "mimo-v2.5-pro"
+  xiaomi: "mimo-v2.6-pro",
+  "xiaomi-token-plan-cn": "mimo-v2.6-pro",
+  "xiaomi-token-plan-ams": "mimo-v2.6-pro",
+  "xiaomi-token-plan-sgp": "mimo-v2.6-pro"
 };
 function splitThinkingSuffix(text) {
   const colonIndex = text.lastIndexOf(":");
@@ -12545,50 +12542,67 @@ var SamplingParamsByThinkingLevelSchema = Type.Object({
   high: Type.Optional(SamplingParamsSchema),
   xhigh: Type.Optional(SamplingParamsSchema),
   max: Type.Optional(SamplingParamsSchema)
+}, { description: "samplingParams per thinking level, merged over samplingParams." });
+var SamplingParamsFieldSchema = Type.Record(Type.String(), Type.Unknown(), {
+  description: "Fields merged into every request body. Applies only to OpenAI-compatible APIs."
 });
-var PositiveTokenCountSchema = Type.Number({ exclusiveMinimum: 0 });
+var HeadersSchema = Type.Record(Type.String(), Type.String(), {
+  description: "Request headers. Values resolve like apiKey."
+});
+var ModelFieldDescriptions = {
+  name: "Display name, also matched by --model patterns.",
+  reasoning: "Whether the model supports thinking.",
+  contextWindow: "Context window in tokens.",
+  maxTokens: "Maximum output tokens."
+};
 var ModelDefinitionSchema = Type.Object({
-  id: Type.String({ minLength: 1 }),
-  name: Type.Optional(Type.String({ minLength: 1 })),
-  api: Type.Optional(Type.String({ minLength: 1 })),
-  baseUrl: Type.Optional(Type.String({ minLength: 1 })),
-  reasoning: Type.Optional(Type.Boolean()),
+  id: Type.String({ minLength: 1, description: "Model ID sent to the API." }),
+  name: Type.Optional(Type.String({ minLength: 1, description: ModelFieldDescriptions.name })),
+  api: Type.Optional(Type.String({ minLength: 1, description: "Overrides the provider api." })),
+  baseUrl: Type.Optional(Type.String({ minLength: 1, description: "Overrides the provider baseUrl." })),
+  reasoning: Type.Optional(Type.Boolean({ default: false, description: ModelFieldDescriptions.reasoning })),
   thinkingLevelMap: Type.Optional(ThinkingLevelMapSchema),
-  input: Type.Optional(Type.Array(ModelInputModalitySchema)),
+  input: Type.Optional(Type.Array(ModelInputModalitySchema, { default: ["text"] })),
   inputLimits: Type.Optional(ModelInputLimitsSchema),
   cost: Type.Optional(ModelCostSchema),
   promptCache: Type.Optional(ModelPromptCacheSchema),
-  contextWindow: Type.Optional(PositiveTokenCountSchema),
-  maxTokens: Type.Optional(PositiveTokenCountSchema),
-  samplingParams: Type.Optional(SamplingParamsSchema),
+  contextWindow: Type.Optional(Type.Number({ exclusiveMinimum: 0, default: 128e3, description: ModelFieldDescriptions.contextWindow })),
+  maxTokens: Type.Optional(Type.Number({ exclusiveMinimum: 0, default: 16384, description: ModelFieldDescriptions.maxTokens })),
+  samplingParams: Type.Optional(SamplingParamsFieldSchema),
   samplingParamsByThinkingLevel: Type.Optional(SamplingParamsByThinkingLevelSchema),
-  headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+  headers: Type.Optional(HeadersSchema),
   compat: Type.Optional(ProviderCompatSchema)
 });
 var ModelOverrideSchema = Type.Object({
-  name: Type.Optional(Type.String({ minLength: 1 })),
-  reasoning: Type.Optional(Type.Boolean()),
+  name: Type.Optional(Type.String({ minLength: 1, description: ModelFieldDescriptions.name })),
+  reasoning: Type.Optional(Type.Boolean({ description: ModelFieldDescriptions.reasoning })),
   thinkingLevelMap: Type.Optional(ThinkingLevelMapSchema),
   input: Type.Optional(Type.Array(ModelInputModalitySchema)),
   inputLimits: Type.Optional(ModelInputLimitsSchema),
   cost: Type.Optional(Type.Partial(ModelCostSchema)),
   promptCache: Type.Optional(ModelPromptCacheSchema),
-  contextWindow: Type.Optional(PositiveTokenCountSchema),
-  maxTokens: Type.Optional(PositiveTokenCountSchema),
-  samplingParams: Type.Optional(SamplingParamsSchema),
+  contextWindow: Type.Optional(Type.Number({ exclusiveMinimum: 0, description: ModelFieldDescriptions.contextWindow })),
+  maxTokens: Type.Optional(Type.Number({ exclusiveMinimum: 0, description: ModelFieldDescriptions.maxTokens })),
+  samplingParams: Type.Optional(SamplingParamsFieldSchema),
   samplingParamsByThinkingLevel: Type.Optional(SamplingParamsByThinkingLevelSchema),
-  headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+  headers: Type.Optional(HeadersSchema),
   compat: Type.Optional(ProviderCompatSchema)
 });
 var ProviderConfigSchema = Type.Object({
-  name: Type.Optional(Type.String({ minLength: 1 })),
-  baseUrl: Type.Optional(Type.String({ minLength: 1 })),
-  apiKey: Type.Optional(Type.String({ minLength: 1 })),
-  api: Type.Optional(Type.String({ minLength: 1 })),
-  oauth: Type.Optional(Type.Literal("radius")),
-  headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+  name: Type.Optional(Type.String({ minLength: 1, description: "Display name." })),
+  baseUrl: Type.Optional(Type.String({ minLength: 1, description: "API base URL. Also applies to the provider's built-in models." })),
+  apiKey: Type.Optional(Type.String({
+    minLength: 1,
+    description: 'Literal key, "$NAME" environment interpolation, or "!command" output.'
+  })),
+  api: Type.Optional(Type.String({
+    minLength: 1,
+    description: `API for the provider's models, such as "openai-completions", "openai-responses", "anthropic-messages", or "google-generative-ai".`
+  })),
+  oauth: Type.Optional(Type.Literal("radius", { description: "OAuth login flow. Requires baseUrl." })),
+  headers: Type.Optional(HeadersSchema),
   compat: Type.Optional(ProviderCompatSchema),
-  authHeader: Type.Optional(Type.Boolean()),
+  authHeader: Type.Optional(Type.Boolean({ default: false, description: "Whether to send the resolved API key as Authorization: Bearer." })),
   models: Type.Optional(Type.Array(ModelDefinitionSchema)),
   modelOverrides: Type.Optional(Type.Record(Type.String(), ModelOverrideSchema))
 });

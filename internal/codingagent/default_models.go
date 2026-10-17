@@ -11,7 +11,7 @@ var DefaultModelPerProviderOrder = []struct{ Provider, ModelID string }{
 	{"azure", "gpt-5.4"},
 	{"openai-codex", "gpt-6.1-sol"},
 	{"radius", "balanced"},
-	{"nvidia", "nvidia/nemotron-3-ultra-550b-a55b"},
+	{"nvidia", "nvidia/nemotron-3.5-super-vl-120b-a12b"},
 	{"deepseek", "deepseek-v4-pro"},
 	{"google", "gemini-3.1-pro-preview"},
 	{"google-vertex", "gemini-3.1-pro-preview"},
@@ -41,10 +41,10 @@ var DefaultModelPerProviderOrder = []struct{ Provider, ModelID string }{
 	{"qwen-token-plan", "qwen3.7-max"},
 	{"qwen-token-plan-cn", "qwen3.7-max"},
 	{"qwen-token-plan-individual", "qwen3.8-max"},
-	{"xiaomi", "mimo-v2.5-pro"},
-	{"xiaomi-token-plan-cn", "mimo-v2.5-pro"},
-	{"xiaomi-token-plan-ams", "mimo-v2.5-pro"},
-	{"xiaomi-token-plan-sgp", "mimo-v2.5-pro"},
+	{"xiaomi", "mimo-v2.6-pro"},
+	{"xiaomi-token-plan-cn", "mimo-v2.6-pro"},
+	{"xiaomi-token-plan-ams", "mimo-v2.6-pro"},
+	{"xiaomi-token-plan-sgp", "mimo-v2.6-pro"},
 }
 
 // DefaultModelPerProvider returns the defaults shared by startup and authentication.

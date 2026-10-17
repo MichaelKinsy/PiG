@@ -123,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-BLCAHTX7.js";
+} from "./chunk-JV5ZIIBA.js";
 import {
   convertToPng,
   createBashToolDefinition,

@@ -48,6 +48,11 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     // Gateway failure relaying the upstream response stream, sent as an OpenAI
     // Responses `response.failed` event without an error code (#10920).
     "unable to forward upstream",
+    // Other gateway upstream failures relayed as `response.failed` error codes (#10920).
+    "upstream.?request.?failed",
+    "upstream_stream_read_error",
+    "stream was interrupted",
+    "http/?2 stream failed",
     // Network, proxy, and fetch transport failures. This includes OpenAI Codex
     // raw-fetch failures such as "upstream connect", "connection refused", and
     // "reset before headers" (#733), plus OpenRouter connection drops (#3317).
@@ -57,6 +62,9 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
     "connection.?lost",
     "other side closed",
     "fetch failed",
+    // node-fetch system errors, e.g. the Google ADC OAuth token refresh used by
+    // google-vertex. The reason is often empty (#10996).
+    "request to \\S+ failed, reason:",
     "getaddrinfo",
     "ENOTFOUND",
     "EAI_AGAIN",

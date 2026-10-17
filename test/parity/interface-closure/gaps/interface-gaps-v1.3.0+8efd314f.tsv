@@ -1,0 +1,36 @@
+pkg:chord/.#Ctx	chord	child-gap	chord/host/types.go#Ctx
+pkg:chord/.#Ctx::property:get	chord	child-gap	chord/host/types.go#Ctx.Get
+pkg:chord/.#Ctx::property:get::call:0	chord	undecidable	chord/host/types.go#Ctx.Get
+pkg:chord/.#Factory	chord	child-gap	chord/host/object.go#Factory
+pkg:chord/.#Factory::call:0	chord	undecidable	chord/host/object.go#Factory
+pkg:chord/.#Host	chord	child-gap	chord/host/host.go#HostImpl
+pkg:chord/.#Host::property:hold	chord	child-gap	chord/host/host.go#HostImpl.Hold
+pkg:chord/.#Host::property:hold::call:0	chord	undecidable	chord/host/host.go#HostImpl.Hold
+pkg:chord/.#HostOptions	chord	child-gap	chord/host/host.go#HostOptions
+pkg:chord/.#HostOptions::property:self	chord	undecidable	chord/host/host.go#HostOptions.Self
+pkg:chord/.#PlacementFor	chord	no-go-symbol	
+pkg:chord/.#PrincipalMatch	chord	undecidable	chord/host/host.go#PrincipalMatch
+pkg:chord/.#PrincipalPattern	chord	no-go-symbol	
+pkg:chord/.#Self	chord	child-gap	chord/host/object.go#Self
+pkg:chord/.#Self::property:get	chord	child-gap	chord/host/object.go#Self.Get
+pkg:chord/.#Self::property:get::call:0	chord	undecidable	chord/host/object.go#Self.Get
+pkg:chord/.#Self::property:on	chord	child-gap	chord/host/object.go#Self.On
+pkg:chord/.#Self::property:on::call:0	chord	undecidable	chord/host/object.go#Self.On
+pkg:chord/.#Self::property:on::call:1	chord	signature-mismatch	chord/host/object.go#Self.On
+pkg:chord/.#Self::property:state	chord	child-gap	chord/host/object.go#Self.State
+pkg:chord/.#Self::property:state::call:0	chord	undecidable	chord/host/object.go#Self.State
+pkg:chord/.#hostNamed	chord	no-go-symbol	
+pkg:chord/.#hostNamed::call:0	chord	child-gap	
+pkg:chord/.#method	chord	child-gap	chord/host/contract.go#Method
+pkg:chord/.#method::call:0	chord	signature-mismatch	chord/host/contract.go#Method
+pkg:chord/.#method::call:1	chord	signature-mismatch	chord/host/contract.go#Method
+pkg:chord/node#childControl	chord	child-gap	chord/host/manager.go#ChildControl
+pkg:chord/node#childControl::call:0	chord	undecidable	chord/host/manager.go#ChildControl
+pkg:chord/output#OutputBuffer	chord	child-gap	chord/output/output.go#OutputBuffer
+pkg:chord/output#OutputBuffer::property:push	chord	member-missing	chord/output/output.go#OutputBuffer
+pkg:chord/output#OutputBuffer::property:push::call:0	chord	member-missing	chord/output/output.go#OutputBuffer
+pkg:chord/output#Progress	chord	child-gap	chord/output/output.go#Progress
+pkg:chord/output#Progress::property:markAndWait	chord	child-gap	chord/output/output.go#Progress.MarkAndWait
+pkg:chord/output#Progress::property:markAndWait::call:0	chord	signature-mismatch	chord/output/output.go#Progress.MarkAndWait
+pkg:chord/output#Progress::property:stop	chord	child-gap	chord/output/output.go#Progress.Stop
+pkg:chord/output#Progress::property:stop::call:0	chord	undecidable	chord/output/output.go#Progress.Stop

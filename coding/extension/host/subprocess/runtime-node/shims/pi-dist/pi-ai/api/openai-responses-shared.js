@@ -40,7 +40,7 @@ function convertToolResultOutput(model, content) {
         .map((c) => c.text)
         .join("\n");
     const images = content.filter((c) => c.type === "image");
-    const hasText = textResult.length > 0;
+    const hasText = textResult.trim().length > 0;
     if (images.length === 0 || !model.input.includes("image")) {
         return sanitizeSurrogates(hasText ? textResult : images.length > 0 ? "(see attached image)" : "(no tool output)");
     }

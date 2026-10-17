@@ -6,7 +6,7 @@ import (
 )
 
 func emptySignatureModel(compat *ModelCompat) *Model {
-	return &Model{ID: "mimo-v2.5-pro", DisplayName: "MiMo-V2.5-Pro", Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 1048576, MaxOutputTokens: 1024}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "xiaomi-token-plan-ams", API: APIAnthropicMessages, Reasoning: true, Compat: compat}}
+	return &Model{ID: "mimo-v2.6-pro", DisplayName: "MiMo-V2.6-Pro", Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 1048576, MaxOutputTokens: 1024}, Input: []string{"text"}, ProviderMeta: ProviderMetadata{ProviderID: "xiaomi-token-plan-ams", API: APIAnthropicMessages, Reasoning: true, Compat: compat}}
 }
 
 func emptySignatureContext(provider, model, thinking, signature string, answer bool) Context {
@@ -49,7 +49,7 @@ func TestAnthropicUpstreamEmptyThinkingSignature(t *testing.T) {
 		{"preserves empty-signature thinking when allowEmptySignature is enabled", emptySignatureModel(&ModelCompat{AllowEmptySignature: new(true)}), " ", "internal reasoning", `[{"type":"thinking","thinking":"internal reasoning","signature":""}]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			payload := upstreamAnthropicParams(t, tc.model, emptySignatureContext("xiaomi-token-plan-ams", "mimo-v2.5-pro", tc.thinking, tc.signature, false), StreamOptions{})
+			payload := upstreamAnthropicParams(t, tc.model, emptySignatureContext("xiaomi-token-plan-ams", "mimo-v2.6-pro", tc.thinking, tc.signature, false), StreamOptions{})
 			assertShapeJSON(t, assistantPayloadContent(t, payload), tc.want)
 		})
 	}

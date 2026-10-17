@@ -239,7 +239,7 @@ func TestOpenAICompletionsToolChoiceCatalogUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1233
 	t.Run("stores Xiaomi MiMo reasoning replay compat in built-in metadata", func(t *testing.T) {
 		for _, p := range []string{"xiaomi", "xiaomi-token-plan-cn", "xiaomi-token-plan-ams", "xiaomi-token-plan-sgp"} {
-			c := toolChoiceModel(t, p, "mimo-v2.5-pro", false).ProviderMeta.Compat
+			c := toolChoiceModel(t, p, "mimo-v2.6-pro", false).ProviderMeta.Compat
 			if c == nil || c.RequiresReasoningContentOnAssistantMessages == nil || !*c.RequiresReasoningContentOnAssistantMessages || c.ThinkingFormat != "deepseek" || c.MaxTokensField != "" || c.SupportsDeveloperRole != nil {
 				t.Fatalf("%s compat=%#v", p, c)
 			}

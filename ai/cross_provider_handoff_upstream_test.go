@@ -30,7 +30,7 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 		{"minimax", "MiniMax-M2.7", "minimax-m2.7", ""}, {"minimax-cn", "MiniMax-M2.7", "minimax-m2.7", ""},
 		{"opencode", "big-pickle", "zen-big-pickle", ""}, {"opencode", "claude-sonnet-4-5", "zen-claude-sonnet-4-5", ""}, {"opencode", "gemini-3-flash", "zen-gemini-3-flash", ""}, {"opencode", "glm-4.7-free", "zen-glm-4.7-free", ""},
 		{"opencode", "gpt-5.2-codex", "zen-gpt-5.2-codex", ""}, {"opencode", "minimax-m2.1-free", "zen-minimax-m2.1-free", ""}, {"opencode-go", "kimi-k2.5", "go-kimi-k2.5", ""}, {"opencode-go", "minimax-m2.5", "go-minimax-m2.5", ""},
-		{"xiaomi", "mimo-v2.5-pro", "xiaomi-mimo-v2.5-pro", ""}, {"xiaomi-token-plan-cn", "mimo-v2.5-pro", "xiaomi-token-plan-cn-mimo-v2.5-pro", ""}, {"xiaomi-token-plan-ams", "mimo-v2.5-pro", "xiaomi-token-plan-ams-mimo-v2.5-pro", ""}, {"xiaomi-token-plan-sgp", "mimo-v2.5-pro", "xiaomi-token-plan-sgp-mimo-v2.5-pro", ""},
+		{"xiaomi", "mimo-v2.6-pro", "xiaomi-mimo-v2.6-pro", ""}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro", "xiaomi-token-plan-cn-mimo-v2.6-pro", ""}, {"xiaomi-token-plan-ams", "mimo-v2.6-pro", "xiaomi-token-plan-ams-mimo-v2.6-pro", ""}, {"xiaomi-token-plan-sgp", "mimo-v2.6-pro", "xiaomi-token-plan-sgp-mimo-v2.6-pro", ""},
 		{"qwen-token-plan", "qwen3.7-max", "qwen-token-plan-qwen3.7-max", ""}, {"qwen-token-plan-cn", "qwen3.7-max", "qwen-token-plan-cn-qwen3.7-max", ""}, {"qwen-token-plan-individual", "qwen3.8-max", "qwen-token-plan-individual-qwen3.8-max", ""},
 		{"qwen-token-plan-individual", "deepseek-v4-flash-0731", "qwen-token-plan-individual-deepseek-v4-flash-0731", ""}, {"qwen-token-plan-individual", "glm-5.2", "qwen-token-plan-individual-glm-5.2", ""},
 	}

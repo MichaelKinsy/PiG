@@ -44,7 +44,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1257
 	t.Run("replays Xiaomi MiMo assistant tool calls with empty reasoning_content when thinking is missing", func(t *testing.T) {
-		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "xiaomi", "mimo-v2.5-pro", false), replayToolChoiceContext("xiaomi", "mimo-v2.5-pro", "", "", false), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "xiaomi", "mimo-v2.6-pro", false), replayToolChoiceContext("xiaomi", "mimo-v2.6-pro", "", "", false), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
 		assistant := firstToolChoiceAssistant(t, payload)
 		requireToolChoiceField(t, assistant, "role", `"assistant"`)
 		requireToolChoiceField(t, assistant, "reasoning_content", `""`)

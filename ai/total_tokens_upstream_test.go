@@ -52,13 +52,13 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:467
 		{"minimax", "MiniMax-M2.7", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:490
-		{"xiaomi", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:513
-		{"xiaomi-token-plan-cn", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi-token-plan-cn", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:538
-		{"xiaomi-token-plan-ams", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi-token-plan-ams", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:563
-		{"xiaomi-token-plan-sgp", "mimo-v2.5-pro", "", false, false, ""},
+		{"xiaomi-token-plan-sgp", "mimo-v2.6-pro", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:588
 		{"qwen-token-plan", "qwen3.7-max", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:613

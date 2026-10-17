@@ -259,7 +259,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "894a2cf1ce96333027615324165a5d377ad2ad450b4fe04b3d1810f08c1be5d0"
+      "sha256": "cd72fe0902e8b9d84f185417406f3309ef9c1e63539b4bccc9de72062ea5a597"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -299,7 +299,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/fireworks.json",
-      "sha256": "8db3c11f65a5d76260d5040a5dc5a9ef0f35b92de8505a30907c2355c2837b36"
+      "sha256": "8861eba6055f176f7fd927dd3192cd5d1202b5e5d3c2f932e75acdbd667eb268"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
@@ -363,15 +363,15 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "39408ee6da7302e3202d7f7b27d31d4d50a05c340bebd7da25ee23755d506475"
+      "sha256": "2985dc780a2f678b7b688808449b8158a482f32632582f333da81fc4287bbf7f"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "ecf8c62258249de738efee09932f1068c3feaf555779d0196aa129ea8339dd28"
+      "sha256": "1caaef30f72cd5496cc454bfd0ba023ec2cef32a7a25ca5ce63a642322271b35"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "d303cf8e4ad2cfd322ea5fc8c9e617d46b21d36d9ebe0454be26ae92d91440aa"
+      "sha256": "0138fc9eb3027b42746e38e3cb495c70fdc07a3b4d64888f3eef6ef101606eba"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -399,7 +399,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "154de982552dff9874764e724980aad167e2ff58be06d8477f2456494ef1e458"
+      "sha256": "0349284e7219759c43c66b16f516862881fb827bb7557666bcc88dff0480ff25"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
@@ -407,19 +407,19 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-ams.json",
-      "sha256": "8266dc55ef720234373d4ff5434f0b8d40f614300d9e501f7d52935017534c82"
+      "sha256": "bfd33741da693bdb8e8ebd4e7b90c3e90820aa18432ad081a5a98db13c6bd296"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-cn.json",
-      "sha256": "07ade989c0bd1ecf6ed9edc32e561c0dd28c317955b82f51e7a1875083906307"
+      "sha256": "4b61d78feae3a926fda918c3fd3a9afaf2ca60c1bba0af8270a5398fb50a983e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-sgp.json",
-      "sha256": "6afab55c8a37bc4018354ad657c774f0e664ae44cf79befb743bc5ae3fc3e9ba"
+      "sha256": "b05a197ce24fd69fc9440f4ba929984ac7a0fefbe8083268734b422e721987ec"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi.json",
-      "sha256": "93f81b40e4d01f0193dd0b191f6ada2b851a71d351113067999ab0f9dc3f737e"
+      "sha256": "495b5fddf3c3ec8904fecc15c4c19536f4961dce7b51512b6909d2df2e739824"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/zai-coding-cn.json",
@@ -763,7 +763,7 @@
     },
     {
       "path": "pi-dist/pi-ai/utils/retry.js",
-      "sha256": "cab8af3e38101abc2a7c1c51caa871481c805b3cbe83b9d7267e24857736fc60"
+      "sha256": "cd078014e143a2d7b31127ea89def7baa2d411c9efe728e0a7d47be4328430db"
     },
     {
       "path": "pi-dist/pi-ai/utils/text.js",
