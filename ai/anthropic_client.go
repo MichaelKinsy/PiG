@@ -361,16 +361,22 @@ type AnthropicRequestOptions struct {
 	TimeoutMs *int
 }
 
+// wire is the request the body is written from and the anthropic-beta header value: the SDK removes params.betas from the body and sends betas.toString(), and the stream is always on. Marshalling the result as marshalRequestBody does gives the body.
+func (request anthRequest) wire() (anthRequest, *string) {
+	request.Stream = true
+	var betas *string
+	if request.Betas != nil {
+		joined := strings.Join(request.Betas, ",")
+		betas = &joined
+	}
+	request.Betas = nil
+	return request, betas
+}
+
 // anthropicWireBody enforces streaming on replacement payloads and splits request params into the HTTP body and anthropic-beta header. The SDK removes params.betas from the body and sends betas.toString(); absent betas send no header.
 func anthropicWireBody(payload any) ([]byte, *string, error) {
 	if request, ok := payload.(anthRequest); ok {
-		request.Stream = true
-		var betas *string
-		if request.Betas != nil {
-			joined := strings.Join(request.Betas, ",")
-			betas = &joined
-		}
-		request.Betas = nil
+		request, betas := request.wire()
 		body, err := marshalRequestBody(request)
 		return body, betas, err
 	}

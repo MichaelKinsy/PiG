@@ -180,6 +180,9 @@ type anthContentBlock struct {
 
 func (anthContentBlock) carriesRequestStrings() {}
 
+// encodesRequestStrings: no field of the request, nor of anything in it, writes a string in another form than its own, and the request's own marshalers (anthContentBlock, anthTool) write theirs as JSON strings under the caller's options.
+func (anthRequest) encodesRequestStrings() {}
+
 // Text and thinking blocks retain their required string fields, including explicit empty values.
 func (block anthContentBlock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(block.wire())
@@ -1698,20 +1701,24 @@ func (p *anthropicProvider) prepareRequest(ctx context.Context, baseURL string, 
 	}
 	var betas *string
 	var params anthropicParamHeaders
-	// A replacement payload is read by anthropicWireBody (its betas become the header), so only the provider's own request is spliced.
-	cache := requestStrings
-	if _, own := payload.(anthRequest); !own {
-		cache = nil
-	}
-	body, err := marshalSpliced(payload, cache, func(payload any) ([]byte, error) {
-		wire, header, err := anthropicWireBody(payload)
-		betas = header
-		if _, own := payload.(anthRequest); err != nil || own {
+	var body *requestBody
+	var err error
+	if request, own := payload.(anthRequest); own {
+		// The provider's own request is written as it is, so the encoder takes each large string's encoding from the cache as it meets the string. Its betas become the header and are not in the body, which is the request that is encoded.
+		request, betas = request.wire()
+		body, err = marshalSpliced(request, requestStrings, marshalRequestBody)
+	} else {
+		// A replacement payload is read by anthropicWireBody (its betas become the header), so it is not spliced.
+		body, err = marshalSpliced(payload, nil, func(payload any) ([]byte, error) {
+			wire, header, err := anthropicWireBody(payload)
+			betas = header
+			if err != nil {
+				return wire, err
+			}
+			wire, params, err = anthropicSDKParams(wire)
 			return wire, err
-		}
-		wire, params, err = anthropicSDKParams(wire)
-		return wire, err
-	})
+		})
+	}
 	if sdkError, ok := errors.AsType[*anthropicSDKError](err); ok {
 		return nil, sdkError
 	}
