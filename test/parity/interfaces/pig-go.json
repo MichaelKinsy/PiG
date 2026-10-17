@@ -25703,6 +25703,28 @@
       "shapeHash": "sha256:d855099614167115ec60af605f096b513efddd4148cce9a9910e249b8af1938d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthRequest.encodesRequestStrings",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthRequest.encodesRequestStrings",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthRequest.wire",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthRequest.wire",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (anthRequest, *string)"
+      },
+      "shapeHash": "sha256:bd6a50983df20a69a53bdcb464f1a7b972321b9ec45251f462a04449cb8ee9bc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#anthSystemBlock",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "anthSystemBlock",
