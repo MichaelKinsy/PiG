@@ -1350,7 +1350,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if p.cfg.Codex {
 		req.Instructions = "You are a helpful assistant."
 		// openai-codex-responses.ts buildParams reads the initial system message of the resolved transcript, before transformMessages drops an errored or aborted turn ahead of it.
-		if initial := GetInitialSystemMessage(resolvedMessages(transcript, compat.SupportsMidConvoSystemMessages)); initial != nil {
+		if initial := borrowedInitialSystemMessage(resolvedMessages(transcript, compat.SupportsMidConvoSystemMessages)); initial != nil {
 			if prompt := GetCurrentSystemPrompt([]Message{*initial}); prompt != "" {
 				req.Instructions = prompt
 			}

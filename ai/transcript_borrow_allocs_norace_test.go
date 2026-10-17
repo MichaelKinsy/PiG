@@ -79,8 +79,9 @@ func TestToolReplayAllocationsDoNotGrowWithTheSchemas(t *testing.T) {
 		return testing.AllocsPerRun(20, func() { run(messages) })
 	}
 	for name, run := range map[string]func([]Message){
-		"borrowedCurrentTools":   func(messages []Message) { _ = borrowedCurrentTools(messages) },
-		"GetCurrentSystemPrompt": func(messages []Message) { _ = GetCurrentSystemPrompt(messages) },
+		"borrowedCurrentTools":         func(messages []Message) { _ = borrowedCurrentTools(messages) },
+		"GetCurrentSystemPrompt":       func(messages []Message) { _ = GetCurrentSystemPrompt(messages) },
+		"borrowedInitialSystemMessage": func(messages []Message) { _ = borrowedInitialSystemMessage(messages) },
 	} {
 		if small, large := measure(1, run), measure(12, run); large > small {
 			t.Errorf("%s allocates %.0f times over deep tool schemas and %.0f over shallow ones: it copies the schemas", name, large, small)

@@ -201,6 +201,19 @@ func GetInitialSystemMessage[M RoleMessage](messages TranscriptMessages[M]) *Sys
 	return &cloned
 }
 
+// borrowedInitialSystemMessage is GetInitialSystemMessage without the copy of the message, for a request build that reads it: the message
+// shares its tools and sections with the transcript, which does not change while the request is live (TranscriptContext.borrowed).
+func borrowedInitialSystemMessage[M RoleMessage](messages TranscriptMessages[M]) *SystemMessage {
+	if len(messages) == 0 {
+		return nil
+	}
+	message, ok := systemMessageOf(messages[0])
+	if !ok {
+		return nil
+	}
+	return &message
+}
+
 func WithoutInitialSystemMessage(messages []Message) []Message {
 	return withoutInitialSystemMessage(cloneMessages(messages))
 }

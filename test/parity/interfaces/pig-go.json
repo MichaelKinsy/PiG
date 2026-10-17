@@ -31841,6 +31841,17 @@
       "shapeHash": "sha256:6b76e5d57f3334de059e3d537621a64c0033979e6bd8ec03b4e1c85b8e7e960c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#borrowedInitialSystemMessage",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "borrowedInitialSystemMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[M RoleMessage](messages TranscriptMessages[M]) *SystemMessage"
+      },
+      "shapeHash": "sha256:ce428fd4bfc660d347e9b05fbbc3f31f71ee4f9a2bcbf1f4fc0e4992f3cf0f84"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#buildBedrockAdditionalFields",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "buildBedrockAdditionalFields",
@@ -76994,6 +77005,17 @@
         "type": "func(name string, source string) github.com/MichaelKinsy/PiG/internal/codingagent.PiSourceInfo"
       },
       "shapeHash": "sha256:a343a5db303fa1bf3bbd1c945e5b5399b0d3ae7a4a5ac175e28f3c119d805bfc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#systemMessageWithoutTools",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "systemMessageWithoutTools",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message github.com/MichaelKinsy/PiG/ai.SystemMessage) github.com/MichaelKinsy/PiG/ai.SystemMessage"
+      },
+      "shapeHash": "sha256:77706c85e88b7eb89d4c49a685987543baa1f4ae600a531524fbbf0ed5917f26"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#thinkingLevelStrings",

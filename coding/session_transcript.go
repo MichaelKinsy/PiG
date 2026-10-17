@@ -62,7 +62,7 @@ func (s *Session) promptSectionUpdate(messages []agent.AgentMessage) (*ai.System
 	var systems []ai.Message
 	for _, message := range messages {
 		if message.System != nil {
-			systems = append(systems, *message.System)
+			systems = append(systems, systemMessageWithoutTools(*message.System))
 		}
 	}
 	current := ai.GetCurrentSystemMessage(systems)
@@ -83,6 +83,12 @@ func (s *Session) promptSectionUpdate(messages []agent.AgentMessage) (*ai.System
 		return nil, nil
 	}
 	return &ai.SystemMessage{Content: ai.SystemText(""), Sections: patch, Timestamp: time.Now().UnixMilli()}, nil
+}
+
+// systemMessageWithoutTools is message without its tool changes. The replay that promptSectionUpdate runs reads only the sections and whether a system message exists, both of which the tool changes leave as they are, and replaying them copies every tool schema each turn.
+func systemMessageWithoutTools(message ai.SystemMessage) ai.SystemMessage {
+	message.ToolsAdded, message.ToolsRemoved = nil, nil
+	return message
 }
 
 // effectiveSystemSections reads the run's live loadout without changing the base prompt. A structured prompt is built from the run's before_agent_start options, as agent-session.ts:1669-1683 builds it for every mode, also when the caller's structured prompt is the rendering of the base options; any other caller-owned structured prompt takes only the tools and rules sections from them. The caller holds toolRegistryMu.

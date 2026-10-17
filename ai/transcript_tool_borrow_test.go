@@ -104,3 +104,34 @@ func TestPublicToolReplaysReturnCopies(t *testing.T) {
 		t.Fatal("editing the tools GetCurrentTools or GetCurrentSystemMessage returned edited the transcript")
 	}
 }
+
+// The request builders read the initial system message through borrowedInitialSystemMessage. A transcript they read has normalized content, and for it the message must equal what GetInitialSystemMessage returns, for a transcript that starts with a system message, with another message, and with none.
+func TestBorrowedInitialSystemMessageEqualsGetInitialSystemMessage(t *testing.T) {
+	for name, messages := range map[string][]Message{
+		"replayed":      toolBorrowTranscript(),
+		"user first":    {UserMessage{Content: UserText("hi")}, SystemMessage{Content: SystemText("late")}},
+		"empty":         nil,
+		"pointer first": {&SystemMessage{Content: SystemText("p"), Sections: OrderedSections{{Name: "a", Value: new("1")}}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, want := borrowedInitialSystemMessage(messages), GetInitialSystemMessage(messages)
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("borrowedInitialSystemMessage = %#v\nGetInitialSystemMessage = %#v", got, want)
+			}
+		})
+	}
+}
+
+// GetInitialSystemMessage hands out a message the caller owns: editing it must not edit the transcript it was read from.
+func TestGetInitialSystemMessageReturnsACopy(t *testing.T) {
+	messages := toolBorrowTranscript()
+	before := cloneMessages(messages)
+	initial := GetInitialSystemMessage(messages)
+	for _, tool := range initial.ToolsAdded {
+		tool.Parameters["injected"] = true
+	}
+	initial.Sections[0].Name = "edited"
+	if !reflect.DeepEqual(messages, before) {
+		t.Fatal("editing the message GetInitialSystemMessage returned edited the transcript")
+	}
+}

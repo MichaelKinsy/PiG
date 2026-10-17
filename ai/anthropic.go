@@ -1500,7 +1500,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 	systemPrompt := ""
 	var initialTools []ToolSchema
 	// The initial system message is the transcript's first message as given, not as transformMessages leaves it (it drops an errored or aborted assistant turn ahead of a mid-conversation system message); one message is sliced off the transformed list when there is one.
-	if initialSystem := GetInitialSystemMessage(resolved); initialSystem != nil {
+	if initialSystem := borrowedInitialSystemMessage(resolved); initialSystem != nil {
 		systemPrompt = GetCurrentSystemPrompt([]Message{*initialSystem})
 		initialTools = initialSystem.ToolsAdded
 		afterInitial = afterInitial[min(1, len(afterInitial)):]
