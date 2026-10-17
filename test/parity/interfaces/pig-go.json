@@ -278076,6 +278076,17 @@
       "shapeHash": "sha256:a2ec6386bb978a1cc49c1238ebbbfc9d02b3d8ff2e46b7d400ad882e736b86c6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#OutputTerminalHungUp",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "OutputTerminalHungUp",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#OverlayBounds",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "OverlayBounds",
