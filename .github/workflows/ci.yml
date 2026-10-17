@@ -462,13 +462,12 @@ jobs:
         with:
           persist-credentials: false
       # GitHub's hosted Windows images put RUNNER_TEMP on the D: drive, which handles many small files faster than C:; the
-      # step prints the drives to show it. The Go build cache, Go's temporary build directories and the Pi oracle store live there.
+      # step prints the drives to show it. The Go build cache and the Pi oracle store live there. Go's temporary directories
+      # stay on the system drive: tests run their binaries and temporary trees there, as a user's would.
       - name: Keep Go and oracle scratch under RUNNER_TEMP
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path (Join-Path $env:RUNNER_TEMP 'go-tmp') | Out-Null
           "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
-          "GOTMPDIR=$(Join-Path $env:RUNNER_TEMP 'go-tmp')" >> $env:GITHUB_ENV
           "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
           Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
           Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
