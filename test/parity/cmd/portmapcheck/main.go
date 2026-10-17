@@ -523,6 +523,14 @@ func readInventory(root string) (*inventory, error) {
 		default:
 			continue
 		}
+		// A package that re-exports another tracked package's declaration (durable re-exports chord/sqlite since Pi
+		// c268154c) lists it under its own ID, with the declaring file as its source. That file's row is proven by the
+		// declaring package's members; the re-export is the barrel's, not an implementation of the file.
+		if rest, ok := strings.CutPrefix(e.ID, "pkg:"); ok {
+			if idKey, _, _ := strings.Cut(rest, "/"); idKey != "" && !strings.HasPrefix(k, idKey+"/") {
+				continue
+			}
+		}
 		out.byFile[k] = append(out.byFile[k], e.ID)
 	}
 	return out, nil
