@@ -655,6 +655,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/delta/revision-validator.ts` | `WeakSet memo of validated JS container identities; a decoded Go revision has no shared identity and is validated by chordjson.Validate (state.go:917)` | n/a |
 | `packages/chord/src/output.ts` | `chord/output/output.go OutputBuffer, Progress, BoundOutput, SanitizeOutput, CharacterEnd, Utf8ByteLength, OutputLimits, OutputSlice, BoundedOutput, OutputSkip` | 🟡 |
 | `packages/chord/src/node.ts` | `re-exports manager.ts (chord/host/manager*.go) and nodeLoader (chord/host/loader.go NodeLoader)` | 🟡 |
+| `packages/chord/src/sqlite/cloudflare.ts` | `chord/sqlite/cloudflare/cloudflare.go` | ✅ |
+| `packages/chord/src/sqlite/database.ts` | `chord/sqlite/database.go` | ✅ |
+| `packages/chord/src/sqlite/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/sqlite/migrations.ts` | `chord/sqlite/migrations.go` | ✅ |
+| `packages/chord/src/sqlite/node.ts` | `chord/sqlite/node/node.go` | ✅ |
+| `packages/chord/src/sqlite/schema.ts` | `chord/sqlite/schema.go` | ✅ |
 | `packages/chord/src/cell.ts` | `chord/host/cell.go NewCell, Cell, Source, Derived, IsSource, NotReady` | 🟡 |
 | `packages/chord/src/publish.ts` | `chord/host/publish.go enqueue, holdPublications` | 🟡 |
 | `packages/chord/src/manager.ts` | `chord/host/manager.go CreateHostManager, ChildControl, ControlMessage; manager_unix.go, manager_fork_windows.go, manager_pipe_windows.go ForkDriver, ProcessChannel (Windows run pending); manager_lock.go ProcessLock` | 🟡 |
@@ -739,13 +745,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/jsonl/storage.ts` | `durable/storage/jsonl/storage.go` | ✅ |
 | `packages/durable/src/storage/memory.ts` | `durable/storage/memory.go` | ✅ |
 | `packages/durable/src/storage/scan.ts` | `durable/storage/internal/scan/scan.go` | ✅ |
-| `packages/durable/src/storage/sqlite/database.ts` | `durable/storage/sqlite/database.go` | ✅ |
+| `packages/durable/src/storage/sqlite/database.ts` | `durable/storage/sqlite/database.go` (re-exports chord/sqlite's facade types) | ✅ |
 | `packages/durable/src/storage/sqlite/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/storage/sqlite/migrations.ts` | `durable/storage/sqlite/migrations.go` | ✅ |
 | `packages/durable/src/storage/sqlite/schema.ts` | `durable/storage/sqlite/schema.go` | 🟡 |
-| `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` | ✅ |
+| `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` (re-exports chord/sqlite/node; OpenNodeSqliteStorage) | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
-| `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` | ✅ |
+| `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
 | `packages/durable/src/tasks.ts` | `durable/tasks.go` | ✅ |
 | `packages/durable/src/testing/assertions.ts` | `durable/durabletest/durabletest.go` | ✅ |
 | `packages/durable/src/testing/env-conformance.ts` | `durable/durabletest/env_conformance.go` | ✅ |

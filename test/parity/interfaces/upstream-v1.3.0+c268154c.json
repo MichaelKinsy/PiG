@@ -364344,23 +364344,641 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite/cloudflare",
       "name": "DurableObjectSqliteDatabase",
-      "kind": "external",
+      "kind": "class",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite/cloudflare",
-        "externalName": "DurableObjectSqliteDatabase",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "DurableObjectSqliteDatabase",
+        "type": "DurableObjectSqliteDatabase",
         "typeParameters": [],
         "calls": [],
-        "constructs": [],
-        "properties": [],
+        "constructs": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "storage",
+                "type": "DurableObjectSqliteStorage",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "DurableObjectSqliteDatabase"
+          }
+        ],
+        "properties": [
+          {
+            "name": "all",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T[]>"
+              }
+            ]
+          },
+          {
+            "name": "close",
+            "optional": false,
+            "readonly": false,
+            "type": "() => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "exec",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "get",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T | undefined>"
+              }
+            ]
+          },
+          {
+            "name": "run",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "transaction",
+            "optional": false,
+            "readonly": false,
+            "type": "<T>(callback: (transaction: SqliteExecutor) => Promise<T>) => Promise<T>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "callback",
+                    "type": "(transaction: SqliteExecutor) => Promise<T>",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "Promise<T>"
+              }
+            ]
+          }
+        ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:3bfc9d98bc16107f42911dbfa567aa36f369bc75b8a1916e23e6c13faee666c6",
+      "shapeHash": "sha256:6fed8134675aa4a43b136f5c229fa314c18d696c5bc3eb91e4da7b597628f362",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/cloudflare.ts",
-        "line": 4,
-        "column": 10
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 39,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::construct:0",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
+      "role": "construct-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase constructor 0",
+      "kind": "construct-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "storage",
+            "type": "DurableObjectSqliteStorage",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "DurableObjectSqliteDatabase"
+      },
+      "shapeHash": "sha256:4e980ac3c6831051e2b0c912a6e021698bbcf1c65bcab5561b27d35ab3e93964",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 39,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:all",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.all",
+      "kind": "property",
+      "shape": {
+        "name": "all",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T[]>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 45,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:all::call:0",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:all",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.all call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T[]>"
+      },
+      "shapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 45,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:close",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.close",
+      "kind": "property",
+      "shape": {
+        "name": "close",
+        "optional": false,
+        "readonly": false,
+        "type": "() => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 49,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:close::call:0",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:close",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.close call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 49,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:exec",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.exec",
+      "kind": "property",
+      "shape": {
+        "name": "exec",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 42,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:exec::call:0",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:exec",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.exec call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 42,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:get",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.get",
+      "kind": "property",
+      "shape": {
+        "name": "get",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T | undefined>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 44,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:get::call:0",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:get",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.get call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T | undefined>"
+      },
+      "shapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 44,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:run",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.run",
+      "kind": "property",
+      "shape": {
+        "name": "run",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 43,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:run::call:0",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:run",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.run call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 43,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.transaction",
+      "kind": "property",
+      "shape": {
+        "name": "transaction",
+        "optional": false,
+        "readonly": false,
+        "type": "<T>(callback: (transaction: SqliteExecutor) => Promise<T>) => Promise<T>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "callback",
+                "type": "(transaction: SqliteExecutor) => Promise<T>",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<T>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 47,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction::call:0",
+      "parentId": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase::property:transaction",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/cloudflare",
+      "name": "DurableObjectSqliteDatabase.transaction call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "(transaction: SqliteExecutor) => Promise<T>",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<T>"
+      },
+      "shapeHash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 47,
+        "column": 5
       }
     },
     {
@@ -364368,23 +364986,21 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite/cloudflare",
       "name": "DurableObjectSqliteStorage",
-      "kind": "external",
+      "kind": "type-alias",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite/cloudflare",
-        "externalName": "DurableObjectSqliteStorage",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "DurableObjectSqliteStorage",
+        "type": "DurableObjectSqliteStorage",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:93dcb05b8c91b02ee3d4a84b6194894eb4819fd7b72e40e2ee5b3bdd91b6a860",
+      "shapeHash": "sha256:aa3a2097992e6f0cd88f8d3f4880bed84b50e8f1f081eb32d844c32acce36d5a",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/cloudflare.ts",
-        "line": 4,
-        "column": 39
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/cloudflare.d.ts",
+        "line": 8,
+        "column": 1
       }
     },
     {
@@ -364466,23 +365082,641 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite/node",
       "name": "NodeSqliteDatabase",
-      "kind": "external",
+      "kind": "class",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite/node",
-        "externalName": "NodeSqliteDatabase",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "NodeSqliteDatabase",
+        "type": "NodeSqliteDatabase",
         "typeParameters": [],
         "calls": [],
-        "constructs": [],
-        "properties": [],
+        "constructs": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "database",
+                "type": "DatabaseSync",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "NodeSqliteDatabase"
+          }
+        ],
+        "properties": [
+          {
+            "name": "all",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T[]>"
+              }
+            ]
+          },
+          {
+            "name": "close",
+            "optional": false,
+            "readonly": false,
+            "type": "() => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "exec",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "get",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T | undefined>"
+              }
+            ]
+          },
+          {
+            "name": "run",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "transaction",
+            "optional": false,
+            "readonly": false,
+            "type": "<T>(callback: (transaction: SqliteExecutor) => Promise<T>) => Promise<T>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "callback",
+                    "type": "(transaction: SqliteExecutor) => Promise<T>",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "Promise<T>"
+              }
+            ]
+          }
+        ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:913e1338e2335ac12f1ec2f271ec17304fb5ec808c4f24c4fbecf6ac493e1c38",
+      "shapeHash": "sha256:b03f495f95da7b76b5b4388072517de0f5220df666f2b9d4753b27c9acf5c838",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/node.ts",
-        "line": 6,
-        "column": 2
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 27,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
+      "role": "construct-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase constructor 0",
+      "kind": "construct-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "database",
+            "type": "DatabaseSync",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "NodeSqliteDatabase"
+      },
+      "shapeHash": "sha256:9b218bac3e7a453f60f22257deb224cb4dfd8e5bfb1af201c1d745b99cd2b1c4",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 27,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.all",
+      "kind": "property",
+      "shape": {
+        "name": "all",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T[]>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 22,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all::call:0",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.all call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T[]>"
+      },
+      "shapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 22,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:close",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.close",
+      "kind": "property",
+      "shape": {
+        "name": "close",
+        "optional": false,
+        "readonly": false,
+        "type": "() => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 32,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:close::call:0",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:close",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.close call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 32,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:exec",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.exec",
+      "kind": "property",
+      "shape": {
+        "name": "exec",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 19,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:exec::call:0",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:exec",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.exec call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 19,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:get",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.get",
+      "kind": "property",
+      "shape": {
+        "name": "get",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T | undefined>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 21,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:get::call:0",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:get",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.get call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T | undefined>"
+      },
+      "shapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 21,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:run",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.run",
+      "kind": "property",
+      "shape": {
+        "name": "run",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 20,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:run::call:0",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:run",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.run call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 20,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.transaction",
+      "kind": "property",
+      "shape": {
+        "name": "transaction",
+        "optional": false,
+        "readonly": false,
+        "type": "<T>(callback: (transaction: SqliteExecutor) => Promise<T>) => Promise<T>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "callback",
+                "type": "(transaction: SqliteExecutor) => Promise<T>",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<T>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 31,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction::call:0",
+      "parentId": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:transaction",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "NodeSqliteDatabase.transaction call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "(transaction: SqliteExecutor) => Promise<T>",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<T>"
+      },
+      "shapeHash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 31,
+        "column": 5
       }
     },
     {
@@ -364490,23 +365724,21 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite/node",
       "name": "NodeSqliteDatabaseOptions",
-      "kind": "external",
+      "kind": "type-alias",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite/node",
-        "externalName": "NodeSqliteDatabaseOptions",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "NodeSqliteDatabaseOptions",
+        "type": "NodeSqliteDatabaseOptions",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:c44108f529da265caf67236a70f4f15b89a8dad14062985391c84ab504efb66e",
+      "shapeHash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/node.ts",
-        "line": 7,
-        "column": 2
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 5,
+        "column": 1
       }
     },
     {
@@ -364536,23 +365768,73 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite/node",
       "name": "openNodeSqliteDatabase",
-      "kind": "external",
+      "kind": "function",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite/node",
-        "externalName": "openNodeSqliteDatabase",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "openNodeSqliteDatabase",
+        "type": "(path: string, options?: NodeSqliteDatabaseOptions) => Promise<NodeSqliteDatabase>",
         "typeParameters": [],
-        "calls": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "path",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "NodeSqliteDatabaseOptions",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<NodeSqliteDatabase>"
+          }
+        ],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:a0efe6d736da3470bccd3066c1d0d1ac62899d36e340205f50be2cba1e8afe38",
+      "shapeHash": "sha256:4c8aa22211ea4f73b720f7a48f25353c60ab2a02d07cc43e2d943ee77eba38be",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/node.ts",
-        "line": 8,
-        "column": 2
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 36,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase::call:0",
+      "parentId": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite/node",
+      "name": "openNodeSqliteDatabase call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "NodeSqliteDatabaseOptions",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<NodeSqliteDatabase>"
+      },
+      "shapeHash": "sha256:669b06b4f76c90cc7c58bb92fb403693bf0abb03c53ff757b281fe7cfde8e52d",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/node.d.ts",
+        "line": 36,
+        "column": 1
       }
     },
     {
@@ -364752,23 +366034,601 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite",
       "name": "SqliteDatabase",
-      "kind": "external",
+      "kind": "interface",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite",
-        "externalName": "SqliteDatabase",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "SqliteDatabase",
+        "type": "SqliteDatabase",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
-        "properties": [],
+        "properties": [
+          {
+            "name": "all",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T[]>"
+              }
+            ]
+          },
+          {
+            "name": "close",
+            "optional": false,
+            "readonly": false,
+            "type": "() => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "exec",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "get",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T | undefined>"
+              }
+            ]
+          },
+          {
+            "name": "run",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "transaction",
+            "optional": false,
+            "readonly": false,
+            "type": "<T>(callback: (transaction: SqliteExecutor) => Promise<T>) => Promise<T>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "callback",
+                    "type": "(transaction: SqliteExecutor) => Promise<T>",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "Promise<T>"
+              }
+            ]
+          }
+        ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:4f74803c50fbce8d812d307ba49d0815a0b78103fc5eeb46a6c54354490c582c",
+      "shapeHash": "sha256:26c944487abc0de73e342d62e589fe944fdc8e15b026bdc9f4e9f53573ebd3ea",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/index.ts",
-        "line": 1,
-        "column": 15
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 33,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:all",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.all",
+      "kind": "property",
+      "shape": {
+        "name": "all",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T[]>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 14,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:all::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase::property:all",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.all call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T[]>"
+      },
+      "shapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 14,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:close",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.close",
+      "kind": "property",
+      "shape": {
+        "name": "close",
+        "optional": false,
+        "readonly": false,
+        "type": "() => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:224a331c8b3e5b8db8f0ed62fadfe68cc6c41e65f8bf7ffb1374a3d41303eed7",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 35,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:close::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase::property:close",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.close call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 35,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:exec",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.exec",
+      "kind": "property",
+      "shape": {
+        "name": "exec",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 11,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:exec::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase::property:exec",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.exec call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 11,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:get",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.get",
+      "kind": "property",
+      "shape": {
+        "name": "get",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T | undefined>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 13,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:get::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase::property:get",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.get call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T | undefined>"
+      },
+      "shapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 13,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:run",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.run",
+      "kind": "property",
+      "shape": {
+        "name": "run",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 12,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:run::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase::property:run",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.run call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 12,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.transaction",
+      "kind": "property",
+      "shape": {
+        "name": "transaction",
+        "optional": false,
+        "readonly": false,
+        "type": "<T>(callback: (transaction: SqliteExecutor) => Promise<T>) => Promise<T>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "callback",
+                "type": "(transaction: SqliteExecutor) => Promise<T>",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<T>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:d77e696751043ee8378ce2335b9345bbb8da61d2865240e316a675986a68605d",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 34,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteDatabase::property:transaction",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteDatabase.transaction call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "(transaction: SqliteExecutor) => Promise<T>",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<T>"
+      },
+      "shapeHash": "sha256:4231c2b88c41b1792e01760ec6e3ba0b1ec4eb07ddd0c806fe17ef2849e0adec",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 34,
+        "column": 5
       }
     },
     {
@@ -364776,23 +366636,440 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite",
       "name": "SqliteExecutor",
-      "kind": "external",
+      "kind": "interface",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite",
-        "externalName": "SqliteExecutor",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "SqliteExecutor",
+        "type": "SqliteExecutor",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
-        "properties": [],
+        "properties": [
+          {
+            "name": "all",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T[]>"
+              }
+            ]
+          },
+          {
+            "name": "exec",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          },
+          {
+            "name": "get",
+            "optional": false,
+            "readonly": false,
+            "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+            "calls": [
+              {
+                "typeParameters": [
+                  {
+                    "name": "T",
+                    "constraint": "object",
+                    "default": ""
+                  }
+                ],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<T | undefined>"
+              }
+            ]
+          },
+          {
+            "name": "run",
+            "optional": false,
+            "readonly": false,
+            "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "sql",
+                    "type": "string",
+                    "optional": false,
+                    "rest": false
+                  },
+                  {
+                    "name": "params",
+                    "type": "SqliteValue[]",
+                    "optional": true,
+                    "rest": true
+                  }
+                ],
+                "returns": "Promise<void>"
+              }
+            ]
+          }
+        ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:ef9f73321a5806917142c94df6c69aeaf986e166a7638a2c293b379fa5f450d4",
+      "shapeHash": "sha256:5b1480ac9a37d570ff7d665a13a30415b8bc524042c4054a8cc567533937acd9",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/index.ts",
-        "line": 1,
-        "column": 31
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:all",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.all",
+      "kind": "property",
+      "shape": {
+        "name": "all",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T[]>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T[]>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:8310ba81ed36571606b4985caa5734b3a0ce9372d4708ebe577150aae1fea534",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 14,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:all::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor::property:all",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.all call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T[]>"
+      },
+      "shapeHash": "sha256:d079d5309b5c7c8b498c93f46fbd8693c8bdc688a4d12080adb1774d4b33d052",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 14,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:exec",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.exec",
+      "kind": "property",
+      "shape": {
+        "name": "exec",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:aa1db8aee9048fa058d54c104babd5980aa1542d7f3ece8d28e54fd19a68b3b1",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 11,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:exec::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor::property:exec",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.exec call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:c49a95920258b9a6128ad389d463610556c18bb37f90c4a58be13da7ce5d77a8",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 11,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:get",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.get",
+      "kind": "property",
+      "shape": {
+        "name": "get",
+        "optional": false,
+        "readonly": false,
+        "type": "<T extends object>(sql: string, ...params: SqliteValue[]) => Promise<T | undefined>",
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "object",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<T | undefined>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:818a9b558f62a03bf346fcef7c0d4a5cce8906c6cad2a70fe350e5d815f4b791",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 13,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:get::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor::property:get",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.get call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "object",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<T | undefined>"
+      },
+      "shapeHash": "sha256:4050b02493ed20077f98f2744e9c8934045f94dcc95652bf8405c87ebfa3b0a3",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 13,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:run",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.run",
+      "kind": "property",
+      "shape": {
+        "name": "run",
+        "optional": false,
+        "readonly": false,
+        "type": "(sql: string, ...params: SqliteValue[]) => Promise<void>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sql",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "params",
+                "type": "SqliteValue[]",
+                "optional": true,
+                "rest": true
+              }
+            ],
+            "returns": "Promise<void>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:893cced2e3697649ea5416356a5dafe017c883452fe6c9803fc0bcca14e1fe11",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 12,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/sqlite#SqliteExecutor::property:run::call:0",
+      "parentId": "pkg:durable/storage/sqlite#SqliteExecutor::property:run",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/sqlite",
+      "name": "SqliteExecutor.run call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sql",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "params",
+            "type": "SqliteValue[]",
+            "optional": true,
+            "rest": true
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "shapeHash": "sha256:f388ea66402c326e6c6457d7858db84826078b4859713fe41aae988204719a23",
+      "source": {
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 12,
+        "column": 5
       }
     },
     {
@@ -366767,23 +369044,21 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/sqlite",
       "name": "SqliteValue",
-      "kind": "external",
+      "kind": "type-alias",
       "shape": {
-        "externalModule": "@earendil-works/chord/sqlite",
-        "externalName": "SqliteValue",
-        "aliasTarget": "",
-        "type": "",
+        "aliasTarget": "SqliteValue",
+        "type": "SqliteValue",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:678dde2aa3bc10fbfa6d31166018377f45b093a1180330a4c31ea0ba24e6c0ce",
+      "shapeHash": "sha256:d3456d7f8912d144f41ea93d9cc0a180650d65a195afc964ee40a7a60a804ab4",
       "source": {
-        "path": "packages/durable/src/storage/sqlite/index.ts",
-        "line": 1,
-        "column": 47
+        "path": "node_modules/@earendil-works/chord/dist/sqlite/database.d.ts",
+        "line": 2,
+        "column": 1
       }
     },
     {

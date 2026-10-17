@@ -1225,32 +1225,46 @@
   },
   {
     "mutation": "durable/storage/sqlite/cloudflare/cloudflare.go bindValue/checkSafe/bind, the executor's Exec/Run/Get/All and checks, DurableObjectSqliteDatabase (queue per operation, Transaction handle, Close) and the serial queue: 29 mutants. 15 survived the existing four adapter tests (the integer range boundaries and the int kind, get's first row, the unqueued exec/run/get/close, the missing check on exec/all, an ignored bind error or cursor error) and are killed by durable/storage/sqlite/cloudflare/adapter_semantics_test.go; mutants that did not build were redone with their operands used; the ignored callback mutant panics (killed)",
-    "package": "./durable/storage/sqlite/cloudflare",
+    "package": "./chord/sqlite/cloudflare",
     "tests": [
-      "TestDurableObjectSqliteAdapter",
       "TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
       "TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
       "TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
       "TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles",
-      "TestDurableObjectStorageConformance",
-      "TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
-      "TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
-      "TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction",
-      "TestDurableObjectSqliteTransactionHandleRejectsEveryOperationAfterTheCallbackSettles"
+      "TestDurableObjectSqliteDriver"
+    ],
+    "upstream": "packages/chord/src/sqlite/cloudflare.ts",
+    "upstream_reference": "packages/durable/src/storage/sqlite/cloudflare.ts:36 bindValue, :55 DurableObjectSqliteExecutor, :88 DurableObjectSqliteDatabase"
+  },
+  {
+    "mutation": "durable/storage/sqlite/cloudflare/cloudflare.go bindValue/checkSafe/bind, the executor's Exec/Run/Get/All and checks, DurableObjectSqliteDatabase (queue per operation, Transaction handle, Close) and the serial queue: 29 mutants. 15 survived the existing four adapter tests (the integer range boundaries and the int kind, get's first row, the unqueued exec/run/get/close, the missing check on exec/all, an ignored bind error or cursor error) and are killed by durable/storage/sqlite/cloudflare/adapter_semantics_test.go; mutants that did not build were redone with their operands used; the ignored callback mutant panics (killed)",
+    "package": "./durable/storage/sqlite/cloudflare",
+    "tests": [
+      "TestDurableObjectSqliteAdapter",
+      "TestDurableObjectStorageConformance"
     ],
     "upstream": "packages/durable/src/storage/sqlite/cloudflare.ts",
     "upstream_reference": "packages/durable/src/storage/sqlite/cloudflare.ts:36 bindValue, :55 DurableObjectSqliteExecutor, :88 DurableObjectSqliteDatabase"
   },
   {
     "mutation": "durable/storage/sqlite/node/node.go NewNodeSqliteDatabase and its constructor (database, statement cache, serial access queue, run hook): 5 mutants, all killed by the database contract, facade and close tests",
+    "package": "./chord/sqlite/node",
+    "tests": [
+      "TestNodeSqliteDatabaseCloseReportsTheFinallyFailure",
+      "TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
+      "TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
+      "TestSqliteExecutorAllThroughDatabaseAndTransaction",
+      "TestNodeSqliteDriver"
+    ],
+    "upstream": "packages/chord/src/sqlite/node.ts",
+    "upstream_reference": "packages/durable/src/storage/sqlite/node.ts NodeSqliteDatabase constructor"
+  },
+  {
+    "mutation": "durable/storage/sqlite/node/node.go NewNodeSqliteDatabase and its constructor (database, statement cache, serial access queue, run hook): 5 mutants, all killed by the database contract, facade and close tests",
     "package": "./durable/storage/sqlite/node",
     "tests": [
       "TestNewNodeSqliteDatabaseAdaptsADatabaseSync",
-      "TestNodeSqliteDatabaseCloseReportsTheFinallyFailure",
-      "TestPortableSQLiteFacadeSettlement",
-      "TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-      "TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
-      "TestSqliteExecutorAllThroughDatabaseAndTransaction"
+      "TestPortableSQLiteFacadeSettlement"
     ],
     "upstream": "packages/durable/src/storage/sqlite/node.ts",
     "upstream_reference": "packages/durable/src/storage/sqlite/node.ts NodeSqliteDatabase constructor"

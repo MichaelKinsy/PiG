@@ -1,11 +1,11 @@
 [
  {
-  "upstream": "packages/durable/src/storage/sqlite/database.ts",
-  "package": "./durable/storage/sqlite/node",
+  "upstream": "packages/chord/src/sqlite/database.ts",
+  "package": "./chord/sqlite/node",
   "tests": [
    "TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
    "TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-   "TestPortableSQLiteFacadeSettlement"
+   "TestNodeSqliteDriver"
   ],
   "upstream_reference": "packages/durable/test/sqlite-facade.test.ts",
   "mutation": "durable/storage/sqlite/node/node.go NodeSqliteDatabase.Transaction: skipping the rollback of a failed callback fails TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently and two TestPortableSQLiteFacadeSettlement subtests; leaving the handle active after the callback fails the stale-handle subtest; dropping the callback error from AggregateError.Errors, or changing its message, fails TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails. Each mutation compiled and ran."

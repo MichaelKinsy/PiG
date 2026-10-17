@@ -545,8 +545,8 @@
   "mutation": "durable/storage/sqlite/storage.go: replace 'func (storage *SqliteStorage) Task(_ context.Context, id durable.TaskId) (*storedTask, error) {' with 'func (storage *SqliteStorage) Task(_ context.Context, id durable.TaskId) (*storedTask, error) {\\n\\treturn *new(*storedTask), *new(error)'; compiling go test -overlay -run exact test -count=1 fails TestSqliteStorageReadApiMirrorsPisStorageContract."
  },
  {
-  "upstream": "packages/durable/src/storage/sqlite/node.ts",
-  "package": "./durable/storage/sqlite/node",
+  "upstream": "packages/chord/src/sqlite/node.ts",
+  "package": "./chord/sqlite/node",
   "tests": [
    "TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
   ],
