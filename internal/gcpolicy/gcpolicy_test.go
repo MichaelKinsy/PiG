@@ -24,18 +24,18 @@ func unsetGOGC(t *testing.T) {
 	}
 }
 
-// D175: with GOGC unset the one-shot target holds over collections of a small heap, and the first collection that finds more than
+// D175: with GOGC unset the target holds over collections of a small heap, and the first collection that finds more than
 // FallbackLiveBytes live restores the default for the rest of the process.
-func TestApplyOneShotFallsBackAboveTheLiveHeapLimit(t *testing.T) {
+func TestApplyFallsBackAboveTheLiveHeapLimit(t *testing.T) {
 	unsetGOGC(t)
 	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
-	ApplyOneShot()
+	Apply()
 	for range 3 {
 		runtime.GC()
 		time.Sleep(10 * time.Millisecond) // Room for the cleanup of the collection to run.
 	}
-	if got := gcPercent(); got != OneShotPercent {
-		t.Fatalf("GC percent %d after collections of a small heap, want %d", got, OneShotPercent)
+	if got := gcPercent(); got != TargetPercent {
+		t.Fatalf("GC percent %d after collections of a small heap, want %d", got, TargetPercent)
 	}
 	live := make([]byte, FallbackLiveBytes+16<<20)
 	deadline := time.Now().Add(10 * time.Second)
@@ -50,10 +50,10 @@ func TestApplyOneShotFallsBackAboveTheLiveHeapLimit(t *testing.T) {
 }
 
 // D175: a GOGC in the environment wins; the policy leaves the GC percent alone.
-func TestApplyOneShotLeavesAUserGOGC(t *testing.T) {
+func TestApplyLeavesAUserGOGC(t *testing.T) {
 	t.Setenv("GOGC", "50")
 	defer debug.SetGCPercent(debug.SetGCPercent(50))
-	ApplyOneShot()
+	Apply()
 	if got := gcPercent(); got != 50 {
 		t.Fatalf("GC percent %d with GOGC=50 set, want 50", got)
 	}

@@ -105,7 +105,7 @@ When a session ends without you asking it to, look in the agent directory (`~/.p
 | Variable | Effect |
 |---|---|
 | `GOMAXPROCS` | Number of processors the Go runtime schedules on. When it is not set, PiG uses at most 2 (fewer when the runtime default is lower), which lowers CPU use during streamed turns. Opening or resuming a session, the `/resume` listing, a batch of parallel tool calls and extension builds still run at the full default width. A value you set is used unchanged. Pi has no such setting, because Node runs JavaScript on one thread (D174) |
-| `GOGC` | Go garbage collector target. When it is not set, a print (`-p`) or JSON (`--mode json`) run collects at 400 until more than 64 MiB of heap is live, then at the default 100 for the rest of the run (D175). Interactive and RPC runs keep the default. A value you set is used unchanged |
+| `GOGC` | Go garbage collector target. When it is not set, a print (`-p`), JSON (`--mode json`) or RPC (`--mode rpc`) run collects at 400 until more than 64 MiB of heap is live, then at the default 100 for the rest of the run (D175). Interactive runs keep the default. A value you set is used unchanged |
 
 ## Sessions
 

@@ -1423,7 +1423,7 @@ Call-site markers: `internal/codingagent/interactive_layout.go` (`tickSpinner`, 
 
 Locked by: `TestSpinnerTickerParksWhileIdle` (red at 4cfaf24153: 25 fires in 2 s idle), `TestIdleHeapCollectionAfterRun`, `TestIdleCollectionAfterRunShorterThanOneSpinnerTick` (red at 1166362571: 0 collections after a 10ms run), `TestIdleCollectionRunsHalfASecondAfterRunEnd` (red: ran 2.08s after the run ended), `TestIdleCollectionWaitRestartsOnInput` (red: 0 collections in 3.3s after input; red at c149776dc9 with a typed key on the main-loop and modal routes: 1 collection 300ms after the key), `TestIdleCollectionFreesPoolVictims` (red with one forced cycle: the `sync.Pool` entry stays live), and the ratchet `process.mem_tmux_idle.heap_live_bytes` (`TestTmuxIdleMemoryGate`).
 
-Not shipped: a higher GOGC (measured within noise). The GOMAXPROCS default is D174; the print and json GC target is D175.
+Not shipped: a higher GOGC (measured within noise). The GOMAXPROCS default is D174; the print, json and rpc GC target is D175.
 
 Remove when: never; policy only.
 
@@ -1453,19 +1453,19 @@ Remove when: the Go runtime stops waking idle Ps per hand-off, or a measurement 
 Approval: owner, LW roadmap section 3c S24 (2026-10-13), from E12b, approved as F1 (channels/lw.md 2026-10-13T17:32:00Z, "LANDED lw-procs 1f94bc1a41 (owner approved F1)"); parallel tool batches S26 (2026-10-13), from E16.
 SCRUTINIZED:approved
 
-## D175 Print and json runs collect at GOGC 400 until the live heap passes 64 MiB
+## D175 Print, json and rpc runs collect at GOGC 400 until the live heap passes 64 MiB
 
 Stock disposition: inert capability. It selects no product behavior and a user's `GOGC` turns it off: stdout, session files and model requests are the same; only when the Go collector runs changes.
 
-What: when the environment does not set `GOGC`, `cli.Main` sets the GC percent to 400 for a print (`-p`, or a stdin or stdout that is not a terminal) or json (`--mode json`) run, before the session loads. After every collection a cleanup on an unreachable sentinel reads `/gc/heap/live:bytes`; the first one that finds more than 64 MiB live sets the percent back to 100 for the rest of the process. Interactive and rpc runs are untouched, a user's `GOGC` is never overridden, and neither GOMAXPROCS (D174) nor GOMEMLIMIT is read or set.
+What: when the environment does not set `GOGC`, `cli.Main` sets the GC percent to 400 for a print (`-p`, or a stdin or stdout that is not a terminal), json (`--mode json`) or rpc (`--mode rpc`) run, before the session loads. After every collection a cleanup on an unreachable sentinel reads `/gc/heap/live:bytes`; the first one that finds more than 64 MiB live sets the percent back to 100 for the rest of the process. Interactive runs are untouched, a user's `GOGC` is never overridden, and neither GOMAXPROCS (D174) nor GOMEMLIMIT is read or set.
 
 Pi source: none. Node's collector has no such setting; the GC target is a Go runtime choice.
 
-Why: a one-shot run allocates a few megabytes and exits, so the default target spends its CPU on collections whose memory the exit returns anyway, and on many-core hosts each cycle wakes idle mark workers. PF1 (research/frontier/PF1-print-cpu.md sections 11-12) measured Pi-Bolt's headless row going from 2-5 GC cycles to none: Linux 0.66 to 0.61x Pi-Bolt CPU and Mac 0.80 to 0.70x Pi-Bolt cycles on top of D174. Process-wide GOGC 400 (E12b) doubled long-session memory, so the target stays out of interactive and rpc runs, and the 64 MiB fallback keeps a print run over a large session within the default's peak (`-p --session` on a 66 MB session: +3%).
+Why: a one-shot run allocates a few megabytes and exits, so the default target spends its CPU on collections whose memory the exit returns anyway, and on many-core hosts each cycle wakes idle mark workers. PF1 (research/frontier/PF1-print-cpu.md sections 11-12) measured Pi-Bolt's headless row going from 2-5 GC cycles to none: Linux 0.66 to 0.61x Pi-Bolt CPU and Mac 0.80 to 0.70x Pi-Bolt cycles on top of D174. Process-wide GOGC 400 (E12b) doubled long-session memory, so the target stays out of interactive runs, and the 64 MiB fallback keeps a print run over a large session within the default's peak (`-p --session` on a 66 MB session: +3%).
 
-Call-site markers: `internal/gcpolicy/gcpolicy.go` (`ApplyOneShot`, `checkLiveHeap`), `coding/cli/main.go` (`Main`).
+Call-site markers: `internal/gcpolicy/gcpolicy.go` (`Apply`, `checkLiveHeap`), `coding/cli/main.go` (`Main`).
 
-Locked by: `TestPrintModeRaisesGCTarget` (`test/perfgate`; red at fb18cdb01b: 2-3 GC cycles), `TestPrintModeKeepsUsersGOGC`, `TestPrintModeGCTargetFallsBackOnLargeHeap` (`test/perfgate`), `TestApplyOneShotFallsBackAboveTheLiveHeapLimit`, `TestApplyOneShotLeavesAUserGOGC` (`internal/gcpolicy`), and the ratchet `process.print_tools.gc_cycles` = 0.
+Locked by: `TestPrintModeRaisesGCTarget` (`test/perfgate`; red at fb18cdb01b: 2-3 GC cycles), `TestPrintModeKeepsUsersGOGC`, `TestPrintModeGCTargetFallsBackOnLargeHeap` (`test/perfgate`), `TestRPCModeRaisesGCTarget` (red without the rpc case: GC percent 100), `TestRPCModeKeepsUsersGOGC` (`test/perfgate`), `TestApplyFallsBackAboveTheLiveHeapLimit`, `TestApplyLeavesAUserGOGC` (`internal/gcpolicy`), and the ratchet `process.print_tools.gc_cycles` = 0.
 
 Remove when: the Go runtime's default pacing stops collecting short runs, or a measurement shows GOGC 100 costs no CPU on the headless row.
 

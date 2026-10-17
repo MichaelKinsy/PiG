@@ -739,9 +739,9 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	runMode := processAppMode(flags)
-	if runMode == appModePrint || runMode == appModeJSON {
-		// pig additive (D175): print and json runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
-		gcpolicy.ApplyOneShot()
+	if runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC {
+		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
+		gcpolicy.Apply()
 	}
 
 	// Non-interactive startup reserves stdout except for plain runtime metadata (Pi main.ts:129-130,638-642).
