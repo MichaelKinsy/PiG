@@ -109,6 +109,7 @@ func runRPCPipeline(b *testing.B, deltas int, meter *pipelineMeter) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	out := newStdoutQueue(io.Discard, func(err error) { b.Error(err) })
+	defer out.Close()
 	h := &rpcHost{
 		ctx: ctx, cancel: cancel,
 		writeRPC:        func(v any) { writeJSONLine(out, v) },

@@ -236,6 +236,8 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 		stdoutFailed.Store(true)
 		cancel()
 	})
+	// The writer goroutine ends once the tail is empty; a termination signal does not wait for it.
+	defer rawStdout.Close()
 	defer func() {
 		// A normal exit flushes the tail; a termination signal exits without waiting on a blocked reader.
 		if receivedTerminationSignal.Load() == 0 {

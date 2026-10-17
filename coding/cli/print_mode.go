@@ -300,6 +300,8 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		stdoutFailed.Store(true)
 		cancel()
 	})
+	// The writer goroutine ends once the tail is empty; a termination signal does not wait for it.
+	defer jsonOut.Close()
 	if opts.Mode == "json" {
 		if hdr := sess.Inner().GetHeader(); hdr.ID != "" {
 			writeJSONLine(jsonOut, hdr)
