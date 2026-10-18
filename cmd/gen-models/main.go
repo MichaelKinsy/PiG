@@ -748,7 +748,7 @@ func emit(path, src string, rows []modelRow) error {
 			if err != nil {
 				return fmt.Errorf("marshal compat for %s/%s: %w", r.Provider, r.ID, err)
 			}
-			fmt.Fprintf(&b, "\t\tCompat: %s,\n", compatLiteral(string(compat)))
+			fmt.Fprintf(&b, "\t\tCompat: %s,\n", catalogCompats.ref(compatLiteral(string(compat))))
 		}
 		if len(r.ThinkingLevelMap) > 0 {
 			fmt.Fprintf(&b, "\t\tThinkingLevelMap: %s,\n", catalogThinkingLevelMaps.ref(thinkingLevelMapLiteral(r.ThinkingLevelMap)))
@@ -762,7 +762,7 @@ func emit(path, src string, rows []modelRow) error {
 			fmt.Fprintf(&b, "\t\tPromptCache: %s,\n", promptCacheLiteral(r.PromptCache))
 		}
 		if r.InputLimits != nil {
-			fmt.Fprintf(&b, "\t\tInputLimits: %s,\n", inputLimitsLiteral(r.InputLimits))
+			fmt.Fprintf(&b, "\t\tInputLimits: %s,\n", catalogInputLimits.ref(inputLimitsLiteral(r.InputLimits)))
 		}
 		fmt.Fprintf(&b, "\t\tContextWindow: %d,\n", r.ContextWindow)
 		fmt.Fprintf(&b, "\t\tMaxOutputTokens: %d,\n", r.MaxTokens)
@@ -1226,27 +1226,37 @@ func resetCatalogStrings() {
 	}
 }
 
-// The catalog's map members refer to one shared map per distinct value instead of a map literal per model: every map in a package-level initializer is built when the process starts, and most models repeat a few thinking-level, header and sampling maps. Nothing writes through them; the registry copies a model's maps before handing them out.
+// The catalog's map members, and its Compat and InputLimits pointers, refer to one shared value per distinct content instead of a literal per model: every map in a package-level initializer is built when the process starts, and most models repeat a few thinking-level, header and sampling maps. Nothing writes through them; the registry copies a model's maps, compat and input limits before handing them out.
 type catalogMapTable struct {
 	name, doc, elem string
-	index           map[string]int
-	list            []string
+	// pointer means the table's literals are &elem{...} and ref names an element's address.
+	pointer bool
+	index   map[string]int
+	list    []string
 }
 
 var (
 	catalogHeaderMaps        = &catalogMapTable{name: "generatedHeaders", doc: "the distinct Headers maps", elem: "map[string]string"}
 	catalogThinkingLevelMaps = &catalogMapTable{name: "generatedThinkingLevelMaps", doc: "the distinct ThinkingLevelMap maps", elem: "map[ModelThinkingLevel]*string"}
 	catalogSamplingParams    = &catalogMapTable{name: "generatedSamplingParams", doc: "the distinct SamplingParams maps", elem: "map[string]any"}
-	catalogMapTables         = []*catalogMapTable{catalogHeaderMaps, catalogThinkingLevelMaps, catalogSamplingParams}
+	catalogCompats           = &catalogMapTable{name: "generatedCompats", doc: "the distinct Compat values", elem: "ModelCompat", pointer: true}
+	catalogInputLimits       = &catalogMapTable{name: "generatedInputLimits", doc: "the distinct InputLimits values", elem: "ModelInputLimits", pointer: true}
+	catalogMapTables         = []*catalogMapTable{catalogHeaderMaps, catalogThinkingLevelMaps, catalogSamplingParams, catalogCompats, catalogInputLimits}
 )
 
 // ref interns literal, a map literal spelling the table's element type, in first-use order and returns the expression naming its shared map.
 func (t *catalogMapTable) ref(literal string) string {
+	if literal == "nil" {
+		return literal
+	}
 	i, ok := t.index[literal]
 	if !ok {
 		i = len(t.list)
 		t.index[literal] = i
 		t.list = append(t.list, literal)
+	}
+	if t.pointer {
+		return fmt.Sprintf("&%s[%d]", t.name, i)
 	}
 	return fmt.Sprintf("%s[%d]", t.name, i)
 }
@@ -1256,7 +1266,7 @@ func (t *catalogMapTable) declaration() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "\n// %s is %s the catalog refers to.\nvar %s = [...]%s{\n", t.name, t.doc, t.name, t.elem)
 	for _, literal := range t.list {
-		fmt.Fprintf(&b, "\t%s,\n", strings.TrimPrefix(literal, t.elem))
+		fmt.Fprintf(&b, "\t%s,\n", strings.TrimPrefix(literal, map[bool]string{true: "&"}[t.pointer]+t.elem))
 	}
 	b.WriteString("}\n")
 	return b.String()
