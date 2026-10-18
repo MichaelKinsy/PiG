@@ -3195,10 +3195,22 @@ func (s *TaskScheduler) scheduleWakeLocked() {
 		return
 	}
 	s.wakeScheduled = true
-	s.background.Go(s.publishWake)
+	// Upstream's microtask reads the wake right after the change, while a sleep just committed is still ahead; this goroutine
+	// can run after it came due, when the scan no longer sees it. The earliest sleep at the change is taken now, as the
+	// microtask sees it, so its timer is armed (and fires at once if due) instead of leaving the sleep for an unrelated pass.
+	// With OnWake the whole value at the change is offered first, so a transient state is not lost either.
+	var first *float64
+	var firstWake *Wake
+	if s.options.OnWake != nil {
+		wake := s.wakeLocked()
+		firstWake = &wake
+	} else if s.enabled {
+		first = s.earliestSleepLocked()
+	}
+	s.background.Go(func() { s.publishWake(first, firstWake) })
 }
 
-func (s *TaskScheduler) publishWake() {
+func (s *TaskScheduler) publishWake(first *float64, firstWake *Wake) {
 	// One recomputation at a time, in the order scheduled: a stale value must not follow a newer one.
 	s.wakeMu.Lock()
 	defer s.wakeMu.Unlock()
@@ -3214,6 +3226,9 @@ func (s *TaskScheduler) publishWake() {
 		var at *float64
 		if s.enabled {
 			at = s.earliestSleepLocked()
+			if first != nil && (at == nil || *first < *at) {
+				at = first
+			}
 		}
 		s.armTimerLocked(at)
 		s.mu.Unlock()
@@ -3221,7 +3236,12 @@ func (s *TaskScheduler) publishWake() {
 	}
 	wake := s.wakeLocked()
 	s.mu.Unlock()
-	s.offerWake(wake)
+	if firstWake != nil {
+		s.offerWake(*firstWake)
+	}
+	if firstWake == nil || !equalWake(*firstWake, wake) {
+		s.offerWake(wake)
+	}
 }
 
 // offerWake gives OnWake a wake that differs from the last one it took. Only a delivered wake counts: after a panic, the next
