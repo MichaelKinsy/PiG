@@ -65,6 +65,19 @@ func replaceImagesWithPlaceholder[T ContentBlock](content []T, placeholder strin
 	return result
 }
 
+// textBlocksOnly reports whether replaceImagesWithPlaceholder would return content's blocks unchanged: the slice exists and holds only text. A nil slice still becomes an empty one.
+func textBlocksOnly[T ContentBlock](content []T) bool {
+	if content == nil {
+		return false
+	}
+	for _, value := range content {
+		if _, ok := any(value).(TextContent); !ok {
+			return false
+		}
+	}
+	return true
+}
+
 // sameModelBlocksUnchanged reports whether the transformation below keeps every block of a same-model assistant message as it is: text, tool calls, and thinking that is redacted, signed or non-blank. The message then keeps the interface value it arrived as.
 func sameModelBlocksUnchanged(content []AssistantContentBlock) bool {
 	if content == nil {
@@ -100,7 +113,7 @@ func TransformMessages(messages []Message, model *Model, normalizeToolCallId fun
 			transformed = append(transformed, message)
 		case UserMessage:
 			// A message that needs no change keeps the interface value it arrived as; boxing the copy would allocate it again.
-			if _, blocks := message.Content.(UserContentBlocks); message.Content != nil && (supportsImages || !blocks) {
+			if blocks, isBlocks := message.Content.(UserContentBlocks); message.Content != nil && (supportsImages || !isBlocks || textBlocksOnly(blocks)) {
 				transformed = append(transformed, value)
 				continue
 			}
@@ -117,7 +130,7 @@ func TransformMessages(messages []Message, model *Model, normalizeToolCallId fun
 			}
 			transformed = append(transformed, message)
 		case ToolResultMessage:
-			if id := toolCallIdMap[message.ToolCallID]; message.Content != nil && supportsImages && (id == "" || id == message.ToolCallID) {
+			if id := toolCallIdMap[message.ToolCallID]; (supportsImages && message.Content != nil || textBlocksOnly(message.Content)) && (id == "" || id == message.ToolCallID) {
 				transformed = append(transformed, value)
 				continue
 			}

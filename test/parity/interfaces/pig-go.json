@@ -59803,6 +59803,17 @@
       "shapeHash": "sha256:286e5b73e4acd45a0544edd42b4cb281f0c6521530ebcc29951f47610baf0433"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#textBlocksOnly",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "textBlocksOnly",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[T ContentBlock](content []T) bool"
+      },
+      "shapeHash": "sha256:f202a51ea35b476cf491352e6d3a3ac962422e0cd8fd527cb7ebf9913ce71555"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#textContentWire",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "textContentWire",

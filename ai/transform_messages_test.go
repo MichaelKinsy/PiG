@@ -134,6 +134,26 @@ func TestTransformMessagesImageDowngradeAndNilContent(t *testing.T) {
 		t.Fatal("nil content survived")
 	}
 }
+
+// A model without image input leaves text-only content as it is, and still turns a typed nil block slice into an empty one, as the placeholder pass does.
+func TestTransformMessagesTextOnlyContentForTextModel(t *testing.T) {
+	model := replayTarget()
+	model.Input = []string{"text"}
+	user := UserContentBlocks{TextContent{Text: "a"}, TextContent{Text: "(image omitted: model does not support images)"}, TextContent{Text: "b"}}
+	tool := []ToolResultMessageContent{TextContent{Text: "r"}}
+	result := TransformMessages([]Message{UserMessage{Content: user}, UserMessage{Content: UserContentBlocks(nil)}, UserMessage{Content: UserContentBlocks{}}, ToolResultMessage{ToolCallID: "x", Content: tool}}, model, nil)
+	if got := result[0].(UserMessage).Content; !reflect.DeepEqual(got, user) {
+		t.Fatalf("text-only user content = %#v", got)
+	}
+	for _, i := range []int{1, 2} {
+		if got, ok := result[i].(UserMessage).Content.(UserContentBlocks); !ok || got == nil || len(got) != 0 {
+			t.Fatalf("message %d content = %#v, want an empty block slice", i, result[i].(UserMessage).Content)
+		}
+	}
+	if got := result[3].(ToolResultMessage).Content; !reflect.DeepEqual(got, tool) {
+		t.Fatalf("text-only tool result content = %#v", got)
+	}
+}
 func TestTransformMessagesClosesPriorCallsBeforeDroppedAssistantAndAtEOF(t *testing.T) {
 	model := replayTarget()
 	call := AssistantMessage{Content: []AssistantContentBlock{ToolCall{ID: "one", Name: "tool", Arguments: JsonObject{}}}, StopReason: StopReasonToolUse}

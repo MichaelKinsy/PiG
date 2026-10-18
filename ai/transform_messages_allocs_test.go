@@ -22,13 +22,15 @@ func transformHistory(turns int) []Message {
 	return messages
 }
 
-// TransformMessages keeps a message that needs no change as the interface value it arrived as; boxing the copy of every user, system and tool result message would allocate the whole history again on every request. The bound is the measured cost with headroom: a history of 100 turns (500 messages) allocates the transformed slice and the tool-flow bookkeeping, and no copy of a message that needs no change.
+// TransformMessages keeps a message that needs no change as the interface value it arrived as; boxing the copy of every user, system and tool result message would allocate the whole history again on every request. A model without image input changes only content that holds an image, so a text-only history stays unchanged for it too. The bound is the measured cost with headroom: a history of 100 turns (500 messages) allocates the transformed slice and the tool-flow bookkeeping, and no copy of a message that needs no change.
 func TestTransformMessagesDoesNotReboxUnchangedMessages(t *testing.T) {
-	model := &Model{ID: "m", Input: []string{"text", "image"}, ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages}}
-	messages := transformHistory(100)
-	allocs := testing.AllocsPerRun(20, func() { _ = TransformMessages(messages, model, nil) })
-	if limit := 20.0; allocs > limit {
-		t.Fatalf("TransformMessages allocates %.0f times for 500 messages, want at most %.0f", allocs, limit)
+	for _, input := range [][]string{{"text", "image"}, {"text"}} {
+		model := &Model{ID: "m", Input: input, ProviderMeta: ProviderMetadata{ProviderID: "anthropic", API: APIAnthropicMessages}}
+		messages := transformHistory(100)
+		allocs := testing.AllocsPerRun(20, func() { _ = TransformMessages(messages, model, nil) })
+		if limit := 20.0; allocs > limit {
+			t.Fatalf("input %v: TransformMessages allocates %.0f times for 500 messages, want at most %.0f", input, allocs, limit)
+		}
+		t.Logf("input %v: allocations for 500 messages: %.0f", input, allocs)
 	}
-	t.Logf("allocations for 500 messages: %.0f", allocs)
 }
