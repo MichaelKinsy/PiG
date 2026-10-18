@@ -18151,7 +18151,8 @@
         "public-api:ai/types.go#JsonValue"
       ],
       "evidence": [
-        "test:ai/ledger_options_test.go#TestDeferredHandleDataHoldsEveryJsonValueKind"
+        "test:ai/ledger_options_test.go#TestDeferredHandleDataHoldsEveryJsonValueKind",
+        "test:ai/request_message_providers_test.go#TestProvidersSendTheSameBodyWithTheMessageCache"
       ]
     },
     {
@@ -59969,7 +59970,8 @@
         "public-api:ai/types.go#JsonValue"
       ],
       "evidence": [
-        "test:ai/ledger_options_test.go#TestDeferredHandleDataHoldsEveryJsonValueKind"
+        "test:ai/ledger_options_test.go#TestDeferredHandleDataHoldsEveryJsonValueKind",
+        "test:ai/request_message_providers_test.go#TestProvidersSendTheSameBodyWithTheMessageCache"
       ]
     },
     {
@@ -178603,7 +178605,7 @@
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
         "test:coding/extension/host/subprocess/boundary_kept_encoding_test.go#TestKeptProjectionEncodesAsTheWholePreview",
-        "test:coding/session_pi_bugs_test.go#TestContextUsageSurvivesAnOmittedFailedRetryAttempt"
+        "test:coding/session_next_turn_projection_test.go#TestNextTurnRefreshProjectsWhatTheSessionProjects"
       ]
     },
     {
@@ -178625,7 +178627,7 @@
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
         "test:coding/extension/host/subprocess/boundary_kept_encoding_test.go#TestKeptProjectionEncodesAsTheWholePreview",
-        "test:coding/session_pi_bugs_test.go#TestContextUsageSurvivesAnOmittedFailedRetryAttempt"
+        "test:coding/session_next_turn_projection_test.go#TestNextTurnRefreshProjectsWhatTheSessionProjects"
       ]
     },
     {
