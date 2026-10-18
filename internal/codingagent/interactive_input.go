@@ -700,6 +700,7 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 }
 
 // handleKey handles a keystroke the terminal-input listeners passed on.
+// Ports packages/tui/src/tui.ts (handleTerminalInput: driver-owned input routing).
 //
 //perf:hot
 func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {

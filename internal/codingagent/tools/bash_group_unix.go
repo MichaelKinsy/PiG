@@ -10,6 +10,7 @@ import (
 
 // setProcessGroup puts the command in its own process group so a group-kill
 // reaps grandchildren.
+// Ports packages/coding-agent/src/utils/shell.ts
 func setProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }

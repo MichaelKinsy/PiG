@@ -23,6 +23,7 @@ import (
 
 // StripANSI mirrors upstream stripAnsi (see text.StripANSI). Anything its pattern does not cover (a lone ESC, ESC + letter outside the
 // final-byte set) is left for SanitizeBinaryOutput.
+// Ports packages/coding-agent/src/utils/shell.ts
 func StripANSI(b []byte) []byte { return text.StripANSI(b) }
 
 // SanitizeBinaryOutput mirrors upstream shell.ts sanitizeBinaryOutput (see text.SanitizeBinaryOutput).
@@ -42,18 +43,18 @@ func unfinishedOSCAtEnd(s string) bool {
 	if !strings.HasPrefix(s, "\x1b]") {
 		return false
 	}
-	rest := s[2:]
+	rest := s[2:] //portlint:allow utf16units offsets come from utf8 decoding of this Go string, never from a JS index
 	for rest != "" {
 		r, size := utf8.DecodeRuneInString(rest)
 		switch r {
 		case '\a', '\u009c':
 			return false
 		case '\x1b':
-			if strings.HasPrefix(rest[size:], "\\") {
+			if strings.HasPrefix(rest[size:], "\\") { //portlint:allow utf16units offsets come from utf8 decoding of this Go string, never from a JS index
 				return false
 			}
 		}
-		rest = rest[size:]
+		rest = rest[size:] //portlint:allow utf16units offsets come from utf8 decoding of this Go string, never from a JS index
 	}
 	return true
 }
@@ -67,20 +68,20 @@ func SplitIncompleteAnsiSuffix(value string) (complete, pending string) {
 	}
 	windowStart, units := len(value), 0
 	for windowStart > 0 {
-		r, size := utf8.DecodeLastRuneInString(value[:windowStart])
+		r, size := utf8.DecodeLastRuneInString(value[:windowStart]) //portlint:allow utf16units offsets come from utf8 decoding of this Go string, never from a JS index
 		if units+utf16.RuneLen(r) > maxPendingAnsiLength {
 			break
 		}
 		units += utf16.RuneLen(r)
 		windowStart -= size
 	}
-	for i, r := range value[windowStart:] {
+	for i, r := range value[windowStart:] { //portlint:allow utf16units offsets come from utf8 decoding of this Go string, never from a JS index
 		if r != '\x1b' && r != '\u009b' {
 			continue
 		}
-		tail := value[windowStart+i:]
+		tail := value[windowStart+i:] //portlint:allow utf16units offsets come from utf8 decoding of this Go string, never from a JS index
 		if unfinishedOSCAtEnd(tail) || unfinishedCSIAtEnd.MatchString(tail) {
-			return value[:windowStart+i], tail
+			return value[:windowStart+i], tail //portlint:allow utf16units offsets come from utf8 decoding of this Go string, never from a JS index
 		}
 	}
 	return value, ""

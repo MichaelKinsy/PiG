@@ -22,6 +22,7 @@ import (
 // (Git for Windows' bin/bash.exe starts usr/bin/bash.exe at once). Upstream
 // spawns bash with detached:false on win32; the tree is reaped by
 // killProcessGroup via taskkill and the job.
+// Ports packages/coding-agent/src/utils/shell.ts
 func setProcessGroup(cmd *exec.Cmd) {
 	if cmd.SysProcAttr == nil {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}

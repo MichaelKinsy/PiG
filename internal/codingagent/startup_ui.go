@@ -172,6 +172,7 @@ func runStartupComponent(component startupComponent, opts StartupUIOptions, clea
 // upstream startStartupTui: the prompt renders at once while the terminal's
 // colors are queried; replies, including those after the timeout, retheme the
 // prompt and are never delivered as input.
+// Ports packages/tui/src/tui.ts (terminal color reply consumption).
 func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TuiMainScreen, terminal startupTerminal) (bool, error) {
 	asyncSelector, _ := component.(*SessionSelectorComponent)
 	var updates <-chan func()

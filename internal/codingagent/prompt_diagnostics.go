@@ -9,6 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
+// Ports packages/coding-agent/src/core/prompt-templates.ts
+// Ports packages/coding-agent/src/utils/frontmatter.ts
 func (m *InteractiveMode) loadPromptTemplates() {
 	// resource-loader.ts updatePromptsFromPaths: the session's cwd and agent directory classify each template's sourceInfo; the paths already include the default directories.
 	loaded := LoadPromptTemplatesFromOptions(LoadPromptTemplatesOptions{Cwd: m.opts.CWD, AgentDir: m.opts.AgentDir, PromptPaths: m.opts.PromptPaths})

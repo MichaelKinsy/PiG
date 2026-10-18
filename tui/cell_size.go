@@ -13,6 +13,7 @@ const cellSizeQuery = "\x1b[16t"
 
 var cellSizeResponsePattern = lazyregexp.New(`^\x1b\[6;(\d+);(\d+)t$`)
 
+// Ports packages/tui/src/tui.ts (queryCellSize, cell-size response handling).
 // QueryCellSize writes the cell-size query when the terminal supports images,
 // since only image rendering uses the cell size. Mirrors upstream tui.ts
 // queryCellSize, which start() sends after the terminal starts.
@@ -34,8 +35,8 @@ func (t *tuiBase) ConsumeCellSizeResponse(data string) bool {
 	if match == nil {
 		return false
 	}
-	heightPx, heightErr := strconv.Atoi(match[1])
-	widthPx, widthErr := strconv.Atoi(match[2])
+	heightPx, heightErr := strconv.Atoi(match[1]) //portlint:allow numbers the pattern admits only ASCII digits, and an overflowing value is consumed unchanged as Pi ignores a non-finite size
+	widthPx, widthErr := strconv.Atoi(match[2])   //portlint:allow numbers same digits-only match as the height
 	if heightErr != nil || widthErr != nil || heightPx <= 0 || widthPx <= 0 {
 		return true
 	}

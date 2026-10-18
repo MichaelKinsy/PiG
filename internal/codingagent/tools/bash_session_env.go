@@ -23,6 +23,7 @@ const sessionGuideline = "You can inspect PI_* environment variables for current
 // where managed rg and fd live) prepended to PATH unless PATH already lists
 // it. The PATH key is matched case-insensitively, as on Windows. An empty
 // binDir leaves PATH unchanged.
+// Ports packages/coding-agent/src/utils/shell.ts
 func GetShellEnv(binDir string) []string {
 	env := nodespawn.ProcessEnv()
 	if binDir == "" {
