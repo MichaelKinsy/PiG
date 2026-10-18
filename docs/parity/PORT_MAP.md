@@ -708,7 +708,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/env/node-watch.ts` | `durable/env/node/watch.go` | ✅ |
 | `packages/durable/src/env/node.ts` | `durable/env/node/binary_reader.go + durable/env/node/exec.go + durable/env/node/node.go`, `durable/env/node/watch.go` | ✅ |
 | `packages/durable/src/errors.ts` | `durable/errors.go` | ✅ |
-| `packages/durable/src/harness/agent.ts` | `durable/harness/agent.go` | ✅ |
+| `packages/durable/src/harness/agent.ts` | `durable/harness/agent.go`, `durable/harness_types.go` | ✅ |
 | `packages/durable/src/harness/compaction.ts` | `durable/harness/compaction.go` | ✅ |
 | `packages/durable/src/harness/context.ts` | `durable/harness/context.go` | ✅ |
 | `packages/durable/src/harness/define.ts` | `durable/harness/define.go` | ✅ |

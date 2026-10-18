@@ -63,7 +63,7 @@ type TaskGraphNode struct {
 	Conversations []durable.ConversationId `json:"conversations"`
 	// Blocked is why it cannot run here, when it cannot: no registered definition takes it (missing_task, task_too_old,
 	// migration_failed), or the restart limit parked it (restart_limit). Follows registry changes. Empty when it can.
-	Blocked string `json:"blocked,omitempty"`
+	Blocked durable.BlockedReason `json:"blocked,omitempty"`
 }
 
 // TaskGraph is every live task of the Session (spec §9.5).
@@ -99,7 +99,7 @@ type taskGraphMount struct {
 // TaskGraphBlocking is what the graph asks the scheduler: a task's blocked reason, and when reasons may change without a
 // commit.
 type TaskGraphBlocking struct {
-	Blocked          func(record BlockedSubject) string
+	Blocked          func(record BlockedSubject) durable.BlockedReason
 	SubscribeBlocked func(listener func()) func()
 }
 
@@ -313,7 +313,7 @@ func (view *TaskGraphView) build(ctx context.Context) (*taskGraphMount, error) {
 func taskKey(id durable.TaskId) string { return strconv.FormatInt(int64(id), 10) }
 
 // advanceTaskGraph derives the mount's operations from one publication, applies them, and hands the revision to every observer.
-func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []taskGraphObserver, publication durable.CommitPublication, blocked func(BlockedSubject) string, report func(error)) {
+func advanceTaskGraph(ctx context.Context, mount *taskGraphMount, observers []taskGraphObserver, publication durable.CommitPublication, blocked func(BlockedSubject) durable.BlockedReason, report func(error)) {
 	var ops []durable.Op
 	// Nodes this publication set (non-nil) or deleted (nil), over the mount's value.
 	changed := map[string]*TaskGraphNode{}
@@ -432,7 +432,7 @@ func sameNode(a, b TaskGraphNode) bool {
 	return bytes.Equal(left, right)
 }
 
-func taskGraphNodeOf(record durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], conversations []durable.ConversationId, blocked string) TaskGraphNode {
+func taskGraphNodeOf(record durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], conversations []durable.ConversationId, blocked durable.BlockedReason) TaskGraphNode {
 	return TaskGraphNode{
 		Id:             record.Id,
 		Kind:           record.Kind,

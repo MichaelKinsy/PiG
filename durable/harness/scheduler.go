@@ -493,7 +493,7 @@ func BlockedSubjectOf(record anyTaskRecord) BlockedSubject {
 // BlockedReason is why a live task cannot run here, if it cannot: its definition (missing_task, task_too_old,
 // migration_failed) or the restart limit (restart_limit); empty when it can. A running task, an abort-marked one, and
 // one holding its outcome are never blocked.
-func (s *TaskScheduler) BlockedReason(record BlockedSubject) string {
+func (s *TaskScheduler) BlockedReason(record BlockedSubject) durable.BlockedReason {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	status := record.Status
@@ -505,7 +505,7 @@ func (s *TaskScheduler) BlockedReason(record BlockedSubject) string {
 		return ""
 	}
 	if s.parkedLocked(record.AbortRequested, record.Restarts) {
-		return blockedRestartLimit
+		return durable.BlockedRestartLimit
 	}
 	snapshot := s.snapshotOrReportLocked()
 	if snapshot == nil {
@@ -514,10 +514,10 @@ func (s *TaskScheduler) BlockedReason(record BlockedSubject) string {
 	}
 	found := s.fitLocked(record.Id, record.Version, snapshot.Task(record.Kind))
 	if found.reason != "" {
-		return found.reason
+		return durable.BlockedReason(found.reason)
 	}
 	if found.migrates && found.task.AnyDefinition().Migrate == nil {
-		return blockedMigrationFailed
+		return durable.BlockedMigrationFailed
 	}
 	return ""
 }

@@ -728,6 +728,15 @@ classification = "upstream"
 rationale = "pi-durable document definition version (packages/durable/src/types.ts DocDefinition.version) that selects migrations."
 
 [[fields]]
+id = "durable/harness/scheduler.go#BlockedSubject.Version:go:-"
+path = "durable/harness/scheduler.go"
+owner = "BlockedSubject"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-durable task record version (packages/durable/src/harness/scheduler.ts BlockedSubject, a Pick of TaskRecord.version) that blockedReason() compares with the registered definition's version."
+
+[[fields]]
 id = "durable/session/session.go#LineDocument.Version:go:-"
 path = "durable/session/session.go"
 owner = "LineDocument"

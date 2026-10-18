@@ -20,6 +20,8 @@ const { defineTask } = await load("tasks.ts");
 const ctx = {};
 const probeTask = defineTask({ name: "probe", version: 1, initial: (input) => ({ phase: "start", input }), phases: {} });
 const pick = (list, ref) => (list.length === 0 ? 1_000_000_000 : list[ref % list.length]);
+// Nothing here blocks a task: no registry, no restart limit (the Go side passes the same constant answer).
+const blocking = { blocked: () => undefined, subscribeBlocked: () => () => {} };
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 async function stepOp(session, step, convs, tasks) {
@@ -59,7 +61,7 @@ async function stepOp(session, step, convs, tasks) {
 async function runProgram(program) {
 	const storage = new MemoryStorage();
 	const session = createSession(storage);
-	const live = await new TaskGraphView(session, storage).state(ctx);
+	const live = await new TaskGraphView(session, storage, blocking).state(ctx);
 	// Each step reports the deliveries the long-lived state's subscriber received: a commit that changes nothing in the graph delivers nothing.
 	let deliveries = [];
 	live.subscribe((value, _context, delivery) => {
@@ -79,7 +81,7 @@ async function runProgram(program) {
 			result = { err: error?.message ?? String(error) };
 		}
 		await flush();
-		const fresh = await new TaskGraphView(session, storage).state(ctx);
+		const fresh = await new TaskGraphView(session, storage, blocking).state(ctx);
 		results.push({ index, ...result, live: live.value, fresh: fresh.value, deliveries });
 		deliveries = [];
 		fresh.dispose();

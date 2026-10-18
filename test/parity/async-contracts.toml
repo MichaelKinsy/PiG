@@ -1,4 +1,4 @@
-version = "1.3.0+e17e2e10"
+version = "1.3.0+482c1381"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -1563,10 +1563,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/harness/agent.ts"
-disposition = "translated"
-contracts = ["awaited"]
-evidence = ["test:durable/harness/agent_callers_e2e_test.go#TestAddToolsAppliesToModelToolsSoTheModelIsOfferedTheAddedTools"]
-rationale = "The agent-state commits of a tool round (addTools applied to tools and modelTools) run inside the generation's own commit callback, which the Go task awaits as one blocking call returning its error; no Promise outlives the call, so there is no ordering beyond the commit."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
@@ -1605,10 +1605,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/live.ts"
@@ -1619,10 +1619,10 @@ rationale = "The live-state helpers are synchronous functions over a transaction
 
 [[files]]
 path = "packages/durable/src/harness/prompt.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release."
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/provider.ts"
@@ -1675,10 +1675,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/harness/util.ts"
-disposition = "translated"
-contracts = ["awaited"]
-evidence = ["test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall"]
-rationale = "closedError builds the error a closed Harness returns from its blocking calls; it has no asynchronous behaviour of its own."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/view.ts"

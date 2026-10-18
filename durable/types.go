@@ -661,6 +661,18 @@ const (
 	ReasonIncompatibleTask = "incompatible_task"
 )
 
+// BlockedReason is why a pending task cannot run here (Pi scheduler.ts BlockedReason): no registered definition takes
+// it (missing_task, task_too_old), its state could not be migrated (migration_failed), or the restart limit parked it
+// (restart_limit). Derived, never persisted; TaskGraph nodes carry it as Blocked.
+type BlockedReason string
+
+const (
+	BlockedMissingTask     BlockedReason = "missing_task"
+	BlockedTaskTooOld      BlockedReason = "task_too_old"
+	BlockedMigrationFailed BlockedReason = "migration_failed"
+	BlockedRestartLimit    BlockedReason = "restart_limit"
+)
+
 // ReportInfo says what a report to HarnessOptions.OnReport is about. Extension, where set, names the extension whose
 // code failed, when known; for a task's own code, the one that installed the definition the task ran. Task is set for
 // the task types, and for an extension_error or host_error that a task caused. ConversationId is set for an

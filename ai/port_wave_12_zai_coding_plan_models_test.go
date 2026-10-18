@@ -16,7 +16,7 @@ func TestPortWave12ZAICodingPlanModels(t *testing.T) {
 		if !reflect.DeepEqual(model.Capabilities, []string{"text", "image"}) {
 			t.Errorf("input = %v, want [text image]", model.Capabilities)
 		}
-		assertGeneratedModelCost(t, model, ModelCost{Input: 0.3, Output: 0.9})
+		assertGeneratedModelCost(t, model, ModelCost{Input: 0.3, Output: 0.9, CacheRead: 0.05}) // :14 at Pi 482c1381: cacheRead 0.05
 		if model.Compat == nil || model.Compat.MaxTokensField != "max_tokens" || model.Compat.ThinkingFormat != "zai" || model.Compat.ZaiToolStream == nil || !*model.Compat.ZaiToolStream {
 			t.Errorf("compat = %+v, want max_tokens/zai/zaiToolStream=true", model.Compat)
 		}

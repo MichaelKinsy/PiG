@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.3.0+e17e2e10",
+  "piVersion": "1.3.0+482c1381",
   "node": "v24.19.0",
   "api": "mistral-conversations",
   "bodies": {
@@ -136,7 +136,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 13
+                "durationMs": 11
               }
             },
             {
@@ -174,7 +174,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 13
+                "durationMs": 11
               }
             },
             {
@@ -212,7 +212,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 13
+                "durationMs": 11
               }
             }
           ]
@@ -285,7 +285,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -323,7 +323,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -361,7 +361,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -399,7 +399,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -437,7 +437,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2
+                "durationMs": 1
               }
             }
           ]
@@ -569,7 +569,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -607,7 +607,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -645,7 +645,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 2,
+                "durationMs": 1,
                 "thinkingLevel": "off"
               }
             }
@@ -687,7 +687,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 11
+            "durationMs": 10
           }
         },
         {
@@ -798,7 +798,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 11,
+            "durationMs": 10,
             "thinkingLevel": "off"
           }
         }
@@ -925,7 +925,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -963,7 +963,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -1001,7 +1001,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -1100,7 +1100,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -1138,7 +1138,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -1176,7 +1176,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -1214,7 +1214,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             }
           ]
@@ -1346,7 +1346,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 156
+                "durationMs": 158
               }
             },
             {
@@ -1384,7 +1384,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 156
+                "durationMs": 158
               }
             },
             {
@@ -1422,7 +1422,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 156,
+                "durationMs": 158,
                 "thinkingLevel": "off"
               }
             }
@@ -1563,7 +1563,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 162,
+            "durationMs": 161,
             "thinkingLevel": "off"
           }
         }
@@ -1730,7 +1730,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 179
+                "durationMs": 182
               }
             },
             {
@@ -1768,7 +1768,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 179
+                "durationMs": 182
               }
             }
           ]
@@ -1945,7 +1945,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 183
+                "durationMs": 182
               }
             },
             {
@@ -1983,7 +1983,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 183
+                "durationMs": 182
               }
             }
           ]
@@ -2155,7 +2155,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 182
+                "durationMs": 180
               }
             },
             {
@@ -2193,7 +2193,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 182,
+                "durationMs": 180,
                 "thinkingLevel": "off"
               }
             }
@@ -2334,7 +2334,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 193,
+            "durationMs": 189,
             "thinkingLevel": "off"
           }
         }
@@ -2477,7 +2477,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 369
+                "durationMs": 366
               }
             },
             {
@@ -2515,7 +2515,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 369
+                "durationMs": 366
               }
             },
             {
@@ -2553,7 +2553,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 369
+                "durationMs": 366
               }
             }
           ]
@@ -2668,7 +2668,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 365
+                "durationMs": 368
               }
             },
             {
@@ -2706,7 +2706,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 365
+                "durationMs": 368
               }
             },
             {
@@ -2744,7 +2744,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 365
+                "durationMs": 368
               }
             },
             {
@@ -2782,7 +2782,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 365
+                "durationMs": 368
               }
             }
           ]
@@ -2930,7 +2930,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 364
+                "durationMs": 366
               }
             },
             {
@@ -2968,7 +2968,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 364
+                "durationMs": 366
               }
             },
             {
@@ -3006,7 +3006,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 364,
+                "durationMs": 366,
                 "thinkingLevel": "off"
               }
             }
@@ -3147,7 +3147,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 376,
+            "durationMs": 381,
             "thinkingLevel": "off"
           }
         }
@@ -3695,7 +3695,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -3733,7 +3733,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -3771,7 +3771,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -3912,7 +3912,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 171,
+            "durationMs": 164,
             "thinkingLevel": "off"
           }
         }
@@ -5001,7 +5001,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -5047,7 +5047,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -5093,7 +5093,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -5139,7 +5139,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -5185,7 +5185,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -5231,7 +5231,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             }
           ]
@@ -6212,7 +6212,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 11,
+            "durationMs": 10,
             "thinkingLevel": "off"
           }
         }
@@ -6780,7 +6780,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 151
+                "durationMs": 153
               }
             },
             {
@@ -6826,7 +6826,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 151
+                "durationMs": 153
               }
             }
           ]
@@ -7295,7 +7295,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -7341,7 +7341,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -7387,7 +7387,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -7433,7 +7433,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -7479,7 +7479,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             },
             {
@@ -7525,7 +7525,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 155
+                "durationMs": 153
               }
             }
           ]
@@ -7971,7 +7971,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -8017,7 +8017,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -8063,7 +8063,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -8109,7 +8109,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -8155,7 +8155,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 154,
+                "durationMs": 156,
                 "thinkingLevel": "off"
               }
             }
@@ -8500,7 +8500,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 161,
+            "durationMs": 163,
             "thinkingLevel": "off"
           }
         }
@@ -9061,7 +9061,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 398
+                "durationMs": 393
               }
             },
             {
@@ -9107,7 +9107,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 398
+                "durationMs": 393
               }
             }
           ]
@@ -9705,7 +9705,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 402
+                "durationMs": 397
               }
             },
             {
@@ -9751,7 +9751,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 402
+                "durationMs": 397
               }
             }
           ]
@@ -10317,7 +10317,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 397
+                "durationMs": 396
               }
             },
             {
@@ -10363,7 +10363,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 397,
+                "durationMs": 396,
                 "thinkingLevel": "off"
               }
             }
@@ -10708,7 +10708,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 410,
+            "durationMs": 407,
             "thinkingLevel": "off"
           }
         }
@@ -11321,7 +11321,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1096
+                "durationMs": 1084
               }
             },
             {
@@ -11367,7 +11367,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1096
+                "durationMs": 1084
               }
             }
           ]
@@ -12017,7 +12017,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1082
+                "durationMs": 1080
               }
             },
             {
@@ -12063,7 +12063,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1082
+                "durationMs": 1080
               }
             }
           ]
@@ -12681,7 +12681,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1096
+                "durationMs": 1085
               }
             },
             {
@@ -12727,7 +12727,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1096,
+                "durationMs": 1085,
                 "thinkingLevel": "off"
               }
             }
@@ -13072,7 +13072,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 1110,
+            "durationMs": 1093,
             "thinkingLevel": "off"
           }
         }
@@ -13638,7 +13638,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -13684,7 +13684,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             }
           ]
@@ -14138,7 +14138,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -14184,7 +14184,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -14230,7 +14230,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -14276,7 +14276,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -14322,7 +14322,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -14368,7 +14368,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             }
           ]
@@ -14848,7 +14848,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 307
               }
             },
             {
@@ -14894,7 +14894,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 307
               }
             },
             {
@@ -14940,7 +14940,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304
+                "durationMs": 307
               }
             },
             {
@@ -14986,7 +14986,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 304,
+                "durationMs": 307,
                 "thinkingLevel": "off"
               }
             }
@@ -15331,7 +15331,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 321,
+            "durationMs": 322,
             "thinkingLevel": "off"
           }
         }
@@ -16915,7 +16915,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -16965,7 +16965,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -17015,7 +17015,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -17065,7 +17065,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -17115,7 +17115,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -17165,7 +17165,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -17215,7 +17215,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 1,
+                "durationMs": 2,
                 "thinkingLevel": "off"
               }
             }
@@ -17553,7 +17553,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 12,
+            "durationMs": 9,
             "thinkingLevel": "off"
           }
         }
@@ -17953,7 +17953,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -18003,7 +18003,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -18053,7 +18053,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -18103,7 +18103,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -18153,7 +18153,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 152
+                "durationMs": 154
               }
             }
           ]
@@ -18353,7 +18353,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18403,7 +18403,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18453,7 +18453,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18503,7 +18503,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18553,7 +18553,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18603,7 +18603,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18653,7 +18653,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18703,7 +18703,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18753,7 +18753,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -18803,7 +18803,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -19113,7 +19113,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -19163,7 +19163,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -19213,7 +19213,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -19263,7 +19263,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -19313,7 +19313,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -19363,7 +19363,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153
+                "durationMs": 156
               }
             },
             {
@@ -19413,7 +19413,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 153,
+                "durationMs": 156,
                 "thinkingLevel": "off"
               }
             }
@@ -19727,7 +19727,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 170,
+            "durationMs": 161,
             "thinkingLevel": "off"
           }
         }
@@ -20217,7 +20217,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 263
+                "durationMs": 262
               }
             },
             {
@@ -20267,7 +20267,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 263
+                "durationMs": 262
               }
             },
             {
@@ -20317,7 +20317,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 263
+                "durationMs": 262
               }
             }
           ]
@@ -20838,7 +20838,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 258
+                "durationMs": 262
               }
             },
             {
@@ -20888,7 +20888,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 258
+                "durationMs": 262
               }
             },
             {
@@ -20938,7 +20938,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 258
+                "durationMs": 262
               }
             }
           ]
@@ -21437,7 +21437,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 259
+                "durationMs": 262
               }
             },
             {
@@ -21487,7 +21487,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 259
+                "durationMs": 262
               }
             },
             {
@@ -21537,7 +21537,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 259,
+                "durationMs": 262,
                 "thinkingLevel": "off"
               }
             }
@@ -21851,7 +21851,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 271,
+            "durationMs": 268,
             "thinkingLevel": "off"
           }
         }
@@ -22373,7 +22373,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 687
+                "durationMs": 678
               }
             },
             {
@@ -22423,7 +22423,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 687
+                "durationMs": 678
               }
             },
             {
@@ -22473,7 +22473,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 687
+                "durationMs": 678
               }
             }
           ]
@@ -23026,7 +23026,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 681
+                "durationMs": 690
               }
             },
             {
@@ -23076,7 +23076,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 681
+                "durationMs": 690
               }
             },
             {
@@ -23126,7 +23126,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 681
+                "durationMs": 690
               }
             }
           ]
@@ -23657,7 +23657,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 685
+                "durationMs": 690
               }
             },
             {
@@ -23707,7 +23707,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 685
+                "durationMs": 690
               }
             },
             {
@@ -23757,7 +23757,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 685,
+                "durationMs": 690,
                 "thinkingLevel": "off"
               }
             }
@@ -24071,7 +24071,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 709,
+            "durationMs": 706,
             "thinkingLevel": "off"
           }
         }
@@ -24573,7 +24573,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -24623,7 +24623,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             },
             {
@@ -24673,7 +24673,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 307
               }
             }
           ]
@@ -25174,7 +25174,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 305
               }
             },
             {
@@ -25224,7 +25224,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 305
               }
             },
             {
@@ -25274,7 +25274,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 305
               }
             },
             {
@@ -25324,7 +25324,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 306
+                "durationMs": 305
               }
             }
           ]
@@ -25835,7 +25835,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 308
+                "durationMs": 310
               }
             },
             {
@@ -25885,7 +25885,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 308
+                "durationMs": 310
               }
             },
             {
@@ -25935,7 +25935,7 @@
                 "stopReason": "toolUse",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "tool_calls",
-                "durationMs": 308,
+                "durationMs": 310,
                 "thinkingLevel": "off"
               }
             }
@@ -26249,7 +26249,7 @@
             "stopReason": "toolUse",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "tool_calls",
-            "durationMs": 318,
+            "durationMs": 319,
             "thinkingLevel": "off"
           }
         }
@@ -27110,7 +27110,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 11,
+            "durationMs": 10,
             "thinkingLevel": "off"
           }
         }
@@ -27438,7 +27438,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -27473,7 +27473,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -27508,7 +27508,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -27543,7 +27543,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -27578,7 +27578,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 155
               }
             }
           ]
@@ -27769,7 +27769,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -27804,7 +27804,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 153,
+                "durationMs": 155,
                 "thinkingLevel": "off"
               }
             }
@@ -27955,7 +27955,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 168,
+            "durationMs": 161,
             "thinkingLevel": "off"
           }
         }
@@ -28149,7 +28149,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 234
+                "durationMs": 232
               }
             },
             {
@@ -28184,7 +28184,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 234
+                "durationMs": 232
               }
             }
           ]
@@ -28391,7 +28391,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 232
+                "durationMs": 238
               }
             },
             {
@@ -28426,7 +28426,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 232
+                "durationMs": 238
               }
             }
           ]
@@ -28807,7 +28807,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 247,
+            "durationMs": 244,
             "thinkingLevel": "off"
           }
         }
@@ -29013,7 +29013,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 395
+                "durationMs": 392
               }
             },
             {
@@ -29048,7 +29048,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 395
+                "durationMs": 392
               }
             }
           ]
@@ -29267,7 +29267,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 398
+                "durationMs": 396
               }
             },
             {
@@ -29302,7 +29302,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 398
+                "durationMs": 396
               }
             }
           ]
@@ -29695,7 +29695,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 417,
+            "durationMs": 407,
             "thinkingLevel": "off"
           }
         }
@@ -29887,7 +29887,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 306
+                "durationMs": 305
               }
             },
             {
@@ -29922,7 +29922,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 306
+                "durationMs": 305
               }
             }
           ]
@@ -30095,7 +30095,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 304
+                "durationMs": 305
               }
             },
             {
@@ -30130,7 +30130,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 304
+                "durationMs": 305
               }
             },
             {
@@ -30165,7 +30165,7 @@
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "error",
                 "errorMessage": "Provider stopped with: error (server error)",
-                "durationMs": 304
+                "durationMs": 305
               }
             }
           ]
@@ -30544,7 +30544,7 @@
             "responseId": "chatcmpl-strict",
             "rawStopReason": "error",
             "errorMessage": "Provider stopped with: error (server error)",
-            "durationMs": 318,
+            "durationMs": 321,
             "thinkingLevel": "off"
           }
         }
@@ -30695,7 +30695,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -30729,7 +30729,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 1
+                "durationMs": 2
               }
             }
           ]
@@ -31250,7 +31250,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 11,
+            "durationMs": 10,
             "thinkingLevel": "off"
           }
         }
@@ -31596,7 +31596,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -31630,7 +31630,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 154
+                "durationMs": 153
               }
             }
           ]
@@ -31944,7 +31944,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 161,
+            "durationMs": 160,
             "thinkingLevel": "off"
           }
         }
@@ -32095,7 +32095,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 180
+                "durationMs": 181
               }
             },
             {
@@ -32129,7 +32129,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 180
+                "durationMs": 181
               }
             }
           ]
@@ -32290,7 +32290,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 180
+                "durationMs": 179
               }
             },
             {
@@ -32324,7 +32324,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 180
+                "durationMs": 179
               }
             }
           ]
@@ -32476,7 +32476,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 181
+                "durationMs": 183
               }
             },
             {
@@ -32510,7 +32510,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 181,
+                "durationMs": 183,
                 "thinkingLevel": "off"
               }
             }
@@ -32638,7 +32638,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 188,
+            "durationMs": 187,
             "thinkingLevel": "off"
           }
         }
@@ -32793,7 +32793,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 233
+                "durationMs": 234
               }
             },
             {
@@ -32827,7 +32827,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 233
+                "durationMs": 234
               }
             }
           ]
@@ -32992,7 +32992,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 235
+                "durationMs": 233
               }
             },
             {
@@ -33026,7 +33026,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 235
+                "durationMs": 233
               }
             }
           ]
@@ -33182,7 +33182,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 235
+                "durationMs": 232
               }
             },
             {
@@ -33216,7 +33216,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 235,
+                "durationMs": 232,
                 "thinkingLevel": "off"
               }
             }
@@ -33495,7 +33495,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 455
+                "durationMs": 454
               }
             },
             {
@@ -33529,7 +33529,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 455
+                "durationMs": 454
               }
             }
           ]
@@ -33876,7 +33876,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 456
+                "durationMs": 459
               }
             },
             {
@@ -33910,7 +33910,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Mistral stream ended without a finish reason",
-                "durationMs": 456,
+                "durationMs": 459,
                 "thinkingLevel": "off"
               }
             }
@@ -34038,7 +34038,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Mistral stream ended without a finish reason",
-            "durationMs": 467,
+            "durationMs": 464,
             "thinkingLevel": "off"
           }
         }
@@ -34753,7 +34753,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 11,
+            "durationMs": 9,
             "thinkingLevel": "off"
           }
         }
@@ -34906,7 +34906,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -34940,7 +34940,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -35292,7 +35292,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -35326,7 +35326,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 153,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -35608,7 +35608,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 208
+                "durationMs": 210
               }
             },
             {
@@ -35642,7 +35642,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 208
+                "durationMs": 210
               }
             }
           ]
@@ -35995,7 +35995,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 207
+                "durationMs": 208
               }
             },
             {
@@ -36029,7 +36029,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 207,
+                "durationMs": 208,
                 "thinkingLevel": "off"
               }
             }
@@ -36533,7 +36533,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 367
+                "durationMs": 368
               }
             },
             {
@@ -36567,7 +36567,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 367
+                "durationMs": 368
               }
             }
           ]
@@ -36896,7 +36896,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 374,
+            "durationMs": 375,
             "thinkingLevel": "off"
           }
         }
@@ -37247,7 +37247,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 459
+                "durationMs": 457
               }
             },
             {
@@ -37281,7 +37281,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 459
+                "durationMs": 457
               }
             }
           ]
@@ -37435,7 +37435,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 456
+                "durationMs": 461
               }
             },
             {
@@ -37469,7 +37469,7 @@
                 "stopReason": "stop",
                 "responseId": "chatcmpl-strict",
                 "rawStopReason": "stop",
-                "durationMs": 456,
+                "durationMs": 461,
                 "thinkingLevel": "off"
               }
             }
@@ -37597,7 +37597,7 @@
             "stopReason": "stop",
             "responseId": "chatcmpl-strict",
             "rawStopReason": "stop",
-            "durationMs": 464,
+            "durationMs": 465,
             "thinkingLevel": "off"
           }
         }
@@ -37713,7 +37713,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -37747,7 +37747,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 1
+                "durationMs": 2
               }
             }
           ]
@@ -37812,7 +37812,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -37846,7 +37846,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -37880,7 +37880,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -37914,7 +37914,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 1
+                "durationMs": 2
               }
             }
           ]
@@ -38031,7 +38031,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 2
+                "durationMs": 1
               }
             },
             {
@@ -38065,7 +38065,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 2,
+                "durationMs": 1,
                 "thinkingLevel": "off"
               }
             }
@@ -38103,7 +38103,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 11
+            "durationMs": 9
           }
         },
         {
@@ -38179,7 +38179,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 11,
+            "durationMs": 9,
             "thinkingLevel": "off"
           }
         }
@@ -38295,7 +38295,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 152
               }
             },
             {
@@ -38329,7 +38329,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -38420,7 +38420,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 159
               }
             },
             {
@@ -38454,7 +38454,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 159
               }
             },
             {
@@ -38488,7 +38488,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 154
+                "durationMs": 159
               }
             }
           ]
@@ -38605,7 +38605,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -38639,7 +38639,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 153,
+                "durationMs": 155,
                 "thinkingLevel": "off"
               }
             }
@@ -38745,7 +38745,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 161,
+            "durationMs": 160,
             "thinkingLevel": "off"
           }
         }
@@ -39309,7 +39309,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 187,
+            "durationMs": 191,
             "thinkingLevel": "off"
           }
         }
@@ -39463,7 +39463,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 235
+                "durationMs": 236
               }
             }
           ]
@@ -39624,7 +39624,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 235
+                "durationMs": 231
               }
             }
           ]
@@ -39885,7 +39885,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 244,
+            "durationMs": 247,
             "thinkingLevel": "off"
           }
         }
@@ -40001,7 +40001,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152
+                "durationMs": 151
               }
             },
             {
@@ -40035,7 +40035,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152
+                "durationMs": 151
               }
             }
           ]
@@ -40126,7 +40126,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -40160,7 +40160,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152
+                "durationMs": 153
               }
             },
             {
@@ -40194,7 +40194,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected end of JSON input",
-                "durationMs": 152
+                "durationMs": 153
               }
             }
           ]
@@ -40451,7 +40451,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected end of JSON input",
-            "durationMs": 164,
+            "durationMs": 163,
             "thinkingLevel": "off"
           }
         }
@@ -40954,7 +40954,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 11
+            "durationMs": 10
           }
         },
         {
@@ -41030,7 +41030,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 11,
+            "durationMs": 10,
             "thinkingLevel": "off"
           }
         }
@@ -41269,7 +41269,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -41303,7 +41303,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -41337,7 +41337,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -41593,7 +41593,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 162,
+            "durationMs": 161,
             "thinkingLevel": "off"
           }
         }
@@ -41742,7 +41742,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 180
+                "durationMs": 176
               }
             }
           ]
@@ -41898,7 +41898,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 178
+                "durationMs": 181
               }
             }
           ]
@@ -42048,7 +42048,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 181,
+                "durationMs": 182,
                 "thinkingLevel": "off"
               }
             }
@@ -42154,7 +42154,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 191,
+            "durationMs": 190,
             "thinkingLevel": "off"
           }
         }
@@ -42467,7 +42467,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 230
+                "durationMs": 233
               }
             }
           ]
@@ -42621,7 +42621,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 235,
+                "durationMs": 233,
                 "thinkingLevel": "off"
               }
             }
@@ -42727,7 +42727,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 247,
+            "durationMs": 243,
             "thinkingLevel": "off"
           }
         }
@@ -42842,7 +42842,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 151
+                "durationMs": 154
               }
             },
             {
@@ -42876,7 +42876,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 151
+                "durationMs": 154
               }
             }
           ]
@@ -42966,7 +42966,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -43000,7 +43000,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -43034,7 +43034,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 155
               }
             }
           ]
@@ -43290,7 +43290,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 162,
+            "durationMs": 164,
             "thinkingLevel": "off"
           }
         }
@@ -43796,7 +43796,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 11
+            "durationMs": 9
           }
         },
         {
@@ -43872,7 +43872,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 11,
+            "durationMs": 9,
             "thinkingLevel": "off"
           }
         }
@@ -44298,7 +44298,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 155
               }
             },
             {
@@ -44332,7 +44332,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154,
+                "durationMs": 155,
                 "thinkingLevel": "off"
               }
             }
@@ -44438,7 +44438,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 160,
+            "durationMs": 159,
             "thinkingLevel": "off"
           }
         }
@@ -44588,7 +44588,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 179
+                "durationMs": 181
               }
             }
           ]
@@ -44745,7 +44745,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 180
+                "durationMs": 182
               }
             }
           ]
@@ -44896,7 +44896,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 180,
+                "durationMs": 181,
                 "thinkingLevel": "off"
               }
             }
@@ -45002,7 +45002,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 188,
+            "durationMs": 189,
             "thinkingLevel": "off"
           }
         }
@@ -45156,7 +45156,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 233
+                "durationMs": 240
               }
             }
           ]
@@ -45317,7 +45317,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 233
+                "durationMs": 234
               }
             }
           ]
@@ -45472,7 +45472,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 232,
+                "durationMs": 234,
                 "thinkingLevel": "off"
               }
             }
@@ -45578,7 +45578,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 250,
+            "durationMs": 258,
             "thinkingLevel": "off"
           }
         }
@@ -45694,7 +45694,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 155
               }
             },
             {
@@ -45728,7 +45728,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 153
+                "durationMs": 155
               }
             }
           ]
@@ -45819,7 +45819,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -45853,7 +45853,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 156
               }
             },
             {
@@ -45887,7 +45887,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 156
               }
             }
           ]
@@ -46004,7 +46004,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154
+                "durationMs": 153
               }
             },
             {
@@ -46038,7 +46038,7 @@
                 "stopReason": "error",
                 "responseId": "chatcmpl-strict",
                 "errorMessage": "Invalid Mistral streaming event",
-                "durationMs": 154,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -46144,7 +46144,7 @@
             "stopReason": "error",
             "responseId": "chatcmpl-strict",
             "errorMessage": "Invalid Mistral streaming event",
-            "durationMs": 166,
+            "durationMs": 164,
             "thinkingLevel": "off"
           }
         }
@@ -46217,7 +46217,7 @@
             },
             "stopReason": "aborted",
             "errorMessage": "This operation was aborted",
-            "durationMs": 62
+            "durationMs": 60
           }
         }
       ]
@@ -46287,7 +46287,7 @@
             },
             "stopReason": "aborted",
             "errorMessage": "This operation was aborted",
-            "durationMs": 2
+            "durationMs": 1
           }
         }
       ]
