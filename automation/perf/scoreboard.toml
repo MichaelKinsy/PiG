@@ -333,7 +333,7 @@ gates = [
 [[metric]]
 id = "rpc.turn_ext10"
 area = "extensions"
-title = "One RPC prompt turn with ten TypeScript extensions loaded (pi-arena rpc-ext10), host side"
+title = "One RPC prompt turn with ten TypeScript extensions loaded (buffon rpc-ext10), host side"
 impact = 5
 owner = "perf-max"
 target = "under 10,000 allocations and 1 MB per turn, host side"

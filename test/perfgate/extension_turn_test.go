@@ -103,7 +103,7 @@ func awaitBenchCommands(t *testing.T, count int, stdin io.Writer, stdout *bufio.
 	t.Fatalf("the %d bench extensions did not all load within a minute", count)
 }
 
-// The cost each RPC turn adds with ten TypeScript extensions loaded (pi-arena rpc-ext10), host side: every turn dispatches before_agent_start and the turn_end boundary to each extension, with the context preview Pi hands turn_end handlers.
+// The cost each RPC turn adds with ten TypeScript extensions loaded (buffon rpc-ext10), host side: every turn dispatches before_agent_start and the turn_end boundary to each extension, with the context preview Pi hands turn_end handlers.
 //
 // A turn late in a long session costs what an early one does: the cost of turns 13 to 50 per turn over that of turns 3 to 12 (allocs_growth) stays near 1. Work that projects or encodes the whole history on each turn raises it.
 func TestRPCExtensionTurnProcessGate(t *testing.T) {
