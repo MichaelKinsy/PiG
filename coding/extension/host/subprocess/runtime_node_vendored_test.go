@@ -863,6 +863,17 @@ func TestPiCodemodeRunsFromTheVendoredSDK(t *testing.T) {
 	script := filepath.Join(t.TempDir(), "codemode.mjs")
 	if err := os.WriteFile(script, []byte(`
 import assert from "node:assert/strict";
+import { Worker } from "node:worker_threads";
+// A worker keeps its slot of the two executeCodemode admits until it has exited, which is after executeCodemode has returned (execute.ts acquireWorker), and a script that
+// finds both slots taken fails at once ("Retry after they exit."). Each script therefore starts once the workers of the earlier ones have exited. The exit listeners are
+// added after executeCodemode's own, which give the slot back. executeCodemode unrefs a worker it has asked to terminate, so the wait refs it again.
+const workers = [];
+const once = Worker.prototype.once;
+Worker.prototype.once = function (event, listener) {
+  const result = once.call(this, event, listener);
+  if (event === "exit") workers.push({ worker: this, exited: new Promise((resolve) => once.call(this, "exit", resolve)) });
+  return result;
+};
 async function scene(url) {
   const m = await import(url);
   const tools = [];
@@ -872,6 +883,10 @@ async function scene(url) {
   for (const code of ["console.log('a'); return [1 + 1, typeof store]", "throw new Error('boom')", "return await callTool('read', {})"]) {
     const result = await tools[0].execute("c1", { code }, undefined, undefined, undefined);
     out.push({ ...result, content: result.content.map((item) => ({ ...item, text: item.text?.replace(/Wall time [0-9.]+ seconds/, "Wall time <t> seconds") })), details: undefined });
+    await Promise.all(workers.splice(0).map(({ worker, exited }) => {
+      worker.ref();
+      return exited;
+    }));
   }
   return out;
 }
