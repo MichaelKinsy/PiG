@@ -92,6 +92,17 @@ func installFakeExecutableRuntime(t *testing.T, root string) {
 	installFakeRuntime(t, root, "fake", "1", "")
 }
 
+// warmFakeHost runs the script at path once, as the start check of a launch does (--version), and waits for it without a bound. The first run of a file a process
+// has just written waits for the operating system's scan of a new executable: Start returns in about 3 ms and the script's exit then takes 2.9 s at the median
+// and up to 22 s with a few dozen new programs starting at once, which exceeds the ten seconds the start check of a slot runtime gives its probe (tsruntime
+// probeTimeout) and would have the fake runtime skipped. Once the scan is done the probe of the launch sees a warm executable.
+func warmFakeHost(t *testing.T, path string) {
+	t.Helper()
+	if output, err := exec.CommandContext(t.Context(), path, "--version").CombinedOutput(); err != nil {
+		t.Fatalf("%s --version: %v\n%s", path, err, output)
+	}
+}
+
 // installFakeRuntime installs executable runtime id that marks its runs with PIG_FAKE_RUNTIME=marker; marker "fail" makes every
 // launch exit 1 after answering --version.
 func installFakeRuntime(t *testing.T, root, id, marker, fallback string) {
@@ -112,6 +123,7 @@ mode=$1; shift
 	if err := os.WriteFile(filepath.Join(dir, "host"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	warmFakeHost(t, filepath.Join(dir, "host"))
 	sum := sha256.Sum256([]byte(script))
 	manifest := tsruntime.Manifest{ID: id, Kind: tsruntime.KindExecutable, Version: "1", Platform: tsruntime.Platform(), Provider: "test", Fallback: fallback, Image: &tsruntime.Image{Executable: "host", SHA256: hex.EncodeToString(sum[:])}}
 	data, err := json.Marshal(manifest)

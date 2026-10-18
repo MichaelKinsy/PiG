@@ -51,6 +51,7 @@ func fakeTier(t *testing.T, root, id, fallback string, fail bool, inputs []tsrun
 	if err := os.WriteFile(filepath.Join(dir, "host"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	warmFakeHost(t, filepath.Join(dir, "host"))
 	sum := sha256.Sum256([]byte(script))
 	manifest := tsruntime.Manifest{ID: id, Kind: tsruntime.KindExecutable, Version: "1", Platform: tsruntime.Platform(), Provider: "test", Fallback: fallback,
 		Image: &tsruntime.Image{Executable: "host", SHA256: hex.EncodeToString(sum[:]), Inputs: inputs}}
