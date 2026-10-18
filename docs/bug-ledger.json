@@ -30023,6 +30023,10 @@
       "title": "A provider transport failure records its Go cause as a provider_transport_failure diagnostic"
     },
     {
+      "id": "D181",
+      "title": "The commits of an unawaited durable job are ordered by goroutine scheduling, not by Pi's microtask hops"
+    },
+    {
       "id": "D182",
       "title": "A proxy start event with an unusable content index ends the stream with an error"
     },
