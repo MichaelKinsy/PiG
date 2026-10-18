@@ -60,7 +60,7 @@ test("commits apply in order, each in one transaction, before any effect or time
   assert.equal(r.store.counters.commits - commitsBefore, 2)
   // Both commits are logged before the model effect starts, and the effect saw both rows.
   assert.deepEqual(r.log, ["commit 1", "commit 2", "model#2 log=2"])
-  assert.deepEqual(r.timers, ["set 1 5100 true log=2", "liveness 6000"])
+  assert.deepEqual(r.timers, ["set 1 5100 1 log=2", "liveness 6000"])
   assert.deepEqual(r.logRows(), ["1:submit:r1", "2:placed:r1"])
 })
 
