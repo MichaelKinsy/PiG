@@ -315,6 +315,10 @@ func (clock *fakeProgressClock) Now() float64 {
 	return clock.at
 }
 
+func (clock *fakeProgressClock) progressClock() ProgressClock {
+	return ProgressClock{Now: clock.Now, SetTimer: func(callback func(), delayMs float64) func() { return clock.AfterFunc(delayMs, callback) }}
+}
+
 func (clock *fakeProgressClock) AfterFunc(delay float64, run func()) func() {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
@@ -364,7 +368,7 @@ func TestProgress(t *testing.T) {
 			defer mu.Unlock()
 			commits = append(commits, clock.Now())
 			return size, nil
-		}, func(error) {}, 100, clock)
+		}, func(error) {}, 100, clock.progressClock())
 		expect := func(want ...float64) {
 			t.Helper()
 			mu.Lock()
@@ -404,7 +408,7 @@ func TestProgress(t *testing.T) {
 			defer mu.Unlock()
 			commits = append(commits, clock.Now())
 			return 10, nil
-		}, func(error) {}, 500, clock)
+		}, func(error) {}, 500, clock.progressClock())
 		expect := func(want ...float64) {
 			t.Helper()
 			mu.Lock()
@@ -433,9 +437,9 @@ func TestProgress(t *testing.T) {
 		now := 1000.0
 		var timers []*armed
 		var commits []float64
-		clock := stubProgressClock{
-			now: func() float64 { mu.Lock(); defer mu.Unlock(); return now },
-			after: func(delay float64, run func()) func() {
+		clock := ProgressClock{
+			Now: func() float64 { mu.Lock(); defer mu.Unlock(); return now },
+			SetTimer: func(run func(), delay float64) func() {
 				mu.Lock()
 				defer mu.Unlock()
 				timer := &armed{delay: delay, callback: run}
@@ -532,7 +536,7 @@ func TestProgress(t *testing.T) {
 		progress := NewProgressWithClock(func() (int, error) {
 			<-inFlight
 			return 0, nil
-		}, func(error) {}, 100, clock)
+		}, func(error) {}, 100, clock.progressClock())
 		first := progress.MarkAndWait()
 		second := progress.MarkAndWait()
 		stopped := make(chan []*ProgressWaiter)
@@ -566,7 +570,7 @@ func TestProgress(t *testing.T) {
 func TestSystemProgressClockUsesNodesTimerDelayRule(t *testing.T) {
 	for _, delay := range []float64{math.NaN(), math.Inf(1), 1e13, 2147483648, 0, -5} {
 		fired := make(chan struct{})
-		stop := SystemProgressClock{}.AfterFunc(delay, func() { close(fired) })
+		stop := SystemProgressClock.SetTimer(func() { close(fired) }, delay)
 		select {
 		case <-fired:
 		case <-time.After(5 * time.Second):
@@ -574,16 +578,4 @@ func TestSystemProgressClockUsesNodesTimerDelayRule(t *testing.T) {
 		}
 		stop()
 	}
-}
-
-// stubProgressClock is a ProgressClock of functions, for a test that arms and fires its timers itself.
-type stubProgressClock struct {
-	now   func() float64
-	after func(delay float64, run func()) func()
-}
-
-func (clock stubProgressClock) Now() float64 { return clock.now() }
-
-func (clock stubProgressClock) AfterFunc(delay float64, run func()) func() {
-	return clock.after(delay, run)
 }

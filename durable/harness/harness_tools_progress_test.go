@@ -66,7 +66,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 		// The tool's progress runs on a fake clock, so the second chunk waits exactly the configured interval.
 		clock := &fakeProgressClock{}
 		previous := toolProgressClock
-		toolProgressClock = clock
+		toolProgressClock = clock.progressClock()
 		t.Cleanup(func() { toolProgressClock = previous })
 		slotsAt := func(progress *ProgressPolicyPatch, advances ...float64) []any {
 			setup := chatSetup(t)
@@ -427,7 +427,7 @@ func TestToolProgressAndLifetime(t *testing.T) {
 	t.Run("rejects details() still waiting when the call is aborted during afterTool", func(t *testing.T) {
 		// Hold every throttled progress commit, so only the abort can settle the details' waiter.
 		previous := toolProgressClock
-		toolProgressClock = heldProgressClock{}
+		toolProgressClock = heldProgressClock()
 		t.Cleanup(func() { toolProgressClock = previous })
 		setup := chatSetup(t)
 		pendingDetails := make(chan error, 1)
@@ -501,11 +501,12 @@ func TestToolProgressAndLifetime(t *testing.T) {
 // that leaves the wait pending runs it on a goroutine and observes the record here before going on.
 // heldProgressClock stands still and never fires a throttled commit: the first commit, due at once, runs, and every
 // later one waits on a timer that does not fire, however slow the first commit was.
-type heldProgressClock struct{}
-
-func (heldProgressClock) Now() float64 { return 0 }
-
-func (heldProgressClock) AfterFunc(float64, func()) func() { return func() {} }
+func heldProgressClock() *output.ProgressClock {
+	return &output.ProgressClock{
+		Now:      func() float64 { return 0 },
+		SetTimer: func(func(), float64) func() { return func() {} },
+	}
+}
 
 // awaitDetailsWaiting returns once a details() call has queued its progress waiter.
 func awaitDetailsWaiting(ctx context.Context, api durable.ToolExecutionApi) error {
@@ -575,6 +576,10 @@ func (clock *fakeProgressClock) Now() float64 {
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
 	return clock.at
+}
+
+func (clock *fakeProgressClock) progressClock() *output.ProgressClock {
+	return &output.ProgressClock{Now: clock.Now, SetTimer: func(callback func(), delayMs float64) func() { return clock.AfterFunc(delayMs, callback) }}
 }
 
 func (clock *fakeProgressClock) AfterFunc(delay float64, run func()) func() {

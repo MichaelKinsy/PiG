@@ -518,28 +518,28 @@ const (
 	ProgressMillisPerSecond = 1000
 )
 
-// ProgressClock is the time source of Progress: wall-clock milliseconds and one-shot timers.
-type ProgressClock interface {
-	Now() float64
-	AfterFunc(delay float64, run func()) (stop func())
+// ProgressClock is the clock and timer Progress paces on (output.ts ProgressClock): Now is the time in milliseconds, SetTimer calls
+// callback once after about delayMs and returns a function that disarms it.
+type ProgressClock struct {
+	Now      func() float64
+	SetTimer func(callback func(), delayMs float64) (disarm func())
 }
-
-// SystemProgressClock is Date.now and setTimeout.
-type SystemProgressClock struct{}
 
 // nodeTimeoutMax is Node's TIMEOUT_MAX (lib/internal/timers.js), the longest delay a timer honors: 2^31-1 ms.
 const nodeTimeoutMax = 1<<31 - 1
 
-// Now is Date.now().
-func (SystemProgressClock) Now() float64 { return float64(time.Now().UnixMilli()) }
-
-// AfterFunc is setTimeout(run, delay) with Node's delay rule: a delay outside [1 ms, TIMEOUT_MAX], or NaN, runs after 1 ms (`if (!(after >= 1 && after <= TIMEOUT_MAX)) after = 1`), and the rest is truncated to whole milliseconds.
-func (SystemProgressClock) AfterFunc(delay float64, run func()) func() {
-	if !(delay >= 1 && delay <= nodeTimeoutMax) {
-		delay = 1
-	}
-	timer := time.AfterFunc(time.Duration(math.Trunc(delay))*time.Millisecond, run) //portlint:allow numbers delay is within [1, 2^31-1] above, so the conversion is exact
-	return func() { timer.Stop() }
+// SystemProgressClock is Date.now and setTimeout, Progress's default clock (output.ts SYSTEM_CLOCK). Its timer follows Node's delay rule: a
+// delay outside [1 ms, TIMEOUT_MAX], or NaN, runs after 1 ms (`if (!(after >= 1 && after <= TIMEOUT_MAX)) after = 1`), and the rest is
+// truncated to whole milliseconds.
+var SystemProgressClock = ProgressClock{
+	Now: func() float64 { return float64(time.Now().UnixMilli()) },
+	SetTimer: func(callback func(), delayMs float64) func() {
+		if !(delayMs >= 1 && delayMs <= nodeTimeoutMax) {
+			delayMs = 1
+		}
+		timer := time.AfterFunc(time.Duration(math.Trunc(delayMs))*time.Millisecond, callback) //portlint:allow numbers delay is within [1, 2^31-1] above, so the conversion is exact
+		return func() { timer.Stop() }
+	},
 }
 
 // ProgressWaiter settles with the progress commit that includes its change. It settles once.
@@ -632,7 +632,7 @@ type Progress struct {
 
 // NewProgress returns a Progress that commits through write, which reports the bytes it wrote; onError receives a failed commit's error. minIntervalMs is the least pause between commits.
 func NewProgress(write func() (int, error), onError func(error), minIntervalMs float64) *Progress {
-	return NewProgressWithClock(write, onError, minIntervalMs, SystemProgressClock{})
+	return NewProgressWithClock(write, onError, minIntervalMs, SystemProgressClock)
 }
 
 // NewProgressWithClock is NewProgress with the time source of the commits, for tests that hold them.
@@ -725,7 +725,7 @@ func (progress *Progress) scheduleLocked() {
 		progress.flushLocked()
 		return
 	}
-	stop := progress.clock.AfterFunc(wait, func() {
+	stop := progress.clock.SetTimer(func() {
 		progress.mu.Lock()
 		defer progress.mu.Unlock()
 		if progress.stopTimer == nil {
@@ -734,7 +734,7 @@ func (progress *Progress) scheduleLocked() {
 		progress.stopTimer = nil
 		// Checks the clock again: a timer that fires early waits for the rest (output.ts #schedule).
 		progress.scheduleLocked()
-	})
+	}, wait)
 	progress.stopTimer = stop
 }
 
