@@ -95,7 +95,7 @@ func TestAuthStorageFileMatchesPi(t *testing.T) {
 	t.Setenv("PIH4_KEY", "env-value")
 	_ = os.Unsetenv("PIH4_UNSET")
 	var want [][]map[string]any
-	pioracle.Run(t, `
+	pioracle.Run(t, piCommandsWithoutTimeout+`
 const { AuthStorage } = await load("pi-coding-agent/core/auth-storage.js");
 const fs = await import("node:fs");
 const os = await import("node:os");

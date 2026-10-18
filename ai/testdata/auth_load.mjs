@@ -5,6 +5,12 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
+// A `!command` credential's execSync loses its ten-second timeout, which a host slow to start a shell exceeds: the comparison is of what resolves, not of how fast the host is.
+const childProcess = (await import("node:child_process")).default;
+const { syncBuiltinESMExports } = await import("node:module");
+const execSync = childProcess.execSync;
+childProcess.execSync = (command, options) => execSync(command, { ...options, timeout: undefined });
+syncBuiltinESMExports();
 const { AuthStorage } = await import(pathToFileURL(root + "dist/core/auth-storage.js"));
 let input = "";
 process.stdin.setEncoding("utf8");
