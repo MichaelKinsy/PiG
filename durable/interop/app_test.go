@@ -22,6 +22,11 @@ import (
 
 const clock = 1_700_000_000_000
 
+// partialIntervalMs is app.mjs's progress.partialIntervalMs: the scripted model answers at once, so no partial reaches a
+// commit in Pi, where the timer cannot fire before the answer's microtasks have run. Go's timer runs beside the stream and
+// fires into a stall of 100 ms, which commits a partial no Pi run has; an interval no session reaches leaves none.
+const partialIntervalMs float64 = 3_600_000
+
 var background = context.Background()
 
 type notes struct {
@@ -270,7 +275,7 @@ func openApp(t *testing.T, path string) harness.Harness {
 		t.Fatal(err)
 	}
 	opened, err := harness.OpenHarness(background, store, harness.HarnessOptions{Models: models, Registry: registry, Now: func() float64 { return clock }, Settings: func() *harness.HarnessSettings {
-		return &harness.HarnessSettings{Retry: &harness.RetryPolicyPatch{Enabled: new(false)}}
+		return &harness.HarnessSettings{Retry: &harness.RetryPolicyPatch{Enabled: new(false)}, Progress: &harness.ProgressPolicyPatch{PartialIntervalMs: new(partialIntervalMs)}}
 	}})
 	if err != nil {
 		t.Fatal(err)

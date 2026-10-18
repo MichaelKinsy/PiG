@@ -10,6 +10,10 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 
 export const context = BACKGROUND_CONTEXT;
 export const CLOCK = 1_700_000_000_000;
+// The scripted model answers at once, so no partial reaches a commit in Pi, where the timer cannot fire before the answer's
+// microtasks have run. Go's timer runs beside the stream and fires into a stall of 100 ms, which commits a partial no Pi run
+// has; an interval no session reaches leaves none. The Go twin is partialIntervalMs in app_test.go.
+const PARTIAL_INTERVAL_MS = 3_600_000;
 
 export const Notes = defineDoc({
 	kind: "app.notes",
@@ -147,7 +151,7 @@ export async function open(path) {
 	registry.install(App);
 	// A path ending in .sqlite is a SQLite file; any other path is a JSONL directory.
 	const storage = path.endsWith(".sqlite") ? await openNodeSqliteStorage(path) : await openNodeJsonlStorage(path, context);
-	const harness = await Harness.open(storage, { models: newModels(), registry, now: () => CLOCK, settings: { retry: { enabled: false } } }, context);
+	const harness = await Harness.open(storage, { models: newModels(), registry, now: () => CLOCK, settings: { retry: { enabled: false }, progress: { partialIntervalMs: PARTIAL_INTERVAL_MS } } }, context);
 	return { harness, storage };
 }
 
