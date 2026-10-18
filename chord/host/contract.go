@@ -33,9 +33,22 @@ type MethodSpec struct {
 // OpaqueSpec is a native in-process object identified by name@version (local contracts only).
 type OpaqueSpec struct{ ID string }
 
-// Method is contract.ts method(args?, result?): `method()` is Method(nil, nil), `method(args)` is Method(args, nil)
-// (no result, the handler returns nothing) and `method(undefined, result)` is Method(nil, result).
-func Method(args, result Schema) MethodSpec { return MethodSpec{Args: args, Result: result} }
+// Method is contract.ts method(args?, result?) (contract.ts:31-33, three overloads): `method()` is Method(), `method(args)`
+// is Method(args) (no result, the handler returns nothing) and `method(undefined, result)` is Method(nil, result). Go has
+// no overloads, so the parameters are variadic: a nil schema is Pi's undefined, and more than two panic with a TypeError.
+func Method(schemas ...Schema) MethodSpec {
+	if len(schemas) > 2 {
+		panic(typeError("method takes at most args and result, got %d schemas", len(schemas)))
+	}
+	var spec MethodSpec
+	if len(schemas) > 0 {
+		spec.Args = schemas[0]
+	}
+	if len(schemas) > 1 {
+		spec.Result = schemas[1]
+	}
+	return spec
+}
 
 // takesNoArgs reports whether contract's method name takes no arguments (it is called as `ref.name(ctx)`).
 func takesNoArgs(contract *Contract, name string) bool {
@@ -115,6 +128,12 @@ type HostNamed struct{ Name string }
 // HostFamily places the objects of a remote type on the host Prefix + the value of the input's string field Key
 // (contract.ts HostFamily): `session:` + `session` puts `{ session: "S1", … }` on `session:S1`.
 type HostFamily struct{ Prefix, Key string }
+
+// PlacementFor is contract.ts PlacementFor<I> = HostNamed | HostFamily<StringKeys<I>>: the placements a remote type with
+// input I may have. The TypeScript parameter restricts a family's key to I's required string fields at compile time;
+// Go's input is untyped, so the same restriction is the runtime check resolveHost makes (invalid/placement when the
+// field names no host), and the type is Placement.
+type PlacementFor = Placement
 
 func (HostNamed) isPlacement()  {}
 func (HostFamily) isPlacement() {}

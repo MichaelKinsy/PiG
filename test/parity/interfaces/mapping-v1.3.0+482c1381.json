@@ -97662,8 +97662,26 @@
     },
     {
       "id": "pkg:chord/.#Ctx",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1e9540ad5843bb58c1a32e78f22c6a455fd1e2a0c9b9e0fbada96ef7a22e7d39"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1e9540ad5843bb58c1a32e78f22c6a455fd1e2a0c9b9e0fbada96ef7a22e7d39",
+      "rationale": "Derived by the interface gap detector: Ctx is Go chord/host/types.go#Ctx (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/types.go#Ctx"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/cell.go#Cell.Change"
+      ],
+      "evidence": [
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference",
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds",
+        "test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Ctx::property:codeVersion",
@@ -97689,13 +97707,45 @@
     },
     {
       "id": "pkg:chord/.#Ctx::property:get",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:582b6ecf1d34ad084c82aff71e09a4e185633946ebeb72c386f4aceeda30f63e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:582b6ecf1d34ad084c82aff71e09a4e185633946ebeb72c386f4aceeda30f63e",
+      "rationale": "Derived by the interface gap detector: Ctx::property:get is Go chord/host/types.go#Ctx.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/types.go#Ctx.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/types.go#Ctx.Get"
+      ],
+      "evidence": [
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Ctx::property:get::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d65d83e8b07c11d8e62db4510327206fac10541b39ebc5af49e01be03e3e1b09"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d65d83e8b07c11d8e62db4510327206fac10541b39ebc5af49e01be03e3e1b09",
+      "rationale": "Derived by the interface gap detector: Ctx::property:get::call:0 is Go chord/host/types.go#Ctx.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/types.go#Ctx.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/types.go#Ctx.Get"
+      ],
+      "evidence": [
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Ctx::property:principal",
@@ -98353,13 +98403,47 @@
     },
     {
       "id": "pkg:chord/.#Factory",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e9c1ac09efe61be79928012eaf6353554670262b6c3abb790c2a2870bd78ddc5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e9c1ac09efe61be79928012eaf6353554670262b6c3abb790c2a2870bd78ddc5",
+      "rationale": "Derived by the interface gap detector: Factory is Go chord/host/object.go#Factory (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Factory"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/host.go#HostImpl.Serve"
+      ],
+      "evidence": [
+        "test:chord/host/host_upstream_test.go#TestHostDetectsRefCycles",
+        "test:chord/host/host_upstream_test.go#TestHostServeRefusesALifetimeHostTheTypeCannotHaveAtCompileTimeAndAtRuntime",
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference"
+      ]
     },
     {
       "id": "pkg:chord/.#Factory::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2d74d2f631995fc22726da04a04e56ae211b68f8d36abd430be2e2278d41a9ea"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2d74d2f631995fc22726da04a04e56ae211b68f8d36abd430be2e2278d41a9ea",
+      "rationale": "Derived by the interface gap detector: Factory::call:0 is Go chord/host/object.go#Factory (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Factory"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/host.go#HostImpl.Serve"
+      ],
+      "evidence": [
+        "test:chord/host/host_upstream_test.go#TestHostDetectsRefCycles",
+        "test:chord/host/host_upstream_test.go#TestHostServeRefusesALifetimeHostTheTypeCannotHaveAtCompileTimeAndAtRuntime",
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference"
+      ]
     },
     {
       "id": "pkg:chord/.#forbidden",
@@ -98493,8 +98577,26 @@
     },
     {
       "id": "pkg:chord/.#Host",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ca71606e558a851d1aad7e6eb8f0c9d291e73c403e8439ead41c91de0d5e1fc1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ca71606e558a851d1aad7e6eb8f0c9d291e73c403e8439ead41c91de0d5e1fc1",
+      "rationale": "Derived by the interface gap detector: Host is Go chord/host/host.go#HostImpl (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/host.go#HostImpl"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/cluster.go#ChildReloads.cancel"
+      ],
+      "evidence": [
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference",
+        "test:chord/host/awaiting_upstream_test.go#TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds",
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Host::property:accept",
@@ -98700,13 +98802,47 @@
     },
     {
       "id": "pkg:chord/.#Host::property:hold",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:53ab052a4b393d8b1f049d3e7aeec253a30a6fbbc5bf59cfc2baf08effd2845d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:53ab052a4b393d8b1f049d3e7aeec253a30a6fbbc5bf59cfc2baf08effd2845d",
+      "rationale": "Derived by the interface gap detector: Host::property:hold is Go chord/host/host.go#HostImpl.Hold (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/host.go#HostImpl.Hold"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/host.go#HostImpl.Hold"
+      ],
+      "evidence": [
+        "test:chord/host/generations_upstream_test.go#TestGenerationGCDisposedObjectsAreNotKeptOnceTheirDisposalFinished",
+        "test:chord/host/host_upstream_test.go#TestHostEveryGetReachesTheOneObjectCreatedAtServeForTheHostPrincipalAnotherInputIsInvalid",
+        "test:chord/host/hydration_upstream_test.go#TestHydrationAHostObjectOfAChildHoldingTheParentsObjectGoesLiveOnceTheParentAdmitsTheChild"
+      ]
     },
     {
       "id": "pkg:chord/.#Host::property:hold::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:88a48482e11034aa7f774c85fa581a07463852ce5985e01b1ad9239430a911a8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:88a48482e11034aa7f774c85fa581a07463852ce5985e01b1ad9239430a911a8",
+      "rationale": "Derived by the interface gap detector: Host::property:hold::call:0 is Go chord/host/host.go#HostImpl.Hold (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/host.go#HostImpl.Hold"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/host.go#HostImpl.Hold"
+      ],
+      "evidence": [
+        "test:chord/host/generations_upstream_test.go#TestGenerationGCDisposedObjectsAreNotKeptOnceTheirDisposalFinished",
+        "test:chord/host/host_upstream_test.go#TestHostEveryGetReachesTheOneObjectCreatedAtServeForTheHostPrincipalAnotherInputIsInvalid",
+        "test:chord/host/hydration_upstream_test.go#TestHydrationAHostObjectOfAChildHoldingTheParentsObjectGoesLiveOnceTheParentAdmitsTheChild"
+      ]
     },
     {
       "id": "pkg:chord/.#Host::property:install",
@@ -99201,7 +99337,7 @@
       "evidence": [
         "test:chord/host/placement_upstream_test.go#TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt",
         "test:chord/host/placement_upstream_test.go#TestPlacementTypesAndRemoteContractsNeedAHost",
-        "test:chord/host/contract_upstream_test.go#TestContractsBindOtherVersionsOnlyThroughAcceptsAdapters"
+        "test:chord/host/pi_chord_types_test.go#TestPlacementForIsHostNamedOrHostFamily"
       ]
     },
     {
@@ -99223,7 +99359,7 @@
       "evidence": [
         "test:chord/host/placement_upstream_test.go#TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt",
         "test:chord/host/placement_upstream_test.go#TestPlacementTypesAndRemoteContractsNeedAHost",
-        "test:chord/host/contract_upstream_test.go#TestContractsBindOtherVersionsOnlyThroughAcceptsAdapters"
+        "test:chord/host/pi_chord_types_test.go#TestPlacementForIsHostNamedOrHostFamily"
       ]
     },
     {
@@ -99245,7 +99381,7 @@
       "evidence": [
         "test:chord/host/placement_upstream_test.go#TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt",
         "test:chord/host/placement_upstream_test.go#TestPlacementTypesAndRemoteContractsNeedAHost",
-        "test:chord/host/contract_upstream_test.go#TestContractsBindOtherVersionsOnlyThroughAcceptsAdapters"
+        "test:chord/host/pi_chord_types_test.go#TestPlacementForIsHostNamedOrHostFamily"
       ]
     },
     {
@@ -99290,8 +99426,25 @@
     },
     {
       "id": "pkg:chord/.#hostNamed",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8326f5adf290f6a5f1ef6f294624a244ec35308e7ab42bd15afb8e2407bf6764"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8326f5adf290f6a5f1ef6f294624a244ec35308e7ab42bd15afb8e2407bf6764",
+      "rationale": "Derived by the interface gap detector: hostNamed is Go chord/host/contract.go#NewHostNamed (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/contract.go#NewHostNamed"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/contract.go#NewHostNamed"
+      ],
+      "evidence": [
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources",
+        "test:chord/host/host_upstream_test.go#TestHostServeRefusesALifetimeHostTheTypeCannotHaveAtCompileTimeAndAtRuntime",
+        "test:chord/host/hydration_upstream_test.go#TestHydrationAHostObjectOfAChildHoldingTheParentsObjectGoesLiveOnceTheParentAdmitsTheChild"
+      ]
     },
     {
       "id": "pkg:chord/.#HostNamed",
@@ -99317,8 +99470,25 @@
     },
     {
       "id": "pkg:chord/.#hostNamed::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:69f365a1125b26ff36236d8687a336f83e107ae8b9791ccde31a57a9da2b1cac"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:69f365a1125b26ff36236d8687a336f83e107ae8b9791ccde31a57a9da2b1cac",
+      "rationale": "Derived by the interface gap detector: hostNamed::call:0 is Go chord/host/contract.go#NewHostNamed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/contract.go#NewHostNamed"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/contract.go#NewHostNamed"
+      ],
+      "evidence": [
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources",
+        "test:chord/host/host_upstream_test.go#TestHostServeRefusesALifetimeHostTheTypeCannotHaveAtCompileTimeAndAtRuntime",
+        "test:chord/host/hydration_upstream_test.go#TestHydrationAHostObjectOfAChildHoldingTheParentsObjectGoesLiveOnceTheParentAdmitsTheChild"
+      ]
     },
     {
       "id": "pkg:chord/.#HostNamed::property:name",
@@ -99342,8 +99512,25 @@
     },
     {
       "id": "pkg:chord/.#HostOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:234d99dfba2e9ce030d62c8c502000dbec2bf7a215c76fb8dba78bf3f606bba6"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:234d99dfba2e9ce030d62c8c502000dbec2bf7a215c76fb8dba78bf3f606bba6",
+      "rationale": "Derived by the interface gap detector: HostOptions is Go chord/host/host.go#HostOptions (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/host.go#HostOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/host.go#CreateHost"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
+        "test:chord/host/bindings_upstream_test.go#TestHydrationOverALinkNullEmptyAndUndefinedValuesHydrateAStateFreeVariantIsReadyAFailedSnapshotRejects",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOnceItsCallsUpAreAdmittedSpec9"
+      ]
     },
     {
       "id": "pkg:chord/.#HostOptions::property:dev",
@@ -99523,8 +99710,25 @@
     },
     {
       "id": "pkg:chord/.#HostOptions::property:self",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:89984311edc8e48f1ec6ee494ef5b33c988b4dda6c140b4840560d1f2102fb82"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:89984311edc8e48f1ec6ee494ef5b33c988b4dda6c140b4840560d1f2102fb82",
+      "rationale": "Derived by the interface gap detector: HostOptions::property:self is Go chord/host/host.go#HostOptions.Self (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/host.go#HostOptions.Self"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/host.go#CreateHost"
+      ],
+      "evidence": [
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOnceItsCallsUpAreAdmittedSpec9",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildReconciledAfterItsParentRetiredOldCodeVersionsMayRetireItsOwnPreviousOneAtOnce",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildThatSaysHelloWhileAReloadRunsIsReconciledAfterItNeverLeftInStepWithTheOldCode"
+      ]
     },
     {
       "id": "pkg:chord/.#HostOptions::property:taskStopDeadline",
@@ -100787,18 +100991,69 @@
     },
     {
       "id": "pkg:chord/.#method",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5e438e226625a6a640947545454824e1042b91e121601f31b06d70e837ac84b4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5e438e226625a6a640947545454824e1042b91e121601f31b06d70e837ac84b4",
+      "rationale": "Derived by the interface gap detector: method is Go chord/host/contract.go#Method (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/contract.go#Method"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/contract.go#Method"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources",
+        "test:chord/host/contract_upstream_test.go#TestContractsCoverAdditiveChangesAndRefuseBreakingOnes"
+      ]
     },
     {
       "id": "pkg:chord/.#method::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6dad2f62fe8919458c59ca092a7c069009c543dd3b3569fb301faba364c7a341"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6dad2f62fe8919458c59ca092a7c069009c543dd3b3569fb301faba364c7a341",
+      "rationale": "Derived by the interface gap detector: method::call:0 is Go chord/host/contract.go#Method (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/contract.go#Method"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/contract.go#Method"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources",
+        "test:chord/host/contract_upstream_test.go#TestContractsCoverAdditiveChangesAndRefuseBreakingOnes"
+      ]
     },
     {
       "id": "pkg:chord/.#method::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f527f4855f7d6447aec8adc04a3b3587e9c397b26ce9ddc2df1c8734d29741c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f527f4855f7d6447aec8adc04a3b3587e9c397b26ce9ddc2df1c8734d29741c1",
+      "rationale": "Derived by the interface gap detector: method::call:1 is Go chord/host/contract.go#Method (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/contract.go#Method"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/contract.go#Method"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources",
+        "test:chord/host/contract_upstream_test.go#TestContractsCoverAdditiveChangesAndRefuseBreakingOnes"
+      ]
     },
     {
       "id": "pkg:chord/.#method::call:2",
@@ -101094,8 +101349,23 @@
     },
     {
       "id": "pkg:chord/.#PlacementFor",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:20867089a9bbccf0b4d437362c442cc517ec03d18ef3ce058d8c075cf73cf604"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:20867089a9bbccf0b4d437362c442cc517ec03d18ef3ce058d8c075cf73cf604",
+      "rationale": "Derived by the interface gap detector: PlacementFor is Go chord/host/contract.go#PlacementFor (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/contract.go#PlacementFor"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/contract.go#PlacementFor"
+      ],
+      "evidence": [
+        "test:chord/host/pi_chord_types_test.go#TestPlacementForIsHostNamedOrHostFamily"
+      ]
     },
     {
       "id": "pkg:chord/.#PluginRef",
@@ -101121,13 +101391,45 @@
     },
     {
       "id": "pkg:chord/.#PrincipalMatch",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:97d02738d7e8d64005c70f56c643d14d4fdb7c71c247eaa2e59f4d500682ccb4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:97d02738d7e8d64005c70f56c643d14d4fdb7c71c247eaa2e59f4d500682ccb4",
+      "rationale": "Derived by the interface gap detector: PrincipalMatch is Go chord/host/host.go#PrincipalMatch (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/host.go#PrincipalMatch"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/connection.go#Connection.dispatch"
+      ],
+      "evidence": [
+        "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsRelayEachOriginHoldIsOneDownstreamHoldNothingIsLeftAfterReleaseCloseOrRevoke",
+        "test:chord/host/host_upstream_test.go#TestHostForcedDisposalMakesRefsGoneAndAbortsInFlightCalls",
+        "test:chord/host/link_upstream_test.go#TestLinksInvalidatePrincipalRestampsTheLinkAndPropagates"
+      ]
     },
     {
       "id": "pkg:chord/.#PrincipalPattern",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:667ca9048f8af8a50d7992b1a49b36eacc771722fb2a5e2e3fd60070efd484c8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:667ca9048f8af8a50d7992b1a49b36eacc771722fb2a5e2e3fd60070efd484c8",
+      "rationale": "Derived by the interface gap detector: PrincipalPattern is Go chord/host/host.go#PrincipalPattern (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/host.go#PrincipalPattern"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/host.go#PrincipalPattern"
+      ],
+      "evidence": [
+        "test:chord/host/pi_chord_types_test.go#TestPrincipalPatternMatchesEqualFields"
+      ]
     },
     {
       "id": "pkg:chord/.#PROTOCOL_VERSION",
@@ -103230,8 +103532,26 @@
     },
     {
       "id": "pkg:chord/.#Self",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5f081c13e5cda7f2d8b57c4dd0ea43b710ada485b7f93832a792bb6f7db0f35c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5f081c13e5cda7f2d8b57c4dd0ea43b710ada485b7f93832a792bb6f7db0f35c",
+      "rationale": "Derived by the interface gap detector: Self is Go chord/host/object.go#Self (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/loader.go#nodeFacetOwner.factory"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
+        "test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAnAbortWhileAWorkerIsStillPreparingALateOpenClosesItselfAndTheWorkerCanReloadAgain"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Self::property:derive",
@@ -103315,28 +103635,106 @@
     },
     {
       "id": "pkg:chord/.#Self::property:get",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c39edac308326208bdf13320b5acc11fb9c526ef700a030cfd8e6265af726aa3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c39edac308326208bdf13320b5acc11fb9c526ef700a030cfd8e6265af726aa3",
+      "rationale": "Derived by the interface gap detector: Self::property:get is Go chord/host/object.go#Self.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/object.go#Self.Get"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease"
+      ]
     },
     {
       "id": "pkg:chord/.#Self::property:get::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:88a48482e11034aa7f774c85fa581a07463852ce5985e01b1ad9239430a911a8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:88a48482e11034aa7f774c85fa581a07463852ce5985e01b1ad9239430a911a8",
+      "rationale": "Derived by the interface gap detector: Self::property:get::call:0 is Go chord/host/object.go#Self.Get (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self.Get"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/object.go#Self.Get"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease"
+      ]
     },
     {
       "id": "pkg:chord/.#Self::property:on",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c41db1f6109d4e40d11833dbbe6ce83ff3fc673f984b5341efa14358603871b1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c41db1f6109d4e40d11833dbbe6ce83ff3fc673f984b5341efa14358603871b1",
+      "rationale": "Derived by the interface gap detector: Self::property:on is Go chord/host/object.go#Self.On (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self.On"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/object.go#Self.On"
+      ],
+      "evidence": [
+        "test:chord/host/host_upstream_test.go#TestHostAListenerOnStateGetsTheCurrentValueAtStartAndAgainAfterAReloadReplacedItsDerivation"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Self::property:on::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cd5080d97b278fb94118e61d9f368d629df71dc4f5e964ab1176e12f37439bc3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cd5080d97b278fb94118e61d9f368d629df71dc4f5e964ab1176e12f37439bc3",
+      "rationale": "Derived by the interface gap detector: Self::property:on::call:0 is Go chord/host/object.go#Self.On (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self.On"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/object.go#Self.On"
+      ],
+      "evidence": [
+        "test:chord/host/host_upstream_test.go#TestHostAListenerOnStateGetsTheCurrentValueAtStartAndAgainAfterAReloadReplacedItsDerivation"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Self::property:on::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e1293d19d74c3d18844868dd8dbae23bf3014677ca78b2789804d4b41b49df0a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e1293d19d74c3d18844868dd8dbae23bf3014677ca78b2789804d4b41b49df0a",
+      "rationale": "Derived by the interface gap detector: Self::property:on::call:1 is Go chord/host/object.go#Self.OnSelect (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self.OnSelect"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/object.go#Self.OnSelect"
+      ],
+      "evidence": [
+        "test:chord/host/requests_upstream_test.go#TestRequests3AChangedSelectResubscribes"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Self::property:register",
@@ -103424,13 +103822,43 @@
     },
     {
       "id": "pkg:chord/.#Self::property:state",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fb49b4b615902668d2d34ac3623df5b48710cfcc3ee040764d055f61fba49088"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fb49b4b615902668d2d34ac3623df5b48710cfcc3ee040764d055f61fba49088",
+      "rationale": "Derived by the interface gap detector: Self::property:state is Go chord/host/object.go#Self.State (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self.State"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/object.go#Self.State"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot"
+      ]
     },
     {
       "id": "pkg:chord/.#Self::property:state::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8eb5fb634c41ef03b77b230993358137fddb003b7c53a8bafdc6bc6396d8862e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8eb5fb634c41ef03b77b230993358137fddb003b7c53a8bafdc6bc6396d8862e",
+      "rationale": "Derived by the interface gap detector: Self::property:state::call:0 is Go chord/host/object.go#Self.State (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/object.go#Self.State"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/host/object.go#Self.State"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot"
+      ]
     },
     {
       "id": "pkg:chord/.#Self::property:task",

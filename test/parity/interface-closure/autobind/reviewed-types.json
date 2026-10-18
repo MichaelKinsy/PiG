@@ -115,6 +115,14 @@
     "go": "chord/context/chordctx.go#Key.Token",
     "reason": "Pi chord/src/types.ts:8-12 ContextKey.token is a `symbol`, the key's identity (context/index.ts:58-60 createContextKey returns a frozen {token: Symbol(description)}; ContextValue.value compares `key.token === this.#key.token` and prints token.description). Go has no symbol type, so chordctx.Token is the same thing: a comparable opaque value, equal exactly for the same key, carrying the description the key was created with (Description(), as `token.description`); Key.Token() returns it and valueContext stores and prints it. TestContextKeyTokenMatchesPi runs Pi's createContextKey and withContextValue in Node over the same descriptions and compares token description, identity (itself, an equal description) and the layered toString; three mutants (description, identity, print) fail it. Owner direction 2026-10-11: port Pi's shape over equivalence rules."
   },
+  "pkg:chord/.#Ctx::property:get::call:0": {
+    "go": "chord/host/types.go#Ctx.Get",
+    "reason": "Pi chord/src/types.ts:33 Ctx.get<C extends AnyContract>(type, input: InputOf<C>, options?: GetOptions<P>): Promise<Ref<C>> types the input as Static of the contract's input schema, computed from the contract value; Go methods cannot be generic or compute types from values, so Get(*Contract, any, *GetOptions) (Ref, error) takes the input untyped and the host normalizes it against the contract's input schema at runtime as Pi's does (invalid/input), failing with the error Pi's promise rejects with. TestHostCtxGetActsAsTheRootPrincipalAtIngressAndAsTheHostInsideObjects (host.test.ts:508-531) and TestStateInitRunsInARootItCanCallOtherObjects."
+  },
+  "pkg:chord/.#Factory::call:0": {
+    "go": "chord/host/object.go#Factory",
+    "reason": "Pi chord/src/object.ts:79-83 Factory<C, P> = (input: InputOf<C>, principal: P, self: Self<P>) => ImplementationOf<C, P> types the input as Static of the contract's input schema and the result as the contract's implementation shape, both computed from the contract value; Go cannot compute types from values, so Factory is func(input any, principal Principal, self Self) (Implementation, error): the input is the normalized value (as Pi hands the factory), the principal is the app's untyped Principal, and the error is what Pi's factory throws. TestPrincipalsFactoriesMethodsAndContextsSeeTheAppsPrincipal (principals.test.ts)."
+  },
   "pkg:chord/.#Frame": {
     "go": "chord/host/wire.go#Frame",
     "reason": "Pi 34a8bb38 chord/src/wire.ts:136 declares Frame = Static<typeof FrameSchema>, the TypeBox-computed union of the frame objects of FrameSchema (wire.ts:51-135), and isFrame (:139) is Value.Check(FrameSchema, value). Go cannot compute a type from a schema value, so host.Frame is the sealed interface of the frame structs, one per FrameSchema member, and DecodeFrame admits a value only when it passes the same schema, so every Frame value is a Static<typeof FrameSchema>. TestFrameSchemaIsPiFrameSchema pins the Go schema to Pi's (canonical hash and length) and TestIsFrameRejectsMalformedFrames / TestIsFrameChecksErrorCodesAndContractTokens check the schema refusals against Pi's isFrame (lead-approved reviewed type, chord-strict-120 Round 3)."
@@ -123,9 +131,41 @@
     "go": "chord/host/host.go#HostImpl.Get",
     "reason": "Pi host.ts:151 get<C>(type, input, options?): Handle<C> throws; Go methods cannot be generic: Get(*Contract, any, *GetOptions) (Handle, error). TestGetErrors, TestAddressesUsePrincipalKey."
   },
+  "pkg:chord/.#Host::property:hold::call:0": {
+    "go": "chord/host/host.go#HostImpl.Hold",
+    "reason": "Pi chord/src/host.ts:217 hold<C extends AnyContract>(type: C, input: InputOf<C>, options?: GetOptions<P>): Ref<C> types its input as Static of the contract's input schema, computed from the contract value; Go cannot compute a type from a value or declare a generic method, so Hold(*Contract, any, *GetOptions) (Ref, error) takes the input untyped and normalizes it against the contract's input schema at runtime as Pi does. Locked by bindingsHold in TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease (bindings.test.ts)."
+  },
+  "pkg:chord/.#HostOptions::property:self": {
+    "go": "chord/host/host.go#HostOptions.Self",
+    "reason": "Pi chord/src/host.ts HostOptions.self is `NoInfer<P>`, the compile-time marker that stops TypeScript inferring the principal type parameter P from it; the value is the host's own principal. Go has no type parameters on HostOptions, so Self is the untyped Principal (any), with HasSelf for an explicit null, and CreateHost refuses a host without it with the TypeError Pi throws. TestHostRecognizesItsOwnPrincipalByKey and TestPrincipalsRefusesAHostAParentLinkOrARouteWithoutItsPrincipal (principals.test.ts)."
+  },
   "pkg:chord/.#MutableReplicatedState::property:change::call:0": {
     "go": "chord/state.go#MutableReplicatedState.Change",
     "reason": "Pi chord state.ts:36 change(context, mutate: (draft: Draft<T>) => void): void. Draft<T> (delta/draft.ts:2) is the Proxy view of a change's root that records writes as a delta; Go cannot intercept field assignment on a typed value, so the draft is *delta.Object, the same reviewed decision as pkg:chord/delta#Change::property:state (Change.State() *delta.Object, tracker.go:229) and Pi durable Tx.doc (Draft<T> -> *delta.Object). An array root goes through ChangeArray(ctx, func(*delta.Array) error), as Change.Elements() does for the tracker; the callback and the call return error where Pi throws."
+  },
+  "pkg:chord/.#PrincipalMatch": {
+    "go": "chord/host/host.go#PrincipalMatch",
+    "reason": "Pi chord/src/host.ts:175 PrincipalMatch<P> = ((principal: P) => boolean) | PrincipalPattern<P>, a union of a function and an object. Go has no unions, so PrincipalMatch is a struct of exactly one set field: Predicate (this host only) or Pattern (fields that must be equal; propagates to child hosts), as InvalidatePrincipal in host.ts reads it. TestInvalidatePrincipalPropagatesPatterns (host.test.ts:702-718) and TestPrincipalPatternMatchesEqualFields."
+  },
+  "pkg:chord/.#PrincipalPattern": {
+    "go": "chord/host/host.go#PrincipalPattern",
+    "reason": "Pi chord/src/host.ts:170-172 PrincipalPattern<P> is a conditional mapped type: P's own optional fields when P is an object, else a readonly record of unknown. Go's principal is untyped (Principal = any), so the type is computed over nothing: PrincipalPattern is the JSON object of the fields a principal must have, equal by DeepEqual, as matchesPattern checks them. TestPrincipalPatternMatchesEqualFields (principals.test.ts:81 invalidatePrincipal({ kind: \"host\" })) and TestMatchesPattern."
+  },
+  "pkg:chord/.#Self::property:get::call:0": {
+    "go": "chord/host/object.go#Self.Get",
+    "reason": "Pi chord/src/object.ts self.get<C extends AnyContract>(type, input: InputOf<C>, options?): Ref<C> types its input as Static of the contract's input schema, computed from the contract value; Go cannot compute a type from a value or declare a generic method, so Get(*Contract, any, *GetOptions) (Ref, error) takes the input untyped and normalizes it against the contract's input schema at runtime as Pi does. TestHostPropagatesActivationFailuresToDependentsAndRetriesOnTheNextGet (host.test.ts) calls self.Get from a factory."
+  },
+  "pkg:chord/.#Self::property:on::call:0": {
+    "go": "chord/host/object.go#Self.On",
+    "reason": "Pi chord/src/object.ts:185 on<S>(name, source: S, handler: (event: EventOf<S>, ctx) => void | Promise<void>) types the handler's event as EventOf<S>, a conditional type over the source's declared type (a Readable's value, or an event source's event). Go cannot compute it, so On(name, source any, handler func(event any, ctx Ctx) error) takes the event untyped; the runtime delivery (current value then every new value for a readable, events for an event source, each in a fresh root) is Pi's. TestRequests3AListenerKeepsItsSubscriptionAcrossReloadsWhenResourceAndSelectAreUnchanged and TestSelfOnRefusesAHandlerThatIsMissing."
+  },
+  "pkg:chord/.#Self::property:on::call:1": {
+    "go": "chord/host/object.go#Self.OnSelect",
+    "reason": "Pi chord/src/object.ts:186-191 is the four-parameter overload on<S, E>(name, source, select: (value: ValueOf<S>) => Subscribable<E>, handler: (event: E, ctx) => ...). Go has no overloads, so it is Self.OnSelect(name, source any, selector func(value any) Subscribable[any], handler func(event any, ctx Ctx) error) error, and Self.On is the three-parameter overload. ValueOf<S> and E are generics Go cannot express, so value and event are untyped. TestRequests3AListenerKeepsItsSubscriptionAcrossReloadsWhenResourceAndSelectAreUnchanged (requests.test.ts, a select listener)."
+  },
+  "pkg:chord/.#Self::property:state::call:0": {
+    "go": "chord/host/object.go#Self.State",
+    "reason": "Pi chord/src/object.ts:164-169 state<S extends TSchema>(name, schema: S, initial: Static<S> | StateInit<Static<S>, P>, options?): Cell<Static<S>> types initial as the schema's Static type or a StateInit, a union over a type computed from the schema value. Go cannot compute it or declare a generic method, so State(name, Schema, initial any, *StateOptions) (*Cell[any], error) takes initial untyped: a StateInit value (Init func) is Pi's isStateInit case (object.ts:350), anything else is the validated initial value. TestStateInitRunsAfterTheResourcesAreOpenAndBeforeTheObjectGoesLiveNothingSeesAnotherValue (state-init.test.ts)."
   },
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",

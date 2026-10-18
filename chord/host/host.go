@@ -164,8 +164,13 @@ type Route struct {
 // equal; propagates to child hosts). Exactly one is set.
 type PrincipalMatch struct {
 	Predicate func(principal Principal) bool
-	Pattern   *chordjson.Object
+	Pattern   PrincipalPattern
 }
+
+// PrincipalPattern is host.ts PrincipalPattern<P>: the fields a principal must have, equal (DeepEqual), for an
+// InvalidatePrincipal pattern. Pi's mapped type is P's own optional fields; Go's principal is untyped (Principal), so a
+// pattern is the JSON object of the fields to match.
+type PrincipalPattern = *chordjson.Object
 
 // RootOptions are Root's options.
 type RootOptions struct {
