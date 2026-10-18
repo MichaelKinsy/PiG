@@ -2307,8 +2307,15 @@
     },
     {
       "path": "packages/chord/test/output.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0dd8827bb95c13f650d7cce335bcbfc825e1773219898a9d5f9109b2335f16c2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0dd8827bb95c13f650d7cce335bcbfc825e1773219898a9d5f9109b2335f16c2",
+      "evidence": [
+        "chord/output/output_test.go#TestToolOutputBounds",
+        "chord/output/output_test.go#TestOutputBuffer",
+        "chord/output/output_test.go#TestProgress",
+        "chord/output/output_pi_oracle_test.go#TestOutputBufferMatchesPi"
+      ],
+      "rationale": "Pi 4a5d3729 moves harness-output.test.ts from Durable to Chord with its import path changed; the 17 cases are unchanged and ported in chord/output/output_test.go. Lone UTF-16 surrogates of JS strings are modeled as U+FFFD bytes (Go strings are UTF-8); Progress timers run on an injected fake clock instead of vitest fake timers. TestOutputBufferMatchesPi runs Pi's chord/src/output.ts over 4000 random programs as an oracle. Compiling mutations of the bound arithmetic and the decoder's lead-byte ranges fail the cases. Pi f75b3240ab adds :273 'paces on the clock it is given': a subtest of TestProgress with the same clock, timers and expectations (an early timer commits nothing and waits for the rest; Stop disarms the pending timer). Progress's ProgressClock is the struct {Now, SetTimer} of Pi's."
     },
     {
       "path": "packages/chord/test/placement.test.ts",
@@ -6432,13 +6439,23 @@
     },
     {
       "path": "packages/durable/test-workers/storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7396929be7361f01dc10b73a1bb2705b5213d1e876c5e70e876a1555a4fb4c58"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7396929be7361f01dc10b73a1bb2705b5213d1e876c5e70e876a1555a4fb4c58",
+      "evidence": [
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectStorageConformance",
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter"
+      ],
+      "rationale": "New in Pi f75b3240ab (workerd, Durable Object SQLite). Its two parts run on Go's fake Durable Object storage over a native SQLite connection (the stand-in sqlite-cloudflare.test.ts already uses): the storage conformance suite on a prefixed object (TestDurableObjectStorageConformance, which now includes 'stores and scans sleeping tasks by status') and the case 'migrates a version 1 schema to admit sleeping tasks, keeping tasks and indexes' (TestDurableObjectSqliteAdapter subtest of the same name). The workerd runtime itself has no Go form."
     },
     {
       "path": "packages/durable/test-workers/wake.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eed12b884ddb5b10b99856488ec19324ad1d165a7cab51d1bef5e1f09218b3c2"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:eed12b884ddb5b10b99856488ec19324ad1d165a7cab51d1bef5e1f09218b3c2",
+      "evidence": [
+        "durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks",
+        "durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+      ],
+      "rationale": "New in Pi f75b3240ab: two workerd tests of a real Durable Object (evictDurableObject, runDurableObjectAlarm, the object's alarm and a heartbeat alarm). They test the Cloudflare Workers runtime hosting Pi's Harness, which Go does not run in; the Harness behavior they depend on is ported and run on both engines: a sleep survives close and reopen with Wake read from storage before scheduling starts, onWake is offered each change and Resume wakes due sleeps (TestSleepingTasks 'keeps a sleep across reopen', 'sleeps without an invocation...', 'arms no timer for sleeps with onWake', 'reports a throwing onWake...'). The Workers-only rule that background timers are declined by the default setTimer has no Go counterpart: Go timers never keep a process alive, so durable.NativeTimer never declines. The Durable Object host of PiG's core (durable/core/host/cf) keeps its alarm on the durable timer class and declines background timers (timers.ts)."
     },
     {
       "path": "packages/durable/test/codemode-describe.test.ts",
@@ -6464,8 +6481,13 @@
     },
     {
       "path": "packages/durable/test/codemode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2d355090072d972420078ce5cf7f0975d8dd0bc56a35b9e517fd8c94ad079c86"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2d355090072d972420078ce5cf7f0975d8dd0bc56a35b9e517fd8c94ad079c86",
+      "evidence": [
+        "durable/codemode/codemode_test.go#TestDurableCodeMode",
+        "durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch"
+      ],
+      "rationale": "All 40 Pi 1.2.0 cases are ported one to one, each a subtest named by its Pi title and cited with its 1.2.0 line: the 32 cases of describe 'durable code mode' (:193-:882) in TestDurableCodeMode and the 8 cases of 'durable code mode output and tool search' (:936-:1045) in TestDurableCodeModeOutputAndToolSearch. The 1.2.0 audit made 'keeps store() values per conversation, as of a fork's entry' (:857) wait on the first submission as Pi does, and 'saves images to files and names them next to the image' (:1009) check that the result content holds the image, as Pi does. Two Go-only subtests are labelled PiG additions. No case differed from Pi; no source change. Pi f75b3240ab adds :671 'drops a global's result that arrives after the script finished' (subtest of TestDurableCodeMode; the call reads api.Now() and drops a result after its outcome) and changes the 'finishes in order' case to wait on the call's own finish (:229), which the Go case already did."
     },
     {
       "path": "packages/durable/test/env-line-scan.test.ts",
@@ -6542,8 +6564,22 @@
     },
     {
       "path": "packages/durable/test/harness-compaction.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1b9891dc3e9529d67e1919630f4285d4ba645b948a31a7cfc3db889ce08a9c4a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1b9891dc3e9529d67e1919630f4285d4ba645b948a31a7cfc3db889ce08a9c4a",
+      "evidence": [
+        "durable/harness/harness_compaction_test.go#TestRangeSelection",
+        "durable/harness/harness_compaction_test.go#never cuts at a display-only entry where the budget is reached (#10407)",
+        "durable/harness/harness_compaction_test.go#writes a transcript, truncates tool results, and omits system messages and thinking",
+        "durable/harness/harness_compaction_test.go#records a failure in pi.live, the snapshot, and compaction_end until a summary is produced",
+        "durable/harness/harness_compaction_test.go#fails the run with the compaction's error, without a request, when its compaction fails",
+        "durable/harness/harness_compaction_test.go#fails the run when its compaction is aborted directly",
+        "durable/harness/harness_compaction_test.go#fails the run when its blocking compaction faults, and records the fault",
+        "durable/harness/harness_compaction_test.go#leaves no usage, submission, or summary when the classifying commit fails, which fails the Harness",
+        "durable/harness/harness_compaction_test.go#TestPerModelCompactionOverrides",
+        "durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold",
+        "durable/harness/harness_compaction_test.go#TestCompactionRecovery"
+      ],
+      "rationale": "93 it() sites (6 parameterized: :650 three orders, :917 five failures, :982 three policies, :1310 three preparations, :1330 two clocks, :2278 two responses), all ported under Pi's names across the 19 Test functions of harness_compaction_test.go, with the variant lists equal to Pi's. 1.0.4 to 1.1.0 (82 diff lines) and 1.1.0 to 1.2.0 (201 lines) change: new :264 display-only cut (#10407) in TestRangeSelection; :347 omits thinking from the serialized transcript (asserted: no 'hmm', no 'thinking'); new :1007 compaction failure recorded in pi.live, the snapshot and compaction_end until a summary lands; :1114 'sends the request anyway' keeps only the decline variant, and a failing or aborted blocking compaction now fails the run with model_error and no request (:1128, :1151, :1954 'Compaction failed: ...' details, compactionFailure recorded except for an abort); :2101 a failed classifying commit fails the Harness and leaves nothing after reopen (StorageRejected is gone); tool results use output. Each changed case asserts Pi 1.2.0's expectations in Go; :1954's fault message is the Go commit's strict-JSON rejection instead of Pi's thrown 'no credentials', and the run detail and compactionFailure carry that same message, as in Pi. All pass. Pi 3daa2028→b06c1f2c: Pi 5713c950 updates the manual and overflow compaction expectations so the system baseline leads; TestManualCompaction and TestOverflowCompaction follow. Pi c4cf7957 (#10942) adds three per-model compaction override cases (:2394): durable/harness/harness_compaction_test.go#TestPerModelCompactionOverrides ports all three, and durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold runs the threshold case over the core and the reference. Pi f75b3240ab: the retry backoff of a compaction is a sleeping task (:1729): state and until asserted, and a retry stored as running by an earlier version sleeps again."
     },
     {
       "path": "packages/durable/test/harness-context.test.ts",
@@ -6597,8 +6633,12 @@
     },
     {
       "path": "packages/durable/test/harness-generation-recovery.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:13281b9978ce48bd1cdde867db7d9c1b9c693519f46ca29b07a052da3144ba1a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:13281b9978ce48bd1cdde867db7d9c1b9c693519f46ca29b07a052da3144ba1a",
+      "evidence": [
+        "durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery"
+      ],
+      "rationale": "Pi f75b3240ab: the retry backoff and the deferred poll are sleeping tasks (:186, :273: state, wake, an early wake retries nothing), the new case 'sleeps again for a retry stored as a running phase by an earlier version' (:211) is ported, and the no_model poll case moves the clock to the poll's time (:288). All 8 cases are ported."
     },
     {
       "path": "packages/durable/test/harness-generation.test.ts",
@@ -6816,8 +6856,12 @@
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aa21b9c2c50b265467e60c257195f4d969359856d34d98e8a37c6f7d3dd6158c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:aa21b9c2c50b265467e60c257195f4d969359856d34d98e8a37c6f7d3dd6158c",
+      "evidence": [
+        "durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
+      ],
+      "rationale": "Pi f75b3240ab (durable sleeping state): all 13 cases are subtests of TestSleepingTasks, each running on the reference Harness and on the core with Pi's expectations and a citation of its harness-sleep.test.ts line: sleeping without an invocation and resuming at the checkpoint once due (state, inspection, task graph, wake, early and repeated Resume), a sleep kept across reopen, the timer without onWake, a due sleep run at any pass, timers disarmed on abort and close, an invocation's timers disarmed at its end, no timer with onWake, a declined foreground timer armed by the fallback and reported once, a wait or a held outcome over a sleeping task not active, the abort handler of a sleeping task, invalid sleeps, a task without a definition not active, and a throwing onWake offered again. Time is the Harness clock the test moves and the timers are a fake HarnessOptions.SetTimer, so no case waits for a deadline. Go has no NaN-or-Infinity JSON, so the core answers an invalid until before the wire with the same message."
     },
     {
       "path": "packages/durable/test/harness-storage-failure.test.ts",
@@ -6900,8 +6944,53 @@
     },
     {
       "path": "packages/durable/test/harness-tasks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dcb88178f6b594a55a9525ba51fb6e0bf3a7c52075c0b50d0ad5467104115db8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dcb88178f6b594a55a9525ba51fb6e0bf3a7c52075c0b50d0ad5467104115db8",
+      "evidence": [
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocation",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultJoinsAReservationThatSettlesWhileClosingWithoutStartingItsHandler",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultLetsAnAbortMarkWinOverAFaultThatRacesIt",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultNeverStartsPhaseOneWhenTheAbortLandsWhileTheReservationSettles",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultOrdersRuntimeCommitsAgainstTheStep",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultStartsNoAbortHandlerWhoseReservationSettlesWhileClosing",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueued",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreAbortingATaskSignalsItsPhaseAndRunsItsAbortHandler",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreRegistrySnapshotToolsPairEachToolWithItsExtensionInInstallOrder",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskAbortSignalsAndJoinsTheRunBeforeReturning",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskAbortsWaitingWorkAndFaultsAbortHandlersThatThrowOrSettleNothing",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskFaultsAPhaseWithoutDurableProgressAndAThrowingPhase",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskKeepsACommittedTerminalOutcomeWhenTheHandlerThrowsAfterwards",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskKeepsOneRegistrySnapshotPerPhase",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsTheRunsCommitsAndMemoWritesAfterTheMark",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskResolvesTheAgentAtFirstUseKeepsItForThePhaseAndAnewAtTheNext",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRunsPhasesOfOneInvocationOnOneRuntime",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskStartsNoFurtherPhaseAfterAMarkDuringAPhaseWithProgress",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskDoesNotSignalARunningAbortHandlerWhenAbortedAgainAndACancelledCallerLeavesTheMarkDurable",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskKeepsATerminalOutcomeCommittedByAnAbortHandlerThatThrowsAfterwards",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskRejectsACancelledWaitWithItsReasonAndPendingWaitsOnClose",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskRejectsUnknownTasksAndReportsTerminalOnes",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskResumesAWaitingTaskOnceEveryTaskInOnIsTerminalWhateverTheOutcome",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskStampsStartedAtAndEndedAtKeepingStartedAtThroughAWait",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreCloseSealsAdmissionBeforeSignallingHandlersAndStopsWatchesBeforeJoiningThem",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreConversationContextDecodesItsMessages",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskComparesCheckpointsByValueIncludingArrays",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskObservesAFailedAgentResolutionWhoseOnlyCallerStoppedWaiting",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsClockAndReports",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskRejectsAnAgentWaitWhoseCallerIsCancelledWithoutAffectingTheResolution",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskScanPagesTheNewestFirst",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreWaitForIdleCountsBlockedWorkAndIgnoresBackgroundTasks",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskAbort",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskClose",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskCloseSignalsHandlersOnlyAfterEveryCloseListenerRan",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskRuntime",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskScanPagesTheNewestFirst",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskScheduling",
+        "durable/harness/harness_tasks_test.go#TestTaskPhases"
+      ],
+      "rationale": "38/38 cases ported against 1.2.0; :745/:777 assert the run counts 1 and 2 after reopening. Pi f75b3240ab removes the two TaskRuntime.sleep cases (:691, :711) with the method; the ended-invocation case now calls sleepUntil. The Go ports of the removed cases are removed with them (harness_tasks_scheduling_test.go, harness_tasks_port2_core_test.go); sleeping is covered by harness-sleep.test.ts."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
@@ -7099,8 +7188,13 @@
     },
     {
       "path": "packages/durable/test/sqlite-cloudflare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5f808e412384ba8d012a61f0a8582b2a66d1bf207ba79f593cf66975f74d53ac"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5f808e412384ba8d012a61f0a8582b2a66d1bf207ba79f593cf66975f74d53ac",
+      "evidence": [
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectStorageConformance",
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter"
+      ],
+      "rationale": "At Pi c268154c the file keeps the storage cases on the Durable Object adapter (unprefixed by default, prefixed pi tables beside host tables, prefixes isolated on one object, invalid and reserved prefixes rejected) and the conformance suite; its driver cases moved to chord/test/sqlite/cloudflare.test.ts. Pi f75b3240ab: the default schema is at version 2 (:18, asserted)."
     },
     {
       "path": "packages/durable/test/sqlite-facade.test.ts",
@@ -7114,8 +7208,12 @@
     },
     {
       "path": "packages/durable/test/sqlite-migrations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:30b99d9e8331666cc5787b1497f64f539707a1b4fc3d207ada2d7b380ddde32e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:30b99d9e8331666cc5787b1497f64f539707a1b4fc3d207ada2d7b380ddde32e",
+      "evidence": [
+        "durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+      ],
+      "rationale": "At Pi c268154c the file keeps the durable schema cases (current schema applied repeatedly, a newer database rejected, a failed migration rolled back with stored data kept for the retry); the bootstrap rollback case moved to chord/test/sqlite/migrations.test.ts. Pi f75b3240ab adds :47 'migrates a version 1 database to store sleeping tasks, keeping its tasks and indexes', a subtest of TestDurableSQLiteMigrations."
     },
     {
       "path": "packages/durable/test/sqlite-storage.test.ts",

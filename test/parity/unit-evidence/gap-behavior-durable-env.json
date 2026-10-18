@@ -1103,5 +1103,15 @@
     ],
     "upstream_reference": "packages/durable/src/storage/memory.ts:229-233 (reads and retained writes are cloned); packages/durable/test/memory-storage.test.ts",
     "mutation": "durable/storage/memory.go:658 `cloneEntry(entry)` -> `entry` (TestMemoryStorageClonesRetainedWritesAndReads FAIL); durable/storage/memory.go:591 `cloneConversation(value)` -> `value` (TestMemoryStorageConversationReadsAreCopies FAIL); compiled test FAIL, baseline PASS"
+  },
+  {
+    "upstream": "packages/durable/src/timers.ts",
+    "package": "./durable",
+    "tests": [
+      "TestNativeTimerFiresOnceAndDisarms",
+      "TestHostTimersFallBackForegroundAndDeclineBackground"
+    ],
+    "upstream_reference": "packages/durable/src/timers.ts:17 (nativeTimer: fires once after its delay, waits out delays beyond setTimeout's limit in steps, disarm stops it); packages/durable/src/timers.ts:59 (hostTimers: a foreground timer the host throws on or declines is armed with the native timer and the failure is reported once; a background one the host throws on is reported and declined)",
+    "mutation": "durable/timers.go:31 `if remaining > maxTimerDelay {` -> `if remaining <= maxTimerDelay {` (TestNativeTimerFiresOnceAndDisarms FAIL); durable/timers.go:27 `if stopped {` -> `if !stopped {` (TestNativeTimerFiresOnceAndDisarms FAIL); durable/timers.go:87 `if first {` -> `if !first {` (TestHostTimersFallBackForegroundAndDeclineBackground FAIL); compiled test FAIL, baseline PASS"
   }
 ]

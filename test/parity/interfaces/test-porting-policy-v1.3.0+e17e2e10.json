@@ -5204,6 +5204,20 @@
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/coding-agent/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test-workers/storage.test.ts",
+      "upstreamTestHash": "sha256:7396929be7361f01dc10b73a1bb2705b5213d1e876c5e70e876a1555a4fb4c58",
+      "area": "sessions",
+      "tags": [],
+      "rationale": "Production-path review at Pi 1.3.0+e17e2e10: workerd tests of Pi Durable's SQLite storage on a Durable Object (schema version 2, the storage conformance suite). The runtime is Cloudflare Workers, which no Stock PiG production package runs in; the storage cases are ported on Go's fake Durable Object storage."
+    },
+    {
+      "path": "packages/durable/test-workers/wake.test.ts",
+      "upstreamTestHash": "sha256:eed12b884ddb5b10b99856488ec19324ad1d165a7cab51d1bef5e1f09218b3c2",
+      "area": "sessions",
+      "tags": [],
+      "rationale": "Production-path review at Pi 1.3.0+e17e2e10: workerd tests of a Harness hosted by a Durable Object (alarm wakeups and eviction). The runtime is Cloudflare Workers, which no Stock PiG production package runs in; the Harness behavior they depend on is ported on both engines in harness-sleep.test.ts."
+    },
+    {
       "path": "packages/durable/test/codemode-describe.test.ts",
       "upstreamTestHash": "sha256:dba10134bbef4f6f18ada18beca5850ff267081c0afd94ce89520379d1aba26d",
       "area": "tools",
@@ -5463,6 +5477,15 @@
         "hot-path"
       ],
       "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/harness-sleep.test.ts",
+      "upstreamTestHash": "sha256:aa21b9c2c50b265467e60c257195f4d969359856d34d98e8a37c6f7d3dd6158c",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.3.0+e17e2e10: The sleeping task state Pi's Durable Harness commits for every generation retry backoff, deferred poll and compaction retry, and that its scheduler wakes on a timer or onWake; reached by every durable session that retries a model request."
     },
     {
       "path": "packages/durable/test/harness-storage-failure.test.ts",

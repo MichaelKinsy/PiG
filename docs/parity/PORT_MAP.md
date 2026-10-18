@@ -760,6 +760,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/testing/storage-benchmark.ts` | `durable/durabletest/storage_benchmark.go` | ✅ |
 | `packages/durable/src/testing/storage-conformance.ts` | `durable/durabletest/storage_conformance.go` | ✅ |
 | `packages/durable/src/testing/types.ts` | `durable/durabletest/durabletest.go + durable/durabletest/env_conformance.go` | ✅ |
+| `packages/durable/src/timers.ts` | `durable/timers.go` | ✅ |
 | `packages/durable/src/tools/bash.ts` | `durable/tools/bash.go` | ✅ |
 | `packages/durable/src/tools/edit-diff.ts` | `durable/tools/diff_string.go + durable/tools/edit_diff.go + durable/tools/unified_patch.go` | ✅ |
 | `packages/durable/src/tools/edit.ts` | `durable/tools/edit.go` | ✅ |

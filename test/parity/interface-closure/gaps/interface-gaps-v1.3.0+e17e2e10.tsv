@@ -34,21 +34,3 @@ pkg:chord/output#Progress::property:markAndWait	chord	child-gap	chord/output/out
 pkg:chord/output#Progress::property:markAndWait::call:0	chord	signature-mismatch	chord/output/output.go#Progress.MarkAndWait
 pkg:chord/output#Progress::property:stop	chord	child-gap	chord/output/output.go#Progress.Stop
 pkg:chord/output#Progress::property:stop::call:0	chord	undecidable	chord/output/output.go#Progress.Stop
-pkg:chord/output#ProgressClock	chord	type-mismatch	chord/output/output.go#ProgressClock
-pkg:durable/.#HarnessOptions	durable	type-mismatch	durable/harness/types.go#HarnessOptions
-pkg:durable/.#SetTimer	durable	no-go-symbol	
-pkg:durable/.#SetTimer::call:0	durable	child-gap	
-pkg:durable/.#TaskGraphState	durable	type-mismatch	durable/harness/task_graph.go#TaskGraphState
-pkg:durable/.#TaskInspection	durable	type-mismatch	durable/harness/types.go#TaskInspection
-pkg:durable/.#TaskRuntime	durable	child-gap	durable/types.go#TaskRuntime
-pkg:durable/.#TaskRuntime::property:setTimer	durable	member-missing	durable/types.go#TaskRuntime
-pkg:durable/.#TaskRuntime::property:setTimer::call:0	durable	member-missing	durable/types.go#TaskRuntime
-pkg:durable/.#TaskRuntime::property:sleepUntil	durable	member-missing	durable/types.go#TaskRuntime
-pkg:durable/.#TaskRuntime::property:sleepUntil::call:0	durable	member-missing	durable/types.go#TaskRuntime
-pkg:durable/.#TaskState	durable	type-mismatch	durable/types.go#TaskState
-pkg:durable/.#ToolExecutionApi	durable	child-gap	durable/harness_types.go#ToolExecutionApi
-pkg:durable/.#ToolExecutionApi::property:now	durable	member-missing	durable/harness_types.go#ToolExecutionApi
-pkg:durable/.#ToolExecutionApi::property:now::call:0	durable	member-missing	durable/harness_types.go#ToolExecutionApi
-pkg:durable/.#Wake	durable	no-go-symbol	
-pkg:durable/.#createSession	durable	child-gap	durable/session/session.go#CreateSession
-pkg:durable/.#createSession::call:0	durable	signature-mismatch	durable/session/session.go#CreateSession

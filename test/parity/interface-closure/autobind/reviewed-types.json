@@ -299,6 +299,10 @@
     "go": "durable/types.go#DocumentReader",
     "reason": "Pi DocumentReader is Pick<Session, \"snapshot\" | \"snapshotAsOf\"> (types.ts:886): the two committed-read methods of Session, whose overloads are generic over the document token (types.ts:931-942). Go interfaces take no method type parameters, so DocumentReader holds the erased reads (SnapshotErased, SnapshotAsOfErased) and the typed overloads are the generic functions durable.Snapshot[T] and durable.SnapshotAsOf[T] (documents.go:305,315) taking a DocumentReader; Session satisfies it, as Pi's Pick of Session does. Locked by TestSessionHistoricalDocumentSnapshots (durable/session/session_checkpoints_migrations_test.go) and the examples that read through durable.Snapshot (durable/examples/support_test.go snapshotNotes)."
   },
+  "pkg:durable/.#HarnessOptions": {
+    "go": "durable/harness/types.go#HarnessOptions",
+    "reason": "Pi durable/src/harness/types.ts:597 settings?: HarnessSettings is read again at every resolution (harness.ts:181 `const settings = () => resolveSettings(options.settings)`, harness.ts:221), so a caller may pass an object whose fields are getters and change it live. Go Settings func() *HarnessSettings is that live read: called at every resolution, nil for absent; every other member maps field for field."
+  },
   "pkg:durable/.#ToolExecutionApi::property:createTask::call:0": {
     "go": "durable/harness_types.go#ToolExecutionApi.CreateTaskErased",
     "reason": "Pi ToolExecutionApi.createTask(task: AnyTask, input, options) (harness/types.ts) creates a task of the given erased definition. Go ToolExecutionApi.CreateTaskErased(ctx, task AnyTask, input JsonValue, options TaskOptions) takes the AnyTask struct of Pi's shape and returns (TaskId, error), the Go form of Promise<TaskId>. TestAnyTaskExposesTheErasedDefinitionPiReads proves the AnyTask argument; the harness tool-task tests drive the call. Lead ruling 2026-10-10: AnyTask is a struct."
