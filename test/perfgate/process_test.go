@@ -105,12 +105,18 @@ func (h *pigHome) run(args []string, drive func(pid int, stdin io.Writer, stdout
 	if err != nil {
 		h.t.Fatal(err)
 	}
+	return h.runBinary(binary, nil, args, drive)
+}
+
+// runBinary is run with another binary, such as memProbeBinary, and extra environment entries.
+func (h *pigHome) runBinary(binary string, env []string, args []string, drive func(pid int, stdin io.Writer, stdout *bufio.Reader)) profiling.ProcessMetrics {
+	h.t.Helper()
 	profileDir := h.t.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), testbudget.Wait(h.t))
 	defer cancel()
 	command := exec.CommandContext(ctx, binary, args...)
 	command.Dir = h.cwd
-	command.Env = append(append([]string(nil), h.env...), "PIG_PROFILE=metrics", "PIG_PROFILE_DIR="+profileDir)
+	command.Env = append(append(append([]string(nil), h.env...), env...), "PIG_PROFILE=metrics", "PIG_PROFILE_DIR="+profileDir)
 	// PERFGATE_PROFILE_DIR keeps an allocation profile of every run, with every allocation sampled, as <test>-<run>-allocs.pprof: compare two runs with go tool pprof -base. Sampling does not change the gated counts.
 	keep := os.Getenv("PERFGATE_PROFILE_DIR")
 	if keep != "" {

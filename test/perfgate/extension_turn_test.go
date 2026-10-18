@@ -17,11 +17,12 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/perfgate"
-	"github.com/MichaelKinsy/PiG/internal/profiling"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // benchExtensionCount is the extension count of pi-arena's rpc-ext10 workload: each extension registers a tool, a command and handlers for session_start, before_agent_start, tool_call and turn_end.
@@ -114,19 +115,47 @@ func TestRPCNoExtensionTurnProcessGate(t *testing.T) {
 	rpcBenchTurnGate(t, "process.rpc_ext0_turn", nil, 50)
 }
 
+// allocCounts are cumulative heap allocations: objects and bytes.
+type allocCounts struct{ objects, bytes uint64 }
+
+// allocSnapshot signals the memory probe (memProbeBinary) of the process pid and returns the allocation counts it wrote as allocs-<n>.json in dir.
+func allocSnapshot(t *testing.T, pid int, dir string, n int) allocCounts {
+	t.Helper()
+	if err := syscall.Kill(pid, syscall.SIGUSR2); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, fmt.Sprintf("allocs-%d.json", n))
+	deadline := time.Now().Add(testbudget.Wait(t))
+	for time.Now().Before(deadline) {
+		if data, err := os.ReadFile(path); err == nil {
+			values := map[string]uint64{}
+			if err := json.Unmarshal(data, &values); err != nil {
+				t.Fatalf("%s: %v", path, err)
+			}
+			return allocCounts{values["/gc/heap/allocs:objects"], values["/gc/heap/allocs:bytes"]}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("the probe wrote no %s", path)
+	return allocCounts{}
+}
+
 // rpcBenchTurnGate gates the allocations of one RPC turn with extensions loaded: the difference between 12 and 2 turns, per turn. With late turns, it also gates the per-turn allocations between 12 and late turns relative to that cost.
 //
-// The gated counts are differences between processes, so a process's startup must allocate the same amount every time. Three inputs made
-// it depend on the machine's load, and each is removed or outvoted here:
+// The gated counts are differences between processes, so what a process allocates before its turns must not differ between processes. Three
+// inputs made it depend on the machine's load, and each is removed here:
 //   - Collections: a collection empties every sync.Pool, which then refills, and the number and timing of collections follow the load.
 //     The measured processes run with GOGC=off.
 //   - The background catalog refresh RPC mode starts (Pi's main.ts unless offline) publishes the model catalog to the extensions, once or
 //     not at all depending on whether it finishes before they connect. The measured processes run with PIG_OFFLINE=1; the turns use the
 //     faux provider and no network.
-//   - The model catalog publications of startup still race the extensions' connections: about one process in thirty encodes the catalog
-//     once more or once less (about 8,400 allocations). Each point is the median of three processes, so one such process cannot move it.
+//   - The model catalog publications of startup still race the extensions' connections: with the machine loaded, about one process in
+//     twenty encodes the catalog fewer times (36,000 fewer allocations in the arm64 container with eight busy processes beside it), and
+//     one in thirty did once more or once less on CI. A process's turns are therefore counted from a snapshot of its allocation counters
+//     taken once its extensions have registered their commands, by the memory probe binary, and not from its start: the startup
+//     publications are in the count before the snapshot and the turns' own work after it, in every process.
 //
-// Wave 15 failed allocs_growth at 1.22 where the code measures 1.05; with these inputs fixed the counts no longer move with load.
+// Each point is still the median of three processes. Wave 15 failed allocs_growth at 1.22 where the code measures 1.06; the counts no longer move with load.
 func rpcBenchTurnGate(t *testing.T, metric string, extensions []string, late int) {
 	home := newPigHome(t)
 	home.env = append(home.env, "GOGC=off", "PIG_OFFLINE=1")
@@ -134,32 +163,41 @@ func rpcBenchTurnGate(t *testing.T, metric string, extensions []string, late int
 	for _, path := range extensions {
 		args = append(args, "-e", path)
 	}
-	turns := func(n int) func(int, io.Writer, *bufio.Reader) {
-		return func(pid int, stdin io.Writer, stdout *bufio.Reader) {
+	probe, err := memProbeBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// measure runs n turns in a process and returns what they allocated: the exit record's counts, which include the exit itself and are the same in every process, less the snapshot's.
+	measure := func(n int) allocCounts {
+		snapshots := t.TempDir()
+		var before allocCounts
+		record := home.runBinary(probe, []string{"PIG_PERFGATE_SNAPSHOT_DIR=" + snapshots}, args, func(pid int, stdin io.Writer, stdout *bufio.Reader) {
 			awaitBenchCommands(t, len(extensions), stdin, stdout)
+			before = allocSnapshot(t, pid, snapshots, 1)
 			rpcTurns(t, n)(pid, stdin, stdout)
-		}
+		})
+		return allocCounts{record.AllocObjects - before.objects, record.AllocBytes - before.bytes}
 	}
-	// median runs n turns in three processes and returns the record of the one with the median allocation count.
-	median := func(n int) profiling.ProcessMetrics {
-		records := []profiling.ProcessMetrics{home.run(args, turns(n)), home.run(args, turns(n)), home.run(args, turns(n))}
-		slices.SortFunc(records, func(a, b profiling.ProcessMetrics) int { return cmp.Compare(a.AllocObjects, b.AllocObjects) })
-		return records[1]
+	// median returns the counts of the one of three processes with the median number of allocations.
+	median := func(n int) allocCounts {
+		counts := []allocCounts{measure(n), measure(n), measure(n)}
+		slices.SortFunc(counts, func(a, b allocCounts) int { return cmp.Compare(a.objects, b.objects) })
+		return counts[1]
 	}
-	home.run(args, turns(0))
+	measure(0)
 	const few, many = 2, 12
 	small := median(few)
 	large := median(many)
 	perTurn := float64(many - few)
 	t.Logf("perfgate: %s %d turns %+v; %d turns %+v", metric, few, small, many, large)
-	early := counterDelta(large.AllocObjects, small.AllocObjects) / perTurn
+	early := counterDelta(large.objects, small.objects) / perTurn
 	perfgate.Check(t, metric+".allocs", early)
-	perfgate.Check(t, metric+".bytes", counterDelta(large.AllocBytes, small.AllocBytes)/perTurn)
+	perfgate.Check(t, metric+".bytes", counterDelta(large.bytes, small.bytes)/perTurn)
 	if late == 0 {
 		return
 	}
 	longer := median(late)
-	lateTurn := counterDelta(longer.AllocObjects, large.AllocObjects) / float64(late-many)
+	lateTurn := counterDelta(longer.objects, large.objects) / float64(late-many)
 	t.Logf("perfgate: %s %d turns %+v; per turn after %d turns %.0f allocs, after %d turns %.0f allocs", metric, late, longer, few, early, many, lateTurn)
 	perfgate.Check(t, metric+".allocs_growth", math.Round(lateTurn/early*100)/100)
 }

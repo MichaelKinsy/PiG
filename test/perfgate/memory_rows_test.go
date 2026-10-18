@@ -399,7 +399,7 @@ func TestLongSessionMemoryGate(t *testing.T) {
 	}
 }
 
-// memProbeSource is added to cmd/pig's package main (go build -overlay) for the memory snapshot of an idle process: with PIG_PERFGATE_SNAPSHOT_DIR set, SIGUSR1 reads runtime/metrics without a collection and writes the values as snapshot-<n>.json there. Without it the binary is cmd/pig.
+// memProbeSource is added to cmd/pig's package main (go build -overlay) for the memory snapshot of an idle process: with PIG_PERFGATE_SNAPSHOT_DIR set, SIGUSR1 reads runtime/metrics without a collection and writes the values as snapshot-<n>.json there, and SIGUSR2 writes the cumulative allocation counters, flushed as the exit record flushes them, as allocs-<n>.json. Without it the binary is cmd/pig.
 const memProbeSource = `// SPDX-License-Identifier: MIT
 
 package main
@@ -410,6 +410,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"runtime/metrics"
 	"syscall"
 )
@@ -438,6 +439,27 @@ func init() {
 			}
 			data, _ := json.Marshal(values)
 			path := filepath.Join(dir, fmt.Sprintf("snapshot-%d.json", n))
+			_ = os.WriteFile(path+".tmp", data, 0o600)
+			_ = os.Rename(path+".tmp", path)
+		}
+	}()
+	allocSignals := make(chan os.Signal, 1)
+	signal.Notify(allocSignals, syscall.SIGUSR2)
+	go func() {
+		for n := 1; ; n++ {
+			<-allocSignals
+			// The cumulative allocation counters, read as the exit record reads them (profiling.CollectMetrics): ReadMemStats flushes the allocation caches
+			// without a collection, which a runtime/metrics read does not.
+			var stats runtime.MemStats
+			runtime.ReadMemStats(&stats)
+			samples := []metrics.Sample{{Name: "/gc/heap/allocs:objects"}, {Name: "/gc/heap/allocs:bytes"}}
+			metrics.Read(samples)
+			values := map[string]uint64{}
+			for _, sample := range samples {
+				values[sample.Name] = sample.Value.Uint64()
+			}
+			data, _ := json.Marshal(values)
+			path := filepath.Join(dir, fmt.Sprintf("allocs-%d.json", n))
 			_ = os.WriteFile(path+".tmp", data, 0o600)
 			_ = os.Rename(path+".tmp", path)
 		}
