@@ -35,12 +35,13 @@ const (
 	Pending TaskStatus = iota + 1
 	Running
 	Waiting
+	Sleeping
 	Completing
 	Terminal
 )
 
 // taskStatusNames is read-only.
-var taskStatusNames = [...]string{"", "pending", "running", "waiting", "completing", "terminal"}
+var taskStatusNames = [...]string{"", "pending", "running", "waiting", "sleeping", "completing", "terminal"}
 
 // String returns the persisted name ("pending", ...), or "" for an invalid status.
 func (s TaskStatus) String() string {

@@ -122,7 +122,29 @@ func CreateSqliteMigrations(schema SqliteSchema) []SqliteMigration {
 	for index, statement := range statements {
 		statements[index] = render(statement)
 	}
-	return []SqliteMigration{{Version: 1, Statements: statements}}
+	// Version 2 adds the sleeping task status. SQLite cannot change a CHECK constraint in place, so the table is rebuilt.
+	rebuiltTasks := t.Tasks + "_v2"
+	sleepingStatus := []string{
+		`CREATE TABLE ` + rebuiltTasks + ` (
+			id INTEGER PRIMARY KEY,
+			conversation_id INTEGER NOT NULL,
+			kind TEXT NOT NULL,
+			status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'waiting', 'sleeping', 'completing', 'terminal')),
+			abort_requested INTEGER NOT NULL CHECK (abort_requested IN (0, 1)),
+			background INTEGER NOT NULL CHECK (background IN (0, 1)),
+			record TEXT NOT NULL CHECK (json_valid(record))
+		) STRICT`,
+		`INSERT INTO ` + rebuiltTasks + ` (id, conversation_id, kind, status, abort_requested, background, record)
+			SELECT id, conversation_id, kind, status, abort_requested, background, record FROM ` + t.Tasks,
+		`DROP TABLE ` + t.Tasks,
+		`ALTER TABLE ` + rebuiltTasks + ` RENAME TO ` + t.Tasks,
+		`CREATE INDEX ` + i.TasksByStatus + ` ON ` + t.Tasks + ` (status, id)`,
+		`CREATE INDEX ` + i.TasksByConversation + ` ON ` + t.Tasks + ` (conversation_id, id)`,
+		`CREATE INDEX ` + i.TasksByKind + ` ON ` + t.Tasks + ` (kind, id)`,
+		`CREATE INDEX ` + i.TasksByAbortRequested + ` ON ` + t.Tasks + ` (abort_requested, id)`,
+		`CREATE INDEX ` + i.TasksByBackground + ` ON ` + t.Tasks + ` (background, id)`,
+	}
+	return []SqliteMigration{{Version: 1, Statements: statements}, {Version: 2, Statements: sleepingStatus}}
 }
 
 // SqliteMigrations is the immutable, ordered schema history of the unprefixed schema. Append new migrations after the initial schema ships.

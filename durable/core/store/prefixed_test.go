@@ -54,7 +54,8 @@ func TestRenamedNamesAreTheCoresSchema(t *testing.T) {
 	var got []string
 	for _, text := range store.SQL() {
 		for _, m := range createName.FindAllStringSubmatch(text, -1) {
-			if m[1] != "pig_sidecar" && !slices.Contains(got, m[1]) {
+			// tasks_v2 is migration 2's temporary table: Pi renames it to tasks, and it never outlives the migration.
+			if m[1] != "pig_sidecar" && m[1] != "tasks_v2" && !slices.Contains(got, m[1]) {
 				got = append(got, m[1])
 			}
 		}

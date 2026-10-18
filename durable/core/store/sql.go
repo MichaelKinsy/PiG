@@ -66,8 +66,32 @@ const (
 	stmtContextSummary
 	stmtContextMessages
 	stmtContextRelease
-	stmtMigrationFirst // the schema statements of migration 1 start here (stmtMigrationFirst + i)
+	stmtMigrationFirst // the schema statements of migration 1 start here (stmtMigrationFirst + i), those of migration 2 after them
 )
+
+// sqlSchemaV2 is the second migration of src/storage/sqlite/migrations.ts: it adds the sleeping task status. SQLite cannot change a
+// CHECK constraint in place, so the table is rebuilt (the temporary table's name is its own: a renaming adapter leaves it, and every
+// statement that names it is its own). Read-only.
+var sqlSchemaV2 = []string{
+	`CREATE TABLE tasks_v2 (
+		id INTEGER PRIMARY KEY,
+		conversation_id INTEGER NOT NULL,
+		kind TEXT NOT NULL,
+		status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'waiting', 'sleeping', 'completing', 'terminal')),
+		abort_requested INTEGER NOT NULL CHECK (abort_requested IN (0, 1)),
+		background INTEGER NOT NULL CHECK (background IN (0, 1)),
+		record TEXT NOT NULL CHECK (json_valid(record))
+	) STRICT`,
+	`INSERT INTO tasks_v2 (id, conversation_id, kind, status, abort_requested, background, record)
+		SELECT id, conversation_id, kind, status, abort_requested, background, record FROM tasks`,
+	"DROP TABLE tasks",
+	"ALTER TABLE tasks_v2 RENAME TO tasks",
+	"CREATE INDEX tasks_by_status ON tasks (status, id)",
+	"CREATE INDEX tasks_by_conversation ON tasks (conversation_id, id)",
+	"CREATE INDEX tasks_by_kind ON tasks (kind, id)",
+	"CREATE INDEX tasks_by_abort_requested ON tasks (abort_requested, id)",
+	"CREATE INDEX tasks_by_background ON tasks (background, id)",
+}
 
 // sqlSchemaV1 is the INITIAL_SCHEMA of src/storage/sqlite/migrations.ts, schema version 1, statement for statement.
 // Read-only.
@@ -153,7 +177,7 @@ var sqlSchemaV1 = []string{
 var sqlTable = buildTable()
 
 func buildTable() []string {
-	t := make([]string, 0, int(stmtMigrationFirst)+len(sqlSchemaV1))
+	t := make([]string, 0, int(stmtMigrationFirst)+len(sqlSchemaV1)+len(sqlSchemaV2))
 	t = append(t,
 		// stmtClaimID .. stmtMetadata: pi-durable's writes.
 		history.SQLClaimID,
@@ -178,7 +202,7 @@ func buildTable() []string {
 		// stmtSchemaVersion .. stmtEntries: reads. Record columns are read as BLOB (ABI section 4.3).
 		"SELECT version FROM durable_schema WHERE singleton = 1",
 		"SELECT next_id, next_seq FROM durable_metadata WHERE singleton = 1",
-		"SELECT CAST(record AS BLOB) FROM tasks WHERE status IN ('pending', 'running', 'waiting', 'completing') ORDER BY id",
+		"SELECT CAST(record AS BLOB) FROM tasks WHERE status IN ('pending', 'running', 'waiting', 'sleeping', 'completing') ORDER BY id",
 		"SELECT CAST(record AS BLOB) FROM submissions WHERE status IN ('queued', 'placed') ORDER BY id",
 		"SELECT CAST(record AS BLOB) FROM tasks WHERE id = ?",
 		"SELECT CAST(record AS BLOB) FROM submissions WHERE id = ?",
@@ -214,7 +238,7 @@ func buildTable() []string {
 		"SELECT id, conversation_id, request_id, status, CAST(record AS BLOB) FROM submissions WHERE id > ? ORDER BY id LIMIT "+dumpPageText,
 		"SELECT CAST(record AS BLOB) FROM documents ORDER BY id",
 		"SELECT document_id, seq, kind, version, CAST(content AS BLOB) FROM document_revisions ORDER BY document_id, seq",
-		"SELECT id, conversation_id, kind, status, abort_requested, background, CAST(record AS BLOB) FROM tasks WHERE id > ? AND status IN ('pending', 'running', 'waiting', 'completing') ORDER BY id LIMIT "+dumpPageText,
+		"SELECT id, conversation_id, kind, status, abort_requested, background, CAST(record AS BLOB) FROM tasks WHERE id > ? AND status IN ('pending', 'running', 'waiting', 'sleeping', 'completing') ORDER BY id LIMIT "+dumpPageText,
 		"SELECT id, conversation_id, request_id, status, CAST(record AS BLOB) FROM submissions WHERE id > ? AND status IN ('queued', 'placed') ORDER BY id LIMIT "+dumpPageText,
 		// SqliteStorage.submissionByRequest; the index the WHERE uses orders equal keys by id.
 		"SELECT CAST(record AS BLOB) FROM submissions WHERE conversation_id = ? AND request_id = ? ORDER BY id LIMIT 1",
@@ -231,5 +255,5 @@ func buildTable() []string {
 		TextContextMessages,
 		TextContextRelease,
 	)
-	return append(t, sqlSchemaV1...)
+	return append(append(t, sqlSchemaV1...), sqlSchemaV2...)
 }

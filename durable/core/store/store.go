@@ -31,16 +31,16 @@ import (
 // ErrPending means the store emitted reads the caller's operation depends on. Read-only.
 var ErrPending = errors.New("store: waiting for rows")
 
-// SchemaNewerError is the refusal applySqliteMigrations gives a store whose durable_schema.version is newer than 1.
+// SchemaNewerError is the refusal applySqliteMigrations gives a store whose durable_schema.version is newer than SupportedSchemaVersion.
 type SchemaNewerError struct{ Version int64 }
 
 func (e SchemaNewerError) Error() string {
-	return "SQLite schema version " + strconv.FormatInt(e.Version, 10) + " is newer than supported version 1"
+	return "SQLite schema version " + strconv.FormatInt(e.Version, 10) + " is newer than supported version " + strconv.Itoa(SupportedSchemaVersion)
 }
 
 // SupportedSchemaVersion is the newest durable_schema.version this build writes and reads (migrations.ts
 // CURRENT_SQLITE_SCHEMA_VERSION).
-const SupportedSchemaVersion = 1
+const SupportedSchemaVersion = 2
 
 // RejectedError is pi-durable's StorageRejected: a commit the store refused before it changed anything.
 type RejectedError struct{ Message string }

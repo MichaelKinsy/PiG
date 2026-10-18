@@ -165,19 +165,32 @@ func (s *Store) onSchema(b *abi.Builder, rows [][]abi.Value) error {
 	if version > SupportedSchemaVersion {
 		return SchemaNewerError{Version: version}
 	}
-	if version < SupportedSchemaVersion {
+	if version == 0 || version < SupportedSchemaVersion {
 		// Version 0 (or no row) is a new database or a migration that never committed: applySqliteMigrations seeds the
-		// row, runs migration 1 and records its version, in one commit.
-		if !s.opts.EmptyNew {
+		// row, runs every migration after the stored version and records each version, in one commit.
+		if version == 0 && !s.opts.EmptyNew {
 			return errors.New("SQLite schema metadata is missing")
 		}
-		list := make([]abi.Stmt, 0, len(sqlSchemaV1)+2)
-		list = append(list, abi.Stmt{SQL: stmtSchemaSeed})
-		for i := range sqlSchemaV1 {
-			list = append(list, abi.Stmt{SQL: stmtMigrationFirst + uint16(i)})
+		list := make([]abi.Stmt, 0, len(sqlSchemaV1)+len(sqlSchemaV2)+3)
+		if version == 0 {
+			list = append(list, abi.Stmt{SQL: stmtSchemaSeed})
+			for i := range sqlSchemaV1 {
+				list = append(list, abi.Stmt{SQL: stmtMigrationFirst + uint16(i)})
+			}
+			list = append(list, abi.Stmt{SQL: stmtSchemaVersionSet, Params: []abi.Value{abi.Int(1)}})
+		}
+		for i := range sqlSchemaV2 {
+			list = append(list, abi.Stmt{SQL: stmtMigrationFirst + uint16(len(sqlSchemaV1)+i)})
 		}
 		list = append(list, abi.Stmt{SQL: stmtSchemaVersionSet, Params: []abi.Value{abi.Int(SupportedSchemaVersion)}})
 		b.Commit(-1, list)
+		if version != 0 {
+			// A migrated store keeps its rows: the open goes on to read them.
+			id := b.Read(stmtMetadataRead, nil)
+			s.pending = append(s.pending, pendingRead{id: id, kind: rkMetadata})
+			s.startLive(b)
+			return nil
+		}
 		s.fresh = true
 		s.live = Live{NextID: s.nextID, NextSeq: s.nextSeq}
 		s.markScopeLoaded(rec.ScopeSession, 0)

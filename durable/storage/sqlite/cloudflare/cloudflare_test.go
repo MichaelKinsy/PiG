@@ -178,8 +178,9 @@ func TestDurableObjectSqliteAdapter(t *testing.T) {
 		if !slices.Contains(names, "durable_schema") || slices.Contains(names, "pi_durable_schema") {
 			t.Fatalf("names %v, want durable_schema and no pi_ prefix", names)
 		}
-		if version := queryIds(t, storage, "SELECT version FROM durable_schema"); !slices.Equal(version, []int64{1}) {
-			t.Fatalf("schema version %v, want 1", version)
+		// Pi e17e2e10 sqlite-cloudflare.test.ts:18: the schema is at version 2, which admits sleeping tasks.
+		if version := queryIds(t, storage, "SELECT version FROM durable_schema"); !slices.Equal(version, []int64{2}) {
+			t.Fatalf("schema version %v, want 2", version)
 		}
 	})
 

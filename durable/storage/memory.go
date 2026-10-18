@@ -399,7 +399,7 @@ func checkStatuses(writes []durable.StorageWrite) error {
 		switch typed := write.(type) {
 		case durable.TaskWrite:
 			switch status := typed.Value.State.Status; status {
-			case durable.TaskPending, durable.TaskRunning, durable.TaskWaiting, durable.TaskCompleting, durable.TaskTerminal:
+			case durable.TaskPending, durable.TaskRunning, durable.TaskWaiting, durable.TaskSleeping, durable.TaskCompleting, durable.TaskTerminal:
 			default:
 				return fmt.Errorf("Unknown task status %q", string(status))
 			}

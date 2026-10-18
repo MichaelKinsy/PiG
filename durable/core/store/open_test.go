@@ -21,7 +21,7 @@ func TestFreshOpenInitialisesSchema(t *testing.T) {
 		t.Fatalf("live = %+v", live)
 	}
 	var version int
-	if err := h.db.QueryRow("SELECT version FROM durable_schema").Scan(&version); err != nil || version != 1 {
+	if err := h.db.QueryRow("SELECT version FROM durable_schema").Scan(&version); err != nil || version != store.SupportedSchemaVersion {
 		t.Fatalf("schema version %d %v", version, err)
 	}
 	var next string
@@ -40,15 +40,15 @@ func TestOpenRefusesNewerSchema(t *testing.T) {
 	if _, _, err := h.openStore(store.Options{EmptyNew: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.db.Exec("UPDATE durable_schema SET version = 2"); err != nil {
+	if _, err := h.db.Exec("UPDATE durable_schema SET version = ?", store.SupportedSchemaVersion+1); err != nil {
 		t.Fatal(err)
 	}
 	_, _, err := h.openStore(store.Options{EmptyNew: true})
 	var newer store.SchemaNewerError
-	if !errors.As(err, &newer) || newer.Version != 2 {
+	if !errors.As(err, &newer) || newer.Version != store.SupportedSchemaVersion+1 {
 		t.Fatalf("err = %v", err)
 	}
-	if want := "SQLite schema version 2 is newer than supported version 1"; err.Error() != want {
+	if want := "SQLite schema version 3 is newer than supported version 2"; err.Error() != want {
 		t.Fatalf("message %q, want %q", err.Error(), want)
 	}
 }
@@ -101,7 +101,7 @@ func TestColdOpenMigratesASchemaTableWithoutItsRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	var version int
-	if err := h.db.QueryRow("SELECT version FROM durable_schema").Scan(&version); err != nil || version != 1 || live.NextID != 2 || live.NextSeq != 1 {
+	if err := h.db.QueryRow("SELECT version FROM durable_schema").Scan(&version); err != nil || version != store.SupportedSchemaVersion || live.NextID != 2 || live.NextSeq != 1 {
 		t.Fatalf("version %d %v, live %+v", version, err, live)
 	}
 }
