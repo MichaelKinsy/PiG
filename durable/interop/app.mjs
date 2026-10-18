@@ -49,9 +49,7 @@ export const Job = defineTask({
 	version: 1,
 	initial: () => ({ phase: "first" }),
 	phases: {
-		first: async (task, runtime, taskContext) => {
-			// The job starts once the tool call that created it has settled, so the two never race for the line.
-			await runtime.waitForTask(task.input.after, taskContext);
+		first: async (_task, runtime, taskContext) => {
 			await runtime.commit(() => ({ status: "running", checkpoint: { phase: "second", n: 1 } }), taskContext);
 		},
 		second: async (task, runtime, taskContext) => {
@@ -71,10 +69,14 @@ const note = defineTool({
 	description: "Appends a line to the conversation's notes and starts a job",
 	parameters: Type.Object({ text: Type.String() }),
 	execute: async (args, api, callContext) => {
-		await api.commit(async (tx) => {
+		const job = await api.commit(async (tx) => {
 			(await tx.doc(Notes, api.conversationId)).lines.push(args.text);
-			await tx.createTask(Job, { after: api.taskId }, { ownership: { kind: "conversation" } });
+			return await tx.createTask(Job, {}, { ownership: { kind: "conversation" } });
 		}, callContext);
+		// A job left to run beside its tool call commits in an order that is a scheduling accident: Pi's one thread settles
+		// it by microtask hops, Go's goroutines by who is ready first. The call ends with the job, so each commit of the
+		// session has exactly one commit before it and the raw tables, commit sequences included, are the same in both.
+		await api.waitForTask(job, callContext);
 		return { output: [{ type: "text", text: `noted ${args.text}` }] };
 	},
 });

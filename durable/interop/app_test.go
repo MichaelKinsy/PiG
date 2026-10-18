@@ -82,11 +82,7 @@ var job = durable.DefineTask(durable.TaskDefinition[durable.JsonObject, jobState
 	Version: 1,
 	Initial: func(durable.JsonObject) jobState { return jobState{Phase: "first"} },
 	Phases: map[string]durable.PhaseHandler[durable.JsonObject, jobState, jobResult, any]{
-		"first": func(ctx context.Context, task jobRunning, runtime jobRuntime) error {
-			// The job starts once the tool call that created it has settled, so the two never race for the line.
-			if _, err := runtime.WaitForTask(ctx, durable.TaskId(task.Input.Value("after").(float64))); err != nil {
-				return err
-			}
+		"first": func(ctx context.Context, _ jobRunning, runtime jobRuntime) error {
 			return runtime.Commit(ctx, func(durable.Tx, jobRunning) (*jobNext, error) {
 				return &jobNext{Status: durable.TaskRunning, Checkpoint: &jobState{Phase: "second", N: 1}}, nil
 			})
@@ -116,7 +112,7 @@ var noteTool = &durable.ToolRegistration{
 	},
 	Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 		text, _ := args.(map[string]any)["text"].(string)
-		if _, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
+		started, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
 			draft, err := durable.TxDoc[notes](tx, notesDoc, api.ConversationId())
 			if err != nil {
 				return nil, err
@@ -124,11 +120,15 @@ var noteTool = &durable.ToolRegistration{
 			if _, err := draft.Array("lines").Push(text); err != nil {
 				return nil, err
 			}
-			input := delta.NewJsonObject(1)
-			input.Set("after", float64(api.TaskId()))
-			_, err = durable.CreateTask(tx, job, input, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
-			return nil, err
-		}); err != nil {
+			return durable.CreateTask(tx, job, delta.NewJsonObject(0), durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
+		})
+		if err != nil {
+			return durable.ToolExecutionResult{}, err
+		}
+		// A job left to run beside its tool call commits in an order that is a scheduling accident: Pi's one thread settles
+		// it by microtask hops, Go's goroutines by who is ready first. The call ends with the job, so each commit of the
+		// session has exactly one commit before it and the raw tables, commit sequences included, are the same in both.
+		if _, err := api.WaitForTask(ctx, started.(durable.TaskId)); err != nil {
 			return durable.ToolExecutionResult{}, err
 		}
 		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "noted " + text}}}, nil
@@ -573,10 +573,6 @@ func runScenario2(t *testing.T, path string) {
 		return nil, body.Set("content", "v2")
 	}))
 	say(t, root, "hello")
-	// The turn's note tool starts an app.job. In Pi its two commits run as microtasks before the turn's last commit
-	// (scenario2.mjs: job at seq 15-16, the hello answer at 21), so the push below is commit 22. A goroutine can run
-	// the job after the answer settles; waiting for it here gives Pi's sequence in either order.
-	waitTasks(t, opened)
 	must(opened.Commit(background, func(tx durable.Tx) (any, error) {
 		steps, err := durable.TxDoc[plan](tx, planDoc, root.Id())
 		if err != nil {
