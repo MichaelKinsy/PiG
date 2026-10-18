@@ -18,7 +18,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	cm "github.com/MichaelKinsy/PiG/codemode"
@@ -269,7 +268,7 @@ func (c *call) execute(source string) (durable.ToolExecutionResult, error) {
 	if parsed.Options.MaxOutputTokens != nil {
 		maxOutputTokens = int(*parsed.Options.MaxOutputTokens)
 	}
-	now := float64(time.Now().UnixMilli())
+	now := c.api.Now()
 	var seedBytes [4]byte
 	if _, err := rand.Read(seedBytes[:]); err != nil {
 		return durable.ToolExecutionResult{}, err
@@ -362,7 +361,7 @@ func (c *call) execute(source string) (durable.ToolExecutionResult, error) {
 	}
 	var remaining *float64
 	if c.start.Deadline != nil {
-		left := *c.start.Deadline - float64(time.Now().UnixMilli())
+		left := *c.start.Deadline - c.api.Now()
 		remaining = &left
 		if left <= 0 {
 			return c.decideNow(errorResult("Script timed out: its deadline passed while it was interrupted."))
@@ -585,7 +584,7 @@ func (c *call) complete(result cm.Result) {
 	details := c.details()
 	options := formatOptions{
 		generatedImages: int(c.generatedImages.Load()),
-		wallMs:          float64(time.Now().UnixMilli()) - c.start.StartedAt,
+		wallMs:          c.api.Now() - c.start.StartedAt,
 		maxOutputTokens: c.start.MaxOutputTokens,
 		calls:           details.Calls,
 		limits:          toolOutputLimits,
@@ -1087,10 +1086,14 @@ func (c *call) launch(hostCall cm.HostCall) {
 				}
 				return
 			}
+			// A result after the outcome is decided has nowhere to go, and the call's API has ended.
+			if c.stopped() {
+				return
+			}
 			if hostCall.Target == "tool" {
 				c.finishRow(hostCall.ID, done)
 			}
-			c.queue = append(c.queue, queued{id: hostCall.ID, at: float64(time.Now().UnixMilli()), outcome: outcome, global: recorded})
+			c.queue = append(c.queue, queued{id: hostCall.ID, at: c.api.Now(), outcome: outcome, global: recorded})
 			c.pump()
 		})
 	})

@@ -422,6 +422,98 @@ func TestProgress(t *testing.T) {
 		expect(0, 500)
 	})
 
+	t.Run("paces on the clock it is given", func(t *testing.T) {
+		// upstream: packages/chord/test/output.test.ts:273
+		type armed struct {
+			delay    float64
+			callback func()
+			disarmed bool
+		}
+		var mu sync.Mutex
+		now := 1000.0
+		var timers []*armed
+		var commits []float64
+		clock := stubProgressClock{
+			now: func() float64 { mu.Lock(); defer mu.Unlock(); return now },
+			after: func(delay float64, run func()) func() {
+				mu.Lock()
+				defer mu.Unlock()
+				timer := &armed{delay: delay, callback: run}
+				timers = append(timers, timer)
+				return func() { mu.Lock(); defer mu.Unlock(); timer.disarmed = true }
+			},
+		}
+		setNow := func(value float64) { mu.Lock(); now = value; mu.Unlock() }
+		delays := func() []float64 {
+			mu.Lock()
+			defer mu.Unlock()
+			out := []float64{}
+			for _, timer := range timers {
+				out = append(out, timer.delay)
+			}
+			return out
+		}
+		fire := func(index int) {
+			mu.Lock()
+			callback := timers[index].callback
+			mu.Unlock()
+			callback()
+		}
+		progress := NewProgressWithClock(func() (int, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			commits = append(commits, now)
+			return 10, nil
+		}, func(error) {}, 100, clock)
+		if err := progress.MarkAndWait().Wait(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		progress.WaitIdle()
+		if !slices.Equal(commits, []float64{1000}) {
+			t.Fatalf("commits %v, want [1000]", commits)
+		}
+		setNow(1040)
+		second := progress.MarkAndWait()
+		if got := delays(); !slices.Equal(got, []float64{60}) {
+			t.Fatalf("timer delays %v, want [60]", got)
+		}
+		// A timer that fires early commits nothing and waits for the rest.
+		setNow(1080)
+		fire(0)
+		mu.Lock()
+		early := slices.Clone(commits)
+		mu.Unlock()
+		if !slices.Equal(early, []float64{1000}) {
+			t.Fatalf("commits after the early timer %v, want [1000]", early)
+		}
+		if got := delays(); !slices.Equal(got, []float64{60, 20}) {
+			t.Fatalf("timer delays %v, want [60 20]", got)
+		}
+		setNow(1100)
+		fire(1)
+		if err := second.Wait(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		progress.WaitIdle()
+		mu.Lock()
+		got := slices.Clone(commits)
+		mu.Unlock()
+		if !slices.Equal(got, []float64{1000, 1100}) {
+			t.Fatalf("commits %v, want [1000 1100]", got)
+		}
+		progress.Mark()
+		if got := delays(); !slices.Equal(got, []float64{60, 20, 100}) {
+			t.Fatalf("timer delays %v, want [60 20 100]", got)
+		}
+		progress.Stop()
+		mu.Lock()
+		disarmed := timers[2].disarmed
+		mu.Unlock()
+		if !disarmed {
+			t.Fatal("Stop left the third timer armed")
+		}
+	})
+
 	t.Run("rejects the waiters of a failed commit and reports its error", func(t *testing.T) {
 		var errs []error
 		failure := errors.New("commit failed")
@@ -482,4 +574,16 @@ func TestSystemProgressClockUsesNodesTimerDelayRule(t *testing.T) {
 		}
 		stop()
 	}
+}
+
+// stubProgressClock is a ProgressClock of functions, for a test that arms and fires its timers itself.
+type stubProgressClock struct {
+	now   func() float64
+	after func(delay float64, run func()) func()
+}
+
+func (clock stubProgressClock) Now() float64 { return clock.now() }
+
+func (clock stubProgressClock) AfterFunc(delay float64, run func()) func() {
+	return clock.after(delay, run)
 }

@@ -72,8 +72,8 @@ type SessionImpl struct {
 	// documentTimersUnavailable is set once the host declined a background timer: then none is kept, and the end of
 	// each commit evicts what expired. Guarded by mu.
 	documentTimersUnavailable bool
-	host       *transactionHost
-	scheduler  *pending
+	host                      *transactionHost
+	scheduler                 *pending
 
 	lineMu   sync.Mutex
 	tail     chan struct{}

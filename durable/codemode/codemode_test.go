@@ -734,6 +734,32 @@ func TestDurableCodeMode(t *testing.T) {
 		_ = opened.Close(testContext)
 	})
 
+	// Pi e17e2e10 packages/durable/test/codemode.test.ts:671 "drops a global's result that arrives after the script finished"
+	t.Run("drops a global's result that arrives after the script finished", func(t *testing.T) {
+		// A Go call joins what it started before it returns, so the pending global cannot outlive the call as a JavaScript promise
+		// does: it resolves, with a value rather than an error, as the call stops it, once the script has finished.
+		returned := make(chan struct{})
+		f := codemodeChat(t,
+			Global{Name: "slowly", Execute: func(ctx context.Context, _ json.RawMessage, _ durable.ToolExecutionApi) (json.RawMessage, error) {
+				<-ctx.Done()
+				defer close(returned)
+				return json.RawMessage(`"late"`), nil
+			}},
+			Global{Name: "quickly", Execute: constantGlobal(`"quick"`)})
+		f.holds.block.Store(false)
+		f.setup.faux.SetResponses([]ai.FauxResponseStep{script(`const pending = slowly(); await quickly(); return 1;`), done()})
+		opened, root := f.setup.open(t, openSqlite(t, filepath.Join(t.TempDir(), "session.sqlite")))
+		mustSubmitDone(t, root)
+		text, isError := resultText(t, root)
+		expectText(t, text, isError, "1", false)
+		select {
+		case <-returned:
+		case <-time.After(15 * time.Second):
+			t.Fatal("the pending global never resolved")
+		}
+		mustClose(t, opened)
+	})
+
 	// Pi 1.2.0 packages/durable/test/codemode.test.ts:791 "refuses to resume when the sandbox's fingerprint or the code mode version changed"
 	t.Run("refuses to resume when the sandbox's fingerprint or the code mode version changed", func(t *testing.T) {
 		for _, field := range []string{"fingerprint", "version"} {
