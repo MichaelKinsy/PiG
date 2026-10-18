@@ -40630,6 +40630,17 @@
       "shapeHash": "sha256:f7fb4a5a1841a480e7afc4859118fb6b73750506e2ad4e6bbf40dc9b3c385075"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#generatedCompats",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "generatedCompats",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[78]ModelCompat"
+      },
+      "shapeHash": "sha256:4c7cef2b0a702c294728189c4618395519fb346c23d03686f680323f690a4fa0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedFalse",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "generatedFalse",
@@ -40650,6 +40661,17 @@
         "type": "[2]map[string]string"
       },
       "shapeHash": "sha256:e6f5a9c7d657571761ab2b3fa894f84840acdf841c74b2dbf47cb6a10ab001dd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#generatedInputLimits",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "generatedInputLimits",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[6]ModelInputLimits"
+      },
+      "shapeHash": "sha256:c2496373ccab323cd765ffc43d243ff14d753bdaa310b3879734fd597a2e3507"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedStrings",
