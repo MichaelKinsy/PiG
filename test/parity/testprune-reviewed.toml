@@ -717,3 +717,9 @@ commit = "75351c7fca"
 class = "CITE"
 cite = "packages/coding-agent/src/migrations.ts:121"
 reason = "Pi names the migration target with file.split(\"/\").pop(), which on Windows is the whole backslash path, so the rename fails and the root session file stays in place; the expectations now state that per platform"
+
+[[entry]]
+path = "internal/goroutineid/fast_gc_test.go"
+commit = "cfa8e90d0f"
+class = "NOBEHAVIOR"
+reason = "PiG-only goroutine ID fast path (no Pi counterpart; JavaScript has no goroutines): the offset proof moved from 16 started goroutines to the goroutines that call Current, so the probe tests now drive offsetProof.observe"
