@@ -284,7 +284,7 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 				}
 			}
 			next := CompactionCheckpoint{Phase: compactionRetry, SummaryRequest: &request, Until: &until}
-			return runningState[CompactionCheckpoint, CompactionResult](next), nil
+			return sleepingState[CompactionCheckpoint, CompactionResult](next, until), nil
 		}
 		text := summaryFailure(message)
 		if err := FailCompactionStatus(live, runtime.TaskId(), text); err != nil {
@@ -296,8 +296,9 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 
 func compactionRetryHandler(ctx context.Context, task compactionTask, runtime compactionRuntime) error {
 	checkpoint := *task.State.Checkpoint
-	if err := runtime.Sleep(ctx, *checkpoint.Until); err != nil {
-		return err
+	// After the backoff's sleep; a run before Until (an early wake, or a record of an earlier version) sleeps again.
+	if *checkpoint.Until > runtime.Now() {
+		return runtime.SleepUntil(ctx, *checkpoint.Until, checkpoint)
 	}
 	request := *checkpoint.SummaryRequest
 	request.Attempt++

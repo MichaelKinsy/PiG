@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math"
 	"sync"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -132,6 +131,10 @@ func checkpointOf(task durable.RunningTask[GenerationInput, GenerationCheckpoint
 		return GenerationCheckpoint{}
 	}
 	return *task.State.Checkpoint
+}
+
+func sleepingState[S, R any](checkpoint S, until float64) *durable.NextTaskState[S, R] {
+	return &durable.NextTaskState[S, R]{Status: durable.TaskSleeping, Checkpoint: &checkpoint, Until: &until}
 }
 
 func runningState[S, R any](checkpoint S) *durable.NextTaskState[S, R] {
@@ -357,8 +360,9 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 
 func generationRetryHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
 	checkpoint := checkpointOf(task)
-	if err := runtime.Sleep(ctx, *checkpoint.Until); err != nil {
-		return err
+	// After the backoff's sleep; a run before Until (an early wake, or a record of an earlier version) sleeps again.
+	if *checkpoint.Until > runtime.Now() {
+		return runtime.SleepUntil(ctx, *checkpoint.Until, checkpoint)
 	}
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
@@ -376,12 +380,13 @@ func generationRetryHandler(ctx context.Context, task durable.RunningTask[Genera
 func generationPollHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
 	checkpoint := checkpointOf(task)
 	ref := *checkpoint.Model
+	// After the sleep until PollAt; a run before it (an early wake, or a record of an earlier version) sleeps again.
+	if *checkpoint.PollAt > runtime.Now() {
+		return runtime.SleepUntil(ctx, *checkpoint.PollAt, checkpoint)
+	}
 	model := runtime.Models().GetModel(ref.Provider, ref.ModelId)
 	if model == nil {
 		return failGenerationNoModel(ctx, runtime, &ref)
-	}
-	if err := runtime.Sleep(ctx, *checkpoint.PollAt); err != nil {
-		return err
 	}
 	signal := runtime.Signal()
 	message := runtime.Models().FetchDeferred(signal, model, *checkpoint.Handle, ai.DeferredFetchOptions{StreamOptions: ai.StreamOptions{Signal: signal}})
@@ -600,7 +605,7 @@ func ConvertPartial(tx durable.Tx, live *delta.Object, conversationId durable.Co
 // trailing writes at most every Settings.Progress.PartialIntervalMs (default 100 ms) with one commit in flight; stopping the throttle waits for that commit, so no
 // stale partial lands after the outcome.
 func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Model, messages []ai.Message, frozen bool, options ai.StreamOptions, attempt int) (ai.AssistantMessage, error) {
-	throttle := &partialThrottle{runtime: runtime, ctx: ctx, attempt: attempt, interval: millisecondsDuration(runtime.Settings().Progress.PartialIntervalMs)}
+	throttle := &partialThrottle{runtime: runtime, ctx: ctx, attempt: attempt, interval: runtime.Settings().Progress.PartialIntervalMs}
 	defer throttle.stop()
 	signal := runtime.Signal()
 	if !frozen {
@@ -656,24 +661,15 @@ func partialOf(event ai.AssistantMessageEvent) *ai.AssistantMessage {
 	return nil
 }
 
-// millisecondsDuration is the delay setTimeout waits for milliseconds: a delay below 1 ms, above maxTimerDelay, or NaN
-// is 1 ms, and a fractional delay is truncated to whole milliseconds.
-func millisecondsDuration(milliseconds float64) time.Duration {
-	if !(milliseconds >= 1 && milliseconds <= maxTimerDelay) {
-		milliseconds = 1
-	}
-	return time.Duration(math.Trunc(milliseconds)) * time.Millisecond
-}
-
 // partialThrottle commits the newest partial at most every interval with one commit in flight.
 type partialThrottle struct {
 	runtime  generationRuntime
 	ctx      context.Context
 	attempt  int
-	interval time.Duration
+	interval float64
 	mu       sync.Mutex
 	pending  *ai.AssistantMessage
-	timer    *time.Timer
+	disarm   func()
 	inFlight chan struct{}
 	stopped  bool
 }
@@ -685,14 +681,14 @@ func (throttle *partialThrottle) offer(partial *ai.AssistantMessage) {
 	throttle.mu.Lock()
 	defer throttle.mu.Unlock()
 	throttle.pending = partial
-	if throttle.timer == nil && throttle.inFlight == nil && !throttle.stopped {
-		throttle.timer = time.AfterFunc(throttle.interval, throttle.flush)
+	if throttle.disarm == nil && throttle.inFlight == nil && !throttle.stopped {
+		throttle.disarm = throttle.runtime.SetTimer(throttle.flush, throttle.interval)
 	}
 }
 
 func (throttle *partialThrottle) flush() {
 	throttle.mu.Lock()
-	throttle.timer = nil
+	throttle.disarm = nil
 	partial := throttle.pending
 	throttle.pending = nil
 	if partial == nil || throttle.stopped {
@@ -729,7 +725,7 @@ func (throttle *partialThrottle) flush() {
 		throttle.mu.Lock()
 		throttle.inFlight = nil
 		if throttle.pending != nil && !throttle.stopped {
-			throttle.timer = time.AfterFunc(throttle.interval, throttle.flush)
+			throttle.disarm = throttle.runtime.SetTimer(throttle.flush, throttle.interval)
 		}
 		throttle.mu.Unlock()
 	}()
@@ -739,9 +735,9 @@ func (throttle *partialThrottle) flush() {
 func (throttle *partialThrottle) stop() {
 	throttle.mu.Lock()
 	throttle.stopped = true
-	if throttle.timer != nil {
-		throttle.timer.Stop()
-		throttle.timer = nil
+	if throttle.disarm != nil {
+		throttle.disarm()
+		throttle.disarm = nil
 	}
 	inFlight := throttle.inFlight
 	throttle.mu.Unlock()
@@ -778,7 +774,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 				return nil, err
 			}
 			next := GenerationCheckpoint{Phase: generationPoll, Attempt: attempt, Compacted: compacted, Model: &ref, Cutoff: &cutoff, Handle: &handle, PollAt: &pollAt}
-			return runningState[GenerationCheckpoint, GenerationResult](next), nil
+			return sleepingState[GenerationCheckpoint, GenerationResult](next, pollAt), nil
 		})
 	}
 	if err := runtime.Hooks().Each("afterResponse", func(hooks *GenerationHooks) error {
@@ -850,7 +846,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 				return nil, err
 			}
 			next := GenerationCheckpoint{Phase: generationRetry, Attempt: attempt, Compacted: compacted, Until: &until}
-			return runningState[GenerationCheckpoint, GenerationResult](next), nil
+			return sleepingState[GenerationCheckpoint, GenerationResult](next, until), nil
 		}
 		text := message.ErrorMessage
 		if text == "" {

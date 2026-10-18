@@ -168,7 +168,7 @@ func TestTaskRuntime(t *testing.T) {
 		tkContainsError(t, memoErr, "invocation has ended")
 		_, candidateErr := runtime.MemoCandidate(testContext, "x", float64(1))
 		tkContainsError(t, candidateErr, "invocation has ended")
-		tkContainsError(t, runtime.Sleep(testContext, 0), "invocation has ended")
+		tkContainsError(t, runtime.SleepUntil(testContext, 0, stepState{Phase: "run"}), "invocation has ended")
 		_, watchErr := runtime.WatchDocErased(testContext, notes)
 		tkContainsError(t, watchErr, "invocation has ended")
 		// The handler's own context is cancelled by now; the ended invocation still wins.
@@ -347,72 +347,6 @@ func TestTaskRuntime(t *testing.T) {
 		tkContainsError(t, tkWaitErr(t, watching), "invocation has ended")
 		if outcome := tkWaitOutcome(t, opened.harness, id); outcome.Status != durable.OutcomeFaulted {
 			t.Fatalf("outcome %s, want faulted", describeOutcome(outcome))
-		}
-		mustClose(t, opened.harness)
-	})
-
-	// harness-tasks.test.ts:691 it("sleeps until the Harness clock reaches the deadline, rechecking after each timer")
-	t.Run("sleeps until the Harness clock reaches the deadline, rechecking after each timer", func(t *testing.T) {
-		var clock atomic.Int64
-		clock.Store(1000)
-		woke := deferred()
-		sleeper := tkOneStep("test.sleeper", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
-			if err := runtime.Sleep(ctx, 900); err != nil {
-				return err
-			}
-			if err := runtime.Sleep(ctx, 1005); err != nil {
-				return err
-			}
-			woke.resolve()
-			return tkComplete(ctx, runtime)
-		})
-		opened := tkOpenRoot(t, []durable.AnyTask{sleeper.Erased()}, tkOptions{now: func() float64 { return float64(clock.Load()) }})
-		id := tkStart(t, opened.root, sleeper.Erased())
-		opened.harness.Resume()
-		// The clock stands still, so real timers keep firing without waking the task.
-		time.Sleep(30 * time.Millisecond)
-		if settled(woke.done) {
-			t.Fatal("the task woke before the clock reached its deadline")
-		}
-		clock.Store(1005)
-		tkWaitOutcome(t, opened.harness, id)
-		mustClose(t, opened.harness)
-	})
-
-	// harness-tasks.test.ts:711 it("rejects a sleep when the invocation is signalled or the sleep's own context is cancelled")
-	t.Run("rejects a sleep when the invocation is signalled or the sleep's own context is cancelled", func(t *testing.T) {
-		results := &syncList[string]{}
-		sleeping := deferred()
-		signalled := tkOneStep("test.sleep-signalled", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
-			sleeping.resolve()
-			err := runtime.Sleep(ctx, float64(time.Now().UnixMilli()+60_000))
-			// Upstream's signal reason is an AbortError; the scheduler's signal is context.Canceled.
-			results.add(fmt.Sprintf("signalled:%v", errors.Is(err, context.Canceled)))
-			return err
-		})
-		cancelled := tkOneStep("test.sleep-cancelled", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
-			own, cancel := context.WithCancelCause(ctx)
-			result := make(chan error, 1)
-			go func() { result <- runtime.Sleep(own, float64(time.Now().UnixMilli()+60_000)) }()
-			flush()
-			cancel(errors.New("stop sleeping"))
-			results.add("cancelled:" + (<-result).Error())
-			return tkComplete(ctx, runtime)
-		})
-		opened := tkOpenRoot(t, []durable.AnyTask{signalled.Erased(), cancelled.Erased()})
-		signalledId := tkStart(t, opened.root, signalled.Erased())
-		cancelledId := tkStart(t, opened.root, cancelled.Erased())
-		opened.harness.Resume()
-		tkWaitOutcome(t, opened.harness, cancelledId)
-		if err := sleeping.wait(testContext); err != nil {
-			t.Fatal(err)
-		}
-		if result, err := opened.harness.AbortTask(testContext, signalledId); err != nil || result != "marked" {
-			t.Fatalf("AbortTask %q %v", result, err)
-		}
-		expectOutcome(t, tkWaitOutcome(t, opened.harness, signalledId), outcomeAborted("test"))
-		if want := []string{"cancelled:stop sleeping", "signalled:true"}; !reflect.DeepEqual(results.all(), want) {
-			t.Fatalf("results %v, want %v", results.all(), want)
 		}
 		mustClose(t, opened.harness)
 	})

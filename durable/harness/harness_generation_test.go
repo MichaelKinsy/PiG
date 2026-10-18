@@ -992,26 +992,3 @@ func (snapshot generationlessSnapshot) Task(name string) durable.AnyTask {
 	return snapshot.RegistrySnapshot.Task(name)
 }
 
-// Not an upstream case: streamResponse arms its partial throttle with setTimeout(flush, partialIntervalMs), and Node
-// truncates the delay to whole milliseconds and replaces one below 1 ms, above 2147483647 ms, or NaN with 1 ms.
-func TestPartialThrottleDelayFollowsSetTimeout(t *testing.T) {
-	for _, step := range []struct {
-		milliseconds float64
-		want         time.Duration
-	}{
-		{100, 100 * time.Millisecond},
-		{150.9, 150 * time.Millisecond},
-		{1, time.Millisecond},
-		{0.5, time.Millisecond},
-		{0, time.Millisecond},
-		{-5, time.Millisecond},
-		{math.NaN(), time.Millisecond},
-		{2_147_483_647, 2_147_483_647 * time.Millisecond},
-		{2_147_483_648, time.Millisecond},
-		{math.Inf(1), time.Millisecond},
-	} {
-		if got := millisecondsDuration(step.milliseconds); got != step.want {
-			t.Errorf("millisecondsDuration(%v) = %v, want %v", step.milliseconds, got, step.want)
-		}
-	}
-}
