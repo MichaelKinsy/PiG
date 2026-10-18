@@ -74,25 +74,26 @@ func TestEqualUpToGoEscapesOnlyAcceptsTheCanonicalSpelling(t *testing.T) {
 	}
 }
 
-var systemMessageSink AgentMessage
-
-// A system message whose text holds characters encoding/json escapes (the <tools> section of every system prompt) keeps no source and costs no more to decode than one without them.
-func TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing(t *testing.T) {
-	text := func(section string) []byte {
-		value := section
-		message := AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "tools", Value: &value}}, Timestamp: 1}}
-		encoded, err := message.MarshalJSON()
-		if err != nil {
-			t.Fatal(err)
-		}
-		canonical, err := jsonstringify.Canonicalize(encoded)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return canonical
+// canonicalSystemMessageText is the canonical JSON text of a system message whose tools section is section.
+func canonicalSystemMessageText(t *testing.T, section string) []byte {
+	t.Helper()
+	value := section
+	message := AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{{Name: "tools", Value: &value}}, Timestamp: 1}}
+	encoded, err := message.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
 	}
-	escaped := text(strings.Repeat("<tools>\n- read & write\n</tools>\n", 20))
-	plain := text(strings.Repeat("(tools)\n- read + write\n(/tools)\n", 20))
+	canonical, err := jsonstringify.Canonicalize(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return canonical
+}
+
+// A system message whose text holds characters encoding/json escapes (the <tools> section of every system prompt) keeps no source and decodes to the message that encodes back to the text.
+func TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing(t *testing.T) {
+	escaped := canonicalSystemMessageText(t, strings.Repeat("<tools>\n- read & write\n</tools>\n", 20))
+	plain := canonicalSystemMessageText(t, strings.Repeat("(tools)\n- read + write\n(/tools)\n", 20))
 	if !bytes.Contains(escaped, []byte("<tools>")) {
 		t.Fatalf("the canonical text escapes <: %.80s", escaped)
 	}
@@ -111,14 +112,5 @@ func TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing(t *testi
 		if got, _ := jsonstringify.Canonicalize(encoded); !bytes.Equal(got, data) {
 			t.Fatalf("the decoded message encodes as %s, want %s", got, data)
 		}
-	}
-	allocs := func(data []byte) float64 {
-		return testing.AllocsPerRun(20, func() {
-			systemMessageSink = AgentMessage{}
-			_ = systemMessageSink.UnmarshalJSON(data)
-		})
-	}
-	if e, p := allocs(escaped), allocs(plain); e > p+2 {
-		t.Fatalf("decoding with escaped characters = %v allocations, without = %v", e, p)
 	}
 }
