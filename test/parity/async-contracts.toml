@@ -1,4 +1,4 @@
-version = "1.3.0+c268154c"
+version = "1.3.0+e17e2e10"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -1514,10 +1514,10 @@ rationale = "`(Go archive/zip, used by internal/codingagent/bug_report.go)`"
 
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned", "microtask-ordering"]
-evidence = ["test:durable/codemode/codemode_test.go#TestDurableCodeMode", "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted", "test:durable/codemode/call_test.go#TestTheFirstRunRecordsTheVMsFingerprint", "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun", "test:durable/codemode/models_test.go#TestCodeModeModels"]
-rationale = "execute() awaits sandbox.start()'s run.result and returns the stored, decided or completed outcome; the call's abort signal aborts the run through a controller (an error the script cannot catch), and a sandbox closed under the call stores nothing and waits for the call's own signal, so a later attempt replays the script. Nested calls run as tasks keyed by their VM call id, launched only once the issued count of the drain that made them is committed, and each result is journaled before it is delivered (results that finish together share one commit); a replay delivers the journaled results in journal order, each once the VM has issued its call, and a divergence decides the outcome and then aborts the run. onStarted, onCall and onIdle are the run's synchronous callbacks, so a call reaches the code mode before the VM's `done` can finish the run, and the details list it (cancelled if it never finished). models.classify()/generateImages() calls take one of MAX_CONCURRENT_MODEL_CALLS slots in the order the script made them; a call still running when the script ends is aborted, and one still waiting for a slot never starts. Go runs one event loop per code mode call (durable/codemode/call.go: c.events, c.post) that receives the run's callbacks and its result in arrival order, runs every nested call, commit and model call as a spawned goroutine owned by the call and joined (c.spawned.Wait) before it returns, and cancels them through the call's context; onCall stops only for the call's own decision or failure, because the loop can see the run finished after the VM reported the call (Pi codemode.ts:639-650, test 'lists the script's tool calls in its result's details')."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/codemode/describe.ts"
@@ -1647,10 +1647,10 @@ rationale = "Waiting for a submission to settle is a blocking call on the caller
 
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall"]
-rationale = "A task-graph watch is replicated from the observed commits in order; an observer that throws is reported and the others still receive the revision, closing the Session passes its failure to every observer, and a watch stops when its context is cancelled or the Harness closes."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
@@ -1724,10 +1724,10 @@ rationale = "A watch drains its frames serially: one delivery at a time, in comm
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
-evidence = ["test:durable/session/session_failure_test.go#TestAFailedStorageCallFailsTheSession", "test:durable/session/session_failure_test.go#TestListenersOfAFailingPublication", "test:durable/session/session_watches_test.go#TestSessionWatchEntersTheCommittedFrameBeforeTheCommitReturns", "test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall", "test:durable/session/session_close_race_test.go#TestSessionAdmissionIsAtomicWithClose"]
-rationale = "commit, snapshot, watch and close are blocking calls on the mutation line that return their error; the caller's cancellation does not interrupt Storage settlement once a commit is admitted (context.WithoutCancel). The failure guard is synchronous: the first failing Storage call fails the Session, seals admission before it reports, runs the close listeners at once, and closes the Session on its own goroutine whose backend close error the caller of `fail` does not wait for; calls underway end with SessionFailed and close waits for them before it closes Storage. Listeners run after adoption: the Session's own (observeCommits) first, whose panic fails the Session, then the host's, whose panic is contained and reported, and a throwing thenable has no Go form. `closed` is a channel and `failed` a channel closed on failure."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
@@ -1752,10 +1752,10 @@ rationale = "The change is the class of one thrown error; `entry` stays an async
 
 [[files]]
 path = "packages/durable/src/storage/memory.ts"
-disposition = "translated"
-contracts = ["awaited"]
-evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance", "test:durable/storage/storage_request_error_test.go#TestMemoryStorageReadsRejectInvalidRequestsWithStorageRequestError"]
-rationale = "Every Storage method is an async function that never awaits: it settles in the same turn, so in Go each is a blocking call that returns its value or error, and a rejected read (a StorageRequestError) is the returned error of that call. The ascending entry scan is a synchronous generator over the fork chain, a plain loop."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/cloudflare.ts"
@@ -1815,10 +1815,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/testing/storage-conformance.ts"
-disposition = "translated"
-contracts = ["awaited"]
-evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream", "test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
-rationale = "Each case awaits its Storage calls in order and `expect(...).rejects.toThrow` is an error returned by the call; the cases are blocking functions that return the provider's failure, and the scan cases await one page before the next, so a cursor is always the previous page's."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/testing/types.ts"

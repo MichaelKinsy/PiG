@@ -1,5 +1,5 @@
 {
- "pi": "1.3.0+c268154c",
+ "pi": "1.3.0+e17e2e10",
  "node": "v24.19.0",
  "results": [
   {
@@ -35,7 +35,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1792257699175
+        "timestamp": 1792283147520
        }
       }
      },
@@ -147,7 +147,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257699175,
+        "timestamp": 1792283147520,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -185,7 +185,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699212
+         "timestamp": 1792283147558
         }
        }
       },
@@ -220,7 +220,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699212,
+         "timestamp": 1792283147558,
          "durationMs": 0
         }
        }
@@ -257,7 +257,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699212,
+         "timestamp": 1792283147558,
          "durationMs": 0
         }
        }
@@ -294,7 +294,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699212,
+         "timestamp": 1792283147558,
          "durationMs": 0
         }
        }
@@ -330,7 +330,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699212,
+         "timestamp": 1792283147558,
          "durationMs": 0
         }
        }
@@ -363,7 +363,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257699212,
+        "timestamp": 1792283147558,
         "durationMs": 0
        }
       }
@@ -398,7 +398,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699216
+         "timestamp": 1792283147561
         }
        }
       },
@@ -435,7 +435,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699216,
+          "timestamp": 1792283147561,
           "durationMs": 0
          }
         },
@@ -465,7 +465,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699216,
+         "timestamp": 1792283147561,
          "durationMs": 0
         }
        }
@@ -504,7 +504,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699216,
+          "timestamp": 1792283147561,
           "durationMs": 0
          }
         },
@@ -534,7 +534,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699216,
+         "timestamp": 1792283147561,
          "durationMs": 0
         }
        }
@@ -573,7 +573,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699216,
+          "timestamp": 1792283147561,
           "durationMs": 0
          }
         },
@@ -603,7 +603,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699216,
+         "timestamp": 1792283147561,
          "durationMs": 0
         }
        }
@@ -638,7 +638,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699216,
+         "timestamp": 1792283147561,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -675,7 +675,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699219
+         "timestamp": 1792283147564
         }
        }
       },
@@ -710,7 +710,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699219,
+         "timestamp": 1792283147564,
          "durationMs": 0
         }
        }
@@ -747,7 +747,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699219,
+         "timestamp": 1792283147564,
          "durationMs": 0
         }
        }
@@ -784,7 +784,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699219,
+         "timestamp": 1792283147564,
          "durationMs": 0
         }
        }
@@ -820,7 +820,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699219,
+         "timestamp": 1792283147564,
          "durationMs": 0
         }
        }
@@ -853,7 +853,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257699219,
+        "timestamp": 1792283147564,
         "durationMs": 0
        }
       }
@@ -888,7 +888,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699222
+         "timestamp": 1792283147567
         }
        }
       },
@@ -925,7 +925,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699222,
+          "timestamp": 1792283147567,
           "durationMs": 0
          }
         },
@@ -955,7 +955,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699222,
+         "timestamp": 1792283147567,
          "durationMs": 0
         }
        }
@@ -994,7 +994,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699222,
+          "timestamp": 1792283147567,
           "durationMs": 0
          }
         },
@@ -1024,7 +1024,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699222,
+         "timestamp": 1792283147567,
          "durationMs": 0
         }
        }
@@ -1063,7 +1063,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699222,
+          "timestamp": 1792283147567,
           "durationMs": 0
          }
         },
@@ -1093,7 +1093,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699222,
+         "timestamp": 1792283147567,
          "durationMs": 0
         }
        }
@@ -1128,7 +1128,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699222,
+         "timestamp": 1792283147567,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -1165,7 +1165,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699225
+         "timestamp": 1792283147570
         }
        }
       },
@@ -1200,7 +1200,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699225,
+         "timestamp": 1792283147570,
          "durationMs": 0
         }
        }
@@ -1237,7 +1237,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699225,
+         "timestamp": 1792283147570,
          "durationMs": 0
         }
        }
@@ -1274,7 +1274,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699225,
+         "timestamp": 1792283147570,
          "durationMs": 0
         }
        }
@@ -1310,7 +1310,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699225,
+         "timestamp": 1792283147570,
          "durationMs": 0
         }
        }
@@ -1343,7 +1343,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257699225,
+        "timestamp": 1792283147570,
         "durationMs": 0
        }
       }
@@ -1378,7 +1378,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699228
+         "timestamp": 1792283147572
         }
        }
       },
@@ -1415,7 +1415,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699228,
+          "timestamp": 1792283147572,
           "durationMs": 0
          }
         },
@@ -1445,7 +1445,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699228,
+         "timestamp": 1792283147572,
          "durationMs": 0
         }
        }
@@ -1484,7 +1484,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699228,
+          "timestamp": 1792283147572,
           "durationMs": 0
          }
         },
@@ -1514,7 +1514,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699228,
+         "timestamp": 1792283147572,
          "durationMs": 0
         }
        }
@@ -1553,7 +1553,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257699228,
+          "timestamp": 1792283147572,
           "durationMs": 0
          }
         },
@@ -1583,7 +1583,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699228,
+         "timestamp": 1792283147572,
          "durationMs": 0
         }
        }
@@ -1618,7 +1618,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257699228,
+         "timestamp": 1792283147572,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -1707,7 +1707,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1792257699426
+        "timestamp": 1792283147748
        }
       }
      },
@@ -1832,7 +1832,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699426,
+        "timestamp": 1792283147748,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -1864,7 +1864,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1792257699431
+        "timestamp": 1792283147753
        }
       }
      },
@@ -1976,7 +1976,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257699431,
+        "timestamp": 1792283147753,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -2014,7 +2014,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699436
+         "timestamp": 1792283147757
         }
        }
       },
@@ -2053,7 +2053,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699436,
+         "timestamp": 1792283147757,
          "durationMs": 0
         }
        }
@@ -2094,7 +2094,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699436,
+         "timestamp": 1792283147757,
          "durationMs": 0
         }
        }
@@ -2142,7 +2142,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699436,
+         "timestamp": 1792283147757,
          "durationMs": 0
         }
        }
@@ -2182,7 +2182,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699436,
+         "timestamp": 1792283147757,
          "durationMs": 0
         }
        }
@@ -2219,7 +2219,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699436,
+        "timestamp": 1792283147757,
         "durationMs": 0
        }
       }
@@ -2254,7 +2254,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699439
+         "timestamp": 1792283147760
         }
        }
       },
@@ -2295,7 +2295,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699439,
+          "timestamp": 1792283147760,
           "durationMs": 0
          }
         },
@@ -2329,7 +2329,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699439,
+         "timestamp": 1792283147760,
          "durationMs": 0
         }
        }
@@ -2372,7 +2372,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699439,
+          "timestamp": 1792283147760,
           "durationMs": 0
          }
         },
@@ -2406,7 +2406,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699439,
+         "timestamp": 1792283147760,
          "durationMs": 0
         }
        }
@@ -2456,7 +2456,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699439,
+          "timestamp": 1792283147760,
           "durationMs": 0
          }
         },
@@ -2490,7 +2490,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699439,
+         "timestamp": 1792283147760,
          "durationMs": 0
         }
        }
@@ -2529,7 +2529,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699439,
+         "timestamp": 1792283147760,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -2566,7 +2566,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699441
+         "timestamp": 1792283147762
         }
        }
       },
@@ -2605,7 +2605,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699441,
+         "timestamp": 1792283147762,
          "durationMs": 0
         }
        }
@@ -2646,7 +2646,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699441,
+         "timestamp": 1792283147762,
          "durationMs": 0
         }
        }
@@ -2694,7 +2694,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699441,
+         "timestamp": 1792283147762,
          "durationMs": 0
         }
        }
@@ -2734,7 +2734,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699441,
+         "timestamp": 1792283147762,
          "durationMs": 0
         }
        }
@@ -2771,7 +2771,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699441,
+        "timestamp": 1792283147762,
         "durationMs": 0
        }
       }
@@ -2806,7 +2806,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699444
+         "timestamp": 1792283147765
         }
        }
       },
@@ -2847,7 +2847,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699444,
+          "timestamp": 1792283147765,
           "durationMs": 0
          }
         },
@@ -2881,7 +2881,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699444,
+         "timestamp": 1792283147765,
          "durationMs": 0
         }
        }
@@ -2924,7 +2924,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699444,
+          "timestamp": 1792283147765,
           "durationMs": 0
          }
         },
@@ -2958,7 +2958,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699444,
+         "timestamp": 1792283147765,
          "durationMs": 0
         }
        }
@@ -3008,7 +3008,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699444,
+          "timestamp": 1792283147765,
           "durationMs": 0
          }
         },
@@ -3042,7 +3042,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699444,
+         "timestamp": 1792283147765,
          "durationMs": 0
         }
        }
@@ -3081,7 +3081,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699444,
+         "timestamp": 1792283147765,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -3118,7 +3118,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699447
+         "timestamp": 1792283147767
         }
        }
       },
@@ -3157,7 +3157,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699447,
+         "timestamp": 1792283147767,
          "durationMs": 0
         }
        }
@@ -3198,7 +3198,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699447,
+         "timestamp": 1792283147767,
          "durationMs": 0
         }
        }
@@ -3246,7 +3246,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699447,
+         "timestamp": 1792283147767,
          "durationMs": 0
         }
        }
@@ -3286,7 +3286,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699447,
+         "timestamp": 1792283147767,
          "durationMs": 0
         }
        }
@@ -3323,7 +3323,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699447,
+        "timestamp": 1792283147767,
         "durationMs": 0
        }
       }
@@ -3358,7 +3358,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699449
+         "timestamp": 1792283147770
         }
        }
       },
@@ -3399,7 +3399,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699449,
+          "timestamp": 1792283147770,
           "durationMs": 0
          }
         },
@@ -3433,7 +3433,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699449,
+         "timestamp": 1792283147770,
          "durationMs": 0
         }
        }
@@ -3476,7 +3476,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699449,
+          "timestamp": 1792283147770,
           "durationMs": 0
          }
         },
@@ -3510,7 +3510,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699449,
+         "timestamp": 1792283147770,
          "durationMs": 0
         }
        }
@@ -3560,7 +3560,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699449,
+          "timestamp": 1792283147770,
           "durationMs": 0
          }
         },
@@ -3594,7 +3594,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699449,
+         "timestamp": 1792283147770,
          "durationMs": 0
         }
        }
@@ -3633,7 +3633,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699449,
+         "timestamp": 1792283147770,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -3722,7 +3722,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1792257699755
+        "timestamp": 1792283147965
        }
       }
      },
@@ -3943,7 +3943,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699755,
+        "timestamp": 1792283147965,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -3975,7 +3975,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1792257699772
+        "timestamp": 1792283148000
        }
       }
      },
@@ -4087,7 +4087,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257699772,
+        "timestamp": 1792283148000,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -4125,7 +4125,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699777
+         "timestamp": 1792283148006
         }
        }
       },
@@ -4173,7 +4173,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699777,
+         "timestamp": 1792283148006,
          "durationMs": 0
         }
        }
@@ -4223,7 +4223,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699777,
+         "timestamp": 1792283148006,
          "durationMs": 0
         }
        }
@@ -4280,7 +4280,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699777,
+         "timestamp": 1792283148006,
          "durationMs": 0
         }
        }
@@ -4329,7 +4329,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699777,
+         "timestamp": 1792283148006,
          "durationMs": 0
         }
        }
@@ -4379,7 +4379,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699777,
+         "timestamp": 1792283148006,
          "durationMs": 0
         }
        }
@@ -4437,7 +4437,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699777,
+         "timestamp": 1792283148006,
          "durationMs": 0
         }
        }
@@ -4486,7 +4486,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699777,
+         "timestamp": 1792283148006,
          "durationMs": 0
         }
        }
@@ -4532,7 +4532,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699777,
+        "timestamp": 1792283148006,
         "durationMs": 0
        }
       }
@@ -4567,7 +4567,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699780
+         "timestamp": 1792283148009
         }
        }
       },
@@ -4617,7 +4617,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699780,
+          "timestamp": 1792283148009,
           "durationMs": 0
          }
         },
@@ -4660,7 +4660,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699780,
+         "timestamp": 1792283148009,
          "durationMs": 0
         }
        }
@@ -4712,7 +4712,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699780,
+          "timestamp": 1792283148009,
           "durationMs": 0
          }
         },
@@ -4755,7 +4755,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699780,
+         "timestamp": 1792283148009,
          "durationMs": 0
         }
        }
@@ -4814,7 +4814,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699780,
+          "timestamp": 1792283148009,
           "durationMs": 0
          }
         },
@@ -4857,7 +4857,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699780,
+         "timestamp": 1792283148009,
          "durationMs": 0
         }
        }
@@ -4908,7 +4908,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699780,
+          "timestamp": 1792283148009,
           "durationMs": 0
          }
         },
@@ -4951,7 +4951,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699780,
+         "timestamp": 1792283148009,
          "durationMs": 0
         }
        }
@@ -5003,7 +5003,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699780,
+          "timestamp": 1792283148009,
           "durationMs": 0
          }
         },
@@ -5046,7 +5046,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699780,
+         "timestamp": 1792283148009,
          "durationMs": 0
         }
        }
@@ -5106,7 +5106,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699780,
+          "timestamp": 1792283148009,
           "durationMs": 0
          }
         },
@@ -5149,7 +5149,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699780,
+         "timestamp": 1792283148009,
          "durationMs": 0
         }
        }
@@ -5197,7 +5197,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699780,
+         "timestamp": 1792283148009,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -5234,7 +5234,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699782
+         "timestamp": 1792283148012
         }
        }
       },
@@ -5282,7 +5282,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699782,
+         "timestamp": 1792283148012,
          "durationMs": 0
         }
        }
@@ -5332,7 +5332,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699782,
+         "timestamp": 1792283148012,
          "durationMs": 0
         }
        }
@@ -5389,7 +5389,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699782,
+         "timestamp": 1792283148012,
          "durationMs": 0
         }
        }
@@ -5438,7 +5438,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699782,
+         "timestamp": 1792283148012,
          "durationMs": 0
         }
        }
@@ -5488,7 +5488,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699782,
+         "timestamp": 1792283148012,
          "durationMs": 0
         }
        }
@@ -5546,7 +5546,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699782,
+         "timestamp": 1792283148012,
          "durationMs": 0
         }
        }
@@ -5595,7 +5595,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699782,
+         "timestamp": 1792283148012,
          "durationMs": 0
         }
        }
@@ -5641,7 +5641,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699782,
+        "timestamp": 1792283148012,
         "durationMs": 0
        }
       }
@@ -5676,7 +5676,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699785
+         "timestamp": 1792283148014
         }
        }
       },
@@ -5726,7 +5726,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699785,
+          "timestamp": 1792283148014,
           "durationMs": 0
          }
         },
@@ -5769,7 +5769,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699785,
+         "timestamp": 1792283148014,
          "durationMs": 0
         }
        }
@@ -5821,7 +5821,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699785,
+          "timestamp": 1792283148014,
           "durationMs": 0
          }
         },
@@ -5864,7 +5864,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699785,
+         "timestamp": 1792283148014,
          "durationMs": 0
         }
        }
@@ -5923,7 +5923,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699785,
+          "timestamp": 1792283148014,
           "durationMs": 0
          }
         },
@@ -5966,7 +5966,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699785,
+         "timestamp": 1792283148014,
          "durationMs": 0
         }
        }
@@ -6017,7 +6017,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699785,
+          "timestamp": 1792283148014,
           "durationMs": 0
          }
         },
@@ -6060,7 +6060,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699785,
+         "timestamp": 1792283148014,
          "durationMs": 0
         }
        }
@@ -6112,7 +6112,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699785,
+          "timestamp": 1792283148014,
           "durationMs": 0
          }
         },
@@ -6155,7 +6155,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699785,
+         "timestamp": 1792283148014,
          "durationMs": 0
         }
        }
@@ -6215,7 +6215,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699785,
+          "timestamp": 1792283148014,
           "durationMs": 0
          }
         },
@@ -6258,7 +6258,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699785,
+         "timestamp": 1792283148014,
          "durationMs": 0
         }
        }
@@ -6306,7 +6306,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699785,
+         "timestamp": 1792283148014,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -6343,7 +6343,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699788
+         "timestamp": 1792283148016
         }
        }
       },
@@ -6391,7 +6391,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699788,
+         "timestamp": 1792283148016,
          "durationMs": 0
         }
        }
@@ -6441,7 +6441,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699788,
+         "timestamp": 1792283148016,
          "durationMs": 0
         }
        }
@@ -6498,7 +6498,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699788,
+         "timestamp": 1792283148016,
          "durationMs": 0
         }
        }
@@ -6547,7 +6547,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699788,
+         "timestamp": 1792283148016,
          "durationMs": 0
         }
        }
@@ -6597,7 +6597,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699788,
+         "timestamp": 1792283148016,
          "durationMs": 0
         }
        }
@@ -6655,7 +6655,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699788,
+         "timestamp": 1792283148016,
          "durationMs": 0
         }
        }
@@ -6704,7 +6704,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699788,
+         "timestamp": 1792283148016,
          "durationMs": 0
         }
        }
@@ -6750,7 +6750,7 @@
          }
         },
         "stopReason": "toolUse",
-        "timestamp": 1792257699788,
+        "timestamp": 1792283148016,
         "durationMs": 0
        }
       }
@@ -6785,7 +6785,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699790
+         "timestamp": 1792283148018
         }
        }
       },
@@ -6835,7 +6835,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699790,
+          "timestamp": 1792283148018,
           "durationMs": 0
          }
         },
@@ -6878,7 +6878,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699790,
+         "timestamp": 1792283148018,
          "durationMs": 0
         }
        }
@@ -6930,7 +6930,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699790,
+          "timestamp": 1792283148018,
           "durationMs": 0
          }
         },
@@ -6973,7 +6973,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699790,
+         "timestamp": 1792283148018,
          "durationMs": 0
         }
        }
@@ -7032,7 +7032,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699790,
+          "timestamp": 1792283148018,
           "durationMs": 0
          }
         },
@@ -7075,7 +7075,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699790,
+         "timestamp": 1792283148018,
          "durationMs": 0
         }
        }
@@ -7126,7 +7126,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699790,
+          "timestamp": 1792283148018,
           "durationMs": 0
          }
         },
@@ -7169,7 +7169,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699790,
+         "timestamp": 1792283148018,
          "durationMs": 0
         }
        }
@@ -7221,7 +7221,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699790,
+          "timestamp": 1792283148018,
           "durationMs": 0
          }
         },
@@ -7264,7 +7264,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699790,
+         "timestamp": 1792283148018,
          "durationMs": 0
         }
        }
@@ -7324,7 +7324,7 @@
            }
           },
           "stopReason": "toolUse",
-          "timestamp": 1792257699790,
+          "timestamp": 1792283148018,
           "durationMs": 0
          }
         },
@@ -7367,7 +7367,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699790,
+         "timestamp": 1792283148018,
          "durationMs": 0
         }
        }
@@ -7415,7 +7415,7 @@
           }
          },
          "stopReason": "toolUse",
-         "timestamp": 1792257699790,
+         "timestamp": 1792283148018,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -7504,7 +7504,7 @@
          }
         },
         "stopReason": "pending",
-        "timestamp": 1792257699968
+        "timestamp": 1792283148288
        }
       }
      },
@@ -7534,7 +7534,7 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1792257699968,
+        "timestamp": 1792283148288,
         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
         "durationMs": 0,
         "thinkingLevel": "off"
@@ -7573,7 +7573,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699975
+         "timestamp": 1792283148306
         }
        }
       },
@@ -7603,9 +7603,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1792257699975,
+         "timestamp": 1792283148306,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
-         "durationMs": 0
+         "durationMs": 1
         }
        }
       },
@@ -7632,9 +7632,9 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1792257699975,
+        "timestamp": 1792283148306,
         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
-        "durationMs": 0
+        "durationMs": 1
        }
       }
      ]
@@ -7668,7 +7668,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699977
+         "timestamp": 1792283148312
         }
        }
       },
@@ -7697,9 +7697,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1792257699977,
+         "timestamp": 1792283148312,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
-         "durationMs": 0,
+         "durationMs": 1,
          "thinkingLevel": "off"
         }
        }
@@ -7735,7 +7735,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699979
+         "timestamp": 1792283148320
         }
        }
       },
@@ -7765,9 +7765,9 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1792257699979,
+         "timestamp": 1792283148320,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
-         "durationMs": 0
+         "durationMs": 1
         }
        }
       },
@@ -7794,9 +7794,9 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1792257699979,
+        "timestamp": 1792283148320,
         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
-        "durationMs": 0
+        "durationMs": 1
        }
       }
      ]
@@ -7830,7 +7830,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699981
+         "timestamp": 1792283148328
         }
        }
       },
@@ -7859,7 +7859,7 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1792257699981,
+         "timestamp": 1792283148328,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
          "durationMs": 0,
          "thinkingLevel": "off"
@@ -7897,7 +7897,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699984
+         "timestamp": 1792283148330
         }
        }
       },
@@ -7927,7 +7927,7 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1792257699984,
+         "timestamp": 1792283148330,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
          "durationMs": 0
         }
@@ -7956,7 +7956,7 @@
          }
         },
         "stopReason": "error",
-        "timestamp": 1792257699984,
+        "timestamp": 1792283148330,
         "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
         "durationMs": 0
        }
@@ -7992,7 +7992,7 @@
           }
          },
          "stopReason": "pending",
-         "timestamp": 1792257699986
+         "timestamp": 1792283148332
         }
        }
       },
@@ -8021,7 +8021,7 @@
           }
          },
          "stopReason": "error",
-         "timestamp": 1792257699986,
+         "timestamp": 1792283148332,
          "errorMessage": "test-faux: unhandled request \"unhandled request for the fixture\"",
          "durationMs": 0,
          "thinkingLevel": "off"
@@ -8116,7 +8116,7 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257700178
+        "timestamp": 1792283148719
        }
       }
      },
@@ -8826,8 +8826,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257700178,
-        "durationMs": 987,
+        "timestamp": 1792283148719,
+        "durationMs": 1000,
         "thinkingLevel": "off"
        }
       }
@@ -8869,7 +8869,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -8904,7 +8904,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -8940,7 +8940,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -8976,7 +8976,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9012,7 +9012,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9048,7 +9048,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9084,7 +9084,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9120,7 +9120,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9156,7 +9156,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9192,7 +9192,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9228,7 +9228,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9264,7 +9264,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9300,7 +9300,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9336,7 +9336,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9372,7 +9372,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9408,7 +9408,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9444,7 +9444,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9480,7 +9480,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9516,7 +9516,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9552,7 +9552,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9588,7 +9588,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9624,7 +9624,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9660,7 +9660,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9696,7 +9696,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9732,7 +9732,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9768,7 +9768,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171
+         "timestamp": 1792283149730
         }
        }
       },
@@ -9804,8 +9804,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171,
-         "durationMs": 986
+         "timestamp": 1792283149730,
+         "durationMs": 1002
         }
        }
       },
@@ -9840,8 +9840,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257701171,
-         "durationMs": 986
+         "timestamp": 1792283149730,
+         "durationMs": 1002
         }
        }
       },
@@ -9873,8 +9873,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257701171,
-        "durationMs": 986
+        "timestamp": 1792283149730,
+        "durationMs": 1002
        }
       }
      ]
@@ -9913,7 +9913,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -9950,7 +9950,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -9979,7 +9979,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10017,7 +10017,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10046,7 +10046,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10084,7 +10084,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10113,7 +10113,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10151,7 +10151,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10180,7 +10180,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10218,7 +10218,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10247,7 +10247,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10285,7 +10285,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10314,7 +10314,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10352,7 +10352,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10381,7 +10381,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10419,7 +10419,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10448,7 +10448,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10486,7 +10486,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10515,7 +10515,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10553,7 +10553,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10582,7 +10582,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10620,7 +10620,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10649,7 +10649,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10687,7 +10687,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10716,7 +10716,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10754,7 +10754,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10783,7 +10783,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10821,7 +10821,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10850,7 +10850,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10888,7 +10888,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10917,7 +10917,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -10955,7 +10955,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -10984,7 +10984,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11022,7 +11022,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11051,7 +11051,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11089,7 +11089,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11118,7 +11118,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11156,7 +11156,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11185,7 +11185,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11223,7 +11223,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11252,7 +11252,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11290,7 +11290,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11319,7 +11319,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11357,7 +11357,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11386,7 +11386,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11424,7 +11424,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11453,7 +11453,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11491,7 +11491,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11520,7 +11520,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11558,7 +11558,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160
+          "timestamp": 1792283150735
          }
         },
         "message": {
@@ -11587,7 +11587,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160
+         "timestamp": 1792283150735
         }
        }
       },
@@ -11625,8 +11625,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257702160,
-          "durationMs": 982
+          "timestamp": 1792283150735,
+          "durationMs": 995
          }
         },
         "message": {
@@ -11655,8 +11655,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160,
-         "durationMs": 982
+         "timestamp": 1792283150735,
+         "durationMs": 995
         }
        }
       },
@@ -11690,8 +11690,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257702160,
-         "durationMs": 982,
+         "timestamp": 1792283150735,
+         "durationMs": 995,
          "thinkingLevel": "off"
         }
        }
@@ -11732,7 +11732,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -11767,7 +11767,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -11803,7 +11803,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -11839,7 +11839,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -11875,7 +11875,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -11911,7 +11911,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -11947,7 +11947,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -11983,7 +11983,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12019,7 +12019,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12055,7 +12055,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12091,7 +12091,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12127,7 +12127,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12163,7 +12163,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12199,7 +12199,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12235,7 +12235,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12271,7 +12271,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12307,7 +12307,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12343,7 +12343,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12379,7 +12379,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12415,7 +12415,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12451,7 +12451,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12487,7 +12487,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12523,7 +12523,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12559,7 +12559,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12595,7 +12595,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12631,7 +12631,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145
+         "timestamp": 1792283151732
         }
        }
       },
@@ -12667,8 +12667,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145,
-         "durationMs": 981
+         "timestamp": 1792283151732,
+         "durationMs": 1005
         }
        }
       },
@@ -12703,8 +12703,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257703145,
-         "durationMs": 981
+         "timestamp": 1792283151732,
+         "durationMs": 1005
         }
        }
       },
@@ -12736,8 +12736,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257703145,
-        "durationMs": 981
+        "timestamp": 1792283151732,
+        "durationMs": 1005
        }
       }
      ]
@@ -12776,7 +12776,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -12813,7 +12813,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -12842,7 +12842,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -12880,7 +12880,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -12909,7 +12909,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -12947,7 +12947,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -12976,7 +12976,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13014,7 +13014,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13043,7 +13043,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13081,7 +13081,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13110,7 +13110,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13148,7 +13148,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13177,7 +13177,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13215,7 +13215,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13244,7 +13244,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13282,7 +13282,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13311,7 +13311,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13349,7 +13349,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13378,7 +13378,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13416,7 +13416,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13445,7 +13445,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13483,7 +13483,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13512,7 +13512,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13550,7 +13550,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13579,7 +13579,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13617,7 +13617,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13646,7 +13646,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13684,7 +13684,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13713,7 +13713,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13751,7 +13751,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13780,7 +13780,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13818,7 +13818,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13847,7 +13847,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13885,7 +13885,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13914,7 +13914,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -13952,7 +13952,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -13981,7 +13981,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14019,7 +14019,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -14048,7 +14048,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14086,7 +14086,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -14115,7 +14115,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14153,7 +14153,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -14182,7 +14182,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14220,7 +14220,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -14249,7 +14249,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14287,7 +14287,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -14316,7 +14316,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14354,7 +14354,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -14383,7 +14383,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14421,7 +14421,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129
+          "timestamp": 1792283152740
          }
         },
         "message": {
@@ -14450,7 +14450,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129
+         "timestamp": 1792283152740
         }
        }
       },
@@ -14488,8 +14488,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257704129,
-          "durationMs": 981
+          "timestamp": 1792283152740,
+          "durationMs": 995
          }
         },
         "message": {
@@ -14518,8 +14518,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129,
-         "durationMs": 981
+         "timestamp": 1792283152740,
+         "durationMs": 995
         }
        }
       },
@@ -14553,8 +14553,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257704129,
-         "durationMs": 981,
+         "timestamp": 1792283152740,
+         "durationMs": 995,
          "thinkingLevel": "off"
         }
        }
@@ -14595,7 +14595,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14630,7 +14630,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14666,7 +14666,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14702,7 +14702,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14738,7 +14738,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14774,7 +14774,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14810,7 +14810,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14846,7 +14846,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14882,7 +14882,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14918,7 +14918,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14954,7 +14954,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -14990,7 +14990,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15026,7 +15026,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15062,7 +15062,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15098,7 +15098,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15134,7 +15134,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15170,7 +15170,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15206,7 +15206,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15242,7 +15242,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15278,7 +15278,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15314,7 +15314,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15350,7 +15350,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15386,7 +15386,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15422,7 +15422,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15458,7 +15458,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15494,7 +15494,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112
+         "timestamp": 1792283153738
         }
        }
       },
@@ -15530,8 +15530,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112,
-         "durationMs": 985
+         "timestamp": 1792283153738,
+         "durationMs": 998
         }
        }
       },
@@ -15566,8 +15566,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257705112,
-         "durationMs": 985
+         "timestamp": 1792283153738,
+         "durationMs": 998
         }
        }
       },
@@ -15599,8 +15599,8 @@
          }
         },
         "stopReason": "stop",
-        "timestamp": 1792257705112,
-        "durationMs": 985
+        "timestamp": 1792283153738,
+        "durationMs": 998
        }
       }
      ]
@@ -15639,7 +15639,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -15676,7 +15676,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -15705,7 +15705,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -15743,7 +15743,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -15772,7 +15772,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -15810,7 +15810,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -15839,7 +15839,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -15877,7 +15877,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -15906,7 +15906,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -15944,7 +15944,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -15973,7 +15973,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16011,7 +16011,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16040,7 +16040,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16078,7 +16078,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16107,7 +16107,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16145,7 +16145,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16174,7 +16174,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16212,7 +16212,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16241,7 +16241,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16279,7 +16279,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16308,7 +16308,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16346,7 +16346,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16375,7 +16375,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16413,7 +16413,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16442,7 +16442,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16480,7 +16480,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16509,7 +16509,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16547,7 +16547,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16576,7 +16576,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16614,7 +16614,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16643,7 +16643,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16681,7 +16681,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16710,7 +16710,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16748,7 +16748,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16777,7 +16777,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16815,7 +16815,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16844,7 +16844,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16882,7 +16882,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16911,7 +16911,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -16949,7 +16949,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -16978,7 +16978,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -17016,7 +17016,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -17045,7 +17045,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -17083,7 +17083,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -17112,7 +17112,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -17150,7 +17150,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -17179,7 +17179,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -17217,7 +17217,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -17246,7 +17246,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -17284,7 +17284,7 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099
+          "timestamp": 1792283154739
          }
         },
         "message": {
@@ -17313,7 +17313,7 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099
+         "timestamp": 1792283154739
         }
        }
       },
@@ -17351,8 +17351,8 @@
            }
           },
           "stopReason": "stop",
-          "timestamp": 1792257706099,
-          "durationMs": 985
+          "timestamp": 1792283154739,
+          "durationMs": 1001
          }
         },
         "message": {
@@ -17381,8 +17381,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099,
-         "durationMs": 985
+         "timestamp": 1792283154739,
+         "durationMs": 1001
         }
        }
       },
@@ -17416,8 +17416,8 @@
           }
          },
          "stopReason": "stop",
-         "timestamp": 1792257706099,
-         "durationMs": 985,
+         "timestamp": 1792283154739,
+         "durationMs": 1001,
          "thinkingLevel": "off"
         }
        }
