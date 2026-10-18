@@ -72,7 +72,8 @@ func (h *handler) startScheduler() error {
 		FreshSnapshot:      h.freshSnapshot,
 		Report:             h.report,
 		Now:                func() float64 { return h.now },
-		Timer:              h.armTimer,
+		Timer:              h.armBackgroundTimer,
+		WakeTimer:          h.armWakeTimer,
 		ContextRetentionMs: h.contextRetentionMs,
 		ReleaseContext:     h.releaseContext,
 		SettleOutcome:      turn.SettleSchedulerOutcome,
@@ -81,6 +82,10 @@ func (h *handler) startScheduler() error {
 		GateRead:           func(method string, id session.ID) { _ = h.gateRead(method, float64(id)) },
 		After:              h.hopsThen,
 	})
+	if onWake, _ := boolOf(h.open, "onWake"); onWake {
+		// The host wakes its process itself: the core arms no timer for sleeping tasks and publishes each change of the wake.
+		h.sched.SetOnWake(h.publishWake)
+	}
 	finished := false
 	var openErr error
 	// Harness.open resolves when the scheduler's open job has: its statements (recovery of interrupted tasks) are in this step, not on
@@ -264,4 +269,9 @@ func (h *handler) documentRetentionMs() *float64 {
 		return &v
 	}
 	return nil
+}
+
+// publishWake tells the host each change of the Harness's wake (HarnessOptions.onWake) in a wake notice.
+func (h *handler) publishWake(w session.Wake) {
+	h.b.Notice(abi.NoticeWake, jv.Append(nil, wakeJSON(w)))
 }

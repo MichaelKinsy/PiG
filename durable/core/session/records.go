@@ -44,6 +44,12 @@ func getInt(o *jv.Object, k string) (ID, bool) {
 	return ID(f), true
 }
 
+func getNum(o *jv.Object, k string) (float64, bool) {
+	v, _ := o.Get(k)
+	f, ok := v.(float64)
+	return f, ok
+}
+
 func getBool(o *jv.Object, k string) bool {
 	v, _ := o.Get(k)
 	b, _ := v.(bool)
@@ -157,6 +163,7 @@ const (
 	StatusPending    = "pending"
 	StatusRunning    = "running"
 	StatusWaiting    = "waiting"
+	StatusSleeping   = "sleeping"
 	StatusCompleting = "completing"
 	StatusTerminal   = "terminal"
 )

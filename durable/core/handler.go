@@ -267,7 +267,7 @@ func (h *handler) onOpen(ev *abi.Event) error {
 	h.sess.SetHopProfile(h.hopProfile())
 	h.sess.DocumentRetention = h.documentRetentionMs
 	h.sess.Microtask = h.sweepMicrotask
-	h.sess.ArmTimer = h.armTimer
+	h.sess.ArmTimer = h.armBackgroundTimer
 	h.sess.EnqueueSweep = h.enqueueSweep
 	// The host admits calls itself (the native driver's Close seals ahead of events its admitted callers have not posted yet): a
 	// call it admitted runs after the seal, as a call that entered Pi's line before close() does.

@@ -24,7 +24,7 @@ func sampleStep() *Step {
 		},
 		Reads:   []Read{{ID: 4, SQL: 9, Params: []Value{Int(3)}}},
 		Notices: []Notice{{Kind: NoticeReport, Payload: []byte(`{"a":1}`)}, {Kind: NoticeSidecar}},
-		Effects: []Effect{{ID: 1, Kind: EffectTimer, Payload: TimerEffect(1, 12.5, true)}, {ID: 2, Kind: EffectLiveness, Payload: F64Payload(-1)}},
+		Effects: []Effect{{ID: 1, Kind: EffectTimer, Payload: TimerEffect(1, 12.5, TimerDurable)}, {ID: 2, Kind: EffectLiveness, Payload: F64Payload(-1)}},
 	}
 }
 

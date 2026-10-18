@@ -56,6 +56,8 @@ func (i *invocation) Models() durable.Models { return i.s.cfg.Harness.CurrentMod
 
 func (i *invocation) Env() env.ExecutionEnv { return i.s.envs.Get(i.task) }
 
+func (i *invocation) Now() float64 { return i.s.now() }
+
 func (i *invocation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error) {
 	return i.s.commit(ctx, map[string]any{"conversationId": i.conversation}, change)
 }

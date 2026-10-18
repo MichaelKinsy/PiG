@@ -47,6 +47,8 @@ type ToolBackend interface {
 	Models() durable.Models
 	// Env is the environment built for this call; nil without one.
 	Env() env.ExecutionEnv
+	// Now is the Harness clock.
+	Now() float64
 	Commit(ctx context.Context, change func(tx durable.Tx) (any, error)) (any, error)
 	Memo(ctx context.Context, name string) (value durable.JsonValue, ok bool, err error)
 	MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error)

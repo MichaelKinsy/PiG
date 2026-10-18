@@ -40,7 +40,16 @@ func (h *handler) cancelEffect(id uint32) {
 // armTimer arms a volatile timer at an absolute Harness time (ABI effect 1); the returned function clears it. A timer
 // fires at most once, through onTimer.
 func (h *handler) armTimer(at float64, fire func()) (cancel func()) {
-	id := h.b.Timer(at, false)
+	return h.arm(at, abi.TimerVolatile, fire)
+}
+
+// armBackgroundTimer arms a timer that only frees memory (ABI effect 1, class background): the host may decline it.
+func (h *handler) armBackgroundTimer(at float64, fire func()) (cancel func()) {
+	return h.arm(at, abi.TimerBackground, fire)
+}
+
+func (h *handler) arm(at float64, class abi.TimerClass, fire func()) (cancel func()) {
+	id := h.b.Timer(at, class)
 	h.timers = append(h.timers, armedTimer{id, fire})
 	return func() {
 		if h.takeTimer(id) != nil {
@@ -65,6 +74,12 @@ func (h *handler) takeTimer(id uint32) func() {
 		}
 	}
 	return nil
+}
+
+// armWakeTimer arms the durable timer that resumes the earliest sleeping task (ABI effect 1, durable): a host that wakes its
+// process itself, such as a Durable Object, keeps its alarm at the earliest durable time; the returned function clears it.
+func (h *handler) armWakeTimer(at float64, fire func()) (cancel func()) {
+	return h.arm(at, abi.TimerDurable, fire)
 }
 
 // after arms a volatile timer ms from now.

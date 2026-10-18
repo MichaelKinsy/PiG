@@ -44,7 +44,7 @@ var eventRows = []kindRow{
 }
 
 var effectRows = []kindRow{
-	{"timer", uint8(abi.EffectTimer), "u32 timerId, f64 at, u8 durable"},
+	{"timer", uint8(abi.EffectTimer), "u32 timerId, f64 at, u8 class (0 volatile, 1 durable, 2 background)"},
 	{"timer_clear", uint8(abi.EffectTimerClear), "u32 timerId"},
 	{"model_context", uint8(abi.EffectModelContext), "body recipe (section 10.2) of the JSON ModelContextEffect: {model, conversationId, context:{messages}, options}; messages is a range segment naming a committed context, or text"},
 	{"model_http", uint8(abi.EffectModelHTTP), "JSON head, body recipe"},
@@ -69,6 +69,7 @@ var noticeRows = []kindRow{
 	{"progress_ack", uint8(abi.NoticeProgressAck), "u32 waitId, u8 outcome, JSON error when rejected"},
 	{"doc_cache", uint8(abi.NoticeDocCache), "JSON {cached, idle, attached, sweeps}: the core's document cache sizes (attached: observers' pins), whenever they change"},
 	{"index_sizes", uint8(abi.NoticeIndexSizes), "JSON {live, settled, edges, below, roots, unloaded, dropQueue}: a harness-mode core's scheduler ownership index sizes, whenever they change"},
+	{"wake", uint8(abi.NoticeWake), "JSON {active, at?}: a harness-mode core's Harness.wake value (HarnessOptions.onWake), published when it changed; the core arms no timer for sleeping tasks then"},
 }
 
 var statusRows = []kindRow{
@@ -147,7 +148,8 @@ var apiRows = []apiRow{
 	{"context", "conversationId, at", "the ContextView", "at once"},
 	{"conversation", "conversationId", "the conversation handle data or null", "at once"},
 	{"agent", "conversationId", "the resolved agent", "at once"},
-	{"sleep", "taskId, until", "null", "at the wake of the durable timer the core arms"},
+	{"sleepUntil", "taskId, until, checkpoint", "null", "once the sleep is committed; the task then holds no invocation"},
+	{"wake", "", "{active, at?}", "at once"},
 	{"usage", "", "the UsageState of the Session", "at once"},
 	{"taskGraph", "", "the TaskGraph", "at once"},
 }

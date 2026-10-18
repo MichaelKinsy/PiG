@@ -262,7 +262,7 @@ func (r *compactionRun) settleSummary(cp *jv.Object, attempt float64, message *j
 			next := cp.Shallow()
 			next.Set("phase", phaseRetry)
 			next.Set("until", outcome.Until)
-			return jobj("status", "running", "checkpoint", next), nil
+			return jobj("status", "sleeping", "checkpoint", next, "until", outcome.Until), nil
 		}
 		if err := FailCompactionStatus(live, r.rt.TaskID(), string(outcome.FailText)); err != nil {
 			return nil, err
@@ -274,28 +274,27 @@ func (r *compactionRun) settleSummary(cp *jv.Object, attempt float64, message *j
 // retry sleeps until the backoff ends, then summarizes again.
 func (r *compactionRun) retry(cp *jv.Object) {
 	attempt := num(cp, "attempt") + 1
-	r.rt.Sleep(num(cp, "until"), nil, func(err error) {
+	// After the backoff's sleep; a run before until (an early wake, or a record of an earlier version) sleeps again.
+	if until := num(cp, "until"); until > r.now() {
+		r.rt.SleepUntil(until, cp, func(err error) { r.done(err) })
+		return
+	}
+	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
-			r.fail(err)
-			return
+			return nil, err
 		}
-		r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
-			if err != nil {
+		if status := CompactionStatusOf(live, r.rt.TaskID()); status != nil {
+			if err := status.Set("attempt", attempt); err != nil {
 				return nil, err
 			}
-			if status := CompactionStatusOf(live, r.rt.TaskID()); status != nil {
-				if err := status.Set("attempt", attempt); err != nil {
-					return nil, err
-				}
-				status.Delete("retry")
-			}
-			next := cp.Shallow()
-			next.Delete("until")
-			next.Set("phase", phaseSummarize)
-			next.Set("attempt", attempt)
-			return jobj("status", "running", "checkpoint", next), nil
-		})
+			status.Delete("retry")
+		}
+		next := cp.Shallow()
+		next.Delete("until")
+		next.Set("phase", phaseSummarize)
+		next.Set("attempt", attempt)
+		return jobj("status", "running", "checkpoint", next), nil
 	})
 }
 

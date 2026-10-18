@@ -226,7 +226,7 @@ func (s *Session) submit(ev abi.Event) *abi.Step {
 		s.commit("submit:"+sub.RequestID, ev.Now, []byte(content), content == "stale"),
 		s.commit("placed:"+sub.RequestID, ev.Now, nil, false),
 	}}
-	step.Effects = append(step.Effects, s.effect(abi.EffectTimer, abi.TimerEffect(1, ev.Now+100, true)))
+	step.Effects = append(step.Effects, s.effect(abi.EffectTimer, abi.TimerEffect(1, ev.Now+100, abi.TimerDurable)))
 	count := 1
 	if content == "multi" {
 		count = 3

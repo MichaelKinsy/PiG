@@ -33,6 +33,7 @@ func (s *coreSession) Inspect(ctx context.Context) (harness.HarnessInspection, e
 				Kind     harness.TaskInspectionKind `json:"kind"`
 				Migrates bool                       `json:"migrates"`
 				On       []durable.TaskId           `json:"on"`
+				Until    float64                    `json:"until"`
 				Reason   string                     `json:"reason"`
 				Error    *CoreError                 `json:"error"`
 			} `json:"state"`
@@ -46,7 +47,7 @@ func (s *coreSession) Inspect(ctx context.Context) (harness.HarnessInspection, e
 	out.Submissions = wire.Submissions
 	out.Tasks = make([]harness.TaskInspection, len(wire.Tasks))
 	for i, t := range wire.Tasks {
-		state := harness.TaskInspectionState{Kind: t.State.Kind, Migrates: t.State.Migrates, On: t.State.On, Reason: t.State.Reason}
+		state := harness.TaskInspectionState{Kind: t.State.Kind, Migrates: t.State.Migrates, On: t.State.On, Until: t.State.Until, Reason: t.State.Reason}
 		if e := t.State.Error; e != nil {
 			state.Error = e
 		}

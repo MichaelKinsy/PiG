@@ -68,6 +68,7 @@ const (
 	NoticeProgressAck
 	NoticeDocCache
 	NoticeIndexSizes
+	NoticeWake
 )
 
 // Status is the outcome of a step (ABI section 4.4).

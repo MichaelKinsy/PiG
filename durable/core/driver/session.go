@@ -74,6 +74,7 @@ type coreSession struct {
 	settings durable.Settings
 	envs     *Envs
 	tasks    *taskRuntimes
+	timers   durable.Timers
 	unsub    func()
 	watches  *watchHub
 	commits  commitListeners
@@ -120,6 +121,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		cfg.Harness.Now = harness.SafeNow(cfg.Harness.Now, cfg.Harness.OnReport)
 	}
 	s := &coreSession{ended: make(chan struct{}), cfg: cfg, table: newHandlerTable(), instruction: map[string]*durable.PromptSection{}, callbacks: map[string]Callback{}}
+	s.timers = durable.HostTimers(cfg.Harness.SetTimer, s.report)
 	s.watches = newWatchHub(s.report)
 	s.settings = s.resolveSettings()
 	report := cfg.Harness.OnReport
@@ -161,7 +163,8 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	handlers[abi.EffectCallback] = callbackHandler.handle
 	s.host = sqlhost.New(sqlhost.Options{
 		Core: cfg.Core, SQL: cfg.SQL, DB: cfg.DB, OwnDB: true, Clock: cfg.Harness.Now, TimerLead: cfg.TimerLead, Settle: cfg.Settle,
-		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, TimerFired: cfg.TimerFired,
+		SetTimer: s.armTimer,
+		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n); s.wakeNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, TimerFired: cfg.TimerFired,
 		OnRejected: func(kind abi.EventKind, err *sqlhost.RejectedError) { report(err) },
 		// Pi reads HarnessSettings at each use: the owner resends them to the core when they changed (sqlhost Options.Settings).
 		// A settings reader that throws fails the reads that need it (resolveAgent, the task runtime), not the owner: the
@@ -260,7 +263,7 @@ func (s *coreSession) openPayload() ([]byte, error) {
 	//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads its members by name and stores none of this object
 	return json.Marshal(map[string]any{
 		"mode": mode, "settings": s.settingsJSON(), "models": s.catalogue(), "registry": snapshot, "sidecar": sidecar, "delta": true, "hostAdmission": true,
-		"hasEnv": s.cfg.Harness.Env != nil,
+		"hasEnv": s.cfg.Harness.Env != nil, "onWake": s.cfg.Harness.OnWake != nil,
 	})
 }
 
@@ -838,4 +841,53 @@ func published(n abi.Notice) (payload.Published, bool) {
 	}
 	var p payload.Published
 	return p, json.Unmarshal(n.Payload, &p) == nil
+}
+
+// armTimer arms a timer effect of the core through HarnessOptions.SetTimer (sqlhost Options.SetTimer): the host's timers pace
+// the core's work, and a background timer the host declines is not kept.
+func (s *coreSession) armTimer(callback func(), delayMs float64, background bool) func() {
+	if background {
+		return s.timers.Background(callback, delayMs)
+	}
+	return s.timers.Foreground(callback, delayMs)
+}
+
+// wakeNotice delivers a change of the Harness's wake to HarnessOptions.OnWake, off the owner goroutine (scheduler.ts #scheduleWake).
+// A panic is reported, and the core offers the value again at its next change.
+func (s *coreSession) wakeNotice(n abi.Notice) {
+	if n.Kind != abi.NoticeWake || s.cfg.Harness.OnWake == nil {
+		return
+	}
+	var body struct {
+		Active bool     `json:"active"`
+		At     *float64 `json:"at"`
+	}
+	if json.Unmarshal(n.Payload, &body) != nil {
+		return
+	}
+	wake := harness.Wake{Active: body.Active, At: body.At}
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				s.report(fmt.Errorf("%s", durable.ErrorMessage(recovered)))
+			}
+		}()
+		s.cfg.Harness.OnWake(wake)
+	}()
+}
+
+// Wake is when this Session next needs a running process, answered by the core from its scheduler's memory.
+func (s *coreSession) Wake() harness.Wake {
+	raw, err := s.client.API(context.Background(), "wake", nil)
+	if err != nil {
+		panic(err)
+	}
+	var body struct {
+		Active bool     `json:"active"`
+		At     *float64 `json:"at"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		panic(err)
+	}
+	return harness.Wake{Active: body.Active, At: body.At}
 }

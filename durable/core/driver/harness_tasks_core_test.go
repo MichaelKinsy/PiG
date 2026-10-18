@@ -378,7 +378,7 @@ func TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatche
 	ended("memo", err)
 	_, err = rt.MemoCandidate(context.Background(), "x", 1)
 	ended("memo write", err)
-	ended("sleep", rt.Sleep(context.Background(), 0))
+	ended("sleep", rt.SleepUntil(context.Background(), 0, stepState{Phase: "run"}))
 	_, err = rt.WatchDocErased(context.Background(), notes)
 	ended("watch", err)
 	_, err = rt.Agent(context.Background())

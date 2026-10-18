@@ -145,6 +145,10 @@ type Options struct {
 	// OnCancel receives each cancel effect (ABI effect 5) on the owner goroutine, also for an effect that has already
 	// settled: the core cancels a settled phase effect to say its invocation has ended. It must not block.
 	OnCancel func(effect uint32)
+	// SetTimer, when set, arms every timer effect (HarnessOptions.SetTimer): callback fires once about delayMs from now, and
+	// the returned function disarms it. background marks a timer that only frees memory, which it may decline by returning
+	// nil; any other it arms or the host arms with a Go timer. Nil arms Go timers.
+	SetTimer func(callback func(), delayMs float64, background bool) (disarm func())
 	// OnLiveness receives the watchdog target (ABI effect 10): a time, or -1 when nothing is live. A native process
 	// has nothing to wake, so the default ignores it.
 	OnLiveness func(at float64)
@@ -189,7 +193,7 @@ type Host struct {
 	running    map[uint32]context.CancelFunc
 	// sentSettings is the settings JSON the core last received (open or a registry event); owner goroutine only.
 	sentSettings []byte
-	timers       map[uint32]*time.Timer
+	timers       map[uint32]func()
 	ranges       *history.Store // the transcript a model_context range segment derives from
 	// sent is each conversation's last model_context range (rangeContext), which the next one extends; rangeLineages numbers
 	// the arrays it hands out (MessageRange.Lineage).
@@ -216,7 +220,7 @@ func New(opts Options) *Host {
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &Host{
 		opts: opts, box: newMailbox(), done: make(chan struct{}), ctx: ctx, cancel: cancel,
-		waiters: map[*waiter]struct{}{}, lastEffect: -1, running: map[uint32]context.CancelFunc{}, timers: map[uint32]*time.Timer{},
+		waiters: map[*waiter]struct{}{}, lastEffect: -1, running: map[uint32]context.CancelFunc{}, timers: map[uint32]func(){},
 	}
 	h.counters.Effects = map[abi.EffectKind]int{}
 	// A core that reads settled records on demand (ABI section 4.2, pig.read) reads them here, on the owner goroutine that
@@ -465,10 +469,10 @@ func (h *Host) discard(err error) {
 	h.waiters = map[*waiter]struct{}{}
 	h.mu.Unlock()
 	h.cancel()
-	for _, t := range h.timers {
-		t.Stop()
+	for _, stop := range h.timers {
+		stop()
 	}
-	h.timers = map[uint32]*time.Timer{}
+	h.timers = map[uint32]func(){}
 	h.running = map[uint32]context.CancelFunc{}
 	for w := range waiters {
 		select {
@@ -752,18 +756,18 @@ func (h *Host) start(e abi.Effect) {
 	p := abi.NewPayload(e.Payload)
 	switch e.Kind {
 	case abi.EffectTimer:
-		id, at, durable := p.U32(), p.F64(), p.U8()
+		id, at, class := p.U32(), p.F64(), abi.TimerClass(p.U8())
 		if p.Err() != nil {
 			_ = h.fatal("a timer effect is truncated", p.Err())
 			return
 		}
-		_ = durable // a native process has no object to wake: durable and volatile timers are both in-process
-		h.setTimer(id, at)
+		// A native process has no object to wake: durable and volatile timers are both in-process.
+		h.setTimer(id, at, class == abi.TimerBackground)
 		return
 	case abi.EffectTimerClear:
 		id := p.U32()
-		if t, ok := h.timers[id]; ok {
-			t.Stop()
+		if stop, ok := h.timers[id]; ok {
+			stop()
 			delete(h.timers, id)
 		}
 		return
@@ -850,9 +854,9 @@ func (h *Host) finished(id uint32) {
 	h.box.put(func(error) { delete(h.running, id) })
 }
 
-func (h *Host) setTimer(id uint32, at float64) {
-	if old, ok := h.timers[id]; ok {
-		old.Stop()
+func (h *Host) setTimer(id uint32, at float64, background bool) {
+	if stop, ok := h.timers[id]; ok {
+		stop()
 	}
 	wait := max(time.Duration((at-h.opts.Clock())*float64(time.Millisecond)), 0)
 	if wait > h.opts.TimerLead {
@@ -860,21 +864,25 @@ func (h *Host) setTimer(id uint32, at float64) {
 	}
 	// Every timer gets a new ID, so the map drops a timer when it fires (on the owner, before its event) or is cleared:
 	// it holds the armed timers only, not every timer of the handle's life.
-	var t *time.Timer
-	t = time.AfterFunc(wait, func() {
+	fire := func() {
 		if h.opts.TimerFired != nil {
 			h.opts.TimerFired(at)
 		}
 		h.enqueue(func(dead error) {
-			if h.timers[id] == t {
-				delete(h.timers, id)
-			}
+			delete(h.timers, id)
 			if dead == nil {
 				_ = h.deliver(abi.Event{Kind: abi.EventTimer, ID: id}, false)
 			}
 		})
-	})
-	h.timers[id] = t
+	}
+	if h.opts.SetTimer != nil {
+		if stop := h.opts.SetTimer(fire, float64(wait)/float64(time.Millisecond), background); stop != nil {
+			h.timers[id] = stop
+		}
+		return
+	}
+	t := time.AfterFunc(wait, fire)
+	h.timers[id] = func() { t.Stop() }
 }
 
 // Close seals the session: the core receives close and cancels its effects, then the host cancels what remains, waits for
@@ -916,8 +924,8 @@ func (h *Host) Close(ctx context.Context) error {
 	for _, job := range h.box.drain() {
 		job(ErrClosed)
 	}
-	for _, t := range h.timers {
-		t.Stop()
+	for _, stop := range h.timers {
+		stop()
 	}
 	waited := make(chan struct{})
 	go func() { h.wg.Wait(); close(waited) }()

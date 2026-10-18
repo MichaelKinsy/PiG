@@ -223,6 +223,8 @@ func inspectedTask(t session.TaskInspection) *jv.Object {
 	switch t.Kind {
 	case "ready":
 		state.Set("migrates", t.Migrates)
+	case "sleeping":
+		state.Set("until", t.Until)
 	case "waiting":
 		on := make([]any, len(t.On))
 		for i, id := range t.On {

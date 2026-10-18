@@ -118,11 +118,12 @@ func (b *Builder) effect(e Effect) uint32 {
 }
 
 // Timer arms a timer effect at the absolute Harness time at and returns the timer ID a timer event carries back.
-// durable timers are re-derived from checkpoints on reopen and keep the object alarm; volatile ones may be lost (ADR D8).
-func (b *Builder) Timer(at float64, durable bool) uint32 {
+// durable timers are re-derived from checkpoints on reopen and keep the object alarm; volatile ones may be lost (ADR D8);
+// background ones only free memory and may be declined by the host.
+func (b *Builder) Timer(at float64, class TimerClass) uint32 {
 	id := b.nextTimer
 	b.nextTimer++
-	b.Effect(EffectTimer, TimerEffect(id, at, durable))
+	b.Effect(EffectTimer, TimerEffect(id, at, class))
 	return id
 }
 

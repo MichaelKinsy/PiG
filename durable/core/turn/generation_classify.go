@@ -52,7 +52,7 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 			cp.Set("cutoff", float64(req.cutoff))
 			cp.Set("handle", handle)
 			cp.Set("pollAt", pollAt)
-			return jobj("status", "running", "checkpoint", cp), nil
+			return jobj("status", "sleeping", "checkpoint", cp, "until", pollAt), nil
 		})
 		return
 	}
@@ -138,7 +138,7 @@ func (r *run) retryOrFail(req requestInfo, message *jv.Object, settings Settings
 			cp := jobj("phase", phaseRetry, "attempt", req.attempt)
 			withCompacted(cp, req.compacted)
 			cp.Set("until", until)
-			return jobj("status", "running", "checkpoint", cp), nil
+			return jobj("status", "sleeping", "checkpoint", cp, "until", until), nil
 		}
 		text, ok := stringField(message, "errorMessage")
 		if !ok {

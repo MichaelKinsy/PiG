@@ -5,8 +5,9 @@ import "github.com/MichaelKinsy/PiG/durable/core/jv"
 // TaskInspection is one live task with the state the scheduler derives for it (types.ts TaskInspection).
 type TaskInspection struct {
 	Record *jv.Object
-	// Kind is "running", "ready", "waiting", "completing" or "blocked".
+	// Kind is "running", "ready", "waiting", "sleeping", "completing" or "blocked".
 	Kind     string
+	Until    float64 // sleeping
 	Migrates bool   // ready
 	On       []ID   // waiting
 	Reason   string // blocked: missing_task, task_too_old or migration_failed
@@ -47,6 +48,11 @@ func (s *Scheduler) inspectTask(rec *jv.Object, snapshot Snapshot) TaskInspectio
 	}
 	if on := s.waitingOn(rec, false); len(on) > 0 {
 		out.Kind, out.On = "waiting", on
+		return out
+	}
+	if s.notDue(rec) {
+		out.Kind = "sleeping"
+		out.Until, _ = getNum(getObj(rec, "state"), "until")
 		return out
 	}
 	kind, _ := getStr(rec, "kind")

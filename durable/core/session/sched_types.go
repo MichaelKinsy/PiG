@@ -116,9 +116,15 @@ type Env struct {
 	Report func(err error)
 	// Now is the Harness clock.
 	Now func() float64
-	// Timer arms a volatile timer that calls fire at the Harness time at (a
-	// timer effect, ABI section 6) and returns its cancel function.
+	// Timer arms a background timer that calls fire at the Harness time at (a timer effect, ABI section 6) and returns its
+	// cancel function: it only frees memory, and a host may keep none.
 	Timer func(at float64, fire func()) (cancel func())
+	// WakeTimer arms the timer that resumes the earliest sleeping task (a durable timer effect, ABI section 6): a host
+	// that wakes its process itself keeps the object alarm at its time. Used while OnWake is nil.
+	WakeTimer func(at float64, fire func()) (cancel func())
+	// OnWake, when set (SetOnWake), replaces WakeTimer: the scheduler tells it each change of Wake (HarnessOptions.onWake) and
+	// arms no timer for sleeping tasks.
+	OnWake func(w Wake)
 	// SettleOutcome runs in the transaction that settles a task with a
 	// scheduler-written outcome (faulted or orphaned): harness.live.ts settleSchedulerOutcome.
 	SettleOutcome func(tx *Tx, record *jv.Object, outcome *jv.Object) error

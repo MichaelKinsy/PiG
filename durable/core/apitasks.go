@@ -14,7 +14,7 @@ import (
 // notice that may follow later steps. handled is false for an op that is not the scheduler's.
 func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) {
 	switch op {
-	case "memo.get", "memo.put", "waitForTask", "waitForIdle", "outcomes", "ownedTasks", "sleep":
+	case "memo.get", "memo.put", "waitForTask", "waitForIdle", "outcomes", "ownedTasks", "sleepUntil", "wake":
 	default:
 		return false
 	}
@@ -27,6 +27,10 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 	}
 	if h.sched == nil {
 		reply(nil, &Rejection{"Error", "the " + op + " request needs a Harness"})
+		return true
+	}
+	if op == "wake" {
+		reply(wakeJSON(h.sched.Wake()), nil)
 		return true
 	}
 	if op == "waitForIdle" {
@@ -95,8 +99,19 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 			}
 			reply(out, err)
 		})
-	case "sleep":
-		rt.Sleep(numOf(req, "until"), nil, func(err error) { reply(nil, err) })
+	case "sleepUntil":
+		checkpoint, _ := req.Get("checkpoint")
+		rt.SleepUntil(numOf(req, "until"), checkpoint, func(err error) { reply(nil, err) })
 	}
 	return true
+}
+
+// wakeJSON is a Wake on the wire: {active, at?}.
+func wakeJSON(w session.Wake) *jv.Object {
+	o := jv.NewObject()
+	o.Set("active", w.Active)
+	if w.HasAt {
+		o.Set("at", w.At)
+	}
+	return o
 }

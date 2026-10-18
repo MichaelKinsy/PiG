@@ -500,12 +500,42 @@ func (r *taskRuntime) Context(ctx context.Context, conversationId durable.Conver
 	return decodeContextView(raw)
 }
 
-func (r *taskRuntime) Sleep(ctx context.Context, until float64) error {
+// SleepUntil commits a sleep: the core stores it and answers once it is committed; the task then holds no invocation.
+func (r *taskRuntime) SleepUntil(ctx context.Context, until float64, checkpoint durable.JsonValue) error {
 	if err := r.check(); err != nil {
 		return err
 	}
-	_, err := r.s.client.API(ctx, "sleep", map[string]any{"taskId": r.task, "until": until})
+	_, err := r.s.client.API(ctx, "sleepUntil", map[string]any{"taskId": r.task, "until": until, "checkpoint": checkpoint})
 	return r.ended(err)
+}
+
+// SetTimer calls callback once after about delayMs on the Harness's timer; the invocation's end disarms it, and an ended
+// invocation arms nothing (scheduler.ts setTimer).
+func (r *taskRuntime) SetTimer(callback func(), delayMs float64) func() {
+	if r.done.Load() {
+		return func() {}
+	}
+	var mu sync.Mutex
+	var disarm func()
+	var cancelled bool
+	armed := r.s.timers.Foreground(func() {
+		if !r.done.Load() {
+			callback()
+		}
+	}, delayMs)
+	mu.Lock()
+	disarm = armed
+	mu.Unlock()
+	stop := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if !cancelled {
+			cancelled = true
+			disarm()
+		}
+	}
+	r.onEnded(stop)
+	return stop
 }
 
 // Conversation returns an invocation-bound handle: its operations fail once the invocation ends.

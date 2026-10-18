@@ -522,6 +522,7 @@ func (s *Scheduler) track(prev *jv.Object, rec *jv.Object) {
 	if taskStatus(rec) == StatusTerminal {
 		n := nodeOf(rec)
 		s.live.delete(id)
+		s.sleeping.Delete(id)
 		s.intent.Delete(id)
 		s.runnable.Delete(id)
 		s.finalizeChecks.Delete(id)
@@ -561,6 +562,11 @@ func (s *Scheduler) track(prev *jv.Object, rec *jv.Object) {
 		for _, on := range idsOf(getObj(rec, "state"), "on") {
 			addToSet(s.waiters, on, id)
 		}
+	}
+	if taskStatus(rec) == StatusSleeping {
+		s.sleeping.Add(id)
+	} else {
+		s.sleeping.Delete(id)
 	}
 }
 

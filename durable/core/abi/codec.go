@@ -643,14 +643,26 @@ func (p *Payload) Rest() []byte { return p.r.take(len(p.r.b)) }
 // Err reports a truncated payload.
 func (p *Payload) Err() error { return p.r.err }
 
+// TimerClass is the u8 of a timer effect: what the timer is for, which decides how a host arms it.
+type TimerClass uint8
+
+// Timer classes.
+const (
+	// TimerVolatile paces work already held by a stream or tool (a throttle window): a process timer; it may be lost.
+	TimerVolatile TimerClass = 0
+	// TimerDurable resumes a sleeping task: re-derived from its checkpoint on reopen, and kept by the object alarm of a host that
+	// wakes its process itself.
+	TimerDurable TimerClass = 1
+	// TimerBackground only frees memory (an idle context or document expiring): a host may decline it, as one that cannot
+	// keep a pending timer without keeping its process alive does; the core frees that memory at later commits instead.
+	TimerBackground TimerClass = 2
+)
+
 // TimerEffect encodes the payload of a timer effect.
-func TimerEffect(timerID uint32, at float64, durable bool) []byte {
+func TimerEffect(timerID uint32, at float64, class TimerClass) []byte {
 	out := binary.LittleEndian.AppendUint32(nil, timerID)
 	out = binary.LittleEndian.AppendUint64(out, math.Float64bits(at))
-	if durable {
-		return append(out, 1)
-	}
-	return append(out, 0)
+	return append(out, byte(class))
 }
 
 // U32Payload encodes a payload that is one u32 (timer_clear, cancel).

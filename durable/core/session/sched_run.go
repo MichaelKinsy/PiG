@@ -1,6 +1,7 @@
 package session
 
 import (
+	"math"
 	"slices"
 	"strconv"
 
@@ -218,6 +219,11 @@ func (s *Scheduler) commitState(tx *Tx, inv *invocation, current *jv.Object, nex
 			return err
 		}
 	}
+	if status == StatusSleeping {
+		if err := validateSleep(inv, mustInt(current, "id"), next); err != nil {
+			return err
+		}
+	}
 	if status == StatusTerminal {
 		o := overlayOf(tx)
 		if _, err := s.loadScopes(false); err != nil {
@@ -376,4 +382,31 @@ func faultText(err error) string {
 		return t.Text()
 	}
 	return err.Error()
+}
+
+// validateSleep checks that a sleep's until is a time on the Harness clock, and that an abort handler does not sleep
+// (scheduler.ts validateSleep).
+func validateSleep(inv *invocation, task ID, next *jv.Object) error {
+	if inv.abortMode {
+		return errorf("Abort handler of task %d cannot sleep", task)
+	}
+	v, _ := next.Get("until")
+	until, ok := v.(float64)
+	if !ok || math.IsNaN(until) || math.IsInf(until, 0) || until < 0 {
+		shown := "undefined"
+		switch {
+		case ok && math.IsNaN(until):
+			shown = "NaN"
+		case ok && math.IsInf(until, 1):
+			shown = "Infinity"
+		case ok && math.IsInf(until, -1):
+			shown = "-Infinity"
+		case ok:
+			shown = jv.FormatNumber(until)
+		case v != nil:
+			shown = jv.Stringify(v)
+		}
+		return errorf("Task %d cannot sleep until %s: not a time in milliseconds", task, shown)
+	}
+	return nil
 }

@@ -333,25 +333,24 @@ func (r *run) retry(cp *jv.Object) {
 	attempt := num(cp, "attempt")
 	compacted := idField(cp, "compacted")
 	until := num(cp, "until")
-	r.rt.Sleep(until, nil, func(err error) {
+	// After the backoff's sleep; a run before until (an early wake, or a record of an earlier version) sleeps again.
+	if until > r.now() {
+		r.rt.SleepUntil(until, cp, func(err error) { r.done(err) })
+		return
+	}
+	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
-			r.fail(err)
-			return
+			return nil, err
 		}
-		r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
-			if err != nil {
-				return nil, err
-			}
-			if err := live.Set("generation", jobj("attempt", attempt+1)); err != nil {
-				return nil, err
-			}
-			next := jobj("phase", phasePrepare, "attempt", attempt+1)
-			if compacted != 0 {
-				next.Set("compacted", float64(compacted))
-			}
-			return jobj("status", "running", "checkpoint", next), nil
-		})
+		if err := live.Set("generation", jobj("attempt", attempt+1)); err != nil {
+			return nil, err
+		}
+		next := jobj("phase", phasePrepare, "attempt", attempt+1)
+		if compacted != 0 {
+			next.Set("compacted", float64(compacted))
+		}
+		return jobj("status", "running", "checkpoint", next), nil
 	})
 }
 
@@ -359,22 +358,21 @@ func (r *run) retry(cp *jv.Object) {
 func (r *run) poll(cp *jv.Object) {
 	h := r.g.Host
 	ref := modelRefOf(objField(cp, "model"))
+	pollAt := num(cp, "pollAt")
+	// After the sleep until pollAt; a run before it (an early wake, or a record of an earlier version) sleeps again.
+	if pollAt > r.now() {
+		r.rt.SleepUntil(pollAt, cp, func(err error) { r.done(err) })
+		return
+	}
 	if _, ok := h.ContextWindow(ref); !ok {
 		r.failNoModel(&ref)
 		return
 	}
-	pollAt := num(cp, "pollAt")
-	r.rt.Sleep(pollAt, nil, func(err error) {
+	h.FetchDeferred(ref, objField(cp, "handle"), r.rt.Signal(), func(message *jv.Object, err error) {
 		if err != nil {
 			r.fail(err)
 			return
 		}
-		h.FetchDeferred(ref, objField(cp, "handle"), r.rt.Signal(), func(message *jv.Object, err error) {
-			if err != nil {
-				r.fail(err)
-				return
-			}
-			r.classify(requestInfo{attempt: num(cp, "attempt"), compacted: idField(cp, "compacted"), model: ref, cutoff: idField(cp, "cutoff"), pollAt: &pollAt}, message)
-		})
+		r.classify(requestInfo{attempt: num(cp, "attempt"), compacted: idField(cp, "compacted"), model: ref, cutoff: idField(cp, "cutoff"), pollAt: &pollAt}, message)
 	})
 }

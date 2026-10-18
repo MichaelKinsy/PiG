@@ -9,7 +9,7 @@ import (
 const schedScanPage = 256
 
 // Read-only: assigned once at initialization.
-var liveStatuses = [...]string{StatusPending, StatusRunning, StatusWaiting, StatusCompleting}
+var liveStatuses = [...]string{StatusPending, StatusRunning, StatusWaiting, StatusSleeping, StatusCompleting}
 
 type invocation struct {
 	taskID         ID
@@ -120,6 +120,17 @@ type Scheduler struct {
 	finalizeChecks *orderedSet[ID]
 	// waiters holds the live waiting tasks by each task in their on.
 	waiters map[ID]*orderedSet[ID]
+	// sleeping holds the sleeping live tasks, due or not: the candidates of wakeDue.
+	sleeping *orderedSet[ID]
+	// wakeTimer is the timer for the earliest sleep, without OnWake while scheduling runs; lastWake is the last value
+	// given to OnWake, so an unchanged one is not repeated.
+	wakeTimer     struct {
+		set    bool
+		at     float64
+		cancel func()
+	}
+	lastWake      *Wake
+	wakeScheduled bool
 	// dropQueue holds the ended tasks and conversations found unneeded, which sweep drops at the end of the commit's
 	// publication unless needed again by then: a chain load installs nodes before the work below them is listed.
 	dropQueue      *orderedSet[treeNode]
@@ -140,7 +151,7 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		live: newTaskMap(), invocations: map[ID]*invocation{},
 		taskWaiters: map[ID][]*taskWaiter{}, idleWaiters: map[ID][]*idleWaiter{},
 		contexts: map[ID]*keptContext{}, failedMigrations: map[ID]failedMigration{}, migrations: map[ID]*migration{}, edges: map[ID]ID{}, settled: map[ID]taskNode{},
-		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
+		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
 	}
 	sess.OnFail = s.report
 	return s
@@ -253,6 +264,7 @@ func (s *Scheduler) Open(done func(error)) {
 		if err == nil {
 			s.cascadePending = true
 			s.scheduleReconcile()
+			s.scheduleWake()
 		}
 		done(err)
 	})
@@ -264,9 +276,11 @@ func (s *Scheduler) addFailFast(id ID) {
 	}
 }
 
-// Resume enables scheduling and starts any reservable task.
+// Resume enables scheduling, makes sleeping tasks that are due runnable (a host wakeup, such as an alarm, calls this), and
+// starts any reservable task.
 func (s *Scheduler) Resume() {
 	s.enabled = true
+	s.wakeDue()
 	s.kick()
 }
 
@@ -608,6 +622,7 @@ func (s *Scheduler) Seal() {
 	s.loop.Defer(s.signalInvocations)
 	s.contexts = map[ID]*keptContext{}
 	s.cancelExpiry()
+	s.cancelWakeTimer()
 	for _, id := range slices.Clone(s.taskWaitKeys) {
 		for _, w := range s.taskWaiters[id] {
 			if w.remove != nil {

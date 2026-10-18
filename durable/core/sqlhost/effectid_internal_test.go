@@ -78,8 +78,8 @@ func (c *timerSteps) Step(ev abi.Event) *abi.Step {
 	switch c.calls {
 	case 1:
 		step.Effects = []abi.Effect{
-			{ID: 1, Kind: abi.EffectTimer, Payload: abi.TimerEffect(1, 1000, false)},
-			{ID: 2, Kind: abi.EffectTimer, Payload: abi.TimerEffect(2, 1000+3600e3, false)},
+			{ID: 1, Kind: abi.EffectTimer, Payload: abi.TimerEffect(1, 1000, abi.TimerVolatile)},
+			{ID: 2, Kind: abi.EffectTimer, Payload: abi.TimerEffect(2, 1000+3600e3, abi.TimerVolatile)},
 		}
 	case 2:
 		step.Effects = []abi.Effect{{ID: 3, Kind: abi.EffectTimerClear, Payload: abi.U32Payload(2)}}

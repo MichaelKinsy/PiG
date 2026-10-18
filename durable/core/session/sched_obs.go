@@ -35,6 +35,7 @@ func (s *Scheduler) scheduleReconcileAfterRead() {
 }
 
 func (s *Scheduler) kick() {
+	s.scheduleWake()
 	s.dirty = true
 	if s.draining || !s.enabled || s.closing {
 		return
@@ -416,6 +417,9 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		if err != nil {
 			return err
 		}
+		// Every pass picks up sleeps whose time has come: a pass started by any change may be the first to run after a deadline,
+		// and the wake it schedules no longer keeps a timer for a due sleep.
+		s.wakeDue()
 		// Pi's #reserve callback awaits only #loadScopes(false) (scheduler.ts #reserve): one tick, plus the Storage reads of
 		// the chain loads and a tick for each #loadChain call it awaited (scheduler.ts:680-684).
 		ticks := 1 + awaits
@@ -432,6 +436,11 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 			}
 			// It returns once what it waits for ends, its record changes, or the work below it ends.
 			if len(s.waitingOn(rec, true)) > 0 {
+				s.runnable.Delete(id)
+				continue
+			}
+			// It returns at the first pass after its time comes, which the timer, Resume, or any change starts.
+			if s.notDue(rec) {
 				s.runnable.Delete(id)
 				continue
 			}

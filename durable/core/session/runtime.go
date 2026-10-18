@@ -317,50 +317,13 @@ func (r *Runtime) Outcomes(ids []ID, then func([]*jv.Object, error)) {
 	}, func(err error) { then(out, err) })
 }
 
-// Sleep calls then once the Harness clock reaches until; it fails when the
-// invocation or cancel is aborted first.
-func (r *Runtime) Sleep(until float64, cancel *Cancel, then func(error)) {
-	inv, s := r.inv, r.s
-	if inv.ended {
-		s.loop.Defer(func() { then(endedError(inv)) })
-		return
-	}
-	var stopTimer func()
-	var removeInv, removeCtx func()
-	settled := false
-	finish := func(err error) {
-		if settled {
-			return
-		}
-		settled = true
-		if stopTimer != nil {
-			stopTimer()
-		}
-		if removeInv != nil {
-			removeInv()
-		}
-		if removeCtx != nil {
-			removeCtx()
-		}
-		s.loop.Defer(func() { then(err) })
-	}
-	var arm func()
-	arm = func() {
-		if inv.signal.Aborted() || cancel.Aborted() {
-			finish(ErrAborted)
-			return
-		}
-		if until-s.env.Now() <= 0 {
-			finish(nil)
-			return
-		}
-		stopTimer = s.env.Timer(until, arm)
-	}
-	removeInv = inv.signal.OnAbort(func() { finish(ErrAborted) })
-	if cancel != nil {
-		removeCtx = cancel.OnAbort(func() { finish(ErrAborted) })
-	}
-	arm()
+// SleepUntil commits a sleep: the task holds no invocation until the Harness clock reaches until, then resumes at checkpoint.
+// then runs once the sleep is stored, not when the time comes (scheduler.ts sleepUntil, a #gated #commitState).
+func (r *Runtime) SleepUntil(until float64, checkpoint any, then func(error)) {
+	r.gated(func(tx *Tx, current *jv.Object) error {
+		tx.ticks = hopcost.GatedChange(1)
+		return r.s.commitState(tx, r.inv, current, obj("status", StatusSleeping, "checkpoint", jv.Clone(checkpoint), "until", until))
+	}, then)
 }
 
 // Read runs job as a read-only job on the Session line (scheduler.ts #read with Session.readOnLine): it waits behind the

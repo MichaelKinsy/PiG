@@ -62,6 +62,10 @@ func graphNode(record *jv.Object, conversations []any) *jv.Object {
 		s.Set("phase", valueOf(objOf(state, "checkpoint"), "phase"))
 		s.Set("on", jv.Clone(valueOf(state, "on")))
 		s.Set("policy", jv.Clone(valueOf(state, "policy")))
+	case "sleeping":
+		s.Set("status", status)
+		s.Set("phase", valueOf(objOf(state, "checkpoint"), "phase"))
+		s.Set("until", valueOf(state, "until"))
 	default:
 		s.Set("status", "completing")
 		s.Set("outcome", valueOf(objOf(state, "outcome"), "status"))
