@@ -43,6 +43,9 @@ export class CoreClient {
   onConversationCreated?: (tx: unknown, record: unknown) => unknown
   /** The sizes of a session-mode core's document cache, as its last doc_cache notice said (session.ts documentCacheSizes is synchronous). */
   docCache: { readonly cached: number; readonly idle: number; readonly attached: number; readonly sweeps: number } = { cached: 0, idle: 0, attached: 0, sweeps: 0 }
+  /** The last wake the core published, and the host's callback for each (HarnessOptions.onWake); the core arms no timer for sleeping tasks when the host takes it. */
+  wake: { active: boolean; at?: number } | undefined
+  onWake: ((wake: { active: boolean; at?: number }) => void) | undefined
   /** The sizes of the scheduler's ownership indexes, as the core's last index_sizes notice said (scheduler.ts indexSizes is synchronous). */
   indexSizes: Readonly<Record<"live" | "settled" | "edges" | "below" | "roots" | "unloaded" | "dropQueue", number>> = { live: 0, settled: 0, edges: 0, below: 0, roots: 0, unloaded: 0, dropQueue: 0 }
   private off: () => void
@@ -116,6 +119,12 @@ export class CoreClient {
       }
       case NOTICE.index_sizes: {
         this.indexSizes = JSON.parse(dec.decode(n.payload))
+        return
+      }
+      case NOTICE.wake: {
+        // The core's Harness.wake() after a change (HarnessOptions.onWake): the host arms its alarm from it.
+        this.wake = JSON.parse(dec.decode(n.payload))
+        this.onWake?.(this.wake!)
         return
       }
       case NOTICE.progress_ack: {

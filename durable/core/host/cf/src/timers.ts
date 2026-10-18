@@ -37,9 +37,11 @@ export class AlarmTimers implements TimerDriver {
   get durablePending(): number { return this.durable.size }
   get alarmAt(): number { return this.armed }
 
-  set(timerId: number, at: number, durable: boolean) {
+  set(timerId: number, at: number, timerClass: number) {
     this.clear(timerId)
-    if (durable) { this.durable.set(timerId, at); this.arm(); return }
+    // A background timer only frees memory, and a pending timer would block hibernation: declined, the core frees it at later commits.
+    if (timerClass === 2) return
+    if (timerClass === 1) { this.durable.set(timerId, at); this.arm(); return }
     this.handles.set(timerId, setTimeout(() => { this.handles.delete(timerId); this.fire(timerId) }, Math.max(0, at - this.clock())))
   }
 
@@ -101,7 +103,7 @@ export class TimeoutTimers implements TimerDriver {
 
   constructor(fire: (timerId: number) => void, clock: () => number = Date.now) { this.fire = fire; this.clock = clock }
 
-  set(timerId: number, at: number, _durable?: boolean) {
+  set(timerId: number, at: number, _timerClass?: number) {
     this.clear(timerId)
     this.handles.set(timerId, setTimeout(() => { this.handles.delete(timerId); this.fire(timerId) }, Math.max(0, at - this.clock())))
   }

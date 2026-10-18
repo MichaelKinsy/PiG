@@ -321,6 +321,7 @@ func (s *coreSession) Resume() {
 	}
 	s.resumed = true
 	s.mu.Unlock()
+	//portlint:allow ctxbackground Harness.resume() takes no context (harness.ts resume): the event is a notification, not cancellable work
 	_ = s.host.Send(context.Background(), abi.Event{Kind: abi.EventResume})
 }
 
@@ -929,6 +930,7 @@ func (s *coreSession) callOnWake(wake harness.Wake) (err error) {
 
 // Wake is when this Session next needs a running process, answered by the core from its scheduler's memory.
 func (s *coreSession) Wake() harness.Wake {
+	//portlint:allow ctxbackground Harness.wake() is synchronous and takes no context (harness.ts wake): an immediate answer from the core's memory
 	raw, err := s.client.API(context.Background(), "wake", nil)
 	if err != nil {
 		panic(err)

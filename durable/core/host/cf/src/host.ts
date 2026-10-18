@@ -99,7 +99,8 @@ export type EffectHandler = (effect: Effect, ctx: EffectContext) => void | Promi
 
 /** Timer and liveness effects (ABI section 6, effects 1, 2 and 10). */
 export interface TimerDriver {
-  set(timerId: number, at: number, durable: boolean): void
+  /** `timerClass`: 0 volatile (a throttle window), 1 durable (a sleeping task: keep the object alarm), 2 background (memory only: a host may decline it). */
+  set(timerId: number, at: number, timerClass: number): void
   clear(timerId: number): void
   /** The watchdog: an `at` time, or -1 when nothing is live. */
   liveness(at: number): void
@@ -496,7 +497,7 @@ export class HostSession {
     switch (effect.kind) {
       case EFFECT.timer: {
         const dv = new DataView(effect.payload.buffer, effect.payload.byteOffset, effect.payload.byteLength)
-        timers?.set(dv.getUint32(0, true), dv.getFloat64(4, true), dv.getUint8(12) === 1)
+        timers?.set(dv.getUint32(0, true), dv.getFloat64(4, true), dv.getUint8(12))
         return
       }
       case EFFECT.timer_clear: return timers?.clear(new DataView(effect.payload.buffer, effect.payload.byteOffset, 4).getUint32(0, true))

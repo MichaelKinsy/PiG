@@ -31,19 +31,22 @@ type TaskGraphState struct {
 
 // MarshalJSON encodes the upstream variant of the state's Status.
 func (state TaskGraphState) MarshalJSON() ([]byte, error) {
+	var encoded *delta.JsonObject
 	switch state.Status {
 	case durable.TaskPending, durable.TaskRunning:
-		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase))
+		encoded = delta.JsonObjectOf("status", state.Status, "phase", state.Phase)
 	case durable.TaskSleeping:
-		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "until", state.Until))
+		encoded = delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "until", state.Until)
 	case durable.TaskWaiting:
 		on := state.On
 		if on == nil {
 			on = []durable.TaskId{}
 		}
-		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "on", on, "policy", state.Policy))
+		encoded = delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "on", on, "policy", state.Policy)
+	default:
+		encoded = delta.JsonObjectOf("status", state.Status, "outcome", state.Outcome)
 	}
-	return json.Marshal(delta.JsonObjectOf("status", state.Status, "outcome", state.Outcome))
+	return json.Marshal(encoded)
 }
 
 // TaskGraphNode is one live task of the graph.

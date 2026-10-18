@@ -3632,7 +3632,7 @@ file = "durable/harness/task_graph.go"
 func = "TaskGraphState.MarshalJSON"
 pattern = "nested-marshal"
 detail = "json.Marshal"
-count = 3
+count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]

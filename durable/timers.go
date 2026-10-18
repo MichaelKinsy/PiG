@@ -57,7 +57,7 @@ func setTimeoutDuration(milliseconds float64) time.Duration {
 	if !(milliseconds >= 1) {
 		milliseconds = 1
 	}
-	return time.Duration(math.Trunc(milliseconds)) * time.Millisecond
+	return time.Duration(math.Trunc(milliseconds)) * time.Millisecond //portlint:allow numbers milliseconds is at least 1 and at most 2^31-1 (the caller caps it), so the conversion is exact
 }
 
 // Timers are the timers the Session and Harness arm through the host's SetTimer (timers.ts Timers).

@@ -336,22 +336,23 @@ func TestSleepingTasks(t *testing.T) {
 			if got := jsonValueOf(t, stateOf(t, h, id)); !reflect.DeepEqual(got, want) {
 				t.Fatalf("state %v, want %v", got, want)
 			}
-			inspection, err := h.Inspect(t.Context())
-			if err != nil {
-				t.Fatal(err)
-			}
-			found := false
-			for _, task := range inspection.Tasks {
-				if task.Record.Id == id {
-					found = true
-					if task.State.Kind != harness.TaskInspectionSleeping || task.State.Until != 2000 {
-						t.Fatalf("inspection %+v, want sleeping until 2000", task.State)
+			// The invocation ends just after its sleeping commit publishes, so the inspection settles on sleeping.
+			inspected := func() (harness.TaskInspectionState, bool) {
+				inspection, err := h.Inspect(t.Context())
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, task := range inspection.Tasks {
+					if task.Record.Id == id {
+						return task.State, true
 					}
 				}
+				return harness.TaskInspectionState{}, false
 			}
-			if !found {
-				t.Fatal("the sleeping task is not inspected")
-			}
+			pollUntil(t, "the sleeping inspection", func() bool {
+				state, ok := inspected()
+				return ok && state.Kind == harness.TaskInspectionSleeping && state.Until == 2000
+			})
 			pollUntil(t, "the graph showing the sleep", func() bool {
 				node, ok := graph.Value().Tasks[strconv.FormatInt(int64(id), 10)]
 				return ok && node.State.Status == durable.TaskSleeping && node.State.Phase == "after" && node.State.Until == 2000
