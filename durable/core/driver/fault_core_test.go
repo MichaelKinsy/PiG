@@ -99,12 +99,15 @@ func (s *controlledStore) taskWrites(id durable.TaskId) []taskWrite {
 }
 
 // lastCommitTaskWrites lists the task writes of the last commit that entered the store.
-func (s *controlledStore) lastCommitTaskWrites() []taskWrite {
+func (s *controlledStore) lastCommitTaskWrites() []taskWrite { return s.commitTaskWrites(0) }
+
+// commitTaskWrites lists the task writes of the commit that entered the store n commits before the last one (storage.commits.at(-1-n)).
+func (s *controlledStore) commitTaskWrites(n int) []taskWrite {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var out []taskWrite
 	for _, w := range s.tasks {
-		if w.commit == s.commits {
+		if w.commit == s.commits-n {
 			out = append(out, w)
 		}
 	}

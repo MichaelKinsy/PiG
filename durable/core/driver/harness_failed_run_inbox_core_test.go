@@ -67,7 +67,7 @@ func fauxText(text string) ai.FauxResponseStep {
 	return ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}, StopReason: "stop"})
 }
 
-func submitInput(t *testing.T, conversation harness.Conversation, text string, whenBusy durable.WhenBusy) durable.Submission {
+func submitInputWhenBusy(t *testing.T, conversation harness.Conversation, text string, whenBusy durable.WhenBusy) durable.Submission {
 	t.Helper()
 	submission, err := conversation.Submit(t.Context(), durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText(text), WhenBusy: whenBusy})
 	if err != nil {
@@ -97,9 +97,9 @@ func failWithQueuedInput(t *testing.T, core bool, policy durable.AfterFailedRun)
 	t.Helper()
 	failing, gate, reached := failingOnce()
 	rig := openFailedRun(t, core, policy, failing, fauxText("second answer"), fauxText("third answer"))
-	first := submitInput(t, rig.root, "Analyze this report", "")
+	first := submitInputWhenBusy(t, rig.root, "Analyze this report", "")
 	<-reached
-	second := submitInput(t, rig.root, "Email me the summary", durable.WhenBusyFollowUp)
+	second := submitInputWhenBusy(t, rig.root, "Email me the summary", durable.WhenBusyFollowUp)
 	close(gate)
 	expectUnanswered(t, settledOf(t, first), "model_error")
 	return rig, second
@@ -118,7 +118,7 @@ func TestInputsQueuedBehindAFailedRun(t *testing.T) {
 				t.Fatalf("second %+v (%v), want queued", status, err)
 			}
 			// The next input runs the queue, as before.
-			third := submitInput(t, rig.root, "Anything else?", "")
+			third := submitInputWhenBusy(t, rig.root, "Anything else?", "")
 			if settled := settledOf(t, second); settled.Status != durable.SubmissionDone {
 				t.Fatalf("second settled %+v, want done", settled)
 			}
@@ -158,7 +158,7 @@ func TestInputsQueuedBehindAFailedRun(t *testing.T) {
 			eachEngine(t, func(t *testing.T, core bool) {
 				failing, gate, reached := failingOnce()
 				rig := openFailedRun(t, core, policy, failing, fauxText("second answer"))
-				first := submitInput(t, rig.root, "first", "")
+				first := submitInputWhenBusy(t, rig.root, "first", "")
 				<-reached
 				note := ai.UserMessage{Content: ai.UserText("a note the model sees"), Timestamp: 1}
 				write, err := rig.root.Submit(t.Context(), durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "test.note", Model: []ai.Message{note}}})
