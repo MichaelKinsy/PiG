@@ -184,6 +184,48 @@ func TestDurableObjectSqliteAdapter(t *testing.T) {
 		}
 	})
 
+	// upstream: packages/durable/test-workers/storage.test.ts:19 "migrates a version 1 schema to admit sleeping tasks, keeping tasks and indexes"
+	t.Run("migrates a version 1 schema to admit sleeping tasks, keeping tasks and indexes", func(t *testing.T) {
+		storage := newFakeStorage(t)
+		database := cloudflare.NewDurableObjectSqliteDatabase(storage)
+		schema, err := durablesqlite.CreateSqliteSchema(new("legacy_"))
+		check(t, err)
+		tasks := schema.Tables.Tasks
+		insert := func(id int, status string) error {
+			return database.Run("INSERT INTO "+tasks+" (id, conversation_id, kind, status, abort_requested, background, record) VALUES (?, 1, 'test', ?, 0, 0, '{}')", int64(id), status)
+		}
+		// A database written by a version that knew schema version 1 only.
+		check(t, durablesqlite.ApplySqliteMigrationsForSchema(database, schema, durablesqlite.CreateSqliteMigrations(schema)[:1]))
+		check(t, insert(5, "waiting"))
+		if err := insert(6, "sleeping"); err == nil {
+			t.Fatal("version 1 admitted a sleeping task")
+		}
+
+		_, err = cloudflare.OpenDurableObjectSqliteStorage(storage, durablesqlite.SqliteStorageOptions{Prefix: new("legacy_")})
+		check(t, err)
+		if version := queryIds(t, storage, "SELECT version FROM "+schema.Tables.DurableSchema); !slices.Equal(version, []int64{2}) {
+			t.Fatalf("schema version %v, want 2", version)
+		}
+		if ids := queryIds(t, storage, "SELECT id FROM "+tasks+" WHERE status = 'waiting'"); !slices.Equal(ids, []int64{5}) {
+			t.Fatalf("waiting tasks %v, want [5]", ids)
+		}
+		check(t, insert(6, "sleeping"))
+		rows, err := storage.conn.QueryContext(context.Background(), "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = ? ORDER BY name", tasks)
+		check(t, err)
+		defer func() { _ = rows.Close() }()
+		var indexes []string
+		for rows.Next() {
+			var name string
+			check(t, rows.Scan(&name))
+			indexes = append(indexes, name)
+		}
+		check(t, rows.Err())
+		want := []string{schema.Indexes.TasksByAbortRequested, schema.Indexes.TasksByBackground, schema.Indexes.TasksByConversation, schema.Indexes.TasksByKind, schema.Indexes.TasksByStatus}
+		if !slices.Equal(indexes, want) {
+			t.Fatalf("task indexes %v, want %v", indexes, want)
+		}
+	})
+
 	// Pi f7e3cb54 sqlite-cloudflare.test.ts:91
 	t.Run("prefixes pi's tables and indexes without changing host tables", func(t *testing.T) {
 		storage := newFakeStorage(t)
