@@ -1,8 +1,9 @@
 package host
 
-// Ports packages/chord/test/boundary.test.ts: Chord does not depend on Pi packages or files outside Chord. The Go
-// form: every module package that chord/... links is Chord itself or a product-neutral helper (JSON, numbers, strings,
-// paths, the TypeBox value engine and the JSON Schema validator), never another Pi port.
+// Ports packages/chord/test/boundary.test.ts: Chord does not depend on Pi packages other than pi-telemetry, or on files
+// outside Chord. The Go form: every module package that chord/... links is Chord itself, telemetry (pi-telemetry, the one
+// allowed Pi package: a leaf without dependencies, needed for Context.telemetry) or a product-neutral helper (JSON,
+// numbers, strings, paths, the TypeBox value engine and the JSON Schema validator), never another Pi port.
 
 import (
 	"os/exec"
@@ -29,6 +30,7 @@ var chordHelpers = []string{
 	"internal/nodepath",
 	"internal/nodeurl",
 	"internal/typebox",
+	"telemetry", // pi-telemetry, the dependency of Context.telemetry (chord/context)
 	"third_party/jsonschema",
 	"third_party/jsonschema/kind",
 }

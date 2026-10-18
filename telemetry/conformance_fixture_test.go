@@ -15,6 +15,16 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry/telemetrytest"
 )
 
+// caseNamed finds one conformance case by its group and name, the identity a runner sees.
+func caseNamed(cases []telemetrytest.TelemetryAdapterConformanceCase, group, name string) telemetrytest.TelemetryAdapterConformanceCase {
+	for _, testCase := range cases {
+		if testCase.Group == group && testCase.Name == name {
+			return testCase
+		}
+	}
+	panic("no conformance case " + group + " / " + name)
+}
+
 // Pi source: packages/telemetry/src/memory.ts
 // mutation-checked: zeroing the results of InMemoryTelemetryContext.GetSpans fails it
 func TestConformanceFixtureIsOwnedAndDisposedByEachCase(t *testing.T) {
@@ -37,14 +47,14 @@ func TestConformanceFixtureIsOwnedAndDisposedByEachCase(t *testing.T) {
 		}, nil
 	}
 	conformance := telemetrytest.CreateTelemetryAdapterConformance(factory)
-	if err := conformance[0].Run(t.Context()); err != nil {
+	if err := caseNamed(conformance, "callback lifecycle", "admits once synchronously and preserves the result").Run(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if want := []string{"build", "read", "dispose"}; !slices.Equal(events, want) {
 		t.Fatalf("events = %v, want %v: the fixture is built once, read by the case, then disposed last", events, want)
 	}
 	events = nil
-	if err := conformance[1].Run(t.Context()); err != nil {
+	if err := caseNamed(conformance, "status", "uses last explicit status without automatic overwrite").Run(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if events[0] != "build" || events[len(events)-1] != "dispose" || built != 2 {
@@ -66,7 +76,7 @@ func TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError(t *t
 			Dispose: func(context.Context) error { disposed++; return disposeFailure },
 		}, nil
 	})
-	err := broken[0].Run(t.Context())
+	err := caseNamed(broken, "callback lifecycle", "admits once synchronously and preserves the result").Run(t.Context())
 	if disposed != 1 {
 		t.Fatalf("dispose ran %d times, want once even though the case failed", disposed)
 	}

@@ -23,6 +23,7 @@ package telemetry
 // stubgen:omit CreateTelemetryAdapterConformance
 // stubgen:omit TelemetryAdapterFixture
 // stubgen:omit TelemetryAdapterFixture.GetSpans
+// stubgen:omit TelemetryAdapterFixture.GetMetrics
 // stubgen:omit TelemetryAdapterFixtureFactory
 // stubgen:omit TelemetryAdapterConformanceCase
 // stubgen:omit TelemetryAdapterConformanceCase.Run
@@ -113,10 +114,12 @@ type TelemetrySpanDefinition struct {
 	Status          TelemetrySpanStatusDefinition                `json:"status"`
 }
 
-// TelemetrySchemaDefinition is serializable telemetry schema data.
+// TelemetrySchemaDefinition is serializable telemetry schema data. A nil Metrics is absent and an empty map serializes
+// as {}.
 type TelemetrySchemaDefinition struct {
-	Version int                                `json:"version"`
-	Spans   map[string]TelemetrySpanDefinition `json:"spans"`
+	Version int                                  `json:"version"`
+	Spans   map[string]TelemetrySpanDefinition   `json:"spans"`
+	Metrics map[string]TelemetryMetricDefinition `json:"metrics,omitzero"`
 }
 
 // DefineTelemetrySchema returns schema unchanged. It is the identity helper for serializable telemetry schema data.

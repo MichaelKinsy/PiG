@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // HookApi is what a hook may use: committed reads and the asking task's memos, which hooks and the task share.
@@ -133,6 +134,14 @@ type EnvTarget struct {
 
 // HarnessOptions are the options of OpenHarness.
 type HarnessOptions struct {
+	// Telemetry is the host-owned adapter, HarnessOptions.telemetry: a telemetry.TelemetryContext that may also implement
+	// telemetry.TelemetryPropagation and telemetry.TelemetryMetrics. Durable instrumentation is not yet emitted: the option
+	// reserves the configuration boundary, and a nil Telemetry is the omitted option.
+	// Pi types it as `TelemetryContext & Partial<TelemetryPropagation & TelemetryMetrics>`, an object that may define any
+	// subset of the propagation and metrics members. Go has no partial interface: the optional capabilities are the
+	// interfaces themselves, found by asserting Telemetry to telemetry.TelemetryPropagation and telemetry.TelemetryMetrics,
+	// and an adapter either implements all members of one or none of them.
+	Telemetry telemetry.TelemetryContext
 	// Models is the pi-ai model access used by generation, compaction, hooks and tools: a Model Runtime or a pi-ai
 	// collection. ModelsFunc, when set, replaces it: it returns the current one and is called at each use, so a host can
 	// replace its model configuration without reopening the Harness (HarnessOptions.models as a function, Pi 7ec1f648).

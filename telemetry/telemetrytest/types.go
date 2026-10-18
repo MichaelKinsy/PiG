@@ -11,11 +11,16 @@ import (
 )
 
 // TelemetryAdapterFixture is a fresh adapter instance and normalized snapshot reader owned by one conformance case.
-// Dispose ports Symbol.asyncDispose; a nil Dispose releases nothing.
+// Propagation and Metrics are the adapter's optional capabilities: a nil one skips its cases. A fixture with Metrics
+// supplies GetMetrics, its normalized measurement reader. Dispose ports Symbol.asyncDispose; a nil Dispose releases
+// nothing.
 type TelemetryAdapterFixture struct {
-	Context  telemetry.TelemetryContext
-	GetSpans func(context.Context) ([]telemetry.RecordedTelemetrySpan, error)
-	Dispose  func(context.Context) error
+	Context     telemetry.TelemetryContext
+	Propagation telemetry.TelemetryPropagation
+	Metrics     telemetry.TelemetryMetrics
+	GetMetrics  func(context.Context) ([]telemetry.RecordedTelemetryMeasurement, error)
+	GetSpans    func(context.Context) ([]telemetry.RecordedTelemetrySpan, error)
+	Dispose     func(context.Context) error
 }
 
 // TelemetryAdapterFixtureFactory creates an isolated adapter fixture for one conformance case.

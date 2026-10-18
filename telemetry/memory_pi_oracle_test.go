@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/rand"
 	"os/exec"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -14,6 +16,8 @@ import (
 )
 
 // pi: packages/telemetry/src/memory.ts
+
+var scopePattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 
 // outcomeSpec is how a span callback ends: it returns, throws an Error with a name and message, or throws a value that is not an Error.
 type outcomeSpec struct {
@@ -23,7 +27,15 @@ type outcomeSpec struct {
 	Value   string `json:"value"`
 }
 
-// opSpec is one step of a span program: setAttributes, addEvent, setStatus, keeping the span, using a kept span (possibly after it settled), or awaiting a child span.
+// linkSpec is a span link: its target (a kept span, nothing, the shared no-op context or the recorder root) and attributes.
+type linkSpec struct {
+	Target string         `json:"target"`
+	Idx    int            `json:"idx"`
+	Attrs  map[string]any `json:"attrs,omitempty"`
+}
+
+// opSpec is one step of a span program: setAttributes, addEvent, setStatus, addLink, keeping the span, using a kept span (possibly after it settled), awaiting a child span, or
+// awaiting a span under a parent extracted from a carrier.
 type opSpec struct {
 	Op      string          `json:"op"`
 	Name    string          `json:"name"`
@@ -33,13 +45,93 @@ type opSpec struct {
 	Sub     *opSpec         `json:"sub,omitempty"`
 	Body    []opSpec        `json:"body"`
 	Outcome *outcomeSpec    `json:"outcome,omitempty"`
+	Target  string          `json:"target,omitempty"`
+	Carrier string          `json:"carrier,omitempty"`
+	Links   []linkSpec      `json:"links,omitempty"`
 }
 
 type rootSpec struct {
 	Name    string         `json:"name"`
 	Attrs   map[string]any `json:"attrs,omitempty"`
+	Links   []linkSpec     `json:"links,omitempty"`
 	Body    []opSpec       `json:"body"`
 	Outcome outcomeSpec    `json:"outcome"`
+}
+
+// foreignScope is a valid scope no recorder owns.
+const foreignScope = "0a0b0c0d-0e0f-4a0b-8c0d-0e0f0a0b0c0d"
+
+// linkTarget is the context a link names: a kept span, nothing, the shared no-op context or the recorder root.
+func linkTarget(recorder *telemetry.InMemoryTelemetryContext, kept []telemetry.TelemetrySpan, target string, idx int) telemetry.TelemetryContext {
+	switch target {
+	case "kept":
+		if len(kept) > 0 {
+			return kept[idx%len(kept)]
+		}
+	case "noop":
+		return telemetry.NoopTelemetryContext
+	case "recorder":
+		return recorder
+	}
+	return nil
+}
+
+func linksOf(recorder *telemetry.InMemoryTelemetryContext, kept []telemetry.TelemetrySpan, links []linkSpec) []telemetry.SpanLink {
+	var out []telemetry.SpanLink
+	for _, link := range links {
+		out = append(out, telemetry.SpanLink{Context: linkTarget(recorder, kept, link.Target, link.Idx), Attributes: attributesOf(link.Attrs)})
+	}
+	return out
+}
+
+// carrierOf is the carrier a remote step extracts: the injected carrier of a kept span, a malformed or foreign shape, or none.
+func carrierOf(recorder *telemetry.InMemoryTelemetryContext, kept []telemetry.TelemetrySpan, op opSpec) telemetry.TelemetryCarrier {
+	var own telemetry.TelemetryCarrier
+	if len(kept) > 0 {
+		own = recorder.Inject(kept[op.Idx%len(kept)])
+	}
+	scope := own["pi-memory-scope"]
+	foreign := func(span string) telemetry.TelemetryCarrier {
+		return telemetry.TelemetryCarrier{"pi-memory-scope": foreignScope, "pi-memory-span": span}
+	}
+	switch op.Carrier {
+	case "kept":
+		return own
+	case "extra":
+		if own != nil {
+			own["extra"] = "key"
+		}
+		return own
+	case "missingSpan":
+		if own != nil {
+			return telemetry.TelemetryCarrier{"pi-memory-scope": scope}
+		}
+	case "badScope":
+		return telemetry.TelemetryCarrier{"pi-memory-scope": "X", "pi-memory-span": "1"}
+	case "upperScope":
+		return telemetry.TelemetryCarrier{"pi-memory-scope": strings.ToUpper(foreignScope), "pi-memory-span": "1"}
+	case "spanZero":
+		return foreign("0")
+	case "spanLeadingZero":
+		return foreign("01")
+	case "spanSign":
+		return foreign("+1")
+	case "spanUnsafe":
+		return foreign("9007199254740992")
+	case "spanHuge":
+		return foreign("99999999999999999999999")
+	case "spanMaxSafe":
+		return foreign("9007199254740991")
+	case "foreign":
+		return foreign("1")
+	case "ownUnknown":
+		if own != nil {
+			return telemetry.TelemetryCarrier{"pi-memory-scope": scope, "pi-memory-span": "99999"}
+		}
+	case "empty":
+		return telemetry.TelemetryCarrier{}
+	}
+	return nil
 }
 
 // namedFailure is a JavaScript Error whose name was assigned.
@@ -75,7 +167,7 @@ func finish(outcome outcomeSpec) error {
 	return nil
 }
 
-func applyOp(span telemetry.TelemetrySpan, op opSpec, kept *[]telemetry.TelemetrySpan) {
+func applyOp(recorder *telemetry.InMemoryTelemetryContext, span telemetry.TelemetrySpan, op opSpec, kept *[]telemetry.TelemetrySpan) {
 	switch op.Op {
 	case "attrs":
 		span.SetAttributes(attributesOf(op.Attrs))
@@ -98,14 +190,20 @@ func applyOp(span telemetry.TelemetrySpan, op opSpec, kept *[]telemetry.Telemetr
 		*kept = append(*kept, span)
 	case "useKept":
 		if len(*kept) > 0 {
-			applyOp((*kept)[op.Idx%len(*kept)], *op.Sub, kept)
+			applyOp(recorder, (*kept)[op.Idx%len(*kept)], *op.Sub, kept)
 		}
-	case "child":
+	case "link":
+		span.AddLink(telemetry.SpanLink{Context: linkTarget(recorder, *kept, op.Target, op.Idx), Attributes: attributesOf(op.Attrs)})
+	case "child", "remote":
+		parent := telemetry.TelemetryContext(span)
+		if op.Op == "remote" {
+			parent = recorder.Extract(carrierOf(recorder, *kept, op))
+		}
 		func() {
 			defer func() { _ = recover() }()
-			_ = span.StartSpan(telemetry.SpanOptions{Name: op.Name, Attributes: attributesOf(op.Attrs)}, func(child telemetry.TelemetrySpan) error {
+			_ = parent.StartSpan(telemetry.SpanOptions{Name: op.Name, Attributes: attributesOf(op.Attrs), Links: linksOf(recorder, *kept, op.Links)}, func(child telemetry.TelemetrySpan) error {
 				for _, sub := range op.Body {
-					applyOp(child, sub, kept)
+					applyOp(recorder, child, sub, kept)
 				}
 				return finish(*op.Outcome)
 			})
@@ -170,11 +268,21 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 		}
 		return outcomeSpec{Kind: "return"}
 	}
+	link := func() linkSpec {
+		return linkSpec{Target: pick("kept", "kept", "kept", "none", "noop", "recorder"), Idx: rng.Intn(4), Attrs: attributes()}
+	}
+	links := func() []linkSpec {
+		var out []linkSpec
+		for range rng.Intn(3) {
+			out = append(out, link())
+		}
+		return out
+	}
 	var body func(depth int) []opSpec
 	var op func(depth int, allowKept bool) opSpec
 	op = func(depth int, allowKept bool) opSpec {
 		for {
-			switch rng.Intn(8) {
+			switch rng.Intn(11) {
 			case 0:
 				return opSpec{Op: "attrs", Attrs: attributes()}
 			case 1:
@@ -189,12 +297,22 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 				}
 				sub := op(depth, false)
 				return opSpec{Op: "useKept", Idx: rng.Intn(4), Sub: &sub}
+			case 5, 6:
+				l := link()
+				return opSpec{Op: "link", Target: l.Target, Idx: l.Idx, Attrs: l.Attrs}
+			case 7:
+				if depth >= 3 {
+					continue
+				}
+				o := outcome()
+				carrier := pick("kept", "kept", "kept", "extra", "missingSpan", "badScope", "upperScope", "spanZero", "spanLeadingZero", "spanSign", "spanUnsafe", "spanHuge", "spanMaxSafe", "foreign", "ownUnknown", "empty", "none")
+				return opSpec{Op: "remote", Carrier: carrier, Idx: rng.Intn(4), Name: pick("r1", "r2", ""), Attrs: attributes(), Links: links(), Body: body(depth + 1), Outcome: &o}
 			default:
 				if depth >= 3 {
 					continue
 				}
 				o := outcome()
-				return opSpec{Op: "child", Name: pick("c1", "c2", ""), Attrs: attributes(), Body: body(depth + 1), Outcome: &o}
+				return opSpec{Op: "child", Name: pick("c1", "c2", ""), Attrs: attributes(), Links: links(), Body: body(depth + 1), Outcome: &o}
 			}
 		}
 	}
@@ -209,7 +327,7 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 	for range 1500 {
 		var roots []rootSpec
 		for range 1 + rng.Intn(3) {
-			roots = append(roots, rootSpec{Name: pick("r1", "r2", ""), Attrs: attributes(), Body: body(1), Outcome: outcome()})
+			roots = append(roots, rootSpec{Name: pick("r1", "r2", ""), Attrs: attributes(), Links: links(), Body: body(1), Outcome: outcome()})
 		}
 		programs = append(programs, roots)
 	}
@@ -232,16 +350,16 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 	if len(want) != len(programs) {
 		t.Fatalf("Pi answered %d programs, want %d", len(want), len(programs))
 	}
-	failures, spans := 0, 0
+	failures, spans, linked, remote := 0, 0, 0, 0
 	for i, program := range programs {
 		recorder := telemetry.NewInMemoryTelemetryContext()
 		var kept []telemetry.TelemetrySpan
 		for _, root := range program {
 			func() {
 				defer func() { _ = recover() }()
-				_ = recorder.StartSpan(telemetry.SpanOptions{Name: root.Name, Attributes: attributesOf(root.Attrs)}, func(span telemetry.TelemetrySpan) error {
+				_ = recorder.StartSpan(telemetry.SpanOptions{Name: root.Name, Attributes: attributesOf(root.Attrs), Links: linksOf(recorder, kept, root.Links)}, func(span telemetry.TelemetrySpan) error {
 					for _, sub := range root.Body {
-						applyOp(span, sub, &kept)
+						applyOp(recorder, span, sub, &kept)
 					}
 					return finish(root.Outcome)
 				})
@@ -249,6 +367,14 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 		}
 		recorded := recorder.GetSpans()
 		spans += len(recorded)
+		for _, span := range recorded {
+			if len(span.Links) > 0 {
+				linked++
+			}
+			if span.ParentContext != nil && span.ParentID == nil {
+				remote++
+			}
+		}
 		got := make([]map[string]any, len(recorded))
 		for j, span := range recorded {
 			events := make([]map[string]any, len(span.Events))
@@ -259,7 +385,15 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 			if span.Status.Error != nil {
 				status["error"] = map[string]any{"name": span.Status.Error.Name, "message": span.Status.Error.Message}
 			}
-			got[j] = map[string]any{"id": span.ID, "parentId": nil, "name": span.Name, "attributes": span.Attributes, "events": events, "status": status, "settled": span.Settled}
+			links := make([]map[string]any, len(span.Links))
+			for k, link := range span.Links {
+				links[k] = map[string]any{"context": link.Context, "attributes": link.Attributes}
+			}
+			var parentContext any
+			if span.ParentContext != nil {
+				parentContext = span.ParentContext
+			}
+			got[j] = map[string]any{"id": span.ID, "parentId": nil, "context": span.Context, "parentContext": parentContext, "links": links, "name": span.Name, "attributes": span.Attributes, "events": events, "status": status, "settled": span.Settled}
 			if span.ParentID != nil {
 				got[j]["parentId"] = *span.ParentID
 			}
@@ -271,6 +405,8 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// The recorder's scope is a random UUID: Pi's output prints it as SCOPE, and so does PiG's.
+		gotJSON = scopePattern.ReplaceAll(gotJSON, []byte("SCOPE"))
 		var gotValue, wantValue any
 		if err := json.Unmarshal(gotJSON, &gotValue); err != nil {
 			t.Fatal(err)
@@ -292,5 +428,8 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 	}
 	if spans < len(programs)*2 {
 		t.Fatalf("the programs recorded only %d spans", spans)
+	}
+	if linked < len(programs)/2 || remote < len(programs)/10 {
+		t.Fatalf("the programs recorded %d linked spans and %d spans under a remote parent in %d programs", linked, remote, len(programs))
 	}
 }

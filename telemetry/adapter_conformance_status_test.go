@@ -16,7 +16,12 @@ func TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus(t *testing.T) {
 	var factory telemetrytest.TelemetryAdapterFixtureFactory = func(context.Context) (telemetrytest.TelemetryAdapterFixture, error) {
 		recorder := &telemetry.InMemoryTelemetryContext{}
 		return telemetrytest.TelemetryAdapterFixture{
-			Context:  recorder,
+			Context:     recorder,
+			Propagation: recorder,
+			Metrics:     recorder,
+			GetMetrics: func(context.Context) ([]telemetry.RecordedTelemetryMeasurement, error) {
+				return recorder.GetMetrics(), nil
+			},
 			GetSpans: func(context.Context) ([]telemetry.RecordedTelemetrySpan, error) { return recorder.GetSpans(), nil },
 		}, nil
 	}
