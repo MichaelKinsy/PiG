@@ -596,14 +596,26 @@ func TestSleepingTasks(t *testing.T) {
 	// harness-sleep.test.ts:280 "arms a foreground timer the host declines with setTimeout, reporting it once"
 	t.Run("arms a foreground timer the host declines with setTimeout, reporting it once", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
+			// The scheduler asks the host for a timer only for a sleep whose time is after the clock when the wake is computed (scheduler.ts wake: until > now), and a
+			// sleep that is already due runs with no timer at all. A 10 ms nap on the system clock is due by then on a host that is 10 ms slow, and the decline is never
+			// reported (CI: "reports []"). So the clock stands still until the host is asked for a timer and then passes that timer's delay in the call: the sleeps can end
+			// only through the timers the host declined, which the fallback arms, and the decline is reported the one time.
+			clock := newClock(1000)
+			var asked atomic.Int32
 			nap := napTask(10, nil)
 			rig := newSleepRig(t, core, nap.Erased())
 			h := rig.open(func(o *harness.HarnessOptions) {
-				o.SetTimer = func(func(), float64, bool) func() { return nil }
+				o.Now = clock.now
+				o.SetTimer = func(_ func(), delayMs float64, _ bool) func() {
+					asked.Add(1)
+					clock.set(int64(clock.now() + delayMs))
+					return nil
+				}
 			})
 			first := rig.start(h, nap.Erased())
 			second := rig.start(h, nap.Erased())
 			h.Resume()
+			pollUntil(t, "the host asked for a timer", func() bool { return asked.Load() > 0 })
 			for _, id := range []durable.TaskId{first, second} {
 				if outcome := waitFinished(t, h, id).State.Outcome; outcome == nil || outcome.Status != durable.OutcomeCompleted {
 					t.Fatalf("task %d outcome %+v, want completed", id, outcome)
