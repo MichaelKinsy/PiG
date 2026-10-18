@@ -47771,7 +47771,8 @@
       ],
       "evidence": [
         "test:ai/compat_registry_test.go#TestEveryLegacyAPIAliasReturnsAStreamThatEndsWithTheRequestFailure",
-        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi"
+        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi",
+        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesStampTheReplyLikeTheirModule"
       ]
     },
     {
@@ -47792,7 +47793,8 @@
       ],
       "evidence": [
         "test:ai/compat_registry_test.go#TestEveryLegacyAPIAliasReturnsAStreamThatEndsWithTheRequestFailure",
-        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi"
+        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi",
+        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesStampTheReplyLikeTheirModule"
       ]
     },
     {
@@ -74391,7 +74393,7 @@
       "evidence": [
         "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesSendTheRequestOfTheirOwnAPIStreamUpstream",
         "test:ai/compat_registry_test.go#TestEveryLegacyAPIAliasReturnsAStreamThatEndsWithTheRequestFailure",
-        "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi"
+        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesStampTheReplyLikeTheirModule"
       ]
     },
     {
@@ -74413,7 +74415,7 @@
       "evidence": [
         "test:ai/api_streams_aliases_pi_test.go#TestLegacyAPIAliasesSendTheRequestOfTheirOwnAPIStreamUpstream",
         "test:ai/compat_registry_test.go#TestEveryLegacyAPIAliasReturnsAStreamThatEndsWithTheRequestFailure",
-        "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi"
+        "test:ai/compat_registry_test.go#TestLegacyAPIAliasesStampTheReplyLikeTheirModule"
       ]
     },
     {
