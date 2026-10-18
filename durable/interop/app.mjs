@@ -80,7 +80,8 @@ const note = defineTool({
 		// A job left to run beside its tool call commits in an order that is a scheduling accident: Pi's one thread settles
 		// it by microtask hops, Go's goroutines by who is ready first. The call ends with the job, so each commit of the
 		// session has exactly one commit before it and the raw tables, commit sequences included, are the same in both.
-		await api.waitForTask(job, callContext);
+		// PIG_INTEROP_UNAWAITED_JOB=1 leaves the job running beside the call: the D181 evidence test (unawaited_job_test.go).
+		if (process.env.PIG_INTEROP_UNAWAITED_JOB !== "1") await api.waitForTask(job, callContext);
 		return { output: [{ type: "text", text: `noted ${args.text}` }] };
 	},
 });

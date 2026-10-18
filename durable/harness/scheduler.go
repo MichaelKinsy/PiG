@@ -1998,6 +1998,9 @@ func (s *TaskScheduler) start(reserved reservation) {
 	if beforeInvocation != nil {
 		beforeInvocation(s, invocation)
 	}
+	// pig divergence (D181): an invocation runs on its own goroutine, so the commits of a job nothing awaits (a conversation-owned
+	// task its creator does not wait for) reach the Session line in an order set by goroutine scheduling; Pi's microtask hops
+	// fix that order against the generation chain. The final state is the same; commit sequence numbers can differ.
 	go func() {
 		defer func() {
 			s.end(invocation)

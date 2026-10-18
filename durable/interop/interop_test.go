@@ -27,12 +27,15 @@ import (
 )
 
 // node runs a script of this directory and returns its standard output.
-func node(t *testing.T, args ...string) []byte {
+func node(t *testing.T, args ...string) []byte { return nodeWith(t, nil, args...) }
+
+// nodeWith is node with extra environment variables.
+func nodeWith(t *testing.T, env []string, args ...string) []byte {
 	t.Helper()
 	ensureDependencies(t)
 	command := exec.Command("node", args...)
 	command.Dir = "."
-	command.Env = append(os.Environ(), "NODE_NO_WARNINGS=1")
+	command.Env = append(append(os.Environ(), "NODE_NO_WARNINGS=1"), env...)
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
 	out, err := command.Output()

@@ -29,6 +29,18 @@ const partialIntervalMs float64 = 3_600_000
 
 var background = context.Background()
 
+// Hooks of the D181 evidence test (unawaited_job_test.go); they are nil/false in every other test, which runs the awaited
+// fixture. unawaitedJob leaves the note tool's job running beside its call (app.mjs under PIG_INTEROP_UNAWAITED_JOB=1).
+// holdJobTerminal keeps the job's terminal commit back until it is closed. hooks run inside runScenario2: after the
+// Harness opened, once the first scripted turn settled, and before the Harness closes.
+var (
+	unawaitedJob    bool
+	holdJobTerminal chan struct{}
+	hooks           struct {
+		afterOpen, afterHello, beforeClose func(t *testing.T, opened harness.Harness)
+	}
+)
+
 type notes struct {
 	Lines []string `json:"lines"`
 }
@@ -93,6 +105,13 @@ var job = durable.DefineTask(durable.TaskDefinition[durable.JsonObject, jobState
 			})
 		},
 		"second": func(ctx context.Context, task jobRunning, runtime jobRuntime) error {
+			if hold := holdJobTerminal; hold != nil {
+				select {
+				case <-hold:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
 			return runtime.Commit(ctx, func(durable.Tx, jobRunning) (*jobNext, error) {
 				return &jobNext{Status: durable.TaskTerminal, Outcome: &durable.TaskOutcome[jobResult]{Status: durable.OutcomeCompleted, Result: &jobResult{N: task.State.Checkpoint.N}}}, nil
 			})
@@ -133,8 +152,10 @@ var noteTool = &durable.ToolRegistration{
 		// A job left to run beside its tool call commits in an order that is a scheduling accident: Pi's one thread settles
 		// it by microtask hops, Go's goroutines by who is ready first. The call ends with the job, so each commit of the
 		// session has exactly one commit before it and the raw tables, commit sequences included, are the same in both.
-		if _, err := api.WaitForTask(ctx, started.(durable.TaskId)); err != nil {
-			return durable.ToolExecutionResult{}, err
+		if !unawaitedJob {
+			if _, err := api.WaitForTask(ctx, started.(durable.TaskId)); err != nil {
+				return durable.ToolExecutionResult{}, err
+			}
 		}
 		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "noted " + text}}}, nil
 	},
@@ -560,6 +581,9 @@ func runScenario2(t *testing.T, path string) {
 	t.Helper()
 	opened := openApp(t, path)
 	root := rootOf(t, opened)
+	if hooks.afterOpen != nil {
+		hooks.afterOpen(t, opened)
+	}
 	if err := root.Configure(background, harness.AgentChange{Instructions: harness.SetTo("Be brief"), Cwd: harness.SetTo("/work")}); err != nil {
 		t.Fatal(err)
 	}
@@ -578,6 +602,9 @@ func runScenario2(t *testing.T, path string) {
 		return nil, body.Set("content", "v2")
 	}))
 	say(t, root, "hello")
+	if hooks.afterHello != nil {
+		hooks.afterHello(t, opened)
+	}
 	must(opened.Commit(background, func(tx durable.Tx) (any, error) {
 		steps, err := durable.TxDoc[plan](tx, planDoc, root.Id())
 		if err != nil {
@@ -593,6 +620,9 @@ func runScenario2(t *testing.T, path string) {
 	fork := must(root.Fork(background, at, harness.ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}}))
 	say(t, fork, "fork turn")
 	waitTasks(t, opened)
+	if hooks.beforeClose != nil {
+		hooks.beforeClose(t, opened)
+	}
 	if err := opened.Close(background); err != nil {
 		t.Fatal(err)
 	}

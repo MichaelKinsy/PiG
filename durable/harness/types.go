@@ -279,7 +279,9 @@ type Harness interface {
 	RetryTask(ctx context.Context, id durable.TaskId) error
 	// AbortTask commits the abort mark, signals and joins an active run invocation, and schedules the abort invocation. A task whose definition cannot take it settles as orphaned instead. It returns marked or terminal.
 	AbortTask(ctx context.Context, id durable.TaskId) (string, error)
-	// WaitForTask returns the terminal receipt; cancelling ctx cancels only this wait.
+	// WaitForTask returns the terminal receipt; cancelling ctx cancels only this wait. A conversation-owned task nothing waits for commits in
+	// an order set by goroutine scheduling against its conversation's generation, so its record can still be live when the answer settles
+	// (D181); wait for it, or for WaitForIdle, before reading its state.
 	WaitForTask(ctx context.Context, id durable.TaskId) (durable.SettledTask[durable.JsonValue], error)
 	// WaitForIdle returns when the ordinary ownership scope of every ownerless conversation has no live non-background task.
 	WaitForIdle(ctx context.Context) error

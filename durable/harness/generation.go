@@ -1076,6 +1076,8 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 	conversationId := runtime.ConversationId()
 	controls := make(map[durable.TaskId]*durable.ToolControl, len(tools))
 	var ordered []*durable.ToolControl
+	// pig divergence (D181): this read and the commits after it race the commits of a job started in the round and not awaited
+	// (see TaskScheduler.start); their order against each other is unspecified, where Pi's microtask hops fix it.
 	outcomes, err := runtime.Outcomes(ctx, tools)
 	if err != nil {
 		return err
