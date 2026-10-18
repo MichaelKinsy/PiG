@@ -392,7 +392,7 @@ func readProxyEvents(ctx context.Context, body io.Reader, converter *proxyEventC
 				return err
 			}
 			if terminal {
-				// The terminal event hands partial to the consumer, so nothing may change it afterwards. Pi keeps reading and
+				// pig divergence (D183): the terminal event hands partial to the consumer, so nothing may change it afterwards. Pi keeps reading and
 				// applies later events, parse failures and aborts to the delivered message; in Go that would be a data race.
 				// The rest of the body is drained without effect so the connection lives as long as Pi's.
 				_, _ = io.Copy(io.Discard, reader)
@@ -442,7 +442,7 @@ func processProxyLine(line string, converter *proxyEventConverter, stream *ai.As
 func (converter *proxyEventConverter) process(proxyEvent ProxyAssistantMessageEvent) (ai.AssistantMessageEvent, error) {
 	partial := converter.partial
 	if proxyEvent.notArrayIndex && proxyEventStoresContent(proxyEvent.Type) {
-		// Pi stores the block as a non-index property of the content array, which JSON never shows; an ai.AssistantMessage has no such slot, so the event fails.
+		// pig divergence (D182): Pi stores the block as a non-index property of the content array, which JSON never shows; an ai.AssistantMessage has no such slot, so the event fails.
 		return nil, fmt.Errorf("proxy %s event has no usable contentIndex", proxyEvent.Type)
 	}
 	switch proxyEvent.Type {
@@ -570,7 +570,7 @@ func proxyEventStoresContent(eventType ProxyAssistantMessageEventType) bool {
 	return false
 }
 
-// setProxyContent stores a block at an index as `partial.content[index] = block` does, except that an index past the end is an error: Pi leaves holes in the array, and a nil block cannot live in an ai.AssistantMessage (its copy, marshalling and estimation take only the three block kinds).
+// pig divergence (D182): setProxyContent stores a block at an index as `partial.content[index] = block` does, except that an index past the end is an error: Pi leaves holes in the array, and a nil block cannot live in an ai.AssistantMessage (its copy, marshalling and estimation take only the three block kinds).
 func setProxyContent(partial *ai.AssistantMessage, index int, content ai.AssistantContentBlock) error {
 	if index > len(partial.Content) {
 		return fmt.Errorf("proxy content index %d is past the end of the content array", index)

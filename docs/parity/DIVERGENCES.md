@@ -2356,3 +2356,43 @@ Parity allowance: none.
 Remove when: Pi records a transport diagnostic for SDK request failures.
 
 SCRUTINIZED:approved
+
+## D182 A proxy start event with an unusable content index ends the stream with an error
+
+What: `StreamProxy` (`agent/proxy.go`) ends the stream with an error when a `text_start`, `thinking_start` or `toolcall_start` event names a content index that is past the end of the content array, or that is not a JavaScript array index (absent, null, negative, fractional, or a non-numeric string). Pi stores the block with `partial.content[contentIndex] = block`: an index past the end leaves holes in the array (`[null,null,{text:"x"}]` after JSON), and a non-index key becomes a property that JSON never shows. The stream then completes with `stopReason: "stop"` in Pi.
+
+Why: an `ai.AssistantMessage` holds a slice of the three block kinds. A nil block cannot live in it: its copy, marshalling and token estimation take only those kinds, and a non-index property has no slot. Pi's own later consumers fail on the holes (a `for..of` over the content, or persistence of null blocks), so the Go error moves the failure to the cause.
+
+Scope: sparse or non-index `contentIndex` values on the proxy wire only. Well-formed streams are byte-identical to Pi (differential tests run Pi's `proxy.js` against the same bodies).
+
+Owner decision: pending owner approval (proposed 2026-10-18).
+
+Call-site markers: `agent/proxy.go` (`setProxyContent`, `proxyEventConverter.process`).
+
+Evidence: `agent/proxy_sparse_oracle_test.go`, `agent/proxy_oracle_test.go`.
+
+Parity allowance: none.
+
+Remove when: `ai.AssistantMessage` content can hold an absent block, or Pi rejects an unusable content index.
+
+SCRUTINIZED:pending
+
+## D183 A message delivered at the terminal proxy event is not changed by later events
+
+What: after `StreamProxy` pushes a `done` or `error` event, it drains the rest of the response body without applying it. Pi keeps reading and applies later events, parse failures and aborts to the message object it already delivered, so the consumer's message can change after the terminal event.
+
+Why: the terminal event hands the partial message to the consumer. In Go, a later write to it is a data race with the consumer's reads. The drain keeps the connection open as long as Pi's.
+
+Scope: a proxy server that sends events after `done` or `error`. A well-formed server does not.
+
+Owner decision: pending owner approval (proposed 2026-10-18).
+
+Call-site markers: `agent/proxy.go` (the `terminal` branch of the read loop).
+
+Evidence: `agent/proxy_oracle_test.go`, `agent/proxy_sparse_oracle_test.go`.
+
+Parity allowance: none.
+
+Remove when: the delivered message is an immutable snapshot, or Pi stops mutating the delivered message.
+
+SCRUTINIZED:pending

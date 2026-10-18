@@ -13293,6 +13293,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D177 | The calls of a parallel durable tool round start in unspecified order | deliberate difference |
 | D178 | Facet modules load in an isolated Node child, not in the host process | deliberate difference |
 | D180 | A provider transport failure records its Go cause as a provider_transport_failure diagnostic | deliberate difference |
+| D182 | A proxy start event with an unusable content index ends the stream with an error | deliberate difference |
+| D183 | A message delivered at the terminal proxy event is not changed by later events | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

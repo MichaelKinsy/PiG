@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// Ports packages/mcp/src/oauth/types.ts (the `[key: string]: unknown` index signatures).
+//
 // The metadata objects of OAuth keep members this package does not model, as
 // upstream's `[key: string]: unknown` index signatures do. Structs embed
 // extras and route their JSON through these helpers.
