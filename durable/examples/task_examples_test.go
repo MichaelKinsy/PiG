@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -230,16 +229,15 @@ func TestExample13Recovery(t *testing.T) {
 					printed = append(printed, n) // console.log(`tick ${n}`)
 				}
 				reachedTick.Store(int64(n))
-				if err := runtime.Commit(ctx, func(durable.Tx, durable.RunningTask[tickInput, tickState, string]) (*durable.NextTaskState[tickState, string], error) {
-					if n == task.Input.To {
+				// Save the final result, or the next tick after a short sleep. The sleep is stored with the checkpoint, so the task holds no
+				// invocation meanwhile, and a Harness opened later continues it once its time has come (13-recovery.ts).
+				if n == task.Input.To {
+					return runtime.Commit(ctx, func(durable.Tx, durable.RunningTask[tickInput, tickState, string]) (*durable.NextTaskState[tickState, string], error) {
 						result := fmt.Sprintf("counted to %d", n)
 						return &durable.NextTaskState[tickState, string]{Status: durable.TaskTerminal, Outcome: &durable.TaskOutcome[string]{Status: durable.OutcomeCompleted, Result: &result}}, nil
-					}
-					return &durable.NextTaskState[tickState, string]{Status: durable.TaskRunning, Checkpoint: &tickState{Phase: "tick", N: n + 1}}, nil
-				}); err != nil {
-					return err
+					})
 				}
-				return runtime.Sleep(ctx, float64(time.Now().UnixMilli()+50))
+				return runtime.SleepUntil(ctx, runtime.Now()+50, tickState{Phase: "tick", N: n + 1})
 			},
 		},
 		Abort: func(ctx context.Context, _ durable.RunningTask[tickInput, tickState, string], runtime durable.TaskRuntime[tickInput, tickState, string, any]) error {

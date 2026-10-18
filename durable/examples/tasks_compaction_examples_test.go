@@ -26,8 +26,7 @@ type cardInput struct {
 }
 
 type chargeState struct {
-	Phase string  `json:"phase"`
-	At    float64 `json:"at"`
+	Phase string `json:"phase"`
 }
 
 type checkoutInput struct {
@@ -58,9 +57,7 @@ func TestExample24ChildTasks(t *testing.T) {
 	payment := durable.DefineTask(durable.TaskDefinition[cardInput, chargeState, cardInput, any]{
 		Name:    "example.payment",
 		Version: 1,
-		Initial: func(cardInput) chargeState {
-			return chargeState{Phase: "charge", At: float64(time.Now().UnixMilli()) + 100}
-		},
+		Initial: func(cardInput) chargeState { return chargeState{Phase: "charge"} },
 		Phases: map[string]durable.PhaseHandler[cardInput, chargeState, cardInput, any]{
 			"charge": func(ctx context.Context, task paymentRunning, runtime paymentRuntime) error {
 				card := task.Input.Card
@@ -70,10 +67,11 @@ func TestExample24ChildTasks(t *testing.T) {
 				bankMu.Lock()
 				charged[card] = true
 				bankMu.Unlock()
-				if err := runtime.Sleep(ctx, task.State.Checkpoint.At); err != nil {
-					return err
-				}
-				return finish(ctx, runtime, durable.TaskOutcome[cardInput]{Status: durable.OutcomeCompleted, Result: &cardInput{Card: card}})
+				// The bank confirms after a moment: wait for it without holding an invocation.
+				return runtime.SleepUntil(ctx, runtime.Now()+100, chargeState{Phase: "confirm"})
+			},
+			"confirm": func(ctx context.Context, task paymentRunning, runtime paymentRuntime) error {
+				return finish(ctx, runtime, durable.TaskOutcome[cardInput]{Status: durable.OutcomeCompleted, Result: &cardInput{Card: task.Input.Card}})
 			},
 		},
 		// Each payment undoes its own effect when aborted.
