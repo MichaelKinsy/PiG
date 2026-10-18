@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-884 bugs. 834 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+885 bugs. 835 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -903,6 +903,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
+| [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13223,6 +13224,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `22e05718a7` (2026-10-17), `338f5de671` (2026-10-17), `44e623504c` (2026-10-17), `6d94e31216` (2026-10-17), `73d897751d` (2026-10-17), `9a4bd0e452` (2026-10-17), `a9642f65b8` (2026-10-17), `b229d49c15` (2026-10-17), `cfa8e90d0f` (2026-10-17), `9f31a8bee0` (2026-10-18)
 - **Tests:** `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `coding/cli/runtime_policy_test.go::TestRPCRunsOnTheRPCCap`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseDoesNotWaitForABlockedWriter`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseWritesPendingChunks`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCoalescesPendingChunksIntoOneWrite`, `coding/cli/stdout_queue_test.go::TestStdoutQueueFailureDropsPendingChunksAndReportsOnce`, `coding/cli/stdout_queue_test.go::TestStdoutQueueReportsWriteFailureOnce` and 24 more in docs/bug-ledger.json
 - **Release note:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started. The reader's goroutine could pick up a reaction loop that belonged to the response, run the reader's code beside a reaction that had not returned, and leave the stream's executor marked busy with nothing running. A goroutine now continues only a reaction loop its own turn holds, so no code runs beside a reaction and every stream ends. It stalled once in CI on Windows (`TestGoogleProviderStreamMatchesPi`); the same stall reproduces on macOS and Linux when the executor's lock hand-offs are delayed.
+
+### BF-c3c84b5
+
+**Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi.
+- **Root cause:** TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `22e05718a7` (2026-10-17), `c3c84b5a28` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference`, `durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed`, `durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce`, `durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds` and 4 more in docs/bug-ledger.json
+- **Release note:** Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi. Stopping an event stream right after one of these waits no longer drops the end of a run.
 
 ## Divergences from Pi added in this release
 

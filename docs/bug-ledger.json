@@ -29757,6 +29757,47 @@
         "internal/stackprime/stackprime_test.go::TestPrimeSpansADeepCallWithoutAStackCopy",
         "test/perfgate/print_tools_test.go::TestPrintReadToolsProcessGate"
       ]
+    },
+    {
+      "id": "BF-c3c84b5",
+      "title": "Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has…",
+      "symptom": "Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi.",
+      "rootCause": "TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi. Stopping an event stream right after one of these waits no longer drops the end of a run.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "22e05718a7",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "c3c84b5a28",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "da0fae4095",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther",
+        "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable"
+      ]
     }
   ],
   "divergences": [
