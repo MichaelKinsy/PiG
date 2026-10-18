@@ -242,6 +242,24 @@ func NewOutputBuffer(limits OutputLimits) *OutputBuffer {
 // StoredBytes reports the bytes currently held; bounded by the limits plus one chunk.
 func (buffer *OutputBuffer) StoredBytes() int { return buffer.storedBytes }
 
+// Push is OutputBuffer.push(chunk, skipped?): chunk is a string or a []byte (any other type is an error, as TypeScript's type rules out), and a
+// non-nil skipped is output omitted right before it. It reports whether anything was accepted; a skipped on head retention is an error.
+func (buffer *OutputBuffer) Push(chunk any, skipped *OutputSkip) (bool, error) {
+	switch value := chunk.(type) {
+	case string:
+		if skipped == nil {
+			return buffer.PushString(value), nil
+		}
+		return buffer.PushStringSkipping(value, *skipped)
+	case []byte:
+		if skipped == nil {
+			return buffer.PushBytes(value), nil
+		}
+		return buffer.PushBytesSkipping(value, *skipped)
+	}
+	return false, errors.New("OutputBuffer chunk must be a string or bytes")
+}
+
 // PushString accepts a text chunk; bytes of an incomplete character from an earlier byte chunk come first, as a replacement character. It reports whether anything was accepted.
 func (buffer *OutputBuffer) PushString(chunk string) bool {
 	pending := buffer.decoder.decode(nil, false)

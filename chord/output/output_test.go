@@ -579,3 +579,25 @@ func TestSystemProgressClockUsesNodesTimerDelayRule(t *testing.T) {
 		stop()
 	}
 }
+
+// output.test.ts:138-146: push takes a string or bytes (a UTF-8 character split across byte chunks) and keeps exact totals.
+func TestOutputBufferPush(t *testing.T) {
+	buffer := NewOutputBuffer(OutputLimits{MaxBytes: 1 << 20, MaxLines: 2, Retain: "tail"})
+	encoded := []byte("😀\n")
+	for _, chunk := range []any{"a\nb\n", encoded[:2], encoded[2:]} {
+		if accepted, err := buffer.Push(chunk, nil); err != nil || (chunk == "a\nb\n" && !accepted) {
+			t.Fatalf("Push(%v) = %v, %v", chunk, accepted, err)
+		}
+	}
+	if got, want := buffer.Snapshot(), (BoundedOutput{Text: "b\n😀\n", DroppedBytes: 2, DroppedLines: 1}); got != want {
+		t.Fatalf("snapshot %+v, want %+v", got, want)
+	}
+	// output.ts:166: skipped output requires tail retention; any other chunk type is not a string or bytes.
+	head := NewOutputBuffer(OutputLimits{MaxBytes: 10, MaxLines: 2, Retain: "head"})
+	if _, err := head.Push("x", &OutputSkip{Bytes: 1}); err == nil || err.Error() != "Skipped output requires tail retention" {
+		t.Fatalf("head skip error = %v", err)
+	}
+	if _, err := head.Push(3, nil); err == nil {
+		t.Fatal("a non-string, non-bytes chunk was accepted")
+	}
+}

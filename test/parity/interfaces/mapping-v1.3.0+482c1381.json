@@ -106874,13 +106874,45 @@
     },
     {
       "id": "pkg:chord/node#childControl",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:81a1521269efc93bdfe484ae3da0a093cee4ae591d84327b4a0b37c7c57fb471"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:81a1521269efc93bdfe484ae3da0a093cee4ae591d84327b4a0b37c7c57fb471",
+      "rationale": "Derived by the interface gap detector: childControl is Go chord/host/manager.go#ChildControl (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/manager.go#ChildControl"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/manager.go#ChildControl"
+      ],
+      "evidence": [
+        "test:chord/host/manager_upstream_test.go#TestChildControlOverNodeChannel"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/node#childControl::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2ecc01eccbb58df910b8b6542685758599e292577919bfac08a465c2c2996c99"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2ecc01eccbb58df910b8b6542685758599e292577919bfac08a465c2c2996c99",
+      "rationale": "Derived by the interface gap detector: childControl::call:0 is Go chord/host/manager.go#ChildControl (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/manager.go#ChildControl"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/manager.go#ChildControl"
+      ],
+      "evidence": [
+        "test:chord/host/manager_upstream_test.go#TestChildControlOverNodeChannel"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/node#ControlMessage",
@@ -108228,8 +108260,25 @@
     },
     {
       "id": "pkg:chord/output#OutputBuffer",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:201258921814242be7d98095916a58cddaec3c583417b9cbb6ea75220e62956c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:201258921814242be7d98095916a58cddaec3c583417b9cbb6ea75220e62956c",
+      "rationale": "Derived by the interface gap detector: OutputBuffer is Go chord/output/output.go#OutputBuffer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#OutputBuffer"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#NewOutputBuffer"
+      ],
+      "evidence": [
+        "test:chord/output/output_pi_oracle_test.go#TestOutputBufferMatchesPi",
+        "test:chord/output/output_skip_test.go#TestOutputBufferSkippedOutput",
+        "test:chord/output/output_skip_test.go#TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission"
+      ]
     },
     {
       "id": "pkg:chord/output#OutputBuffer::construct:0",
@@ -108299,13 +108348,43 @@
     },
     {
       "id": "pkg:chord/output#OutputBuffer::property:push",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dd01ecd8957b95330f10c2d8616d6ac37790e6e533b24dd7907d4b2495ef34c3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dd01ecd8957b95330f10c2d8616d6ac37790e6e533b24dd7907d4b2495ef34c3",
+      "rationale": "Derived by the interface gap detector: OutputBuffer::property:push is Go chord/output/output.go#OutputBuffer.Push (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#OutputBuffer.Push"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#OutputBuffer.Push"
+      ],
+      "evidence": [
+        "test:chord/output/output_test.go#TestOutputBufferPush"
+      ]
     },
     {
       "id": "pkg:chord/output#OutputBuffer::property:push::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:df9bad74b3f7d0d8a21caf2b71660e4a758ab81aaaa2c2c648b608bdba4da1f5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:df9bad74b3f7d0d8a21caf2b71660e4a758ab81aaaa2c2c648b608bdba4da1f5",
+      "rationale": "Derived by the interface gap detector: OutputBuffer::property:push::call:0 is Go chord/output/output.go#OutputBuffer.Push (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#OutputBuffer.Push"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#OutputBuffer.Push"
+      ],
+      "evidence": [
+        "test:chord/output/output_test.go#TestOutputBufferPush"
+      ]
     },
     {
       "id": "pkg:chord/output#OutputBuffer::property:snapshot",
@@ -108408,7 +108487,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/output/output.go#OutputBuffer.PushBytesSkipping"
+        "call:chord/output/output.go#OutputBuffer.Push"
       ],
       "evidence": [
         "test:chord/output/output_pi_oracle_test.go#TestOutputBufferMatchesPi",
@@ -108601,13 +108680,45 @@
     },
     {
       "id": "pkg:chord/output#Progress::property:stop",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bb31e9251c3f7e1d3ec2ad12814d2487e4206a1a8631d7f124ba6d3cec558056"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bb31e9251c3f7e1d3ec2ad12814d2487e4206a1a8631d7f124ba6d3cec558056",
+      "rationale": "Derived by the interface gap detector: Progress::property:stop is Go chord/output/output.go#Progress.Stop (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#Progress.Stop"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#Progress.Stop"
+      ],
+      "evidence": [
+        "test:chord/output/output_test.go#TestProgress"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/output#Progress::property:stop::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f3dc591bd4945d2fee9babafcfc187f3f939844e7915821d0d4043456ed3667e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f3dc591bd4945d2fee9babafcfc187f3f939844e7915821d0d4043456ed3667e",
+      "rationale": "Derived by the interface gap detector: Progress::property:stop::call:0 is Go chord/output/output.go#Progress.Stop (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#Progress.Stop"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#Progress.Stop"
+      ],
+      "evidence": [
+        "test:chord/output/output_test.go#TestProgress"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/output#ProgressClock",
