@@ -3303,9 +3303,9 @@ func installerOf(snapshot durable.RegistrySnapshot, task durable.AnyTask) string
 		return ""
 	}
 	installed := snapshot.Installed()
-	for index := len(installed) - 1; index >= 0; index-- {
-		if slices.ContainsFunc(installed[index].Tasks, func(candidate durable.AnyTask) bool { return sameTaskDefinition(candidate, task) }) {
-			return installed[index].Name
+	for _, extension := range slices.Backward(installed) {
+		if slices.ContainsFunc(extension.Tasks, func(candidate durable.AnyTask) bool { return sameTaskDefinition(candidate, task) }) {
+			return extension.Name
 		}
 	}
 	return ""
