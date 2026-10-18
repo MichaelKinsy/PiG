@@ -41,9 +41,11 @@ var sampleChecks = map[string]sampleCheck{
 	"shell":   nil,
 	"console": nil,
 	// Output, prose and formats with no parser available to the docs job: the block's text is the sample.
-	"text":       nil,
-	"":           nil,
-	"markdown":   nil,
+	"text":     nil,
+	"":         nil,
+	"markdown": nil,
+	// Diagrams copied from Pi's docs; the site renders them and no parser runs in the docs job.
+	"mermaid":    nil,
 	"md":         nil,
 	"tmux":       nil,
 	"dockerfile": nil,

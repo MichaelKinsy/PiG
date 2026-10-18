@@ -75,6 +75,106 @@ pig extension init ./review --lang go --isolated
 
 The scaffold does not write an extension manifest. Runtime registration is the source of extension identity and capabilities.
 
+## Understand the runtime lifecycle
+
+The factory can be synchronous or asynchronous. PiG waits for an asynchronous factory before startup continues, allowing it to fetch configuration or register providers needed during startup.
+
+Do not start processes, sockets, watchers, or timers in the factory because some invocations load extensions without starting a session.
+Start long-lived resources from `session_start` or from the command or tool that needs them.
+Close session-scoped resources from an idempotent `session_shutdown` handler.
+
+A normal prompt follows this hook sequence:
+
+```mermaid
+flowchart TD
+    Input["input"] --> Before["before_agent_start"]
+    Before --> AgentStart["agent_start"]
+    AgentStart --> TurnStart["turn_start"]
+    TurnStart --> Context["context"]
+    Context --> ContextSystem["context_with_system"]
+    ContextSystem --> Headers["before_provider_headers"]
+    Headers --> Request["before_provider_request"]
+    Request --> Response["after_provider_response"]
+    Response --> Stream["provider_stream_event and assistant message events"]
+    Stream --> ToolDecision{"Assistant requested tools?"}
+    ToolDecision -->|yes| ToolStart["tool_execution_start"]
+    ToolStart --> ToolCall["tool_call"]
+    ToolCall --> Execute["execute and tool_execution_update"]
+    Execute --> ToolResult["tool_result"]
+    ToolResult --> ToolEnd["tool_execution_end"]
+    ToolEnd --> TurnEnd["turn_end"]
+    ToolDecision -->|no| TurnEnd
+    TurnEnd --> MoreTurns{"Another model turn required?"}
+    MoreTurns -->|yes| TurnStart
+    MoreTurns -->|no| AgentEnd["agent_end"]
+    AgentEnd --> MoreRuns{"Retry, recovery, compaction retry, or queued work?"}
+    MoreRuns -->|yes| AgentStart
+    MoreRuns -->|no| BeforeSettle["agent_before_settle"]
+    BeforeSettle --> Continue{"Continuation requested?"}
+    Continue -->|yes| AgentStart
+    Continue -->|no| Settled["agent_settled"]
+```
+
+The lifecycle involves these event groups:
+
+| Area | Events |
+|---|---|
+| Input preparation | `input`, `before_agent_start` |
+| Agent run | `agent_start`, `agent_end` |
+| Model turn | `turn_start`, `context`, `context_with_system`, `turn_end` |
+| Provider call | `before_provider_headers`, `before_provider_request`, `after_provider_response`, `provider_stream_event` |
+| Message lifecycle | `message_start`, `message_update`, `message_end` |
+| Tool execution | `tool_execution_start`, `tool_call`, `tool_execution_update`, `tool_result`, `tool_execution_end` |
+| Settlement | `agent_before_settle`, `agent_settled` |
+
+PiG counts as busy while a run starts, including the compaction check and `before_agent_start`, so messages sent meanwhile go into the starting run. Message lifecycle events also cover user and tool-result messages; the diagram places only the assistant stream where it occurs in each model turn.
+
+Tool hooks run for each tool call, and one assistant response can start another turn by returning tool calls. Provider hooks run only when that transport exposes the corresponding stage. See the exported declarations in Pi's [`extensions/types.ts`](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/extensions/types.ts) for exact event payloads and result types; PiG delivers the same events to subprocess and fused extensions.
+
+Session startup and replacement follow a separate lifecycle:
+
+```mermaid
+flowchart TD
+    Startup["Process startup"] --> Trust["project_trust when needed"]
+    Trust --> SessionStart["session_start"]
+    Switch["/new or /resume"] --> BeforeSwitch["session_before_switch"]
+    Fork["/fork or /clone"] --> BeforeFork["session_before_fork"]
+    BeforeSwitch --> Shutdown["session_shutdown"]
+    BeforeFork --> Shutdown
+    Reload["reload"] --> Shutdown
+    Shutdown --> Replacing{"Replacing the runtime?"}
+    Replacing -->|yes| Replacement["load replacement extension runtime"]
+    Replacement --> SessionStart
+    Replacing -->|no| Stop["process exits"]
+    SessionStart --> Discover["resources_discover"]
+```
+
+`project_trust` runs before trusted project resources load and can run again when session replacement enters a new working directory. Retries, recovery, compaction, and queued messages can start another agent run after `agent_end`, so `agent_end` is not a final-idle signal. Reload and session replacement invalidate the old runtime. Code after `await ctx.reload()` still belongs to the old runtime and must not reuse its session-bound state.
+
+### Choose an event by intent
+
+| Goal | Event |
+|---|---|
+| Inspect, transform, or consume raw user input | `input` |
+| Change prompt sections, active tools, or add context before a run | `before_agent_start` |
+| Observe one low-level agent run | `agent_start`, `agent_end` |
+| Act after one model response and its tool calls | `turn_end` |
+| Filter conversation messages for one provider request | `context` |
+| Transform the complete transcript, including system messages | `context_with_system` |
+| Change request headers or the serialized provider payload | `before_provider_headers`, `before_provider_request` |
+| Observe provider response metadata or parsed stream events | `after_provider_response`, `provider_stream_event` |
+| Authorize or modify a tool call | `tool_call` |
+| Redact, annotate, or replace a tool result | `tool_result` |
+| Append final entries or request one last continuation | `agent_before_settle` |
+| Run notification work after automatic processing has stopped | `agent_settled` |
+| Initialize or release session-scoped resources | `session_start`, `session_shutdown` |
+
+<a id="agent_start--agent_end--agent_before_settle--agent_settled"></a>
+
+Use `agent_before_settle` when an extension must append entries or request one final continuation. Use `agent_settled` for notification-only work that should run after Pi has no automatic continuation remaining.
+
+<a id="extensionapi-methods"></a>
+
 ## Validate without installing
 
 ```bash
