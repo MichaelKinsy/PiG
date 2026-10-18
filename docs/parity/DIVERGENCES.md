@@ -2361,11 +2361,11 @@ SCRUTINIZED:approved
 
 What: `StreamProxy` (`agent/proxy.go`) ends the stream with an error when a `text_start`, `thinking_start` or `toolcall_start` event names a content index that is past the end of the content array, or that is not a JavaScript array index (absent, null, negative, fractional, or a non-numeric string). Pi stores the block with `partial.content[contentIndex] = block`: an index past the end leaves holes in the array (`[null,null,{text:"x"}]` after JSON), and a non-index key becomes a property that JSON never shows. The stream then completes with `stopReason: "stop"` in Pi.
 
-Why: an `ai.AssistantMessage` holds a slice of the three block kinds. A nil block cannot live in it: its copy, marshalling and token estimation take only those kinds, and a non-index property has no slot. Pi's own later consumers fail on the holes (a `for..of` over the content, or persistence of null blocks), so the Go error moves the failure to the cause.
+Why: this is a Pi bug PiG does not reproduce, not a Go limitation. Pi's holes break Pi's own consumers of the message (a `for..of` over the content, or persistence of null blocks), and the stream still reports success. Go's content slice could carry an absent block, but every reader of assistant content (about 60 sites in `ai` and `agent`, on the hottest path) assumes each slot is filled; carrying holes would make each of them tolerate one, for a malformed proxy server only. PiG instead ends the stream at the unusable index with an error that names it.
 
 Scope: sparse or non-index `contentIndex` values on the proxy wire only. Well-formed streams are byte-identical to Pi (differential tests run Pi's `proxy.js` against the same bodies).
 
-Owner decision: pending owner approval (proposed 2026-10-18).
+Owner decision: approved by owner Michael Kinsy on 2026-10-18 (proposed the same day).
 
 Call-site markers: `agent/proxy.go` (`setProxyContent`, `proxyEventConverter.process`).
 
@@ -2375,7 +2375,7 @@ Parity allowance: none.
 
 Remove when: `ai.AssistantMessage` content can hold an absent block, or Pi rejects an unusable content index.
 
-SCRUTINIZED:pending
+SCRUTINIZED:approved
 
 ## D183 A message delivered at the terminal proxy event is not changed by later events
 
@@ -2385,7 +2385,7 @@ Why: the terminal event hands the partial message to the consumer. In Go, a late
 
 Scope: a proxy server that sends events after `done` or `error`. A well-formed server does not.
 
-Owner decision: pending owner approval (proposed 2026-10-18).
+Owner decision: approved by owner Michael Kinsy on 2026-10-18 (proposed the same day).
 
 Call-site markers: `agent/proxy.go` (the `terminal` branch of the read loop).
 
@@ -2395,4 +2395,4 @@ Parity allowance: none.
 
 Remove when: the delivered message is an immutable snapshot, or Pi stops mutating the delivered message.
 
-SCRUTINIZED:pending
+SCRUTINIZED:approved
