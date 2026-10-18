@@ -1,14 +1,14 @@
 # PORT_MAP coverage report
 
-Generated from `699` PORT_MAP entries and `783` parity scenarios.
+Generated from `700` PORT_MAP entries and `783` parity scenarios.
 
 ## Status
 
-- **Porting:** 564 / 627 intended-portable entries ✅ (90.0%).
-- **Behavior verification:** 540 / 564 ported entries (95.7%); 0 weak-only, 24 untested.
-- **Upstream test porting:** 654 ported / 0 partial / 0 pending (3 other dispositions; [file mapping](interfaces/test-mapping-v1.3.0+c268154c.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.3.0+c268154c.json) (`deferred-0.3.x`).
+- **Porting:** 565 / 628 intended-portable entries ✅ (90.0%).
+- **Behavior verification:** 541 / 565 ported entries (95.8%); 0 weak-only, 24 untested.
+- **Upstream test porting:** 656 ported / 0 partial / 0 pending (4 other dispositions; [file mapping](interfaces/test-mapping-v1.3.0+e17e2e10.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.3.0+e17e2e10.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 699. Breakdown: 72 n/a (designed out) · 63 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 700. Breakdown: 72 n/a (designed out) · 63 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -19,7 +19,7 @@ Raw PORT_MAP rows: 699. Breakdown: 72 n/a (designed out) · 63 🟡 partial. See
 | `chord` | 37 | 4 | 33 | 16 | 17 | 0 | 48.5% | 56.2% |
 | `codemode` | 17 | 4 | 13 | 7 | 6 | 0 | 53.8% | 100.0% |
 | `coding-agent` | 254 | 27 | 227 | 219 | 8 | 0 | 96.5% | 97.7% |
-| `durable` | 82 | 8 | 74 | 66 | 8 | 0 | 89.2% | 93.9% |
+| `durable` | 83 | 8 | 75 | 67 | 8 | 0 | 89.3% | 94.0% |
 | `env` | 23 | 3 | 20 | 11 | 9 | 0 | 55.0% | 45.5% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 9 | 6 | 0 | 60.0% | 100.0% |
@@ -28,8 +28,8 @@ Raw PORT_MAP rows: 699. Breakdown: 72 n/a (designed out) · 63 🟡 partial. See
 
 - **Four core packages (agent, ai, coding-agent, tui):** 445 / 462 intended-portable files ✅ (96.3%) from 511 rows; 438 behavioral (98.4%), 0 weak-only, 7 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 466 / 495 intended-portable files ✅ (94.1%) from 552 rows; 459 behavioral (98.5%), 0 weak-only, 7 untested.
-- **Whole monorepo (11 packages):** 564 / 627 intended-portable files ✅ (90.0%) from 699 rows; 540 behavioral (95.7%), 0 weak-only, 24 untested.
-- **Interface closure:** 12861 of 12897 semantic interface IDs closed (211 designed-out, 36 pending, 12650 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (11 packages):** 565 / 628 intended-portable files ✅ (90.0%) from 700 rows; 541 behavioral (95.8%), 0 weak-only, 24 untested.
+- **Interface closure:** 12869 of 12905 semantic interface IDs closed (211 designed-out, 36 pending, 12658 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -678,6 +678,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/durable/src/testing/storage-benchmark.ts` | ✅ | 0 | 8 (unit:./durable/storage:TestStorageBenchmarkExpectations, unit:./durable/storage:TestStorageBenchmarkExpectations, unit:./durable/storage:TestStorageBenchmarkScalesAndPrimaryRecordCount, unit:./durable/storage:TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend, unit:./durable/storage:TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend, unit:./durable/storage:TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation, unit:./durable/storage:TestStorageReadContractAgainstSeededData, unit:./durable/storage:TestStorageReadContractAgainstSeededData) | not run | ./durable/storage:TestStorageBenchmarkExpectations, ./durable/storage:TestStorageBenchmarkExpectations, ./durable/storage:TestStorageBenchmarkScalesAndPrimaryRecordCount, ./durable/storage:TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend, ./durable/storage:TestStorageBenchmarkScenariosReturnWhatTheyExpectOnEveryBackend, ./durable/storage:TestStorageReadBenchmarkForkDepthScenariosReadTheDeepestConversation, ./durable/storage:TestStorageReadContractAgainstSeededData, ./durable/storage:TestStorageReadContractAgainstSeededData |
 | `packages/durable/src/testing/storage-conformance.ts` | ✅ | 0 | 3 (unit:./durable/storage/jsonl:TestJsonlStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage:TestMemoryStorageConformance) | not run | ./durable/storage/jsonl:TestJsonlStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage:TestMemoryStorageConformance |
 | `packages/durable/src/testing/types.ts` | ✅ | 0 | 4 (unit:./durable/env/node:TestNodeExecutionEnvConformance, unit:./durable/storage/jsonl:TestJsonlStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage:TestMemoryStorageConformance) | not run | ./durable/env/node:TestNodeExecutionEnvConformance, ./durable/storage/jsonl:TestJsonlStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage:TestMemoryStorageConformance |
+| `packages/durable/src/timers.ts` | ✅ | 0 | 2 (unit:./durable:TestHostTimersFallBackForegroundAndDeclineBackground, unit:./durable:TestNativeTimerFiresOnceAndDisarms) | not run | ./durable:TestHostTimersFallBackForegroundAndDeclineBackground, ./durable:TestNativeTimerFiresOnceAndDisarms |
 | `packages/durable/src/tools/bash.ts` | ✅ | 0 | 3 (unit:./durable/harness:TestCodingTools, unit:./durable/tools:TestBashPassesTheRetainedWindowToTheEnvironmentAndForwardsWhatItSkipped, unit:./durable/tools:TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output) | not run | ./durable/harness:TestCodingTools, ./durable/tools:TestBashPassesTheRetainedWindowToTheEnvironmentAndForwardsWhatItSkipped, ./durable/tools:TestPowerShellRunsTheCommandWithPwshAsOneArgumentForcingUTF8Output |
 | `packages/durable/src/tools/edit-diff.ts` | ✅ | 0 | 3 (unit:./durable/harness:TestCodingTools, unit:./durable/tools:TestEditAppliesDisjointEditsAndReturnsBothDiffFormats, unit:./durable/tools:TestEditRejectsMissingAndDuplicateTargetText) | not run | ./durable/harness:TestCodingTools, ./durable/tools:TestEditAppliesDisjointEditsAndReturnsBothDiffFormats, ./durable/tools:TestEditRejectsMissingAndDuplicateTargetText |
 | `packages/durable/src/tools/edit.ts` | ✅ | 0 | 4 (unit:./durable/harness:TestCodingTools, unit:./durable/tools:TestEditAppliesDisjointEditsAndReturnsBothDiffFormats, unit:./durable/tools:TestEditRejectsAPathThatIsNotAFile, unit:./durable/tools:TestEditRepairsEditsSentAsAJSONStringASingleObjectOrTopLevelOldTextNewTextWithoutMutatingThem) | not run | ./durable/harness:TestCodingTools, ./durable/tools:TestEditAppliesDisjointEditsAndReturnsBothDiffFormats, ./durable/tools:TestEditRejectsAPathThatIsNotAFile, ./durable/tools:TestEditRepairsEditsSentAsAJSONStringASingleObjectOrTopLevelOldTextNewTextWithoutMutatingThem |
