@@ -428,6 +428,7 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 	if record.State.Status == durable.TaskTerminal {
 		node := nodeOf(record)
 		s.deleteLiveLocked(id)
+		s.sleeping.Delete(id)
 		s.intent.Delete(id)
 		s.runnable.Delete(id)
 		s.finalizeChecks.Delete(id)
@@ -467,6 +468,11 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 		for _, on := range record.State.On {
 			addToSet(s.waiters, on, id)
 		}
+	}
+	if record.State.Status == durable.TaskSleeping {
+		s.sleeping.Add(id)
+	} else {
+		s.sleeping.Delete(id)
 	}
 }
 

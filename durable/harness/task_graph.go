@@ -17,12 +17,14 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
-// TaskGraphState is a live task's durable status without its checkpoint and outcome payloads (spec §9.5): pending or running with Phase, waiting with Phase, On, and Policy, or completing with the held Outcome status.
+// TaskGraphState is a live task's durable status without its checkpoint and outcome payloads (spec §9.5): pending or running with Phase, waiting with Phase, On, and Policy, sleeping with Phase and Until, or completing with the held Outcome status.
 type TaskGraphState struct {
 	Status durable.TaskStatus `json:"status"`
 	Phase  string             `json:"phase,omitempty"`
 	On     []durable.TaskId   `json:"on,omitempty"`
 	Policy durable.JoinPolicy `json:"policy,omitempty"`
+	// Until is the time a sleeping task wakes at.
+	Until float64 `json:"until,omitempty"`
 	// Outcome is the status of the outcome held until its ordinary owned work drains.
 	Outcome durable.TaskOutcomeStatus `json:"outcome,omitempty"`
 }
@@ -32,6 +34,8 @@ func (state TaskGraphState) MarshalJSON() ([]byte, error) {
 	switch state.Status {
 	case durable.TaskPending, durable.TaskRunning:
 		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase))
+	case durable.TaskSleeping:
+		return json.Marshal(delta.JsonObjectOf("status", state.Status, "phase", state.Phase, "until", state.Until))
 	case durable.TaskWaiting:
 		on := state.On
 		if on == nil {
@@ -83,7 +87,7 @@ type taskGraphMount struct {
 	observers []taskGraphObserver
 }
 
-var taskGraphLiveStatuses = []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskWaiting, durable.TaskCompleting}
+var taskGraphLiveStatuses = []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskWaiting, durable.TaskSleeping, durable.TaskCompleting}
 
 const taskGraphScanPageSize = 256
 
@@ -366,6 +370,12 @@ func taskGraphStateOf(record durable.TaskRecord[durable.JsonValue, durable.JsonV
 		return TaskGraphState{Status: state.Status, Phase: phaseOf(state.Checkpoint)}
 	case durable.TaskWaiting:
 		return TaskGraphState{Status: durable.TaskWaiting, Phase: phaseOf(state.Checkpoint), On: slices.Clone(state.On), Policy: state.Policy}
+	case durable.TaskSleeping:
+		var until float64
+		if state.Until != nil {
+			until = *state.Until
+		}
+		return TaskGraphState{Status: durable.TaskSleeping, Phase: phaseOf(state.Checkpoint), Until: until}
 	}
 	// Terminal records never reach here: they leave the graph.
 	var outcome durable.TaskOutcomeStatus

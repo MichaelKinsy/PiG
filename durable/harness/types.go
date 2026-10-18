@@ -145,10 +145,33 @@ type HarnessOptions struct {
 	Env func(ctx context.Context, target EnvTarget) (env.ExecutionEnv, error)
 	// ConversationCreated runs in every commit that creates or forks a conversation, raw tx.CreateConversation included, after the built-in pi.* documents and before the conveniences apply the agent change and run init. A fork already has its copies. Table reads fail with ReadAfterWrite; an error fails the creating commit.
 	ConversationCreated func(tx durable.Tx, conversation durable.ConversationRecord) error
-	// Now is the Harness clock in milliseconds; nil uses the wall clock.
+	// Now is the Harness clock, epoch milliseconds; nil uses the wall clock. Sleeping tasks store deadlines on it, so
+	// every process that opens the same storage must use the same clock.
 	Now func() float64
+	// SetTimer arms the timers of the Session, the scheduler, and its tasks: pacing progress commits, freeing idle
+	// memory (background), and, without OnWake, resuming sleeping tasks; and the timers of TaskRuntime.SetTimer. The
+	// Node.js environment, file watcher, and image worker keep their own timers. Nil uses Go timers. Tests can pass fake
+	// timers; a host can keep timers off a process that should hibernate.
+	SetTimer durable.SetTimer
+	// OnWake wakes the process for sleeping tasks instead of a SetTimer timer. Without it, while scheduling runs, a timer
+	// that keeps the process alive resumes sleeping tasks when they are due. With it, the Harness arms no timer for
+	// them: it calls OnWake after open and whenever Harness.Wake() changes, and the host arms its own wakeup, such as a
+	// Durable Object alarm, and calls Resume() when it fires. Called off the Session line, after the commit that changed
+	// the value, so a host arms a recovery wakeup before calls that can start work. It may call Wake and Resume, and
+	// must not block. A panic is reported, and the value is offered again at the next change.
+	OnWake func(wake Wake)
 	// OnReport receives extension failures that do not fail the calling operation. It must not panic.
 	OnReport func(err error)
+}
+
+// Wake is when a Session next needs a running process (Harness.Wake). Active: some task can run now or is running, so a
+// process that dies must be woken again soon, for example by a recovery alarm. At: the earliest sleep not yet due, when
+// there is one. Neither: nothing needs a process until new work is submitted. Tasks blocked on a missing or unmigratable
+// definition, completing tasks, and waits on live tasks do not count; the work they wait for does.
+type Wake struct {
+	Active bool
+	// At is the earliest sleep not yet due; nil when there is none.
+	At *float64
 }
 
 // TaskInspectionKind is the kind of a TaskInspectionState.
@@ -158,17 +181,20 @@ const (
 	TaskInspectionRunning    TaskInspectionKind = "running"
 	TaskInspectionReady      TaskInspectionKind = "ready"
 	TaskInspectionWaiting    TaskInspectionKind = "waiting"
+	TaskInspectionSleeping   TaskInspectionKind = "sleeping"
 	TaskInspectionCompleting TaskInspectionKind = "completing"
 	TaskInspectionBlocked    TaskInspectionKind = "blocked"
 )
 
-// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); ready (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, with Reason missing_task, task_too_old, or migration_failed and an optional Error).
+// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); ready (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); sleeping (until the Harness clock reaches Until); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, with Reason missing_task, task_too_old, or migration_failed and an optional Error).
 type TaskInspectionState struct {
 	Kind     TaskInspectionKind
 	Migrates bool
 	On       []durable.TaskId
-	Reason   string
-	Error    error
+	// Until is the time a sleeping task wakes at.
+	Until  float64
+	Reason string
+	Error  error
 }
 
 // TaskInspection is a live task and what the scheduler would do with it under the current registry.
@@ -224,6 +250,10 @@ type Harness interface {
 	durable.Session
 	// Resume enables task scheduling. It is idempotent and panics after close. Calls that ask for progress enable it too: Conversation.Submit, Compact, Abort, WaitForIdle, Submission.Wait, WaitForTask, and Harness.WaitForIdle. Read-only viewers never do.
 	Resume()
+	// Wake is when this Session next needs a running process, from the scheduler's memory: Active while some task can run
+	// now or is running, At for the earliest sleep. Answers also while scheduling is paused. A host that wakes the
+	// process itself, such as a Durable Object alarm, arms from it and calls Resume when woken; see HarnessOptions.OnWake.
+	Wake() Wake
 	// Root returns the reserved root conversation, creating it with options.Agent and options.Init in one commit when absent.
 	Root(ctx context.Context, options *RootOptions) (Conversation, error)
 	// Conversation returns nil when absent.

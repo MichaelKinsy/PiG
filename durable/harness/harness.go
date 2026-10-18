@@ -205,6 +205,11 @@ func (harness *harnessImpl) Resume() {
 	harness.tasks.Resume()
 }
 
+func (harness *harnessImpl) Wake() Wake {
+	harness.assertOpen()
+	return harness.tasks.Wake()
+}
+
 func (harness *harnessImpl) GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
 	record, err := harness.ReadOnLine(func() (any, error) { return harness.storage.Task(ctx, id) })
 	if err != nil {
@@ -571,6 +576,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		// Join task invocations after admission is sealed and before Storage closes; writes no task outcome.
 		BeforeClose: func() { harness.tasks.Join() },
 		Report:      harness.report,
+		SetTimer:    options.SetTimer,
 	}, now, harness.documentRetentionMs)
 	// Every component reads and writes through the Session's failure guard (session.ts: the Harness uses `this.storage`).
 	storage = harness.Storage()
@@ -587,6 +593,8 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		Settings:       harness.settings,
 		Env:            harness.buildEnv,
 		Now:            now,
+		OnWake:         options.OnWake,
+		Timers:         durable.HostTimers(options.SetTimer, harness.report),
 		Report:         harness.report,
 		SettleOutcome:  SettleSchedulerOutcome,
 		WithdrawInputs: WithdrawQueuedInputs,

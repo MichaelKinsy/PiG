@@ -16,7 +16,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -29,13 +28,9 @@ type anyTaskRecord = durable.TaskRecord[durable.JsonValue, durable.JsonValue, du
 type anyTaskState = durable.TaskState[durable.JsonValue, durable.JsonValue]
 type anyOutcome = durable.TaskOutcome[durable.JsonValue]
 
-const (
-	schedulerScanPageSize = 256
-	// maxTimerDelay is the longest delay setTimeout supports; longer sleeps wait in several steps (scheduler.ts:54).
-	maxTimerDelay = 2_147_483_647
-)
+const schedulerScanPageSize = 256
 
-var liveTaskStatuses = []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskWaiting, durable.TaskCompleting}
+var liveTaskStatuses = []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskWaiting, durable.TaskSleeping, durable.TaskCompleting}
 
 // Blocked reasons: why a pending task cannot be reserved under a registry snapshot. Derived, never persisted.
 const (
@@ -62,6 +57,9 @@ type invocation struct {
 	// watches acquired through the runtime stop at invocation end.
 	watchMu sync.Mutex
 	watches map[durable.WatchHandle[durable.JsonObject]]struct{}
+	// timers armed through the runtime, by arming order; disarmed at invocation end. Guarded by watchMu.
+	timers    map[int]func()
+	nextTimer int
 	ended   atomic.Bool
 	done    chan struct{}
 }
@@ -178,7 +176,11 @@ type TaskSchedulerOptions struct {
 	Settings func() durable.Settings
 	// Env builds a conversation's environment with HarnessOptions.Env.
 	Env    func(ctx context.Context, conversationId durable.ConversationId) (env.ExecutionEnv, error)
-	Now    func() float64
+	Now func() float64
+	// OnWake is HarnessOptions.OnWake: it replaces the timer for sleeping tasks.
+	OnWake func(wake Wake)
+	// Timers are the host's timers (HarnessOptions.SetTimer).
+	Timers durable.Timers
 	Report func(err error)
 	// SettleOutcome is the Harness cleanup staged in the commit that makes an outcome the scheduler wrote itself
 	// terminal.
@@ -193,9 +195,9 @@ type TaskSchedulerOptions struct {
 
 // TaskScheduler is the durable task scheduler of one Harness (scheduler.ts:162-1243).
 //
-// live mirrors every committed non-terminal task record: pending, running, waiting, and completing. The synchronous
-// commit listener updates it on the Session line, so code running on the line reads exactly the committed state from
-// it.
+// live mirrors every committed non-terminal task record: pending, running, waiting, sleeping, and completing. The
+// synchronous commit listener updates it on the Session line, so code running on the line reads exactly the committed
+// state from it.
 //
 // Tasks and conversations form one ownership tree (spec §5.5): a task's parent is its owner task, or its
 // conversation; a conversation's parent is its owner task, if any. Walks up that tree decide cascades, idle scopes, and
@@ -211,7 +213,7 @@ type TaskScheduler struct {
 	// tasks, scans only newer entries. It is derived and never persisted; it is dropped at the first idle check after
 	// Settings().ContextRetentionMs of idleness, and at close (scheduler.ts #contexts).
 	contexts map[durable.ConversationId]*keptContext
-	// expiry is the timer for the earliest expiry of an idle context.
+	// expiry is the background timer for the earliest expiry of an idle context, unless the host declined it.
 	expiry *contextExpiry
 
 	mu               sync.Mutex
@@ -241,6 +243,15 @@ type TaskScheduler struct {
 	finalizeChecks *orderedSet[durable.TaskId]
 	// waiters holds the live waiting tasks by each task in their On.
 	waiters map[durable.TaskId]*orderedSet[durable.TaskId]
+	// sleeping holds the sleeping live tasks, due or not: the candidates of wakeDueLocked.
+	sleeping *orderedSet[durable.TaskId]
+	// timer is the timer for the earliest sleep, without OnWake while scheduling runs.
+	timer *wakeTimer
+	// lastWake is the last value given to OnWake, so an unchanged one is not repeated.
+	lastWake *Wake
+	// wakeScheduled is set while a recomputation of the wake is queued. wakeMu serializes the recomputations.
+	wakeScheduled bool
+	wakeMu        sync.Mutex
 	// dropQueue holds the ended tasks and conversations found unneeded, which sweep drops at the end of the commit's
 	// publication unless needed again by then: a chain load installs nodes before the work below them is listed.
 	dropQueue          *orderedSet[treeNode]
@@ -275,8 +286,14 @@ type keptContext struct {
 
 // contextExpiry is the pending timer that settles idle contexts at time at.
 type contextExpiry struct {
-	at    float64
-	timer *time.Timer
+	at     float64
+	disarm func()
+}
+
+// wakeTimer is the pending timer that resumes the earliest sleeping task at time at.
+type wakeTimer struct {
+	at     float64
+	disarm func()
 }
 
 type failedMigration struct {
@@ -305,6 +322,7 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		runnable:            newOrderedSet[durable.TaskId](),
 		finalizeChecks:      newOrderedSet[durable.TaskId](),
 		waiters:             map[durable.TaskId]*orderedSet[durable.TaskId]{},
+		sleeping:            newOrderedSet[durable.TaskId](),
 		dropQueue:           newOrderedSet[treeNode](),
 		unsubscribeRegistry: func() {},
 	}
@@ -378,16 +396,85 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 	s.mu.Lock()
 	s.cascadePending = true
 	s.scheduleReconcileLocked()
+	s.scheduleWakeLocked()
 	s.mu.Unlock()
 	return nil
 }
 
-// Resume enables scheduling. It is idempotent; the kick does nothing once closing.
+// Resume enables scheduling, and makes sleeping tasks that are due runnable: a host wakeup, such as an alarm, calls
+// this. It is idempotent; the kick does nothing once closing.
 func (s *TaskScheduler) Resume() {
 	s.mu.Lock()
 	s.enabled = true
+	s.wakeDueLocked()
 	s.mu.Unlock()
 	s.kick()
+}
+
+// Wake is when the Session next needs a process: Active while some task can run now or is running, At for the earliest
+// sleep not yet due. Synchronous, from memory; a task whose chain is not loaded yet counts as it would alone.
+func (s *TaskScheduler) Wake() Wake {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.wakeLocked()
+}
+
+func (s *TaskScheduler) wakeLocked() Wake {
+	now := s.options.Now()
+	active := len(s.invocations) > 0
+	var at *float64
+	var snapshot durable.RegistrySnapshot
+	snapshotFailed := false
+	for _, record := range s.liveValuesLocked() {
+		state := record.State
+		if state.Status == durable.TaskCompleting {
+			continue
+		}
+		if state.Status == durable.TaskWaiting && !record.AbortRequested && slices.ContainsFunc(state.On, func(id durable.TaskId) bool { _, live := s.live[id]; return live }) {
+			continue
+		}
+		if state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > now {
+			if at == nil || *state.Until < *at {
+				until := *state.Until
+				at = &until
+			}
+			continue
+		}
+		if active {
+			continue
+		}
+		// An abort invocation waits for the live work below it, which counts itself.
+		if record.AbortRequested && len(s.waitingOnLocked(record, true)) > 0 {
+			continue
+		}
+		// A task no definition can take waits for a registry change, except an abort-marked one, which is orphaned.
+		if !record.AbortRequested || record.AbortReason != "" {
+			if snapshot == nil && !snapshotFailed {
+				snapshot = s.snapshotOrReportLocked()
+				snapshotFailed = snapshot == nil
+			}
+			if snapshot != nil && s.fitLocked(record, snapshot.Task(record.Kind)).reason != "" {
+				continue
+			}
+		}
+		active = true
+	}
+	return Wake{Active: active, At: at}
+}
+
+// snapshotOrReportLocked takes a registry snapshot; one that panics is reported and yields nil.
+func (s *TaskScheduler) snapshotOrReportLocked() (snapshot durable.RegistrySnapshot) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			snapshot = nil
+			err, ok := recovered.(error)
+			if !ok {
+				err = fmt.Errorf("%s", durable.ErrorMessage(recovered))
+			}
+			s.options.Report(err)
+		}
+	}()
+	return s.options.Registry.Snapshot()
 }
 
 // Join signals every invocation and waits for them, and for scheduler passes in flight. It writes nothing. Close calls
@@ -780,8 +867,9 @@ func (s *TaskScheduler) contextRetention() (retention float64, err error) {
 	return s.options.Settings().ContextRetentionMs, nil
 }
 
-// scheduleExpiryLocked runs resolveIdleWaiters when the earliest idle context expires. The timer keeps nothing alive:
-// close stops it, and a pending one never blocks a process from exiting.
+// scheduleExpiryLocked runs resolveIdleWaiters when the earliest idle context expires, on a background timer, which
+// never keeps the process alive: close stops it. Where the host declines it, none is kept, and task changes alone check
+// expiry.
 func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 	var at *float64
 	for _, kept := range s.contexts {
@@ -793,15 +881,14 @@ func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 		return
 	}
 	if s.expiry != nil {
-		s.expiry.timer.Stop()
+		s.expiry.disarm()
 		s.expiry = nil
 	}
 	if at == nil || s.sealing.Load() {
 		return
 	}
 	expiry := &contextExpiry{at: *at}
-	delay := math.Min(math.Max(0, *at-now), maxTimerDelay)
-	expiry.timer = time.AfterFunc(time.Duration(delay*float64(time.Millisecond)), func() {
+	disarm := s.options.Timers.Background(func() {
 		s.mu.Lock()
 		if s.expiry == expiry {
 			s.expiry = nil
@@ -811,7 +898,11 @@ func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 		if !closing {
 			s.resolveIdleWaiters()
 		}
-	})
+	}, *at-now)
+	if disarm == nil {
+		return
+	}
+	expiry.disarm = disarm
 	s.expiry = expiry
 }
 
@@ -1276,8 +1367,12 @@ func (s *TaskScheduler) seal() {
 func (s *TaskScheduler) finishSealLocked() {
 	clear(s.contexts)
 	if s.expiry != nil {
-		s.expiry.timer.Stop()
+		s.expiry.disarm()
 		s.expiry = nil
+	}
+	if s.timer != nil {
+		s.timer.disarm()
+		s.timer = nil
 	}
 	unsubscribe := s.unsubscribeRegistry
 	s.mu.Unlock()
@@ -1292,6 +1387,7 @@ func (s *TaskScheduler) finishSealLocked() {
 func (s *TaskScheduler) kick() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.scheduleWakeLocked()
 	s.dirty = true
 	if s.draining || !s.enabled || s.sealing.Load() {
 		return
@@ -1378,6 +1474,9 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 		if _, err := s.loadScopesLocked(false); err != nil {
 			return nil, err
 		}
+		// Every pass picks up sleeps whose time has come: a pass started by any change may be the first to run after a
+		// deadline, and the wake it schedules no longer keeps a timer for a due sleep.
+		s.wakeDueLocked()
 		// Taken once per pass, and only when some task is a candidate.
 		var snapshot durable.RegistrySnapshot
 		for _, id := range s.runnable.Values() {
@@ -1392,6 +1491,11 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 			}
 			// It returns once what it waits for ends, its record changes, or the work below it ends.
 			if len(s.waitingOnLocked(record, true)) > 0 {
+				s.runnable.Delete(id)
+				continue
+			}
+			// It returns at the first pass after its time comes, which the timer, Resume, or any change starts.
+			if s.notDueLocked(record) {
 				s.runnable.Delete(id)
 				continue
 			}
@@ -1584,6 +1688,9 @@ func (s *TaskScheduler) inspectTaskLocked(record anyTaskRecord, snapshot durable
 	if on := s.waitingOnLocked(record, false); len(on) > 0 {
 		return TaskInspectionState{Kind: TaskInspectionWaiting, On: on}
 	}
+	if s.notDueLocked(record) {
+		return TaskInspectionState{Kind: TaskInspectionSleeping, Until: *record.State.Until}
+	}
 	found := s.fitLocked(record, snapshot.Task(record.Kind))
 	if found.reason != "" {
 		return TaskInspectionState{Kind: TaskInspectionBlocked, Reason: found.reason, Error: found.err}
@@ -1603,6 +1710,7 @@ func (s *TaskScheduler) createInvocationLocked(record anyTaskRecord, mode invoca
 		ctx:            ctx,
 		cancel:         cancel,
 		watches:        map[durable.WatchHandle[durable.JsonObject]]struct{}{},
+		timers:         map[int]func(){},
 		done:           make(chan struct{}),
 	}
 	s.invocations[record.Id] = created
@@ -1842,6 +1950,11 @@ func (s *TaskScheduler) commitStateLocked(tx *session.Transaction, invocation *i
 			return err
 		}
 	}
+	if next.Status == durable.TaskSleeping {
+		if err := validateSleep(invocation, current.Id, next.Until); err != nil {
+			return err
+		}
+	}
 	if next.Status == durable.TaskTerminal {
 		staged := overlayOf(tx)
 		if _, err := s.loadScopesLocked(false); err != nil {
@@ -2013,6 +2126,13 @@ func (s *TaskScheduler) endLocked(invocation *invocation) {
 	invocation.watchMu.Unlock()
 	for _, watch := range watches {
 		_, _ = watch.Stop()
+	}
+	invocation.watchMu.Lock()
+	timers := slices.Collect(maps.Values(invocation.timers))
+	clear(invocation.timers)
+	invocation.watchMu.Unlock()
+	for _, disarm := range timers {
+		disarm()
 	}
 	// Pending waits bound to the invocation, such as a tool's WaitForTask, fail with it.
 	invocation.cancel(invocation.endedError())
@@ -2479,28 +2599,43 @@ func (runtime *taskRuntime) Report(err error) {
 	runtime.scheduler.options.Report(err)
 }
 
-// Sleep waits until the Harness clock reaches until, rechecking it after every timer.
-func (runtime *taskRuntime) Sleep(ctx context.Context, until float64) error {
-	if err := runtime.check(); err != nil {
-		return err
+// SleepUntil commits a sleep: the task holds no invocation until the Harness clock reaches until, then resumes at
+// checkpoint. It resolves once the sleep is stored, not when the time comes (scheduler.ts sleepUntil).
+func (runtime *taskRuntime) SleepUntil(ctx context.Context, until float64, checkpoint durable.JsonValue) error {
+	_, err := gated(ctx, runtime, func(tx *session.Transaction, current anyTaskRecord) (struct{}, error) {
+		runtime.scheduler.mu.Lock()
+		defer runtime.scheduler.mu.Unlock()
+		return struct{}{}, runtime.scheduler.commitStateLocked(tx, runtime.invocation, current, anyTaskState{Status: durable.TaskSleeping, Checkpoint: &checkpoint, Until: &until})
+	})
+	return err
+}
+
+// SetTimer calls callback once after about delayMs on the Harness's timer. An ended invocation's timers never fire, and
+// the invocation's end disarms them (scheduler.ts setTimer).
+func (runtime *taskRuntime) SetTimer(callback func(), delayMs float64) func() {
+	invocation := runtime.invocation
+	if invocation.ended.Load() {
+		return func() {}
 	}
-	signal, stop := linkSignal(ctx, runtime.invocation.ctx)
-	defer stop()
-	for {
-		if signal.Err() != nil {
-			return context.Cause(signal)
+	var key int
+	disarm := runtime.scheduler.options.Timers.Foreground(func() {
+		invocation.watchMu.Lock()
+		delete(invocation.timers, key)
+		invocation.watchMu.Unlock()
+		if !invocation.ended.Load() {
+			callback()
 		}
-		remaining := until - runtime.scheduler.options.Now()
-		if remaining <= 0 {
-			return nil
-		}
-		timer := time.NewTimer(time.Duration(math.Min(remaining, maxTimerDelay) * float64(time.Millisecond)))
-		select {
-		case <-timer.C:
-		case <-signal.Done():
-			timer.Stop()
-			return context.Cause(signal)
-		}
+	}, delayMs)
+	invocation.watchMu.Lock()
+	invocation.nextTimer++
+	key = invocation.nextTimer
+	invocation.timers[key] = disarm
+	invocation.watchMu.Unlock()
+	return func() {
+		invocation.watchMu.Lock()
+		delete(invocation.timers, key)
+		invocation.watchMu.Unlock()
+		disarm()
 	}
 }
 
@@ -2707,3 +2842,135 @@ var _ = errors.New
 
 // isSealed reports whether the close listener has run; it needs no mutex, which a step holds across registry reads.
 func (s *TaskScheduler) isSealed() bool { return s.sealing.Load() }
+
+// validateSleep checks that a sleep's until is a time on the Harness clock, and that an abort handler does not sleep.
+func validateSleep(invocation *invocation, task durable.TaskId, until *float64) error {
+	if invocation.mode == modeAbort {
+		return fmt.Errorf("Abort handler of task %d cannot sleep", task)
+	}
+	if until == nil || math.IsNaN(*until) || math.IsInf(*until, 0) || *until < 0 {
+		var shown string
+		switch {
+		case until == nil:
+			shown = "undefined"
+		case math.IsNaN(*until):
+			shown = "NaN"
+		case math.IsInf(*until, 1):
+			shown = "Infinity"
+		case math.IsInf(*until, -1):
+			shown = "-Infinity"
+		default:
+			shown = strconv.FormatFloat(*until, 'f', -1, 64)
+		}
+		return fmt.Errorf("Task %d cannot sleep until %s: not a time in milliseconds", task, shown)
+	}
+	return nil
+}
+
+// notDueLocked reports a sleep whose until the clock has not reached; an abort mark ends a sleep.
+func (s *TaskScheduler) notDueLocked(record anyTaskRecord) bool {
+	state := record.State
+	return state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > s.options.Now()
+}
+
+// wakeDueLocked makes every sleeping task whose time has come a reservation candidate.
+func (s *TaskScheduler) wakeDueLocked() {
+	s.sleeping.Range(func(id durable.TaskId) bool {
+		if record, live := s.live[id]; live && !s.notDueLocked(record) {
+			s.runnable.Add(id)
+		}
+		return true
+	})
+}
+
+// scheduleWakeLocked recomputes the wake off the Session line: it arms the built-in timer, or tells OnWake of a change.
+func (s *TaskScheduler) scheduleWakeLocked() {
+	if s.wakeScheduled || s.sealing.Load() {
+		return
+	}
+	s.wakeScheduled = true
+	s.background.Go(func() { s.publishWake() })
+}
+
+func (s *TaskScheduler) publishWake() {
+	// One recomputation at a time, in the order scheduled: a stale value must not follow a newer one.
+	s.wakeMu.Lock()
+	defer s.wakeMu.Unlock()
+	s.mu.Lock()
+	s.wakeScheduled = false
+	if s.sealing.Load() {
+		s.mu.Unlock()
+		return
+	}
+	wake := s.wakeLocked()
+	if s.options.OnWake == nil {
+		var at *float64
+		if s.enabled {
+			at = wake.At
+		}
+		s.armTimerLocked(at)
+		s.mu.Unlock()
+		return
+	}
+	last := s.lastWake
+	if last != nil && last.Active == wake.Active && equalAt(last.At, wake.At) {
+		s.mu.Unlock()
+		return
+	}
+	s.mu.Unlock()
+	err := func() (err error) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				if failure, ok := recovered.(error); ok {
+					err = failure
+				} else {
+					err = errors.New(durable.ErrorMessage(recovered))
+				}
+			}
+		}()
+		s.options.OnWake(wake)
+		return nil
+	}()
+	if err != nil {
+		s.options.Report(err)
+		return
+	}
+	// Only a delivered wake counts: after a panic, the next change or kick offers it again.
+	s.mu.Lock()
+	s.lastWake = &wake
+	s.mu.Unlock()
+}
+
+func equalAt(a, b *float64) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+// armTimerLocked keeps the timer for the earliest sleep. It keeps the process alive, unlike the context expiry timer: a
+// process with a sleeping task has work left, such as a retry backoff. Rechecks the clock when it fires, so a wake
+// before until only arms it again.
+func (s *TaskScheduler) armTimerLocked(at *float64) {
+	if s.timer != nil && at != nil && s.timer.at == *at {
+		return
+	}
+	if s.timer != nil {
+		s.timer.disarm()
+		s.timer = nil
+	}
+	if at == nil || s.sealing.Load() {
+		return
+	}
+	timer := &wakeTimer{at: *at}
+	timer.disarm = s.options.Timers.Foreground(func() {
+		s.mu.Lock()
+		if s.timer == timer {
+			s.timer = nil
+		}
+		s.wakeDueLocked()
+		s.mu.Unlock()
+		s.kick()
+	}, *at-s.options.Now())
+	s.timer = timer
+}
