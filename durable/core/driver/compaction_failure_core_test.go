@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,9 +24,11 @@ import (
 // threshold policy: a first turn of 4000 characters puts the second turn over the blocking threshold, so the second turn waits
 // for a threshold compaction whose summary request is the faux provider's second step.
 type compactionFailureRig struct {
-	h        harness.Harness
-	root     harness.Conversation
-	settings *harness.HarnessSettings
+	h    harness.Harness
+	root harness.Conversation
+	// settings is the host's live settings value: the Harness reads it at each use from its own goroutines, so a change replaces the
+	// whole value (see crashRig.settings).
+	settings *atomic.Pointer[harness.HarnessSettings]
 	faux     *ai.FauxProviderHandle
 	models   *ai.Models
 }
@@ -38,8 +41,9 @@ func openCompactionFailureRig(t *testing.T, core bool, steps ...ai.FauxResponseS
 	faux.SetResponses(append([]ai.FauxResponseStep{
 		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ok")}, StopReason: "stop"}),
 	}, steps...))
-	settings := &harness.HarnessSettings{Stream: &durable.ConversationStreamOptions{CacheRetention: ai.CacheRetention("none")}, Compaction: thresholdPolicy()}
-	options := harness.HarnessOptions{Models: models, Registry: harness.CreateRegistry(), Settings: func() *harness.HarnessSettings { return settings }}
+	settings := new(atomic.Pointer[harness.HarnessSettings])
+	settings.Store(&harness.HarnessSettings{Stream: &durable.ConversationStreamOptions{CacheRetention: ai.CacheRetention("none")}, Compaction: thresholdPolicy()})
+	options := harness.HarnessOptions{Models: models, Registry: harness.CreateRegistry(), Settings: settings.Load}
 	var h harness.Harness
 	var err error
 	if core {
@@ -57,6 +61,13 @@ func openCompactionFailureRig(t *testing.T, core bool, steps ...ai.FauxResponseS
 		t.Fatal(err)
 	}
 	return &compactionFailureRig{h: h, root: root, settings: settings, faux: faux, models: models}
+}
+
+// changeSettings changes the host's live settings: a copy of the current value is changed and stored.
+func (r *compactionFailureRig) changeSettings(change func(settings *harness.HarnessSettings)) {
+	next := *r.settings.Load()
+	change(&next)
+	r.settings.Store(&next)
 }
 
 func (r *compactionFailureRig) submit(t *testing.T, text string) durable.SubmissionRecord {
@@ -314,7 +325,7 @@ func TestCorePerModelCompactionOverrideSetsTheBlockingThreshold(t *testing.T) {
 			policy := thresholdPolicy()
 			policy.Enabled = new(false)
 			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{key: {Enabled: new(true)}}
-			r.settings.Compaction = policy
+			r.changeSettings(func(settings *harness.HarnessSettings) { settings.Compaction = policy })
 			r.firstTurn(t)
 			if second := r.submit(t, strings.Repeat("y", 500)); second.Status != durable.SubmissionDone {
 				t.Fatalf("override %s: second turn %+v", key, second)

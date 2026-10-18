@@ -6,6 +6,7 @@ package driver_test
 import (
 	"context"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -155,10 +156,13 @@ func TestCoreHostInputsAreReadAtEachUse(t *testing.T) {
 			faux.SetResponses([]ai.FauxResponseStep{reply, reply})
 			models := ai.CreateModels()
 			models.SetProvider(faux.Provider())
-			settings := &harness.HarnessSettings{Stream: &durable.ConversationStreamOptions{TimeoutMs: new(1000)}}
-			_, root := openHostInputs(t, core, harness.HarnessOptions{Models: models, Settings: func() *harness.HarnessSettings { return settings }})
+			// The Harness calls the settings function from its own goroutines, some after a turn has settled (the scheduler's pass
+			// that follows it), so the host publishes a change atomically: a bare variable write would race those reads.
+			var settings atomic.Pointer[harness.HarnessSettings]
+			settings.Store(&harness.HarnessSettings{Stream: &durable.ConversationStreamOptions{TimeoutMs: new(1000)}})
+			_, root := openHostInputs(t, core, harness.HarnessOptions{Models: models, Settings: settings.Load})
 			hostInputsTurn(t, root, "one")
-			settings = &harness.HarnessSettings{Stream: &durable.ConversationStreamOptions{TimeoutMs: new(2000)}}
+			settings.Store(&harness.HarnessSettings{Stream: &durable.ConversationStreamOptions{TimeoutMs: new(2000)}})
 			hostInputsTurn(t, root, "two")
 			if len(timeouts) != 2 || timeouts[0] != 1000 || timeouts[1] != 2000 {
 				t.Fatalf("timeouts %v, want [1000 2000]", timeouts)

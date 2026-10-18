@@ -140,6 +140,9 @@ type HarnessOptions struct {
 	ModelsFunc func() durable.Models
 	Registry   RegistryReader
 	// Settings returns the current settings at every resolution; nil uses the defaults. Upstream reads a settings object whose fields may be getters.
+	// It is called from the Harness's own goroutines (the Session line, the scheduler, task runtimes, graph views), concurrently with the host and
+	// with itself, and the returned value is read after the call returns. It must be safe for concurrent use and the value must not be written once
+	// returned. Publish a change by returning a new value, for example from an atomic.Pointer.
 	Settings func() *HarnessSettings
 	// Env builds a conversation's environment at each use. It never runs on the Session line. Nil means no environment.
 	Env func(ctx context.Context, target EnvTarget) (env.ExecutionEnv, error)

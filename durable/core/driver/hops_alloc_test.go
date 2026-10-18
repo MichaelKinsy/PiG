@@ -5,6 +5,7 @@ package driver_test
 
 import (
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 
@@ -47,7 +48,10 @@ func TestAnEmptyHoppedStepAllocatesNothing(t *testing.T) {
 	}
 }
 
-// lockedCore serializes Step: the host's owner goroutine and the test step one Session.
+// lockedCore serializes Step: the host's owner goroutine and the test step one Session. The owner reads a step after Step has
+// returned and the core clears its step buffers at its next Step (a step is valid until then), so a step the test takes in between
+// would clear the slots the owner reads: the owner gets a copy of the step's slices. The test's own steps are empty hops, which
+// clear slots and write no payload, so the slices are all the copy needs.
 type lockedCore struct {
 	mu sync.Mutex
 	*core.Session
@@ -56,5 +60,8 @@ type lockedCore struct {
 func (c *lockedCore) Step(ev abi.Event) *abi.Step {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.Session.Step(ev)
+	step := *c.Session.Step(ev)
+	step.Commits, step.Reads, step.Notices = slices.Clone(step.Commits), slices.Clone(step.Reads), slices.Clone(step.Notices)
+	step.Effects, step.Order, step.Err = slices.Clone(step.Effects), slices.Clone(step.Order), slices.Clone(step.Err)
+	return &step
 }

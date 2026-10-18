@@ -65,7 +65,9 @@ type crashRig struct {
 	core     bool
 	path     string
 	registry harness.Registry
-	settings *harness.HarnessSettings
+	// settings is the host's live settings value. The Harness reads it at each use from its own goroutines, so a change replaces the
+	// whole value (Pi assigns a field of the shared object, `settings.restartLimit = ...`, which on one thread races nothing).
+	settings atomic.Pointer[harness.HarnessSettings]
 	crashes  int
 }
 
@@ -77,7 +79,9 @@ type opened struct {
 
 func newCrashRig(t *testing.T, core bool, registry harness.Registry, settings harness.HarnessSettings) *crashRig {
 	t.Helper()
-	return &crashRig{t: t, core: core, path: filepath.Join(t.TempDir(), "session.sqlite"), registry: registry, settings: &settings}
+	rig := &crashRig{t: t, core: core, path: filepath.Join(t.TempDir(), "session.sqlite"), registry: registry}
+	rig.settings.Store(&settings)
+	return rig
 }
 
 // kill is Pi's kill(): the process dies. The next open reads the store as it stood, and the dead Harness is never closed against
@@ -108,7 +112,7 @@ func (rig *crashRig) open(configure ...func(*harness.HarnessOptions)) opened {
 	options := harness.HarnessOptions{
 		Models:   ai.CreateModels(),
 		Registry: rig.registry,
-		Settings: func() *harness.HarnessSettings { return rig.settings },
+		Settings: rig.settings.Load,
 		OnWake:   wakes.add,
 		OnReport: infos.add,
 	}
@@ -416,7 +420,7 @@ func TestBlockedTasks(t *testing.T) {
 			settleScheduling(t, current.h)
 			state.set(false)
 			// The host's live settings change; the next pass runs the task.
-			rig.settings.RestartLimit = new(math.Inf(1))
+			rig.settings.Store(&harness.HarnessSettings{RestartLimit: new(math.Inf(1))})
 			current.h.Resume()
 			if outcome := waitFinished2(t, current.h, id).State.Outcome; outcome == nil || outcome.Status != durable.OutcomeCompleted {
 				t.Fatalf("outcome %+v, want completed", outcome)
