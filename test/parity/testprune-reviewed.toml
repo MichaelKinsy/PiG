@@ -723,3 +723,10 @@ path = "internal/goroutineid/fast_gc_test.go"
 commit = "cfa8e90d0f"
 class = "NOBEHAVIOR"
 reason = "PiG-only goroutine ID fast path (no Pi counterpart; JavaScript has no goroutines): the offset proof moved from 16 started goroutines to the goroutines that call Current, so the probe tests now drive offsetProof.observe"
+
+[[entry]]
+path = "ai/transform_messages_allocs_test.go"
+commit = "0c3963388f"
+class = "CITE"
+cite = "packages/ai/src/api/transform-messages.ts:42"
+reason = "replaceImagesWithPlaceholder pushes every non-image block unchanged, so a text-only history needs no copy for a model without image input; the allocation bound follows"
