@@ -408,3 +408,43 @@ func TestStreamSimpleContextDispatchesTheSimpleFunctionWithTheNormalizedContext(
 		t.Errorf("system = %q, keys = %q, simple = %v, want the system prompt, env-key and the simple function", transcriptSystem, call.apiKeys, call.simple)
 	}
 }
+
+// legacy-api-aliases.ts binds each alias to its API module, and the module stamps the reply: the model's api for anthropic-messages.ts:588,
+// mistral-conversations.ts:222, openai-completions.ts:316, openai-responses.ts:162 and pi-messages.ts:184,328; its own api for
+// azure-openai-responses.ts:50, google-generative-ai.ts:71, google-vertex.ts:80, bedrock-converse-stream.ts:140 and openai-codex-responses.ts:249.
+func TestLegacyAPIAliasesStampTheReplyLikeTheirModule(t *testing.T) {
+	transcript := NormalizeContext(compatHello)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(server.Close)
+	cases := []struct {
+		name         string
+		stream       APIStreamFunction
+		streamSimple APIStreamSimpleFunction
+		want         API
+	}{
+		{"streamAnthropic", StreamAnthropic, StreamSimpleAnthropic, "other-api"},
+		{"streamMistral", StreamMistral, StreamSimpleMistral, "other-api"},
+		{"streamOpenAICompletions", StreamOpenAICompletions, StreamSimpleOpenAICompletions, "other-api"},
+		{"streamOpenAIResponses", StreamOpenAIResponses, StreamSimpleOpenAIResponses, "other-api"},
+		{"streamAzureOpenAIResponses", StreamAzureOpenAIResponses, StreamSimpleAzureOpenAIResponses, APIAzureOpenAIResponses},
+		{"streamGoogle", StreamGoogle, StreamSimpleGoogle, APIGoogleGenerativeAI},
+		{"streamGoogleVertex", StreamGoogleVertex, StreamSimpleGoogleVertex, APIGoogleVertex},
+		{"streamOpenAICodexResponses", StreamOpenAICodexResponses, StreamSimpleOpenAICodexResponses, APIOpenAICodexResponses},
+	}
+	for _, c := range cases {
+		for form, stream := range map[string]StreamFunction{"stream": c.stream, "streamSimple": c.streamSimple} {
+			model := compatTestModel("p", "other-api")
+			model.ProviderMeta.BaseURL = server.URL
+			events, err := stream(t.Context(), model, transcript, StreamOptions{APIKey: "k"})
+			if err != nil || events == nil {
+				t.Fatalf("%s %s = %v, %v", c.name, form, events, err)
+			}
+			if got := events.Result().API; got != c.want {
+				t.Errorf("%s %s reply api = %q, want %q", c.name, form, got, c.want)
+			}
+		}
+	}
+}
