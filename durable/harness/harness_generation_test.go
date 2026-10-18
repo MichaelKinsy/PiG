@@ -991,4 +991,3 @@ func (snapshot generationlessSnapshot) Task(name string) durable.AnyTask {
 	}
 	return snapshot.RegistrySnapshot.Task(name)
 }
-
