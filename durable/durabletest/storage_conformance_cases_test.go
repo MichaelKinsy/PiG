@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 24 named cases, each Run returning the provider's failure when the provider fails.
+// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 25 named cases, each Run returning the provider's failure when the provider fails.
 // mutation-checked: dropping the reads and writes of StorageConformanceCase.Name, StorageConformanceCase.Run, StorageConformanceOptions.WithStorage fails it
 // Pi: packages/durable/src/testing/runner.ts:7 (name)
 // Pi: packages/durable/src/testing/runner.ts:23 (run)
@@ -37,6 +37,7 @@ func TestCreateStorageConformanceCasesMatchUpstream(t *testing.T) {
 		"rolls back record tables and secondary indexes when a document command fails",
 		"scans deep fork history newest-first through every ancestor cap",
 		"scans tables in either ID order and continues a cursor in its order",
+		"stores and scans sleeping tasks by status",
 		"stores owners and scans waiting and completing tasks by status",
 		"stores passive write submissions without input-only lifecycle states",
 		"streams long document tails across root replacement deltas",

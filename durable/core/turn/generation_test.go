@@ -204,12 +204,17 @@ func (r *rig) boot() {
 		Now:            func() float64 { return r.now },
 		SettleOutcome:  turn.SettleSchedulerOutcome,
 		WithdrawInputs: func(*session.Tx, session.ID) error { return nil },
-		Timer: func(at float64, fire func()) func() {
-			tm := &pendingTimer{at: at, fire: fire}
-			r.timers = append(r.timers, tm)
-			return func() { tm.dead = true }
-		},
+		Timer:          r.timer,
+		WakeTimer:      r.timer,
 	})
+}
+
+// timer queues a pending host timer that the test fires by advancing the clock; the scheduler's retry and poll sleeps wake
+// through WakeTimer, as production wires it in core/sched.go.
+func (r *rig) timer(at float64, fire func()) func() {
+	tm := &pendingTimer{at: at, fire: fire}
+	r.timers = append(r.timers, tm)
+	return func() { tm.dead = true }
 }
 
 // restart simulates a crash: volatile state (pending model requests, tool runs, timers) is lost, the store survives, and a new

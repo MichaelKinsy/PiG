@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"sync"
@@ -195,6 +196,10 @@ type taskRuntime struct {
 	snapshot durable.RegistrySnapshot
 	agent    *resolvedAgent
 	onEnd    []func()
+	// timers holds the disarm of each armed timer until it fires or is disarmed, so a long phase keeps only its live timers
+	// (scheduler.ts setTimer deletes on fire and on disarm).
+	timers    map[int]func()
+	nextTimer int
 }
 
 // resolvedAgent is the phase's one agent resolution, started at first use with the invocation's context (scheduler.ts #runtime agent).
@@ -219,7 +224,12 @@ func (r *taskRuntime) end() {
 	r.mu.Lock()
 	callbacks := r.onEnd
 	r.onEnd = nil
+	timers := slices.Collect(maps.Values(r.timers))
+	clear(r.timers)
 	r.mu.Unlock()
+	for _, disarm := range timers {
+		disarm()
+	}
 	// The watches stop first, so they end "stopped" rather than "cancelled" by the signal that follows.
 	for _, callback := range callbacks {
 		callback()
@@ -527,27 +537,42 @@ func (r *taskRuntime) SetTimer(callback func(), delayMs float64) func() {
 	if r.done.Load() {
 		return func() {}
 	}
-	var mu sync.Mutex
-	var disarm func()
-	var cancelled bool
-	armed := r.s.timers.Foreground(func() {
+	r.mu.Lock()
+	r.nextTimer++
+	key := r.nextTimer
+	r.mu.Unlock()
+	fired := false
+	disarm := r.s.timers.Foreground(func() {
+		r.mu.Lock()
+		fired = true
+		delete(r.timers, key)
+		r.mu.Unlock()
 		if !r.done.Load() {
 			callback()
 		}
 	}, delayMs)
-	mu.Lock()
-	disarm = armed
-	mu.Unlock()
-	stop := func() {
-		mu.Lock()
-		defer mu.Unlock()
-		if !cancelled {
-			cancelled = true
+	r.mu.Lock()
+	if r.done.Load() {
+		r.mu.Unlock()
+		disarm()
+		return func() {}
+	}
+	if !fired {
+		if r.timers == nil {
+			r.timers = make(map[int]func())
+		}
+		r.timers[key] = disarm
+	}
+	r.mu.Unlock()
+	return func() {
+		r.mu.Lock()
+		_, live := r.timers[key]
+		delete(r.timers, key)
+		r.mu.Unlock()
+		if live {
 			disarm()
 		}
 	}
-	r.onEnded(stop)
-	return stop
 }
 
 // Conversation returns an invocation-bound handle: its operations fail once the invocation ends.

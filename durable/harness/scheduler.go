@@ -19,6 +19,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -2617,19 +2618,31 @@ func (runtime *taskRuntime) SetTimer(callback func(), delayMs float64) func() {
 	if invocation.ended.Load() {
 		return func() {}
 	}
-	var key int
+	invocation.watchMu.Lock()
+	invocation.nextTimer++
+	key := invocation.nextTimer
+	invocation.watchMu.Unlock()
+	fired := false
 	disarm := runtime.scheduler.options.Timers.Foreground(func() {
 		invocation.watchMu.Lock()
+		fired = true
 		delete(invocation.timers, key)
 		invocation.watchMu.Unlock()
 		if !invocation.ended.Load() {
 			callback()
 		}
 	}, delayMs)
+	// The end may clear the timers, or the timer may fire, between the check above and here: store the disarm only while
+	// neither happened, as WatchDocErased does, so no host timer outlives the invocation and no fired timer stays listed.
 	invocation.watchMu.Lock()
-	invocation.nextTimer++
-	key = invocation.nextTimer
-	invocation.timers[key] = disarm
+	if invocation.ended.Load() {
+		invocation.watchMu.Unlock()
+		disarm()
+		return func() {}
+	}
+	if !fired {
+		invocation.timers[key] = disarm
+	}
 	invocation.watchMu.Unlock()
 	return func() {
 		invocation.watchMu.Lock()
@@ -2860,7 +2873,7 @@ func validateSleep(invocation *invocation, task durable.TaskId, until *float64) 
 		case math.IsInf(*until, -1):
 			shown = "-Infinity"
 		default:
-			shown = strconv.FormatFloat(*until, 'f', -1, 64)
+			shown = jv.FormatNumber(*until) // ${until} (scheduler.ts:2070): -1e+21, -1e-7
 		}
 		return fmt.Errorf("Task %d cannot sleep until %s: not a time in milliseconds", task, shown)
 	}
@@ -2871,6 +2884,19 @@ func validateSleep(invocation *invocation, task durable.TaskId, until *float64) 
 func (s *TaskScheduler) notDueLocked(record anyTaskRecord) bool {
 	state := record.State
 	return state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > s.options.Now()
+}
+
+// earliestSleepLocked is wakeLocked's At: the earliest until of a sleep not yet due.
+func (s *TaskScheduler) earliestSleepLocked() *float64 {
+	var at *float64
+	s.sleeping.Range(func(id durable.TaskId) bool {
+		if record, live := s.live[id]; live && s.notDueLocked(record) && (at == nil || *record.State.Until < *at) {
+			until := *record.State.Until
+			at = &until
+		}
+		return true
+	})
+	return at
 }
 
 // wakeDueLocked makes every sleeping task whose time has come a reservation candidate.
@@ -2884,18 +2910,17 @@ func (s *TaskScheduler) wakeDueLocked() {
 }
 
 // scheduleWakeLocked recomputes the wake off the Session line: it arms the built-in timer, or tells OnWake of a change
-// (scheduler.ts #scheduleWake, a microtask after the change). The value at the change is taken now, as the microtask sees it, and
-// offered first, so a transient state is not lost to the goroutine that runs later; the latest value follows.
+// (scheduler.ts #scheduleWake, a microtask after the change). Changes until the recomputation runs share it, as they share
+// upstream's one queued microtask.
 func (s *TaskScheduler) scheduleWakeLocked() {
 	if s.wakeScheduled || s.sealing.Load() {
 		return
 	}
 	s.wakeScheduled = true
-	first := s.wakeLocked()
-	s.background.Go(func() { s.publishWake(first) })
+	s.background.Go(s.publishWake)
 }
 
-func (s *TaskScheduler) publishWake(first Wake) {
+func (s *TaskScheduler) publishWake() {
 	// One recomputation at a time, in the order scheduled: a stale value must not follow a newer one.
 	s.wakeMu.Lock()
 	defer s.wakeMu.Unlock()
@@ -2905,21 +2930,20 @@ func (s *TaskScheduler) publishWake(first Wake) {
 		s.mu.Unlock()
 		return
 	}
-	latest := s.wakeLocked()
 	if s.options.OnWake == nil {
+		// The built-in timer reads only wake().at, the earliest sleep not yet due, so it scans the sleeping tasks rather than
+		// every live task: a scan per change over a large Session is quadratic.
 		var at *float64
 		if s.enabled {
-			at = latest.At
+			at = s.earliestSleepLocked()
 		}
 		s.armTimerLocked(at)
 		s.mu.Unlock()
 		return
 	}
+	wake := s.wakeLocked()
 	s.mu.Unlock()
-	s.offerWake(first)
-	if !equalWake(first, latest) {
-		s.offerWake(latest)
-	}
+	s.offerWake(wake)
 }
 
 // offerWake gives OnWake a wake that differs from the last one it took. Only a delivered wake counts: after a panic, the next

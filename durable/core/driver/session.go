@@ -930,6 +930,12 @@ func (s *coreSession) callOnWake(wake harness.Wake) (err error) {
 
 // Wake is when this Session next needs a running process, answered by the core from its scheduler's memory.
 func (s *coreSession) Wake() harness.Wake {
+	s.mu.Lock()
+	closed := s.closed
+	s.mu.Unlock()
+	if closed {
+		panic(session.ErrSessionClosed) // assertUsable (harness.ts:267, session.ts:870-872), not the host's own closed error
+	}
 	//portlint:allow ctxbackground Harness.wake() is synchronous and takes no context (harness.ts wake): an immediate answer from the core's memory
 	raw, err := s.client.API(context.Background(), "wake", nil)
 	if err != nil {
