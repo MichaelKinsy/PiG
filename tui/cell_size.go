@@ -35,8 +35,8 @@ func (t *tuiBase) ConsumeCellSizeResponse(data string) bool {
 	if match == nil {
 		return false
 	}
-	heightPx, heightErr := strconv.Atoi(match[1]) //portlint:allow numbers the pattern admits only ASCII digits, and an overflowing value is consumed unchanged as Pi ignores a non-finite size
-	widthPx, widthErr := strconv.Atoi(match[2])   //portlint:allow numbers same digits-only match as the height
+	heightPx, heightErr := strconv.Atoi(match[1]) //portlint:allow numbers digits-only match; a size past int range (no terminal reports one) is consumed without setting it, where Pi's parseInt would store it
+	widthPx, widthErr := strconv.Atoi(match[2])   //portlint:allow numbers same digits-only match and int-range note as the height
 	if heightErr != nil || widthErr != nil || heightPx <= 0 || widthPx <= 0 {
 		return true
 	}
