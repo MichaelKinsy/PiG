@@ -29655,6 +29655,108 @@
         "internal/stackprime/stackprime_test.go::TestPrimeSpansADeepCallWithoutAStackCopy",
         "test/perfgate/print_tools_test.go::TestPrintReadToolsProcessGate"
       ]
+    },
+    {
+      "id": "BF-05b4c52",
+      "title": "A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for…",
+      "symptom": "A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it.",
+      "rootCause": "TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it. The abort cancelled the call before its tool started, and the native core driver ended the call without telling the core, which settles a cancelled call only on that report. The call now reports the cancelled lookup as a thrown result, as it reports a tool that observes the cancel. It stalled once in about 1,000 CI runs of the abort-with-generation test under the race detector.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "22e05718a7",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "354be20114",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "3bf9c35b64",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "5dd0ac3aeb",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "9a4bd0e452",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "9db1286275",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "a9642f65b8",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "b0e71fe70d",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "b60bb2641f",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "05b4c52f08",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "9f31a8bee0",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "f8ef05a7ae",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "agent/message_go_escapes_allocs_norace_test.go::TestSystemMessageWithEscapedCharactersDecodesAtTheCostOfOneWithout",
+        "agent/message_go_escapes_test.go::TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing",
+        "ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi",
+        "ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream",
+        "ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi",
+        "ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain",
+        "ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi",
+        "ai/main_test.go::TestMain",
+        "ai/request_message_cache_test.go::TestReleasedRequestCachesHoldNothingAndBuildTheSameBody",
+        "coding/cli/runtime_policy_test.go::TestRPCRunsOnTheRPCCap",
+        "coding/extension/builtin/codemode/execute_oracle_test.go::TestExecuteOutputMatchesPi",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestPiCodemodeRunsFromTheVendoredSDK",
+        "coding/session_next_turn_allocs_test.go::TestNextTurnRefreshAllocationsDoNotGrowWithTheSession",
+        "coding/session_next_turn_projection_test.go::TestNextTurnRefreshHookWritingItsMessageArrayDoesNotReachTheSession",
+        "coding/session_next_turn_projection_test.go::TestNextTurnRefreshProjectsWhatTheSessionProjects",
+        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged",
+        "durable/core/driver/harness_sleep_core_test.go::TestSleepingTasks",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestWakeAfterCloseReportsTheSessionClosed",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "durable/durabletest/storage_conformance_cases_test.go::TestCreateStorageConformanceCasesMatchUpstream",
+        "durable/harness/harness_compaction_test.go::TestCompactionRecovery",
+        "durable/harness/harness_generation_recovery_test.go::TestGenerationRecovery",
+        "durable/harness/harness_storage_failure_test.go::TestAFailedStorageCall",
+        "durable/harness/harness_tasks_scheduling_test.go::TestTaskRuntime",
+        "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable",
+        "durable/timers_test.go::TestHostTimersFallBackForegroundAndDeclineBackground",
+        "durable/timers_test.go::TestNativeTimerFiresOnceAndDisarms",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCDuringASectionTakesEffectWhenItCloses",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCLeavesAUserGOMAXPROCS",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCLowersADefaultOfCap",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCLowersTheCapAndSectionsCloseToIt",
+        "test/perfgate/memory_rows_test.go::TestTmuxIdleMemoryGate"
+      ]
     }
   ],
   "divergences": [

@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-883 bugs. 833 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+884 bugs. 834 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -902,6 +902,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
+| [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13208,6 +13209,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `22e05718a7` (2026-10-17), `338f5de671` (2026-10-17), `44e623504c` (2026-10-17), `6d94e31216` (2026-10-17), `73d897751d` (2026-10-17), `9a4bd0e452` (2026-10-17), `a9642f65b8` (2026-10-17), `b229d49c15` (2026-10-17), `cfa8e90d0f` (2026-10-17), `9f31a8bee0` (2026-10-18)
 - **Tests:** `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `coding/cli/runtime_policy_test.go::TestRPCRunsOnTheRPCCap`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseDoesNotWaitForABlockedWriter`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseWritesPendingChunks`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCoalescesPendingChunksIntoOneWrite`, `coding/cli/stdout_queue_test.go::TestStdoutQueueFailureDropsPendingChunksAndReportsOnce`, `coding/cli/stdout_queue_test.go::TestStdoutQueueReportsWriteFailureOnce` and 24 more in docs/bug-ledger.json
 - **Release note:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started. The reader's goroutine could pick up a reaction loop that belonged to the response, run the reader's code beside a reaction that had not returned, and leave the stream's executor marked busy with nothing running. A goroutine now continues only a reaction loop its own turn holds, so no code runs beside a reaction and every stream ends. It stalled once in CI on Windows (`TestGoogleProviderStreamMatchesPi`); the same stall reproduces on macOS and Linux when the executor's lock hand-offs are delayed.
+
+### BF-05b4c52
+
+**A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it.
+- **Root cause:** TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `22e05718a7` (2026-10-17), `354be20114` (2026-10-17), `3bf9c35b64` (2026-10-17), `5dd0ac3aeb` (2026-10-17), `9a4bd0e452` (2026-10-17), `9db1286275` (2026-10-17), `a9642f65b8` (2026-10-17), `b0e71fe70d` (2026-10-17), `b60bb2641f` (2026-10-17), `05b4c52f08` (2026-10-18), `9f31a8bee0` (2026-10-18), `f8ef05a7ae` (2026-10-18)
+- **Tests:** `agent/message_go_escapes_allocs_norace_test.go::TestSystemMessageWithEscapedCharactersDecodesAtTheCostOfOneWithout`, `agent/message_go_escapes_test.go::TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing`, `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `ai/main_test.go::TestMain` and 29 more in docs/bug-ledger.json
+- **Release note:** A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it. The abort cancelled the call before its tool started, and the native core driver ended the call without telling the core, which settles a cancelled call only on that report. The call now reports the cancelled lookup as a thrown result, as it reports a tool that observes the cancel. It stalled once in about 1,000 CI runs of the abort-with-generation test under the race detector.
 
 ## Divergences from Pi added in this release
 
