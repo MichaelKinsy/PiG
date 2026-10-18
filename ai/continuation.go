@@ -37,8 +37,8 @@ type continuationExecutor struct {
 	drainer *continuationTurn
 	// drains counts ended drains; a drain whose count moved under it was ended in place by a turn it resumed (settle).
 	drains uint64
-	// frameless is set while the drain in progress has no loop on any stack: a body that its pause's drain resumed in place (settle) holds execution, and the goroutine that drives it goes on with that drain when the body next pauses or returns (advance), as the drain that would have resumed it would.
-	frameless bool
+	// frameless is the turn whose body holds the drain in progress, which has no loop on any stack: a body that its pause's drain resumed in place (settle) holds execution, and the goroutine that drives it goes on with that drain when the body next pauses or returns (advance), as the drain that would have resumed it would. Only that body's driver may do so: another turn's driver that takes the lock only after its own body switched back to it finds the drain here, but it is not its drain to run, and the body that holds it is running or settling beside it.
+	frameless *continuationTurn
 	// settling is set while a pausing turn runs the drain on its own stack (settle): its driver is awake and resumes the coroutines granted meanwhile.
 	settling bool
 	// drivers are the turns whose home goroutines sleep in serve, most recent last.
@@ -366,7 +366,7 @@ func (executor *continuationExecutor) drainLocked() {
 func (executor *continuationExecutor) endDrainLocked() (idle func()) {
 	executor.draining = false
 	executor.drainer = nil
-	executor.frameless = false
+	executor.frameless = nil
 	executor.drains++
 	if executor.active == nil && executor.idleLocked() && executor.trace != nil {
 		return executor.trace.idle
@@ -567,9 +567,9 @@ func (executor *continuationExecutor) advance(turn, self *continuationTurn) {
 		if turn != self && turn.state != turnWaiting {
 			executor.wakeLocked(turn)
 		}
-		if executor.frameless {
+		if executor.frameless == turn {
 			// The body ran, in place, the drain that resumed it (settle); that drain would have run on this goroutine, under the body, and goes on now.
-			executor.frameless = false
+			executor.frameless = nil
 			executor.drainLocked()
 			return
 		}
@@ -846,7 +846,7 @@ func (turn *continuationTurn) settle(step turnStep) bool {
 				executor.drainer = drainer
 			} else {
 				// The drain the driver would have started resumed turn: it goes on when the body next pauses or returns.
-				executor.drainer, executor.frameless = turn.driver, true
+				executor.drainer, executor.frameless = turn.driver, turn
 			}
 			executor.departLocked(turn)
 			executor.mu.Unlock()

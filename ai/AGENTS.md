@@ -20,6 +20,7 @@ A Provider receives a normalized Transcript. Public Message, content, Usage, and
 | Result depends on event consumption | Request Result without iteration after more than the former queue bound | Result completes |
 | Iteration stops while waiting | Cancel the iterator context | No waiter or goroutine remains |
 | Cancellation races with termination | Run concurrent Push, iteration, and Result under the race detector | One terminal result |
+| A goroutine that drives a coroutine turn takes the executor's lock only after the body switched back to it, while another turn's body or reaction runs | `TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain` holds the first body between its switch and its driver, runs a second turn into a reaction that does not return, then releases the driver | The late driver continues only a drain its own body holds; no body runs beside a reaction; every turn finishes and the executor is never left draining with no loop |
 | A provider emits an invalid sequence | Exercise setup, start, block, delta, end, and terminal paths | Match Pi event order |
 | Replay metadata crosses provider or model identity | Replay signed content through another model | Drop or transform it as Pi does |
 | Consumed events remain retained | Drain a long stream | Release consumed queue entries |
