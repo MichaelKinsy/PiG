@@ -58,10 +58,10 @@ paths = ["/**/timestamp"]
 kind = "timestamp"
 reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
 [[assert.json_aliases]]
-paths = ["/20/message/durationMs"]
+paths = ["/20/message/durationMs", "/21/message/durationMs", "/22/message/durationMs", "/23/messages/4/durationMs", "/26/data/messages/4/durationMs"]
 kind = "duration"
 optional = true
-reason = "The next request's setup-error message: Pi sets its durationMs only when the millisecond did not tick between lazy.ts's startedAt and the stream's own #startedAt (event-stream.ts #time returns early when message.timestamp < #startedAt), so Pi's own presence varies from run to run; PiG times it the same way (dd68b1609c)."
+reason = "The next request's setup-error message, at every record that carries it: Pi sets its durationMs only when the millisecond did not tick between lazy.ts's startedAt and the stream's own #startedAt (event-stream.ts #time returns early when message.timestamp < #startedAt), so Pi's own presence varies from run to run (absent in 19 of 2,300 Pi runs, 2026-10-18); PiG times it the same way (dd68b1609c)."
 [[assert.json_aliases]]
 paths = ["/**/durationMs"]
 kind = "duration"
