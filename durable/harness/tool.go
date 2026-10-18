@@ -799,8 +799,11 @@ func progressClock(runtime toolRuntime) output.ProgressClock {
 	return output.ProgressClock{
 		Now: func() (now float64) {
 			defer func() {
-				if recover() != nil {
-					// The invocation ended.
+				if recovered := recover(); recovered != nil {
+					// Only the ended invocation's check is Pi's caught throw; any other panic is a failure and propagates.
+					if err, ok := recovered.(error); !ok || runtime.Signal().Err() == nil || err.Error() != fmt.Sprintf("Task %d invocation has ended", runtime.TaskId()) {
+						panic(recovered)
+					}
 					mu.Lock()
 					now = last
 					mu.Unlock()
