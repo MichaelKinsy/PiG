@@ -63,11 +63,12 @@ func TestATimerArmedAsItsInvocationEndsIsDisarmed(t *testing.T) {
 		settleScheduling(t, h)
 		close(release)
 		<-registered
-		mu.Lock()
-		defer mu.Unlock()
-		if !disarmed {
-			t.Errorf("timer armed while the invocation ended is never disarmed")
-		}
+		// The terminal record is visible before the invocation's end runs on its own goroutine, and the end is what disarms.
+		pollUntil(t, "the timer armed while the invocation ended to be disarmed", func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return disarmed
+		})
 	})
 }
 
