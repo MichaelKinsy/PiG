@@ -279,9 +279,23 @@ type TaskRuntime[I, S, R any, H any] interface {
 	Now() float64
 	// Report forwards a non-fatal failure to HarnessOptions.onReport.
 	Report(err error)
-	// Sleep returns once the Harness clock reaches until; it fails when the invocation or ctx is cancelled.
-	Sleep(ctx context.Context, until float64) error
+	// SetTimer calls callback once after about delayMs on the Harness's timer (HarnessOptions.SetTimer), for pacing
+	// work inside a phase, such as throttled progress commits. It is not durable: the invocation's end disarms it, and
+	// after its end nothing is armed. The returned function disarms it. Wait for time between phases with SleepUntil.
+	SetTimer(callback func(), delayMs float64) (disarm func())
+	// SleepUntil commits a sleep: the task holds no invocation until the Harness clock reaches until, then resumes at
+	// checkpoint. It returns once the sleep is stored, not when the time comes; the phase returns right after.
+	// Returning a TaskSleeping state from Commit is the same sleep, for one that must commit together with other
+	// writes.
+	SleepUntil(ctx context.Context, until float64, checkpoint S) error
 }
+
+// SetTimer is a host timer, given as HarnessOptions.SetTimer: call callback once, about delayMs from now, and return a
+// function that disarms it. Background timers only free memory, and a host may decline one by returning nil, for
+// example where a pending timer keeps the process from hibernating; the Harness then frees that memory at later
+// commits. Other timers pace or resume work: one the host panics on or declines is armed with a Go timer. A timer
+// should not fire early; callers check their clock again when it fires.
+type SetTimer func(callback func(), delayMs float64, background bool) (disarm func())
 
 // TaskDefinition is an executable durable state machine definition, registered in the registry by Name.
 type TaskDefinition[I, S, R any, H any] struct {
@@ -565,6 +579,9 @@ const (
 	TaskRunning TaskStatus = "running"
 	// TaskWaiting is parked without an invocation until every task in On is terminal; then resumes at Checkpoint.
 	TaskWaiting TaskStatus = "waiting"
+	// TaskSleeping is parked without an invocation until the Harness clock reaches Until, in milliseconds on the
+	// HarnessOptions.Now clock; then resumes at Checkpoint. An abort mark does not wait for it.
+	TaskSleeping TaskStatus = "sleeping"
 	// TaskCompleting has its outcome decided; it becomes terminal once no ordinary owned work below is live and runs
 	// no more code.
 	TaskCompleting TaskStatus = "completing"
@@ -572,13 +589,15 @@ const (
 	TaskTerminal TaskStatus = "terminal"
 )
 
-// TaskState is the complete durable execution state of a task. Live statuses (pending, running, waiting) carry
-// Checkpoint; waiting also carries On and Policy; completing and terminal carry Outcome.
+// TaskState is the complete durable execution state of a task. Live statuses (pending, running, waiting, sleeping)
+// carry Checkpoint; waiting also carries On and Policy; sleeping also carries Until; completing and terminal carry
+// Outcome.
 type TaskState[S, R any] struct {
 	Status     TaskStatus      `json:"status"`
 	Checkpoint *S              `json:"checkpoint,omitempty"`
 	On         []TaskId        `json:"on,omitempty"`
 	Policy     JoinPolicy      `json:"policy,omitempty"`
+	Until      *float64        `json:"until,omitempty"`
 	Outcome    *TaskOutcome[R] `json:"outcome,omitempty"`
 }
 

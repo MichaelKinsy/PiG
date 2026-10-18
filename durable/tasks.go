@@ -160,6 +160,14 @@ func (runtime typedTaskRuntime[I, S, R, H]) Commit(ctx context.Context, change f
 	})
 }
 
+func (runtime typedTaskRuntime[I, S, R, H]) SleepUntil(ctx context.Context, until float64, checkpoint S) error {
+	encoded, err := ToJsonValue(checkpoint)
+	if err != nil {
+		return err
+	}
+	return runtime.ErasedTaskRuntime.SleepUntil(ctx, until, encoded)
+}
+
 func (runtime typedTaskRuntime[I, S, R, H]) Hooks() HookRunner[H] {
 	return typedHookRunner[H]{runner: runtime.ErasedTaskRuntime.Hooks()}
 }

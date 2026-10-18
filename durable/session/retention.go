@@ -17,10 +17,6 @@ import (
 // upstream: packages/durable/src/session/session.ts:defaultRetention
 const defaultDocumentRetentionMs = 600_000
 
-// maxTimerDelayMs is the longest delay one eviction timer waits; a longer retention waits in several steps.
-// upstream: packages/durable/src/session/session.ts:MAX_TIMER_DELAY
-const maxTimerDelayMs = 2_147_483_647
-
 // DocumentRetention returns ms when it is a number of milliseconds, 0 or more (+Inf keeps documents); otherwise the
 // default. A nil ms and a NaN are not such a number.
 func DocumentRetention(ms *float64) float64 {
@@ -39,8 +35,8 @@ type idleDocument struct {
 // documentSweep is the pending eviction of the oldest idle document. timer is nil for a sweep queued on the line at
 // once; it is guarded by the Session mutex.
 type documentSweep struct {
-	at    float64
-	timer *time.Timer
+	at     float64
+	disarm func()
 }
 
 // documentCache is the retention bookkeeping of the Session's loaded documents, guarded by SessionImpl.mu.
@@ -158,8 +154,8 @@ func (session *SessionImpl) scheduleDocumentSweep(now, retention float64) {
 		session.mu.Unlock()
 		return
 	}
-	if session.cache.sweep != nil && session.cache.sweep.timer != nil {
-		session.cache.sweep.timer.Stop()
+	if session.cache.sweep != nil && session.cache.sweep.disarm != nil {
+		session.cache.sweep.disarm()
 	}
 	// The pending sweep stays set until its job runs, so touches while the line is busy queue no more.
 	sweep := &documentSweep{at: at}
@@ -170,8 +166,24 @@ func (session *SessionImpl) scheduleDocumentSweep(now, retention float64) {
 		session.queueDocumentSweep(sweep)
 		return
 	}
-	// Go timers never keep the process alive, so upstream's no-unref fallback has no counterpart here.
-	sweep.timer = time.AfterFunc(time.Duration(math.Min(delay, maxTimerDelayMs)*float64(time.Millisecond)), func() { session.queueDocumentSweep(sweep) })
+	// A background timer (HarnessOptions.SetTimer); a host that declines it leaves eviction to the end of each commit
+	// (session.ts #documentTimersUnavailable). A timer that fires early sweeps nothing and arms the next one.
+	if session.documentTimersUnavailable {
+		session.cache.sweep = nil
+		session.mu.Unlock()
+		return
+	}
+	session.mu.Unlock()
+	disarm := session.timers.Background(func() { session.queueDocumentSweep(sweep) }, delay)
+	session.mu.Lock()
+	if disarm == nil {
+		session.documentTimersUnavailable = true
+		if session.cache.sweep == sweep {
+			session.cache.sweep = nil
+		}
+	} else {
+		sweep.disarm = disarm
+	}
 	session.mu.Unlock()
 }
 

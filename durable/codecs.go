@@ -275,12 +275,13 @@ type taskStateWire[S, R any] struct {
 	Checkpoint *S              `json:"checkpoint,omitempty"`
 	On         *[]TaskId       `json:"on,omitempty"`
 	Policy     JoinPolicy      `json:"policy,omitempty"`
+	Until      *float64        `json:"until,omitempty"`
 	Outcome    *TaskOutcome[R] `json:"outcome,omitempty"`
 }
 
 // MarshalJSON encodes On for a waiting state even when it is empty: the waiting member requires it.
 func (state TaskState[S, R]) MarshalJSON() ([]byte, error) {
-	wire := taskStateWire[S, R]{Status: state.Status, Checkpoint: state.Checkpoint, Policy: state.Policy, Outcome: state.Outcome}
+	wire := taskStateWire[S, R]{Status: state.Status, Checkpoint: state.Checkpoint, Policy: state.Policy, Until: state.Until, Outcome: state.Outcome}
 	if state.On != nil || state.Status == TaskWaiting {
 		on := state.On
 		if on == nil {

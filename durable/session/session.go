@@ -45,6 +45,8 @@ type Hooks struct {
 	// Report receives the Session's failure and the errors of listeners, which never fail what ran them. A plain
 	// Session drops them.
 	Report func(err error)
+	// SetTimer arms the timers that evict idle documents (HarnessOptions.SetTimer); nil selects Go timers.
+	SetTimer durable.SetTimer
 }
 
 type commitListener struct {
@@ -66,6 +68,10 @@ type SessionImpl struct {
 	deferred   []func()
 	storage    *guardedStorage
 	hooks      Hooks
+	timers     durable.Timers
+	// documentTimersUnavailable is set once the host declined a background timer: then none is kept, and the end of
+	// each commit evicts what expired. Guarded by mu.
+	documentTimersUnavailable bool
 	host       *transactionHost
 	scheduler  *pending
 
@@ -106,19 +112,23 @@ type CreateSessionOptions struct {
 	// default, ten minutes; 0 drops a document right after use; +Inf keeps documents. Anything else that is not a
 	// number of milliseconds, 0 or more, means the default.
 	DocumentRetentionMs *float64
+	// SetTimer arms the timers that evict idle documents; nil selects Go timers (see durable.SetTimer).
+	SetTimer durable.SetTimer
 }
 
 // CreateSession opens a Session kernel over one storage backend.
 func CreateSession(storage durable.Storage, options ...CreateSessionOptions) *SessionImpl {
 	var now func() float64
 	var retention func() *float64
+	var setTimer durable.SetTimer
 	if len(options) > 0 {
 		now = options[0].Now
+		setTimer = options[0].SetTimer
 		if ms := options[0].DocumentRetentionMs; ms != nil {
 			retention = func() *float64 { return ms }
 		}
 	}
-	return NewSessionImpl(storage, Hooks{}, now, retention)
+	return NewSessionImpl(storage, Hooks{SetTimer: setTimer}, now, retention)
 }
 
 // NewSessionImpl opens a Session kernel with extension hooks. now is the wall clock in milliseconds for task times;
@@ -129,6 +139,7 @@ func NewSessionImpl(storage durable.Storage, hooks Hooks, now func() float64, do
 		now = func() float64 { return float64(time.Now().UnixMilli()) }
 	}
 	session := &SessionImpl{hooks: hooks, scheduler: newPending(), documents: map[string]*LoadedDocument{}, cache: newDocumentCache(), now: now, retentionSource: documentRetentionMs, failed: make(chan struct{}), closed: make(chan struct{})}
+	session.timers = durable.HostTimers(hooks.SetTimer, func(err error) { session.report(err) })
 	session.storage = newGuardedStorage(storage, session)
 	session.host = &transactionHost{
 		storage: session.storage,
@@ -635,8 +646,8 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 		session.closing = closing
 		session.listenersRan = listenersRan
 		if sweep := session.cache.sweep; sweep != nil {
-			if sweep.timer != nil {
-				sweep.timer.Stop()
+			if sweep.disarm != nil {
+				sweep.disarm()
 			}
 			session.cache.sweep = nil
 		}

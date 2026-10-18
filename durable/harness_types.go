@@ -198,6 +198,8 @@ type ToolExecutionApi interface {
 	Models() Models
 	// Env is built by HarnessOptions.env for this call; nil without an environment.
 	Env() env.ExecutionEnv
+	// Now is the Harness clock (HarnessOptions.Now), for times a rerun after a restart compares against.
+	Now() float64
 	// Output appends running output, a string or []byte; it becomes the result content when the result omits
 	// Content. The optional skipped marks a chunk that follows output an environment omitted, as reported by an
 	// environment given OutputWindow (ShellOutputInfo.Skipped). The omitted output is more than the tail window by at
