@@ -210,38 +210,9 @@ func jsonlDump(t *testing.T, dir string) any {
 			}
 			lines = append(lines, normalize(parsed, ""))
 		}
-		if file.Name() == "main.jsonl" {
-			lines = unordered(t, lines)
-		}
 		out[file.Name()] = lines
 	}
 	return viaJSON(t, out)
-}
-
-// unordered sorts the commit lines of main.jsonl by their text, without their sequence numbers. Two tasks that are
-// ready at once commit in a fixed order in Pi's single-threaded scheduler and in either order in Go's concurrent one
-// (the script's tool task and the job it started finish together); every record is unchanged by the order.
-func unordered(t *testing.T, lines []any) []any {
-	t.Helper()
-	texts := make([]string, len(lines))
-	for i, line := range lines {
-		commit, ok := line.(map[string]any)
-		if !ok {
-			t.Fatalf("main.jsonl line %d is not an object", i)
-		}
-		delete(commit, "seq")
-		encoded, err := json.Marshal(commit)
-		if err != nil {
-			t.Fatal(err)
-		}
-		texts[i] = string(encoded)
-	}
-	sort.Strings(texts)
-	out := make([]any, len(texts))
-	for i, text := range texts {
-		out[i] = text
-	}
-	return out
 }
 
 // TestScriptedSessionJsonlFilesMatchPiDurable compares the JSONL files themselves: the same names, and the same
