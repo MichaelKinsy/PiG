@@ -19,8 +19,26 @@ import (
 )
 
 type signalLog struct {
-	mu   sync.Mutex
-	seen []string
+	mu      sync.Mutex
+	seen    []string
+	started chan struct{}
+	once    sync.Once
+}
+
+// startedSignal is closed once the handler of a waitingTask has started.
+func (log *signalLog) startedSignal() chan struct{} {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	if log.started == nil {
+		log.started = make(chan struct{})
+	}
+	return log.started
+}
+
+// begun reports that the handler of a waitingTask is running, and about to wait for its signal.
+func (log *signalLog) begun() {
+	started := log.startedSignal()
+	log.once.Do(func() { close(started) })
 }
 
 func (log *signalLog) add(entry string) {
@@ -43,6 +61,7 @@ func waitingTask(log *signalLog) durable.Task[struct{}, stepState, durable.JsonV
 		Initial: func(struct{}) stepState { return stepState{Phase: "work"} },
 		Phases: map[string]durable.PhaseHandler[struct{}, stepState, durable.JsonValue, any]{
 			"work": func(_ context.Context, _ durable.RunningTask[struct{}, stepState, durable.JsonValue], runtime durable.TaskRuntime[struct{}, stepState, durable.JsonValue, any]) error {
+				log.begun()
 				_ = abortedBy(runtime.Signal())
 				log.add("aborted")
 				return nil
@@ -209,6 +228,14 @@ func TestAFailedStorageCall(t *testing.T) {
 			record, _ := harness.GetTask(testContext, id)
 			return record != nil && record.State.Status == durable.TaskRunning
 		})
+		// The task is running once that is committed, which is before its handler is dispatched, so a storage failure that landed now could end the Session
+		// first and the handler would never log. Pi's handler is awaiting its signal by the time `running` resolves (microtask hops); this one starts on
+		// its own goroutine, so the test waits for it to start.
+		select {
+		case <-log.startedSignal():
+		case <-time.After(10 * time.Second):
+			t.Fatal("the task's handler did not start")
+		}
 		task, idle := make(chan error, 1), make(chan error, 1)
 		go func() { _, err := harness.WaitForTask(testContext, id); task <- err }()
 		go func() { idle <- harness.WaitForIdle(testContext) }()
