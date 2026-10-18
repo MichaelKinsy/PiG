@@ -299,7 +299,7 @@ func providerResponseOracle(t *testing.T, pi [4]string, d120 bool, bodies [][][]
 		}
 		switch {
 		case !reflect.DeepEqual(events, want.Events):
-			problem = fmt.Sprintf("events %v, want %v", events, want.Events)
+			problem = fmt.Sprintf("events %v, want %v (stopReason %s, error %q, Stream() error %v)", events, want.Events, result.StopReason, result.ErrorMessage, err)
 		case string(result.StopReason) != want.Message.StopReason:
 			problem = fmt.Sprintf("stopReason %s, want %s", result.StopReason, want.Message.StopReason)
 		case !reflect.DeepEqual(gotContent, wantContent) && (len(result.Content) != 0 || len(want.Message.Content) != 0):
