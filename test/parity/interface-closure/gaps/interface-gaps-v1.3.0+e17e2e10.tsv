@@ -34,3 +34,4 @@ pkg:chord/output#Progress::property:markAndWait	chord	child-gap	chord/output/out
 pkg:chord/output#Progress::property:markAndWait::call:0	chord	signature-mismatch	chord/output/output.go#Progress.MarkAndWait
 pkg:chord/output#Progress::property:stop	chord	child-gap	chord/output/output.go#Progress.Stop
 pkg:chord/output#Progress::property:stop::call:0	chord	undecidable	chord/output/output.go#Progress.Stop
+pkg:durable/.#HarnessOptions	durable	type-mismatch	durable/harness/types.go#HarnessOptions
