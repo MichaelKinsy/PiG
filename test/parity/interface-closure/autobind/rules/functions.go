@@ -835,6 +835,9 @@ func result(env FuncEnv, returns string, results *types.Tuple) Verdict {
 		if _, ok := results.At(0).Type().Underlying().(*types.Chan); ok && strings.HasPrefix(returns, "Promise<") {
 			return wrapResult(env.Agree(returns, results.At(0).Type())) // S5c: a channel is the Go form of the Promise itself
 		}
+		if returns == "Promise<void>" && isVoidAwaitable(results.At(0).Type()) {
+			return Accept("S5w: a value whose Wait(ctx) error settles once is the Go form of Promise<void>: Wait is the await, its error the rejection")
+		}
 	}
 	var kept []string
 	for _, m := range SplitTop(returns, "|") {
@@ -1183,4 +1186,30 @@ func IsBoolStringUnion(returns string) bool {
 	}
 	a, b := strings.TrimSpace(arms[0]), strings.TrimSpace(arms[1])
 	return a == "boolean" && b == "string" || a == "string" && b == "boolean"
+}
+
+// isVoidAwaitable reports a pointer to a named type whose method set has Wait(context.Context) error, the Go handle of a Promise<void>
+// that the caller awaits later (chord output.ts markAndWait returns the promise; Go returns the waiter whose Wait settles with it).
+func isVoidAwaitable(t types.Type) bool {
+	ptr, ok := t.(*types.Pointer)
+	if !ok {
+		return false
+	}
+	if _, ok := ptr.Elem().(*types.Named); !ok {
+		return false
+	}
+	obj, _, _ := types.LookupFieldOrMethod(t, true, nil, "Wait")
+	fn, ok := obj.(*types.Func)
+	if !ok {
+		return false
+	}
+	sig := fn.Type().(*types.Signature)
+	if sig.Params().Len() != 1 || sig.Results().Len() != 1 {
+		return false
+	}
+	param, ok := sig.Params().At(0).Type().(*types.Named)
+	if !ok || param.Obj().Pkg() == nil || param.Obj().Pkg().Path() != "context" || param.Obj().Name() != "Context" {
+		return false
+	}
+	return isErrorType(sig.Results().At(0).Type())
 }

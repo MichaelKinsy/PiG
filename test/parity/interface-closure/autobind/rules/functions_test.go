@@ -906,3 +906,34 @@ func TestGenericFunctionTypeIsParsedWithBoundedTypeParameters(t *testing.T) {
 		t.Errorf("IsFuncType generic handling wrong")
 	}
 }
+
+// S5w: chord output.ts:356 markAndWait(): Promise<void> returns the promise for a later await; the Go form is a waiter whose
+// Wait(ctx) error is that await. A value without such a Wait, or a Wait of another shape, is still a result where Pi has none.
+func TestS5wVoidAwaitableResult(t *testing.T) {
+	scope := checkCall(t, `
+type Waiter struct{}
+func (*Waiter) Wait(context.Context) error { return nil }
+type NoWait struct{}
+type BadWait struct{}
+func (*BadWait) Wait() error { return nil }
+func Mark() *Waiter      { return nil }
+func MarkPlain() *NoWait { return nil }
+func MarkBad() *BadWait  { return nil }
+`)
+	env := testEnv(scope)
+	for _, tc := range []struct {
+		returns, fn string
+		want        Tri
+	}{
+		{"Promise<void>", "Mark", Yes},
+		{"void", "Mark", No},               // a synchronous void call returns nothing
+		{"Promise<void>", "MarkPlain", No}, // no Wait to await
+		{"Promise<void>", "MarkBad", No},   // Wait must take the caller's context and settle with an error
+		{"Promise<number>", "Mark", No},    // the waiter carries no value
+	} {
+		got := Result(env, tc.returns, sigOf(t, scope, tc.fn).Results())
+		if got.OK != tc.want {
+			t.Errorf("%s against %s: got %v (%s), want %v", tc.returns, tc.fn, got.OK, got.Why, tc.want)
+		}
+	}
+}

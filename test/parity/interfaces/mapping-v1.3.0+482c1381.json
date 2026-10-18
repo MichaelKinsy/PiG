@@ -108584,8 +108584,25 @@
     },
     {
       "id": "pkg:chord/output#Progress",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6ca0fbbf8f5887a966cb829e90c7adbb697770784d06bad6835ad74524a0e9a3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6ca0fbbf8f5887a966cb829e90c7adbb697770784d06bad6835ad74524a0e9a3",
+      "rationale": "Derived by the interface gap detector: Progress is Go chord/output/output.go#Progress (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#Progress"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#NewProgress"
+      ],
+      "evidence": [
+        "test:chord/output/output_test.go#TestProgress",
+        "test:durable/harness/harness_tools_progress_test.go#TestToolProgressAndLifetime"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/output#PROGRESS_BYTES_PER_SECOND",
@@ -108670,13 +108687,45 @@
     },
     {
       "id": "pkg:chord/output#Progress::property:markAndWait",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6b36c5abb07ebea54700687ef0a8d265a54c33e17641e3ad8cbe508dd12d1969"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6b36c5abb07ebea54700687ef0a8d265a54c33e17641e3ad8cbe508dd12d1969",
+      "rationale": "Derived by the interface gap detector: Progress::property:markAndWait is Go chord/output/output.go#Progress.MarkAndWait (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#Progress.MarkAndWait"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#Progress.MarkAndWait"
+      ],
+      "evidence": [
+        "test:chord/output/output_test.go#TestProgress"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/output#Progress::property:markAndWait::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4016e58fe8d19c1878838481adfefa1484c3b03881840f594c0670e3a6202013",
+      "rationale": "Derived by the interface gap detector: Progress::property:markAndWait::call:0 is Go chord/output/output.go#Progress.MarkAndWait (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/output/output.go#Progress.MarkAndWait"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/output/output.go#Progress.MarkAndWait"
+      ],
+      "evidence": [
+        "test:chord/output/output_test.go#TestProgress"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/output#Progress::property:stop",
