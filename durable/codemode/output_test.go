@@ -1,6 +1,8 @@
 // Ports packages/durable/src/codemode/output.ts's behavior; Pi tests it through the code mode tool, so the expectations are
 // what Pi's formatResult returns for the corpus of testdata/output-oracle.mjs.
 
+// pi: packages/durable/src/codemode/output.ts
+
 package codemode
 
 import (

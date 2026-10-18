@@ -622,18 +622,18 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | upstream | pig | status |
 |---|---|---|
 | `packages/codemode/src/cloudflare-modules.d.ts` | `(typing artefact: declares Wrangler's CompiledWasm import for the TypeScript entry; Go has no module import rule)` | n/a |
-| `packages/codemode/src/cloudflare.ts` | `codemode/cloudflare/cloudflare.go (QuickJSWasm, CreateInlineSandbox, SandboxDurableObject); durable/core/host/cf/src/codemode/ (the Worker module and the Durable Object class)` | 🟡 |
+| `packages/codemode/src/cloudflare.ts` | `codemode/cloudflare/cloudflare.go (QuickJSWasm, CreateInlineSandbox, SandboxDurableObject); durable/core/host/cf/src/codemode/ (the Worker module and the Durable Object class)` | ✅ |
 | `packages/codemode/src/declarations.ts` | `codemode/declarations.go (SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations; a $ref with malformed percent-encoding returns the URIError as an error); TestSchemaToTypeMatchesPi, TestToolSignatureAndSampleMatchPi and TestRenderDeclarationsMatchesPi compare Pi's declarations.js on a deterministic corpus and seeded-random schemas (codemode/testdata/upstream-oracle.mjs), and every declarations.test.ts case is ported (test-mapping-v1.0.4.json)` | ✅ |
 | `packages/codemode/src/identifier.ts` | `codemode/identifier.go` | ✅ |
 | `packages/codemode/src/index.ts` | `(Go has no barrel exports: the exports are the codemode package)` | n/a |
 | `packages/codemode/src/portable.ts` | `(Go has no barrel exports: the exports are the codemode package)` | n/a |
-| `packages/codemode/src/runtime/execution.ts` | `codemode/execution.go (Execution, the host's deadline and result handling); codemode/vmlauncher.go (VmLauncher, VmChannel, VmEvents); codemode/sandbox.go (CodemodeSandboxBase)` | 🟡 |
+| `packages/codemode/src/runtime/execution.ts` | `codemode/execution.go (Execution, the host's deadline and result handling); codemode/vmlauncher.go (VmLauncher, VmChannel, VmEvents); codemode/sandbox.go (CodemodeSandboxBase); codemode/run.go (CodemodeSandboxBase.start); codemode/remote.go (RemoteCodemodeSandbox.close)` | ✅ |
 | `packages/codemode/src/runtime/host.ts` | `codemode/sandbox.go; codemode/execution.go; codemode/workerlauncher.go (workerLauncher: acquireWorker admission, onWorkerStarted exit reporting, stop without waiting for exit)` | ✅ |
-| `packages/codemode/src/runtime/inline.ts` | `codemode/inline.go; codemode/inlinechannel.go; codemode/inline_consts.go; codemode/haltcheck.go; codemode/halt_grace.go` | 🟡 |
+| `packages/codemode/src/runtime/inline.ts` | `codemode/inline.go; codemode/inlinechannel.go; codemode/inline_consts.go; the halt instrumentation behind the interrupt budget (haltcheck, halt_grace) and the wasm loader option (SandboxOptions.Wasm) live in the same package` | ✅ |
 | `packages/codemode/src/runtime/prelude-source.ts` | `codemode/assets/prelude.js; codemode/assets.go` | ✅ |
-| `packages/codemode/src/runtime/protocol.ts` | `codemode/vmdriver.go (WorkerToHostMessage, HostToWorkerMessage as the host/VM seam); codemode/remote_protocol.go (VmStartData and the remote wire forms)` | 🟡 |
-| `packages/codemode/src/runtime/remote.ts` | `codemode/remote.go (RemoteCodemodeSandbox, remoteLauncher); codemode/remote_serve.go; codemode/remote_serve_blocking.go (serveCodemodeRemote); codemode/remote_protocol.go; codemode/remote_types.go` | 🟡 |
-| `packages/codemode/src/runtime/vm.ts` | `codemode/vmdriver.go (startVm, VmSession); codemode/engine.go; codemode/engine_wazero.go; codemode/engine_hostimport.go` | 🟡 |
+| `packages/codemode/src/runtime/protocol.ts` | `codemode/vmdriver.go (WorkerToHostMessage, HostToWorkerMessage as the host/VM seam); codemode/remote_protocol.go (VmStartData and the remote wire forms)` | ✅ |
+| `packages/codemode/src/runtime/remote.ts` | `codemode/remote.go (RemoteCodemodeSandbox, remoteLauncher); codemode/remote_serve.go; codemode/remote_serve_blocking.go (serveCodemodeRemote); codemode/remote_protocol.go; codemode/remote_types.go` | ✅ |
+| `packages/codemode/src/runtime/vm.ts` | `codemode/vmdriver.go (startVm, VmSession); codemode/engine.go; codemode/engine_wazero.go; codemode/deterministic.go (deterministic mode, prng, fnv1a, VirtualClock)` | ✅ |
 | `packages/codemode/src/runtime/worker.ts` | `(no worker thread: QuickJS runs on wazero in the host process, codemode/engine.go)` | n/a |
 | `packages/codemode/src/source.ts` | `codemode/source.go` | ✅ |
 | `packages/codemode/src/types.ts` | `codemode/types.go`, `codemode/sandbox.go`, `codemode/run.go`, `codemode/remote.go` | ✅ |
@@ -774,11 +774,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tools/write.ts` | `durable/tools/write.go` | ✅ |
 | `packages/durable/src/truncate.ts` | `durable/truncate.go` | ✅ |
 | `packages/durable/src/types.ts` | `durable/types.go`, `durable/documents.go`, `durable/entries.go`, `durable/tasks.go` | ✅ |
-| `packages/durable/src/codemode/codemode.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/durable/src/codemode/describe.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/durable/src/codemode/codemode.ts` | `durable/codemode/tool.go (createCodemodeTool, createCodemodeExtension); durable/codemode/docs.go (the documents and stored shapes); durable/codemode/call.go (CodemodeCall)` | ✅ |
+| `packages/durable/src/codemode/describe.ts` | `durable/codemode/describe.go` | ✅ |
 | `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
-| `packages/durable/src/codemode/models.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/durable/src/codemode/output.ts` | `durable/codemode/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/durable/src/codemode/models.ts` | `durable/codemode/models.go` | ✅ |
+| `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go` | ✅ |
 | `packages/durable/src/images/node-worker.ts` | `durable/images/node/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/durable/src/search.ts` | `durable/internal/search/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |

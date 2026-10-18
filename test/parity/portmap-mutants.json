@@ -586,5 +586,26 @@
    "old": "p.skipped.endsWithNewline = strings.HasSuffix(text, \"\\n\")",
    "new": "p.skipped.endsWithNewline = false"
   }
+ ],
+ "packages/codemode/src/runtime/vm.ts": [
+  {
+   "file": "codemode/deterministic.go",
+   "old": "state += 0x6d2b79f5",
+   "new": "state += 0x6d2b79f6"
+  }
+ ],
+ "packages/durable/src/codemode/models.ts": [
+  {
+   "file": "durable/codemode/models.go",
+   "old": "const maxConcurrentModelCalls = 4",
+   "new": "const maxConcurrentModelCalls = 5"
+  }
+ ],
+ "packages/durable/src/codemode/output.ts": [
+  {
+   "file": "durable/codemode/output.go",
+   "old": "head = \"Script timed out: \" + failure.Message",
+   "new": "head = \"Script timeout: \" + failure.Message"
+  }
  ]
 }

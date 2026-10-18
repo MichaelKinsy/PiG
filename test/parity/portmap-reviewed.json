@@ -1,0 +1,10 @@
+{
+ "packages/codemode/src/runtime/inline.ts": {
+  "reason": "InlineCodemodeSandboxOptions.wasm is the Wasm loader of the SandboxOptions that InlineSandboxOptions embeds (codemode/inline.go); the field itself is declared once in codemode/types.go for every sandbox kind and is proven by TestInlineSandboxUsesItsWasmLoader.",
+  "members": {
+   "pkg:codemode/.#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
+   "pkg:codemode/cloudflare#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
+   "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
+  }
+ }
+}
