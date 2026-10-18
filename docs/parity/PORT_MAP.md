@@ -646,7 +646,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/index.ts` | `every runtime export has a Go counterpart in internal/chord (types.go:137 error codes, wire.go, state_wire_parse.go:202, state_codec.go:75), internal/chord/chordjson and chord/` | ✅ |
 | `packages/chord/src/types.ts` | `internal/chord/types.go (Context is context.Context; JsonRepresentation, RemoteServiceContract, IsAny are compile-time TypeScript machinery with no Go form, replaced by reflection classification at provide time, provider.go:777)`, `internal/chord/state.go`, `chord/context/chordctx.go`, `internal/chord/facets.go`, `internal/chord/service.go`, `internal/chord/binding.go`, `internal/chord/remote_clients.go` | ✅ |
 | `packages/chord/src/json.ts` | `internal/chord/chordjson/chordjson.go:70 Copy, Stored, IsValue; chord/json.go:12`, `chord/delta/delta.go` | ✅ |
-| `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await` | ✅ |
+| `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await, Telemetry, WithTelemetry, TraceIn` | ✅ |
 | `packages/chord/src/delta/index.ts` | `chord/delta/delta.go:317 AssertValidOpValue, apply.go:227 Apply, ApplyImmutable, apply.go:255 ApplyImmutableBatchesSeq, codec.go:17 Encoder/Decoder, overlap.go:17` | ✅ |
 | `packages/chord/src/delta/diff.ts` | `chord/delta/diff.go:611 DiffRevisions` | ✅ |
 | `packages/chord/src/delta/tracker.ts` | `chord/delta/tracker.go:50 (overlay with Object/Array draft handles, the Proxy draft), driven by internal/chord/state.go Edit and state_overlay.go for typed Change; array roots through chord/delta.TrackArray (Change.Elements, Tracker.Root, Prepared.ValueRoot, PrepareReplaceRoot); chord/delta/candidate.go DiffCandidate diffs a typed-state candidate` | ✅ |
@@ -835,6 +835,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 |---|---|---|
 | `packages/telemetry/src/index.ts` | `telemetry/context.go + telemetry/schema.go` | ✅ |
 | `packages/telemetry/src/memory.ts` | `telemetry/memory.go` | ✅ |
+| `packages/telemetry/src/metrics.ts` | `telemetry/metrics.go` | ✅ |
 | `packages/telemetry/src/noop.ts` | `telemetry/context.go` | ✅ |
 | `packages/telemetry/src/testing/conformance.ts` | `telemetry/telemetrytest/conformance.go` | ✅ |
 | `packages/telemetry/src/testing/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |

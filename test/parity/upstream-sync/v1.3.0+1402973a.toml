@@ -1,0 +1,4762 @@
+from = "1.0.4"
+to = "1.3.0+1402973a"
+
+[[files]]
+path = "packages/agent/src/agent-loop.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/agent.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/proxy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/stream-fn.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-config.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/classifier-shared.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/system_one_shared_test.go#TestSystemOneSharedRequestHooks", "test:ai/system_one_shared_test.go#TestSystemOneSharedFailureMessages", "test:ai/system_one_shared_test.go#TestSystemOneSharedUsage", "test:ai/classifier_test.go#TestClassifierRetriesOnlyProviderErrors", "test:ai/openai_decisions_upstream_test.go#TestRetryClassifierRequestNoRetryStatuses"]
+rationale = "The 1.1.0 file is the request, retry, usage and isRecord code that System One and Decisions share. ai/classifier_http.go has PostClassifierRequest, ParseClassifierUsage and IsRecord. Mutants fail the cited tests: a missing API key check, dropping the onResponse call or the onPayload replacement (TestSystemOneSharedRequestHooks), changing the invalid-JSON message or the HTTP error label (TestSystemOneSharedFailureMessages; the last three survived every earlier test, so these tests are new), usage totals, cost and negative counts (TestSystemOneSharedUsage), the default retry budget (TestClassifierRetriesOnlyProviderErrors) and noRetryStatuses (TestRetryClassifierRequestNoRetryStatuses)."
+
+[[files]]
+path = "packages/ai/src/api/cloudflare-ai-binding.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/cloudflare-workers-ai-system-one.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/cloudflare-workers-ai-system-one.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/cloudflare.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/constrained-sampling.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/github-copilot-headers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/llama-cpp-classify.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/llama-cpp-classify.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-decisions.lazy.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/lazy_api_upstream_test.go#TestLazyAPIDeferredCapabilitiesUpstream", "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"]
+rationale = "New in 1.1.0: the lazy wrapper of the Decisions classifier. ai.OpenAIDecisionsAPI wraps ClassifyOpenAIDecisions behind the same lazy-load contract as the other lazy APIs, whose setup-error timestamp is pinned by TestLazyAPIDeferredCapabilitiesUpstream. No mutant was run on the wrapper itself."
+
+[[files]]
+path = "packages/ai/src/api/openai-decisions.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream", "test:ai/openai_decisions_upstream_test.go#TestRetryClassifierRequestNoRetryStatuses"]
+rationale = "New in 1.1.0: the OpenAI Decisions classifier. ai/openai_decisions.go ports it, posting through PostClassifierRequest with the gateway-timeout statuses in noRetryStatuses. Dropping noRetryStatuses fails TestOpenAIDecisionsUpstream and TestRetryClassifierRequestNoRetryStatuses. The request mapping (questions to Decisions types, answers back by name) was mutation-checked only through the shared CalculateCost mutant, which fails TestOpenAIDecisionsUpstream; I ran no other mutant on this file."
+
+[[files]]
+path = "packages/ai/src/api/openai-prompt-cache.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-responses.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-responses.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openrouter-images.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openrouter-images.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/pi-messages.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/pi-messages.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/simple-options.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/system-one-shared.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/transform-messages.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/typesafe-system-one.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/typesafe-system-one.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/context.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/credential-store.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/helpers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/anthropic.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/callback-server.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/device-code.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/github-copilot.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/kimi-coding.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/load.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/meta.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openai-chatgpt.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openai-codex.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openrouter.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/pkce.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/radius.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/xai.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/resolve.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/bedrock-provider.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/bun-oauth.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/cli.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/compat.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/compat/extension-oauth-types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/image-models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/images-api-registry.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/images.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/legacy-api-aliases.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/model-catalog.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/models-store.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/models.generated.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/oauth.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/all.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/amazon-bedrock.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/amazon-bedrock.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/ant-ling.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/ant-ling.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/anthropic.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/anthropic.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/azure.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/azure.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/baseten.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/baseten.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cerebras.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cerebras.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-ai-gateway.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-ai-gateway.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-auth.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-stream.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-workers-ai.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-workers-ai.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_upstream_test.go"]
+rationale = "71023aec→8efd314f: Pi 4954d760 exports CompatSchemasByApi and maps azure-openai-responses and openai-codex-responses to the OpenAI Responses compat schema, de-duplicating the merged groups with a Set. The merged ProviderCompatSchema (internal/codingagent/configschema/compat_b.go) is unchanged by it, since both new keys reuse the Responses schema already in the list; the export serves only Pi's catalog-compat publish script, which has no PiG counterpart. schemas/models.schema.json is byte-identical to Pi's."
+
+[[files]]
+path = "packages/ai/src/providers/data-json.d.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/deepseek.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/deepseek.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/faux.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/fireworks.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/fireworks.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/github-copilot.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/github-copilot.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/google-vertex.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/google-vertex.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/google.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/google.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/groq.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/groq.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/huggingface.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/huggingface.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/images/register-builtins.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/kimi-coding.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/kimi-coding.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/meta.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/meta.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/minimax-cn.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/minimax-cn.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/minimax.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/minimax.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/mistral.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/mistral.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/model-schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_upstream_test.go"]
+rationale = "71023aec→8efd314f: Pi 8efd314f: ThinkingLevelMapSchema gains its description and ModelPromptCacheSchema's description changes; internal/codingagent/configschema/model.go carries both, and schemas/models.schema.json is byte-identical to Pi's (make generate-schemas)."
+
+[[files]]
+path = "packages/ai/src/providers/moonshotai-cn.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/moonshotai-cn.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/moonshotai.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/moonshotai.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/nvidia.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/nvidia.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/openai-codex.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/openai-codex.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/openai.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/openai.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/opencode-go.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/opencode-go.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/opencode-headers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/opencode.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/opencode.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/openrouter-api.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates", "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCatalogParsingUpstream", "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterPricingOverridesTurnPromptLengthOverridesIntoTiers", "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"]
+rationale = "Added in 1.2.0 (ee409a85, #10672): the OpenRouter listing shapes (OpenRouterPricing, OpenRouterPricingOverride, OpenRouterModel) and openRouterCost, moved out of scripts/openrouter-catalog.ts so the generator and personalizeOpenRouterCatalog share it. Its one behavior change is that a missing, invalid or negative rate (-1 for router models such as openrouter/auto) takes the fallback instead of becoming NaN or a negative price. ai/openrouter_api.go ports the types and OpenRouterCost; cmd/gen-models/openrouter_catalog.go openRouterCost calls ai.OpenRouterCost, so the generator and the runtime share one conversion."
+
+[[files]]
+path = "packages/ai/src/providers/openrouter.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/openrouter.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-cn.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-cn.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/radius-config.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/radius.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/radius.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/together.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/together.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/typesafe.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/typesafe.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/vercel-ai-gateway.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/vercel-ai-gateway.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xai.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xai.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi-token-plan-ams.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi-token-plan-ams.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi-token-plan-cn.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi-token-plan-cn.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi-token-plan-sgp.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/xiaomi.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/zai-coding-cn.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/zai-coding-cn.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/zai.models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/zai.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/session-resources.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/abort-signals.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/abort.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/diagnostics.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/error-body.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/estimate.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/event-stream.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/hash.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/headers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/json-parse.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/model-operations.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/models-error.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/node-http-proxy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/oauth-page.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/overflow.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/pi-user-agent.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/provider-env.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/provider-retry.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/sanitize-unicode.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/sleep.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/text.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/transcript.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/typebox-helpers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/uuid.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/validation.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/cell.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/hydration_upstream_test.go#TestHydrationAnObjectThatForwardsAndDerivesFromARemoteMemberGoesLiveWithItsValue", "test:chord/host/hydration_upstream_test.go#TestHydrationAMemberReadInsideAFactoryThrowsNotReadyItIsAPlainValueOnceLive", "test:chord/host/state_init_upstream_test.go#TestStateInitAnInitCellCannotBeReadInsideTheFactory", "test:chord/host/requests_upstream_test.go#TestRequests8AHeldRemoteReferenceKeepsItsStateWithoutListeners"]
+rationale = "aa9cf15b state init (NewCellAwaitingInit and Initialize; Value, Change and Replace fail not_ready until the cell has its value, cell.go, with object.go StateInit and initCellsPromise) and b45e0ebc cell hydration: Hydration, hydrating, hydrationOf and unhydrated (cell.go) and Derived.hydration, which is hydrated once every source is. A source that does not implement hydrating always has its value. Derived.Attach runs only after the object's sources are hydrated (object.go waitHydrated), as Pi attaches at install."
+
+[[files]]
+path = "packages/chord/src/cluster.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/cluster_upstream_test.go#TestCrossHostReloadPreparesEveryHostCommitsTheServerFirstThenTheWorkersCodeVersionsStayInStep", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAFailingVoteAbortsEveryHostTheErrorKeepsItsCodeAndNamesTheHost", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAWorkerGateBlockedPastItsDeadlineAbortsTheWholeReload", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadRemovesFacetsFromServerAndWorkersReconcilesRemovalTombstonesAndClearsThemOnReAdd", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadOnlyTheServerCoordinatesReloads", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadBrowsersAreNotParticipantsTheySeeShapeAndResetPushesOrUpgradeRequired", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAnAbortWhileAWorkerIsStillPreparingALateOpenClosesItselfAndTheWorkerCanReloadAgain", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildThatSaysHelloWhileAReloadRunsIsReconciledAfterItNeverLeftInStepWithTheOldCode", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildKeepsThePreviousCodeVersionUntilItsParentRetiredItSpec12", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildReconciledAfterItsParentRetiredOldCodeVersionsMayRetireItsOwnPreviousOneAtOnce", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAReconciliationRunningWhenAReloadStartsSyncsTheChildOnlyAfterItToTheCommittedCodeVersion", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOnceItsCallsUpAreAdmittedSpec9", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAReconnectingChildBehindItsParentStillRetainingItsPreviousCodeVersionReconcilesWithoutWaitingOutTheRetireDeadline", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources"]
+rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports for 0.5.0 (chord S1: 2688aba7, d20c6e96, 301617df; S2: 00d8d049, 39294a5e); protocol 3 (aa9cf15b) and protocol 4 (b45e0ebc) do not touch it. 00d8d049: chord/host/cluster.go runClusterReload retires before it sends prepare and builds participants after; reconcileChild waits out a running reload and announces the retired code versions before prepare and when marking a child synced; a child hello during a cluster reload is synced or reconciled when the reload ends (host.go peerHello, reloadEnded). 2688aba7/d20c6e96: epoch is codeVersion in RetireFrame and peer bookkeeping. cluster.test.ts cases at b06c1f2c are ported in cluster_upstream_test.go, including the seven new 00d8d049 cases."
+
+[[files]]
+path = "packages/chord/src/connection.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/flow_units_upstream_test.go#TestFlowUnitsWithLargeStreamsWaitingBehindAFullWindowANewGetResolvesAtOnceAndCallsAreAnswered", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsWaitingOpsStayUnderThePerLinkCapHoweverManyStreamsStallEachThenGetsOneReset", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsRelayAStalledTabOverflowsAndGetsAResetWhileAnotherTabKeepsGettingEveryChange", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsRelayEachOriginHoldIsOneDownstreamHoldNothingIsLeftAfterReleaseCloseOrRevoke", "test:chord/host/flow_upstream_test.go#TestLinkFlowControlCoalescesRelayedStateAndAsksDownstreamForAResetWhenItOverflows", "test:chord/host/bindings_upstream_test.go#TestOriginsARelayedHoldCarriesItsClientConnectionsIdTheServersOwnHoldsCarryNone", "test:chord/host/bindings_upstream_test.go#TestOriginsAnOriginAClientSendsIsIgnoredTheServerStampsItsOwn", "test:chord/host/bindings_upstream_test.go#TestMethodOnlyReferencesTransferNoStateAloneAFullReferenceJoiningStartsItOnceItsReleaseStopsIt", "test:chord/host/links_review_upstream_test.go#TestLinksReview9StateStoppedWhileTheRouteResolvesIsForwardedAsAHoldWithoutState", "test:chord/host/placement_upstream_test.go#TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees"]
+rationale = "aa9cf15b (a hold whose input the token places on another host is invalid/placement, the parent link acts as the principal given to Connect, protocol version 3) and b45e0ebc (protocol 4): a hold implies the state of its variant (state:false, again, origin replacing client), units (a shape listing the members whose snapshots follow, sendUnit), feeds with delta encoders and the buffer replayed after a snapshot, flow slots and pendingCap with lazy resets (sendState, makeRoom, drop, resetLater, queueUnit, flush), sub, unsub and resync by hold, state frames addressed by hold and member, relay resync and urgent first units, origins stamped by the server (connection.go)."
+
+[[files]]
+path = "packages/chord/src/context/index.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/context/chordctx_upstream_test.go#TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation", "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors"]
+rationale = "Context.telemetry (default NOOP_TELEMETRY_CONTEXT), withTelemetry and traceIn. chord/context/chordctx.go ports them as Telemetry(ctx), WithTelemetry(parent, t) and TraceIn(ctx, options, fn); the divergences (parent-first argument order, callback receives context and span because Go cannot narrow a context type) are in the doc comments. Tests replay Pi's context.test.ts telemetry cases."
+
+[[files]]
+path = "packages/chord/src/contract.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/placement_upstream_test.go#TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt", "test:chord/host/placement_upstream_test.go#TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter", "test:chord/host/placement_upstream_test.go#TestPlacementTypesAndRemoteContractsNeedAHost", "test:chord/host/variants_upstream_test.go#TestVariantsANewVariantsMembersArriveWithItsShapeAMemberOutsideTheVariantThrowsNotInVariant"]
+rationale = "aa9cf15b placement (HostNamed and HostFamily, resolveHost, the required host of a remote contract, host in the description and so in the fingerprint, a moved type is another type for its consumers and an accepts adapter never bridges it; contract.go) and b45e0ebc, whose contract.ts change is the type of Ref (a union discriminated by variant, whose state members are plain readables): the runtime half is the not_in_variant and not_ready reads of remote.go and object.go."
+
+[[files]]
+path = "packages/chord/src/declare.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/state_init_upstream_test.go#TestStateInitAnInitCellCannotBeReadInsideTheFactory", "test:chord/host/state_init_upstream_test.go#TestStateInitRunsInARootItCanCallOtherObjects"]
+rationale = "aa9cf15b: the initial value of `self.state` is a StateInit for a cell filled by an init (declare.go and object.go SelfImpl.State), and the host principal parameter of declarations; b45e0ebc does not change the file."
+
+[[files]]
+path = "packages/chord/src/delta/apply-immutable-trusted.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/delta/diff.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/delta/draft.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/delta/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/delta/revision-validator.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/delta/tracker.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/errors.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/errors_test.go#TestForbiddenDefaultsOnlyAnOmittedMessage", "test:chord/host/errors_test.go#TestChordErrorCarriesPiFields", "test:chord/host/errors_test.go#TestIsChordErrorIsInstanceofWithAnOptionalCode", "test:chord/host/errors_test.go#TestAsChordErrorKeepsChordErrorsAndWrapsOthers", "test:chord/host/errors_test.go#TestRunAllRunsEveryStepAndAggregates", "test:chord/host/wire_test.go#TestFrameSchemaIsPiFrameSchema", "test:chord/host/wire_test.go#TestIsFrameChecksErrorCodesAndContractTokens", "test:chord/host/host_upstream_test.go#TestHostRejectsDuplicateDeclarationNames", "test:chord/host/host_upstream_test.go#TestHostServeRefusesALifetimeHostTheTypeCannotHaveAtCompileTimeAndAtRuntime", "test:chord/host/host_upstream_test.go#TestHostOnlyObjectsOfLifetimeHostRegisterTablesFollowRegistrationOrder"]
+rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports for 0.5.0 (chord S1: 2688aba7, d20c6e96, 301617df; S2: 00d8d049, 39294a5e); protocol 3 (aa9cf15b) and protocol 4 (b45e0ebc) do not touch it. 2688aba7/d20c6e96/301617df change reason strings and messages (object for record, reference for handle, invalid/not_host_lifetime for not_eager, invalid/duplicate); chord/host/errors.go and its callers use Pi's b06c1f2c text, held by errors_test.go, the frame schema hash test and the host lifetime and duplicate-name tests."
+
+[[files]]
+path = "packages/chord/src/host.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/awaiting_upstream_test.go#TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers", "test:chord/host/awaiting_upstream_test.go#TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold", "test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease", "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink", "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst", "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot", "test:chord/host/host_test.go#TestRemoteKey", "test:chord/host/principals_upstream_test.go#TestPrincipalsRefusesAHostAParentLinkOrARouteWithoutItsPrincipal"]
+rationale = "aa9cf15b (required self principal, no host named by the caller: GetOptions.At removed, elsewhere and placedOn, Route.Principal required, HostOptions.Upstream) and b45e0ebc: the shared RemoteBinding per host and key (remoteKey with canonical identity, principalPart and the consumer's fingerprint), Get awaiting readiness with GetOptions.Signal and HostOptions.ReadyTimeout, Hold as the synchronous form, GetOptions.State, linger of released bindings (HostOptions.Linger, cap) with bindingIdle and forgetBinding, client origins stamped at Accept, bindings re-held after a reconnect with again (host.go)."
+
+[[files]]
+path = "packages/chord/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/json.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/link.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/link_test.go#TestWebSocketLinkPacksLargePayloadsAsBinaryMessages", "test:chord/host/link_upstream_test.go#TestLinksPackedPayloadsOnlyPayloadsAboveTheThresholdArePackedTheReceiverUnpacksThem", "test:chord/host/flow_units_upstream_test.go#TestFlowUnitsALinkThatReportsNoSizesNeverHoldsStateBack"]
+rationale = "b45e0ebc: the payload fields of a packed frame are args and value only (a state frame carries its value in `value`, link.go), and Link.Send reports the size flow control counts (a link that reports none never fills the window)."
+
+[[files]]
+path = "packages/chord/src/loader.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/loader_upstream_test.go#TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelativeImports", "test:chord/host/loader_upstream_test.go#TestNodeLoaderNeedsAConfiguredLoaderForModules", "test:chord/host/loader_upstream_test.go#TestNodeLoaderRejectsAModuleWhoseDefaultExportIsNotAFacet", "test:chord/host/loader_upstream_test.go#TestNodeLoaderNamesFacetsByTheirModuleURLInModuleOrder", "test:chord/host/loader_upstream_test.go#TestNodeLoaderCarriesErrorsAndAbortsAcrossTheProcessBoundary", "test:chord/host/loader_upstream_test.go#TestNodeLoaderRefusesFacetsThatServeNonMethodMembers", "test:chord/host/loader_upstream_test.go#TestNodeLoaderStopsItsChildrenAtCloseAndWhenTheirFacetsAreUnreferenced"]
+rationale = "New in 1.2.0: nodeLoader, a Node ESM facet loader (registerHooks resolve hook that carries the chord2-reload query into a facet module's directory, then await import(url?chord2-reload=N) per module, loader.ts:21-63; 7d75a0e3 registers every facet root before the first import). Owner decision C1(b): an isolated-Node loader over ForkDriver, as the 1.1.0 bundle loader ran. chord/host/loader.go NodeLoaderImpl.Load forks one Node child per call (HostManager over ForkDriver, loader_child.mjs) that imports the modules in module order, throws Pi's TypeError for a default export that is not a facet, installs the facets on a Chord host of its own and reports what they serve; each returned Facet serves the same contracts on the Go host, and every method forwards its call to the child's object (a resource opened with the record, released with it, replaced at a reload through its Rev). The registerHooks query, the root set and 7d75a0e3's ordering fix are replaced by process isolation: every Load is a fresh process, so the copies of a reload are fresh and the facets of one Load share one module graph whatever their order (the ordering half of loader.test.ts:8 holds by construction). loader.test.ts:8 is ported with Pi's fixture inputs (TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelativeImports); loader.test.ts:17 is TestNodeLoaderNeedsAConfiguredLoaderForModules. Differences to settle (numbered divergence draft with the lead): the facets run in another process, so a facet cannot reach the Go host (the contracts it serves, ctx, the principal a record is made for); a ChordError a method throws crosses with its code, reason and message only; and only contracts whose members are methods (local, or remote with one variant) are mirrored: state, opaque members, several variants, accepts adapters and state migrations are refused at Load with a TypeError."
+
+[[files]]
+path = "packages/chord/src/manager.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/manager_upstream_test.go#TestHostManagerAChildWithoutALockDoesNotInheritTheParentsLock", "test:chord/host/manager_upstream_test.go#TestHostManagerStartsAChildHostLinksItStopsItGracefully", "test:chord/host/manager_upstream_test.go#TestHostManagerAChildOwnedKernelLockAdmitsOneLiveProcessReplaceWaitsForTheExitBeforeTheNextStart", "test:chord/host/manager_upstream_test.go#TestHostManagerAGracefulExitStillTakesTheChildsDescendantsWithIt", "test:chord/host/manager_upstream_test.go#TestHostManagerKillsTheProcessTreeWhenAChildIgnoresShutdownPastTheGracePeriod", "test:chord/host/manager_upstream_test.go#TestHostManagerReportsAFatalChildAsAFailedStart", "test:chord/host/manager_upstream_test.go#TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo", "test:chord/host/manager_upstream_test.go#TestHostManagerIdleForCountsFromTheBusyToIdleTransition", "test:chord/host/manager_upstream_test.go#TestHostManagerKeepsFractionalActivityCounts", "test:chord/host/manager_upstream_test.go#TestHostManagerStartIsIdempotentAndStopIsGraceful", "test:chord/host/manager_upstream_test.go#TestHostManagerKillsTreeAfterGrace", "test:chord/host/manager_upstream_test.go#TestHostManagerFatalChildFailsStart", "test:chord/host/manager_upstream_test.go#TestHostManagerExitBeforeReadyAndReadyTimeout", "test:chord/host/manager_upstream_test.go#TestHostManagerKeepAliveStopsIdleChild", "test:chord/host/manager_upstream_test.go#TestHostManagerStopWaitsForPendingStart", "test:chord/host/manager_upstream_test.go#TestHostManagerReplaceWaitsForExit", "test:chord/host/manager_upstream_test.go#TestControlMessageJSON", "test:chord/host/manager_upstream_test.go#TestChildControlOverNodeChannel", "test:chord/host/manager_upstream_test.go#TestProcessLockAdmitsOneHolderWhenTheTemporaryDirectoryIsTooDeepForASocketPath", "test:chord/host/manager_upstream_test.go#TestProcessLock", "test:chord/host/link_upstream_test.go#TestLinksIPCAWriteThatFailsAfterThePeerProcessExitedEPIPEEndsTheLinkInsteadOfRaisingAnUnhandledError", "test:chord/host/manager_process_channel_test.go#TestProcessChannelIsNodesIPCChannel"]
+rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports for 0.5.0 (chord S1: 2688aba7, d20c6e96, 301617df; S2: 00d8d049, 39294a5e); protocol 3 (aa9cf15b) and protocol 4 (b45e0ebc) do not touch it. 39294a5e: host-manager control messages to a gone peer are dropped (chord/host/manager.go and manager_fork.go send with ignoreSendError; IpcChannel.Send takes a callback that reports a failed write off the sender's stack). 2688aba7 renames only. manager.test.ts at b06c1f2c is ported in manager_upstream_test.go."
+
+[[files]]
+path = "packages/chord/src/node.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/object.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/awaiting_upstream_test.go#TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference", "test:chord/host/awaiting_upstream_test.go#TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds", "test:chord/host/hydration_upstream_test.go#TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint", "test:chord/host/hydration_upstream_test.go#TestHydrationAHostObjectOfAChildHoldingTheParentsObjectGoesLiveOnceTheParentAdmitsTheChild", "test:chord/host/host_upstream_test.go#TestHostStateMembersAreLateBoundReadablesValuesThenSnapshotResetOpsEvents", "test:chord/host/state_upstream_test.go#TestStatePublishesSnapshotsThenExactOpsDerivationsFollow", "test:chord/host/review_upstream_test.go#TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling"]
+rationale = "aa9cf15b (principals, placement checks, state init) and b45e0ebc: awaitReady and Ctx.Get blocking until the reference is ready with the closing signal of the ctx, withinReadyTimeout and waitHydrated after open (an object goes live only with its state), MemberReadable that throws not_ready and not_in_variant, hydrates, and gives a listener added while loading its snapshot once readable (the `unseen` listeners), and a shape without a code version (object.go). Pi 9a3ca68b (#10959): CtxImpl.check takes the called reference's host, so a remote reference checks a ctx against its own host (impl.check(host) in remote.go)."
+
+[[files]]
+path = "packages/chord/src/output.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/publish.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/state_upstream_test.go#TestStateReEntrantWritesPublishInAdoptionOrderDerivationsNeverGoStale", "test:chord/host/cell_upstream_test.go#TestCellReentrantWritesPublishInAdoptionOrder", "test:chord/host/review_upstream_test.go#TestReviewReentrantObserversCallingAnotherRecordDuringACommitSeeTheWholeNewEpoch", "test:chord/host/order_test.go#TestListenerInvocationsStartInPublicationOrder"]
+rationale = "New in 1.2.0. chord/host/publish.go ports the process-wide FIFO: enqueue (publish.ts:15-18), holdPublications (:21-29) and drain (:31-39). Pi's module-level queue is guarded by a mutex; tasks run outside the guard and the goroutine already draining delivers everything enqueued meanwhile, so enqueue order stays delivery order across goroutines. Callers: cell.go fanout and Cell.publish, record.go listener and shape publications, host.go installTables, reload.go commit under holdPublications. publish.ts has no test file of its own; state.test.ts:195 (re-entrant writes in adoption order), cell re-entrancy, review.test.ts's re-entrant observers during a commit and the listener publication order test cover it."
+
+[[files]]
+path = "packages/chord/src/registry.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/registry_test.go#TestDefineRegistryIsPlainDataWithErrorConflictByDefault", "test:chord/host/registry_test.go#TestRegistryTableIsAnOrderedReadonlyMap", "test:chord/host/host_upstream_test.go#TestHostOnlyObjectsOfLifetimeHostRegisterTablesFollowRegistrationOrder", "test:chord/host/host_upstream_test.go#TestHostRejectsConflictingRegistrations", "test:chord/host/reload_upstream_test.go#TestReloadKeepsRegistryTablesPerCodeVersion", "test:chord/host/host_test.go#TestRegistryViewAndSubscribers"]
+rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports for 0.5.0 (chord S1: 2688aba7, d20c6e96, 301617df; S2: 00d8d049, 39294a5e); protocol 3 (aa9cf15b) and protocol 4 (b45e0ebc) do not touch it. 2688aba7/301617df: only objects of lifetime \"host\" may register (invalid/not_host_lifetime, was not_eager) and tables are kept per code version; chord/host/registry.go and object.go follow, held by the registry and lifetime tests."
+
+[[files]]
+path = "packages/chord/src/reload.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/hydration_upstream_test.go#TestHydrationAReloadPreparesAfterWhatTheChangedObjectForwardsHasItsValue", "test:chord/host/state_init_upstream_test.go#TestStateInitReloadKeepsAnExistingCellWithoutRunningInitACellTheReloadAddsRunsInitWhileItPrepares", "test:chord/host/state_init_upstream_test.go#TestStateInitReloadInAGatedReloadAnAddedCellRunsInitAtTheGate"]
+rationale = "aa9cf15b (state init for the cells a reload adds, at prepare and at the gate) and b45e0ebc: prepare waits for the hydration of what a changed object forwards or derives from (waitHydrated), and the dry run reads a source with candidateValue, which treats not_ready and not_in_variant as no value (reload.go)."
+
+[[files]]
+path = "packages/chord/src/remote.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/bindings_upstream_test.go#TestBindingsNReferencesToOneObjectOneHoldOneSnapshotPerMemberOneFramePerChangeOneRelease", "test:chord/host/bindings_upstream_test.go#TestHydrationOverALinkNullEmptyAndUndefinedValuesHydrateAStateFreeVariantIsReadyAFailedSnapshotRejects", "test:chord/host/bindings_upstream_test.go#TestHydrationOverALinkReadingBeforeTheFirstHydrationThrowsNotReady", "test:chord/host/bindings_upstream_test.go#TestMethodOnlyReferencesTransferNoStateAloneAFullReferenceJoiningStartsItOnceItsReleaseStopsIt", "test:chord/host/variants_upstream_test.go#TestVariantsANewVariantsMembersArriveWithItsShapeAMemberOutsideTheVariantThrowsNotInVariant", "test:chord/host/variants_upstream_test.go#TestReHoldAfterALinkLossKeepsTheLastValuesReadableSendsOneFreshUnitAndAReferenceJoiningMeanwhileWaitsForIt", "test:chord/host/review_upstream_test.go#TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling"]
+rationale = "b45e0ebc: RemoteBinding, one per host and key and shared by every reference, with its views (RemoteRef: own owner, status, observers and Release), units applied only once their snapshots are here, state kept while re-holding (detached), hydration before ready, variant-discriminated member reads (not_in_variant, not_ready), method-only views (state:false) and the state wish synced to the provider (sub and unsub), shaped, state, gone, close and call (remote.go). Pi 9a3ca68b (#10959): a call through a remote reference rejects a ctx not made by Chord, or made by another host, with invalid/foreign_ctx before anything crosses the link, and checks a held ctx like a local reference. remote.go call does both; the test counts the frames sent and the calls served, and compiling mutations of either check fail it."
+
+[[files]]
+path = "packages/chord/src/schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/schema_upstream_test.go#TestFitsAnIntegerFitsANumberNotTheReverse", "test:chord/host/schema_upstream_test.go#TestCanonicalJSONMatchesJavaScript", "test:chord/host/contract_upstream_test.go#TestContractsNormalizeInputAndOmitDefaultsFromTheIdentity", "test:chord/host/contract_upstream_test.go#TestContractsCoverAdditiveChangesAndRefuseBreakingOnes", "test:chord/host/review_upstream_test.go#TestReviewFitsHasNoFalsePositivesForUnmodelledKeywords", "test:chord/host/host_upstream_test.go#TestHostValidatesRemoteArgsAndResultsAtTheProviderBoundary"]
+rationale = "New in 1.2.0. chord/host/schema.go ports CanonicalJSON (schema.ts:12-19), with sorted keys (UTF-16 order), undefined members dropped and JavaScript number and string formatting. It ports Hash64 (:22-31), with both FNV lanes over UTF-16 code units, DeepEqual (:33-35), and assertValid (:38-44), which raises invalid with the first three schema errors. Normalize (:46-51), CanonicalIdentity/stripDefaults (:53-73) and Fits (:134-219) are ported; Fits keeps the same constraint, known-keyword and annotation sets and the object, array and function rules. The Pi tests that call schema.ts directly (contract.test.ts, and review.test.ts's fits case) are ported, and schema_upstream_test.go pins Hash64 and CanonicalJSON against JavaScript output."
+
+[[files]]
+path = "packages/chord/src/sqlite/cloudflare.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sqlite/database.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sqlite/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sqlite/migrations.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sqlite/node.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/sqlite/schema.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/state.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/replicated_state_upstream_test.go#TestTransactionalReplicatedState", "test:chord/replicated_state_upstream_test.go#TestAuthoritativeReplicatedStateSources", "test:chord/replicated_state_delivery_upstream_test.go#TestReplicatedStatePublicDelivery", "test:chord/replicated_state_delivery_upstream_test.go#TestAttachedReplicatedStateListenerErrors", "test:chord/replicated_state_delivery_upstream_test.go#TestMutableReplicatedStateReportsRejectedCallbacksThroughItsDefaultReporter", "test:chord/state_source_test.go#TestAttachReplicatedStateSourceDeliversSnapshotThenFramesAndRejectsAGap", "test:chord/state_source_test.go#TestAttachReplicatedStateSourceReturnsTheAttachError"]
+rationale = "state.ts replaces 1.1.0 services/state.ts. Its 1.2.0 port is chord/state.go from chord2 S1 (852f029c26/03b4cc045d, landed via bcffbcf16b in int-120), and the 1.1.0 runtime stays in internal/chord for internal/experimental. Mapping: StateSubscriber is stateSubscriber (:171), with push and its 100-deep overflow window that keeps the unstarted hydration (:182, maxPendingDeliveries :37) and drain (:199). ReplicatedStatePublisher is statePublisher: subscribe (:301) hydrates with the background context at the current sequence, and publish/enqueue/deliver (:328-381) keep the #delivering loop and the hydratedSequence skip. MutableReplicatedStateImpl is MutableReplicatedState with Change/ChangeArray/Replace (:478-560): the reentrant change and replace errors carry Pi's messages, a failing callback aborts the draft, and deep-equal replacements are no-ops. AttachedReplicatedStateImpl is AttachedReplicatedState (:576-690), with receive's safe-integer and gap checks, fail with the AggregateError when dispose also fails, and idempotent Dispose. attachReplicatedStateSource/replicatedState(source) is AttachReplicatedStateSource (:700), returning AggregateError('Failed to attach replicated state source'). replicatedState(initial) is NewReplicatedState (:454). reportErrorAsync is the reporter set by SetUncaughtErrorReporter (:147). Go splits the subscribe overloads into Subscribe and SubscribeAsync (returns a Completion). Go extras with no Pi counterpart: InternalSnapshot, SubscribeSource and SubscribePublications, used by chord/host. One Pi case has no Go form: replicated-state.test.ts:46 (a PromiseLike change callback) cannot occur because Go's mutate returns an error. Its t.Run slot instead checks that a panicking callback rolls back and returns the panic. The other 15 replicated-state.test.ts cases and all replicated-state-delivery.test.ts cases are ported as subtests of the tests listed."
+
+[[files]]
+path = "packages/chord/src/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/chord/src/websocket.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/websocket_upstream_test.go#TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBinaryMessagesClientsMayNotSendThem", "test:chord/host/link_test.go#TestWebSocketLinkPacksLargePayloadsAsBinaryMessages"]
+rationale = "aa9cf15b: the principal type is a parameter of AcceptWebSockets and of the host (Principal is any in Go, so the authenticator's principal reaches AcceptOptions unchanged; websocket.go). b45e0ebc does not change the file; the packed state value it changes is link.ts, which this transport sends and receives."
+
+[[files]]
+path = "packages/chord/src/wire.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/host/wire_test.go#TestFrameSchemaIsPiFrameSchema", "test:chord/host/wire_test.go#TestFramesRoundTrip", "test:chord/host/bindings_upstream_test.go#TestProtocolVersion4AVersion3PeerIsRefusedShapesCarryNoCodeVersion"]
+rationale = "aa9cf15b (hold token placement, protocol 3) and b45e0ebc (protocol 4): the hold frame carries origin, state:false and again; the shape frame lists its state members and carries no code version; sub, unsub and resync by hold; the state frame is addressed by hold and member (as: snap, reset, ops or error); the frame schema hashes to 678648a861625402 over 7361 characters, as Pi's (wire.go, ProtocolVersion 4)."
+
+[[files]]
+path = "packages/codemode/src/cloudflare-modules.d.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "A typing artefact: it declares Wrangler's CompiledWasm rule for the `quickjs-wasm/quickjs.wasm` import of cloudflare.ts so that TypeScript accepts the import. It has no runtime effect and Go has no module import rule; the embedded module is codemode.QuickJSWasm (codemode/cloudflare/cloudflare.go)."
+
+[[files]]
+path = "packages/codemode/src/cloudflare.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:codemode/cloudflare/cloudflare_test.go#TestTheObjectsLimitsCapEveryRequest", "test:codemode/cloudflare/cloudflare_test.go#TestNewSandboxDurableObjectHasPisDefaults", "test:codemode/cloudflare/cloudflare_test.go#TestCreateInlineSandboxRunsWithTheEntrysModule", "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange", "test:codemode/inline_test.go#TestInlineSandboxWithoutABudgetUsesTheDefaultOf100000"]
+rationale = "The new Cloudflare entry is codemode/cloudflare/cloudflare.go: QuickJSWasm (cloudflareQuickJSWasm), CreateInlineSandbox (createInlineCodemodeSandbox, which spreads the options and then sets the module), SandboxDurableObject (CodemodeSandboxDurableObject.execute passes maxInterruptBudget and maxMemoryLimitBytes to serveCodemodeRemote) and DefaultRemoteMemoryLimitBytes (32 MiB). Mutants that fail: a 64 MiB default memory limit fails TestNewSandboxDurableObjectHasPisDefaults and TestTheWorkerObjectHasTheSameDefaults; keeping the caller's wasm in CreateInlineSandbox fails TestCreateInlineSandboxRunsWithTheEntrysModule; dropping the memory cap from the ServeRemote call fails TestTheObjectsLimitsCapEveryRequest and TestNewSandboxDurableObjectHasPisDefaults. The default budget of 100000 is pinned by the new TestInlineSandboxWithoutABudgetUsesTheDefaultOf100000 (a 100001 constant and a 5000 fallback both fail it; it survived every earlier test). The zero-budget fallback in SandboxDurableObject.Execute is an equivalent mutant: ServeRemote applies the same default. The Worker module and the Durable Object class of the Cloudflare host (durable/core/host/cf/src/codemode) run in workerd and are not exercised by this evidence."
+
+[[files]]
+path = "packages/codemode/src/declarations.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/identifier.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/portable.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "A barrel for the sandboxes that need no Node built-ins (InlineCodemodeSandbox, RemoteCodemodeSandbox, serveCodemodeRemote, the message types and limits). Go has no barrel and no Node/non-Node split: the exports are the identifiers of package codemode, tested under the rows of the files that declare them. The Worker host has the same entry as durable/core/host/cf/src/codemode/portable.ts, which test/codemode-portable.test.ts exercises with Pi's portable.test.ts. In Pi 1.2.0 the barrel also re-exports CodemodeSandboxBase's deterministic-run types and the VM message types (HostToWorkerMessage, VmStartData, WorkerToHostMessage); in Go they are the identifiers of package codemode (codemode/remote_protocol.go, codemode/types.go)."
+
+[[files]]
+path = "packages/codemode/src/runtime/execution.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:codemode/seam_test.go#TestTheChannelIsStoppedOnceAfterTheFirstTerminalEvent", "test:codemode/seam_test.go#TestRepliesProducedBeforeTheChannelArrivesAreSentWhenItDoes", "test:codemode/seam_test.go#TestBrokenMessagesAndFailuresEndTheExecutionAsSandboxErrors", "test:codemode/seam_test.go#TestALauncherErrorFailsTheExecutionAsASandboxError", "test:codemode/seam_test.go#TestAChannelThatArrivesAfterTheExecutionEndedIsStoppedWithoutReplies", "test:codemode/remote_vm_test.go#TestRemoteSandboxHasTheToolTableOfTheBase", "test:codemode/inline_test.go#TestInlineSandboxHasTheToolTableOfTheBase", "test:durable/core/host/cf/test/codemode-sandbox.test.ts#inline backend", "test:codemode/start_test.go#TestStartForwardsTheStartDataAndTheCallsOfTheScript", "test:codemode/start_test.go#TestDeliverPostsTheAnswerWithItsSequenceNumberAndClock", "test:codemode/start_test.go#TestDeliverRefusesWhatCannotBeAnsweredAndLeavesTheCallWaiting", "test:codemode/start_test.go#TestStartEndsAsAbortedWhenTheCallerCancels", "test:codemode/start_test.go#TestStartRefusesWhatUpstreamRefuses", "test:codemode/deterministic_test.go#TestDeterministicRunsRejectRejectionPropertiesThatAreNotAnObjectAndToolsSharingAScriptName", "test:codemode/deterministic_test.go#TestDeterministicRunsAreFinishedOnceTheyHaveTheirOutcome", "test:codemode/run_members_pi_test.go#TestRunOptionsMembersAndRunDeliverFinishedMatchPi"]
+rationale = "The ea448f45 file is the host half of an execution, moved out of host.ts so that every place a VM can run shares it: CodemodeSandboxBase (the tool and global tables, execute, close), Execution (the deadline, the abort signal, call records, output, the decoding of what the VM reports) and the VmLauncher, VmChannel and VmEvents it drives. codemode/execution.go, vmlauncher.go and sandbox.go carry them. The seam tests drive a hand-made launcher through the sequence of Pi's lifecycle: the first terminal event wins, the channel is stopped once, replies produced before the channel arrives are flushed when it does, a launcher error or a broken message ends the run as a sandbox error. The tool-table tests assert a closed sandbox fails with 'Sandbox is closed'. The Worker host runs Pi's own execution.ts (ported verbatim) in the Pi sandbox.test.ts behaviors on the inline and remote backends. Pi 1.2.0 adds CodemodeSandboxBase.start() (0fb1aee7, 04566631): a deterministic run whose calls go to the caller's onCall and are answered with CodemodeRun.deliver(seq, now, id, outcome), with `finished` set before `result` settles and the refusals of start() and deliver() (startedAt, seed, unique tool and script names, a call that is not waiting, a reused seq, a clock that is not finite, properties that are not an object). codemode/run.go (Sandbox.Start, Run) and execution.go (forwardCall, deliver) carry it; the start tests assert the forwarded start data and calls, the posted answer with its seq and clock, the refusals of startedAt, tool and script names, globals, a call that is not waiting, a reused seq and a clock that is not finite (the call then still waits), the abort and Finished, and the deterministic test refuses properties that are null or an array on every backend. The seed refusal (`seed must be a 32-bit unsigned integer`) is held by the type: RunOptions.Seed is a uint32. Pi 3daa2028 changes comments only; the vmChannel.stop contract in codemode/vmlauncher.go says it requests shutdown."
+
+[[files]]
+path = "packages/codemode/src/runtime/host.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/runtime/inline.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:codemode/inline_test.go#TestInlineSandboxFailsAScriptThatComputesPastItsInterruptBudgetAsATimeout", "test:codemode/inline_test.go#TestInlineSandboxCountsTheBudgetAcrossWaitsOnTools", "test:codemode/inline_test.go#TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi", "test:codemode/inline_test.go#TestInlineSandboxUsesItsWasmLoader", "test:codemode/inline_consts_test.go#TestInlineConstantsArePis", "test:codemode/inlinechannel_test.go", "test:durable/core/host/cf/test/codemode-portable.test.ts#InlineCodemodeSandbox fails a script that computes past its interrupt budget as a timeout", "test:codemode/deterministic_test.go#TestDeterministicRunsReportTheFingerprintBeforeAnyCallAndTheCallsIssuedAfterEachResult"]
+rationale = "The ea448f45 file runs a VM on the calling thread: InlineCodemodeSandbox, inlineLauncher, DEFAULT_INTERRUPT_BUDGET (100,000 polls) and INLINE_MAX_STACK_SIZE, with a poll counter that fails the execution with kind timeout and 'Execution exceeded its interrupt budget of N', and messages delivered in a microtask so host code never re-enters the VM. codemode/inline.go, inlinechannel.go and inline_consts.go carry them. The tests port Pi's portable.test.ts InlineCodemodeSandbox cases (the budget message for `while (true) {}` and `while (true) await null`, the budget counted across waits on tools), the deadline checked between turns, and that the wasm option is the loader the sandbox calls. The Worker host runs the same cases on the codemode module. Pi 1.2.0 passes the launcher's interruptBudget to startVm, where it is part of a deterministic run's fingerprint (`budget N`); codemode/inlinechannel.go passes it the same way."
+
+[[files]]
+path = "packages/codemode/src/runtime/prelude-source.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/runtime/protocol.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/runtime/remote.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:codemode/remote_vm_test.go#TestRemoteSandboxRunsToolsInTheCallerAndTheScriptOnTheRemote", "test:codemode/remote_vm_test.go#TestRemoteSandboxBatchesOutputInsteadOfMakingOneExchangePerLine", "test:codemode/remote_vm_test.go#TestRemoteSandboxCapsTheInterruptBudgetAndMemoryAtTheRemotesLimits", "test:codemode/remote_vm_test.go#TestRemoteSandboxTellsTheRemoteToStopWhenTheCallerAborts", "test:codemode/remote_test.go#TestAFailingOrVanishingRemoteIsASandboxError", "test:codemode/remote_serve_test.go#TestServedOutputIsBatchedByItemCount", "test:codemode/remote_serve_test.go#TestServedOutputIsFlushedAtTheCharacterLimit", "test:codemode/remote_serve_test.go#TestARejectedExchangeEndsTheServer", "test:codemode/remote_serve_test.go#TestTheRequestIsCappedAtTheRemotesLimits", "test:durable/core/host/cf/test/codemode-portable.test.ts#RemoteCodemodeSandbox tells the remote to stop when the caller aborts", "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhenTheTransportReordersRepliesSentInOrder"]
+rationale = "The ea448f45 file is the remote protocol: RemoteCodemodeSandbox (tools in the caller, the VM on a remote), remoteLauncher with its exchange, and serveCodemodeRemote (the VM on the remote, output batched at 1,000 items or 1 MiB, the interrupt budget and memory capped at the remote's limits, a stop reply or a rejected exchange ends the run). codemode/remote.go, remote_serve.go, remote_serve_blocking.go, remote_types.go and remote_protocol.go carry them, and serve_tinygo.go serves a host that cannot block on an exchange (the Worker module). The Go tests port Pi's portable.test.ts RemoteCodemodeSandbox cases and the serve-side cases; the Worker host runs the same cases through the TypeScript client (RemoteCodemodeSandbox ported verbatim) against the module. Difference: RemoteExchange is a callback taking the reply, where Pi's is a Promise, which keeps Pi's order of calls and the single reply. Pi 1.2.0's serveCodemodeRemote buffers `started` with the output and sends `idle` at once like a call (a host replaying a script waits for it), and the remote launcher forwards both; codemode/remote_serve.go and remote.go do the same, and the deterministic test runs a start() run over the remote with replies that arrive out of order."
+
+[[files]]
+path = "packages/codemode/src/runtime/vm.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:codemode/job_poll_test.go#TestExecutePendingJobsPollsTheInterruptEveryFiftyJobs", "test:codemode/job_poll_test.go#TestAMicrotaskSpinEndsAtTheJobPollNotTheHardStop", "test:codemode/engine_exports_test.go#TestQJSExportsMatchTheWorkerHost", "test:codemode/remote_serve_test.go#TestTheStartDataReachesTheVM", "test:codemode/nested_error_output_test.go", "test:codemode/deterministic_internal_test.go#TestPrngIsMulberry32LikePis", "test:codemode/deterministic_internal_test.go#TestRandomGetFillsFourBytesPerDrawLikePis", "test:codemode/deterministic_internal_test.go#TestPreludeHashIsFNV1aOverUTF16UnitsLikePis", "test:codemode/deterministic_internal_test.go#TestTheVirtualClockReadsLikePis", "test:codemode/deterministic_test.go#TestDeterministicRunsMakeTheSameCallsAndOutputForTheSameStartSeedAndResults", "test:codemode/deterministic_test.go#TestDeterministicRunsRunInUTCWhateverTheHostsTimezoneAndWithoutWeakRef", "test:codemode/deterministic_test.go#TestDeterministicRunsApplyResultsInSeqOrderWhateverOrderTheyAreDeliveredIn"]
+rationale = "The ea448f45 file is the QuickJS driver that worker.ts used to hold, now shared by the worker thread and the inline sandbox: startVm creates the VM with the memory limit, the stack guard and the interrupt handler, runs the prelude, evaluates the script, delivers replies, drains the job queue in batches of fifty between polls, and reports a failed job as a crash and a script error as a done message. codemode/vmdriver.go (startVm, VmSession) and engine.go carry it. The tests assert the fifty-job poll, that a microtask spin ends at the poll and not at the hard stop, the QuickJS export set the driver calls, that the start data reaches the VM, and the error reporting. Pi 1.2.0 adds the deterministic mode (0fb1aee7): the WASI clocks read virtual time (a seed-derived reading while the context is created), random_get draws from mulberry32 over the seed, the timezone is UTC, WeakRef and FinalizationRegistry are left out, results are applied strictly in seq order, and the VM reports `started` with its fingerprint and `idle` after each drain. codemode/deterministic.go, engine.go and vmdriver.go carry it; the internal tests pin the PRNG, random_get, the prelude hash and the clock against values computed with Pi's vm.ts, and Pi's deterministic.test.ts cases run on the worker and the remote backends."
+
+[[files]]
+path = "packages/codemode/src/runtime/worker.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/source.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/codemode/src/wasm.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/bun/cli.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/bun/quickjs-wasm.d.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/bun/restore-sandbox-env.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/bun/runtime-setup.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/bun/sandbox-env-setup.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/args.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/auth-check.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/auth-command.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/config-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/credential-print.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/file-processor.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/initial-message.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/list-models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/project-trust.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/session-picker.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/setup.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/startup-ui.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/config.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-runtime.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-services.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/auth-guidance.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/auth-storage.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/bash-executor.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/bug-report-upload.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/bug-report.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/cache-stats.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/cache-warmer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/compaction.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/utils.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/crash-log.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/defaults.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/diagnostics.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/event-bus.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/exec.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/experimental.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/ansi-to-html.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/jiti-loader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/jiti-static-loader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/loader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/runner.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/virtual-modules.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/wrapper.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/footer-data-provider.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/http-dispatcher.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/key-id-schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/key_id_schema_test.go#TestIsKeyIDMatchesTheKeyIdSchema"]
+rationale = "KeyIdSchema is a hand-written matcher in internal/codingagent/key_id_schema.go (RE2 has no lookahead); the table test checks modifiers, repeats, base keys and case."
+
+[[files]]
+path = "packages/coding-agent/src/core/keybindings-schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/keybindings_file_oracle_test.go#TestKeybindingsFileLoadingMatchesPi"]
+rationale = "keybindings.json bindings validate against KeyIdSchema (a KeyId or an array of them); $schema is accepted and is not an action. Red before: 12 of the file-loading oracle cases."
+
+[[files]]
+path = "packages/coding-agent/src/core/keybindings.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/mcp-servers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/messages.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/model-config.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/model-registry.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/model-runtime.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/models-store.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/nested-tool-calls.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/output-guard.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/package-manager.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/pi-manifest.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/project-trust.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/prompt-templates.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/provider-attribution.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/provider-composer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/radius.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/resolve-config-value.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/resource-loader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/runtime-credentials.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/sdk.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/session-cwd.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/session-export.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-defaults.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_selector_oracle_test.go#TestSettingsSelectorMatchesPi", "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_GetSessionShareDestination", "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_SetSessionShareDestinationPersistsGlobally"]
+rationale = "Pi cea25743 adds sessionShareDestination: 'auto'; ported in internal/codingagent/configschema/settings.go."
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-diagnostics.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-manager.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/render_test.go#TestRenderedSchemasAreByteEqualToTheUpstreamMirror", "test:internal/codingagent/settings_session_share_destination_test.go#TestSettingsManager_GetSessionShareDestination"]
+rationale = "Pi cea25743 adds sessionShareDestination; schemas/settings.schema.json is regenerated by make generate-schemas from internal/codingagent/configschema."
+
+[[files]]
+path = "packages/coding-agent/src/core/skills.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/slash-commands.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/source-info.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/system-prompt.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/telemetry.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_test.go#TestSettingsManager_IsInstallTelemetryEnabled"]
+rationale = "Unchanged by the telemetry leap (the file is the install-telemetry gate, not the telemetry package). internal/codingagent/settings.go IsInstallTelemetryEnabled and isTruthyTelemetryEnvFlag port it; the test covers the PI_TELEMETRY override of the setting."
+
+[[files]]
+path = "packages/coding-agent/src/core/timings.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/bash.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/edit-diff.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/edit.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/file-mutation-queue.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/grep.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/ls.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/path-utils.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/powershell.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/render-utils.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/edit.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/find.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/grep.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/ls.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/write.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/truncate.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/write.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/trust-manager.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/usage-totals.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/virtual-models.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/experimental/source-resolver.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/execute.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/execute.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/renderer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/tool.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/codemode/worker.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/client.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/huggingface.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/ui.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/cli.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/cli.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/config.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/log.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/resources.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/runtime.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/runtime.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/tools.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/mcp/ui.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/tool-search/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/migrations.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/bug-report.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/chat-viewport.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/armin.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/auth-url.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/custom-entry.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/custom-message.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/extension-input.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/extension-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/footer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/mermaid.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/pi-logo.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/status-indicator.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/theme-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/themed-text.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/trust-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/model-search.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/program-status-reporter.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/program_status_reporter_test.go#TestProgramStatusReporterReportsIdleWorkingAndDone", "test:internal/codingagent/program_status_reporter_test.go#TestInteractiveModeForwardsAgentEventsToTheProgramStatusReporter"]
+rationale = "internal/codingagent/program_status_reporter.go ports the reporter; the seven cases of program-status-reporter.test.ts are ported one Go test each, with the production path covered through InteractiveMode.handleAgentEvent."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/session-share.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/system-theme.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme-schema.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/theme_json_validate_oracle_test.go#TestThemeJSONValidationMatchesPi", "test:tui/theme_json_test.go#TestValidateThemeJSONMatchesUpstream"]
+rationale = "Theme names match ^[^/]+$, a name containing '/' is rejected before the schema runs, and the root, colors and export objects reject unknown keys ('schema is false' per key, then 'must not have additional properties'). Red before: 10 of 50 documents; the oracle gained 16 documents (extra keys, name patterns, the 8-error cap, numeric key order). theme_json_cases.json was re-recorded from the 42a build."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme-tokens.ts"
+change = "added"
+disposition = "unchanged-observable"
+evidence = ["test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"]
+rationale = "Token metadata (slots, fallbacks) already matched the 42a build; the oracle is green unchanged."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/tui-renderer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/json-event.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/jsonl.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-client.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/package-manager-cli.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/rpc-entry.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/abort.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/ansi.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/changelog.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/child-process.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard-command.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard-image.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/deprecation.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/exif-orientation.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/frontmatter.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/fs-watch.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/git.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/highlight-js.d.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/html.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-convert.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-process.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize-core.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize-worker.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/json.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/management-http.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/mime.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/open-browser.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/output-files.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/paths.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/photon.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/pi-user-agent.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/shell.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/sleep.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/syntax-highlight.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/text.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/tool-result-images.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/tools-manager.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/version-check.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/windows-self-update.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/wsl.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/zip.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/codemode/codemode.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/codemode/describe.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/codemode/describe_test.go#TestDescribeKeepsTheToolDescriptionTheSameForEveryConversation", "test:durable/codemode/describe_test.go#TestDescribeListsCallableToolsAsDeclarationsGroupedByNamespace", "test:durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteAndSaysWhatIsLeftOut", "test:durable/codemode/describe_test.go#TestDescribeUsesTheLongestMatchingNamespacePrefix", "test:durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"]
+rationale = "New in Pi 1.2.0: the code mode tool description and the system prompt section that lists callable tools by namespace within an inline budget. durable/codemode/describe.go ports codemodeDescription (Description), declarationOf, sampleOf, namespaceOf, codemodeSection (Section), CodemodeNamespace (Namespace) and DEFAULT_CODEMODE_INLINE_BUDGET (DefaultInlineBudget). The five tests port the five cases of codemode-describe.test.ts."
+
+[[files]]
+path = "packages/durable/src/codemode/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "New in Pi 1.2.0: a re-export barrel for codemode.ts and describe.ts. The Go package surface is durable/codemode's export list (CreateTool, CreateExtension, ToolName, ModuleVersion, StoreDoc, NestedCall, ToolDetails, ToolInput, ToolOptions, Global, Namespace, DefaultInlineBudget), so a barrel has no Go form."
+
+[[files]]
+path = "packages/durable/src/codemode/models.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/codemode/models_test.go#TestCodeModeModels"]
+rationale = "New in Pi 1.2.0: the `models` namespace of code mode, catalog globals that read the model catalog without credentials and `classify`/`generateImages` calls that run as hidden internal tools, at most four at once. durable/codemode/models.go ports CODEMODE_INTERNAL_PREFIX, CLASSIFY_TOOL, GENERATE_IMAGES_TOOL, MODEL_CALLS, CATALOG_GLOBALS, MAX_CONCURRENT_MODEL_CALLS, MODELS_DESCRIPTION, catalogCall and createModelTools. TestCodeModeModels ports the seven cases of codemode-models.test.ts and adds one for the order of the questions."
+
+[[files]]
+path = "packages/durable/src/codemode/output.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/codemode/output_test.go#TestFormatResultMatchesPi", "test:durable/codemode/join_text_test.go#TestJoinAdjacentTextEqualsTheQuadraticJoinOnRandomItems", "test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch"]
+rationale = "New in Pi 1.2.0: formatResult lays out a script's text items, console lines and returned value under a header, cuts text past the token budget to its start and end with the full text in a file, and saves images to files. durable/codemode/output.go ports formatResult, joinAdjacentText, OutputFile and DEFAULT_MAX_OUTPUT_TOKENS. TestFormatResultMatchesPi compares the result with Pi's, and the output cases of codemode.test.ts are in TestDurableCodeModeOutputAndToolSearch."
+
+[[files]]
+path = "packages/durable/src/documents.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/entries.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/env/decode.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/env/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/env/line-scan.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/env/node-watch.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/env/node.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/errors.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/agent.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/compaction.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/context.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/define.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/events.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/generation.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/inbox.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/json.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/live.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/prompt.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/provider.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/registry.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/submissions.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/task-graph.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/tool.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_telemetry_options_test.go#TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities"]
+rationale = "HarnessOptions.telemetry is a type-only option (TelemetryContext & Partial<TelemetryPropagation & TelemetryMetrics>) with no durable instrumentation. durable/harness/types.go adds HarnessOptions.Telemetry; the test accepts one adapter and finds the optional capabilities by interface assertion."
+
+[[files]]
+path = "packages/durable/src/harness/usage.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/util.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/harness/view.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/ids.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/images/cloudflare.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/images/node/node_test.go#TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF"]
+rationale = "The 1.1.0 change adds the Cloudflare entry, which reads Photon's WebAssembly from the host's module import. durable/images/cloudflare.CreateCloudflarePhotonImages returns the native processor; the test prepares a 1x1 GIF through both entries."
+
+[[files]]
+path = "packages/durable/src/images/exif.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/images/images_test.go#TestExifOrientationReadsJPEGAndWebP", "test:durable/images/images_test.go#TestEXIFOrientationTurnsTheImageUpright"]
+rationale = "The 1.1.0 change adds exif.ts (JPEG and WebP orientation). durable/images/exif.go ports it and both tests assert the orientation read and the upright result."
+
+[[files]]
+path = "packages/durable/src/images/index.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/images/photon_pi_oracle_test.go#TestPhotonImagesMatchPiOnACorpus", "test:durable/images/sequential_test.go#TestCreatePhotonImagesPreparesOneImageAtATime", "test:durable/images/sequential_test.go#TestCreatePhotonImagesPreparesImagesInCallOrder"]
+rationale = "The 1.1.0 change adds createPhotonImages (decode, orient, resize, convert and limit-fit over Photon). durable/images/images.go and lanczos.go implement it natively, and TestPhotonImagesMatchPiOnACorpus compares the prepared image with Pi's over a corpus. Pi's prepare runs synchronously on the calling thread, so calls are prepared one at a time in call order; durable/images/sequential.go gives each processor's calls the same order, and the sequential tests pin it."
+
+[[files]]
+path = "packages/durable/src/images/node-worker.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/images/node/worker_test.go#TestTheWorkersFailuresReachTheirCallerAndTheWorkerGoesOn", "test:durable/images/node/worker_test.go#TestTheWorkerGivesTheSameResultAsTheCallingGoroutine", "test:durable/images/node/worker_test.go#TestTheWorkerKeepsTheCallersBytes"]
+rationale = "New in Pi 1.2.0: the worker thread of createNodePhotonImages, which prepares each request with Photon and posts back its result or its error message by request ID. durable/images/node/node.go ports it as the worker goroutine (workerImages.run and prepare): a job carries the bytes, MIME type, limits and a reply channel, and the reply carries the result, the error, or a panic, which the caller raises again. Request IDs, postMessage and the transfer of the buffer have no Go form, because the reply channel belongs to its one request. The tests assert that a failure reaches its caller and the worker goes on, the same result as on the calling goroutine, and the caller's bytes kept."
+
+[[files]]
+path = "packages/durable/src/images/node.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/images/node/node_test.go#TestTheNodeAndCloudflareProcessorsPrepareA1x1GIF", "test:durable/images/node/worker_test.go#TestTheWorkerPreparesOneImageAtATime", "test:durable/images/node/worker_test.go#TestTheWorkerPreparesImagesInCallOrder", "test:durable/images/node/worker_test.go#TestWorkerFalsePreparesWithThePlainProcessor", "test:durable/images/node/worker_test.go#TestTheWorkerPreparesOnItsOwnGoroutine", "test:durable/images/node/worker_test.go#TestTheWorkerExitsWhenIdleAndTheNextImageStartsAnother", "test:durable/images/node/worker_test.go#TestTheWorkerHonoursACancelledContext"]
+rationale = "New in Pi 1.2.0: createNodePhotonImages({ worker, idleMs }), Photon in a worker thread by default, which exits after idleMs (30 s) without requests and is started again by the next image; worker: false prepares on the calling thread, one image at a time in call order. durable/images/node/node.go ports CreateNodePhotonImages and NodePhotonImagesOptions with one worker goroutine, the idle exit and the restart; with Worker false it returns images.CreatePhotonImages, which prepares on the caller's goroutine one call at a time in call order (index.ts row). Designed out: reading Photon's WebAssembly from the installed package, ref/unref of the worker, and the fallback to the calling thread when a worker cannot start. The Go processor (durable/images) is native, has no module to read, and a goroutine always starts. The tests assert the worker's one image at a time in call order on its own goroutine, worker false as the plain processor, the idle exit and restart, and cancellation."
+
+[[files]]
+path = "packages/durable/src/images/photon-wasm.d.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Declares Photon's WebAssembly import for TypeScript. The Go processor decodes and encodes natively and has no compiled module to import; PORT_MAP records the file n/a for the same reason."
+
+[[files]]
+path = "packages/durable/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/search.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/internal/search/search_test.go#TestTokenizeMatchesPi", "test:durable/internal/search/search_test.go#TestRankDocumentsMatchesPi", "test:durable/internal/search/search_test.go#TestRankDocumentsNormalizesByDocumentLength"]
+rationale = "New in Pi 1.2.0: BM25 tool search (tokenize with camelCase splits, stop words and a naive stem; rankDocuments with k1 1.2 and b 0.75, ties in document order) for code mode's searchTools() and the tool_search tool. durable/internal/search/search.go ports tokenize, RankDocuments and Document; the tests compare tokens and rankings with Pi's."
+
+[[files]]
+path = "packages/durable/src/session/forks.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/session/observation.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/session/session.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/session/transaction.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/jsonl/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/jsonl/node.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/jsonl/storage.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/memory.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/scan.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/storage/internal/scan/scan_test.go#TestStartOf", "test:durable/storage/memory_pi_oracle_test.go#TestMemoryStorageMatchesPiOnSeededPrograms"]
+rationale = "The 1.1.0 change adds scanStart and nextCursor (the cursor carries its order and a different query order is a StorageRequestError). durable/storage/internal/scan/scan.go ports them and TestStartOf asserts each branch."
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/cloudflare.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/database.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/migrations.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/node.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/schema.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/storage/sqlite/storage.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tasks.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/assertions.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/env-conformance.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/runner.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/storage-benchmark.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/storage-conformance.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/testing/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/timers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tool-search/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "New in Pi 1.2.0: a re-export barrel for tool-search.ts. The Go package surface is durable/toolsearch's export list (CreateTool, CreateExtension, ToolName, DefaultLimit, Details), so a barrel has no Go form."
+
+[[files]]
+path = "packages/durable/src/tool-search/tool-search.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/toolsearch/toolsearch_test.go#TestOffersADeferredToolOnlyOnceToolSearchLoadsItByAppendingItsDeclaration", "test:durable/toolsearch/toolsearch_test.go#TestAppendsEachLoadedToolInLoadOrderNotRegistryOrder", "test:durable/toolsearch/toolsearch_test.go#TestRecordsLoadsByNameUnknownAndNonDeferredNamesChangeNothingRemoveWinsAndALoadLiftsIt", "test:durable/toolsearch/toolsearch_test.go#TestKeepsALoadedToolWhenItsExtensionIsGoneForAWhileAndAppendsToAnExplicitArray", "test:durable/toolsearch/toolsearch_test.go#TestKeepsLoadedToolsPerBranchAndInTheBaselineAfterAReset", "test:durable/toolsearch/toolsearch_test.go#TestFindsNothingForAnUnrelatedQueryAndLoadsNothing", "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"]
+rationale = "New in Pi 1.2.0: the model-only `tool_search` tool, which ranks the agent's deferred tools by their name, description and parameter text and loads the matches with control.addTools, and its extension. durable/toolsearch/toolsearch.go ports TOOL_SEARCH_TOOL_NAME, DEFAULT_TOOL_SEARCH_LIMIT, the fixed description, the schema, searchText, createToolSearchTool, createToolSearchExtension and ToolSearchToolDetails. The six tests port the six cases of tool-search.test.ts, and TestToolSearchToolDeclarationMatchesPi compares the declaration with Pi's."
+
+[[files]]
+path = "packages/durable/src/tools/bash.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/edit-diff.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/edit.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/env.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/file-mutation-queue.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/image-processor.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "3daa2028→b06c1f2c: Pi b0429971 (#10923) replaces a JavaScript string-concatenation base64 encoder that retained V8 cons-strings with btoa. Output is unchanged; durable/images uses Go encoding/base64, which has no such retention, so there is nothing to port."
+
+[[files]]
+path = "packages/durable/src/tools/image.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/path-utils.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/read.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/tools/write.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/truncate.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/durable/src/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/env/src/connection.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/env/src/errors.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/env/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/env/src/list-files.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/conformance_test.go#TestLocalExecutionEnvConformance", "test:env/conformance_test.go#TestRemoteExecutionEnvOverAPipeConformance", "test:env/list_files_test.go#TestListFilesIsNotSupportedByDaemonsReleasedBeforeIt", "test:env/list_files_test.go#TestListFilesCancelsAListingInTheDaemon", "test:env/list_files_test.go#TestListFilesNamesTheFirstInvalidBoundInPisOrder", "test:env/list_files_oracle_test.go#TestListFilesIgnoreFilesMatchPisDaemon", "test:env/list_files_oracle_test.go#TestListFilesErrorsMatchPisDaemon"]
+rationale = "Added in 1.2.0. env/list_files.go ports listFilesOver: it checks maxEntries, maxBytes and timeoutMs in Pi's order as non-negative safe integers, checks for abort, fails with not_supported when hello has no listFiles feature, sends only the options that are set, checks for abort again, and parses the kind-byte, path, NUL records (unknown kinds skipped, Truncated from the reply). LocalExecutionEnv is NodeExecutionEnv with ListFiles through the caller's connection after AbsolutePath. The conformance suites run Pi's listFiles cases, with ListFiles enabled, against both environments, and the oracle tests compare the listings and errors with Pi's Rust daemon."
+
+[[files]]
+path = "packages/env/src/remote-env.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/env/src/ssh.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/env/src/terminal.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:env/terminal_test.go#TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode", "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt", "test:env/terminal_test.go#TestOpenTerminalDeliversRawBytesNotDecodedText", "test:env/terminal_test.go#TestOpenTerminalKeepsInputInOrder", "test:env/terminal_test.go#TestOpenTerminalKillsTheProgramOnClose", "test:env/terminal_test.go#TestOpenTerminalFailsToOpenInAMissingDirectory", "test:env/terminal_test.go#TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault", "test:env/terminal_test.go#TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder", "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText", "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout"]
+rationale = "Added in 1.2.0. env/terminal.go ports openTerminal (the pty request with only the options that are set, output events to OnData, started resolving the open, a failure before it rejecting it), RemoteTerminal (Pid; Exited for the exited promise, which may be awaited many times; Write in 1 MiB ptyWrite chunks of text or bytes, dropped after the end; Resize; Close aborting the request; Foreground with an optional name) and TerminalOptions. The tests port terminal.test.ts against both Pi's Rust daemon and Go's (eachDaemon). Go additions: OpenTerminal takes a context that only abandons the open, and returns an error when the request ends without a started event, where Pi's open promise would never settle."
+
+[[files]]
+path = "packages/env/src/watch.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/evals/src/cli.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/evals/src/docker.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/evals/src/harness.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/evals/src/plan.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/evals/src/report.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/auth-provider.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/client.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/oauth/callback.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/oauth/discovery.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/oauth/errors.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/oauth/flow.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/oauth/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/oauth/provider.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/oauth/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/protocol/content.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/protocol/jsonrpc.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/protocol/types.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/testing/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/transports/in-memory.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/transports/stdio.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/transports/streamable-http.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/mcp/src/transports/transport.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/telemetry/src/index.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:telemetry/propagation_upstream_test.go#TestPropagationUpstream", "test:telemetry/propagation_pi_oracle_test.go#TestInMemoryCarriersInteroperateWithPi", "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly", "test:telemetry/telemetry_upstream_test.go#TestTelemetrySchemaKeepsEmptyMembers"]
+rationale = "48909d98 adds TelemetryCarrier/TelemetryPropagation (inject/extract), SpanLink and SpanOptions.links, TelemetrySpan.addLink, and the schema `metrics` member. telemetry/context.go carries the propagation and span-link types and the span options; telemetry/schema.go carries the metrics schema member. TestPropagationUpstream and TestMetricsUpstream replay Pi's propagation and metrics tests with the same inputs and expected results; TestInMemoryCarriersInteroperateWithPi runs Pi's real InMemory carriers against the Go adapter and back."
+
+[[files]]
+path = "packages/telemetry/src/memory.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:telemetry/propagation_upstream_test.go#TestPropagationUpstream", "test:telemetry/memory_pi_oracle_test.go#TestInMemoryTelemetryMatchesPiOnRandomPrograms", "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms", "test:telemetry/propagation_upstream_test.go#TestExtractAcceptsOnlyWellFormedMemoryCarriers"]
+rationale = "The InMemoryTelemetryContext gains span links (recorded and detached), the in-memory inject/extract carrier, and the measurement log for counters, up-down counters and histograms. telemetry/memory.go carries all three. TestInMemoryTelemetryMatchesPiOnRandomPrograms and TestInMemoryMetricsMatchPiOnRandomPrograms compare the Go recorder with Pi's memory.ts over random programs through telemetry/testdata/memory_oracle.mjs and metrics_oracle.mjs; TestExtractAcceptsOnlyWellFormedMemoryCarriers pins which carriers extract accepts."
+
+[[files]]
+path = "packages/telemetry/src/metrics.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:telemetry/metrics_upstream_test.go#TestMetricsUpstream", "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly", "test:telemetry/memory_metrics_pi_oracle_test.go#TestInMemoryMetricsMatchPiOnRandomPrograms"]
+rationale = "New file: the TelemetryMetrics, counter/up-down-counter/histogram instrument types and createTypedMetrics. telemetry/metrics.go ports it (CreateTypedMetrics, TypedTelemetryMetrics.Counter/UpDownCounter/Histogram) with the schema metric metadata read for declared names only. TestMetricsUpstream replays Pi's metrics.test.ts; the typed-metrics test pins the declared-names-only rule; the oracle test compares measurements with Pi's InMemory log."
+
+[[files]]
+path = "packages/telemetry/src/noop.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:telemetry/propagation_upstream_test.go#TestPropagationUpstream", "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"]
+rationale = "NOOP_TELEMETRY_CONTEXT gains inert propagation (inject writes nothing, extract returns no parent) and inert metrics instruments, and the no-op span accepts addLink. telemetry/context.go NoopTelemetryContext carries them; the propagation and metrics upstream tests run the no-op cases from Pi's tests."
+
+[[files]]
+path = "packages/telemetry/src/testing/conformance.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:telemetry/conformance_upstream_test.go#TestConformanceUpstream", "test:telemetry/conformance_capability_cases_test.go#TestConformanceCapabilityCasesCheckTheirRules", "test:telemetry/conformance_case_catalogue_test.go#TestConformanceCasesKeepPiGroupsNamesAndOrder"]
+rationale = "The conformance suite adds capability cases (propagation, span links, metrics) that run only when the fixture declares the capability. telemetrytest/conformance.go ports the cases with Pi's group names and order; TestConformanceCasesKeepPiGroupsNamesAndOrder pins the catalogue and TestConformanceCapabilityCasesCheckTheirRules pins that each case fails for an adapter that breaks its rule."
+
+[[files]]
+path = "packages/telemetry/src/testing/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "A re-export barrel of createTelemetryAdapterConformance and its three types; the Go package surface is telemetry/telemetrytest itself (PORT_MAP n/a). The leap does not change it."
+
+[[files]]
+path = "packages/telemetry/src/testing/types.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:telemetry/conformance_fixture_test.go#TestConformanceFixtureIsOwnedAndDisposedByEachCase", "test:telemetry/adapter_conformance_status_test.go#TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus"]
+rationale = "The fixture and recorder types gain the optional propagation, metrics and recorded-links/measurements members. telemetrytest/types.go carries them; the fixture tests and the in-memory adapter conformance run exercise them."
+
+[[files]]
+path = "packages/tui/src/alt-screen-search.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/autocomplete.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/colors.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/alt-screen-flash.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/box.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/cancellable-loader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/h-stack.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/image.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/input.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/loader.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/mouse-region.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/scroll-view.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/select-list.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/settings-list.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/spacer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/stack.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/text.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/truncated-text.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/v-stack.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/editor-component.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/fuzzy.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/index.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/keybindings.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/keys.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/kill-ring.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/latex.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/layout-node.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/layout.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/native-modifiers.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/native-module-path.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/native-platform.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/oklab.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/program-status.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/program_status_test.go#TestFormatProgramStatusUpstream", "test:tui/program_status_test.go#TestIsProgramStatusReplyUpstream"]
+rationale = "tui/program_status.go ports ProgramStatus, the OSC 7501 query, reply detection and formatting; the five cases of program-status.test.ts run in the two Upstream tests. Raising the message-size limit fails TestFormatProgramStatusUpstream."
+
+[[files]]
+path = "packages/tui/src/stdin-buffer.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/terminal-colors.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/terminal-image.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/terminal.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/tui-main-screen.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/undo-stack.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/utils.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/wheel-scroll.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/word-navigation.ts"
+change = "added"
+disposition = "pending"
+evidence = []
+rationale = ""

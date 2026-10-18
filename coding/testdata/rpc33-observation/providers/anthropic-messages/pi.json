@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.3.0+482c1381",
+  "piVersion": "1.3.0+1402973a",
   "anthropicSdkVersion": "0.129.0",
   "nodeVersion": "v24.19.0",
   "axes": {
@@ -125227,10 +125227,10 @@
             "model": "probe",
             "usage": {
               "input": 10,
-              "output": 1,
+              "output": 3,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "totalTokens": 11,
+              "totalTokens": 13,
               "cost": {
                 "input": 0,
                 "output": 0,
@@ -125240,9 +125240,10 @@
               },
               "cacheWrite1h": 0
             },
-            "stopReason": "pending",
+            "stopReason": "stop",
             "timestamp": 0,
-            "responseId": "msg_10"
+            "responseId": "msg_10",
+            "rawStopReason": "end_turn"
           }
         },
         {
@@ -125265,10 +125266,10 @@
             "model": "probe",
             "usage": {
               "input": 10,
-              "output": 1,
+              "output": 3,
               "cacheRead": 0,
               "cacheWrite": 0,
-              "totalTokens": 11,
+              "totalTokens": 13,
               "cost": {
                 "input": 0,
                 "output": 0,
@@ -125278,9 +125279,10 @@
               },
               "cacheWrite1h": 0
             },
-            "stopReason": "pending",
+            "stopReason": "stop",
             "timestamp": 0,
-            "responseId": "msg_10"
+            "responseId": "msg_10",
+            "rawStopReason": "end_turn"
           }
         },
         {
