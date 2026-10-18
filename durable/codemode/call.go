@@ -25,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/internal/search"
+	"github.com/MichaelKinsy/PiG/internal/entered"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -184,6 +185,18 @@ func (c *call) spawn(f func()) {
 	c.spawned.Go(func() {
 		f()
 	})
+}
+
+// spawnEntered is spawn, and returns once f has entered: it returned, or its goroutine is parked in a wait. A call
+// Pi's host starts (`this.callTool(call)`, `this.callGlobal(call)`) runs synchronously up to its first await before the
+// next event the script's VM posted, so a tool call a script made is running (its nested call is being admitted)
+// before the call that follows it is started, and before the script can end and abort it.
+func (c *call) spawnEntered(f func()) {
+	c.spawned.Add(1)
+	entered.Go(func() {
+		defer c.spawned.Done()
+		f()
+	})()
 }
 
 func (c *call) post(f func()) { c.events.post(f) }
@@ -854,7 +867,7 @@ func (c *call) onCall(made cm.HostCall) {
 	}
 	c.afterGate(func() {
 		slot := c.reserveModelSlot(hostCall)
-		c.spawn(func() {
+		c.spawnEntered(func() {
 			done, err := c.callTool(hostCall, slot)
 			c.post(func() {
 				if err != nil {
@@ -1060,7 +1073,7 @@ func (c *call) launch(hostCall cm.HostCall) {
 		return
 	}
 	slot := c.reserveModelSlot(hostCall)
-	c.spawn(func() {
+	c.spawnEntered(func() {
 		var outcome cm.Outcome
 		var recorded *journalGlobal
 		var done nestedDone
@@ -1115,8 +1128,7 @@ type modelSlot struct {
 	// queued is whether every slot was taken when the call was launched, so it waits for one. Pi's `await this.modelSlot()`
 	// (packages/durable/src/codemode/codemode.ts:820-826, 890-895) parks only then: a call that gets a slot at once goes on to
 	// executeTool in the same turn as its launch, before the script can end, so only a call that waited can find the script
-	// ended. Here the call runs on its own goroutine, which may start after the script ended, so the check is limited to
-	// queued calls.
+	// ended. Here too: launch returns once the call entered (spawnEntered), so the check is limited to queued calls.
 	queued bool
 }
 

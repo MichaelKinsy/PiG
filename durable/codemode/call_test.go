@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	cm "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -164,5 +166,89 @@ func TestCutCountsUTF16Units(t *testing.T) {
 	}
 	if got := cut(strings.Repeat("😀", 101), 200); got != strings.Repeat("😀", 98)+"\xed\xa0\xbd..." {
 		t.Fatalf("cut = %q", got)
+	}
+}
+
+// entryApi is a tool execution API whose ExecuteTool records the order calls enter it, then holds each call until ctx
+// ends, as a running tool does.
+type entryApi struct {
+	durable.ToolExecutionApi
+	mu      sync.Mutex
+	entered []string
+}
+
+func (a *entryApi) ExecuteTool(ctx context.Context, name string, _ map[string]any, _ ...durable.NestedCallOptions) (durable.NestedToolExecutionResult, error) {
+	a.mu.Lock()
+	a.entered = append(a.entered, name)
+	a.mu.Unlock()
+	<-ctx.Done()
+	return durable.NestedToolExecutionResult{}, context.Cause(ctx)
+}
+
+func (a *entryApi) enteredCalls() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return slices.Clone(a.entered)
+}
+
+// onePProcessor makes the Go scheduler run the goroutine started last first, as its runnext slot does under load: the
+// interleaving in which a call started later overtakes one started before it.
+func onePProcessor(t *testing.T) {
+	t.Helper()
+	previous := runtime.GOMAXPROCS(1)
+	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
+}
+
+func entryCall(t *testing.T) (*call, *entryApi) {
+	t.Helper()
+	api := &entryApi{}
+	ctx, cancel := context.WithCancel(testContext)
+	c := newCall(ToolOptions{}, api, ctx)
+	c.work = ctx
+	t.Cleanup(func() {
+		cancel()
+		c.spawned.Wait()
+	})
+	return c, api
+}
+
+func toolCall(id int, name string) cm.HostCall {
+	return cm.HostCall{ID: id, Target: "tool", Name: name}
+}
+
+// codemode.ts launch: `this.callTool(call)` runs synchronously up to its first await, which is inside
+// `api.executeTool`, so a call is in executeTool before the next call the script made is launched, and before the
+// script can end and abort it. Here each call runs on its own goroutine, which the Go scheduler may start after a later
+// call's (a script that ends first aborts the call before its tool ran): launch returns once the call entered.
+func TestALaunchedCallEntersBeforeTheNextOneIsLaunched(t *testing.T) {
+	onePProcessor(t)
+	c, api := entryCall(t)
+	c.released, c.durableIssued = true, 2
+	c.launch(toolCall(1, "hold"))
+	if got := api.enteredCalls(); !slices.Equal(got, []string{"hold"}) {
+		t.Fatalf("after launching hold, the calls that entered are %v, want [hold]", got)
+	}
+	c.launch(toolCall(2, "echo"))
+	if got := api.enteredCalls(); !slices.Equal(got, []string{"hold", "echo"}) {
+		t.Fatalf("after launching echo, the calls that entered are %v, want [hold echo]", got)
+	}
+}
+
+// codemode.ts onCall, replay: `this.gate.then(() => this.callTool(call))` enters the call in the turn it runs, as launch does.
+func TestAReplayedCallEntersBeforeTheNextOneIsStarted(t *testing.T) {
+	onePProcessor(t)
+	c, api := entryCall(t)
+	c.gateOpen, c.replaying = true, true
+	c.replayed = []journalEntry{{ID: 1}, {ID: 2}}
+	c.replayIndex = map[int]int{1: 0, 2: 1}
+	c.onCall(toolCall(1, "hold"))
+	c.onCall(toolCall(2, "echo"))
+	c.events.next()()
+	if got := api.enteredCalls(); !slices.Equal(got, []string{"hold"}) {
+		t.Fatalf("after replaying hold, the calls that entered are %v, want [hold]", got)
+	}
+	c.events.next()()
+	if got := api.enteredCalls(); !slices.Equal(got, []string{"hold", "echo"}) {
+		t.Fatalf("after replaying echo, the calls that entered are %v, want [hold echo]", got)
 	}
 }
