@@ -743,6 +743,10 @@ func Main(args []string, options *MainOptions) {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
 		gcpolicy.Apply()
 	}
+	if runMode == appModeRPC {
+		// pig additive (D174): an rpc run schedules on procpolicy.RPCCap Ps unless the environment sets GOMAXPROCS.
+		procpolicy.ApplyRPC()
+	}
 
 	// Non-interactive startup reserves stdout except for plain runtime metadata (Pi main.ts:129-130,638-642).
 	if runMode != appModeInteractive && !isPlainRuntimeMetadataCommand(flags) {

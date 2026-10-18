@@ -119,3 +119,75 @@ func TestPanickingSectionRestoresTheCap(t *testing.T) {
 		t.Fatalf("after a panicking section GOMAXPROCS = %d, want the cap %d", got, Cap)
 	}
 }
+
+// An rpc run lowers the cap to RPCCap; a section still runs at the default width and closes to RPCCap, not to Cap.
+func TestApplyRPCLowersTheCapAndSectionsCloseToIt(t *testing.T) {
+	defaultProcs := capForTest(t)
+	ApplyRPC()
+	if got := runtime.GOMAXPROCS(0); got != RPCCap {
+		t.Fatalf("after ApplyRPC GOMAXPROCS = %d, want %d", got, RPCCap)
+	}
+	narrow := Widen()
+	if got := runtime.GOMAXPROCS(0); got != defaultProcs {
+		t.Fatalf("in a section of an rpc run GOMAXPROCS = %d, want the default %d", got, defaultProcs)
+	}
+	narrow()
+	if got := runtime.GOMAXPROCS(0); got != RPCCap {
+		t.Fatalf("after a section of an rpc run GOMAXPROCS = %d, want %d", got, RPCCap)
+	}
+	Apply()
+	if got := runtime.GOMAXPROCS(0); got != RPCCap {
+		t.Fatalf("Apply after ApplyRPC raised GOMAXPROCS to %d, want %d", got, RPCCap)
+	}
+}
+
+// ApplyRPC inside an open section keeps the section at the default width; the section closes to RPCCap.
+func TestApplyRPCDuringASectionTakesEffectWhenItCloses(t *testing.T) {
+	defaultProcs := capForTest(t)
+	narrow := Widen()
+	ApplyRPC()
+	if got := runtime.GOMAXPROCS(0); got != defaultProcs {
+		t.Fatalf("ApplyRPC narrowed an open section to %d, want the default %d", got, defaultProcs)
+	}
+	narrow()
+	if got := runtime.GOMAXPROCS(0); got != RPCCap {
+		t.Fatalf("after the section GOMAXPROCS = %d, want %d", got, RPCCap)
+	}
+}
+
+// A runtime default of Cap is left alone by Apply, and ApplyRPC still lowers it to RPCCap; a section then restores the default.
+func TestApplyRPCLowersADefaultOfCap(t *testing.T) {
+	started := runtime.GOMAXPROCS(0)
+	t.Cleanup(func() {
+		mu.Lock()
+		capped.Store(false)
+		sections = 0
+		mu.Unlock()
+		runtime.GOMAXPROCS(started)
+	})
+	t.Setenv("GOMAXPROCS", "")
+	if err := os.Unsetenv("GOMAXPROCS"); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GOMAXPROCS(Cap)
+	Apply()
+	if capped.Load() || runtime.GOMAXPROCS(0) != Cap {
+		t.Fatalf("Apply with a width of %d: capped = %v, GOMAXPROCS = %d", Cap, capped.Load(), runtime.GOMAXPROCS(0))
+	}
+	ApplyRPC()
+	if got := runtime.GOMAXPROCS(0); got != RPCCap || !capped.Load() {
+		t.Fatalf("ApplyRPC with a width of %d: GOMAXPROCS = %d, capped = %v; want %d, true", Cap, got, capped.Load(), RPCCap)
+	}
+}
+
+// A user's GOMAXPROCS is left alone in an rpc run too.
+func TestApplyRPCLeavesAUserGOMAXPROCS(t *testing.T) {
+	started := runtime.GOMAXPROCS(0)
+	t.Cleanup(func() { runtime.GOMAXPROCS(started) })
+	runtime.GOMAXPROCS(Cap + 3)
+	t.Setenv("GOMAXPROCS", "5")
+	ApplyRPC()
+	if got := runtime.GOMAXPROCS(0); got != Cap+3 || capped.Load() {
+		t.Fatalf("with GOMAXPROCS set: GOMAXPROCS = %d, capped = %v; want %d, false", got, capped.Load(), Cap+3)
+	}
+}

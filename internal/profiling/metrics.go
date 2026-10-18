@@ -26,6 +26,8 @@ type ProcessMetrics struct {
 	// GCPercent is the GC percent at exit (/gc/gogc:percent), and HeapGoalBytes the heap size the last completed cycle set as the next goal (/gc/heap/goal:bytes), both read before the record's own collection: a policy that changes the percent (D175) shows here.
 	GCPercent     uint64 `json:"gc_percent"`
 	HeapGoalBytes uint64 `json:"heap_goal_bytes"`
+	// GOMAXPROCS is the width when the record is read: the D174 cap, or the runtime default while a parallel section is open.
+	GOMAXPROCS int `json:"gomaxprocs"`
 	// GCPauses counts stop-the-world GC pauses; GCPauseSeconds approximates their total from the runtime's histogram buckets. It is a time, so gates do not compare it.
 	GCPauses       uint64  `json:"gc_pauses"`
 	GCPauseSeconds float64 `json:"gc_pause_seconds"`
@@ -82,6 +84,7 @@ func CollectMetrics() ProcessMetrics {
 		GoroutinesCreated: uint64Sample(samples[4]),
 		GCPercent:         uint64Sample(samples[5]),
 		HeapGoalBytes:     uint64Sample(samples[6]),
+		GOMAXPROCS:        runtime.GOMAXPROCS(0),
 	}
 	models := ModelsFileStats.Load()
 	record.ModelsFileStats = models
