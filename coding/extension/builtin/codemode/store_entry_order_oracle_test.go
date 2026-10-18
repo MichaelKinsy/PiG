@@ -59,6 +59,9 @@ emit(JSON.parse(child.stdout));
 `, scripts, &want, "ORACLE_SCRIPT="+scriptPath, "ORACLE_NODE_PATH="+cache)
 	bad := 0
 	for i, script := range scripts {
+		// A VM keeps its slot until it has exited, after Execute has returned, and Execute refuses a script at once when two are taken (the pinned Pi's oracle
+		// above waits for the exits of its workers for the same reason), so a script starts once the earlier ones' VMs have exited.
+		codemodeWorkers.waitIdle()
 		var got []entry
 		base := extension.NewContext(t.TempDir(), nil, func() error { return nil }, extension.ContextActions{SessionManager: emptyBranch{}})
 		ctx := extension.WithToolContext(context.Background(), extension.NewToolContext(base, "call", context.Background(), extension.ToolActions{

@@ -104601,20 +104601,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "workerAdmission"
+        "type": "*workerAdmission"
       },
-      "shapeHash": "sha256:a3d901849371fd1af34df727ff0fce54c027741c7859777578d8fe8c4a9d266c"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#codemodeWorkers.acquire",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode",
-      "name": "codemodeWorkers.acquire",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() (func(), error)"
-      },
-      "shapeHash": "sha256:1583acf041b2dcc3821842b52fc4ae3c47f3d2d5f60c996deb3acb571b1bceaa"
+      "shapeHash": "sha256:a722f8e76120975510506ecdd006581d6f78c408a24f63a1eaeb652331cd4898"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#constrainedSampling",
@@ -105066,6 +105055,17 @@
         "type": "[]github.com/MichaelKinsy/PiG/ai.ModelType"
       },
       "shapeHash": "sha256:d4726c9e5f1426d4190fdfa249c86bff3fb0ff0aba2b66680e4196ce80dfdf7d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#newWorkerAdmission",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode",
+      "name": "newWorkerAdmission",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(limit int) *workerAdmission"
+      },
+      "shapeHash": "sha256:2bc5135968ac6bfbee792c1ec072b5c56d6320f61078e1ff22c6dce3bc7025d1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#objectOf",

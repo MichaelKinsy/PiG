@@ -51,6 +51,15 @@ func waitForActiveWorkers(t *testing.T, want int) {
 	}
 }
 
+// waitIdle returns once every VM has exited and given its slot back.
+func (a *workerAdmission) waitIdle() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for a.active > 0 {
+		a.idle.Wait()
+	}
+}
+
 // Workers still running or shutting down hold their slots across calls: at the limit a script fails at once without
 // starting a VM, and freeing one slot admits exactly one more.
 func TestCodemodeWorkerAdmissionBoundsSurvivingWorkers(t *testing.T) {

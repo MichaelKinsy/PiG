@@ -44,7 +44,7 @@ const (
 )
 
 // codemodeWorkers is the admission shared by every codemode call in the process.
-var codemodeWorkers = workerAdmission{limit: maxConcurrentCodemodeWorkers}
+var codemodeWorkers = newWorkerAdmission(maxConcurrentCodemodeWorkers)
 
 // workerAdmission counts live codemode VMs. A VM holds its slot until it actually exits, not until its result is
 // returned.
@@ -54,6 +54,14 @@ type workerAdmission struct {
 	limit  int
 	mu     sync.Mutex
 	active int
+	// idle broadcasts, with mu held, when the last live VM has exited.
+	idle *sync.Cond
+}
+
+func newWorkerAdmission(limit int) *workerAdmission {
+	a := &workerAdmission{limit: limit}
+	a.idle = sync.NewCond(&a.mu)
+	return a
 }
 
 func (a *workerAdmission) acquire() (func(), error) {
@@ -66,6 +74,9 @@ func (a *workerAdmission) acquire() (func(), error) {
 	return func() {
 		a.mu.Lock()
 		a.active--
+		if a.active == 0 {
+			a.idle.Broadcast()
+		}
 		a.mu.Unlock()
 	}, nil
 }
