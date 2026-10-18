@@ -102,6 +102,15 @@ func (c *encodedMessageCache) forget(element *list.Element) {
 	c.held -= entry.size()
 }
 
+// release forgets every entry.
+func (c *encodedMessageCache) release() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries = map[uint64]*list.Element{}
+	c.recency.Init()
+	c.held = 0
+}
+
 // messageKey is the canonical record of a converted message: every value its encoding reads, each with a tag and, for text, its length, so two messages that differ in any value, or in where a value ends, have different records. A value the record does not know how to write (a type the converter does not produce, such as a payload hook's own) makes the message uncacheable, never keyed by less than it holds. Strings are copied, not referred to: a map or slice the caller owns may change after the record is made.
 type messageKey struct {
 	buf []byte

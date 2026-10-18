@@ -327,6 +327,42 @@ func TestTheMessageCacheIsBounded(t *testing.T) {
 	}
 }
 
+// release forgets every large string and every message the caches hold; the next request's body is the same, and the caches fill again from it.
+func TestReleasedRequestCachesHoldNothingAndBuildTheSameBody(t *testing.T) {
+	cache := newQuotedStringCache(1 << 30)
+	large := strings.Repeat("big <&>\n", requestSpliceMinBytes/4)
+	request := anthRequest{Model: "m", Messages: []anthMessage{{Role: "user", Content: large}, {Role: "user", Content: "small"}}}
+	want, err := marshalRequestBody(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	build := func() {
+		t.Helper()
+		body, err := marshalSpliced(request, cache, marshalRequestBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(body.Bytes(), want) {
+			t.Fatalf("body differs\n got %.200q\nwant %.200q", body.Bytes(), want)
+		}
+	}
+	build()
+	if cache.recency.Len() == 0 || cache.messages.recency.Len() == 0 {
+		t.Fatalf("before release: %d strings, %d messages cached; want both", cache.recency.Len(), cache.messages.recency.Len())
+	}
+	cache.release()
+	if cache.held != 0 || cache.recency.Len() != 0 || len(cache.entries) != 0 || len(cache.bySource) != 0 || len(cache.byData) != 0 {
+		t.Fatalf("after release the string cache holds %d bytes in %d entries", cache.held, cache.recency.Len())
+	}
+	if cache.messages.held != 0 || cache.messages.recency.Len() != 0 || len(cache.messages.entries) != 0 {
+		t.Fatalf("after release the message cache holds %d bytes in %d entries", cache.messages.held, cache.messages.recency.Len())
+	}
+	build()
+	if cache.recency.Len() == 0 || cache.messages.recency.Len() == 0 {
+		t.Fatalf("after a build the caches hold %d strings and %d messages; want both again", cache.recency.Len(), cache.messages.recency.Len())
+	}
+}
+
 // A message that the cache serves costs the build no allocation of its own: a resent history of 200 turns is built with a few dozen allocations, not one or more for each of its 600 messages. Without the message cache the body is the same.
 func TestTheMessageCacheServesAMessageWithoutAllocating(t *testing.T) {
 	for name, request := range map[string]any{"anthropic": anthHistory(200), "completions": oaiHistory(200)} {

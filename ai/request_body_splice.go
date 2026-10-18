@@ -189,6 +189,25 @@ func (c *quotedStringCache) beginRequest() {
 	}
 }
 
+// ReleaseRequestCaches forgets every encoding the request caches hold: large strings and finalized messages. The next request encodes what it sends again, as it would have the first time; a build that runs meanwhile finds nothing to splice and encodes its values itself, so its body is the same.
+// pig additive (D112): an interactive session that went idle calls it from its idle collection (D172), so the encodings of the conversation it sent do not stay live while it waits.
+func ReleaseRequestCaches() {
+	requestStrings.release()
+}
+
+func (c *quotedStringCache) release() {
+	c.mu.Lock()
+	c.entries = map[quotedStringKey]*list.Element{}
+	c.bySource = map[stringIdentity]*list.Element{}
+	c.byData = map[*byte]*list.Element{}
+	c.recency.Init()
+	c.held = 0
+	c.mu.Unlock()
+	if c.messages != nil {
+		c.messages.release()
+	}
+}
+
 func (c *quotedStringCache) forget(element *list.Element) {
 	entry := c.recency.Remove(element).(*quotedString)
 	delete(c.entries, entry.key)

@@ -20731,6 +20731,17 @@
       "shapeHash": "sha256:ae331f0ea9bae37de3b791713db0c7dbc1c3ca4eccafeb5486fa36136e0bd4e1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ReleaseRequestCaches",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ReleaseRequestCaches",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#RenderSystemMessageUpdate",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "RenderSystemMessageUpdate",
@@ -38661,6 +38672,17 @@
       "shapeHash": "sha256:c306d12b55e53ae46d7e72534c5eff83abb98b6901aaee3801df632fc526be03"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#encodedMessageCache.release",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "encodedMessageCache.release",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#encodedMessageCache.store",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "encodedMessageCache.store",
@@ -54818,6 +54840,17 @@
         "type": "func(s string) ([]byte, bool)"
       },
       "shapeHash": "sha256:3ee04c6d62f05d9fff0784ed5e530232aa3a9140bcc0f4b5de033c471d77faf8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#quotedStringCache.release",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "quotedStringCache.release",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#quotedStringCache.sourced",

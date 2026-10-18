@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -217,6 +218,9 @@ func (c *idleHeapCollector) collect() {
 	if sample[0].Value.Kind() != metrics.KindUint64 || sample[0].Value.Uint64() <= c.lastHeap {
 		return
 	}
+	// pig additive (D112, D172): the request caches hold the encodings of the conversation the run sent; an idle session lets them go, and the
+	// next prompt encodes its request as its first did.
+	ai.ReleaseRequestCaches()
 	// One forced cycle moves sync.Pool contents to their victim caches and leaves them live; the second, in
 	// FreeOSMemory, frees them and returns the pages (about 290 KB at the tmux prompt, TestTmuxIdleMemoryGate).
 	runtime.GC()
