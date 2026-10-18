@@ -607,5 +607,62 @@
    "old": "head = \"Script timed out: \" + failure.Message",
    "new": "head = \"Script timeout: \" + failure.Message"
   }
+ ],
+ "packages/chord/src/loader.ts": [
+  {
+   "file": "chord/host/loader.go",
+   "old": "\t\tName: info.name,\n",
+   "new": "\t\tName: info.name + \"?\",\n"
+  }
+ ],
+ "packages/chord/src/node.ts": [
+  {
+   "file": "chord/host/loader.go",
+   "old": "\t\tName: info.name,\n",
+   "new": "\t\tName: info.name + \"?\",\n"
+  }
+ ],
+ "packages/chord/src/publish.ts": [
+  {
+   "file": "chord/host/publish.go",
+   "old": "if publications.draining || publications.held > 0 {",
+   "new": "if publications.held > 0 {"
+  }
+ ],
+ "packages/chord/src/schema.ts": [
+  {
+   "file": "chord/host/schema.go",
+   "old": "^ (b >> 13)",
+   "new": "^ (b >> 12)"
+  }
+ ],
+ "packages/chord/src/remote.ts": [
+  {
+   "file": "chord/host/remote.go",
+   "old": "target.decoder.Decode(frame.Ops)",
+   "new": "target.decoder.Decode(nil)"
+  }
+ ],
+ "packages/chord/src/cluster.ts": [
+  {
+   "file": "chord/host/cluster.go",
+   "old": "connection.peer.kind == KindHost && connection.open() && connection.synced {",
+   "new": "connection.peer.kind == KindHost && connection.open() {"
+  },
+  {
+   "file": "chord/host/cluster.go",
+   "old": "\treload.waitForRetirement()\n\tvar participants",
+   "new": "\tvar participants"
+  },
+  {
+   "file": "chord/host/cluster.go",
+   "old": "\t\tname := connection.name()\n\t\t\tif name == \"\" {\n\t\t\t\tname = \"child\"\n\t\t\t}",
+   "new": "\t\tname := \"child\""
+  },
+  {
+   "file": "chord/host/cluster.go",
+   "old": "CodeVersion: report.CodeVersion, Previous: report.Previous, Changed: report.Changed, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire",
+   "new": "CodeVersion: report.CodeVersion, Previous: report.Previous, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire"
+  }
  ]
 }
