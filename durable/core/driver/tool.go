@@ -78,6 +78,12 @@ func (t *Tools) run(ctx context.Context, call *sqlhost.Call) error {
 	}
 	info := ToolCall{TaskID: durable.TaskId(p.TaskID), ConversationID: durable.ConversationId(p.ConversationID), CallID: p.CallID, Name: p.ToolName}
 	registration, ok, err := t.Lookup(ctx, info.ConversationID, p.ToolName)
+	if err != nil && ctx.Err() != nil {
+		// The core cancelled the effect before the tool ran: it settles the call on the effect's completion, so the end of a
+		// cancelled call is reported as a throw, as it is when Execute observes the cancel, not left to a host that says nothing.
+		call.Post(abi.Event{Kind: abi.EventToolDone, ID: call.ID, Phase: abi.OutcomeThrown, Payload: wireError(err)})
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("tool effect %d resolves %q: %w", call.ID, p.ToolName, err)
 	}
