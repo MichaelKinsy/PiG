@@ -640,6 +640,8 @@ func (api *toolApi) Agent(ctx context.Context) (durable.Agent, error) { return a
 
 func (api *toolApi) Env() env.ExecutionEnv { return api.env }
 
+func (api *toolApi) Now() float64 { return api.runtime.Now() }
+
 // Output appends a string or byte chunk to the retained output. A chunk that follows output an environment omitted
 // carries skipped; tail retention only.
 func (api *toolApi) Output(chunk any, skipped ...env.ShellOutputSkip) {
@@ -784,8 +786,37 @@ func (api *toolApi) WatchDocErased(ctx context.Context, token durable.AnyDocToke
 
 // publishProgress returns throttled commits of what the tool reported into its pi.live.tools slot, each writing only
 // what changed since the last one (tool.ts:268-318).
-// toolProgressClock times tool progress commits; tests replace it to hold the throttled commits.
-var toolProgressClock output.ProgressClock = output.SystemProgressClock{}
+// toolProgressClock, when set, times tool progress commits instead of the Harness clock and timers; tests replace it to
+// hold the throttled commits.
+var toolProgressClock output.ProgressClock
+
+// runtimeProgressClock is the Harness clock and timers for progress pacing (tool.ts progressClock). After the invocation
+// ends nothing more commits, and the clock answers with the last time it read.
+type runtimeProgressClock struct {
+	runtime toolRuntime
+	mu      sync.Mutex
+	last    float64
+}
+
+func (clock *runtimeProgressClock) Now() (now float64) {
+	defer func() {
+		if recover() != nil {
+			// The invocation ended.
+			clock.mu.Lock()
+			now = clock.last
+			clock.mu.Unlock()
+		}
+	}()
+	now = clock.runtime.Now()
+	clock.mu.Lock()
+	clock.last = now
+	clock.mu.Unlock()
+	return now
+}
+
+func (clock *runtimeProgressClock) AfterFunc(delay float64, run func()) func() {
+	return clock.runtime.SetTimer(run, delay)
+}
 
 func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolReported, enabled bool) *output.Progress {
 	written := struct {
@@ -793,6 +824,10 @@ func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolRep
 		detailsVersion int
 		diagnostics    int
 	}{}
+	var clock output.ProgressClock = &runtimeProgressClock{runtime: runtime}
+	if toolProgressClock != nil {
+		clock = toolProgressClock
+	}
 	return output.NewProgressWithClock(func() (int, error) {
 		if !enabled {
 			return 0, nil
@@ -879,7 +914,7 @@ func publishProgress(ctx context.Context, runtime toolRuntime, reported *toolRep
 		if _, failed := errors.AsType[*durable.SessionFailed](err); runtime.Signal().Err() == nil && !failed && !errors.Is(err, session.ErrSessionClosed) {
 			runtime.Report(err)
 		}
-	}, runtime.Settings().Progress.OutputIntervalMs, toolProgressClock)
+	}, runtime.Settings().Progress.OutputIntervalMs, clock)
 }
 
 // finalResult is the settled result (tool.ts:325-353): the tool's result with the retained output and last details

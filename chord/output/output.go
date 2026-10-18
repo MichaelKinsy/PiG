@@ -732,7 +732,8 @@ func (progress *Progress) scheduleLocked() {
 			return
 		}
 		progress.stopTimer = nil
-		progress.flushLocked()
+		// Checks the clock again: a timer that fires early waits for the rest (output.ts #schedule).
+		progress.scheduleLocked()
 	})
 	progress.stopTimer = stop
 }
