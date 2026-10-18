@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 func openAt(t *testing.T, path string, setup *chatState) (Harness, Conversation) {
@@ -242,7 +243,18 @@ func TestGenerationRecovery(t *testing.T) {
 		closeHarness(t, harness)
 
 		harness, root = openAt(t, path, setup)
-		expectEqualJSON(t, taskCheckpoint(t, harness, taskId), `{"phase":"retry","attempt":1,"until":61000}`)
+		// upstream: packages/durable/test/harness-generation-recovery.test.ts:186
+		expectEqualJSON(t, must(harness.GetTask(testContext, taskId)).State, `{"status":"sleeping","checkpoint":{"phase":"retry","attempt":1,"until":61000},"until":61000}`)
+		wake := harness.Wake()
+		if wake.Active || wake.At == nil || *wake.At != 61_000 {
+			t.Fatalf("wake %+v, want {active: false, at: 61000}", wake)
+		}
+		// An early wake retries nothing.
+		harness.Resume()
+		settleOnLine(t, harness)
+		if calls := setup.Faux.CallCount(); calls != 1 {
+			t.Fatalf("provider calls after an early wake = %d, want 1", calls)
+		}
 		expectEqualJSON(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{
 			"run":        map[string]any{"taskId": taskId, "inputs": []any{id}},
 			"generation": map[string]any{"attempt": 1, "retry": map[string]any{"at": 61_000, "error": "503 Service Unavailable"}},
@@ -253,6 +265,57 @@ func TestGenerationRecovery(t *testing.T) {
 		harness.Resume()
 		expectSettled(t, must(submissionOfHarness(t, harness, id).Wait(testContext)), durable.SubmissionDone, "")
 		expectKinds(t, allEntries(t, root), "pi.user", "pi.assistant", "pi.assistant")
+		closeHarness(t, harness)
+	})
+
+	t.Run("sleeps again for a retry stored as a running phase by an earlier version", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-generation-recovery.test.ts:211
+		path := filepath.Join(t.TempDir(), "session.sqlite")
+		setup := chatSetup(t)
+		var mu sync.Mutex
+		now := 1_000.0
+		setup.SetNow(func() float64 {
+			mu.Lock()
+			defer mu.Unlock()
+			return now
+		})
+		setup.Faux.SetResponses([]ai.FauxResponseStep{error503(), fauxAnswer("recovered")})
+		harness, root := openAt(t, path, setup)
+		harness.Resume()
+		setup.SetSettings(func(settings *HarnessSettings) {
+			settings.Retry = &RetryPolicyPatch{Enabled: new(true), MaxRetries: new(2), BaseDelayMs: new(60_000)}
+		})
+		id := submitInput(t, root, "hi").Id()
+		waitFor(t, func() bool {
+			record := must(harness.GetTask(testContext, runTaskId(t, harness)))
+			return record != nil && record.State.Status == durable.TaskSleeping
+		})
+		taskId := runTaskId(t, harness)
+		closeHarness(t, harness)
+		// Earlier versions slept inside a running retry phase.
+		rewriteSleepAsRunning(t, path, taskId)
+
+		harness, _ = openAt(t, path, setup)
+		harness.Resume()
+		waitFor(t, func() bool {
+			record := must(harness.GetTask(testContext, taskId))
+			return record != nil && record.State.Status == durable.TaskSleeping
+		})
+		record := must(harness.GetTask(testContext, taskId))
+		if record.State.Until == nil || *record.State.Until != 61_000 {
+			t.Fatalf("sleeps until %v, want 61000", record.State.Until)
+		}
+		if calls := setup.Faux.CallCount(); calls != 1 {
+			t.Fatalf("provider calls = %d, want 1", calls)
+		}
+		mu.Lock()
+		now = 61_000
+		mu.Unlock()
+		harness.Resume()
+		expectSettled(t, must(submissionOfHarness(t, harness, id).Wait(testContext)), durable.SubmissionDone, "")
+		if calls := setup.Faux.CallCount(); calls != 2 {
+			t.Fatalf("provider calls = %d, want 2", calls)
+		}
 		closeHarness(t, harness)
 	})
 
@@ -283,6 +346,11 @@ func TestGenerationRecovery(t *testing.T) {
 
 		harness, root = openAt(t, path, setup)
 		expectMatch(t, taskCheckpoint(t, harness, taskId), `{"phase":"poll","attempt":1,"pollAt":61000}`)
+		// upstream: packages/durable/test/harness-generation-recovery.test.ts:273
+		expectMatch(t, must(harness.GetTask(testContext, taskId)).State, `{"status":"sleeping","until":61000}`)
+		if wake := harness.Wake(); wake.Active || wake.At == nil || *wake.At != 61_000 {
+			t.Fatalf("wake %+v, want {active: false, at: 61000}", wake)
+		}
 		mu.Lock()
 		now = 61_000
 		mu.Unlock()
@@ -307,6 +375,13 @@ func TestGenerationRecovery(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		pollAfter := int64(60_000)
 		setup := chatSetup(t, ai.FauxConfig{Deferred: &ai.FauxDeferredConfig{PollAfterMS: &pollAfter}})
+		var mu sync.Mutex
+		now := 1_000.0
+		setup.SetNow(func() float64 {
+			mu.Lock()
+			defer mu.Unlock()
+			return now
+		})
 		busy := unanswered()
 		setup.Faux.SetResponses([]ai.FauxResponseStep{busy.step, fauxAnswer("deferred")})
 		harness, root := openAt(t, path, setup)
@@ -334,6 +409,10 @@ func TestGenerationRecovery(t *testing.T) {
 		})
 		closeHarness(t, harness)
 
+		// The poll sleeps until it is due; then the model is resolved.
+		mu.Lock()
+		now = 61_000
+		mu.Unlock()
 		harness, _ = openAt(t, path, empty)
 		harness.Resume()
 		expectSettled(t, must(submissionOfHarness(t, harness, polling).Wait(testContext)), durable.SubmissionUnanswered, "no_model")
@@ -368,6 +447,31 @@ func TestGenerationRecovery(t *testing.T) {
 		expectEqualJSON(t, readAnswer(root).EntryRecord, jsonText(t, answer.EntryRecord))
 		closeHarness(t, harness)
 	})
+}
+
+// rewriteSleepAsRunning stores a sleeping task as a running one without its until, as a version before sleeping states did.
+func rewriteSleepAsRunning(t *testing.T, path string, id durable.TaskId) {
+	t.Helper()
+	database, err := sqlitenode.OpenNodeSqliteDatabase(path, sqlitenode.NodeSqliteDatabaseOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Run("UPDATE tasks SET status = 'running', record = json_set(json_remove(record, '$.state.until'), '$.state.status', 'running') WHERE id = ?", int64(id)); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// settleOnLine returns once the scheduling passes queued so far have run (an Inspect is a line read taken after them).
+func settleOnLine(t *testing.T, harness Harness) {
+	t.Helper()
+	for range 2 {
+		if _, err := harness.Inspect(testContext); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func roles(messages []ai.Message) []string {

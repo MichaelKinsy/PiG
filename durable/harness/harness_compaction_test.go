@@ -2287,7 +2287,17 @@ func TestCompactionRecovery(t *testing.T) {
 			compactions := chat.live(t).Compactions
 			return len(compactions) > 0 && compactions[0].Retry != nil
 		})
-		expectMatch(t, must(chat.harness.GetTask(testContext, id)).State, `{"checkpoint":{"phase":"retry","attempt":1}}`)
+		until := now + 60_000
+		waitFor(t, func() bool { return must(chat.harness.GetTask(testContext, id)).State.Status == durable.TaskSleeping })
+		expectMatch(t, must(chat.harness.GetTask(testContext, id)).State, jsonText(t, map[string]any{"status": "sleeping", "checkpoint": map[string]any{"phase": "retry", "attempt": 1, "until": until}, "until": until}))
+		chat.close(t)
+		// Earlier versions slept inside a running retry phase: reopened before its time, it sleeps again.
+		rewriteSleepAsRunning(t, path, id)
+		chat = reopenCompaction(t, path, chat)
+		waitFor(t, func() bool { return must(chat.harness.GetTask(testContext, id)).State.Status == durable.TaskSleeping })
+		if requests := len(chat.faux.summaryRequestsCopy()); requests != 1 {
+			t.Fatalf("summary requests = %d, want 1", requests)
+		}
 		chat.close(t)
 		mu.Lock()
 		now += 120_000
