@@ -57,7 +57,8 @@ func (s *controlledStore) onCommit(c abi.Commit, sql []string) {
 	statements := make([]string, 0, len(c.Stmts))
 	for _, stmt := range c.Stmts {
 		statements = append(statements, sql[stmt.SQL])
-		if strings.HasPrefix(sql[stmt.SQL], "INSERT INTO tasks") {
+		// "INSERT INTO tasks_v2" is migration 2's table rebuild, a parameterless INSERT ... SELECT, not a task write.
+		if strings.HasPrefix(sql[stmt.SQL], "INSERT INTO tasks ") {
 			s.tasks = append(s.tasks, taskWrite{commit: s.commits, id: durable.TaskId(stmt.Params[0].Int), status: string(stmt.Params[3].Bytes), abortRequested: stmt.Params[4].Int == 1})
 		}
 	}
