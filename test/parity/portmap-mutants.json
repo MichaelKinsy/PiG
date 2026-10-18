@@ -398,6 +398,16 @@
    "file": "internal/codingagent/program_status_reporter.go",
    "old": "\tr.runActive = false\n\t\tif event.Aborted {",
    "new": "\tr.runActive = false\n\t\tif !event.Aborted {"
+  },
+  {
+   "file": "internal/codingagent/program_status_reporter.go",
+   "old": "\t\tif event.Message.Assistant.StopReason == ai.StopReasonError {",
+   "new": "\t\tif event.Message.Assistant.StopReason == ai.StopReasonAborted {"
+  },
+  {
+   "file": "internal/codingagent/program_status_reporter.go",
+   "old": "\tcase agent.CompactionStartEvent:\n\t\tr.compacting = true",
+   "new": "\tcase agent.CompactionStartEvent:\n\t\tr.compacting = false"
   }
  ],
  "packages/coding-agent/src/modes/interactive/theme/theme-schema.ts": [
@@ -486,6 +496,18 @@
    "file": "internal/codingagent/image_convert.go",
    "old": "if mimeType == \"image/png\" {",
    "new": "if mimeType != \"image/png\" {"
+  }
+ ],
+ "packages/coding-agent/src/utils/json.ts": [
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "\t\tif strings.HasPrefix(s, \"//\") {",
+   "new": "\t\tif strings.HasPrefix(s, \"/!\") {"
+  },
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "(trimmed[0] != '}' && trimmed[0] != ']')",
+   "new": "(trimmed[0] != '}')"
   }
  ],
  "packages/coding-agent/src/utils/open-browser.ts": [

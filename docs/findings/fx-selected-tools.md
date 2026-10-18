@@ -2,7 +2,7 @@
 
 ## Disposition
 
-This lane is ready for independent review, not for a claim that PR-4-1 is complete. Two requested part-1 findings remain unresolved: live prompt getters during a handler and Rust whole-options reassignment. No new divergence or waiver is approved here.
+This lane is ready for independent review, not for a claim that PR-4-1 is complete. One requested part-1 finding remains unresolved: Rust whole-options reassignment. Live prompt getters during a handler are fixed. No new divergence or waiver is approved here.
 
 The lane imports `0728db573`, `4d6d6f980`, and `ff88e7b79` individually from `staging/team/win/gaps-selected-tools`. The imported commits are `3068a9edc`, `e909d29ce`, and `8e993a9be`. The source branch contains no `native-proof/` files. The coordinator's `PS-HANDOFF-0.3.0.md` supplies the reviewer findings. The follow-up source commit `cede3cf07` corrects the rejected behavior instead of treating the imported tests as acceptance.
 
@@ -18,7 +18,7 @@ The lane imports `0728db573`, `4d6d6f980`, and `ff88e7b79` individually from `st
 | `endRunPrompt` and rebind ordering | Fixed at idle publication. The outgoing run clears its prompt before releasing `turnSettled` or publishing idle. Settlement captures its Session and runner rather than consulting a replacement. The stalled-owner regression is mutation-proven. Existing replacement regressions pass with race detection. |
 | `ff88e7b79` model/auth ordering | Reviewed and imported. The model/auth check precedes compaction and `before_agent_start`. OAuth failure uses Pi's re-login text. The ordinary replacement fixture now supplies faux auth because its success case must pass the new preflight check; its assertions are unchanged. The inherited unregistered-Provider exemption is not claimed Pi-exact. |
 | Rust whole-options reassignment | Unresolved. The Rust dispatcher reads `data["systemPromptOptions"]` after the callback. Pi retains its original options object when a callback replaces the event field. A snapshot of Rust's original `Value` does not fix mutation-before-reassignment because replacing the value destroys the edited original. This needs a shared mutable event-options representation, not a post-hoc value comparison or unsafe borrowed pointer. No such redesign lands in this lane. |
-| Live getters inside `before_agent_start` | Unresolved. Session getters during the Provider run and between runs are covered, but the runner still renders handler-facing prompt text from the pre-edit string. Node's event field is also a snapshot. The corresponding SDK context getters do not render each handler's local edits. Fix these together with a shared renderer and an explicit Rust options ownership design; do not close the matrix row based on the new Session getter guard. |
+| Live getters inside `before_agent_start` | Fixed. `EmitBeforeAgentStart` (coding/extension/host/inproc/runner.go) renders the event and context prompt from the shared options on every read, as `runner.ts:1421-1438` does. `TestBeforeAgentStartPromptFollowsEveryOptionsEdit` and `TestRenderCurrentSystemPromptAcrossSDKs` (Go, Python, Rust, Node) pass. |
 
 `extensions/sdk` is changed. The lead must recompute its module hash. The lane does not change the SDK checksum lines or the coordinator-owned generated inventories. `go generate ./coding/extension/host/subprocess` regenerates the imported runtime source against this base, and the archive/source consistency test passes.
 
@@ -85,7 +85,7 @@ go tool pprof -top -alloc_space /tmp/selected.mem
 
 The full diff is re-read against the cited upstream source. Keep these review obligations open:
 
-1. Do not approve PR-4-1 closure while Rust reassignment or live handler getters differ. The Pi oracle proves the required result; Pig does not yet meet it.
+1. Do not approve PR-4-1 closure while Rust reassignment differs. The Pi oracle proves the required result; Pig does not yet meet it.
 2. Untyped values beyond null and mixed arrays are not closed. Pi treats a deleted property as `undefined`, while the current transport turns a missing selected-tools field into null. A string can reach JavaScript iterable semantics; Pig currently rejects non-arrays with a generic array error. These are follow-up requirements, not approved divergences.
 3. The inherited `ValidatePromptModelAuth` guard exempts an injected Provider not known to the registry or `modelRuntimeRequiresAuth`. Pi checks configured/checkAuth for every selected model. The imported commit preserves that existing Go embedding path; the registered-provider tests do not close the exemption.
 4. Interactive still projects the rendered per-run prompt rather than recording its custom section deltas. This is the pre-existing partial matrix item, not a completed persistence port.

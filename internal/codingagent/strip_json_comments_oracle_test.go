@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/json.ts
+
 import (
 	"math/rand/v2"
 	"strings"
