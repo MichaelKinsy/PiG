@@ -210063,7 +210063,9 @@
         "call:durable/harness/generation.go#partialThrottle.flush"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
+        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks",
+        "test:durable/core/driver/harness_sleep_timer_core_test.go#TestAFiredTimerIsNotKeptUntilTheInvocationEnds",
+        "test:durable/core/driver/harness_sleep_timer_core_test.go#TestATimerArmedAsItsInvocationEndsIsDisarmed"
       ]
     },
     {
@@ -210083,7 +210085,9 @@
         "call:durable/harness/generation.go#partialThrottle.flush"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
+        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks",
+        "test:durable/core/driver/harness_sleep_timer_core_test.go#TestAFiredTimerIsNotKeptUntilTheInvocationEnds",
+        "test:durable/core/driver/harness_sleep_timer_core_test.go#TestATimerArmedAsItsInvocationEndsIsDisarmed"
       ]
     },
     {
@@ -210147,8 +210151,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks",
-        "test:durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches",
-        "test:durable/examples/task_examples_test.go#TestExample13Recovery"
+        "test:durable/core/driver/harness_sleep_timer_core_test.go#TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt",
+        "test:durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -210170,8 +210174,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks",
-        "test:durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches",
-        "test:durable/examples/task_examples_test.go#TestExample13Recovery"
+        "test:durable/core/driver/harness_sleep_timer_core_test.go#TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt",
+        "test:durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

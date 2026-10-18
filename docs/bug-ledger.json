@@ -29566,6 +29566,95 @@
         "coding/piglet/cli_test.go::TestRunCommandAddRemoteSourcesWritesOriginAndListsIt",
         "coding/piglet/monorepo_test.go::TestAddMonorepoPinnedClosure"
       ]
+    },
+    {
+      "id": "BF-9f31a8b",
+      "title": "A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…",
+      "symptom": "A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started.",
+      "rootCause": "TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows, macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started. The reader's goroutine could pick up a reaction loop that belonged to the response, run the reader's code beside a reaction that had not returned, and leave the stream's executor marked busy with nothing running. A goroutine now continues only a reaction loop its own turn holds, so no code runs beside a reaction and every stream ends. It stalled once in CI on Windows (`TestGoogleProviderStreamMatchesPi`); the same stall reproduces on macOS and Linux when the executor's lock hand-offs are delayed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "22e05718a7",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "338f5de671",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "44e623504c",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "6d94e31216",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "73d897751d",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "9a4bd0e452",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "a9642f65b8",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "b229d49c15",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "cfa8e90d0f",
+          "date": "2026-10-17"
+        },
+        {
+          "hash": "9f31a8bee0",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain",
+        "ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi",
+        "coding/cli/runtime_policy_test.go::TestRPCRunsOnTheRPCCap",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueCloseDoesNotWaitForABlockedWriter",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueCloseWritesPendingChunks",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueCoalescesPendingChunksIntoOneWrite",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueFailureDropsPendingChunksAndReportsOnce",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueReportsWriteFailureOnce",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueWaitHoldsWhileAWriteIsInFlight",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueWriteDoesNotBlockOnStoppedReader",
+        "coding/cli/stdout_queue_test.go::TestStdoutQueueWriterIsOneGoroutineEndedByClose",
+        "coding/extension/builtin/codemode/execute_oracle_test.go::TestExecuteOutputMatchesPi",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestPiCodemodeRunsFromTheVendoredSDK",
+        "durable/core/driver/harness_sleep_core_test.go::TestSleepingTasks",
+        "durable/harness/harness_storage_failure_test.go::TestAFailedStorageCall",
+        "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable",
+        "internal/goroutineid/fast_gc_test.go::TestACoincidenceOnSomeGoroutinesIsNotTheID",
+        "internal/goroutineid/fast_gc_test.go::TestCallsFromDistinctGoroutinesProveTheOffsetOfTheID",
+        "internal/goroutineid/fast_gc_test.go::TestCurrentWithoutAProvedOffsetParsesTheHeader",
+        "internal/goroutineid/fast_gc_test.go::TestNoUniqueOffsetIsNotTrusted",
+        "internal/goroutineid/fast_gc_test.go::TestOneGoroutineProvesNothing",
+        "internal/goroutineid/fast_gc_test.go::TestTheProofDoesNotRunDuringInitialization",
+        "internal/goroutineid/fast_gc_test.go::TestTheProofStartsNoGoroutine",
+        "internal/goroutineid/goroutineid_test.go::TestCurrentEqualsTheStackHeaderID",
+        "internal/goroutineid/goroutineid_test.go::TestCurrentOnACoroutineEqualsItsStackHeaderID",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCDuringASectionTakesEffectWhenItCloses",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCLeavesAUserGOMAXPROCS",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCLowersADefaultOfCap",
+        "internal/procpolicy/procpolicy_test.go::TestApplyRPCLowersTheCapAndSectionsCloseToIt",
+        "internal/stackprime/stackprime_test.go::TestPrimeSpansADeepCallWithoutAStackCopy",
+        "test/perfgate/print_tools_test.go::TestPrintReadToolsProcessGate"
+      ]
     }
   ],
   "divergences": [

@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-882 bugs. 832 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+883 bugs. 833 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -901,6 +901,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-1d3b1d0](#bf-1d3b1d0) | MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one… | PiG's own defect | All platforms | Unreleased |
 | [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
+| [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 
 ## Entries
 
@@ -13193,6 +13194,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `c46363befc` (2026-10-16)
 - **Tests:** `agent/testmain_leak_test.go::TestMain`, `coding/extension/source/resolve_test.go::TestResolveGoWorkspaceMemberSelectsItsOwnFactory`, `coding/piglet/cli_test.go::TestRunCommandAddRemoteSourcesWritesOriginAndListsIt`, `coding/piglet/monorepo_test.go::TestAddMonorepoPinnedClosure`
 - **Release note:** Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory and keeps the workspace as the compiler closure (#212). Before, the selection scanned every member module and reported all of their factories as ambiguous, so a monorepo with one module per extension and a root `go.work` could not install any member. The workspace root itself stays ambiguous when several members hold factories. An exactly selected member that is a `package main` standalone resolves to that member instead of "spans N modules".
+
+### BF-9f31a8b
+
+**A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started.
+- **Root cause:** TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows, macOS, Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `22e05718a7` (2026-10-17), `338f5de671` (2026-10-17), `44e623504c` (2026-10-17), `6d94e31216` (2026-10-17), `73d897751d` (2026-10-17), `9a4bd0e452` (2026-10-17), `a9642f65b8` (2026-10-17), `b229d49c15` (2026-10-17), `cfa8e90d0f` (2026-10-17), `9f31a8bee0` (2026-10-18)
+- **Tests:** `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `coding/cli/runtime_policy_test.go::TestRPCRunsOnTheRPCCap`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseDoesNotWaitForABlockedWriter`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseWritesPendingChunks`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCoalescesPendingChunksIntoOneWrite`, `coding/cli/stdout_queue_test.go::TestStdoutQueueFailureDropsPendingChunksAndReportsOnce`, `coding/cli/stdout_queue_test.go::TestStdoutQueueReportsWriteFailureOnce` and 24 more in docs/bug-ledger.json
+- **Release note:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started. The reader's goroutine could pick up a reaction loop that belonged to the response, run the reader's code beside a reaction that had not returned, and leave the stream's executor marked busy with nothing running. A goroutine now continues only a reaction loop its own turn holds, so no code runs beside a reaction and every stream ends. It stalled once in CI on Windows (`TestGoogleProviderStreamMatchesPi`); the same stall reproduces on macOS and Linux when the executor's lock hand-offs are delayed.
 
 ## Divergences from Pi added in this release
 
