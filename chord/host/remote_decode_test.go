@@ -41,6 +41,7 @@ func (link *opsRewriteLink) Receive(handler func(frame Frame)) {
 	})
 }
 
+// pi: packages/chord/src/remote.ts
 // Pi 34a8bb38 delta/index.ts:660-670: Decoder.decode(wire: readonly unknown[]) runs assertValidWireOp on each element before
 // use, and remote.ts:113-115 decodes a state frame's ops with it. Go's Decode([]WireOp) runs AssertValidWireOp on each element
 // the same way (chord/delta/codec.go). The one element WireOp ([]any) cannot hold is a non-array, which never reaches the

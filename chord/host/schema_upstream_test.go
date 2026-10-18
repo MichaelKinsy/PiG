@@ -1,5 +1,6 @@
 package host
 
+// pi: packages/chord/src/schema.ts
 // Schema cases of Pi schema.ts. The review.test.ts "#11 fits" cases live in review_upstream_test.go.
 
 import (

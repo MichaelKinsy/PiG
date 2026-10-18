@@ -1,5 +1,6 @@
 package host
 
+// pi: packages/chord/src/cluster.ts
 // Ports packages/chord/test/cluster.test.ts ("cross-host reload"): a server and worker hosts over memory links,
 // reloaded together. Pi's `await tick()` (setImmediate) lets one specific thing settle; each port waits for that
 // condition (waitLinked, waitFor, a latch).

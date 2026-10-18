@@ -2,6 +2,8 @@
 
 package host
 
+// Ports packages/chord/src/manager.ts: the Windows half of forkDriver and the process IPC channel (Node IPC framing over a named pipe).
+
 import (
 	"crypto/rand"
 	"encoding/hex"

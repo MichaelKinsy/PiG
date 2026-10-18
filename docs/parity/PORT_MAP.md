@@ -653,31 +653,31 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/delta/draft.ts` | `TypeScript mapped type; the Go draft is chord/delta Object/Array` | n/a |
 | `packages/chord/src/delta/apply-immutable-trusted.ts` | `self-produced-op fast path of the tracker; the Go trackers materialize candidates themselves and ApplyImmutable covers the checked path (apply_immutable_upstream_test.go)` | n/a |
 | `packages/chord/src/delta/revision-validator.ts` | `WeakSet memo of validated JS container identities; a decoded Go revision has no shared identity and is validated by chordjson.Validate (state.go:917)` | n/a |
-| `packages/chord/src/output.ts` | `chord/output/output.go OutputBuffer, Progress, BoundOutput, SanitizeOutput, CharacterEnd, Utf8ByteLength, OutputLimits, OutputSlice, BoundedOutput, OutputSkip` | 🟡 |
-| `packages/chord/src/node.ts` | `re-exports manager.ts (chord/host/manager*.go) and nodeLoader (chord/host/loader.go NodeLoader)` | 🟡 |
+| `packages/chord/src/output.ts` | `chord/output/output.go OutputBuffer, Progress, BoundOutput, SanitizeOutput, CharacterEnd, Utf8ByteLength, OutputLimits, OutputSlice, BoundedOutput, OutputSkip` | ✅ |
+| `packages/chord/src/node.ts` | `re-exports manager.ts (chord/host/manager.go) and nodeLoader (chord/host/loader.go NodeLoader)` | ✅ |
 | `packages/chord/src/sqlite/cloudflare.ts` | `chord/sqlite/cloudflare/cloudflare.go` | ✅ |
 | `packages/chord/src/sqlite/database.ts` | `chord/sqlite/database.go` | ✅ |
 | `packages/chord/src/sqlite/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/sqlite/migrations.ts` | `chord/sqlite/migrations.go` | ✅ |
 | `packages/chord/src/sqlite/node.ts` | `chord/sqlite/node/node.go` | ✅ |
 | `packages/chord/src/sqlite/schema.ts` | `chord/sqlite/schema.go` | ✅ |
-| `packages/chord/src/cell.ts` | `chord/host/cell.go NewCell, Cell, Source, Derived, IsSource, NotReady` | 🟡 |
-| `packages/chord/src/publish.ts` | `chord/host/publish.go enqueue, holdPublications` | 🟡 |
-| `packages/chord/src/manager.ts` | `chord/host/manager.go CreateHostManager, ChildControl, ControlMessage; manager_unix.go, manager_fork_windows.go, manager_pipe_windows.go ForkDriver, ProcessChannel (Windows run pending); manager_lock.go ProcessLock` | 🟡 |
-| `packages/chord/src/loader.ts` | `chord/host/loader.go NodeLoader, NewNodeLoader, NodeLoaderImpl (an isolated Node child per Load over ForkDriver, loader_child.mjs)` | 🟡 |
-| `packages/chord/src/link.ts` | `chord/host/link.go Link, MemoryLinkPair, NewIpcLink, NewWebSocketLink, MalformedFrame` | 🟡 |
-| `packages/chord/src/connection.ts` | `chord/host/connection.go LinkOptions, AcceptOptions, Connection, RelayRef, RelayCall` | 🟡 |
-| `packages/chord/src/object.ts` | `chord/host/object.go ServeOptions, Factory, Self, SelfImpl, ResourceImpl, CtxImpl, RefImpl, ObjectImpl` | 🟡 |
-| `packages/chord/src/remote.ts` | `chord/host/remote.go RemoteRef, RemoteChannel` | 🟡 |
-| `packages/chord/src/cluster.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/contract.ts` | `chord/host/contract.go (link protocol 4; the ledger holds PlacementFor, PrincipalMatch and PrincipalPattern as pending reviewed decisions)` | 🟡 |
+| `packages/chord/src/cell.ts` | `chord/host/cell.go NewCell, Cell, Source, Derived, IsSource, NotReady` | ✅ |
+| `packages/chord/src/publish.ts` | `chord/host/publish.go enqueue, holdPublications` | ✅ |
+| `packages/chord/src/manager.ts` | `chord/host/manager.go CreateHostManager, ChildControl, ControlMessage; manager_unix.go, manager_fork_windows.go, manager_pipe_windows.go ForkDriver, ProcessChannel (Windows run pending); manager_lock.go ProcessLock` | ✅ |
+| `packages/chord/src/loader.ts` | `chord/host/loader.go NodeLoader, NewNodeLoader, NodeLoaderImpl (an isolated Node child per Load over ForkDriver, loader_child.mjs)` | ✅ |
+| `packages/chord/src/link.ts` | `chord/host/link.go Link, MemoryLinkPair, NewIpcLink, NewWebSocketLink, MalformedFrame` | ✅ |
+| `packages/chord/src/connection.ts` | `chord/host/connection.go LinkOptions, AcceptOptions, Connection, RelayRef, RelayCall; websocket.go WebSocketAcceptOptions` | ✅ |
+| `packages/chord/src/object.ts` | `chord/host/object.go ServeOptions, Factory, Self, SelfImpl, ResourceImpl, CtxImpl, RefImpl, ObjectImpl` | ✅ |
+| `packages/chord/src/remote.ts` | `chord/host/remote.go RemoteRef, RemoteChannel` | ✅ |
+| `packages/chord/src/cluster.ts` | `chord/host/cluster.go` | ✅ |
+| `packages/chord/src/contract.ts` | `chord/host/contract.go (link protocol 4)` | ✅ |
 | `packages/chord/src/declare.ts` | `chord/host/declare.go (link protocol 4)` | ✅ |
-| `packages/chord/src/errors.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/host.ts` | `chord/host/host.go (link protocol 4; the ledger holds Host, Host.hold, HostOptions.self, hostNamed and method as pending reviewed decisions)` | 🟡 |
-| `packages/chord/src/registry.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/chord/src/errors.ts` | `chord/host/errors.go` | ✅ |
+| `packages/chord/src/host.ts` | `chord/host/host.go (link protocol 4)` | ✅ |
+| `packages/chord/src/registry.ts` | `chord/host/registry.go` | ✅ |
 | `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
-| `packages/chord/src/schema.ts` | `chord/host/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/chord/src/state.ts` | `chord/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/chord/src/schema.ts` | `chord/host/schema.go` | ✅ |
+| `packages/chord/src/state.ts` | `chord/state.go` | ✅ |
 | `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 

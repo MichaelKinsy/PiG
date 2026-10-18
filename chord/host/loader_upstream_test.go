@@ -1,5 +1,7 @@
 package host
 
+// pi: packages/chord/src/loader.ts
+// pi: packages/chord/src/node.ts
 // Ports packages/chord/test/loader.test.ts ("node loader") and its fixture test/fixtures/loader.ts, through the
 // isolated-Node loader (loader.go): the same facet modules, contract and assertions, run against a Go host.
 
