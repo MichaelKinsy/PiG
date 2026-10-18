@@ -101,11 +101,9 @@ func (s *Scheduler) scheduleWake() {
 			s.armWakeTimer(s.enabled && w.HasAt, w.At)
 			return
 		}
-		if last := s.lastWake; last != nil && *last == w {
-			return
-		}
+		// The host keeps what it delivered (HarnessOptions.onWake offers only changes, and again after a throw), so every
+		// recomputation is offered to it.
 		s.env.OnWake(w)
-		s.lastWake = &w
 	})
 }
 

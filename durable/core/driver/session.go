@@ -88,6 +88,10 @@ type coreSession struct {
 	end         durable.SessionEnd
 	instruction map[string]*durable.PromptSection
 	callbacks   map[string]Callback
+	// wakes are the wake notices waiting for OnWake, lastWake the last value it took; wakeRunning is set while deliverWakes runs.
+	wakes       []harness.Wake
+	lastWake    *harness.Wake
+	wakeRunning bool
 
 	closeListeners    map[int]func()
 	nextCloseListener int
@@ -307,11 +311,17 @@ func (s *coreSession) registryJSON() ([]byte, error) {
 	return json.Marshal(snapshot)
 }
 
-// Resume enables task scheduling (idempotent): the core keeps it paused until the host sends the resume event (ABI event 17).
+// Resume enables task scheduling and makes sleeping tasks that are due runnable: the core keeps scheduling paused until the host
+// sends the resume event (ABI event 17), and a host wakeup, such as an alarm, sends it again (scheduler.ts resume).
 func (s *coreSession) Resume() {
-	if !s.resume() {
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
 		panic(harness.ErrClosed)
 	}
+	s.resumed = true
+	s.mu.Unlock()
+	_ = s.host.Send(context.Background(), abi.Event{Kind: abi.EventResume})
 }
 
 // kick is the scheduler's own resume, which the calls that ask for progress make (scheduler.ts resume: it enables scheduling and
@@ -865,15 +875,56 @@ func (s *coreSession) wakeNotice(n abi.Notice) {
 	if json.Unmarshal(n.Payload, &body) != nil {
 		return
 	}
-	wake := harness.Wake{Active: body.Active, At: body.At}
-	go func() {
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				s.report(fmt.Errorf("%s", durable.ErrorMessage(recovered)))
+	s.mu.Lock()
+	s.wakes = append(s.wakes, harness.Wake{Active: body.Active, At: body.At})
+	start := !s.wakeRunning
+	s.wakeRunning = true
+	s.mu.Unlock()
+	if start {
+		//portlint:allow golifetime the worker ends when the queue is empty or the Session closed
+		go s.deliverWakes()
+	}
+}
+
+// deliverWakes calls HarnessOptions.OnWake with each queued wake in order, off the owner goroutine: only a changed value is
+// delivered, and one whose delivery panicked is offered again at the next recomputation (scheduler.ts #scheduleWake).
+func (s *coreSession) deliverWakes() {
+	for {
+		s.mu.Lock()
+		if len(s.wakes) == 0 || s.closed {
+			s.wakes, s.wakeRunning = nil, false
+			s.mu.Unlock()
+			return
+		}
+		wake := s.wakes[0]
+		s.wakes = s.wakes[1:]
+		last := s.lastWake
+		s.mu.Unlock()
+		if last != nil && last.Active == wake.Active && (last.At == nil) == (wake.At == nil) && (wake.At == nil || *last.At == *wake.At) {
+			continue
+		}
+		if err := s.callOnWake(wake); err != nil {
+			s.report(err)
+			continue
+		}
+		s.mu.Lock()
+		s.lastWake = &wake
+		s.mu.Unlock()
+	}
+}
+
+func (s *coreSession) callOnWake(wake harness.Wake) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if failure, ok := recovered.(error); ok {
+				err = failure
+			} else {
+				err = errors.New(durable.ErrorMessage(recovered))
 			}
-		}()
-		s.cfg.Harness.OnWake(wake)
+		}
 	}()
+	s.cfg.Harness.OnWake(wake)
+	return nil
 }
 
 // Wake is when this Session next needs a running process, answered by the core from its scheduler's memory.

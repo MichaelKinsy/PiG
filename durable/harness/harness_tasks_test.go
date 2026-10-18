@@ -135,6 +135,8 @@ type tkOptions struct {
 	storage  durable.Storage
 	now      func() float64
 	settings func() *HarnessSettings
+	onWake   func(Wake)
+	setTimer durable.SetTimer
 }
 
 type tkOpened struct {
@@ -154,7 +156,7 @@ func tkOpenRoot(t *testing.T, tasks []durable.AnyTask, options ...tkOptions) tkO
 	if store == nil {
 		store = storage.NewMemoryStorage()
 	}
-	harness, registry, reports := openTasks(t, store, tasks, openTasksOptions{now: option.now, settings: option.settings})
+	harness, registry, reports := openTasks(t, store, tasks, openTasksOptions{now: option.now, settings: option.settings, onWake: option.onWake, setTimer: option.setTimer})
 	return tkOpened{harness: harness, registry: registry, reports: reports, root: mustRoot(t, harness, nil)}
 }
 

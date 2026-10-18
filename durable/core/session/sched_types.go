@@ -122,8 +122,8 @@ type Env struct {
 	// WakeTimer arms the timer that resumes the earliest sleeping task (a durable timer effect, ABI section 6): a host
 	// that wakes its process itself keeps the object alarm at its time. Used while OnWake is nil.
 	WakeTimer func(at float64, fire func()) (cancel func())
-	// OnWake, when set (SetOnWake), replaces WakeTimer: the scheduler tells it each change of Wake (HarnessOptions.onWake) and
-	// arms no timer for sleeping tasks.
+	// OnWake, when set (SetOnWake), replaces WakeTimer: the scheduler offers it each recomputed Wake (HarnessOptions.onWake)
+	// and arms no timer for sleeping tasks. The host drops a value it already delivered.
 	OnWake func(w Wake)
 	// SettleOutcome runs in the transaction that settles a task with a
 	// scheduler-written outcome (faulted or orphaned): harness.live.ts settleSchedulerOutcome.

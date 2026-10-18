@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -504,6 +505,17 @@ func (r *taskRuntime) Context(ctx context.Context, conversationId durable.Conver
 func (r *taskRuntime) SleepUntil(ctx context.Context, until float64, checkpoint durable.JsonValue) error {
 	if err := r.check(); err != nil {
 		return err
+	}
+	// A time JSON cannot carry never reaches the core: the message is the one the core gives for a negative time.
+	if math.IsNaN(until) || math.IsInf(until, 0) {
+		shown := "NaN"
+		switch {
+		case math.IsInf(until, 1):
+			shown = "Infinity"
+		case math.IsInf(until, -1):
+			shown = "-Infinity"
+		}
+		return fmt.Errorf("Task %d cannot sleep until %s: not a time in milliseconds", r.task, shown)
 	}
 	_, err := r.s.client.API(ctx, "sleepUntil", map[string]any{"taskId": r.task, "until": until, "checkpoint": checkpoint})
 	return r.ended(err)

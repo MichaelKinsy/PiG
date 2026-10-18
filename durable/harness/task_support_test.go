@@ -80,6 +80,8 @@ type openTasksOptions struct {
 	registry Registry
 	now      func() float64
 	settings func() *HarnessSettings
+	onWake   func(Wake)
+	setTimer durable.SetTimer
 }
 
 type reportLog struct {
@@ -120,6 +122,8 @@ func openTasks(t *testing.T, storage durable.Storage, tasks []durable.AnyTask, o
 		OnReport: reports.add,
 		Now:      option.now,
 		Settings: option.settings,
+		OnWake:   option.onWake,
+		SetTimer: option.setTimer,
 	})
 	if err != nil {
 		t.Fatal(err)

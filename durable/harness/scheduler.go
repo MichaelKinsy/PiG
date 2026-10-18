@@ -60,8 +60,8 @@ type invocation struct {
 	// timers armed through the runtime, by arming order; disarmed at invocation end. Guarded by watchMu.
 	timers    map[int]func()
 	nextTimer int
-	ended   atomic.Bool
-	done    chan struct{}
+	ended     atomic.Bool
+	done      chan struct{}
 }
 
 func (invocation *invocation) endedError() error {
@@ -175,7 +175,7 @@ type TaskSchedulerOptions struct {
 	// Settings resolves the settings; read at each access.
 	Settings func() durable.Settings
 	// Env builds a conversation's environment with HarnessOptions.Env.
-	Env    func(ctx context.Context, conversationId durable.ConversationId) (env.ExecutionEnv, error)
+	Env func(ctx context.Context, conversationId durable.ConversationId) (env.ExecutionEnv, error)
 	Now func() float64
 	// OnWake is HarnessOptions.OnWake: it replaces the timer for sleeping tasks.
 	OnWake func(wake Wake)
@@ -2883,16 +2883,19 @@ func (s *TaskScheduler) wakeDueLocked() {
 	})
 }
 
-// scheduleWakeLocked recomputes the wake off the Session line: it arms the built-in timer, or tells OnWake of a change.
+// scheduleWakeLocked recomputes the wake off the Session line: it arms the built-in timer, or tells OnWake of a change
+// (scheduler.ts #scheduleWake, a microtask after the change). The value at the change is taken now, as the microtask sees it, and
+// offered first, so a transient state is not lost to the goroutine that runs later; the latest value follows.
 func (s *TaskScheduler) scheduleWakeLocked() {
 	if s.wakeScheduled || s.sealing.Load() {
 		return
 	}
 	s.wakeScheduled = true
-	s.background.Go(func() { s.publishWake() })
+	first := s.wakeLocked()
+	s.background.Go(func() { s.publishWake(first) })
 }
 
-func (s *TaskScheduler) publishWake() {
+func (s *TaskScheduler) publishWake(first Wake) {
 	// One recomputation at a time, in the order scheduled: a stale value must not follow a newer one.
 	s.wakeMu.Lock()
 	defer s.wakeMu.Unlock()
@@ -2902,22 +2905,32 @@ func (s *TaskScheduler) publishWake() {
 		s.mu.Unlock()
 		return
 	}
-	wake := s.wakeLocked()
+	latest := s.wakeLocked()
 	if s.options.OnWake == nil {
 		var at *float64
 		if s.enabled {
-			at = wake.At
+			at = latest.At
 		}
 		s.armTimerLocked(at)
 		s.mu.Unlock()
 		return
 	}
+	s.mu.Unlock()
+	s.offerWake(first)
+	if !equalWake(first, latest) {
+		s.offerWake(latest)
+	}
+}
+
+// offerWake gives OnWake a wake that differs from the last one it took. Only a delivered wake counts: after a panic, the next
+// change or kick offers it again.
+func (s *TaskScheduler) offerWake(wake Wake) {
+	s.mu.Lock()
 	last := s.lastWake
-	if last != nil && last.Active == wake.Active && equalAt(last.At, wake.At) {
-		s.mu.Unlock()
+	s.mu.Unlock()
+	if last != nil && equalWake(*last, wake) {
 		return
 	}
-	s.mu.Unlock()
 	err := func() (err error) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -2935,11 +2948,12 @@ func (s *TaskScheduler) publishWake() {
 		s.options.Report(err)
 		return
 	}
-	// Only a delivered wake counts: after a panic, the next change or kick offers it again.
 	s.mu.Lock()
 	s.lastWake = &wake
 	s.mu.Unlock()
 }
+
+func equalWake(a, b Wake) bool { return a.Active == b.Active && equalAt(a.At, b.At) }
 
 func equalAt(a, b *float64) bool {
 	if a == nil || b == nil {

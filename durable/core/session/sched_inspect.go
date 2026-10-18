@@ -8,10 +8,10 @@ type TaskInspection struct {
 	// Kind is "running", "ready", "waiting", "sleeping", "completing" or "blocked".
 	Kind     string
 	Until    float64 // sleeping
-	Migrates bool   // ready
-	On       []ID   // waiting
-	Reason   string // blocked: missing_task, task_too_old or migration_failed
-	Err      error  // blocked with migration_failed: why, when known
+	Migrates bool    // ready
+	On       []ID    // waiting
+	Reason   string  // blocked: missing_task, task_too_old or migration_failed
+	Err      error   // blocked with migration_failed: why, when known
 }
 
 // Inspect is scheduler.ts inspect: the scheduling state and every live task with its derived state. It runs no task

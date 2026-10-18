@@ -122,14 +122,12 @@ type Scheduler struct {
 	waiters map[ID]*orderedSet[ID]
 	// sleeping holds the sleeping live tasks, due or not: the candidates of wakeDue.
 	sleeping *orderedSet[ID]
-	// wakeTimer is the timer for the earliest sleep, without OnWake while scheduling runs; lastWake is the last value
-	// given to OnWake, so an unchanged one is not repeated.
-	wakeTimer     struct {
+	// wakeTimer is the timer for the earliest sleep, without OnWake while scheduling runs.
+	wakeTimer struct {
 		set    bool
 		at     float64
 		cancel func()
 	}
-	lastWake      *Wake
 	wakeScheduled bool
 	// dropQueue holds the ended tasks and conversations found unneeded, which sweep drops at the end of the commit's
 	// publication unless needed again by then: a chain load installs nodes before the work below them is listed.

@@ -271,7 +271,8 @@ func (h *handler) documentRetentionMs() *float64 {
 	return nil
 }
 
-// publishWake tells the host each change of the Harness's wake (HarnessOptions.onWake) in a wake notice.
+// publishWake offers the host the Harness's wake (HarnessOptions.onWake) in a wake notice after each recomputation: the host
+// delivers only a changed value, and delivers it again after a throw, so it keeps the last value it delivered.
 func (h *handler) publishWake(w session.Wake) {
 	h.b.Notice(abi.NoticeWake, jv.Append(nil, wakeJSON(w)))
 }
