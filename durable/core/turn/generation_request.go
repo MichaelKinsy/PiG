@@ -107,11 +107,19 @@ func (r *run) eachHook(name string, payload func() *jv.Object, handle func(resul
 			if r.rt.Signal().Aborted() || errors.Is(err, session.ErrAborted) {
 				return true, err
 			}
-			_ = r.rt.Report(err)
+			_ = r.rt.Report(err, session.ReportFrom{Extension: r.hookExtension(name)})
 			return false, nil
 		}
 		return handle(result), nil
 	}, then)
+}
+
+// hookExtension is the extension of the handler eachHookRaw is calling.
+func (r *run) hookExtension(name string) string {
+	if h := r.g.Host; h.HookExtension != nil {
+		return h.HookExtension(name, r.hookIndex, r.conv)
+	}
+	return ""
 }
 
 // eachHookRaw walks the handlers like eachHook but hands a handler's error to handle, for hooks whose callback decides
@@ -131,6 +139,7 @@ func (r *run) eachHookRaw(name string, payload func() *jv.Object, handle func(re
 			end(nil)
 			return
 		}
+		r.hookIndex = i
 		h.Hook(name, i, r.conv, r.rt.TaskID(), payload(), func(result any, err error) {
 			stop, fail := handle(result, err)
 			cont := func() {

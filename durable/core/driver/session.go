@@ -125,19 +125,20 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		cfg.Harness.Now = harness.SafeNow(cfg.Harness.Now, cfg.Harness.OnReport)
 	}
 	s := &coreSession{ended: make(chan struct{}), cfg: cfg, table: newHandlerTable(), instruction: map[string]*durable.PromptSection{}, callbacks: map[string]Callback{}}
-	s.timers = durable.HostTimers(cfg.Harness.SetTimer, s.report)
-	s.watches = newWatchHub(s.report)
+	s.timers = durable.HostTimers(cfg.Harness.SetTimer, func(err error) {
+		s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+	})
+	s.watches = newWatchHub(s.reportListener)
 	s.settings = s.resolveSettings()
-	report := cfg.Harness.OnReport
-	if report == nil {
-		report = func(error) {}
-	}
+	report := func(err error, info durable.ReportInfo) { s.report(err, info) }
 	now := cfg.Harness.Now
 	if now == nil {
 		now = func() float64 { return 0 }
 	}
 	handlers := map[abi.EffectKind]sqlhost.Handler{}
-	models := NewModels(cfg.Harness.CurrentModels, now, report)
+	models := NewModels(cfg.Harness.CurrentModels, now, func(err error) {
+		report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackModels})
+	})
 	models.monotonic = cfg.Monotonic
 	maps.Copy(handlers, models.Handlers())
 	var client *Client
@@ -169,14 +170,16 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		Core: cfg.Core, SQL: cfg.SQL, DB: cfg.DB, OwnDB: true, Clock: cfg.Harness.Now, TimerLead: cfg.TimerLead, Settle: cfg.Settle,
 		SetTimer: s.armTimer,
 		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n); s.wakeNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, TimerFired: cfg.TimerFired,
-		OnRejected: func(kind abi.EventKind, err *sqlhost.RejectedError) { report(err) },
+		OnRejected: func(kind abi.EventKind, err *sqlhost.RejectedError) {
+			report(err, durable.ReportInfo{Type: durable.ReportListenerError})
+		},
 		// Pi reads HarnessSettings at each use: the owner resends them to the core when they changed (sqlhost Options.Settings).
 		// A settings reader that throws fails the reads that need it (resolveAgent, the task runtime), not the owner: the
 		// core keeps the copy it has.
 		Settings: func() (text []byte) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					report(fmt.Errorf("Harness settings: %s", durable.ErrorMessage(recovered)))
+					report(fmt.Errorf("Harness settings: %s", durable.ErrorMessage(recovered)), durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSettings})
 					text = nil
 				}
 			}()
@@ -201,6 +204,15 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	if err := s.host.Send(ctx, abi.Event{Kind: abi.EventOpen, Payload: step}); err != nil {
 		_ = s.host.Close(ctx)
 		return nil, err
+	}
+	// Harness.open resolves when the scheduler's open commit has landed (harness.ts open: `await tasks.open()`): its recovery of
+	// the tasks a crash cut off, and the reports of the ones it parks, are in by then. A Harness over the core waits for the
+	// same request the cf host sends.
+	if cfg.Mode != "session" {
+		if _, err := client.API(ctx, "opened", nil); err != nil {
+			_ = s.host.Close(ctx)
+			return nil, err
+		}
 	}
 	s.unsub = cfg.Harness.Registry.Subscribe(func() {
 		s.mu.Lock()
@@ -237,6 +249,7 @@ func (s *coreSession) settingsJSON() map[string]any {
 		"stream": st.Stream, "retry": st.Retry, "compaction": st.Compaction, "progress": st.Progress,
 		"toolExecution": st.ToolExecution, "steeringMode": st.SteeringMode, "followUpMode": st.FollowUpMode,
 		"contextRetentionMs": retentionJSON(st.ContextRetentionMs), "documentRetentionMs": retentionJSON(st.DocumentRetentionMs),
+		"afterFailedRun": st.AfterFailedRun, "restartLimit": retentionJSON(st.RestartLimit),
 	}
 	if names != nil {
 		out["extensions"] = names
@@ -376,7 +389,7 @@ func (s *coreSession) Close(ctx context.Context) error {
 	s.mu.Unlock()
 	// A close listener's panic is reported and the others still run (session.ts subscribeClose).
 	for _, call := range calls {
-		session.Contained(call, s.report)
+		session.Contained(call, s.reportListener)
 	}
 	// Harness.close()'s synchronous part (session.ts close :352-366): the scheduler seals at the call, so a step the owner has queued
 	// already (a failed phase's) sees the closing flag and writes no fault. The seal queues behind the events that arrived before
@@ -412,7 +425,9 @@ func (s *coreSession) finishClose(ctx context.Context) error {
 	if s.tasks != nil {
 		s.tasks.closeAll()
 	}
-	_ = s.host.Send(ctx, abi.Event{Kind: abi.EventClose})
+	// The core closes behind its line (session.ts close): the write-back of the tasks it stopped and the statements of the jobs
+	// before it land on later steps, so the host closes once the core has answered the close (request 0).
+	_, _ = s.client.request(ctx, abi.NoticeAPIResult, 0, abi.Event{Kind: abi.EventClose}, always)
 	err := s.host.Close(ctx)
 	s.settleEnd()
 	return err
@@ -494,8 +509,9 @@ func (c *callbackLate) handle(ctx context.Context, call *sqlhost.Call) error {
 func (s *coreSession) hookHandler(hooks *Hooks) sqlhost.Handler {
 	return func(ctx context.Context, call *sqlhost.Call) error {
 		var head struct {
-			Name    string          `json:"name"`
-			Payload json.RawMessage `json:"payload"`
+			Name           string                 `json:"name"`
+			ConversationId durable.ConversationId `json:"conversationId"`
+			Payload        json.RawMessage        `json:"payload"`
 		}
 		if err := json.Unmarshal(call.Payload, &head); err != nil {
 			return fmt.Errorf("hook payload: %w", err)
@@ -527,7 +543,9 @@ func (s *coreSession) hookHandler(hooks *Hooks) sqlhost.Handler {
 				return fmt.Errorf("resolveAgent payload: %w", err)
 			}
 		}
-		agent := harness.ResolveAgent(in.State, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), s.report)
+		agent := harness.ResolveAgent(in.State, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), func(err error, extension string) {
+			s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &head.ConversationId, Extension: extension})
+		})
 		//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads its members by name and stores none of this object
 		body, err := json.Marshal(s.agentJSON(agent))
 		if err != nil {
@@ -744,24 +762,48 @@ func (s *coreSession) reportNotice(n abi.Notice) {
 	if n.Kind != abi.NoticeReport {
 		return
 	}
-	var body struct {
-		Name    string `json:"name"`
-		Message string `json:"message"`
-	}
+	var body reportBody
 	// Other report notices (a fired timer) carry no error.
 	if json.Unmarshal(n.Payload, &body) != nil || body.Name == "" {
 		return
 	}
-	s.report(errors.New(body.Message))
+	s.report(errors.New(body.Message), body.info())
+}
+
+// reportBody is the report notice's payload: the error {name, message} with the ReportInfo the core attached.
+type reportBody struct {
+	Name    string `json:"name"`
+	Message string `json:"message"`
+	Info    struct {
+		Type           durable.ReportType      `json:"type"`
+		Task           *durable.ReportTask     `json:"task"`
+		Extension      string                  `json:"extension"`
+		Reason         string                  `json:"reason"`
+		Callback       durable.HostCallback    `json:"callback"`
+		ConversationId *durable.ConversationId `json:"conversationId"`
+	} `json:"info"`
+}
+
+func (b reportBody) info() durable.ReportInfo {
+	i := b.Info
+	if i.Type == "" {
+		return durable.ReportInfo{Type: durable.ReportListenerError}
+	}
+	return durable.ReportInfo{Type: i.Type, Task: i.Task, Extension: i.Extension, Reason: i.Reason, Callback: i.Callback, ConversationId: i.ConversationId}
 }
 
 // Report is session.ts report: it hands a non-fatal failure, such as the error of a state listener or of the typed listener of
-// durable.DocumentStateOf (session.ts documentState), to HarnessOptions.OnReport.
-func (s *coreSession) Report(err error) { s.report(err) }
+// durable.DocumentStateOf (session.ts documentState), to HarnessOptions.OnReport as a listener failure.
+func (s *coreSession) Report(err error) { s.reportListener(err) }
 
-func (s *coreSession) report(err error) {
+// reportListener is report for a listener's failure, the default source of a report.
+func (s *coreSession) reportListener(err error) {
+	s.report(err, durable.ReportInfo{Type: durable.ReportListenerError})
+}
+
+func (s *coreSession) report(err error, info durable.ReportInfo) {
 	if s.cfg.Harness.OnReport != nil {
-		s.cfg.Harness.OnReport(err)
+		s.cfg.Harness.OnReport(err, info)
 	}
 }
 
@@ -797,11 +839,11 @@ func (s *coreSession) agentJSON(agent durable.Agent) map[string]any {
 			if replay == "" {
 				replay = string(durable.ReplayUnsafe)
 			}
-			t := snapshotTool{Name: tool.Name, Description: tool.Description, Parameters: parameters, Replay: replay, Handler: s.table.id(tool, "tool", toolHandle{tool}), ExecutionMode: string(tool.ExecutionMode), StructuredOutput: tool.StructuredOutputSchema != nil}
+			t := snapshotTool{Extension: harness.ToolExtension(agent, tool.Name), Name: tool.Name, Description: tool.Description, Parameters: parameters, Replay: replay, Handler: s.table.id(tool, "tool", toolHandle{tool}), ExecutionMode: string(tool.ExecutionMode), StructuredOutput: tool.StructuredOutputSchema != nil}
 			if limits, err := outputLimitsJSON(tool); err == nil {
 				t.OutputLimits = limits
 			} else {
-				s.report(err)
+				s.reportListener(err)
 			}
 			if tool.PrepareArguments != nil {
 				id := s.table.id(tool, "prepare", prepareHandle{PrepareArguments(tool.PrepareArguments)})
@@ -814,13 +856,15 @@ func (s *coreSession) agentJSON(agent durable.Agent) map[string]any {
 	tools := snapshotTools(agent.Tools)
 	sections := make([]snapshotSection, 0, len(agent.Sections))
 	for _, section := range agent.Sections {
-		sections = append(sections, snapshotSection{Key: section.Key, Tag: section.Tag == nil || *section.Tag, Handler: s.table.id(section, "section", sectionHandle{section})})
+		sections = append(sections, snapshotSection{Extension: harness.SectionExtension(agent, section.Key), Key: section.Key, Tag: section.Tag == nil || *section.Tag, Handler: s.table.id(section, "section", sectionHandle{section})})
 	}
 	// The hooks of the selected extensions, in extension order (agent.ts agentHooks; the JS host's agentJSON): hook name to handler.
 	hooks := []snapshotHook{}
 	for _, e := range agent.Extensions {
 		for i := range e.Hooks {
-			hooks = append(hooks, s.table.hook(&e.Hooks[i]))
+			hook := s.table.hook(&e.Hooks[i])
+			hook.Extension = e.Name
+			hooks = append(hooks, hook)
 		}
 	}
 	out := map[string]any{"thinkingLevel": agent.ThinkingLevel, "extensions": extensions, "tools": tools, "callable": snapshotTools(agent.Callable), "sections": sections, "hooks": hooks}
@@ -905,7 +949,7 @@ func (s *coreSession) deliverWakes() {
 			continue
 		}
 		if err := s.callOnWake(wake); err != nil {
-			s.report(err)
+			s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake})
 			continue
 		}
 		s.mu.Lock()

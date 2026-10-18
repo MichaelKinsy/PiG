@@ -42,7 +42,7 @@ func TestAChainOfHeldTasksFinalizesInLinearWork(t *testing.T) {
 	}
 	registry := snap{"t.hold": {Def: *def, Phase: func(rt *session.Runtime, rec *jv.Object, _ func(error)) { runtimes[idOf(rec)] = rt }}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -111,7 +111,7 @@ func TestEndedSubagentChainsAreForgottenOnceTheirWorkEnds(t *testing.T) {
 	}
 	registry := snap{"t.hold": {Def: *def, Phase: func(rt *session.Runtime, rec *jv.Object, _ func(error)) { runtimes[idOf(rec)] = rt }}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -198,7 +198,7 @@ func TestAnOwnerHoldsForWorkInAConversationItsEndedChildOwns(t *testing.T) {
 	}
 	registry := snap{"t.hold": {Def: *def, Phase: func(rt *session.Runtime, rec *jv.Object, _ func(error)) { runtimes[idOf(rec)] = rt }}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -259,7 +259,7 @@ func TestANewConversationWithNoWorkBelowItIsSweptAtOnce(t *testing.T) {
 	s := newSession(mem, mem.NextID())
 	registry := snap{}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -329,7 +329,7 @@ func TestAGatedFinalizeCommitFinalizesTheChainWhenItRunsAgain(t *testing.T) {
 	gated.task = middle
 	registry := snap{"t.hold": {Def: *def, Phase: func(rt *session.Runtime, rec *jv.Object, _ func(error)) { runtimes[idOf(rec)] = rt }}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)

@@ -255,7 +255,7 @@ func runSched(t *testing.T, file string) []any {
 
 	sched := session.NewScheduler(sess, loop, session.Env{
 		Snapshot: func() session.Snapshot { return reg },
-		Report:   func(err error) { logf("t", "report", "message", err.Error()) },
+		Report:   func(err error, _ *jv.Object) { logf("t", "report", "message", err.Error()) },
 		Now:      now,
 		SettleOutcome: func(tx *session.Tx, rec *jv.Object, outcome *jv.Object) error {
 			logf("t", "settleOutcome", "task", get(rec, "id"), "status", get(outcome, "status"))

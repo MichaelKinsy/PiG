@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -283,6 +284,14 @@ type HarnessSettings struct {
 	// default, ten minutes; 0 drops one right after use; +Inf keeps them. Anything else that is not a number of
 	// milliseconds, 0 or more, means the default.
 	DocumentRetentionMs *float64
+	// AfterFailedRun is what a run that fails (model_error, no_model) does with the inputs queued behind it: keep leaves
+	// them queued until the next input or queued write, continue starts the next run with them, as an answer would, and
+	// withdraw settles them unanswered with reason run_failed. Empty selects keep.
+	AfterFailedRun durable.AfterFailedRun
+	// RestartLimit is how many times in a row a task may be cut off by a crash, eviction, or reset (a close does not
+	// count) without changing its state before it is parked as blocked (restart_limit) instead of run again;
+	// Harness.RetryTask runs it again. Nil selects the default, 5; +Inf never parks.
+	RestartLimit *float64
 }
 
 // defaultContextRetentionMs is the default of HarnessSettings.ContextRetentionMs: ten minutes.
@@ -329,6 +338,8 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 		ContextRetentionMs: defaultContextRetentionMs,
 	}
 	resolved.DocumentRetentionMs = session.DocumentRetention(nil)
+	resolved.AfterFailedRun = durable.AfterFailedRunKeep
+	resolved.RestartLimit = durable.DefaultRestartLimit
 	// The spread copies the default's values; the pointer field must not alias the shared default.
 	resolved.Retry.MaxAgentDelayMs = new(*DefaultRetryPolicy.MaxAgentDelayMs)
 	if settings == nil {
@@ -359,6 +370,10 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 	}
 	assign(&resolved.ContextRetentionMs, settings.ContextRetentionMs)
 	resolved.DocumentRetentionMs = session.DocumentRetention(settings.DocumentRetentionMs)
+	if settings.AfterFailedRun != "" {
+		resolved.AfterFailedRun = settings.AfterFailedRun
+	}
+	resolved.RestartLimit = restartLimit(settings.RestartLimit)
 	if settings.ToolExecution != "" {
 		resolved.ToolExecution = settings.ToolExecution
 	}
@@ -369,6 +384,15 @@ func ResolveSettings(settings *HarnessSettings) durable.Settings {
 		resolved.FollowUpMode = settings.FollowUpMode
 	}
 	return resolved
+}
+
+// restartLimit is a restart limit as given when it is a number of restarts, 1 or more, rounded down (+Inf never parks);
+// else the default (agent.ts restartLimit).
+func restartLimit(limit *float64) float64 {
+	if limit != nil && *limit >= 1 {
+		return math.Floor(*limit)
+	}
+	return durable.DefaultRestartLimit
 }
 
 func assign[T any](target *T, value *T) {
@@ -605,21 +629,62 @@ func CreateAgent(tx durable.Tx, conversation durable.ConversationRecord) error {
 	return nil
 }
 
-// AgentHooks returns the handlers of the selected extensions' hooks for a task name, in extension order.
-func AgentHooks(agent durable.Agent, taskName string) []any {
-	handlers := []any{}
+// HookHandlers is the handlers of one extension's hook, with the extension's name.
+type HookHandlers struct {
+	Extension string
+	Handlers  any
+}
+
+// AgentHooks returns the handlers of the selected extensions' hooks for a task name, in extension order, each with the
+// name of its extension.
+func AgentHooks(agent durable.Agent, taskName string) []HookHandlers {
+	handlers := []HookHandlers{}
 	for _, extension := range agent.Extensions {
 		for _, hook := range extension.Hooks {
 			if hook.Task == taskName {
-				handlers = append(handlers, hook.Handlers)
+				handlers = append(handlers, HookHandlers{Extension: extension.Name, Handlers: hook.Handlers})
 			}
 		}
 	}
 	return handlers
 }
 
+// SectionExtension is the extension whose code a section of agent runs: the last selected one that provides or wraps it;
+// empty when there is none.
+func SectionExtension(agent durable.Agent, key string) string {
+	found := ""
+	for _, extension := range agent.Extensions {
+		provides := slices.ContainsFunc(extension.Sections, func(section *durable.PromptSection) bool { return section.Key == key })
+		wraps := slices.ContainsFunc(extension.Wraps, func(wrap durable.Wrap) bool {
+			section, ok := wrap.(durable.SectionWrap)
+			return ok && section.Section == key
+		})
+		if provides || wraps {
+			found = extension.Name
+		}
+	}
+	return found
+}
+
+// ToolExtension is the extension whose code a tool of agent runs: the last selected one that provides or wraps it; empty
+// when there is none.
+func ToolExtension(agent durable.Agent, name string) string {
+	found := ""
+	for _, extension := range agent.Extensions {
+		provides := slices.ContainsFunc(extension.Tools, func(tool *durable.ToolRegistration) bool { return tool.Name == name })
+		wraps := slices.ContainsFunc(extension.Wraps, func(wrap durable.Wrap) bool {
+			tool, ok := wrap.(durable.ToolWrap)
+			return ok && tool.Tool == name
+		})
+		if provides || wraps {
+			found = extension.Name
+		}
+	}
+	return found
+}
+
 // ResolveAgent resolves an agent from its stored state (nil: every field unset), a registry snapshot, and resolved settings. A wrapper that panics or renames drops its target and is reported; a wrapper without a target does nothing.
-func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings durable.Settings, report func(error)) durable.Agent {
+func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings durable.Settings, report func(err error, extension string)) durable.Agent {
 	if state == nil {
 		state = &AgentState{}
 	}
@@ -638,15 +703,16 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 		}
 	}
 	for _, extension := range extensions {
+		wrapReport := func(err error) { report(err, extension.Name) }
 		for _, wrap := range extension.Wraps {
 			switch wrap := wrap.(type) {
 			case durable.ToolWrap:
 				if wrap.Wrap != nil {
-					applyWrap(composed, wrap.Tool, wrap.Wrap, func(tool *durable.ToolRegistration) string { return tool.Name }, report)
+					applyWrap(composed, wrap.Tool, wrap.Wrap, func(tool *durable.ToolRegistration) string { return tool.Name }, wrapReport)
 				}
 			case durable.SectionWrap:
 				if wrap.Wrap != nil {
-					applyWrap(sections, wrap.Section, wrap.Wrap, func(section *durable.PromptSection) string { return section.Key }, report)
+					applyWrap(sections, wrap.Section, wrap.Wrap, func(section *durable.PromptSection) string { return section.Key }, wrapReport)
 				}
 			}
 		}

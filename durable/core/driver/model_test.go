@@ -3,7 +3,9 @@
 package driver_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -33,13 +35,34 @@ func (c *funcCore) Step(ev abi.Event) *abi.Step {
 	defer c.mu.Unlock()
 	ev.Payload = append([]byte(nil), ev.Payload...)
 	c.seen = append(c.seen, ev)
+	// The real core reports the close it ran behind its Session line as the api_result of request 0 (handler.go EventClose); the
+	// host's Harness.close waits for it, so a core that is a function answers it too.
+	closed := func(step *abi.Step) *abi.Step {
+		if ev.Kind == abi.EventClose && !hasNotice(step, abi.NoticeAPIResult) {
+			step.Notices = append(step.Notices, abi.Notice{Kind: abi.NoticeAPIResult, Payload: append(binary.LittleEndian.AppendUint32(nil, 0), `{"ok":null}`...)})
+		}
+		return step
+	}
+	// Harness.open waits for the api request "opened" (core api.go): a core that is a function answers it before the test's script.
+	if ev.Kind == abi.EventAPI && bytes.Contains(ev.Payload, []byte(`"op":"opened"`)) {
+		return &abi.Step{Notices: []abi.Notice{{Kind: abi.NoticeAPIResult, Payload: append(binary.LittleEndian.AppendUint32(nil, ev.ID), `{"ok":null}`...)}}}
+	}
 	if c.respond == nil {
-		return &abi.Step{}
+		return closed(&abi.Step{})
 	}
 	if s := c.respond(ev); s != nil {
-		return s
+		return closed(s)
 	}
-	return &abi.Step{}
+	return closed(&abi.Step{})
+}
+
+func hasNotice(step *abi.Step, kind abi.NoticeKind) bool {
+	for _, n := range step.Notices {
+		if n.Kind == kind {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *funcCore) events(kind abi.EventKind) []abi.Event {

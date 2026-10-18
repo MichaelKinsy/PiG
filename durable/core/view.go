@@ -307,7 +307,7 @@ func (h *handler) publishViews(pub *session.Publication) {
 		w := h.views[id]
 		ops, changes, err := w.advance(pub)
 		if err != nil {
-			h.report(err)
+			h.reportListener(err)
 			continue
 		}
 		touched := len(ops) > 0 || (changes != nil && (changes.Len() > 0 && !emptyChanges(changes)))

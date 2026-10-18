@@ -222,7 +222,7 @@ func newSleepRig(t *testing.T, core bool, tasks ...durable.AnyTask) *sleepRig {
 
 func (rig *sleepRig) open(configure func(*harness.HarnessOptions)) harness.Harness {
 	rig.t.Helper()
-	options := harness.HarnessOptions{Models: ai.CreateModels(), Registry: rig.registry, OnReport: rig.reports.add}
+	options := harness.HarnessOptions{Models: ai.CreateModels(), Registry: rig.registry, OnReport: func(err error, _ durable.ReportInfo) { rig.reports.add(err) }}
 	if configure != nil {
 		configure(&options)
 	}
@@ -357,6 +357,8 @@ func TestSleepingTasks(t *testing.T) {
 				node, ok := graph.Value().Tasks[strconv.FormatInt(int64(id), 10)]
 				return ok && node.State.Status == durable.TaskSleeping && node.State.Phase == "after" && node.State.Until == 2000
 			})
+			// harness-sleep.test.ts:109: the wake is idle once open's recovery pass has landed.
+			pollUntil(t, "open's recovery pass landed", func() bool { return !h.Wake().Active })
 			expectWake(t, h.Wake(), false, 2000)
 			pollUntil(t, "the wake offered", func() bool { last, ok := wakes.last(); return ok && wakeIs(last, false, 2000) })
 
@@ -379,6 +381,8 @@ func TestSleepingTasks(t *testing.T) {
 				t.Fatalf("after phase ran %d times, want 1", runs.Load())
 			}
 			pollUntil(t, "nothing left to do", func() bool { last, ok := wakes.last(); return ok && wakeIs(last, false) })
+			// harness-sleep.test.ts:129
+			pollUntil(t, "the wake idle", func() bool { return !h.Wake().Active })
 			expectWake(t, h.Wake(), false)
 			// Only changes: idle at open, running, asleep until 2000, running again, idle.
 			all := wakes.all()
@@ -392,9 +396,8 @@ func TestSleepingTasks(t *testing.T) {
 					t.Fatalf("wake %d repeats its predecessor: %s", index, showWake(all[index]))
 				}
 			}
-			if !wakeIs(all[0], false) {
-				t.Fatalf("first wake %s, want idle", showWake(all[0]))
-			}
+			// harness-sleep.test.ts:133: Pi dropped the assertion that the first wake is idle: open's recovery pass keeps the
+			// Session active until it lands, so the first offered wake may be active.
 			var sawActive, sawSleep bool
 			for _, wake := range all {
 				sawActive = sawActive || wakeIs(wake, true)
@@ -423,7 +426,8 @@ func TestSleepingTasks(t *testing.T) {
 			}
 
 			h = rig.open(configure)
-			// Known from storage before scheduling starts.
+			// Known from storage before scheduling starts, once open's recovery pass is done (harness-sleep.test.ts:152).
+			pollUntil(t, "open's recovery pass landed", func() bool { return !h.Wake().Active })
 			expectWake(t, h.Wake(), false, 61_000)
 			h.Resume()
 			settleScheduling(t, h)
@@ -689,6 +693,8 @@ func TestSleepingTasks(t *testing.T) {
 				}
 				pollUntil(t, "the parent "+string(parked), isStatus(t, h, id, parked))
 				pollUntil(t, "the wake at the child's sleep", func() bool { return wakeIs(h.Wake(), false, 1500) })
+				// harness-sleep.test.ts:333
+				pollUntil(t, "the wake idle", func() bool { return !h.Wake().Active })
 				expectWake(t, h.Wake(), false, 1500)
 			})
 		}
@@ -810,9 +816,12 @@ func TestSleepingTasks(t *testing.T) {
 			h := rig.open(nil)
 			// Created through a token the registry does not hold: nothing can run it.
 			rig.start(h, missing.Erased())
+			// harness-sleep.test.ts:411, :414
+			pollUntil(t, "the wake idle", func() bool { return !h.Wake().Active })
 			expectWake(t, h.Wake(), false)
 			h.Resume()
 			settleScheduling(t, h)
+			pollUntil(t, "the wake idle", func() bool { return !h.Wake().Active })
 			expectWake(t, h.Wake(), false)
 		})
 	})

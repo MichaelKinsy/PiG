@@ -76,7 +76,7 @@ func (t *taskRuntimes) enter(effect PhaseEffect) (*liveInvocation, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		entry = &liveInvocation{key: key, effects: map[uint32]struct{}{}, rt: &taskRuntime{
 			invocation: &invocation{s: t.s, task: durable.TaskId(effect.TaskID), conversation: record.ConversationID},
-			ctx:        ctx, cancel: cancel, kind: effect.Kind, invocationID: effect.Invocation,
+			ctx:        ctx, cancel: cancel, kind: effect.Kind, extension: effect.Extension, invocationID: effect.Invocation,
 		}}
 		t.live[key] = entry
 	}
@@ -186,9 +186,11 @@ func (t *taskRuntimes) run(ctx context.Context, effect PhaseEffect) error {
 // fail with "Task N invocation has ended" once the core ended the invocation.
 type taskRuntime struct {
 	*invocation
-	ctx          context.Context
-	cancel       context.CancelFunc
-	kind         string
+	ctx    context.Context
+	cancel context.CancelFunc
+	kind   string
+	// extension is the extension that installed the definition this invocation runs; empty for a built-in task.
+	extension    string
 	invocationID int64
 	done         atomic.Bool
 
@@ -327,11 +329,26 @@ func (r *taskRuntime) Now() float64 {
 	return r.s.now()
 }
 
-func (r *taskRuntime) Report(err error) {
+func (r *taskRuntime) Report(err error, from ...durable.ReportFrom) {
 	if checked := r.check(); checked != nil {
 		panic(checked)
 	}
-	r.s.report(err)
+	task := &durable.ReportTask{Id: r.task, Kind: r.kind, ConversationId: r.conversation}
+	if len(from) == 0 {
+		r.s.report(err, r.about(durable.ReportTaskError))
+		return
+	}
+	if from[0].Type == durable.ReportFromExtension {
+		r.s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, Task: task, Extension: from[0].Extension})
+		return
+	}
+	r.s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: from[0].Callback, Task: task})
+}
+
+// about is the report info of a failure of this invocation's task: the task, and the extension that installed the definition
+// the invocation runs (scheduler.ts #aboutTask).
+func (r *taskRuntime) about(reportType durable.ReportType) durable.ReportInfo {
+	return durable.ReportInfo{Type: reportType, Task: &durable.ReportTask{Id: r.task, Kind: r.kind, ConversationId: r.conversation}, Extension: r.extension}
 }
 
 // Hooks returns the handlers of this task's name from the extensions its conversation selects, in extension order. A throw is
@@ -347,15 +364,15 @@ func (h taskHooks) Each(name string, invoke func(handlers any) error) error {
 	if err != nil {
 		return err
 	}
-	for _, handlers := range harness.AgentHooks(agent, h.r.kind) {
-		if !hasHook(handlers, name) {
+	for _, hook := range harness.AgentHooks(agent, h.r.kind) {
+		if !hasHook(hook.Handlers, name) {
 			continue
 		}
-		if err := callDefinition(func() error { return invoke(handlers) }); err != nil {
+		if err := callDefinition(func() error { return invoke(hook.Handlers) }); err != nil {
 			if h.r.ctx.Err() != nil {
 				return err
 			}
-			h.r.s.report(err)
+			h.r.s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, Extension: hook.Extension, Task: &durable.ReportTask{Id: h.r.task, Kind: h.r.kind, ConversationId: h.r.conversation}})
 		}
 	}
 	return nil

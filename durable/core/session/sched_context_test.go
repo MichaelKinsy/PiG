@@ -3,6 +3,7 @@ package session_test
 import (
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 	"github.com/MichaelKinsy/PiG/durable/core/session/sessiontest"
 )
@@ -28,7 +29,7 @@ func TestKeptContextRetention(t *testing.T) {
 	var released []session.ID
 	loop := &session.Loop{}
 	sched := session.NewScheduler(s, loop, session.Env{
-		Snapshot: func() session.Snapshot { return snap{} }, Report: func(error) {},
+		Snapshot: func() session.Snapshot { return snap{} }, Report: func(error, *jv.Object) {},
 		Now:                func() float64 { return now },
 		ContextRetentionMs: func() float64 { return retention },
 		Timer:              func(at float64, f func()) func() { armed, fire = append(armed, at), f; return func() { cleared++ } },

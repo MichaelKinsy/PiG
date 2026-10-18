@@ -263,9 +263,9 @@ func RemoveInboxItem(tx durable.Tx, conversationId durable.ConversationId, id du
 }
 
 // WithdrawQueuedInputs withdraws every queued input of a conversation, as Conversation.Abort and abort cascades do:
-// each settles unanswered with aborted and leaves the inbox; queued writes stay for later placement
-// (inbox.ts:127-136).
-func WithdrawQueuedInputs(tx durable.Tx, conversationId durable.ConversationId) error {
+// each settles unanswered with reason (Conversation.Abort uses aborted) and leaves the inbox; queued writes stay for later
+// placement (inbox.ts:127-136).
+func WithdrawQueuedInputsFor(tx durable.Tx, conversationId durable.ConversationId, reason string) error {
 	items, err := inboxItems(tx, conversationId)
 	if err != nil {
 		return err
@@ -276,7 +276,7 @@ func WithdrawQueuedInputs(tx durable.Tx, conversationId durable.ConversationId) 
 			continue
 		}
 		id, _ := item.Get("id").(float64)
-		if err := tx.SettleSubmission(durable.SubmissionId(id), durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: "aborted"}); err != nil {
+		if err := tx.SettleSubmission(durable.SubmissionId(id), durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: reason}); err != nil {
 			return err
 		}
 		if _, err := items.Splice(index, 1); err != nil {
@@ -284,6 +284,11 @@ func WithdrawQueuedInputs(tx durable.Tx, conversationId durable.ConversationId) 
 		}
 	}
 	return nil
+}
+
+// WithdrawQueuedInputs is WithdrawQueuedInputsFor with reason aborted, as Conversation.Abort and abort cascades withdraw.
+func WithdrawQueuedInputs(tx durable.Tx, conversationId durable.ConversationId) error {
+	return WithdrawQueuedInputsFor(tx, conversationId, "aborted")
 }
 
 // inboxItems returns the items draft of a conversation's pi.inbox.

@@ -20,7 +20,7 @@ func TestSectionOptionsWithoutTagStayTagged(t *testing.T) {
 	if section := Section("cwd", text("/repo"), SectionOptions{Tag: new(true)}); section.Tag == nil || !*section.Tag {
 		t.Fatalf("tag true not kept: %v", section.Tag)
 	}
-	desired, err := RenderSections(testContext, []*durable.PromptSection{Section("cwd", text("/repo"), SectionOptions{})}, durable.PromptInput{}, NewOrderedMap[string](), func(error) {})
+	desired, err := RenderSections(testContext, []*durable.PromptSection{Section("cwd", text("/repo"), SectionOptions{})}, durable.PromptInput{}, NewOrderedMap[string](), func(error, *durable.PromptSection) {})
 	if err != nil {
 		t.Fatal(err)
 	}

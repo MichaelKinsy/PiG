@@ -14,7 +14,7 @@ import (
 // notice that may follow later steps. handled is false for an op that is not the scheduler's.
 func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) {
 	switch op {
-	case "memo.get", "memo.put", "waitForTask", "waitForIdle", "outcomes", "ownedTasks", "sleepUntil", "wake":
+	case "memo.get", "memo.put", "waitForTask", "waitForIdle", "outcomes", "ownedTasks", "sleepUntil", "wake", "retryTask":
 	default:
 		return false
 	}
@@ -31,6 +31,11 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 	}
 	if op == "wake" {
 		reply(wakeJSON(h.sched.Wake()), nil)
+		return true
+	}
+	if op == "retryTask" {
+		// Harness.retryTask (scheduler.ts retry): clears a parked task's restart count and enables scheduling.
+		h.sched.Retry(session.ID(numOf(req, "taskId")), nil, func(err error) { reply(nil, err) })
 		return true
 	}
 	if op == "waitForIdle" {

@@ -26,6 +26,9 @@ type PhaseEffect struct {
 	// Handler is the registry table index of the task definition the core reserved the task under; nil when the core
 	// names none (the registry's definition of Kind runs then).
 	Handler *int `json:"handler"`
+	// Extension is the extension that installed the definition the core reserved the task under (scheduler.ts installerOf);
+	// empty for a built-in task.
+	Extension string `json:"extension"`
 	// EffectID is the ID of the effect that carries this phase; the core cancels it when the invocation ends.
 	EffectID uint32 `json:"-"`
 }

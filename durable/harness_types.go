@@ -548,7 +548,27 @@ type Settings struct {
 	// its last read or write; the next access loads it from Storage. Observed documents always stay. Default ten
 	// minutes; 0 drops one right after use; +Inf keeps them.
 	DocumentRetentionMs float64
+	// AfterFailedRun is what a run that fails (model_error, no_model) does with the inputs queued behind it.
+	AfterFailedRun AfterFailedRun
+	// RestartLimit is how many times in a row a task may be cut off by a crash, eviction, or reset (a close does not
+	// count) without changing its state before it is parked as blocked (restart_limit); Harness.RetryTask runs it
+	// again. +Inf never parks.
+	RestartLimit float64
 }
+
+// AfterFailedRun is what a failed run does with the inputs queued behind it (HarnessSettings.afterFailedRun).
+type AfterFailedRun string
+
+// The failed-run policies: keep leaves the inputs queued until the next input or queued write, continue starts the next
+// run with them, as an answer would, and withdraw settles them unanswered with reason run_failed.
+const (
+	AfterFailedRunKeep     AfterFailedRun = "keep"
+	AfterFailedRunContinue AfterFailedRun = "continue"
+	AfterFailedRunWithdraw AfterFailedRun = "withdraw"
+)
+
+// DefaultRestartLimit is the default of HarnessSettings.RestartLimit.
+const DefaultRestartLimit = 5
 
 // ContextView is the raw active transcript and the derived model context.
 type ContextView struct {

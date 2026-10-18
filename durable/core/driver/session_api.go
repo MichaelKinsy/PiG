@@ -157,7 +157,9 @@ func (s *coreSession) agent(ctx context.Context, id durable.ConversationId) (dur
 	if err != nil {
 		return durable.Agent{}, err
 	}
-	return harness.ResolveAgent(state, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), s.report), nil
+	return harness.ResolveAgent(state, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), func(err error, extension string) {
+		s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
+	}), nil
 }
 
 // commit runs one Session commit on the extension transaction channel; binding carries the invocation's conversation.
@@ -338,6 +340,18 @@ func (s *coreSession) AbortSubmission(ctx context.Context, id durable.Submission
 	}
 	var result durable.SubmissionAbortResult
 	return result, json.Unmarshal(raw, &result)
+}
+
+// RetryTask runs a task parked by settings.restartLimit again: it clears its restart count and enables scheduling
+// (scheduler.ts retry). It does nothing for a task that is not parked, and fails for an unknown one.
+func (s *coreSession) RetryTask(ctx context.Context, id durable.TaskId) error {
+	release, err := s.admit()
+	if err != nil {
+		return err
+	}
+	defer release()
+	_, err = s.client.API(ctx, "retryTask", map[string]any{"taskId": id})
+	return err
 }
 
 // AbortTask commits the abort mark and schedules the abort invocation.

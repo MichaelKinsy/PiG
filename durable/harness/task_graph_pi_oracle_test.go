@@ -77,7 +77,7 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 	ctx := context.Background()
 	store := storage.NewMemoryStorage()
 	line := session.CreateSession(store)
-	view := NewTaskGraphView(line, store)
+	view := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) string { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }})
 	live, err := view.State(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +184,7 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 			outcome.OK = encoded
 		}
 		line.WaitDeliveries()
-		fresh, err := NewTaskGraphView(line, store).State(ctx)
+		fresh, err := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) string { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }}).State(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}

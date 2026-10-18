@@ -163,8 +163,12 @@ func TestHookRunnerEachPropagatesTheErrorOnceTheInvocationIsSignalled(t *testing
 	if got := calls.all(); !reflect.DeepEqual(got, []string{"first"}) {
 		t.Fatalf("handler calls = %v, want only the first: the error stops the iteration", got)
 	}
-	if reports := opened.reports.all(); len(reports) != 0 {
-		t.Fatalf("reports = %v, want none: a signalled error propagates instead", reports)
+	// scheduler.ts:1141: the signalled error is not reported as the hook's failure; the only report is the task's own
+	// fault, which its abort handler left without an outcome (scheduler.ts #step reports task_faulted).
+	for _, info := range opened.reports.allInfos() {
+		if info.Type != durable.ReportTaskFaulted {
+			t.Fatalf("report infos = %+v, want only task_faulted: a signalled error propagates instead", opened.reports.allInfos())
+		}
 	}
 	mustClose(t, opened.harness)
 }

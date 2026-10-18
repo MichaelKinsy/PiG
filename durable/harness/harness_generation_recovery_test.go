@@ -245,6 +245,8 @@ func TestGenerationRecovery(t *testing.T) {
 		harness, root = openAt(t, path, setup)
 		// upstream: packages/durable/test/harness-generation-recovery.test.ts:186
 		expectEqualJSON(t, must(harness.GetTask(testContext, taskId)).State, `{"status":"sleeping","checkpoint":{"phase":"retry","attempt":1,"until":61000},"until":61000}`)
+		// upstream: packages/durable/test/harness-generation-recovery.test.ts:191: the wake is idle once open's recovery pass has landed.
+		eventually(t, func() bool { return !harness.Wake().Active })
 		wake := harness.Wake()
 		if wake.Active || wake.At == nil || *wake.At != 61_000 {
 			t.Fatalf("wake %+v, want {active: false, at: 61000}", wake)
@@ -348,6 +350,8 @@ func TestGenerationRecovery(t *testing.T) {
 		expectMatch(t, taskCheckpoint(t, harness, taskId), `{"phase":"poll","attempt":1,"pollAt":61000}`)
 		// upstream: packages/durable/test/harness-generation-recovery.test.ts:273
 		expectMatch(t, must(harness.GetTask(testContext, taskId)).State, `{"status":"sleeping","until":61000}`)
+		// upstream: packages/durable/test/harness-generation-recovery.test.ts:278: the wake is idle once open's recovery pass has landed.
+		eventually(t, func() bool { return !harness.Wake().Active })
 		if wake := harness.Wake(); wake.Active || wake.At == nil || *wake.At != 61_000 {
 			t.Fatalf("wake %+v, want {active: false, at: 61000}", wake)
 		}

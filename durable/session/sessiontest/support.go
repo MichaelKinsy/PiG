@@ -227,7 +227,11 @@ func OpenTestSession() Harness { return OpenReportingTestSession(nil) }
 // report.
 func OpenReportingTestSession(report func(error)) Harness {
 	controlled := NewControlledStorage()
-	kernel := session.NewSessionImpl(controlled, session.Hooks{Report: report}, nil, nil)
+	var hooks session.Hooks
+	if report != nil {
+		hooks.Report = func(err error, _ durable.ReportInfo) { report(err) }
+	}
+	kernel := session.NewSessionImpl(controlled, hooks, nil, nil)
 	publications := &Publications{}
 	kernel.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
 		publications.mu.Lock()

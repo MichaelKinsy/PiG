@@ -4,7 +4,7 @@
 package core
 
 import (
-	"errors"
+	"math"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/inbox"
@@ -71,6 +71,8 @@ func (h *handler) startScheduler() error {
 		Snapshot:           func() session.Snapshot { return h.snap },
 		FreshSnapshot:      h.freshSnapshot,
 		Report:             h.report,
+		RestartLimit:       h.restartLimit,
+		BlockedChanged:     h.blockedChanged,
 		Now:                func() float64 { return h.now },
 		Timer:              h.armBackgroundTimer,
 		WakeTimer:          h.armWakeTimer,
@@ -205,16 +207,35 @@ func (h *handler) onTimer(ev *abi.Event) error {
 	return nil
 }
 
-// report forwards a non-fatal failure to HarnessOptions.onReport as a report notice.
-func (h *handler) report(err error) {
+// report forwards a non-fatal failure to HarnessOptions.onReport as a report notice: {name, message, info}, info being the
+// ReportInfo of types.ts (type, and task, extension, reason, callback or conversationId where they apply).
+func (h *handler) report(err error, info *jv.Object) {
 	body := errorJSON(err)
-	if caused, ok := errors.AsType[*session.CauseError](err); ok {
-		// {"name":..,"message":..} gains "cause" (Error.cause).
-		body = append(body[:len(body)-1], `,"cause":`...)
-		body = jv.AppendString(body, caused.Cause)
-		body = append(body, '}')
-	}
+	body = append(body[:len(body)-1], `,"info":`...)
+	body = jv.Append(body, info)
+	body = append(body, '}')
 	h.b.Notice(abi.NoticeReport, body)
+}
+
+// reportListener is report for a listener's failure, the default source of a report (session.ts LISTENER).
+func (h *handler) reportListener(err error) { h.report(err, jobj("type", "listener_error")) }
+
+// reportFrom reports a failure of code a task's phase called: through the task's runtime, which names the task, or
+// without a task when the invocation is not known (generation.ts runtime.report).
+func (h *handler) reportFrom(task session.ID, err error, from session.ReportFrom) {
+	if rt := h.runtimes[task]; rt != nil {
+		_ = rt.Report(err, from)
+		return
+	}
+	if from.Callback != "" {
+		h.report(err, jobj("type", "host_error", "callback", from.Callback))
+		return
+	}
+	info := jobj("type", "extension_error")
+	if from.Extension != "" {
+		info.Set("extension", from.Extension)
+	}
+	h.report(err, info)
 }
 
 // onRegistry takes the host's new registry snapshot (ABI section 5, kind 4): it may make blocked tasks runnable.
@@ -253,6 +274,23 @@ func (h *handler) releaseContext(conv session.ID) {
 		h.hist.Release(int64(conv))
 	}
 	h.releaseHostContext(conv)
+}
+
+// restartLimit is settings.restartLimit, five unless the host set it (harness/agent.ts restartLimit): a limit that is not a
+// number of restarts, 1 or more, means the default, and Infinity never parks (the host sends it as the largest finite number).
+func (h *handler) restartLimit() float64 {
+	if v, ok := valueOf(objOf(h.open, "settings"), "restartLimit").(float64); ok && v >= 1 {
+		return math.Floor(v)
+	}
+	return 5
+}
+
+// afterFailedRun is settings.afterFailedRun, keep unless the host set it.
+func (h *handler) afterFailedRun() string {
+	if v := strOf(objOf(h.open, "settings"), "afterFailedRun"); v != "" {
+		return v
+	}
+	return "keep"
 }
 
 // contextRetentionMs is settings.contextRetentionMs, ten minutes unless the host set it (harness/agent.ts).

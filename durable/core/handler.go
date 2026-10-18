@@ -173,8 +173,28 @@ func (h *handler) handle(ev *abi.Event) error {
 	case abi.EventClose:
 		// Pi's close enqueues the Session's close behind the line (session.ts close): admitted jobs, the commit that was in
 		// storage and the publications of both settle first. The api_result of request 0 reports the close.
-		if h.loop != nil && h.loop.Busy() {
-			h.loop.LineBare(func() error { h.closeWhenQuiet(); return nil })
+		// Close writes the tasks it stopped back as pending, on the line after the commits admitted before the seal (session.ts
+		// writeAtClose, read when its job runs); a Storage that holds the commit holds the job, which runs again after the answer.
+		// The close follows the job's completion: its statements are on a hops chain until then.
+		writeBack := func() error {
+			if h.sched == nil || h.sess.Failure() != nil {
+				return nil
+			}
+			if err := h.sched.WriteBack(h.sched.CloseWrites()); err != nil && session.IsNeedGate(err) {
+				return err
+			}
+			return nil
+		}
+		if h.loop != nil && (h.loop.Busy() || (h.sched != nil && len(h.sched.CloseWrites()) > 0)) {
+			// A bare job: the write-back takes no job duration of its own, and its statements go out with the close.
+			h.loop.LineBare(func() error {
+				if err := writeBack(); err != nil {
+					return err
+				}
+				h.flushHeld()
+				h.closeWhenQuiet()
+				return nil
+			})
 			return nil
 		}
 		h.closeWhenQuiet()

@@ -6,6 +6,7 @@ package driver_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -69,7 +70,11 @@ func openCoreHooks(t *testing.T, task durable.AnyTask, settings func() *harness.
 	}
 	h, err := driver.OpenHarness(t.Context(), filepath.Join(t.TempDir(), "store.db"), harness.HarnessOptions{
 		Models: ai.CreateModels(), Registry: env.registry, Settings: settings,
-		OnReport: func(err error) { env.mu.Lock(); env.reports = append(env.reports, err); env.mu.Unlock() },
+		OnReport: func(err error, _ durable.ReportInfo) {
+			env.mu.Lock()
+			env.reports = append(env.reports, err)
+			env.mu.Unlock()
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -168,8 +173,12 @@ func TestCoreTaskHooksPropagateAnErrorOnceTheInvocationIsSignalled(t *testing.T)
 	if got := calls.all(); !reflect.DeepEqual(got, []string{"first"}) {
 		t.Fatalf("calls = %v, want only the first: the error stops the iteration", got)
 	}
-	if reports := env.reported(); len(reports) != 0 {
-		t.Fatalf("reports = %v, want none: a signalled error propagates instead", reports)
+	// scheduler.ts:1141: the signalled error is not reported as the hook's failure; the only report is the task's own fault,
+	// which its abort handler left without an outcome (scheduler.ts #step reports task_faulted).
+	for _, report := range env.reported() {
+		if want := fmt.Sprintf("Abort handler of task %d returned without a terminal outcome", id); report.Error() != want {
+			t.Fatalf("reports = %v, want only %q: a signalled error propagates instead", env.reported(), want)
+		}
 	}
 }
 

@@ -143,7 +143,7 @@ type harnessImpl struct {
 	line        sessionLine
 	storage     durable.Storage
 	options     HarnessOptions
-	report      func(error)
+	report      func(err error, info durable.ReportInfo)
 	host        *conversationHost
 	tasks       *TaskScheduler
 	submissions *Submissions
@@ -180,7 +180,9 @@ func (harness *harnessImpl) resolveAgent(ctx context.Context, id durable.Convers
 	if err != nil {
 		return durable.Agent{}, err
 	}
-	return ResolveAgent(state, registry, harness.settings(), harness.report), nil
+	return ResolveAgent(state, registry, harness.settings(), func(err error, extension string) {
+		harness.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
+	}), nil
 }
 
 // buildEnv builds a conversation's environment from its current cwd; nil without an Env option.
@@ -256,6 +258,11 @@ func (harness *harnessImpl) Submission(ctx context.Context, id durable.Submissio
 
 func (harness *harnessImpl) AbortSubmission(ctx context.Context, id durable.SubmissionId, conversationId *durable.ConversationId) (durable.SubmissionAbortResult, error) {
 	return harness.submissions.Abort(ctx, id, conversationId)
+}
+
+func (harness *harnessImpl) RetryTask(ctx context.Context, id durable.TaskId) error {
+	harness.assertOpen()
+	return harness.tasks.Retry(ctx, id)
 }
 
 func (harness *harnessImpl) AbortTask(ctx context.Context, id durable.TaskId) (string, error) {
@@ -517,14 +524,14 @@ func OpenHarness(ctx context.Context, storage durable.Storage, options HarnessOp
 
 // SafeReport is onReport that cannot fail: it is the last place an error goes, so its own panic is dropped. Ports harness.ts
 // safeReport; the Harness over the core wraps its OnReport with it too.
-func SafeReport(onReport func(error)) func(error) {
-	return func(err error) {
+func SafeReport(onReport func(err error, info durable.ReportInfo)) func(err error, info durable.ReportInfo) {
+	return func(err error, info durable.ReportInfo) {
 		defer func() {
 			// upstream: packages/durable/src/harness/harness.ts:safeReport
 			_ = recover()
 		}()
 		if onReport != nil {
-			onReport(err)
+			onReport(err, info)
 		}
 	}
 }
@@ -532,7 +539,7 @@ func SafeReport(onReport func(error)) func(error) {
 // SafeNow is the host clock, falling back to the wall clock when it panics: a broken clock must not stop commits. The first
 // failure is reported; the clock is read in every task change, so later ones are not. Ports harness.ts safeNow; the Harness
 // over the core wraps its Now with it too.
-func SafeNow(now func() float64, report func(error)) func() float64 {
+func SafeNow(now func() float64, report func(err error, info durable.ReportInfo)) func() float64 {
 	wall := func() float64 { return float64(time.Now().UnixMilli()) }
 	if now == nil {
 		return wall
@@ -548,7 +555,7 @@ func SafeNow(now func() float64, report func(error)) func() float64 {
 					if !ok {
 						err = fmt.Errorf("%v", recovered)
 					}
-					report(err)
+					report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackNow})
 				}
 				value = wall()
 			}
@@ -590,11 +597,17 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		Agent: func(callCtx context.Context, id durable.ConversationId, snapshot durable.RegistrySnapshot) (durable.Agent, error) {
 			return harness.resolveAgent(callCtx, id, snapshot)
 		},
-		Settings:       harness.settings,
-		Env:            harness.buildEnv,
-		Now:            now,
-		OnWake:         options.OnWake,
-		Timers:         durable.HostTimers(options.SetTimer, harness.report),
+		Settings: harness.settings,
+		Env:      harness.buildEnv,
+		Now:      now,
+		OnWake:   options.OnWake,
+		Timers: durable.HostTimers(options.SetTimer, func(err error) {
+			harness.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+		}),
+		WriteAtClose: func(writes func() []durable.StorageWrite) error {
+			// A close writes what it stops straight to Storage, off the published changes, with no caller to cancel it.
+			return harness.WriteAtClose(context.WithoutCancel(ctx), writes)
+		},
 		Report:         harness.report,
 		SettleOutcome:  SettleSchedulerOutcome,
 		WithdrawInputs: WithdrawQueuedInputs,
@@ -611,7 +624,10 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		Context: context.WithoutCancel(ctx),
 	})
 	harness.submissions = NewSubmissions(harness.SessionImpl, storage, now, func() QueueModes { return QueueModesOf(harness.settings()) }, func() { harness.tasks.Resume() })
-	harness.taskGraph = NewTaskGraphView(harness.SessionImpl, storage)
+	harness.taskGraph = NewTaskGraphView(harness.SessionImpl, storage, TaskGraphBlocking{
+		Blocked:          harness.tasks.BlockedReason,
+		SubscribeBlocked: harness.tasks.SubscribeBlocked,
+	})
 	harness.host = &conversationHost{
 		harness:     harness,
 		storage:     storage,

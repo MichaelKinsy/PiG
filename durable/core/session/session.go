@@ -117,6 +117,26 @@ func (s *Session) OnFailed(f func(error)) (remove func()) {
 	}
 }
 
+// WriteTasks writes complete task records straight to the Storage, with nothing published and the records not stamped
+// (session.ts writeAtClose). It writes nothing once the Session failed; a failing Storage fails the Session.
+func (s *Session) WriteTasks(records []*jv.Object) error {
+	if s.failure != nil || len(records) == 0 {
+		return nil
+	}
+	writes := make([]Write, len(records))
+	for i, rec := range records {
+		writes[i] = Write{Kind: WriteTask, Record: rec}
+	}
+	_, err := s.store.Commit(writes, s.nextID)
+	if err != nil {
+		if !IsNeedGate(err) {
+			s.fail(err)
+		}
+		return err
+	}
+	return nil
+}
+
 // Seal is the synchronous start of Session.close (session.ts close): admission closes, so later operations fail with
 // ErrClosed when they are enqueued (Admit), and the close listeners run once. Jobs admitted before keep running.
 func (s *Session) Seal() {

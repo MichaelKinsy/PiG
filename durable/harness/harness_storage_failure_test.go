@@ -657,7 +657,7 @@ func TestAFailedStorageCall(t *testing.T) {
 		var once sync.Once
 		var opened sync.WaitGroup
 		opened.Add(1)
-		harness = must(OpenHarness(testContext, store, HarnessOptions{Models: ai.CreateModels(), Registry: registry, OnReport: func(error) {
+		harness = must(OpenHarness(testContext, store, HarnessOptions{Models: ai.CreateModels(), Registry: registry, OnReport: func(error, durable.ReportInfo) {
 			once.Do(func() {
 				opened.Wait()
 				// A report handler that calls back finds the Session already failed.
@@ -702,7 +702,7 @@ func TestAFailedStorageCall(t *testing.T) {
 func TestSafeNowReportsAPanickingClockOnceAlsoWhenTheReportHandlerReadsTheClockAgain(t *testing.T) {
 	var reports []string
 	var clock func() float64
-	clock = SafeNow(func() float64 { panic(errors.New("clock broke")) }, func(err error) {
+	clock = SafeNow(func() float64 { panic(errors.New("clock broke")) }, func(err error, _ durable.ReportInfo) {
 		reports = append(reports, err.Error())
 		// Reentry, as a handler that commits does: the clock is read again before this report returns.
 		if len(reports) < 5 {
@@ -730,7 +730,7 @@ func TestAHarnessKeepsWorkingWhenOnReportPanicsAndFallsBackToTheSystemClockWhenT
 		Models:   ai.CreateModels(),
 		Registry: registry,
 		Now:      func() float64 { panic(errors.New("clock broke")) },
-		OnReport: func(error) { panic(errors.New("report broke")) },
+		OnReport: func(error, durable.ReportInfo) { panic(errors.New("report broke")) },
 	})
 	if err != nil {
 		t.Fatal(err)

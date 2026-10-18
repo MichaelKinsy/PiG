@@ -46,7 +46,7 @@ func (s *coreSession) commitNotice(n abi.Notice) {
 	for _, raw := range p.Changes {
 		change, err := decodeCommitChange(raw)
 		if err != nil {
-			s.report(err)
+			s.reportListener(err)
 			return
 		}
 		publication.Changes = append(publication.Changes, change)
@@ -201,7 +201,7 @@ func (s *coreSession) deliverCommits(fns []func(context.Context, durable.CommitP
 			s.mu.Unlock()
 			// A host listener's panic is reported and the others still run (session.ts subscribeCommits).
 			for _, fn := range next.fns {
-				session.Contained(func() { fn(next.ctx, next.publication) }, s.report)
+				session.Contained(func() { fn(next.ctx, next.publication) }, s.reportListener)
 			}
 		}
 	})

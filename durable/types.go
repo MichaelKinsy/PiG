@@ -277,8 +277,10 @@ type TaskRuntime[I, S, R any, H any] interface {
 	Context(ctx context.Context, conversationId ConversationId, options *ContextOptions) (ContextView, error)
 	// Now returns the Harness clock.
 	Now() float64
-	// Report forwards a non-fatal failure to HarnessOptions.onReport.
-	Report(err error)
+	// Report forwards a non-fatal failure to HarnessOptions.OnReport with this task in its info: a task_error about the
+	// task's own code, or, with from, an extension_error about extension code it called, such as a section, or a
+	// host_error about a host callback, such as the environment builder.
+	Report(err error, from ...ReportFrom)
 	// SetTimer calls callback once after about delayMs on the Harness's timer (HarnessOptions.SetTimer), for pacing
 	// work inside a phase, such as throttled progress commits. It is not durable: the invocation's end disarms it, and
 	// after its end nothing is armed. The returned function disarms it. Wait for time between phases with SleepUntil.
@@ -601,6 +603,94 @@ type TaskState[S, R any] struct {
 	Outcome    *TaskOutcome[R] `json:"outcome,omitempty"`
 }
 
+// ReportTask is the task a report is about.
+type ReportTask struct {
+	Id TaskId `json:"id"`
+	// Kind is the task's registered name.
+	Kind           string         `json:"kind"`
+	ConversationId ConversationId `json:"conversationId"`
+}
+
+// HostCallback is a host callback, by its HarnessOptions name; env is the environment builder, models a provider call.
+type HostCallback string
+
+// The host callbacks a report can name.
+const (
+	HostCallbackNow      HostCallback = "now"
+	HostCallbackSettings HostCallback = "settings"
+	HostCallbackRegistry HostCallback = "registry"
+	HostCallbackEnv      HostCallback = "env"
+	HostCallbackModels   HostCallback = "models"
+	HostCallbackSetTimer HostCallback = "setTimer"
+	HostCallbackOnWake   HostCallback = "onWake"
+)
+
+// ReportType is what a report to HarnessOptions.OnReport is about.
+type ReportType string
+
+// The report types.
+const (
+	// ReportSessionFailed: the error failed the Session, which closes: a Storage error, often a platform reset.
+	ReportSessionFailed ReportType = "session_failed"
+	// ReportTaskFaulted: the task ended faulted: its phase threw (ReasonThrew), or its abort handler was cut off
+	// settings.restartLimit times (ReasonRestartLimit).
+	ReportTaskFaulted ReportType = "task_faulted"
+	// ReportTaskParked: the restart limit parked the task until Harness.RetryTask.
+	ReportTaskParked ReportType = "task_parked"
+	// ReportMigrationFailed: the task's stored state could not be migrated; it is blocked until the registry changes.
+	ReportMigrationFailed ReportType = "migration_failed"
+	// ReportTaskOutdated: a running task keeps running under its old definition, which was uninstalled (missing_task)
+	// or replaced by one that cannot take over its state (incompatible_task).
+	ReportTaskOutdated ReportType = "task_outdated"
+	// ReportTaskError: the task's own runtime.Report, or a failure in running it.
+	ReportTaskError ReportType = "task_error"
+	// ReportExtensionError: a hook, a section, a wrapper, or a tool's invalid structured output; with the task that ran
+	// it, or, outside a task, the conversation whose agent was resolved.
+	ReportExtensionError ReportType = "extension_error"
+	// ReportHostError: a host callback threw; with the task that called it, if one did.
+	ReportHostError ReportType = "host_error"
+	// ReportListenerError: a commit, close, watch, view, or document listener threw.
+	ReportListenerError ReportType = "listener_error"
+)
+
+// The reasons a report carries in ReportInfo.Reason.
+const (
+	ReasonThrew            = "threw"
+	ReasonRestartLimit     = "restart_limit"
+	ReasonMissingTask      = "missing_task"
+	ReasonIncompatibleTask = "incompatible_task"
+)
+
+// ReportInfo says what a report to HarnessOptions.OnReport is about. Extension, where set, names the extension whose
+// code failed, when known; for a task's own code, the one that installed the definition the task ran. Task is set for
+// the task types, and for an extension_error or host_error that a task caused. ConversationId is set for an
+// extension_error outside a task. Reason is set for task_faulted and task_outdated; Callback for host_error.
+type ReportInfo struct {
+	Type           ReportType
+	Task           *ReportTask
+	Extension      string
+	Reason         string
+	Callback       HostCallback
+	ConversationId *ConversationId
+}
+
+// ReportFromType is whose code a task's runtime.Report is about when not the task's own.
+type ReportFromType string
+
+// The sources ReportFrom names.
+const (
+	ReportFromExtension ReportFromType = "extension"
+	ReportFromHost      ReportFromType = "host"
+)
+
+// ReportFrom is whose code a task's runtime.Report is about when not the task's own: an extension's (Extension, when
+// known), or a host callback (Callback).
+type ReportFrom struct {
+	Type      ReportFromType
+	Extension string
+	Callback  HostCallback
+}
+
 // TaskAbortReason is why a task's abort mark was set when not by an abort request.
 type TaskAbortReason string
 
@@ -639,6 +729,10 @@ type TaskRecord[I, S, R any] struct {
 	StartedAt *float64 `json:"startedAt,omitempty"`
 	// EndedAt is the wall-clock time in milliseconds of the change to terminal, stamped by the Session; nil while live.
 	EndedAt *float64 `json:"endedAt,omitempty"`
+	// Restarts is how many times in a row a crash, eviction, or reset cut the task off while it ran, without the task
+	// changing its state since; open counts them, and a close does not. At HarnessSettings.RestartLimit the task is
+	// parked as blocked until Harness.RetryTask. Zero when absent.
+	Restarts int `json:"restarts,omitempty"`
 }
 
 // DocumentRecordScope is the owner of a document incarnation.

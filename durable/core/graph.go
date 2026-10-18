@@ -33,7 +33,7 @@ func (h *handler) buildTaskGraph() *jv.Object {
 				conversations = append(conversations, float64(c))
 			}
 		}
-		tasks.Set(strconv.FormatInt(int64(id), 10), graphNode(record, conversations))
+		tasks.Set(strconv.FormatInt(int64(id), 10), graphNode(record, conversations, h.blockedOf(record)))
 	}
 	graph := jv.NewObject()
 	graph.Set("tasks", tasks)
@@ -41,7 +41,7 @@ func (h *handler) buildTaskGraph() *jv.Object {
 }
 
 // graphNode is nodeOf: a live task's durable status without its checkpoint and outcome payloads.
-func graphNode(record *jv.Object, conversations []any) *jv.Object {
+func graphNode(record *jv.Object, conversations []any, blocked string) *jv.Object {
 	n := jv.NewObject()
 	n.Set("id", valueOf(record, "id"))
 	n.Set("kind", valueOf(record, "kind"))
@@ -75,7 +75,55 @@ func graphNode(record *jv.Object, conversations []any) *jv.Object {
 		conversations = []any{}
 	}
 	n.Set("conversations", conversations)
+	if blocked != "" {
+		n.Set("blocked", blocked)
+	}
 	return n
+}
+
+// blockedOf is why a live task cannot run here (scheduler.ts blockedReason): empty when it can.
+func (h *handler) blockedOf(record *jv.Object) string {
+	if h.sched == nil {
+		return ""
+	}
+	return h.sched.BlockedReason(record)
+}
+
+// blockedChanged is the scheduler's BlockedChanged: blocked reasons may have changed without a commit, so the graph derives
+// every node's reason again and publishes the ones that changed (task-graph.ts #refreshBlocked).
+func (h *handler) blockedChanged() {
+	if h.graph == nil || h.closed {
+		return
+	}
+	tasks := objOf(h.graph.value, "tasks")
+	var ops []any
+	for i := range tasks.Len() {
+		key := tasks.KeyAt(i)
+		node := objOf(tasks, key)
+		taskID, err := strconv.ParseInt(key, 10, 64)
+		if err != nil {
+			continue
+		}
+		record := h.mir.task(session.ID(taskID))
+		if record == nil {
+			continue
+		}
+		blocked := h.blockedOf(record)
+		current, _ := valueOf(node, "blocked").(string)
+		if blocked == current {
+			continue
+		}
+		updated := node.Shallow()
+		if blocked == "" {
+			updated.Delete("blocked")
+			ops = append(ops, []any{"d", []any{"tasks", key, "blocked"}})
+		} else {
+			updated.Set("blocked", blocked)
+			ops = append(ops, []any{"s", []any{"tasks", key, "blocked"}, blocked})
+		}
+		tasks.Set(key, updated)
+	}
+	h.publishGraph(ops)
 }
 
 // graphWatchOpen answers watch.open for {kind: "graph"}: the current graph, after which each publication that changes it
@@ -137,7 +185,7 @@ func (h *handler) advanceTaskGraph(pub *session.Publication) {
 		if previous != nil {
 			conversations, _ = valueOf(previous, "conversations").([]any)
 		}
-		next := graphNode(record, conversations)
+		next := graphNode(record, conversations, h.blockedOf(record))
 		if previous != nil && jv.Stringify(next) == jv.Stringify(previous) {
 			continue
 		}
@@ -174,6 +222,11 @@ func (h *handler) advanceTaskGraph(pub *session.Publication) {
 		tasks.Set(key, updated)
 		ops = append(ops, []any{"s", []any{"tasks", key, "conversations"}, jv.Clone(conversations)})
 	}
+	h.publishGraph(ops)
+}
+
+// publishGraph sends the frame of ops to every graph watch.
+func (h *handler) publishGraph(ops []any) {
 	if len(ops) == 0 {
 		return
 	}

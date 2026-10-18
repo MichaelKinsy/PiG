@@ -87,12 +87,21 @@ type openTasksOptions struct {
 type reportLog struct {
 	mu      sync.Mutex
 	reports []error
+	infos   []durable.ReportInfo
 }
 
-func (log *reportLog) add(err error) {
+func (log *reportLog) add(err error, info durable.ReportInfo) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	log.reports = append(log.reports, err)
+	log.infos = append(log.infos, info)
+}
+
+// allInfos is the info of every report, in order (task-support.ts openTasks infos).
+func (log *reportLog) allInfos() []durable.ReportInfo {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	return append([]durable.ReportInfo(nil), log.infos...)
 }
 
 func (log *reportLog) all() []error {

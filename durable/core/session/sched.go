@@ -12,7 +12,11 @@ const schedScanPage = 256
 var liveStatuses = [...]string{StatusPending, StatusRunning, StatusWaiting, StatusSleeping, StatusCompleting}
 
 type invocation struct {
-	taskID         ID
+	taskID ID
+	kind   string
+	// extension is the extension that installed the definition this invocation runs, as of its reservation; empty for a
+	// built-in task.
+	extension      string
 	conversationID ID
 	abortMode      bool
 	signal         *Cancel
@@ -129,6 +133,13 @@ type Scheduler struct {
 		cancel func()
 	}
 	wakeScheduled bool
+	// parkedTasks holds the tasks a pass left out as parked; each pass checks them again, as settings.restartLimit may
+	// have risen.
+	parkedTasks *orderedSet[ID]
+	// reconcilingWork counts the reconcile passes underway with work: their commits finalize held outcomes and mark
+	// cascades.
+	reconcilingWork int
+	// snapshotReported is set once a registry snapshot that failed for the task graph was reported.
 	// dropQueue holds the ended tasks and conversations found unneeded, which sweep drops at the end of the commit's
 	// publication unless needed again by then: a chain load installs nodes before the work below them is listed.
 	dropQueue      *orderedSet[treeNode]
@@ -149,9 +160,9 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		live: newTaskMap(), invocations: map[ID]*invocation{},
 		taskWaiters: map[ID][]*taskWaiter{}, idleWaiters: map[ID][]*idleWaiter{},
 		contexts: map[ID]*keptContext{}, failedMigrations: map[ID]failedMigration{}, migrations: map[ID]*migration{}, edges: map[ID]ID{}, settled: map[ID]taskNode{},
-		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
+		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](), parkedTasks: newOrderedSet[ID](),
 	}
-	sess.OnFail = s.report
+	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
 	return s
 }
 
@@ -172,10 +183,59 @@ func (s *Scheduler) closedErr() error {
 	return ErrHarnessClosed
 }
 
-func (s *Scheduler) report(err error) {
+func (s *Scheduler) report(err error, info *jv.Object) {
 	if s.env.Report != nil {
-		s.env.Report(err)
+		s.env.Report(err, info)
 	}
+}
+
+// restartLimit is settings.restartLimit, 5 unless the host set another.
+func (s *Scheduler) restartLimit() float64 {
+	if s.env.RestartLimit != nil {
+		return s.env.RestartLimit()
+	}
+	return defaultRestartLimit
+}
+
+// defaultRestartLimit is the default of settings.restartLimit.
+const defaultRestartLimit = 5
+
+// parked is a task cut off restartLimit times in a row; an abort mark still runs its abort handler (scheduler.ts #parked).
+func (s *Scheduler) parked(rec *jv.Object) bool {
+	return !getBool(rec, "abortRequested") && restartsOf(rec) > 0 && restartsOf(rec) >= s.restartLimit()
+}
+
+// notifyBlocked tells the host that blocked reasons may have changed without a commit.
+func (s *Scheduler) notifyBlocked() {
+	if s.env.BlockedChanged != nil {
+		s.env.BlockedChanged()
+	}
+}
+
+// reportTask is the task of a report: {id, kind, conversationId}.
+func reportTask(id ID, kind string, conversationID ID) *jv.Object {
+	return obj("id", float64(id), "kind", kind, "conversationId", float64(conversationID))
+}
+
+// aboutRecord is the report info of a failure of a stored task, with the extension that installed its current
+// definition: the code that failed is that extension's. Built-in tasks have none (scheduler.ts #aboutTask).
+func (s *Scheduler) aboutRecord(typ string, rec *jv.Object) *jv.Object {
+	kind, _ := getStr(rec, "kind")
+	info := obj("type", typ, "task", reportTask(mustInt(rec, "id"), kind, mustInt(rec, "conversationId")))
+	if task := s.env.Snapshot().Task(kind); task != nil && task.Extension != "" {
+		info.Set("extension", task.Extension)
+	}
+	return info
+}
+
+// aboutInvocation is the report info of a failure of an invocation's task: the task, and the extension that installed
+// the definition the invocation runs.
+func aboutInvocation(typ string, inv *invocation) *jv.Object {
+	info := obj("type", typ, "task", reportTask(inv.taskID, inv.kind, inv.conversationID))
+	if inv.extension != "" {
+		info.Set("extension", inv.extension)
+	}
+	return info
 }
 
 // commit runs change as a job on the Session line and calls then with its
@@ -198,11 +258,20 @@ func (s *Scheduler) commitQueued(change func(tx *Tx) error, scope TxScope, then 
 }
 
 func (s *Scheduler) commitJob(line func(func() error, func(error)), cancel *Cancel, change func(tx *Tx) error, scope TxScope, then func(error)) {
+	s.commitJobAfter(line, cancel, change, scope, nil, then)
+}
+
+// commitJobAfter is commitJob that also runs after, when the commit succeeded, as the job completes: right after the commit's
+// publication, before the line's next job.
+func (s *Scheduler) commitJobAfter(line func(func() error, func(error)), cancel *Cancel, change func(tx *Tx) error, scope TxScope, after func(), then func(error)) {
 	line(func() error {
 		if err := cancel.Err(); err != nil {
 			return err
 		}
 		_, err := s.sess.RunCommit(change, scope)
+		if err == nil && after != nil {
+			s.loop.OnComplete(after)
+		}
 		return err
 	}, then)
 }
@@ -228,7 +297,10 @@ func (s *Scheduler) scanAllTasks(tx *Tx, q TaskQuery) ([]*jv.Object, error) {
 func (s *Scheduler) Open(done func(error)) {
 	s.sess.SubscribeCommits(s.observe)
 	s.sess.SubscribeClose(s.Seal)
+	limit := s.restartLimit()
+	var parked []*jv.Object
 	s.commit(func(tx *Tx) error {
+		parked = nil
 		var scans [][]*jv.Object
 		for _, st := range liveStatuses {
 			recs, err := s.scanAllTasks(tx, TaskQuery{Status: st})
@@ -246,8 +318,13 @@ func (s *Scheduler) Open(done func(error)) {
 				state := getObj(rec, "state")
 				if taskStatus(rec) == StatusRunning {
 					cp, _ := state.Get("checkpoint")
-					if err := tx.stageTask(withState(rec, obj("status", StatusPending, "checkpoint", cp))); err != nil {
+					restarts := restartsOf(rec) + 1
+					pending := with(withState(rec, obj("status", StatusPending, "checkpoint", cp)), "restarts", restarts)
+					if err := tx.stageTask(pending); err != nil {
 						return err
+					}
+					if restarts >= limit && !getBool(rec, "abortRequested") {
+						parked = append(parked, rec)
 					}
 				}
 				if taskStatus(rec) == StatusWaiting {
@@ -260,11 +337,39 @@ func (s *Scheduler) Open(done func(error)) {
 		return nil
 	}, TxScope{}, func(err error) {
 		if err == nil {
+			for _, rec := range parked {
+				kind, _ := getStr(rec, "kind")
+				restarts := restartsOf(rec) + 1
+				s.report(errorf("Task %d (%s) was cut off %d times without progress; it is parked until retryTask()", mustInt(rec, "id"), kind, restarts), s.aboutRecord("task_parked", rec))
+			}
 			s.cascadePending = true
 			s.scheduleReconcile()
 			s.scheduleWake()
 		}
 		done(err)
+	})
+}
+
+// Retry runs a task parked by the restart limit again: it clears its restart count and enables scheduling. It does nothing
+// for a task that is not parked, and fails for an unknown one (scheduler.ts retry).
+func (s *Scheduler) Retry(id ID, cancel *Cancel, then func(error)) {
+	s.commitWith(cancel, func(tx *Tx) error {
+		current, err := tx.Task(id)
+		if err != nil {
+			return err
+		}
+		if current == nil {
+			return errorf("Task %d does not exist", id)
+		}
+		if st := taskStatus(current); st == StatusTerminal || st == StatusCompleting || !s.parked(current) {
+			return nil
+		}
+		return tx.stageTask(progressed(current))
+	}, TxScope{}, func(err error) {
+		if err == nil {
+			s.Resume()
+		}
+		then(err)
 	})
 }
 
@@ -291,6 +396,7 @@ func (s *Scheduler) Join(then func()) {
 	for _, inv := range s.invocations {
 		pending = append(pending, inv)
 	}
+
 	slices.SortFunc(pending, func(a, b *invocation) int { return int(a.taskID - b.taskID) })
 	remaining := 0
 	for _, inv := range pending {
@@ -642,6 +748,28 @@ func (s *Scheduler) Seal() {
 	}
 	s.idleWaiters, s.idleWaitKeys = map[ID][]*idleWaiter{}, nil
 }
+
+// CloseWrites is the records of the tasks the close stopped, as pending, to write back straight to Storage with nothing
+// published, as a close is not a crash: the next open counts no restart for them (scheduler.ts join through session.ts
+// writeAtClose). A live task that is running when the close ends is one this Harness reserved, since open writes every other
+// running task back as pending: its invocation was stopped by the close, or its reservation settled while the close began. It
+// reads the records as they stand now, so the write keeps what commits admitted before the seal wrote, such as an abort mark.
+func (s *Scheduler) CloseWrites() []*jv.Object {
+	var records []*jv.Object
+	for _, rec := range s.live.values() {
+		if taskStatus(rec) != StatusRunning {
+			continue
+		}
+		cp, _ := getObj(rec, "state").Get("checkpoint")
+		records = append(records, withState(rec, obj("status", StatusPending, "checkpoint", cp)))
+	}
+	slices.SortFunc(records, func(a, b *jv.Object) int { return int(mustInt(a, "id") - mustInt(b, "id")) })
+	return records
+}
+
+// WriteBack writes the records CloseWrites returned; a *NeedGate error means the host's Storage holds the commit, and the job
+// that called it runs again after the answer.
+func (s *Scheduler) WriteBack(records []*jv.Object) error { return s.sess.WriteTasks(records) }
 
 // signalInvocations aborts the signal of every running invocation, in task order (scheduler.ts join).
 func (s *Scheduler) signalInvocations() {

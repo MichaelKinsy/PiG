@@ -160,14 +160,18 @@ type HarnessOptions struct {
 	// the value, so a host arms a recovery wakeup before calls that can start work. It may call Wake and Resume, and
 	// must not block. A panic is reported, and the value is offered again at the next change.
 	OnWake func(wake Wake)
-	// OnReport receives extension failures that do not fail the calling operation. It must not panic.
-	OnReport func(err error)
+	// OnReport receives failures that do not fail the calling operation, such as a panicking hook or listener, a task
+	// that faulted, and the error that fails the Session, once. info says what happened: a host can tell a failed
+	// Session (ReportSessionFailed, often a platform reset) from a faulted task (ReportTaskFaulted) or a parked one
+	// (ReportTaskParked). A panic of its own is dropped.
+	OnReport func(err error, info durable.ReportInfo)
 }
 
 // Wake is when a Session next needs a running process (Harness.Wake). Active: some task can run now or is running, so a
 // process that dies must be woken again soon, for example by a recovery alarm. At: the earliest sleep not yet due, when
 // there is one. Neither: nothing needs a process until new work is submitted. Tasks blocked on a missing or unmigratable
-// definition, completing tasks, and waits on live tasks do not count; the work they wait for does.
+// definition, completing tasks, and waits on live tasks do not count; the work they wait for does. Active is also set while
+// a reconcile pass, such as the recovery of Open, has not landed yet: it may finalize held outcomes and mark cascades.
 type Wake struct {
 	Active bool
 	// At is the earliest sleep not yet due; nil when there is none.
@@ -186,7 +190,7 @@ const (
 	TaskInspectionBlocked    TaskInspectionKind = "blocked"
 )
 
-// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); ready (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); sleeping (until the Harness clock reaches Until); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, with Reason missing_task, task_too_old, or migration_failed and an optional Error).
+// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); ready (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); sleeping (until the Harness clock reaches Until); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, or the restart limit parked it, with Reason missing_task, task_too_old, migration_failed, or restart_limit and an optional Error).
 type TaskInspectionState struct {
 	Kind     TaskInspectionKind
 	Migrates bool
@@ -267,6 +271,9 @@ type Harness interface {
 	Submission(ctx context.Context, id durable.SubmissionId) (durable.Submission, error)
 	// AbortSubmission returns not_found for an unknown submission or one of another conversation than conversationId, when given.
 	AbortSubmission(ctx context.Context, id durable.SubmissionId, conversationId *durable.ConversationId) (durable.SubmissionAbortResult, error)
+	// RetryTask runs a task parked by settings.restartLimit again: it clears its restart count and enables scheduling. It
+	// does nothing for a task that is not parked, and fails for an unknown one.
+	RetryTask(ctx context.Context, id durable.TaskId) error
 	// AbortTask commits the abort mark, signals and joins an active run invocation, and schedules the abort invocation. A task whose definition cannot take it settles as orphaned instead. It returns marked or terminal.
 	AbortTask(ctx context.Context, id durable.TaskId) (string, error)
 	// WaitForTask returns the terminal receipt; cancelling ctx cancels only this wait.

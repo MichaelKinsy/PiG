@@ -30,6 +30,7 @@ func (h *handler) newTurnHost() *turn.Host {
 		Render:         h.renderSections,
 		Stream:         h.stream,
 		Hooks:          func(name string, conv turn.ID) int { return len(h.hookHandlers(name, conv)) },
+		HookExtension:  h.hookExtension,
 		Hook:           h.callHook,
 		FetchDeferred: func(model turn.ModelRef, handle *jv.Object, cancel *session.Cancel, then func(*jv.Object, error)) {
 			h.deferredEffect("fetch", model, handle, cancel, func(v any, err error) { then(asObject(v), err) })
@@ -92,7 +93,7 @@ func (h *handler) turnSettings() turn.Settings {
 		Compaction: history.Policy{ReserveTokens: numOf(compaction, "reserveTokens"), KeepRecentTokens: numOf(compaction, "keepRecentTokens"),
 			BackgroundTokens: numOf(compaction, "backgroundTokens")},
 		PartialIntervalMs: numOf(progress, "partialIntervalMs"), OutputIntervalMs: numOf(progress, "outputIntervalMs"),
-		Stream: objOf(s, "stream"), ToolExecution: strOf(s, "toolExecution"), Queue: h.queueModes(),
+		Stream: objOf(s, "stream"), ToolExecution: strOf(s, "toolExecution"), Queue: h.queueModes(), AfterFailedRun: h.afterFailedRun(),
 	}
 	out.RetryEnabled, _ = boolOf(retry, "enabled")
 	out.Compaction.Enabled, _ = boolOf(compaction, "enabled")
@@ -403,7 +404,7 @@ func agentOf(o *jv.Object) *turn.Agent {
 			to := asObject(t)
 			structured, _ := boolOf(to, "structuredOutput")
 			out = append(out, turn.Tool{Declaration: turn.ToolDeclaration(to), ExecutionMode: strOf(to, "executionMode"),
-				Handler: int(numOf(to, "handler")), Replay: strOf(to, "replay"), Raw: to, Limits: limitsOf(objOf(to, "outputLimits")), StructuredOutput: structured})
+				Handler: int(numOf(to, "handler")), Replay: strOf(to, "replay"), Raw: to, Limits: limitsOf(objOf(to, "outputLimits")), StructuredOutput: structured, Extension: strOf(to, "extension")})
 		}
 		return out
 	}
@@ -412,7 +413,7 @@ func agentOf(o *jv.Object) *turn.Agent {
 	for _, s := range sections {
 		so := asObject(s)
 		tag, has := boolOf(so, "tag")
-		a.Sections = append(a.Sections, turn.Section{Key: strOf(so, "key"), Tag: tag || !has, Handler: int(numOf(so, "handler"))})
+		a.Sections = append(a.Sections, turn.Section{Key: strOf(so, "key"), Tag: tag || !has, Handler: int(numOf(so, "handler")), Extension: strOf(so, "extension")})
 	}
 	hooks, _ := valueOf(o, "hooks").([]any)
 	for _, hk := range hooks {
@@ -426,6 +427,7 @@ func agentOf(o *jv.Object) *turn.Agent {
 			})
 		}
 		a.HookHandlers = append(a.HookHandlers, table)
+		a.HookExtensions = append(a.HookExtensions, strOf(asObject(hk), "extension"))
 	}
 	a.Instructions, a.Cwd = strOf(o, "instructions"), strOf(o, "cwd")
 	return a
@@ -447,7 +449,7 @@ func (h *handler) renderSections(conv, task turn.ID, agent *turn.Agent, shown *t
 				then(nil, err)
 				return
 			}
-			h.report(err)
+			h.reportFrom(task, err, session.ReportFrom{Callback: "env"})
 		}
 		shownObj := jv.NewObject()
 		for _, k := range shown.Keys() {
@@ -477,7 +479,7 @@ func (h *handler) renderSections(conv, task turn.ID, agent *turn.Agent, shown *t
 						then(nil, err)
 						return
 					}
-					h.report(err)
+					h.reportFrom(task, err, session.ReportFrom{Extension: s.Extension})
 					if old, ok := shown.Get(s.Key); ok {
 						desired.Set(s.Key, old)
 					}
@@ -626,6 +628,26 @@ func (h *handler) hookHandlers(name string, conv turn.ID) []int {
 		}
 	}
 	return out
+}
+
+// hookExtension is the name of the extension of handler index of a hook name that the conversation's agent selects, in extension
+// order (agent.ts agentHooks).
+func (h *handler) hookExtension(name string, index int, conv turn.ID) string {
+	agent := h.agents[conv]
+	if agent == nil {
+		return ""
+	}
+	seen := 0
+	for i, table := range agent.HookHandlers {
+		if _, ok := table[name]; !ok {
+			continue
+		}
+		if seen == index && i < len(agent.HookExtensions) {
+			return agent.HookExtensions[i]
+		}
+		seen++
+	}
+	return ""
 }
 
 func (h *handler) callHook(name string, index int, conv, task turn.ID, payload *jv.Object, then func(any, error)) {

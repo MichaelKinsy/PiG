@@ -99,6 +99,8 @@ func abortReasonOf(rec *jv.Object) string {
 func withAbortMark(rec *jv.Object, reason string) *jv.Object {
 	c := rec.Shallow()
 	c.Delete("abortReason")
+	// The restart count starts over: it now counts cut-offs of the abort handler.
+	c.Delete("restarts")
 	c.Set("abortRequested", true)
 	if reason != "" {
 		c.Set("abortReason", reason)
@@ -175,14 +177,29 @@ func taskStatus(task *jv.Object) string {
 }
 
 // withState returns {...record, state}; a terminal or completing state also
-// drops the task's memos (scheduler.ts withState).
+// drops the task's memos and restart count (scheduler.ts withState).
 func withState(record *jv.Object, state *jv.Object) *jv.Object {
 	c := record.Shallow()
 	if s, _ := getStr(state, "status"); s == StatusTerminal || s == StatusCompleting {
 		c.Delete("memos")
+		c.Delete("restarts")
 	}
 	c.Set("state", state)
 	return c
+}
+
+// progressed is the record without its restart count, as after a state the task committed (scheduler.ts progressed).
+func progressed(record *jv.Object) *jv.Object {
+	if !record.Has("restarts") {
+		return record
+	}
+	return without(record, "restarts")
+}
+
+// restartsOf is a task record's restart count; 0 when absent.
+func restartsOf(rec *jv.Object) float64 {
+	n, _ := getNum(rec, "restarts")
+	return n
 }
 
 // FailedError is what a call on a failed Session returns: Pi's SessionFailed, with the Storage error that failed the

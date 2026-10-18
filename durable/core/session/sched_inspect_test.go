@@ -53,7 +53,7 @@ func TestInspectDerivesStatesWithoutRunningTasks(t *testing.T) {
 		"t.old":       {Def: session.TaskDef{Name: "t.old", Version: 2}, Phase: run},
 	}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	opened := false
 	sched.Open(func(err error) {
 		if err != nil {
@@ -126,7 +126,7 @@ func TestHostMigrationAnswersLater(t *testing.T) {
 		registry := snap{"t.m": impl}
 		reports := 0
 		loop := &session.Loop{}
-		sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) { reports++ }, Now: func() float64 { return 1 },
+		sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) { reports++ }, Now: func() float64 { return 1 },
 			// The phase returns without progress, so the scheduler faults the task: nothing else to settle here.
 			SettleOutcome: func(*session.Tx, *jv.Object, *jv.Object) error { return nil }})
 		sched.Open(func(error) {})

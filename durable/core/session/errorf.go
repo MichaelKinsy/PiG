@@ -56,8 +56,3 @@ func appendArg(out []byte, arg any) []byte {
 
 // errorf is fmt.Errorf for the verbs sprintf supports.
 func errorf(format string, args ...any) error { return errors.New(sprintf(format, args...)) }
-
-// CauseError is an Error with a cause: its text is Msg and Cause names why (new Error(msg, {cause}) in Pi).
-type CauseError struct{ Msg, Cause string }
-
-func (e *CauseError) Error() string { return e.Msg }

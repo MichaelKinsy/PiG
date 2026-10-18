@@ -64,7 +64,7 @@ var noticeRows = []kindRow{
 	{"published", uint8(abi.NoticePublished), "JSON"},
 	{"api_result", uint8(abi.NoticeAPIResult), "u32 requestId, JSON"},
 	{"tx_result", uint8(abi.NoticeTxResult), "u32 txId, JSON"},
-	{"report", uint8(abi.NoticeReport), "JSON"},
+	{"report", uint8(abi.NoticeReport), "JSON {name, message, info}: a failure that does not fail the calling operation; info is HarnessOptions.onReport's ReportInfo"},
 	{"sidecar", uint8(abi.NoticeSidecar), "JSON {conversationId, rows}"},
 	{"progress_ack", uint8(abi.NoticeProgressAck), "u32 waitId, u8 outcome, JSON error when rejected"},
 	{"doc_cache", uint8(abi.NoticeDocCache), "JSON {cached, idle, attached, sweeps}: the core's document cache sizes (attached: observers' pins), whenever they change"},
@@ -150,6 +150,7 @@ var apiRows = []apiRow{
 	{"agent", "conversationId", "the resolved agent", "at once"},
 	{"sleepUntil", "taskId, until, checkpoint", "null", "once the sleep is committed; the task then holds no invocation"},
 	{"wake", "", "{active, at?}", "at once"},
+	{"retryTask", "taskId", "null", "once a parked task's restart count is cleared and scheduling is enabled; an error for an unknown task"},
 	{"usage", "", "the UsageState of the Session", "at once"},
 	{"taskGraph", "", "the TaskGraph", "at once"},
 }

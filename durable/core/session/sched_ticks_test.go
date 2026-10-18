@@ -65,7 +65,7 @@ func TestTheReconcileChargesATickForEachChainLoadItAwaits(t *testing.T) {
 	registry := snap{}
 	sched := session.NewScheduler(s, loop, session.Env{
 		Snapshot:  func() session.Snapshot { return registry },
-		Report:    func(error) {},
+		Report:    func(error, *jv.Object) {},
 		Now:       func() float64 { return 1 },
 		ReadTicks: func() int { return reads },
 	})

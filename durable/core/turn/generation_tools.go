@@ -253,7 +253,7 @@ func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error
 		if _, ok := h.ContextWindow(ref); ok {
 			h.CancelDeferred(ref, objField(cp, "handle"), rt.Signal(), func(err error) {
 				if err != nil {
-					_ = rt.Report(err)
+					_ = rt.Report(err, session.ReportFrom{Callback: "models"})
 				}
 				readUnstarted()
 			})

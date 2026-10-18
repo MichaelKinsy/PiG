@@ -181,6 +181,10 @@ func idsOf(state *jv.Object, key string) []ID {
 // applies failFast, withdraws queued inputs and finalizes completing tasks.
 func (s *Scheduler) reconcile() {
 	s.reconcileScheduled = false
+	work := s.reconcileWork()
+	if work {
+		s.reconcilingWork++
+	}
 	cascade := s.cascadePending
 	s.cascadePending = false
 	checks := slices.Clone(s.failFastChecks)
@@ -290,8 +294,18 @@ func (s *Scheduler) reconcile() {
 		if err != nil {
 			s.failSession(err)
 		}
+		if work {
+			s.reconcilingWork--
+		}
+		s.scheduleWake()
 		s.settleIdle()
 	})
+}
+
+// reconcileWork reports whether a reconcile pass would have work: a cascade to derive, held outcomes to check, or failFast
+// waits (scheduler.ts #reconcileWork).
+func (s *Scheduler) reconcileWork() bool {
+	return s.cascadePending || s.finalizeChecks.Len() > 0 || len(s.failFastChecks) > 0
 }
 
 func (s *Scheduler) anyFailed(ids []ID) (bool, error) {
@@ -384,6 +398,7 @@ func (s *Scheduler) drain() {
 func (s *Scheduler) reserve(then func([]*reservation, error)) {
 	var reservations []*reservation
 	var abandoned []ID
+	var faulted []faultedTask
 	cleanup := func() {
 		for _, r := range reservations {
 			delete(s.invocations, r.inv.taskID)
@@ -395,6 +410,7 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 	s.commit(func(tx *Tx) error {
 		cleanup()
 		abandoned = nil
+		faulted = nil
 		if !s.enabled || s.closing {
 			return nil
 		}
@@ -420,6 +436,7 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		// Every pass picks up sleeps whose time has come: a pass started by any change may be the first to run after a deadline,
 		// and the wake it schedules no longer keeps a timer for a due sleep.
 		s.wakeDue()
+		s.unparkRaised()
 		// Pi's #reserve callback awaits only #loadScopes(false) (scheduler.ts #reserve): one tick, plus the Storage reads of
 		// the chain loads and a tick for each #loadChain call it awaited (scheduler.ts:680-684).
 		ticks := 1 + awaits
@@ -444,12 +461,32 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 				s.runnable.Delete(id)
 				continue
 			}
+			// It returns when Retry clears its restart count, or at a pass after settings.restartLimit rose.
+			if s.parked(rec) {
+				s.runnable.Delete(id)
+				// Newly parked without a commit, as after a lowered limit: the graph must hear it.
+				if !s.parkedTasks.Has(id) {
+					s.loop.Defer(s.notifyBlocked)
+				}
+				s.parkedTasks.Add(id)
+				continue
+			}
 			abortMode := getBool(rec, "abortRequested")
 			// Work below an owner with cancellation intent waits for its cascade mark instead of running a phase; schedule the
 			// cascade, which may not have run yet.
 			if !abortMode && !getBool(rec, "background") && s.belowCancelled(parentOf(nodeOf(rec))) {
 				s.cascadePending = true
 				s.scheduleReconcile()
+				continue
+			}
+			// An abort handler cut off restartLimit times in a row would run forever; nothing is left to park it for.
+			if abortMode && restartsOf(rec) >= s.restartLimit() {
+				kind, _ := getStr(rec, "kind")
+				message := sprintf("Abort handler of task %d (%s) was cut off %d times", id, kind, restartsOf(rec))
+				if err := s.terminate(tx, rec, obj("status", "faulted", "error", obj("message", message, "detail", obj("reason", "restart_limit")))); err != nil {
+					return err
+				}
+				faulted = append(faulted, faultedTask{rec: rec, message: message})
 				continue
 			}
 			if snapshot == nil {
@@ -478,7 +515,7 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 			// Registered on the line, so marks and later reservations see it and close joins it; endInvocation makes it a
 			// candidate again.
 			s.runnable.Delete(id)
-			inv := s.createInvocation(rec, abortMode)
+			inv := s.createInvocation(rec, abortMode, res.task.Extension)
 			reservations = append(reservations, &reservation{inv: inv, task: res.task, snapshot: snapshot})
 		}
 		return nil
@@ -487,6 +524,11 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 			cleanup()
 			then(nil, err)
 			return
+		}
+		for _, f := range faulted {
+			info := s.aboutRecord("task_faulted", f.rec)
+			info.Set("reason", "restart_limit")
+			s.report(errors.New(f.message), info)
 		}
 		// Marked, or already marked or gone: done with them. Reserve again, now seeing the marks.
 		for _, id := range abandoned {
@@ -538,8 +580,7 @@ func (s *Scheduler) resolve(rec *jv.Object, snapshot Snapshot) resolution {
 	}
 	if task.Migrate == nil {
 		err := missingMigration(rec, task)
-		s.failedMigrations[mustInt(rec, "id")] = failedMigration{task, err}
-		s.report(err)
+		s.migrationFailed(rec, task, err)
 		return resolution{blocked: "migration_failed"}
 	}
 	input, _ := rec.Get("input")
@@ -547,8 +588,7 @@ func (s *Scheduler) resolve(rec *jv.Object, snapshot Snapshot) resolution {
 	cp, _ := state.Get("checkpoint")
 	newInput, newCP, err := task.Migrate(input, cp, int(mustInt(rec, "version")))
 	if err != nil {
-		s.failedMigrations[mustInt(rec, "id")] = failedMigration{task, err}
-		s.report(err)
+		s.migrationFailed(rec, task, err)
 		return resolution{blocked: "migration_failed"}
 	}
 	nextState := with(state, "checkpoint", jv.Clone(newCP))
@@ -576,13 +616,26 @@ func (s *Scheduler) resolveHostMigration(rec *jv.Object, task *TaskImpl) resolut
 	}
 	delete(s.migrations, id)
 	if m.err != nil {
-		s.failedMigrations[id] = failedMigration{task, m.err}
-		s.report(m.err)
+		s.migrationFailed(rec, task, m.err)
 		return resolution{blocked: "migration_failed"}
 	}
 	nextState := with(getObj(rec, "state"), "checkpoint", jv.Clone(m.cp))
 	migrated := with(rec, "version", float64(task.Def.Version), "input", jv.Clone(m.input), "state", nextState)
 	return resolution{task: task, record: migrated}
+}
+
+// migrationFailed records a failed migration: the task is blocked now without a commit, so the graph and the host's wake must
+// hear it, and the failure is reported with the extension that installed the definition (scheduler.ts #resolve).
+func (s *Scheduler) migrationFailed(rec *jv.Object, task *TaskImpl, err error) {
+	s.failedMigrations[mustInt(rec, "id")] = failedMigration{task, err}
+	s.loop.Defer(s.notifyBlocked)
+	s.scheduleWake()
+	info := s.aboutRecord("migration_failed", rec)
+	info.Delete("extension")
+	if task.Extension != "" {
+		info.Set("extension", task.Extension)
+	}
+	s.report(err, info)
 }
 
 func (s *Scheduler) fit(rec *jv.Object, task *TaskImpl) (*TaskImpl, string, bool) {
@@ -608,8 +661,36 @@ func canReserve(task *TaskImpl, rec *jv.Object) bool {
 	return task.Def.Version == v || (task.Def.Version > v && (task.Migrate != nil || task.MigrateAsync != nil))
 }
 
-func (s *Scheduler) createInvocation(rec *jv.Object, abortMode bool) *invocation {
-	inv := &invocation{taskID: mustInt(rec, "id"), conversationID: mustInt(rec, "conversationId"), abortMode: abortMode, signal: &Cancel{}}
+// faultedTask is an abort handler that was cut off restartLimit times: its task ended faulted in the pass.
+type faultedTask struct {
+	rec     *jv.Object
+	message string
+}
+
+// unparkRaised makes the parked tasks that a raised settings.restartLimit no longer parks candidates again, and tells the
+// graph (scheduler.ts #unparkRaised).
+func (s *Scheduler) unparkRaised() {
+	unparked := false
+	for _, id := range s.parkedTasks.Values() {
+		rec, live := s.live.get(id)
+		if live && s.parked(rec) {
+			continue
+		}
+		s.parkedTasks.Delete(id)
+		if !live {
+			continue
+		}
+		s.runnable.Add(id)
+		unparked = true
+	}
+	if unparked {
+		s.loop.Defer(s.notifyBlocked)
+	}
+}
+
+func (s *Scheduler) createInvocation(rec *jv.Object, abortMode bool, extension string) *invocation {
+	kind, _ := getStr(rec, "kind")
+	inv := &invocation{taskID: mustInt(rec, "id"), kind: kind, extension: extension, conversationID: mustInt(rec, "conversationId"), abortMode: abortMode, signal: &Cancel{}}
 	s.invocations[inv.taskID] = inv
 	return inv
 }

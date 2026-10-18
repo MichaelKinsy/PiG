@@ -109,7 +109,7 @@ func openScripted(t *testing.T) (*session.SessionImpl, *scriptedStorage, *report
 	t.Helper()
 	scripted := newScripted()
 	reports := &reportLog{}
-	kernel := session.NewSessionImpl(scripted, session.Hooks{Report: reports.add}, nil, nil)
+	kernel := session.NewSessionImpl(scripted, session.Hooks{Report: func(err error, _ durable.ReportInfo) { reports.add(err) }}, nil, nil)
 	return kernel, scripted, reports
 }
 

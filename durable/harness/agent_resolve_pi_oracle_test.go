@@ -234,7 +234,7 @@ func TestResolveAgentMatchesPi(t *testing.T) {
 			}
 		}
 		reports := []string{}
-		agent := ResolveAgent(state, agentSnapshot{extensions}, settings, func(err error) { reports = append(reports, err.Error()) })
+		agent := ResolveAgent(state, agentSnapshot{extensions}, settings, func(err error, _ string) { reports = append(reports, err.Error()) })
 		reported += len(reports)
 		extensionList := []string{}
 		for _, extension := range agent.Extensions {

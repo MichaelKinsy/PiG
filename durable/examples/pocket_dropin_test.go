@@ -83,7 +83,7 @@ func TestPocketOpenCreatesDocumentsAndSurvivesReopen(t *testing.T) {
 				_, err := durable.TxDoc[pocketChat](tx, pocketChatDoc, conversation.Id)
 				return err
 			},
-			OnReport: func(err error) { reports = append(reports, err) },
+			OnReport: func(err error, _ durable.ReportInfo) { reports = append(reports, err) },
 		})
 		if err != nil {
 			t.Fatal(err)

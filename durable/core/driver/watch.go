@@ -354,7 +354,7 @@ func (c *conversation) ViewState(ctx context.Context) (durable.AttachedReplicate
 	if err != nil || m == nil {
 		return nil, err
 	}
-	return stateOf(m, c.s.report)
+	return stateOf(m, c.s.reportListener)
 }
 
 // TaskGraph is the task graph as a disposable read-only Chord state (task-graph.ts State).
@@ -363,7 +363,7 @@ func (s *coreSession) TaskGraph(ctx context.Context) (durable.AttachedReplicated
 	if err != nil || m == nil {
 		return nil, err
 	}
-	return stateOf(m, s.report)
+	return stateOf(m, s.reportListener)
 }
 
 // WatchTaskGraph is a serialized exact-frame watch of the task graph.
@@ -387,5 +387,5 @@ func (s *coreSession) DocumentStateErased(ctx context.Context, token durable.Any
 	if err != nil || m == nil {
 		return nil, err
 	}
-	return stateOf(m, s.report)
+	return stateOf(m, s.reportListener)
 }

@@ -48,7 +48,7 @@ func TestWaitForIdleIgnoresWorkBelowABackgroundTask(t *testing.T) {
 	}
 	registry := snap{"t.node": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) { running++ }}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)

@@ -43,7 +43,7 @@ func (h *handler) loadRegistry(snapshot *jv.Object) {
 						keys[name] = known
 						continue
 					}
-					impl := &session.TaskImpl{Def: session.TaskDef{Name: name, Version: int(numOf(def, "version"))}}
+					impl := &session.TaskImpl{Def: session.TaskDef{Name: name, Version: int(numOf(def, "version"))}, Extension: strOf(extension, "name")}
 					// The host registration this definition is: an invocation keeps running under it after a reload
 					// replaces or removes the definition (scheduler.ts: the phase's task is fixed for the invocation).
 					registration, _ := def.Get("handler")
@@ -129,6 +129,9 @@ func (h *handler) runPhase(rt *session.Runtime, task *jv.Object, registration an
 	}
 	payload.Set("record", task)
 	payload.Set("invocation", float64(taskID))
+	if ext := rt.Extension(); ext != "" {
+		payload.Set("extension", ext)
+	}
 	if registration != nil {
 		payload.Set("handler", registration)
 	}

@@ -975,7 +975,12 @@ func finalResult(ctx context.Context, runtime toolRuntime, input ToolTaskInput, 
 			harness = append(harness, toolDiagnostic("invalid_structured_output", broken))
 		} else {
 			// The model never sees structured output, so its call stands; the host learns of the broken tool.
-			runtime.Report(errors.New(broken))
+			// Only names the extension: a failed resolution leaves the report without the name.
+			var extension string
+			if agent, err := runtime.Agent(ctx); err == nil {
+				extension = ToolExtension(agent, tool.Name)
+			}
+			runtime.Report(errors.New(broken), durable.ReportFrom{Type: durable.ReportFromExtension, Extension: extension})
 		}
 	}
 	// Programs get the tool's own value: without a schema, its output. The model reads only Output, so model-issued calls

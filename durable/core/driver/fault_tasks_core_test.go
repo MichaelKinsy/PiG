@@ -100,8 +100,12 @@ func TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocatio
 	if marked := <-aborting; marked != "marked" {
 		t.Fatalf("AbortTask = %q, want marked", marked)
 	}
-	if got := store.count(); got != commits {
-		t.Fatalf("commits after the mark = %d, want %d: closing wrote an outcome", got, commits)
+	// harness-tasks.test.ts:1148: no outcome; close writes only the stopped task back as pending, so a reopen counts no restart.
+	if got := store.count(); got != commits+1 {
+		t.Fatalf("commits after the mark = %d, want %d: closing writes the stopped task back as pending, and no outcome", got, commits+1)
+	}
+	if writes := store.lastCommitTaskWrites(); len(writes) != 1 || writes[0].id != id || !writes[0].abortRequested || writes[0].status != "pending" {
+		t.Fatalf("last commit's task writes %+v, want the abort-marked task %d pending", writes, id)
 	}
 	mu.Lock()
 	if !reflect.DeepEqual(phases, []string{"one"}) {
@@ -169,7 +173,8 @@ func TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueu
 	case <-time.After(15 * time.Second):
 		t.Fatal("Close never returned")
 	}
-	if got, want := statuses(store.taskWrites(id)), []string{"pending", "running"}; !reflect.DeepEqual(got, want) {
+	// harness-tasks.test.ts:1222: created, reserved, and written back as pending by close: no fault.
+	if got, want := statuses(store.taskWrites(id)), []string{"pending", "running", "pending"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("task writes %v, want %v: close wrote a fault", got, want)
 	}
 }
@@ -207,9 +212,14 @@ func TestCoreFaultStartsNoAbortHandlerWhoseReservationSettlesWhileClosing(t *tes
 	if ran.Load() {
 		t.Fatal("the abort handler started while closing")
 	}
+	// harness-tasks.test.ts:1250: the reservation landed; close wrote the task back as pending.
+	reserved := store.commitTaskWrites(1)
+	if len(reserved) != 1 || reserved[0].id != id || !reserved[0].abortRequested || reserved[0].status != "running" {
+		t.Fatalf("reservation commit's task writes %+v, want one running write of task %d with the abort mark", reserved, id)
+	}
 	writes := store.lastCommitTaskWrites()
-	if len(writes) != 1 || writes[0].id != id || !writes[0].abortRequested || writes[0].status != "running" {
-		t.Fatalf("last commit's task writes %+v, want one running write of task %d with the abort mark", writes, id)
+	if len(writes) != 1 || writes[0].id != id || !writes[0].abortRequested || writes[0].status != "pending" {
+		t.Fatalf("last commit's task writes %+v, want one pending write of task %d with the abort mark", writes, id)
 	}
 }
 
@@ -227,9 +237,14 @@ func TestCoreFaultJoinsAReservationThatSettlesWhileClosingWithoutStartingItsHand
 	if ran.Load() {
 		t.Fatal("the handler started while closing")
 	}
+	// harness-tasks.test.ts:1355: the reservation landed; close wrote the task back as pending.
+	reserved := store.commitTaskWrites(1)
+	if len(reserved) != 1 || reserved[0].id != id || reserved[0].status != "running" {
+		t.Fatalf("reservation commit's task writes %+v, want one running write of task %d", reserved, id)
+	}
 	writes := store.lastCommitTaskWrites()
-	if len(writes) != 1 || writes[0].id != id || writes[0].status != "running" {
-		t.Fatalf("last commit's task writes %+v, want one running write of task %d", writes, id)
+	if len(writes) != 1 || writes[0].id != id || writes[0].status != "pending" {
+		t.Fatalf("last commit's task writes %+v, want one pending write of task %d", writes, id)
 	}
 }
 
@@ -452,7 +467,8 @@ func TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt(t *testi
 	if err := awaitChan(t, "close", closing); err != nil {
 		t.Fatal(err)
 	}
-	if writes := store.taskWrites(id); len(writes) != 2 {
-		t.Fatalf("task writes %+v, want 2", writes)
+	// harness-tasks.test.ts:1288: created, reserved, and written back as pending by close; the queued outcome never landed.
+	if got, want := statuses(store.taskWrites(id)), []string{"pending", "running", "pending"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("task writes %v, want %v", got, want)
 	}
 }

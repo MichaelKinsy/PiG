@@ -20,7 +20,7 @@ func TestCoreKeepsWorkingWhenOnReportThrowsAndFallsBackToTheWallClock(t *testing
 	quick := quickTask("test.quick")
 	h, root := openTasksWith(t, harness.HarnessOptions{
 		Now: func() float64 { panic(errors.New("clock broke")) },
-		OnReport: func(error) {
+		OnReport: func(error, durable.ReportInfo) {
 			mu.Lock()
 			reported++
 			mu.Unlock()
@@ -49,7 +49,7 @@ func TestCoreKeepsWorkingWhenOnReportThrowsAndFallsBackToTheWallClock(t *testing
 func TestCoreDropsAThrowingOnReportForAFailingListener(t *testing.T) {
 	// safeReport: onReport is the last place an error goes, so its own throw is dropped.
 	reported := make(chan error, 4)
-	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(err error) {
+	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(err error, _ durable.ReportInfo) {
 		reported <- err
 		panic(errors.New("report broke"))
 	}})
@@ -74,7 +74,7 @@ func TestCoreReportsAThrowingCommitOrCloseListenerAndRunsTheOthers(t *testing.T)
 	var mu sync.Mutex
 	var reports []string
 	var seen []string
-	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(err error) {
+	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(err error, _ durable.ReportInfo) {
 		mu.Lock()
 		reports = append(reports, err.Error())
 		mu.Unlock()

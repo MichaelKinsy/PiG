@@ -708,7 +708,8 @@ func (r *toolRun) finalResult(call *jv.Object, tool *Tool, result *jv.Object, re
 					harness = append(harness, diagnostic("error", "invalid_structured_output", broken))
 				} else {
 					// The model never sees structured output, so its call stands; the host learns of the broken tool.
-					_ = r.rt.Report(errors.New(broken))
+					// Only names the extension: a failed resolution leaves the report without the name.
+					_ = r.rt.Report(errors.New(broken), session.ReportFrom{Extension: tool.Extension})
 				}
 			}
 			// Programs get the tool's own value: without a schema, its output. The model reads only content, so model-issued calls

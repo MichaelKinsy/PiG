@@ -206,13 +206,12 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		return err
 	}
 	shown := ReplaySections(view.Messages)
-	report := func(err error) { runtime.Report(err) }
 	environment, err := runtime.Env(ctx)
 	if err != nil {
 		if ctx.Err() != nil {
 			return err
 		}
-		report(err)
+		runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromHost, Callback: durable.HostCallbackEnv})
 		environment = nil
 	}
 	shownMap := map[string]string{}
@@ -220,7 +219,9 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		shownMap[key], _ = shown.Get(key)
 	}
 	input := durable.PromptInput{ConversationId: conversationId, Agent: agent, Env: environment, Shown: shownMap, Read: runtime}
-	desired, err := RenderSections(ctx, agent.Sections, input, shown, report)
+	desired, err := RenderSections(ctx, agent.Sections, input, shown, func(err error, section *durable.PromptSection) {
+		runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromExtension, Extension: SectionExtension(agent, section.Key)})
+	})
 	if err != nil {
 		return err
 	}
@@ -439,7 +440,7 @@ func generationAbortHandler(ctx context.Context, task durable.RunningTask[Genera
 		if model := runtime.Models().GetModel(checkpoint.Model.Provider, checkpoint.Model.ModelId); model != nil {
 			signal := runtime.Signal()
 			if err := runtime.Models().CancelDeferred(signal, model, *checkpoint.Handle, ai.DeferredCancelOptions{Signal: signal}); err != nil {
-				runtime.Report(err)
+				runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromHost, Callback: durable.HostCallbackModels})
 			}
 		}
 	}
@@ -547,15 +548,62 @@ func thresholdCompaction(view durable.ContextView, planned []ai.Message, context
 // failGenerationModelError settles the run's inputs unanswered with model_error and fails with text.
 func failGenerationModelError(ctx context.Context, runtime generationRuntime, text string) error {
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		failure, err := prepareFailure(tx, runtime)
+		if err != nil {
+			return nil, err
+		}
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 		if err != nil {
 			return nil, err
 		}
-		if err := EndRun(tx, live, runtime.TaskId(), durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: modelErrorReason, Detail: text}); err != nil {
+		if err := endFailedRun(tx, runtime, live, failure, durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: modelErrorReason, Detail: text}); err != nil {
 			return nil, err
 		}
 		return failedState[GenerationCheckpoint, GenerationResult](text, modelErrorReason), nil
 	})
+}
+
+// failure is what a failed run's end needs from the table, read before the commit's first table write.
+type failure struct {
+	policy   durable.AfterFailedRun
+	boundary *Boundary
+}
+
+// prepareFailure reads the boundary a failed run's end may apply, only under the continue policy (generation.ts
+// prepareFailure).
+func prepareFailure(tx durable.Tx, runtime generationRuntime) (failure, error) {
+	policy := runtime.Settings().AfterFailedRun
+	if policy != durable.AfterFailedRunContinue {
+		return failure{policy: policy}, nil
+	}
+	boundary, err := PrepareBoundary(tx, runtime.ConversationId(), QueueModesOf(runtime.Settings()))
+	return failure{policy: policy, boundary: boundary}, err
+}
+
+// endFailedRun ends a failed run, settling its inputs with settlement, and does with the inputs queued behind it what
+// settings.afterFailedRun says (spec section 6): keep them, start the next run with them, or withdraw them (generation.ts
+// endFailedRun).
+func endFailedRun(tx durable.Tx, runtime generationRuntime, live *delta.Object, failed failure, settlement durable.SubmissionSettlement) error {
+	conversationId := runtime.ConversationId()
+	if err := EndRun(tx, live, runtime.TaskId(), settlement); err != nil {
+		return err
+	}
+	if failed.policy == durable.AfterFailedRunWithdraw {
+		if err := WithdrawQueuedInputsFor(tx, conversationId, "run_failed"); err != nil {
+			return err
+		}
+	}
+	if failed.boundary == nil {
+		return nil
+	}
+	placed, err := ApplyBoundary(tx, failed.boundary, BoundaryFinal, runtime.Now())
+	if err != nil {
+		return err
+	}
+	if len(placed.Users) > 0 {
+		return StartRun(tx, conversationId, live, placed.Users)
+	}
+	return nil
 }
 
 // noModelMessage is the failure text when a model is unset or unknown.
@@ -570,11 +618,15 @@ func noModelMessage(ref *durable.ModelRef) string {
 func failGenerationNoModel(ctx context.Context, runtime generationRuntime, ref *durable.ModelRef) error {
 	message := noModelMessage(ref)
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		failed, err := prepareFailure(tx, runtime)
+		if err != nil {
+			return nil, err
+		}
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 		if err != nil {
 			return nil, err
 		}
-		if err := EndRun(tx, live, runtime.TaskId(), durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: noModelReason}); err != nil {
+		if err := endFailedRun(tx, runtime, live, failed, durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: noModelReason}); err != nil {
 			return nil, err
 		}
 		return failedState[GenerationCheckpoint, GenerationResult](message, noModelReason), nil
@@ -834,6 +886,14 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 		until = runtime.Now() + float64(ai.RetryDelayMs(ai.RetryPolicy{BaseDelayMs: policy.BaseDelayMs, MaxAgentDelayMs: policy.MaxAgentDelayMs}, attempt))
 	}
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		// Read before the first table write; only a failure uses it.
+		var failed failure
+		if !retry {
+			var err error
+			if failed, err = prepareFailure(tx, runtime); err != nil {
+				return nil, err
+			}
+		}
 		live, err := docDraft(tx, LiveDoc, conversationId)
 		if err != nil {
 			return nil, err
@@ -852,7 +912,7 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 		if text == "" {
 			text = fmt.Sprintf("Model response ended with stop reason %s", message.StopReason)
 		}
-		if err := EndRun(tx, live, runtime.TaskId(), durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: modelErrorReason, Detail: text}); err != nil {
+		if err := endFailedRun(tx, runtime, live, failed, durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: modelErrorReason, Detail: text}); err != nil {
 			return nil, err
 		}
 		return failedState[GenerationCheckpoint, GenerationResult](text, modelErrorReason), nil

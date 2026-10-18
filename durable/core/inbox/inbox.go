@@ -273,6 +273,12 @@ func RemoveItem(tx *session.Tx, conversationID, id session.ID) error {
 // WithdrawQueued is withdrawQueuedInputs, used by Conversation.abort() and abort cascades: each queued input settles
 // unanswered with reason aborted and leaves the inbox; queued writes stay for later placement.
 func WithdrawQueued(tx *session.Tx, conversationID session.ID) error {
+	return WithdrawQueuedFor(tx, conversationID, "aborted")
+}
+
+// WithdrawQueuedFor is withdrawQueuedInputs with a reason: each queued input settles unanswered with reason and leaves the
+// inbox; queued writes stay for later placement.
+func WithdrawQueuedFor(tx *session.Tx, conversationID session.ID, reason string) error {
 	inbox, err := tx.Doc(Def, session.DocArgs{Owner: conversationID})
 	if err != nil {
 		return err
@@ -283,7 +289,7 @@ func WithdrawQueued(tx *session.Tx, conversationID session.ID) error {
 		if itemMode(item) == "write" {
 			continue
 		}
-		if err := tx.SettleSubmission(itemID(item), Unanswered("aborted")); err != nil {
+		if err := tx.SettleSubmission(itemID(item), Unanswered(reason)); err != nil {
 			return err
 		}
 		if _, err := items.Splice(i, 1); err != nil {

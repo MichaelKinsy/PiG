@@ -320,8 +320,12 @@ func TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsCl
 	var reportsMu sync.Mutex
 	var reports []string
 	h, root := openTasksWith(t, harness.HarnessOptions{
-		Now:      func() float64 { return 1234 },
-		OnReport: func(err error) { reportsMu.Lock(); reports = append(reports, err.Error()); reportsMu.Unlock() },
+		Now: func() float64 { return 1234 },
+		OnReport: func(err error, _ durable.ReportInfo) {
+			reportsMu.Lock()
+			reports = append(reports, err.Error())
+			reportsMu.Unlock()
+		},
 	}, reader.Erased())
 	for _, text := range []string{"one", "two"} {
 		if _, err := root.Commit(t.Context(), func(tx durable.Tx) (any, error) {

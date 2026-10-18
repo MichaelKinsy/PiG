@@ -32,7 +32,7 @@ func ReplaySections(messages []ai.Message) *OrderedMap[string] {
 }
 
 // RenderSections renders the agent's sections in order. A nil text omits a section; tagged text is wrapped as `<key>\n...\n</key>`. A section that fails keeps its shown text, if any, and is reported; errors after ctx is cancelled propagate.
-func RenderSections(ctx context.Context, sections []*durable.PromptSection, input durable.PromptInput, shown *OrderedMap[string], report func(error)) (*OrderedMap[string], error) {
+func RenderSections(ctx context.Context, sections []*durable.PromptSection, input durable.PromptInput, shown *OrderedMap[string], report func(err error, section *durable.PromptSection)) (*OrderedMap[string], error) {
 	desired := NewOrderedMap[string]()
 	for _, section := range sections {
 		text, err := section.Render(ctx, input)
@@ -40,7 +40,7 @@ func RenderSections(ctx context.Context, sections []*durable.PromptSection, inpu
 			if ctx.Err() != nil {
 				return nil, err
 			}
-			report(err)
+			report(err, section)
 			if kept, ok := shown.Get(section.Key); ok {
 				desired.Set(section.Key, kept)
 			}

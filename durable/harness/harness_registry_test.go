@@ -74,7 +74,7 @@ func text(value string) func(context.Context, durable.PromptInput) (*string, err
 }
 
 func resolveWith(state *AgentState, snapshot durable.RegistrySnapshot, settings *HarnessSettings, reports *[]error) durable.Agent {
-	return ResolveAgent(state, snapshot, ResolveSettings(settings), func(err error) {
+	return ResolveAgent(state, snapshot, ResolveSettings(settings), func(err error, _ string) {
 		if reports != nil {
 			*reports = append(*reports, err)
 		}
@@ -430,7 +430,10 @@ func TestAgentResolution(t *testing.T) {
 			new(durable.Extension{Name: "a", Hooks: []durable.HookRegistration{Hook(ToolTask, first), Hook(GenerationTask, onYield)}}),
 			new(durable.Extension{Name: "b", Hooks: []durable.HookRegistration{Hook(ToolTask, second)}}),
 		)
-		expectHooks := func(got []any, want ...any) {
+		// harness-registry.test.ts:288: agentHooks lists each handler table with the name of its extension.
+		a := func(handlers any) HookHandlers { return HookHandlers{Extension: "a", Handlers: handlers} }
+		b := func(handlers any) HookHandlers { return HookHandlers{Extension: "b", Handlers: handlers} }
+		expectHooks := func(got []HookHandlers, want ...HookHandlers) {
 			t.Helper()
 			if len(got) != len(want) {
 				t.Fatalf("hooks %d, want %d", len(got), len(want))
@@ -441,9 +444,9 @@ func TestAgentResolution(t *testing.T) {
 				}
 			}
 		}
-		expectHooks(AgentHooks(resolveWith(nil, local.Snapshot(), nil, nil), "pi.tool"), first, second)
+		expectHooks(AgentHooks(resolveWith(nil, local.Snapshot(), nil, nil), "pi.tool"), a(first), b(second))
 		ba := &AgentState{Extensions: &ExtensionSelection{Exact: true, Names: []string{"b", "a"}}}
-		expectHooks(AgentHooks(resolveWith(ba, local.Snapshot(), nil, nil), "pi.tool"), second, first)
+		expectHooks(AgentHooks(resolveWith(ba, local.Snapshot(), nil, nil), "pi.tool"), b(second), a(first))
 		onlyB := &AgentState{Extensions: &ExtensionSelection{Exact: true, Names: []string{"b"}}}
 		expectHooks(AgentHooks(resolveWith(onlyB, local.Snapshot(), nil, nil), "pi.generation"))
 

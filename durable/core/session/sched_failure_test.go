@@ -54,7 +54,7 @@ func TestAFailedReservationCommitFailsTheSession(t *testing.T) {
 	registry := snap{"t.once": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) { ran++ }}}
 	var reports []error
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(err error) { reports = append(reports, err) }, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(err error, _ *jv.Object) { reports = append(reports, err) }, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -105,7 +105,7 @@ func TestAFailedChainLoadFailsTheSession(t *testing.T) {
 	registry := snap{"t.once": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) {}}}
 	var reports []error
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(err error) { reports = append(reports, err) }, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(err error, _ *jv.Object) { reports = append(reports, err) }, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -143,7 +143,7 @@ func TestAFailedSessionRejectsTheSchedulersWaitsWithSessionFailed(t *testing.T) 
 	}
 	registry := snap{"t.once": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) {}}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -205,7 +205,7 @@ func TestAbortOfARunThatIgnoresItsSignalEndsWithSessionFailedWhenTheSessionFails
 	started := false
 	registry := snap{"t.once": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) { started = true }}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -262,7 +262,7 @@ func TestSealSignalsInvocationsInAMicrotaskAfterTheCloseListenersAheadOfWaitReac
 	var rt *session.Runtime
 	registry := snap{"t.once": {Def: *def, Phase: func(r *session.Runtime, _ *jv.Object, _ func(error)) { rt = r }}}
 	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }})
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)

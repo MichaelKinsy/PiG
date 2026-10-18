@@ -88,14 +88,14 @@ for (const [key, t] of Object.entries(scenario.tasks ?? {})) {
 let installed = new Map(Object.entries(scenario.initialRegistry ?? Object.keys(defs)).map(([, k]) => [defs[k].definition.name, defs[k]]));
 const listeners = new Set();
 const registry = {
-	snapshot: () => ({ task: (name) => installed.get(name) }),
+	snapshot: () => ({ task: (name) => installed.get(name), installed: () => [] }),
 	subscribe: (l) => { listeners.add(l); return () => listeners.delete(l); },
 };
 
 const scheduler = new TaskScheduler({
 	session, storage, registry, models: {},
 	agent: async () => ({}), settings: () => ({ contextRetentionMs: 0 }), env: async () => undefined,
-	now, report: (e) => log.push({ t: "report", message: e.message }),
+	now, writeAtClose: async () => {}, report: (e) => log.push({ t: "report", message: e.message }),
 	settleOutcome: async (tx, record, outcome) => { log.push({ t: "settleOutcome", task: record.id, status: outcome.status }); },
 	withdrawInputs: async (tx, id) => { log.push({ t: "withdraw", conversation: id }); },
 	conversation: async () => undefined, context: {},

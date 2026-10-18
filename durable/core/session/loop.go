@@ -62,6 +62,9 @@ type Loop struct {
 	gated   *job           // a line job whose commit waits for the host's Storage: it holds the line, while other items keep running
 	// Method values made once: each captures only the loop, and a method value allocates every time it is taken.
 	runJobFn, completeFn, releaseFn, tailFn func()
+	// after holds what the running job asked to run at its completion, right after its publication and before the line's
+	// next job: the code a caller runs on resuming from `await commitWith(...)`, which follows the commit's publication.
+	after []func()
 }
 
 type job struct {
@@ -80,6 +83,11 @@ type job struct {
 //
 // A NextTick asked in the step whose Tail chain just started rides that chain: both resume after the same one hop, the tail's
 // reaction (the line's next job) before this one, so a single hops chain carries both.
+// OnComplete runs fn when the running line job completes after a successful commit: right after its publication, ahead of the
+// line's next job, as the code that resumes after the awaited commit does. A job that runs again (a *NeedRead or *NeedGate) drops
+// what it asked for.
+func (l *Loop) OnComplete(fn func()) { l.after = append(l.after, fn) }
+
 func (l *Loop) NextTick(fn func()) {
 	if l.tailFresh {
 		l.afterTail = append(l.afterTail, fn)
@@ -264,6 +272,7 @@ func (l *Loop) runJob() {
 		sess.holdPubs, sess.inJob = true, true
 	}
 	l.Reading = j.read
+	l.after = l.after[:0]
 	err := j.run()
 	var pubs []*Publication
 	if sess != nil {
@@ -274,10 +283,12 @@ func (l *Loop) runJob() {
 		// Nothing runs on the line until the host answers; microtasks outside the line continue, as they do in Pi while a
 		// job awaits Storage.commit.
 		l.gated = j
+		l.after = l.after[:0]
 		return
 	}
 	if need, ok := IsNeedRead(err); ok {
 		l.parked, l.need = j, need
+		l.after = l.after[:0]
 		return
 	}
 	l.pubs = pubs
@@ -308,6 +319,13 @@ func (l *Loop) complete() {
 	j, err := l.ending, l.endErr
 	l.holding = false
 	l.Publish()
+	if err == nil {
+		after := l.after
+		l.after = nil
+		for _, fn := range after {
+			fn()
+		}
+	}
 	l.ending, l.endErr = nil, nil
 	if j.done != nil && !j.settled {
 		l.Defer(func() { j.done(err) })

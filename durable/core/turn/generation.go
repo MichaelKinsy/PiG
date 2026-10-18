@@ -116,6 +116,8 @@ type run struct {
 	// phase) resolves the agent before it counts handlers, and a later runtime.agent() of the phase reuses the resolution.
 	agentSeen  bool
 	phaseAgent *Agent
+	// hookIndex is the index of the hook handler eachHookRaw is calling, which names the extension of a failure.
+	hookIndex int
 }
 
 func (g *Generation) newRun(rt *session.Runtime, done func(error)) *run {
@@ -211,11 +213,15 @@ func modelErrorOutcome(text string) *jv.Object {
 // failModelError settles the run's inputs unanswered with model_error and fails with text.
 func (r *run) failModelError(text string) {
 	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		failed, err := r.prepareFailure(tx)
+		if err != nil {
+			return nil, err
+		}
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
 		}
-		if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
+		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
 			return nil, err
 		}
 		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
@@ -229,11 +235,15 @@ func (r *run) failNoModel(ref *ModelRef) {
 		message = "Model " + ref.Provider + "/" + ref.ModelID + " is not available"
 	}
 	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		failed, err := r.prepareFailure(tx)
+		if err != nil {
+			return nil, err
+		}
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
 		}
-		if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "unanswered", "reason", "no_model")); err != nil {
+		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "no_model")); err != nil {
 			return nil, err
 		}
 		return jobj("status", "terminal", "outcome", jobj("status", "failed", "error", jobj("message", message, "detail", jobj("reason", "no_model")))), nil

@@ -9,7 +9,7 @@ import (
 
 type openHarnessOptions struct {
 	registry Registry
-	onReport func(error)
+	onReport func(error, durable.ReportInfo)
 }
 
 // openHarness opens a Harness with a fresh registry holding the named tools (harness-support.ts:33-48).

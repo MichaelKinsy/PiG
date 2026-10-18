@@ -42,9 +42,9 @@ type Hooks struct {
 	ConversationCreated func(tx *Transaction, record durable.ConversationRecord) error
 	// BeforeClose runs after close seals admission and before the line closes Storage.
 	BeforeClose func()
-	// Report receives the Session's failure and the errors of listeners, which never fail what ran them. A plain
-	// Session drops them.
-	Report func(err error)
+	// Report receives the Session's failure and the errors of listeners, which never fail what ran them; info says
+	// which. A plain Session drops them.
+	Report func(err error, info durable.ReportInfo)
 	// SetTimer arms the timers that evict idle documents (HarnessOptions.SetTimer); nil selects Go timers.
 	SetTimer durable.SetTimer
 }
@@ -139,7 +139,9 @@ func NewSessionImpl(storage durable.Storage, hooks Hooks, now func() float64, do
 		now = func() float64 { return float64(time.Now().UnixMilli()) }
 	}
 	session := &SessionImpl{hooks: hooks, scheduler: newPending(), documents: map[string]*LoadedDocument{}, cache: newDocumentCache(), now: now, retentionSource: documentRetentionMs, failed: make(chan struct{}), closed: make(chan struct{})}
-	session.timers = durable.HostTimers(hooks.SetTimer, func(err error) { session.report(err) })
+	session.timers = durable.HostTimers(hooks.SetTimer, func(err error) {
+		session.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+	})
 	session.storage = newGuardedStorage(storage, session)
 	session.host = &transactionHost{
 		storage: session.storage,
@@ -281,14 +283,23 @@ func (session *SessionImpl) End() durable.SessionEnd {
 	return session.end
 }
 
-// Report is session.ts report: it hands a non-fatal failure, such as the error of a state or watch listener, to the
-// host; a plain Session drops it.
-func (session *SessionImpl) Report(err error) { session.report(err) }
+// listenerInfo is the default source of a report: a listener, which never fails what ran it (session.ts LISTENER).
+var listenerInfo = durable.ReportInfo{Type: durable.ReportListenerError}
+
+// Report is session.ts report with its default info: it hands a non-fatal failure, such as the error of a state or
+// watch listener, to the host; a plain Session drops it.
+func (session *SessionImpl) Report(err error) { session.report(err, listenerInfo) }
+
+// ReportAs is session.ts report with info: it hands a non-fatal failure to the host; a plain Session drops it.
+func (session *SessionImpl) ReportAs(err error, info durable.ReportInfo) { session.report(err, info) }
+
+// reportListener hands the error of a listener to the host.
+func (session *SessionImpl) reportListener(err error) { session.report(err, listenerInfo) }
 
 // report hands the Session's failure, or the error of a listener, to the host; a plain Session drops it.
-func (session *SessionImpl) report(err error) {
+func (session *SessionImpl) report(err error, info durable.ReportInfo) {
 	if session.hooks.Report != nil {
-		session.hooks.Report(err)
+		session.hooks.Report(err, info)
 	}
 }
 
@@ -310,7 +321,7 @@ func (session *SessionImpl) fail(err error) {
 	// synchronously; a failing backend close is the caller's to see, and here nobody waits.
 	//portlint:allow ctxbackground session.ts's guarded-storage failure starts close with no caller to cancel it; nobody waits on this close
 	session.beginClose(context.WithoutCancel(context.Background()))
-	session.report(err)
+	session.report(err, durable.ReportInfo{Type: durable.ReportSessionFailed})
 }
 
 // Commit runs one atomic transaction on the Session mutation line.
@@ -328,6 +339,23 @@ func (session *SessionImpl) CommitWith(ctx context.Context, change func(tx *Tran
 	result, err := enqueue(session, true, lineadmission.From(ctx), func() (any, error) { return session.runCommit(ctx, change, scope) })
 	session.scheduler.runDrains()
 	return result, err
+}
+
+// WriteAtClose is for BeforeClose (session.ts writeAtClose): on the line, after every commit admitted before the seal has
+// settled, it writes what writes returns then straight to Storage. Nothing is published, since the Session is closing; a
+// failed Session writes nothing.
+func (session *SessionImpl) WriteAtClose(ctx context.Context, writes func() []durable.StorageWrite) error {
+	_, err := enqueue(session, false, nil, func() (struct{}, error) {
+		if session.failure() != nil {
+			return struct{}{}, nil
+		}
+		if batch := writes(); len(batch) > 0 {
+			_, err := session.storage.Commit(context.WithoutCancel(ctx), batch)
+			return struct{}{}, err
+		}
+		return struct{}{}, nil
+	})
+	return err
 }
 
 // LineTicket is a position on the mutation line taken before its job runs.
@@ -506,7 +534,7 @@ func (session *SessionImpl) DocumentStateErased(ctx context.Context, token durab
 		if err != nil {
 			return nil, err
 		}
-		state, err := chord.AttachReplicatedStateSource[durable.JsonObject](source, chord.ReplicatedStateSourceOptions{OnError: session.report})
+		state, err := chord.AttachReplicatedStateSource[durable.JsonObject](source, chord.ReplicatedStateSourceOptions{OnError: session.reportListener})
 		if err != nil {
 			detach()
 			return nil, err
@@ -690,14 +718,14 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 			}
 			session.mu.Unlock()
 			if reported {
-				session.report(err)
+				session.report(err, durable.ReportInfo{Type: durable.ReportSessionFailed})
 			}
 			close(session.closed)
 		}()
 		func() {
 			defer close(listenersRan)
 			for _, listener := range listeners {
-				contained(listener.listener, session.report)
+				contained(listener.listener, session.reportListener)
 			}
 		}()
 		session.mu.Lock()
@@ -835,6 +863,11 @@ func (session *SessionImpl) UnloadDocuments() error {
 	return err
 }
 
+// RunDeliveries runs the state drains that publishing queued, on the calling goroutine: the drain microtask of a publication
+// that no commit's end ran, such as a task graph refresh a read on the line made (session.ts queueMicrotask of
+// SessionSourceAttachment.publish).
+func (session *SessionImpl) RunDeliveries() { session.scheduler.runDrains() }
+
 // WaitDeliveries blocks until every scheduled watch and state delivery has drained.
 func (session *SessionImpl) WaitDeliveries() { session.scheduler.wait() }
 
@@ -932,7 +965,7 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 		contained(func() { listener.listener(ctx, publication) }, session.fail)
 	}
 	for _, listener := range listeners {
-		contained(func() { listener.listener(ctx, publication) }, session.report)
+		contained(func() { listener.listener(ctx, publication) }, session.reportListener)
 	}
 }
 

@@ -34,6 +34,10 @@ func (r *Runtime) OnEnded(fn func()) {
 	r.inv.watches = append(r.inv.watches, fn)
 }
 
+// Extension is the extension that installed the definition this invocation runs, as of its reservation; empty for a built-in
+// task.
+func (r *Runtime) Extension() string { return r.inv.extension }
+
 // TaskID is the running task.
 func (r *Runtime) TaskID() ID { return r.inv.taskID }
 
@@ -55,14 +59,34 @@ func (r *Runtime) Now() (float64, error) {
 	return r.s.env.Now(), nil
 }
 
-// Report forwards a non-fatal failure to the host.
-func (r *Runtime) Report(err error) error {
+// Report forwards a non-fatal failure to the host with this task in its info: a task_error about the task's own code,
+// or, with from, an extension_error about extension code it called, such as a section, or a host_error about a host
+// callback, such as the environment builder (scheduler.ts runtime.report).
+func (r *Runtime) Report(err error, from ...ReportFrom) error {
 	if r.inv.ended {
 		return endedError(r.inv)
 	}
-	r.s.report(err)
+	if len(from) == 0 {
+		r.s.report(err, aboutInvocation("task_error", r.inv))
+		return nil
+	}
+	task := reportTask(r.inv.taskID, r.inv.kind, r.inv.conversationID)
+	if f := from[0]; f.Callback != "" {
+		r.s.report(err, obj("type", "host_error", "callback", f.Callback, "task", task))
+		return nil
+	} else {
+		info := obj("type", "extension_error", "task", task)
+		if f.Extension != "" {
+			info.Set("extension", f.Extension)
+		}
+		r.s.report(err, info)
+	}
 	return nil
 }
+
+// ReportFrom is whose code a task's Report is about when not the task's own: an extension's (Extension, when known), or a
+// host callback (Callback, a HostCallback name such as env or models).
+type ReportFrom struct{ Extension, Callback string }
 
 // Commit commits on the Session line after rereading the task. change may
 // stage writes through tx and return the state the task commits for itself

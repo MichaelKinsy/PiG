@@ -54,7 +54,9 @@ func (s *Scheduler) run(r *reservation, finish func()) {
 	var next func()
 	next = func() {
 		prev := previous
-		s.step(inv, func(tx *Tx, current *jv.Object) (decision, error) { return s.decide(tx, current, prev, st) }, func(current *jv.Object) {
+		s.step(inv, func(tx *Tx, current *jv.Object) (decision, error) {
+			return s.decide(tx, current, prev, st, inv.extension)
+		}, func(current *jv.Object) {
 			if current == nil || s.closing {
 				finish()
 				return
@@ -74,7 +76,7 @@ func (s *Scheduler) run(r *reservation, finish func()) {
 	next()
 }
 
-func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st *runState) (decision, error) {
+func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st *runState, extension string) (decision, error) {
 	if getBool(current, "abortRequested") {
 		return decision{kind: decideStop}, nil
 	}
@@ -114,11 +116,17 @@ func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st
 		}
 		if !st.hasRep || st.reported != next {
 			st.reported, st.hasRep = next, true
-			cause := "incompatible_task"
+			reason := "incompatible_task"
 			if next == nil {
-				cause = "missing_task"
+				reason = "missing_task"
 			}
-			s.report(&CauseError{Msg: sprintf("Task %d keeps running under its old %s definition", mustInt(current, "id"), kind), Cause: cause})
+			info := s.aboutRecord("task_outdated", current)
+			info.Delete("extension")
+			if extension != "" {
+				info.Set("extension", extension)
+			}
+			info.Set("reason", reason)
+			s.report(errorf("Task %d keeps running under its old %s definition", mustInt(current, "id"), kind), info)
 		}
 	}
 	return decision{kind: decideContinue}, nil
@@ -161,8 +169,18 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 // running task, or end the invocation (faulting the task when decided).
 func (s *Scheduler) step(inv *invocation, decide func(tx *Tx, current *jv.Object) (decision, error), then func(current *jv.Object)) {
 	var result *jv.Object
-	s.commit(func(tx *Tx) error {
+	var fault error
+	// The fault is reported as the step resumes from its commit, after its publication and before the line's next job.
+	reportFault := func() {
+		if fault != nil {
+			info := aboutInvocation("task_faulted", inv)
+			info.Set("reason", "threw")
+			s.report(fault, info)
+		}
+	}
+	s.commitJobAfter(s.loop.LineAfterTail, nil, func(tx *Tx) error {
 		result = nil
+		fault = nil
 		found, ok := s.live.get(inv.taskID)
 		var current *jv.Object
 		if ok && taskStatus(found) == StatusRunning {
@@ -181,11 +199,12 @@ func (s *Scheduler) step(inv *invocation, decide func(tx *Tx, current *jv.Object
 		}
 		s.endInvocation(inv)
 		if d.kind == decideFault {
+			fault = d.fault
 			msg := faultText(d.fault)
 			return s.terminate(tx, current, obj("status", "faulted", "error", obj("message", msg)))
 		}
 		return nil
-	}, TxScope{}, func(err error) {
+	}, TxScope{}, reportFault, func(err error) {
 		if err != nil {
 			s.endInvocation(inv)
 			s.failSession(err)
@@ -236,10 +255,15 @@ func (s *Scheduler) commitState(tx *Tx, inv *invocation, current *jv.Object, nex
 		}
 		if s.hasOwnedLive(mustInt(current, "id"), o, nil) {
 			outcome, _ := next.Get("outcome")
-			return tx.stageTask(withState(current, obj("status", StatusCompleting, "outcome", outcome)))
+			return tx.stageTask(withState(progressed(current), obj("status", StatusCompleting, "outcome", outcome)))
 		}
 	}
-	return tx.stageTask(withState(current, next))
+	// A state the task committed that differs from its current one is progress: its restart count starts over. The same
+	// checkpoint committed again, for example as intent before an effect, is not.
+	if jv.Equal(getObj(current, "state"), next) {
+		return tx.stageTask(withState(current, next))
+	}
+	return tx.stageTask(withState(progressed(current), next))
 }
 
 // validateWait checks that a wait names existing tasks, and failFast only tasks the waiter owns. It may not close a cycle

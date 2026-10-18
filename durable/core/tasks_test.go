@@ -146,17 +146,17 @@ func TestHookHandlersFollowTheAgentsSelection(t *testing.T) {
 	}
 }
 
-// The scheduler's report of a task that keeps running under an old definition carries Error.cause on the wire.
-func TestReportCarriesTheCause(t *testing.T) {
+// The scheduler's report carries the ReportInfo of types.ts on the wire, after the error's name and message.
+func TestReportCarriesTheInfo(t *testing.T) {
 	b := abi.NewBuilder()
 	h := &handler{b: b}
-	h.report(&session.CauseError{Msg: "Task 3 keeps running under its old k definition", Cause: "missing_task"})
+	h.report(errors.New("Task 3 keeps running under its old k definition"), jobj("type", "task_outdated", "task", jobj("id", float64(3), "kind", "k", "conversationId", float64(1)), "reason", "missing_task"))
 	step := b.Step()
 	if len(step.Notices) != 1 {
 		t.Fatalf("notices %d", len(step.Notices))
 	}
 	got := string(step.Notices[0].Payload)
-	if got != `{"name":"Error","message":"Task 3 keeps running under its old k definition","cause":"missing_task"}` {
+	if got != `{"name":"Error","message":"Task 3 keeps running under its old k definition","info":{"type":"task_outdated","task":{"id":3,"kind":"k","conversationId":1},"reason":"missing_task"}}` {
 		t.Fatalf("%s", got)
 	}
 }

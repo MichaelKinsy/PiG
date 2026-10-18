@@ -38,6 +38,8 @@ type Settings struct {
 	// ToolExecution is "parallel" or "sequential".
 	ToolExecution string
 	Queue         inbox.QueueModes
+	// AfterFailedRun is settings.afterFailedRun: "keep", "continue" or "withdraw".
+	AfterFailedRun string
 }
 
 // Tool is a registered tool of the resolved agent: its transcript declaration, execution mode, replay policy and output limits.
@@ -51,6 +53,8 @@ type Tool struct {
 	Replay string
 	// Raw is the host's tool JSON, kept for the tool effect.
 	Raw *jv.Object
+	// Extension is the last selected extension that provides or wraps the tool (agent.ts toolExtension).
+	Extension string
 	// Limits are the tool's outputLimits; nil fields default to 50 KiB, 2000 lines and head retention.
 	Limits ToolLimits
 	// StructuredOutput is whether the tool declares a structured output schema.
@@ -87,6 +91,9 @@ type Section struct {
 	Key     string
 	Tag     bool
 	Handler int
+	// Extension is the last selected extension that provides or wraps the section (agent.ts sectionExtension); empty when
+	// the agent's instructions render it.
+	Extension string
 }
 
 // Agent is the resolved agent of a conversation (agent.ts resolution): its model, thinking level, prompt sections and tools.
@@ -103,6 +110,8 @@ type Agent struct {
 	// HookHandlers are the hook handler tables of the selected extensions in extension order: hook name to handler index
 	// (agent.ts agentHooks).
 	HookHandlers []map[string]int
+	// HookExtensions names the extension of each table of HookHandlers.
+	HookExtensions []string
 }
 
 // Declarations returns the tool declarations in order.
@@ -191,6 +200,8 @@ type Host struct {
 	Complete func(req *CompleteRequest, cancel *session.Cancel, then func(message *jv.Object, err error))
 	// Hooks returns the number of handlers the conversation's agent selects for a generation, tool or compaction hook.
 	Hooks func(name string, conversation ID) int
+	// HookExtension is the name of the extension of handler index of the hook name (agent.ts agentHooks).
+	HookExtension func(name string, index int, conversation ID) string
 	// Hook calls handler index of the hook name. The payload is the hook's first argument; the result is its return value (nil for none).
 	Hook func(name string, index int, conversation, task ID, payload *jv.Object, then func(result any, err error))
 	// FetchDeferred polls a provider-side deferred response; CancelDeferred abandons it.

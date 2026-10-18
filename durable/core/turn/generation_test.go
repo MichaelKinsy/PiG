@@ -200,7 +200,7 @@ func (r *rig) boot() {
 	reg := r.reg
 	r.sched = session.NewScheduler(r.sess, r.loop, session.Env{
 		Snapshot:       func() session.Snapshot { return reg },
-		Report:         func(err error) { r.reports = append(r.reports, err.Error()) },
+		Report:         func(err error, _ *jv.Object) { r.reports = append(r.reports, err.Error()) },
 		Now:            func() float64 { return r.now },
 		SettleOutcome:  turn.SettleSchedulerOutcome,
 		WithdrawInputs: func(*session.Tx, session.ID) error { return nil },

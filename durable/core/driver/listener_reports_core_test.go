@@ -23,7 +23,7 @@ func openReportingCoreHarness(t *testing.T) (harness.Harness, harness.Conversati
 	t.Helper()
 	reports := make(chan error, 16)
 	h, err := driver.OpenHarness(t.Context(), filepath.Join(t.TempDir(), "store.db"), harness.HarnessOptions{
-		Models: ai.CreateModels(), Registry: harness.CreateRegistry(), OnReport: func(err error) { reports <- err },
+		Models: ai.CreateModels(), Registry: harness.CreateRegistry(), OnReport: func(err error, _ durable.ReportInfo) { reports <- err },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +121,7 @@ func TestCoreReportsAFailingAgentEventListenerAndEndsTheStream(t *testing.T) {
 		nestedCoreTool("batch", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return nestedCoreText("done"), nil
 		}),
-	}}, func(err error) { reports <- err })
+	}}, func(err error, _ durable.ReportInfo) { reports <- err })
 	stream, err := harness.WatchEvents(t.Context(), h, root.Id())
 	if err != nil {
 		t.Fatal(err)

@@ -197,7 +197,7 @@ func TestSafeNow(t *testing.T) {
 	t.Run("reports a throwing clock once, also when the report handler reads the clock again", func(t *testing.T) {
 		var reports []error
 		var clock func() float64
-		clock = SafeNow(func() float64 { panic(errors.New("clock broke")) }, func(err error) {
+		clock = SafeNow(func() float64 { panic(errors.New("clock broke")) }, func(err error, _ durable.ReportInfo) {
 			reports = append(reports, err)
 			// Reentry, as a handler that commits does: the clock is read again before this report returns.
 			if len(reports) < 5 {
@@ -224,7 +224,7 @@ func TestSafeNow(t *testing.T) {
 			Models:   ai.CreateModels(),
 			Registry: registry,
 			Now:      func() float64 { panic(errors.New("clock broke")) },
-			OnReport: func(error) {
+			OnReport: func(error, durable.ReportInfo) {
 				mu.Lock()
 				reported++
 				mu.Unlock()

@@ -369,6 +369,10 @@ func (h *handler) onHopped(ev *abi.Event) error {
 			break
 		}
 	}
+	if h.closing && len(h.hops) == 0 && !h.closed {
+		h.closing = false
+		h.finishClose()
+	}
 	return nil
 }
 

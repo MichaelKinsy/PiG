@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/MichaelKinsy/PiG/durable/core/history"
+	"github.com/MichaelKinsy/PiG/durable/core/inbox"
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
@@ -124,6 +125,14 @@ func (r *run) retryOrFail(req requestInfo, message *jv.Object, settings Settings
 		until = r.now() + RetryDelayMs(settings.BaseDelayMs, settings.MaxAgentDelayMs, req.attempt)
 	}
 	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		// Read before the first table write; only a failure uses it.
+		var failed failure
+		if !retry {
+			var err error
+			if failed, err = r.prepareFailure(tx); err != nil {
+				return nil, err
+			}
+		}
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
@@ -144,11 +153,62 @@ func (r *run) retryOrFail(req requestInfo, message *jv.Object, settings Settings
 		if !ok {
 			text = "Model response ended with stop reason " + stop
 		}
-		if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
+		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
 			return nil, err
 		}
 		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
 	})
+}
+
+// failure is what a failed run's end needs from the table, read before the commit's first table write (generation.ts Failure).
+type failure struct {
+	policy   string
+	boundary *inbox.Boundary
+}
+
+// prepareFailure reads the boundary a failed run's end may apply, only under the continue policy (generation.ts
+// prepareFailure, an async function its caller awaits).
+func (r *run) prepareFailure(tx *session.Tx) (failure, error) {
+	settings := r.g.Host.Settings()
+	policy := settings.AfterFailedRun
+	if policy != "continue" {
+		tx.Await(1)
+		return failure{policy: policy}, nil
+	}
+	boundary, err := prepareBoundary(tx, r.conv, settings.Queue)
+	if err != nil {
+		return failure{}, err
+	}
+	tx.Await(1)
+	return failure{policy: policy, boundary: boundary}, nil
+}
+
+// endFailedRun ends a failed run, settling its inputs with settlement, and does with the inputs queued behind it what
+// settings.afterFailedRun says (spec section 6): keep them, start the next run with them, or withdraw them (generation.ts
+// endFailedRun, an async function its caller awaits).
+func (r *run) endFailedRun(tx *session.Tx, live *delta.Obj, failed failure, settlement *jv.Object) error {
+	if err := EndRun(tx, live, r.rt.TaskID(), settlement); err != nil {
+		return err
+	}
+	if failed.policy == "withdraw" {
+		if err := inbox.WithdrawQueuedFor(tx, r.conv, "run_failed"); err != nil {
+			return err
+		}
+		tx.Await(1)
+	}
+	if failed.boundary != nil {
+		applied, err := applyBoundary(tx, failed.boundary, true, r.now())
+		if err != nil {
+			return err
+		}
+		if len(applied.Users) > 0 {
+			if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+				return err
+			}
+		}
+	}
+	tx.Await(1)
+	return nil
 }
 
 // answer is a final answer; the final boundary places queued items (spec section 6). The first onYield continuation

@@ -702,6 +702,8 @@ func TestGeneration(t *testing.T) {
 
 			ContextRetentionMs:  600_000,
 			DocumentRetentionMs: 600_000,
+			AfterFailedRun:      durable.AfterFailedRunKeep,
+			RestartLimit:        5,
 		}
 		// agent.ts:19 DEFAULT_RETRY_POLICY is the retry policy of unset host settings.
 		if !reflect.DeepEqual(DefaultRetryPolicy, want.Retry) {
@@ -709,6 +711,13 @@ func TestGeneration(t *testing.T) {
 		}
 		if got := ResolveSettings(nil); !reflect.DeepEqual(got, want) {
 			t.Fatalf("settings = %+v, want %+v", got, want)
+		}
+		// harness-generation.test.ts:498: a restart limit that is not a number of restarts, 1 or more, means the default; Infinity never parks.
+		if limit := ResolveSettings(&HarnessSettings{RestartLimit: new(0.0)}).RestartLimit; limit != 5 {
+			t.Fatalf("restartLimit 0 resolved to %v, want 5", limit)
+		}
+		if limit := ResolveSettings(&HarnessSettings{RestartLimit: new(math.Inf(1))}).RestartLimit; !math.IsInf(limit, 1) {
+			t.Fatalf("restartLimit Infinity resolved to %v, want Infinity", limit)
 		}
 		resolved := ResolveSettings(&HarnessSettings{Retry: &RetryPolicyPatch{Enabled: new(false)}, Compaction: &CompactionPolicyPatch{BackgroundTokens: new(0)}})
 		if resolved.Retry.Enabled || resolved.Retry.MaxRetries != 3 || resolved.Retry.BaseDelayMs != 2000 {

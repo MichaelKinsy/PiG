@@ -32,7 +32,9 @@ func (s *Scheduler) wakeDue() {
 // Wake is scheduler.ts wake: synchronous, from memory; a task whose chain is not loaded yet counts as it would alone.
 func (s *Scheduler) Wake() Wake {
 	now := s.env.Now()
-	active := len(s.invocations) > 0
+	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
+	// process that dies before it lands must be woken again. A pass with nothing to do is not.
+	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWork()
 	var w Wake
 	var snapshot Snapshot
 	for _, rec := range s.live.values() {
@@ -62,6 +64,9 @@ func (s *Scheduler) Wake() Wake {
 			}
 		}
 		if active {
+			continue
+		}
+		if s.parked(rec) {
 			continue
 		}
 		// An abort invocation waits for the live work below it, which counts itself.

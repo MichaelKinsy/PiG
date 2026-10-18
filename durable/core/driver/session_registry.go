@@ -61,6 +61,9 @@ type sectionHandle struct{ section *durable.PromptSection }
 type prepareHandle struct{ driverPrepare PrepareArguments }
 
 type snapshotTool struct {
+	// Extension is the last selected extension that provides or wraps the tool (agent.ts toolExtension); set in an agent's
+	// tool list, empty in a registry snapshot.
+	Extension     string          `json:"extension,omitempty"`
 	Name          string          `json:"name"`
 	Description   string          `json:"description"`
 	Parameters    json.RawMessage `json:"parameters"`
@@ -74,13 +77,17 @@ type snapshotTool struct {
 	StructuredOutput bool `json:"structuredOutput,omitempty"`
 }
 type snapshotSection struct {
-	Key     string `json:"key"`
-	Tag     bool   `json:"tag"`
-	Handler int    `json:"handler"`
+	// Extension is the last selected extension that provides or wraps the section; set in an agent's section list.
+	Extension string `json:"extension,omitempty"`
+	Key       string `json:"key"`
+	Tag       bool   `json:"tag"`
+	Handler   int    `json:"handler"`
 }
 type snapshotHook struct {
-	Task     string         `json:"task"`
-	Handlers map[string]int `json:"handlers"`
+	// Extension is the extension that registered the hook; set in an agent's hook list.
+	Extension string         `json:"extension,omitempty"`
+	Task      string         `json:"task"`
+	Handlers  map[string]int `json:"handlers"`
 }
 type snapshotWrap struct {
 	Tool    string `json:"tool,omitempty"`
@@ -95,6 +102,8 @@ type snapshotTask struct {
 	// Migrate: the definition has a migrate function, which the host runs (the `migrate` hook).
 	Migrate bool `json:"migrate"`
 	Handler int  `json:"handler"`
+	// Extension is the extension that installed the definition (scheduler.ts installerOf): the code that fails is its.
+	Extension string `json:"extension,omitempty"`
 }
 type snapshotExtension struct {
 	Name     string            `json:"name"`
@@ -203,7 +212,7 @@ func (t *handlerTable) snapshot(reg durable.RegistrySnapshot) (SnapshotJSON, err
 				phases = append(phases, name)
 			}
 			sort.Strings(phases)
-			e.Tasks = append(e.Tasks, snapshotTask{Name: def.Name, Version: def.Version, Phases: phases, Abort: def.Abort != nil, Migrate: def.Migrate != nil, Handler: t.id(task, "task", task)})
+			e.Tasks = append(e.Tasks, snapshotTask{Name: def.Name, Version: def.Version, Phases: phases, Abort: def.Abort != nil, Migrate: def.Migrate != nil, Handler: t.id(task, "task", task), Extension: extension.Name})
 		}
 		out.Extensions = append(out.Extensions, e)
 	}

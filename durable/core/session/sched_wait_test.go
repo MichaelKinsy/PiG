@@ -86,7 +86,7 @@ func openNodeWorld(t *testing.T) *nodeWorld {
 	registry := snap{w.def.Name: impl}
 	w.sched = session.NewScheduler(w.sess, w.loop, session.Env{
 		Snapshot:       func() session.Snapshot { return registry },
-		Report:         func(err error) { t.Logf("report: %v", err) },
+		Report:         func(err error, _ *jv.Object) { t.Logf("report: %v", err) },
 		Now:            func() float64 { return 1000 },
 		SettleOutcome:  func(*session.Tx, *jv.Object, *jv.Object) error { return nil },
 		WithdrawInputs: func(*session.Tx, session.ID) error { return nil },

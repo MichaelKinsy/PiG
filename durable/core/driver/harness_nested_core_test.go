@@ -29,7 +29,7 @@ func nestedCoreHarness(t *testing.T, tools ...*durable.ToolRegistration) (harnes
 }
 
 // nestedCoreHarnessWith is nestedCoreHarness over an extension that may also hold hooks.
-func nestedCoreHarnessWith(t *testing.T, extension *durable.Extension, onReport ...func(error)) (harness.Harness, harness.Conversation, durable.Submission) {
+func nestedCoreHarnessWith(t *testing.T, extension *durable.Extension, onReport ...func(error, durable.ReportInfo)) (harness.Harness, harness.Conversation, durable.Submission) {
 	t.Helper()
 	h, root, submit := nestedCoreOpen(t, extension, onReport...)
 	return h, root, submit()
@@ -41,7 +41,7 @@ func nestedCoreHarnessPaused(t *testing.T, tools ...*durable.ToolRegistration) (
 	return nestedCoreOpen(t, &durable.Extension{Name: "nested", Tools: tools})
 }
 
-func nestedCoreOpen(t *testing.T, extension *durable.Extension, onReport ...func(error)) (harness.Harness, harness.Conversation, func() durable.Submission) {
+func nestedCoreOpen(t *testing.T, extension *durable.Extension, onReport ...func(error, durable.ReportInfo)) (harness.Harness, harness.Conversation, func() durable.Submission) {
 	t.Helper()
 	faux := ai.NewFauxProvider(ai.FauxConfig{})
 	models := ai.CreateModels()
@@ -405,7 +405,7 @@ func TestCoreABrokenStructuredOutputOfAModelIssuedCallIsReported(t *testing.T) {
 		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "shown"}}, StructuredOutput: map[string]any{"n": "x"}, HasStructuredOutput: true}, nil
 	})
 	batch.StructuredOutputSchema = map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}, "required": []any{"n"}}
-	_, root, sub := nestedCoreHarnessWith(t, &durable.Extension{Name: "nested", Tools: []*durable.ToolRegistration{batch}}, func(err error) {
+	_, root, sub := nestedCoreHarnessWith(t, &durable.Extension{Name: "nested", Tools: []*durable.ToolRegistration{batch}}, func(err error, _ durable.ReportInfo) {
 		mu.Lock()
 		defer mu.Unlock()
 		reports = append(reports, err.Error())

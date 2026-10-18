@@ -72,6 +72,8 @@ var (
 // TaskImpl is an executable task definition registered in the registry.
 type TaskImpl struct {
 	Def TaskDef
+	// Extension is the name of the extension that installed the definition; empty for a built-in task.
+	Extension string
 	// Migrate converts a record stored by an older version; nil when the
 	// definition has none. It runs at reservation.
 	Migrate func(input, checkpoint any, fromVersion int) (newInput, newCheckpoint any, err error)
@@ -112,8 +114,14 @@ type Env struct {
 	// (scheduler.ts #settleIdle): what the core derived for it may go, as Pi's range does. It runs at an idle check, never
 	// while a caller still reads a view of that conversation.
 	ReleaseContext func(conversationID ID)
-	// Report forwards a non-fatal failure to HarnessOptions.onReport.
-	Report func(err error)
+	// Report forwards a non-fatal failure to HarnessOptions.onReport; info says what happened (types.ts ReportInfo as
+	// an object: type, and task, extension, reason, callback or conversationId where they apply).
+	Report func(err error, info *jv.Object)
+	// RestartLimit is settings.restartLimit, read at each use; nil selects the default.
+	RestartLimit func() float64
+	// BlockedChanged is told when blocked reasons may have changed without a commit: a registry change, a failed
+	// migration, or a task newly parked or no longer parked (scheduler.ts #notifyBlocked).
+	BlockedChanged func()
 	// Now is the Harness clock.
 	Now func() float64
 	// Timer arms a background timer that calls fire at the Harness time at (a timer effect, ABI section 6) and returns its

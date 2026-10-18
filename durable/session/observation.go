@@ -388,7 +388,7 @@ type CommittedWatch[T any] struct {
 // observation.ts:174 CommittedWatch constructor (view.ts:104, events.ts:132).
 func NewCommittedWatch[T any](session *SessionImpl, value T, detach func(), replace func() T) *CommittedWatch[T] {
 	watch := newCommittedWatch(value, detach, replace, session.scheduler)
-	watch.report = session.report
+	watch.report = session.reportListener
 	return watch
 }
 

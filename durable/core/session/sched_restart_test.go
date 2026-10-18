@@ -55,7 +55,7 @@ func TestARestartMarksAbandonedWorkAndARequestUpgradesIt(t *testing.T) {
 	}, Abort: abortCommits}}
 	loop := &session.Loop{}
 	second := newSession(mem, mem.NextID())
-	sched := session.NewScheduler(second, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error) {}, Now: func() float64 { return 1 }, SettleOutcome: func(*session.Tx, *jv.Object, *jv.Object) error { return nil }})
+	sched := session.NewScheduler(second, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }, SettleOutcome: func(*session.Tx, *jv.Object, *jv.Object) error { return nil }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -170,7 +170,7 @@ func TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit(t *testing.T
 			second := newSession(mem, mem.NextID())
 			sched := session.NewScheduler(second, loop, session.Env{
 				Snapshot: func() session.Snapshot { return registry },
-				Report:   func(error) {},
+				Report:   func(error, *jv.Object) {},
 				Now:      func() float64 { return 1 },
 				After: func(n int, then func()) {
 					got = append(got, n)

@@ -95,6 +95,20 @@ func tkTaskWrites(storage *controlledStorage, id durable.TaskId) []durable.TaskS
 	return statuses
 }
 
+// tkTaskWritesAt is the task records of the commit at index, negative from the end (storage.commits.at(-n) of harness-tasks.test.ts).
+func tkTaskWritesAt(storage *controlledStorage, index int) []durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue] {
+	if index < 0 {
+		index += storage.commitCount()
+	}
+	var records []durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
+	for _, write := range storage.commitAt(index) {
+		if task, ok := write.(durable.TaskWrite); ok {
+			records = append(records, task.Value)
+		}
+	}
+	return records
+}
+
 func tkLastTaskWrites(storage *controlledStorage) []durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue] {
 	var records []durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
 	for _, write := range storage.commitAt(storage.commitCount() - 1) {
@@ -1042,8 +1056,13 @@ func TestTaskClose(t *testing.T) {
 		if result := <-aborting; result.err != nil || result.result != "marked" {
 			t.Fatalf("AbortTask %+v", result)
 		}
-		if store.commitCount() != commits {
-			t.Fatalf("%d commits after close began, want %d", store.commitCount(), commits)
+		// harness-tasks.test.ts:1148: no outcome; close writes only the stopped task back as pending, so a reopen counts no restart.
+		if store.commitCount() != commits+1 {
+			t.Fatalf("%d commits after close began, want %d", store.commitCount(), commits+1)
+		}
+		if writes := tkTaskWritesAt(store, -1); len(writes) != 1 || writes[0].Id != id || !writes[0].AbortRequested || writes[0].State.Status != durable.TaskPending ||
+			writes[0].State.Checkpoint == nil || mustJSON(t, *writes[0].State.Checkpoint) != `{"phase":"two"}` {
+			t.Fatalf("last commit task writes %+v, want the abort-marked task pending at phase two", writes)
 		}
 		if !reflect.DeepEqual(phases.all(), []string{"one"}) {
 			t.Fatalf("phases %v, want [one]", phases.all())
@@ -1128,8 +1147,9 @@ func TestTaskClose(t *testing.T) {
 		if err := tkWaitErr(t, closing); err != nil {
 			t.Fatal(err)
 		}
-		if got := tkTaskWrites(store, id); !reflect.DeepEqual(got, []durable.TaskStatus{durable.TaskPending, durable.TaskRunning}) {
-			t.Fatalf("task writes %v, want [pending running]", got)
+		// harness-tasks.test.ts:1222: created, reserved, and written back as pending by close: no fault.
+		if got := tkTaskWrites(store, id); !reflect.DeepEqual(got, []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskPending}) {
+			t.Fatalf("task writes %v, want [pending running pending]", got)
 		}
 	})
 
@@ -1159,9 +1179,14 @@ func TestTaskClose(t *testing.T) {
 		if ran.Load() {
 			t.Fatal("the abort handler ran")
 		}
+		// harness-tasks.test.ts:1250: the reservation landed; close wrote the task back as pending.
+		reserved := tkTaskWritesAt(store, -2)
+		if len(reserved) != 1 || reserved[0].Id != id || !reserved[0].AbortRequested || reserved[0].State.Status != durable.TaskRunning {
+			t.Fatalf("reservation commit task writes %+v, want one abort-marked running record of %d", reserved, id)
+		}
 		writes := tkLastTaskWrites(store)
-		if len(writes) != 1 || writes[0].Id != id || !writes[0].AbortRequested || writes[0].State.Status != durable.TaskRunning {
-			t.Fatalf("last commit task writes %+v, want one abort-marked running record of %d", writes, id)
+		if len(writes) != 1 || writes[0].Id != id || !writes[0].AbortRequested || writes[0].State.Status != durable.TaskPending {
+			t.Fatalf("last commit task writes %+v, want the abort-marked record of %d pending", writes, id)
 		}
 	})
 
@@ -1211,8 +1236,9 @@ func TestTaskClose(t *testing.T) {
 		if err := tkWaitErr(t, closing); err != nil {
 			t.Fatal(err)
 		}
-		if got := tkTaskWrites(store, id); len(got) != 2 {
-			t.Fatalf("task writes %v, want two", got)
+		// harness-tasks.test.ts:1288: created, reserved, and written back as pending by close; the queued outcome never landed.
+		if got := tkTaskWrites(store, id); !reflect.DeepEqual(got, []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskPending}) {
+			t.Fatalf("task writes %v, want [pending running pending]", got)
 		}
 	})
 
@@ -1302,9 +1328,14 @@ func TestTaskClose(t *testing.T) {
 		if ran.Load() {
 			t.Fatal("the handler ran")
 		}
+		// harness-tasks.test.ts:1355: the reservation landed; close wrote the task back as pending.
+		reserved := tkTaskWritesAt(store, -2)
+		if len(reserved) != 1 || reserved[0].Id != id || reserved[0].State.Status != durable.TaskRunning {
+			t.Fatalf("reservation commit task writes %+v, want one running record of %d", reserved, id)
+		}
 		writes := tkLastTaskWrites(store)
-		if len(writes) != 1 || writes[0].Id != id || writes[0].State.Status != durable.TaskRunning {
-			t.Fatalf("last commit task writes %+v, want one running record of %d", writes, id)
+		if len(writes) != 1 || writes[0].Id != id || writes[0].State.Status != durable.TaskPending {
+			t.Fatalf("last commit task writes %+v, want one pending record of %d", writes, id)
 		}
 	})
 }

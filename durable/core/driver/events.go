@@ -44,7 +44,7 @@ func (s *coreSession) WatchEvents(ctx context.Context, conversationId durable.Co
 		current = after
 		publication, err := framePublication(conversationId, f.changes)
 		if err != nil {
-			s.report(err)
+			s.reportListener(err)
 			return
 		}
 		if events := harness.TranslateViewEvents(conversationId, before, after, f.ops, publication, held); len(events) > 0 {

@@ -970,6 +970,10 @@ func TestDefinitionHandover(t *testing.T) {
 		}}).Erased())
 		gate.resolve()
 		eventually(t, func() bool { return len(started.reports.all()) == 1 })
+		// harness-tasks-recovery.test.ts:735: the report is a migration_failed of the task.
+		if infos := started.reports.allInfos(); infos[0].Type != durable.ReportMigrationFailed || infos[0].Task == nil || infos[0].Task.Id != started.id {
+			t.Fatalf("report %+v, want migration_failed of task %d", infos[0], started.id)
+		}
 		flush()
 		record := tkTaskRecord(t, started.harness, started.id)
 		tkExpectState(t, record, durable.TaskPending, false)
@@ -997,16 +1001,15 @@ func TestDefinitionHandover(t *testing.T) {
 		if !reflect.DeepEqual(log.all(), want) {
 			t.Fatalf("log %v, want %v", log.all(), want)
 		}
-		causes := []string{}
-		for _, report := range started.reports.all() {
-			withCause, ok := report.(interface{ Cause() string })
-			if !ok {
-				t.Fatalf("report %v carries no cause", report)
-			}
-			causes = append(causes, withCause.Cause())
+		// harness-tasks-recovery.test.ts:759: each report is a task_outdated of the task, with the reason the replacement cannot take it.
+		infos := started.reports.allInfos()
+		if len(infos) != 2 {
+			t.Fatalf("reports %+v, want two task_outdated reports", infos)
 		}
-		if !reflect.DeepEqual(causes, []string{"missing_task", "incompatible_task"}) {
-			t.Fatalf("report causes %v, want [missing_task incompatible_task]", causes)
+		for index, reason := range []string{durable.ReasonMissingTask, durable.ReasonIncompatibleTask} {
+			if infos[index].Type != durable.ReportTaskOutdated || infos[index].Task == nil || infos[index].Task.Id != started.id || infos[index].Reason != reason {
+				t.Fatalf("report %d = %+v, want task_outdated of task %d with reason %s", index, infos[index], started.id, reason)
+			}
 		}
 		mustClose(t, started.harness)
 	})
