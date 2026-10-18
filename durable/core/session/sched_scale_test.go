@@ -1,6 +1,7 @@
 package session_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
@@ -13,7 +14,123 @@ import (
 // tasks, each owning the next, are created in one commit above a live leaf; they end top-down and hold, then the leaf
 // ends and the whole chain finalizes.
 func TestAChainOfHeldTasksFinalizesInLinearWork(t *testing.T) {
-	const depth = 20_000
+	chainOfHeldTasksFinalizes(t, 20_000)
+}
+
+// Ending one task of a held chain allocates the same at any chain length. The test counts the bytes the end phase
+// allocates, which are exact where a clock is not: a pass over the live tasks on every end allocates per task visited, so
+// the end of a chain twice as long costs about twice as much and the whole phase is quadratic (Wake once walked every live
+// task on each commit).
+func TestEndingATaskOfAHeldChainAllocatesTheSameAtAnyLength(t *testing.T) {
+	const short, long = 2_000, 4_000
+	perEndShort := chainOfHeldTasksFinalizes(t, short) / (short + 1)
+	perEndLong := chainOfHeldTasksFinalizes(t, long) / (long + 1)
+	if perEndLong > perEndShort+perEndShort/4 {
+		t.Fatalf("ending a task of a chain of %d allocates %d bytes, and of a chain of %d allocates %d: the cost of an end grows with the chain", short, perEndShort, long, perEndLong)
+	}
+}
+
+// Wake names the earliest sleep not yet due whether or not a task is running, and is idle only when nothing runs and
+// nothing is due (scheduler.ts wake). It reads the sleeping tasks from their index, so a sleep that ends, wakes or is
+// replaced leaves it.
+func TestWakeNamesTheEarliestSleepWhileATaskRuns(t *testing.T) {
+	mem := sessiontest.New()
+	s := newSession(mem, mem.NextID())
+	runtimes := map[session.ID]*session.Runtime{}
+	dones := map[session.ID]func(error){}
+	def := &session.TaskDef{Name: "t.hold", Version: 1, Initial: func(any) any { return jv.NewObject() }}
+	var running, late, early session.ID
+	if _, err := s.Commit(func(tx *session.Tx) error {
+		root, err := tx.CreateRootConversation()
+		if err != nil {
+			return err
+		}
+		for _, id := range []*session.ID{&running, &late, &early} {
+			if *id, err = tx.CreateTask(def, nil, session.TaskOptions{ConversationID: idOf(root)}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, session.TxScope{}); err != nil {
+		t.Fatal(err)
+	}
+	now := 1.0
+	registry := snap{"t.hold": {Def: *def, Phase: func(rt *session.Runtime, rec *jv.Object, done func(error)) {
+		runtimes[idOf(rec)], dones[idOf(rec)] = rt, done
+	}}}
+	loop := &session.Loop{}
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return now }})
+	sched.Open(func(err error) {
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	sched.Resume()
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	// step moves a running task to state and returns from its phase, as a task's code does when it sleeps or ends.
+	step := func(id session.ID, state *jv.Object) {
+		runtimes[id].Commit(func(*session.Tx, *jv.Object) (*jv.Object, error) { return state, nil }, func(err error) {
+			if err != nil {
+				t.Error(err)
+			}
+		})
+		if err := loop.Run(); err != nil {
+			t.Fatal(err)
+		}
+		dones[id](nil)
+		if err := loop.Run(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A task that slept is no longer running: the host changes its record, as the harness does when it wakes or ends one.
+	set := func(id session.ID, state *jv.Object) {
+		if _, err := s.Commit(func(tx *session.Tx) error {
+			rec, err := tx.Task(id)
+			if err != nil {
+				return err
+			}
+			next := jv.Clone(rec).(*jv.Object)
+			next.Set("state", state)
+			return tx.SetTask(next)
+		}, session.TxScope{}); err != nil {
+			t.Fatal(err)
+		}
+		if err := loop.Run(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sleep := func(until float64) *jv.Object { return obj("status", session.StatusSleeping, "until", until) }
+	end := obj("status", session.StatusTerminal, "outcome", obj("status", "completed"))
+	expect := func(when string, want session.Wake) {
+		t.Helper()
+		if got := sched.Wake(); got != want {
+			t.Fatalf("%s: wake %+v, want %+v", when, got, want)
+		}
+	}
+	expect("three tasks running", session.Wake{Active: true})
+	step(late, sleep(9000))
+	expect("one asleep, one running", session.Wake{Active: true, HasAt: true, At: 9000})
+	step(early, sleep(5000))
+	expect("two asleep, one running", session.Wake{Active: true, HasAt: true, At: 5000})
+	set(early, end)
+	expect("the earlier sleep ended", session.Wake{Active: true, HasAt: true, At: 9000})
+	step(running, end)
+	expect("nothing runs, one asleep", session.Wake{HasAt: true, At: 9000})
+	now = 9000
+	expect("the sleep is due", session.Wake{Active: true})
+	now = 1
+	set(late, sleep(7000))
+	expect("the sleep replaced by an earlier one", session.Wake{HasAt: true, At: 7000})
+	set(late, end)
+	expect("every task ended", session.Wake{})
+}
+
+// chainOfHeldTasksFinalizes creates the chain of depth+1 tasks described above, ends it, and returns the bytes the process
+// allocated while it ended.
+func chainOfHeldTasksFinalizes(t *testing.T, depth int) uint64 {
+	t.Helper()
 	mem := sessiontest.New()
 	s := newSession(mem, mem.NextID())
 	runtimes := map[session.ID]*session.Runtime{}
@@ -67,11 +184,14 @@ func TestAChainOfHeldTasksFinalizesInLinearWork(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
 	// Top-down: each ends holding its outcome while the work below it lives.
 	for _, id := range chain[:len(chain)-1] {
 		end(id)
 	}
 	end(chain[len(chain)-1])
+	runtime.ReadMemStats(&after)
 	for _, id := range []session.ID{chain[0], chain[len(chain)/2], chain[len(chain)-1]} {
 		rec, err := mem.Task(id)
 		if err != nil {
@@ -81,6 +201,7 @@ func TestAChainOfHeldTasksFinalizesInLinearWork(t *testing.T) {
 			t.Fatalf("task %d is %s, want terminal", id, taskStatusOf(rec))
 		}
 	}
+	return after.TotalAlloc - before.TotalAlloc
 }
 
 func taskStatusOf(rec *jv.Object) string {

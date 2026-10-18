@@ -30,12 +30,36 @@ func (s *Scheduler) wakeDue() {
 }
 
 // Wake is scheduler.ts wake: synchronous, from memory; a task whose chain is not loaded yet counts as it would alone.
+//
+// Wake runs after every commit, so its cost must not grow with the live tasks while one runs: the earliest sleep comes from
+// the sleeping index, as wakeDue reads it, and the walk over the live tasks that looks for one that can run now (anyRunnable)
+// is skipped when a running invocation or a reconcile pass with work already answers that. Walking every live task each
+// time made ending a chain of 20,000 held tasks 20,000 walks of 20,000 records, each record a key search here, not the
+// property read it is in scheduler.ts.
 func (s *Scheduler) Wake() Wake {
 	now := s.env.Now()
 	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
 	// process that dies before it lands must be woken again. A pass with nothing to do is not.
-	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWork()
+	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWork() || s.anyRunnable(now)
 	var w Wake
+	s.sleeping.Range(func(id ID) bool {
+		rec, live := s.live.get(id)
+		if !live || taskStatus(rec) != StatusSleeping || getBool(rec, "abortRequested") {
+			return true
+		}
+		if until, _ := getNum(getObj(rec, "state"), "until"); until > now && (!w.HasAt || until < w.At) {
+			w.HasAt, w.At = true, until
+		}
+		return true
+	})
+	w.Active = active
+	return w
+}
+
+// anyRunnable is whether some live task can run now: not completing, not waiting on live work, not a sleep not yet due, not
+// parked, and one a definition can take (or an abort-marked one, which is orphaned). It walks in insertion order and stops
+// at the first, so a session with nothing to run pays one pass over its live tasks.
+func (s *Scheduler) anyRunnable(now float64) bool {
 	var snapshot Snapshot
 	for _, rec := range s.live.values() {
 		status := taskStatus(rec)
@@ -57,14 +81,8 @@ func (s *Scheduler) Wake() Wake {
 		}
 		if status == StatusSleeping && !aborted {
 			if until, _ := getNum(getObj(rec, "state"), "until"); until > now {
-				if !w.HasAt || until < w.At {
-					w.HasAt, w.At = true, until
-				}
 				continue
 			}
-		}
-		if active {
-			continue
 		}
 		if s.parked(rec) {
 			continue
@@ -83,10 +101,9 @@ func (s *Scheduler) Wake() Wake {
 				continue
 			}
 		}
-		active = true
+		return true
 	}
-	w.Active = active
-	return w
+	return false
 }
 
 // scheduleWake recomputes the wake in a microtask, off the Session line's jobs: it arms the built-in timer, or tells OnWake
