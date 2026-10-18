@@ -103,10 +103,18 @@ func TestTheEventsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept
 			settings.DocumentRetentionMs = &retentionMs
 			settings.Progress = &ProgressPolicyPatch{OutputIntervalMs: new(0.0)}
 		})
+		// Each step waits for the update of the one before it. Upstream paces the steps with a 5 ms timer, which only keeps two
+		// steps out of one commit while a commit takes less than 5 ms; under load here it does not, and the steps coalesce into
+		// fewer updates in one run than the other. Waiting for the update delivered puts every step in a commit of its own.
+		updated := make(chan struct{}, 3)
 		addTool(t, setup.Registry, tlTool("steps", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			for _, step := range []string{"a\n", "b\n", "c\n"} {
 				api.Output(step)
-				time.Sleep(5 * time.Millisecond)
+				select {
+				case <-updated:
+				case <-ctx.Done():
+					return durable.ToolExecutionResult{}, context.Cause(ctx)
+				}
 			}
 			return durable.ToolExecutionResult{}, nil
 		}))
@@ -122,6 +130,14 @@ func TestTheEventsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept
 			mu.Lock()
 			defer mu.Unlock()
 			events = append(events, batch...)
+			for _, event := range batch {
+				if _, ok := event.(ToolExecutionUpdateEvent); ok {
+					select {
+					case updated <- struct{}{}:
+					default:
+					}
+				}
+			}
 			return nil
 		})
 		must(submitInput(t, root, "go").Wait(testContext))

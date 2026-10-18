@@ -8,12 +8,13 @@
 // next one can be started or woken in upstream's order.
 //
 // A goroutine's state is read from a goroutine dump, polled after a short grace period with exponential backoff.
-// A sync.Mutex, sync.RWMutex or semaphore wait is not a wait here: upstream code cannot block on a lock, so a lock in
-// Go code is part of its synchronous work.
+// A sync.Mutex, sync.RWMutex or semaphore wait is not a wait here, except for AwaitBlocked: upstream code cannot block
+// on a lock, so a lock in Go code is part of its synchronous work, unless the caller may hold the lock.
 package entered
 
 import (
 	"bytes"
+	"context"
 	"runtime"
 	"strconv"
 	"sync"
@@ -73,6 +74,33 @@ func AwaitUnless(id uint64, done <-chan struct{}, busy func() bool) {
 	}
 }
 
+// AwaitBlocked is Await for a caller that may itself hold a lock the goroutine needs, and that stops waiting when ctx is
+// done. Besides a goroutine parked in a wait, one waiting for a sync.Mutex, sync.RWMutex or semaphore has entered: it has
+// run up to a wait, and the caller, which cannot tell whose lock it is, must not wait for it. It returns the cause of ctx
+// when ctx ended the wait, and nil otherwise.
+func AwaitBlocked(ctx context.Context, id uint64, done <-chan struct{}) error {
+	delay := grace
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	stacks := buffers.Get().(*[]byte)
+	defer putBuffer(stacks)
+	for {
+		select {
+		case <-done:
+			return nil
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case <-timer.C:
+		}
+		var parked, found bool
+		if parked, found, *stacks = parkedOrBlocked(id, *stacks, true); !found || parked {
+			return nil
+		}
+		delay = min(2*delay, maxDelay)
+		timer.Reset(delay)
+	}
+}
+
 // buffers are the pollers' goroutine dump buffers, reused across waits.
 var buffers = sync.Pool{New: func() any { return new([]byte) }}
 
@@ -91,6 +119,11 @@ func putBuffer(stacks *[]byte) {
 // its buffer. It is not parked while running, runnable, in a system call (a synchronous system call is work, as
 // upstream's synchronous I/O) or waiting for a sync.Mutex, sync.RWMutex or semaphore.
 func Parked(id uint64, stacks []byte) (parked, found bool, buffer []byte) {
+	return parkedOrBlocked(id, stacks, false)
+}
+
+// parkedOrBlocked is Parked; with locks, a goroutine waiting for a sync.Mutex, sync.RWMutex or semaphore is parked too.
+func parkedOrBlocked(id uint64, stacks []byte, locks bool) (parked, found bool, buffer []byte) {
 	if want := int(hint.Load()); cap(stacks) < want {
 		stacks = make([]byte, want)
 	}
@@ -117,9 +150,10 @@ func Parked(id uint64, stacks []byte) (parked, found bool, buffer []byte) {
 		state = state[:end]
 	}
 	switch string(state) {
-	case "running", "runnable", "syscall", "copystack", "preempted",
-		"sync.Mutex.Lock", "sync.RWMutex.Lock", "sync.RWMutex.RLock", "semacquire":
+	case "running", "runnable", "syscall", "copystack", "preempted":
 		return false, true, stacks
+	case "sync.Mutex.Lock", "sync.RWMutex.Lock", "sync.RWMutex.RLock", "semacquire":
+		return locks, true, stacks
 	}
 	return true, true, stacks
 }

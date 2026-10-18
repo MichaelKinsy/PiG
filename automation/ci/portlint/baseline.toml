@@ -2152,12 +2152,6 @@ snippet = "go sess.forwardAgentEvents()"
 
 [[hit]]
 check = "golifetime"
-file = "durable/session/observation.go"
-func = "pending.schedule"
-snippet = "go func() {"
-
-[[hit]]
-check = "golifetime"
 file = "env/daemon/exec.go"
 func = "server.runExec"
 snippet = "select {"

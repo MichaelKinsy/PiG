@@ -761,8 +761,21 @@ func (s *TaskScheduler) Abort(ctx context.Context, id durable.TaskId, keepRestar
 	return result.result, nil
 }
 
-// WaitForTask returns the terminal receipt of a task; cancelling ctx cancels only this wait.
+// WaitForTask returns the terminal receipt of a task; cancelling ctx cancels only this wait, including its wait for the
+// listeners of the batches committed before it to be entered, which it resumes its caller after as upstream's drain
+// microtask runs before the code that awaited the promise.
 func (s *TaskScheduler) WaitForTask(ctx context.Context, id durable.TaskId) (durable.SettledTask[durable.JsonValue], error) {
+	settled, err := s.waitForTask(ctx, id)
+	if err != nil {
+		return settled, err
+	}
+	if err := s.options.Session.AwaitDeliveriesEntered(ctx); err != nil {
+		return anyTaskRecord{}, err
+	}
+	return settled, nil
+}
+
+func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (durable.SettledTask[durable.JsonValue], error) {
 	// Check and register on the line so no terminal publication falls between them.
 	type found struct {
 		record *anyTaskRecord
@@ -802,8 +815,16 @@ func (s *TaskScheduler) WaitForTask(ctx context.Context, id durable.TaskId) (dur
 }
 
 // WaitForIdle returns when ordinary traversal from the conversation, or from every ownerless conversation when
-// conversationId is nil, reaches no live non-background task.
+// conversationId is nil, reaches no live non-background task. Like WaitForTask it resumes its caller after the listeners
+// of the batches committed before it have been entered, and cancelling ctx cancels that wait too.
 func (s *TaskScheduler) WaitForIdle(ctx context.Context, conversationId *durable.ConversationId) error {
+	if err := s.waitForIdle(ctx, conversationId); err != nil {
+		return err
+	}
+	return s.options.Session.AwaitDeliveriesEntered(ctx)
+}
+
+func (s *TaskScheduler) waitForIdle(ctx context.Context, conversationId *durable.ConversationId) error {
 	s.mu.Lock()
 	if s.sealing.Load() {
 		s.mu.Unlock()

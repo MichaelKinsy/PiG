@@ -9,10 +9,12 @@
 //     waits for its predecessor's completion, so jobs run in admission order.
 //   - Deliveries upstream schedules with queueMicrotask run on a goroutine the
 //     Session tracks. A started watch with no callback in flight takes the
-//     committed frame into delivery before the publishing commit returns, as
-//     upstream's drain microtask enters the listener before the commit's
-//     caller resumes. A state attachment drains on the committing goroutine
-//     after the Session line is free and before the commit returns.
+//     committed frame into delivery before the publishing commit returns, and
+//     a Harness wait awaits the deliveries scheduled before it resumes its
+//     caller (AwaitDeliveriesEntered): upstream's drain microtask enters the
+//     listener before the code awaiting the commit's promise resumes. A state
+//     attachment drains on the committing goroutine after the Session line is
+//     free and before the commit returns.
 //   - An AbortSignal is the context's cancellation; withoutAbortSignal is
 //     context.WithoutCancel, which keeps context values.
 package session
@@ -870,6 +872,15 @@ func (session *SessionImpl) RunDeliveries() { session.scheduler.runDrains() }
 
 // WaitDeliveries blocks until every scheduled watch and state delivery has drained.
 func (session *SessionImpl) WaitDeliveries() { session.scheduler.wait() }
+
+// AwaitDeliveriesEntered blocks until every watch delivery scheduled before the call has entered: its listener returned,
+// is parked in a wait, or is blocked behind a lock, which a Go listener does where an upstream one awaits and which the
+// caller may hold. A Harness wait that resumes its caller calls it, as upstream's drain microtask enters the listener
+// before the code awaiting the wait's promise resumes; the listener a caller's own goroutine runs is not waited for, so
+// a listener may itself wait for the Harness. It returns the cause of ctx when ctx ends the wait.
+func (session *SessionImpl) AwaitDeliveriesEntered(ctx context.Context) error {
+	return session.scheduler.awaitEntered(ctx)
+}
 
 func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Transaction) (any, error), scope TransactionScope) (result any, err error) {
 	if err := session.assertHealthy(); err != nil {
