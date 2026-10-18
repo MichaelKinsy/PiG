@@ -40,6 +40,35 @@ func TestDurableSQLiteMigrations(t *testing.T) {
 			sqlite.SqliteRow{"next_id": "2", "next_seq": 1})
 	})
 
+	// upstream: packages/durable/test/sqlite-migrations.test.ts:47
+	t.Run("migrates a version 1 database to store sleeping tasks, keeping its tasks and indexes", func(t *testing.T) {
+		path := databasePath(t)
+		database := openDatabase(t, path)
+		mustDo(t, sqlite.ApplySqliteMigrations(database, sqlite.SqliteMigrations[:1]))
+		waiting := `{"id":5,"conversationId":1,"kind":"test.task","version":1,"input":null,"background":false,"abortRequested":false,"state":{"status":"waiting","checkpoint":{"phase":"run"},"on":[],"policy":"allSettled"}}`
+		insertSleeping := "INSERT INTO tasks (id, conversation_id, kind, status, abort_requested, background, record) VALUES (6, 1, 'test.task', 'sleeping', 0, 0, '{}')"
+		mustDo(t, database.Run("INSERT INTO tasks (id, conversation_id, kind, status, abort_requested, background, record) VALUES (5, 1, 'test.task', 'waiting', 0, 0, ?)", waiting))
+		if err := database.Run(insertSleeping); err == nil {
+			t.Fatal("version 1 admitted a sleeping task")
+		}
+		mustDo(t, database.Close())
+
+		storage := must(node.OpenNodeSqliteStorage(path, node.NodeSqliteStorageOptions{}))
+		mustDo(t, storage.Close(testContext))
+		migrated := openDatabase(t, path)
+		defer func() { mustDo(t, migrated.Close()) }()
+		expectRow(t, migrated, "SELECT version FROM durable_schema WHERE singleton = 1", sqlite.SqliteRow{"version": 2})
+		expectRow(t, migrated, "SELECT status, record FROM tasks WHERE id = 5", sqlite.SqliteRow{"status": "waiting", "record": waiting})
+		mustDo(t, migrated.Run(insertSleeping))
+		indexes := must(migrated.All("SELECT name FROM sqlite_schema WHERE type = 'index' AND tbl_name = 'tasks' ORDER BY name"))
+		var names []any
+		for _, index := range indexes {
+			names = append(names, index["name"])
+		}
+		expectEqual(t, names, []any{"tasks_by_abort_requested", "tasks_by_background", "tasks_by_conversation", "tasks_by_kind", "tasks_by_status"})
+		expectRow(t, migrated, "SELECT count(*) AS count FROM sqlite_schema WHERE name = 'tasks_v2'", sqlite.SqliteRow{"count": 0})
+	})
+
 	t.Run("rejects a database newer than the portable core", func(t *testing.T) {
 		path := databasePath(t)
 		database := openDatabase(t, path)
