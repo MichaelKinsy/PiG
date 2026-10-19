@@ -10709,8 +10709,8 @@
       ],
       "evidence": [
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
-        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUnderflowBoundary"
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUnderflowBoundary",
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
       ]
     },
     {
@@ -10996,7 +10996,7 @@
       "evidence": [
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
         "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi"
+        "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi"
       ]
     },
     {
@@ -11291,9 +11291,9 @@
         "call:ai/llama_cpp_classify.go#ClassifyLlamaCpp"
       ],
       "evidence": [
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
-        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"
+        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
       ]
     },
     {
@@ -18194,7 +18194,7 @@
       "evidence": [
         "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi"
+        "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi"
       ]
     },
     {
@@ -39788,9 +39788,9 @@
         "call:ai/llama_cpp_classify.go#ClassifyLlamaCpp"
       ],
       "evidence": [
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUnderflowBoundary",
-        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -39811,9 +39811,9 @@
         "call:ai/llama_cpp_classify.go#ClassifyLlamaCpp"
       ],
       "evidence": [
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUnderflowBoundary",
-        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -39962,7 +39962,9 @@
         "call:ai/llama_cpp_classify.go#LlamaCppServerRoot"
       ],
       "evidence": [
-        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
+        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer"
       ]
     },
     {
@@ -39982,7 +39984,9 @@
         "call:ai/llama_cpp_classify.go#LlamaCppServerRoot"
       ],
       "evidence": [
-        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
+        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer"
       ]
     },
     {
@@ -51611,8 +51615,8 @@
       ],
       "evidence": [
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
-        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUnderflowBoundary"
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUnderflowBoundary",
+        "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream"
       ]
     },
     {
@@ -51898,7 +51902,7 @@
       "evidence": [
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
         "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi"
+        "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi"
       ]
     },
     {
@@ -52193,9 +52197,9 @@
         "call:ai/llama_cpp_classify.go#ClassifyLlamaCpp"
       ],
       "evidence": [
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi",
         "test:ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
-        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream"
+        "test:ai/openai_decisions_upstream_test.go#TestOpenAIDecisionsUpstream",
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
       ]
     },
     {
@@ -60015,7 +60019,7 @@
       "evidence": [
         "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
         "test:ai/utils_exports_upstream_test.go#TestClassifierFunctionsReportFailuresInTheResult",
-        "test:ai/llama_cpp_classify_oracle_test.go#TestLlamaCppClassifyMatchesPi"
+        "test:ai/openai_decisions_oracle_test.go#TestOpenAIDecisionsMatchesPi"
       ]
     },
     {
@@ -270123,8 +270127,8 @@
       ],
       "evidence": [
         "test:tui/editor_owned_tui_render_test.go#TestEditorOwnedByARealRendererDrawsInsideTheFrame",
-        "test:tui/terminal_write_log_test.go#TestRendererOutputLogsOnlyWhenAsked",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/renderer_size_race_test.go#TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize",
+        "test:tui/terminal_write_log_test.go#TestRendererOutputLogsOnlyWhenAsked"
       ]
     },
     {
@@ -272210,8 +272214,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_signals_resize_test.go#TestResizeHandlerFrameSeesTheNewSize",
-        "test:tui/terminal_write_log_test.go#TestRendererCursorVisibilityIsNotLogged",
-        "test:tui/terminal_write_log_test.go#TestRendererOutputLogsOnlyWhenAsked"
+        "test:tui/renderer_size_race_test.go#TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize",
+        "test:tui/terminal_write_log_test.go#TestRendererCursorVisibilityIsNotLogged"
       ]
     },
     {
