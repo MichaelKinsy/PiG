@@ -111,8 +111,6 @@ type LocalExecutionEnv struct {
 
 var (
 	_ durableenv.ExecutionEnv = (*LocalExecutionEnv)(nil)
-	_ durableenv.FileLister   = (*LocalExecutionEnv)(nil)
-	_ durableenv.FileLister   = (*RemoteExecutionEnv)(nil)
 )
 
 // NewLocalExecutionEnv returns the environment of options.

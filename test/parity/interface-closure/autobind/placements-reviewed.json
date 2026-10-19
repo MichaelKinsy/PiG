@@ -50,23 +50,5 @@
    "model": "bound: the provider binds the request's model when it builds the request: ai/provider_stream_event.go:23 wraps StreamOptions.OnProviderStreamEvent(ctx, data, model) into the builder's one-argument callback, so the model Pi passes is the same request model"
   },
   "reason": "Pi ai/src/types.ts:200 onProviderStreamEvent(data, model), which openai-responses-shared.ts:111 reuses. Go's OpenAIResponsesStreamOptions.OnProviderStreamEvent func(data any) error (ai/openai_responses.go:1455) receives the data; the model is bound per request (ai/provider_stream_event.go:23). Recorded as folded behaviour (LEAD-RULINGS-1520 unblock-types 5)."
- },
- "durable:FileSystem": {
-  "go": [
-   "durable/env/env.go#FileSystem"
-  ],
-  "members": {
-   "listFiles": "durable/env/env.go#FileLister.ListFiles"
-  },
-  "reason": "Pi 1.2.0 durable/src/env/index.ts:251 declares listFiles as an optional method (`listFiles?(path, options, context)`), and the conformance suite tells an environment without it by `env.listFiles === undefined` (testing/env-conformance.ts:56); Pi's own durable NodeExecutionEnv has none, and no Pi production code calls it. A Go interface cannot have an optional method, so durable/env declares it as the optional capability FileLister (env.go:394), which a FileSystem implements or not: env.RemoteExecutionEnv and env.LocalExecutionEnv implement it (env/remote_env.go, env/list_files.go), node.NodeExecutionEnv does not, and the conformance suite type-asserts it where Pi tests for undefined (durable/durabletest/env_conformance.go listed). Putting ListFiles on FileSystem itself would drop Pi's not-implemented state. Evidence: TestLocalExecutionEnvConformance and TestRemoteExecutionEnvOverAPipeConformance run Pi's five listFiles cases; TestCreateEnvConformanceListFilesCasesFollowTheOptions (tern lead approval, chord-strict-120 Round 3)."
- },
- "durable:ExecutionEnv": {
-  "go": [
-   "durable/env/env.go#ExecutionEnv"
-  ],
-  "members": {
-   "listFiles": "durable/env/env.go#FileLister.ListFiles"
-  },
-  "reason": "Pi durable/src/env/index.ts ExecutionEnv extends FileSystem and inherits the optional listFiles; Go's ExecutionEnv embeds FileSystem, and the optional method is the FileLister capability as for durable:FileSystem, with the same evidence (tern lead approval, chord-strict-120 Round 3)."
  }
 }

@@ -336,6 +336,12 @@ type FileSystem interface {
 	RenameFile(ctx context.Context, sourcePath, destinationPath string) error
 	FileInfo(ctx context.Context, path string) (FileInfo, error)
 	ListDir(ctx context.Context, path string) ([]FileInfo, error)
+	// ListFiles is upstream's optional `listFiles?`: the files, directories and symbolic links below a directory, at any
+	// depth, for indexes such as file completion. Symbolic links are not followed; other kinds of files are not listed;
+	// entries that cannot be read are skipped. It fails with a not_supported FileError when the environment cannot list
+	// right now (an older remote daemon, or an environment without a lister, where upstream leaves the method undefined),
+	// so callers fall back to their own walk. options may be nil.
+	ListFiles(ctx context.Context, path string, options *ListFilesOptions) (FileListing, error)
 	OpenDirReader(ctx context.Context, path string) (DirReader, error)
 	// Watch reports changes to files and directories, for hosts that load resources from the environment. When it
 	// returns a watcher, coverage is established: a host that watches before it loads cannot miss a change made during
@@ -350,7 +356,7 @@ type FileSystem interface {
 	Cleanup(ctx context.Context) error
 }
 
-// ListFilesOptions configure FileLister.ListFiles; a nil field takes its default.
+// ListFilesOptions configure FileSystem.ListFiles; a nil field takes its default.
 type ListFilesOptions struct {
 	// Hidden includes names starting with `.` (on Windows also files with the hidden attribute); nil means true.
 	// Entries named `.git` are never listed.
@@ -378,21 +384,12 @@ type FileListEntry struct {
 	Kind FileKind
 }
 
-// FileListing is the result of FileLister.ListFiles.
+// FileListing is the result of FileSystem.ListFiles.
 type FileListing struct {
 	// Entries run depth first, parents before their entries, siblings in byte order of their names.
 	Entries []FileListEntry
 	// Truncated is whether a bound in ListFilesOptions ended the listing early.
 	Truncated bool
-}
-
-// FileLister is the optional listFiles capability of a FileSystem (`listFiles?` of upstream's FileSystem): the files,
-// directories and symbolic links below a directory, at any depth, for indexes such as file completion. Symbolic links are
-// not followed; other kinds of files are not listed; entries that cannot be read are skipped. ListFiles fails with a
-// not_supported FileError when the environment cannot list right now (an older remote daemon), so callers fall back to their
-// own walk. options may be nil.
-type FileLister interface {
-	ListFiles(ctx context.Context, path string, options *ListFilesOptions) (FileListing, error)
 }
 
 // ShellSpillOptions spills the complete output to a temporary file once it exceeds either threshold.

@@ -65,6 +65,12 @@ type NodeExecutionEnv struct {
 
 var _ durableenv.ExecutionEnv = (*NodeExecutionEnv)(nil)
 
+// ListFiles fails with not_supported: upstream's NodeExecutionEnv leaves the optional listFiles undefined. LocalExecutionEnv
+// in the env package adds it through a pi-env daemon.
+func (env *NodeExecutionEnv) ListFiles(ctx context.Context, path string, options *durableenv.ListFilesOptions) (durableenv.FileListing, error) {
+	return durableenv.FileListing{}, durableenv.NewFileError(durableenv.FileErrorNotSupported, "This environment does not list files", path, nil)
+}
+
 // NewNodeExecutionEnv constructs an environment rooted at options.Cwd.
 func NewNodeExecutionEnv(options NodeExecutionEnvOptions) *NodeExecutionEnv {
 	env := &NodeExecutionEnv{

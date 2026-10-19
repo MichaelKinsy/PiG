@@ -94,11 +94,11 @@ type listedFiles struct {
 
 // listed is env-conformance.ts listed: the environment's ListFiles result as lines.
 func listed(executionEnv env.ExecutionEnv, path string, options *env.ListFilesOptions) listedFiles {
-	lister, ok := executionEnv.(env.FileLister)
-	if !ok {
+	listing, err := executionEnv.ListFiles(conformanceContext, path, options)
+	if fileErr, ok := errors.AsType[*env.FileError](err); ok && fileErr.Code == env.FileErrorNotSupported {
 		panic(caseFailure{err: errors.New("The environment does not implement listFiles")})
 	}
-	listing := must(lister.ListFiles(conformanceContext, path, options))
+	check(err)
 	letters := map[env.FileKind]string{env.FileKindFile: "f", env.FileKindDirectory: "d", env.FileKindSymlink: "l"}
 	result := listedFiles{Entries: []string{}, Truncated: listing.Truncated}
 	for _, entry := range listing.Entries {
@@ -615,7 +615,7 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 			}
 		}
 		listFiles := func(executionEnv env.ExecutionEnv, path string, listOptions *env.ListFilesOptions) error {
-			_, err := executionEnv.(env.FileLister).ListFiles(ctx, path, listOptions)
+			_, err := executionEnv.ListFiles(ctx, path, listOptions)
 			return err
 		}
 		cases = append(cases,
@@ -666,7 +666,7 @@ func CreateEnvConformance(options EnvConformanceOptions) []EnvConformanceCase {
 				check(executionEnv.WriteFile(ctx, "file.txt", ""))
 				assert.StrictEqual(errorCode(listFiles(executionEnv, "missing", nil)), "not_found")
 				assert.StrictEqual(errorCode(listFiles(executionEnv, "file.txt", nil)), "not_directory")
-				_, err := executionEnv.(env.FileLister).ListFiles(abortedConformanceContext(), ".", nil)
+				_, err := executionEnv.ListFiles(abortedConformanceContext(), ".", nil)
 				assert.StrictEqual(errorCode(err), "aborted")
 			}),
 		)
