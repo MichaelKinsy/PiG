@@ -254,6 +254,7 @@ type rpcInputStep struct {
 	Line               string   `toml:"line"`
 	WaitContains       []string `toml:"wait_contains"`
 	WaitTimeoutSeconds int      `toml:"wait_timeout_seconds"`
+	PollUntil          string   `toml:"poll_until"`
 }
 
 type extensionHostBlock struct {
@@ -426,7 +427,10 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 		if strings.TrimSpace(step.Line) == "" {
 			out = append(out, violation{path, "rpc-step-line", fmt.Sprintf("rpc step %d requires line", i+1)})
 		}
-		if (len(step.WaitContains) > 0 || step.WaitEvent != "") && step.WaitTimeoutSeconds <= 0 {
+		if step.PollUntil != "" && (step.WaitEvent != "" || len(step.WaitContains) > 0) {
+			out = append(out, violation{path, "rpc-step-poll", fmt.Sprintf("rpc step %d poll_until replaces wait_event and wait_contains", i+1)})
+		}
+		if (len(step.WaitContains) > 0 || step.WaitEvent != "" || step.PollUntil != "") && step.WaitTimeoutSeconds <= 0 {
 			out = append(out, violation{path, "rpc-step-timeout", fmt.Sprintf("rpc step %d with wait_contains requires wait_timeout_seconds", i+1)})
 		}
 	}

@@ -1,6 +1,7 @@
 # Behavior family: rpc
 # Surface: switch_session fails with Pi's TypeError when the destination Session's transcript holds a system message whose content or toolsAdded has a JSON type the system replay cannot read, and the Runtime keeps the disposed outgoing Session, which still runs a prompt.
 # Pi 1.2.0 (pin 3daa2028): the AgentSession constructor restores the transcript's loadout (agent-session.ts:526 _restoreToolsFromTranscript -> getCurrentSystemMessage, pi-ai utils/transcript.ts getCurrentSystemMessage and getCurrentTools, utils/text.ts contentText), after switchSession tore the outgoing Session down (agent-session-runtime.ts:196-222). Content 5 throws "content.filter is not a function"; toolsAdded 5 throws "number 5 is not iterable (cannot read property Symbol(Symbol.iterator))". The switch_session response reports the error; the prompt that follows starts on the disposed outgoing Session (its request list is empty, which the test provider answers as an unhandled request) and get_messages reports that Session's messages. Probed on Pi 1.1.0, where the switch succeeded and the prompt reported the error.
+# Barrier: Pi answers a prompt when its preflight passes and runs it afterwards (rpc-mode.ts:394-413; docs/rpc.md:67-69), and get_messages returns the transcript as it stands (rpc-mode.ts:672-673). The retained Session was disposed, so Pi's RPC output carries no agent_settled or other run event for these prompts (probed: the raw stream holds only the five responses). Pi's single thread has always finished the faux run before the next stdin line, while PiG's run goroutine can lag on a loaded host: 20 of 150 race-build gmp8 pairs read 3-4 messages against Pi's 5 (2026-10-18 sweep), and 1 of 2 on an idle host. Each prompt is followed by a get_state poll that waits for the exact settled count (3 messages after the first run, 5 after the second; both are Pi's measured counts), and the driver drops the poll responses from the comparison.
 
 name = "59-rpc-prompt-wrong-typed-system-replay"
 description = "RPC switch_session to a Session whose system message has a numeric content, then to one whose system message has a numeric toolsAdded, fails with Pi's TypeError message each time, and the prompt after each runs on the retained outgoing Session."
@@ -26,6 +27,11 @@ wait_contains = ['"id":"prompt-content","type":"response","command":"prompt"']
 wait_timeout_seconds = 10
 
 [[rpc.steps]]
+line = '{"id":"settled-content","type":"get_state"}'
+poll_until = '{"type":"response","data":{"isStreaming":false,"messageCount":3}}'
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
 line = '{"id":"switch-tools","type":"switch_session","sessionPath":"sessions/tools.jsonl"}'
 wait_contains = ['"id":"switch-tools","type":"response","command":"switch_session"']
 wait_timeout_seconds = 10
@@ -33,6 +39,11 @@ wait_timeout_seconds = 10
 [[rpc.steps]]
 line = '{"id":"prompt-tools","type":"prompt","message":"reply with exactly: ok"}'
 wait_contains = ['"id":"prompt-tools","type":"response","command":"prompt"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"settled-tools","type":"get_state"}'
+poll_until = '{"type":"response","data":{"isStreaming":false,"messageCount":5}}'
 wait_timeout_seconds = 10
 
 [[rpc.steps]]

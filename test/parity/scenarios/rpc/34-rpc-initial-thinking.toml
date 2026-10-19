@@ -46,9 +46,10 @@ pattern = '[0-9]Z_[0-9a-f-]+\.jsonl$'
 reason = "Generated filenames require Pi's millisecond syntax and their embedded UUID remains bound to the session."
 [[assert.json_aliases]]
 paths = ["/**/cwd"]
-kind = "path"
-roots = ["temp"]
-reason = "Only the run-owned temporary root varies in the explicitly configured fixture directories."
+kind = "id"
+group = "cwd"
+pattern = '^/.+/rpc-wire-[a-z0-9_]{8}$'
+reason = "rpc-wire-drift.py runs each side in its own tempfile.mkdtemp(prefix='rpc-wire-') directory, which has the same length on both sides; only its 8 random characters differ. Pi and PiG estimate tokens from the system prompt's cwd characters, so an equal-length cwd is what makes estimatedTokensAfter comparable (a cwd under {{TEMP}} differed by the -pig-/-pi- infix and the random digits: 786 against 787 in 3-5 of 150 pairs, 2026-10-18). Preserve the cwd's shape and every reference to it."
 [[assert.json_aliases]]
 paths = ["/**/baseUrl"]
 kind = "id"

@@ -110,6 +110,11 @@ type RPCInputStep struct {
 	Line               string   `toml:"line"`
 	WaitContains       []string `toml:"wait_contains"`
 	WaitTimeoutSeconds int      `toml:"wait_timeout_seconds"`
+	// PollUntil turns the step into a state barrier for work that has no event: the driver resends Line, a read-only query whose
+	// request id names the step, until a response record contains this JSON object (nested objects match as subsets), within
+	// WaitTimeoutSeconds. Every response to the polled id is left out of the compared output and the raw output (the JSON comparator reads the raw one), because how many polls ran depends
+	// on timing; the scenario's own later commands prove the settled state.
+	PollUntil string `toml:"poll_until"`
 }
 
 // ExtensionHostDriverConfig configures the pig-only extension host validation

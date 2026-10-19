@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -53,8 +54,8 @@ class Provider(http.server.BaseHTTPRequestHandler):
 def run(host, root, initial_only=False):
     agent = root / 'agent'
     agent.mkdir()
-    cwd = root / 'cwd'
-    cwd.mkdir()
+    # Pi and PiG append the working directory to the system prompt and estimate tokens from its characters, so the two sides' cwds must have the same length. root differs in length between the sides ({{TEMP}} names the binary: ...-pig-N versus ...-pi-N), so the cwd is a mkdtemp directory: a fixed-length name under the one temp directory both sides share.
+    cwd = Path(tempfile.mkdtemp(prefix='rpc-wire-')).resolve()
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Provider)
     server.retried = False
     worker = threading.Thread(target=server.serve_forever)
@@ -148,6 +149,7 @@ def run(host, root, initial_only=False):
             process.kill()
             process.wait()
         reader_thread.join(timeout=20)
+        shutil.rmtree(cwd, ignore_errors=True)
         server.shutdown()
         server.server_close()
         worker.join()

@@ -22,8 +22,8 @@
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
-      "sha256": "59f2a53e2666f19f5da7ba72557bc24715aab1b80f3598d9dbf216666ef06f36",
-      "reason": "canonical_json sorts JSON object keys only and preserves terminal framing. Raw stdout and stderr are retained. wait_contains/wait_event are new-output barriers, not acceptance assertions."
+      "sha256": "752be056bd2c6dd12a19a3e1348ca88753edd3d8e346e71aea11101f71a9fa54",
+      "reason": "canonical_json sorts JSON object keys only and preserves terminal framing. Raw stdout and stderr are retained. wait_contains/wait_event are new-output barriers, not acceptance assertions. A poll_until step resends one read-only query until its response holds the awaited state and then leaves every response to that query out of the compared and raw output, because their count follows timing; every other record, including the commands that prove the settled state, is compared."
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
@@ -67,7 +67,7 @@
     },
     {
       "source": "test/parity/testdata/rpc-wire-drift.py",
-      "sha256": "b5d4d2b5d958297c6478575edf89f26e9ff9cd5c90ea411ed940543e3b7a5d77",
+      "sha256": "8f4921e4970807abe6d0b809f5648871ca4f9fd05fabdf778edccf5baf23043e",
       "reason": "This probe emits complete mutation, UI, recovery, compaction, fork, switch and initial-state records without identity rewriting. The scenario's shared typed JSON comparator owns aliases. Other prompt events are outside these focused contracts and the complete RPC stream is captured as raw.json, not discarded. The fixture selects an explicit session directory, but generated filename syntax remains checked."
     },
     {
@@ -6751,15 +6751,23 @@
           "reason": "Only generated session filenames vary; require Pi's millisecond filename syntax and bind the embedded UUID to its session."
         },
         {
+          "kind": "id",
+          "paths": [
+            "/**/cwd"
+          ],
+          "group": "cwd",
+          "pattern": "^/.+/rpc-wire-[a-z0-9_]{8}$",
+          "reason": "rpc-wire-drift.py runs each side in its own tempfile.mkdtemp(prefix='rpc-wire-') directory, which has the same length on both sides; only its 8 random characters differ. Pi and PiG estimate tokens from the system prompt's cwd characters, so an equal-length cwd is what makes estimatedTokensAfter comparable (a cwd under {{TEMP}} differed by the -pig-/-pi- infix and the random digits: 786 against 787 in 3-5 of 150 pairs, 2026-10-18). Preserve the cwd's shape and every reference to it."
+        },
+        {
           "kind": "path",
           "paths": [
-            "/**/cwd",
             "/**/sessionFile"
           ],
           "roots": [
             "temp"
           ],
-          "reason": "The fixture explicitly locates cwd, sessions and the missing target under the run-owned temporary root; retain every path suffix."
+          "reason": "The fixture explicitly locates sessions and the missing target under the run-owned temporary root; retain every path suffix."
         },
         {
           "kind": "id",
@@ -6823,14 +6831,13 @@
           "reason": "Generated filenames require Pi's millisecond syntax and their embedded UUID remains bound to the session."
         },
         {
-          "kind": "path",
+          "kind": "id",
           "paths": [
             "/**/cwd"
           ],
-          "roots": [
-            "temp"
-          ],
-          "reason": "Only the run-owned temporary root varies in the explicitly configured fixture directories."
+          "group": "cwd",
+          "pattern": "^/.+/rpc-wire-[a-z0-9_]{8}$",
+          "reason": "rpc-wire-drift.py runs each side in its own tempfile.mkdtemp(prefix='rpc-wire-') directory, which has the same length on both sides; only its 8 random characters differ. Pi and PiG estimate tokens from the system prompt's cwd characters, so an equal-length cwd is what makes estimatedTokensAfter comparable (a cwd under {{TEMP}} differed by the -pig-/-pi- infix and the random digits: 786 against 787 in 3-5 of 150 pairs, 2026-10-18). Preserve the cwd's shape and every reference to it."
         },
         {
           "kind": "id",

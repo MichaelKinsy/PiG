@@ -1,5 +1,6 @@
 # Upstream evidence: Pi 0.87.1 probe: submit ORIGINAL_A and ORIGINAL_B, /name Smoke Current, then /fork at the second user message. The new file has no session_info and the footer drops the name (footer.ts:124-128; session-manager.ts:createBranchedSession).
 # The release smoke flow and all four Go fork-name regressions failed before the fix. Compare the complete escaped footer, not the status message or old transcript name.
+# Barrier: each prompt step waits for the submitted user message followed by the assistant reply, not for " ORIGINAL_x" alone. That text is also the editor's own typed input, so the old wait passed before Enter reached the Session; the next keys then ran while the run was still recording the user message. Under the race build (gmp1, 2026-10-18) 4-6 of 100 pairs recorded /name's session_info BEFORE the second user message, so /fork at that message branched from the session_info entry and the new Session legitimately kept the name ("Smoke Current" in PiG's footer). PiG's trace of those runs: source entries [model, thinking, m, m, m, session_info, user B, assistant B] against [.., m, m, m, user B, assistant B, session_info]. PiG starts the turn on its run goroutine (interactive_turn.go startTurn, before_agent_start off the input loop), so a key typed right after Enter can run before the user message is recorded; Pi's footer never kept the name in the 460 pairs sampled (xd670, 2026-10-18), and only a barrier that proves the submission removes the ordering question for both. Probed on Pi 1.3.0 and PiG: the pane shows the message, two blank lines and the reply (41-error-notices uses the same shape).
 name = "11-footer-fork-session-name"
 description = "Forking before the source name refreshes the footer from the unnamed destination."
 covers = ["packages/coding-agent/src/modes/interactive/components/footer.ts"]
@@ -21,11 +22,11 @@ capture_start_last = true
 
 [[tmux.steps]]
 keys = ["reply with exactly: ORIGINAL_A", "Enter"]
-wait_visible_contains = [" ORIGINAL_A"]
+wait_visible_contains = ["reply with exactly: ORIGINAL_A\n\n\n ORIGINAL_A"]
 
 [[tmux.steps]]
 keys = ["reply with exactly: ORIGINAL_B", "Enter"]
-wait_visible_contains = [" ORIGINAL_B"]
+wait_visible_contains = ["reply with exactly: ORIGINAL_B\n\n\n ORIGINAL_B"]
 
 [[tmux.steps]]
 keys = ["/name Smoke Current", "Enter"]

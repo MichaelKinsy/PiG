@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -134,6 +135,7 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	// before sending the next command, which makes cancellation probes depend on
 	// protocol state instead of timing guesses.
 	var inputErr error
+	var polled []string // request ids of poll_until steps
 	writeLine := func(line string) error {
 		expanded := tc.expand(line)
 		if strings.Contains(expanded, "{{RPC_REQUEST_ID}}") {
@@ -148,6 +150,15 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	}
 	if len(sc.RPC.Steps) > 0 {
 		for _, step := range sc.RPC.Steps {
+			if step.PollUntil != "" {
+				id, err := pollRPCState(subCtx, &stdout, tc.expand(step.Line), step.PollUntil, step.WaitTimeoutSeconds, writeLine)
+				if err != nil {
+					inputErr = err
+					break
+				}
+				polled = append(polled, id)
+				continue
+			}
 			start := len(stdout.String())
 			if err := writeLine(step.Line); err != nil {
 				inputErr = fmt.Errorf("write stdin: %w", err)
@@ -201,7 +212,8 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	}
 	waitErr = errors.Join(waitErr, inputErr)
 
-	output := stdout.String()
+	raw := dropPolledResponses(stdout.String(), polled)
+	output := raw
 	if sc.RPC.CanonicalJSON {
 		var canonicalErr error
 		output, canonicalErr = canonicalJSONL(output)
@@ -217,7 +229,7 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	}
 
 	result := Result{
-		RawOutput:      stdout.String(),
+		RawOutput:      raw,
 		Output:         output,
 		Stderr:         stderr.String(),
 		StderrCaptured: true,
@@ -343,4 +355,96 @@ func waitForRPCOutput(ctx context.Context, output *synchronizedBuffer, start int
 		case <-ticker.C:
 		}
 	}
+}
+
+// pollRPCState resends the read-only query line until a response to it contains the until object. It returns the query's request id.
+// Each attempt waits for the query's own response, so the loop is bounded by that response and never by a fixed pause.
+func pollRPCState(ctx context.Context, output *synchronizedBuffer, line, until string, timeoutSeconds int, write func(string) error) (string, error) {
+	var query struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(line), &query); err != nil || query.ID == "" {
+		return "", fmt.Errorf("poll_until step needs a JSON line with a string id, got %q", line)
+	}
+	var want map[string]any
+	if err := json.Unmarshal([]byte(until), &want); err != nil || len(want) == 0 {
+		return "", fmt.Errorf("invalid poll_until %q", until)
+	}
+	timeout := time.Duration(timeoutSeconds) * time.Second
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	own, _ := json.Marshal(map[string]any{"id": query.ID})
+	for {
+		start := len(output.String())
+		if err := write(line); err != nil {
+			return "", fmt.Errorf("write stdin: %w", err)
+		}
+		if err := waitForRPCOutput(waitCtx, output, start, nil, string(own), int(timeout/time.Second)+1); err != nil {
+			return "", fmt.Errorf("poll %s: %w", query.ID, err)
+		}
+		for _, record := range completeRPCRecords(output.String()[start:]) {
+			if jsonSubset(want, record) {
+				return query.ID, nil
+			}
+		}
+		select {
+		case <-waitCtx.Done():
+			return "", fmt.Errorf("poll %s: no response contained %s within %s", query.ID, until, timeout)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
+func completeRPCRecords(text string) []map[string]any {
+	end := strings.LastIndexByte(text, '\n')
+	if end < 0 {
+		return nil
+	}
+	var out []map[string]any
+	for line := range strings.SplitSeq(text[:end+1], "\n") {
+		var record map[string]any
+		if json.Unmarshal([]byte(line), &record) == nil {
+			out = append(out, record)
+		}
+	}
+	return out
+}
+
+// jsonSubset reports whether every member of want appears in got; nested objects match as subsets, everything else exactly.
+func jsonSubset(want, got any) bool {
+	w, wok := want.(map[string]any)
+	g, gok := got.(map[string]any)
+	if !wok || !gok {
+		return reflect.DeepEqual(want, got)
+	}
+	for key, value := range w {
+		actual, present := g[key]
+		if !present || !jsonSubset(value, actual) {
+			return false
+		}
+	}
+	return true
+}
+
+// dropPolledResponses removes the records that answer a poll_until query: their count depends on timing, not on the product.
+func dropPolledResponses(output string, ids []string) string {
+	if len(ids) == 0 {
+		return output
+	}
+	lines := strings.SplitAfter(output, "\n")
+	kept := lines[:0]
+	for _, line := range lines {
+		var record struct {
+			ID   string `json:"id"`
+			Type string `json:"type"`
+		}
+		if json.Unmarshal([]byte(line), &record) == nil && record.Type == "response" && slices.Contains(ids, record.ID) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "")
 }
