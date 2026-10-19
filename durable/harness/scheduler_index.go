@@ -4,6 +4,9 @@ package harness
 // downward around live work, and the sets that hold each reconcile pass's candidates. No pass visits every live task.
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -429,6 +432,7 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 		node := nodeOf(record)
 		s.deleteLiveLocked(id)
 		s.sleeping.Delete(id)
+		s.wakeIndex.remove(id)
 		s.intent.Delete(id)
 		s.runnable.Delete(id)
 		s.finalizeChecks.Delete(id)
@@ -439,6 +443,9 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 		if waiting := s.waiters[id]; waiting != nil {
 			waiting.Range(func(waiter durable.TaskId) bool {
 				s.runnable.Add(waiter)
+				if record, live := s.live[waiter]; live {
+					s.wakeIndex.track(s, record)
+				}
 				return true
 			})
 		}
@@ -469,6 +476,7 @@ func (s *TaskScheduler) trackLocked(previous *anyTaskRecord, record anyTaskRecor
 			addToSet(s.waiters, on, id)
 		}
 	}
+	s.wakeIndex.track(s, record)
 	if record.State.Status == durable.TaskSleeping {
 		s.sleeping.Add(id)
 	} else {
@@ -549,4 +557,80 @@ func (s *TaskScheduler) indexSizes() schedulerIndexSizes {
 		below += children.Len()
 	}
 	return schedulerIndexSizes{live: len(s.live), settled: len(s.settled), edges: len(s.edges), below: below, roots: s.roots.Len(), unloaded: s.unloaded.Len(), dropQueue: s.dropQueue.Len()}
+}
+
+// wakeIndex holds what wakeLocked reads, so a wake does not walk every live task: the ready set, the live tasks that
+// pass wakeLocked's status filters whatever the time (not completing, not waiting on live tasks, not a sleep with a
+// future or absent-by-abort until), and the sleeps that depend on the clock, sorted by (until, id). An abort-marked sleep
+// or one without an until is ready; the others are in sleepers.
+type wakeIndex struct {
+	ready    *orderedSet[durable.TaskId]
+	sleepers []sleeper
+	untils   map[durable.TaskId]float64
+}
+
+type sleeper struct {
+	until float64
+	id    durable.TaskId
+}
+
+func newWakeIndex() wakeIndex {
+	return wakeIndex{ready: newOrderedSet[durable.TaskId](), untils: map[durable.TaskId]float64{}}
+}
+
+func compareSleepers(a, b sleeper) int {
+	if c := cmp.Compare(a.until, b.until); c != 0 {
+		return c
+	}
+	return cmp.Compare(a.id, b.id)
+}
+
+// remove drops id from the index.
+func (w *wakeIndex) remove(id durable.TaskId) {
+	w.ready.Delete(id)
+	if until, ok := w.untils[id]; ok {
+		delete(w.untils, id)
+		at, found := slices.BinarySearchFunc(w.sleepers, sleeper{until, id}, compareSleepers)
+		if found {
+			w.sleepers = slices.Delete(w.sleepers, at, at+1)
+		}
+	}
+}
+
+// track files a live task by its record and the liveness of the tasks it waits on.
+func (w *wakeIndex) track(s *TaskScheduler, record anyTaskRecord) {
+	w.remove(record.Id)
+	state := record.State
+	switch {
+	case state.Status == durable.TaskCompleting:
+		return
+	case state.Status == durable.TaskWaiting && !record.AbortRequested:
+		for _, on := range state.On {
+			if _, live := s.live[on]; live {
+				return
+			}
+		}
+	case state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil:
+		entry := sleeper{*state.Until, record.Id}
+		at, _ := slices.BinarySearchFunc(w.sleepers, entry, compareSleepers)
+		w.sleepers = slices.Insert(w.sleepers, at, entry)
+		w.untils[record.Id] = entry.until
+		return
+	}
+	w.ready.Add(record.Id)
+}
+
+// nextSleep is the earliest until greater than now: the earliest sleep not yet due.
+func (w *wakeIndex) nextSleep(now float64) *float64 {
+	at, _ := slices.BinarySearchFunc(w.sleepers, now, func(entry sleeper, now float64) int {
+		if entry.until <= now {
+			return -1
+		}
+		return 1
+	})
+	if at == len(w.sleepers) {
+		return nil
+	}
+	until := w.sleepers[at].until
+	return &until
 }

@@ -254,6 +254,8 @@ type TaskScheduler struct {
 	waiters map[durable.TaskId]*orderedSet[durable.TaskId]
 	// sleeping holds the sleeping live tasks, due or not: the candidates of wakeDueLocked.
 	sleeping *orderedSet[durable.TaskId]
+	// wakeIndex answers wakeLocked without a walk of every live task.
+	wakeIndex wakeIndex
 	// timer is the timer for the earliest sleep, without OnWake while scheduling runs.
 	timer *wakeTimer
 	// lastWake is the last value given to OnWake, so an unchanged one is not repeated.
@@ -347,6 +349,7 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		finalizeChecks:      newOrderedSet[durable.TaskId](),
 		waiters:             map[durable.TaskId]*orderedSet[durable.TaskId]{},
 		sleeping:            newOrderedSet[durable.TaskId](),
+		wakeIndex:           newWakeIndex(),
 		parkedTasks:         newOrderedSet[durable.TaskId](),
 		blockedListeners:    map[int]func(){},
 		dropQueue:           newOrderedSet[treeNode](),
@@ -584,33 +587,30 @@ func (s *TaskScheduler) wakeLocked() Wake {
 	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
 	// process that dies before it lands must be woken again. A pass with nothing to do is not.
 	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWorkLocked()
-	var at *float64
+	at := s.wakeIndex.nextSleep(now)
+	if !active {
+		active = s.anyRunnableLocked(now)
+	}
+	return Wake{Active: active, At: at}
+}
+
+// anyRunnableLocked reports whether some live task could run now: one in the wake index's ready set, or a sleep that has
+// come due, that is not parked, not an abort invocation still waiting on live work below it, and that some definition can
+// take (or that is abort-marked with no reason, which is orphaned).
+func (s *TaskScheduler) anyRunnableLocked(now float64) bool {
 	var snapshot durable.RegistrySnapshot
 	snapshotFailed := false
-	for _, record := range s.liveValuesLocked() {
-		state := record.State
-		if state.Status == durable.TaskCompleting {
-			continue
-		}
-		if state.Status == durable.TaskWaiting && !record.AbortRequested && slices.ContainsFunc(state.On, func(id durable.TaskId) bool { _, live := s.live[id]; return live }) {
-			continue
-		}
-		if state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > now {
-			if at == nil || *state.Until < *at {
-				until := *state.Until
-				at = &until
-			}
-			continue
-		}
-		if active {
-			continue
+	runnable := func(id durable.TaskId) bool {
+		record, live := s.live[id]
+		if !live {
+			return false
 		}
 		if s.parkedLocked(record.AbortRequested, record.Restarts) {
-			continue
+			return false
 		}
 		// An abort invocation waits for the live work below it, which counts itself.
 		if record.AbortRequested && len(s.waitingOnLocked(record, true)) > 0 {
-			continue
+			return false
 		}
 		// A task no definition can take waits for a registry change, except an abort-marked one, which is orphaned.
 		if !record.AbortRequested || record.AbortReason != "" {
@@ -619,12 +619,28 @@ func (s *TaskScheduler) wakeLocked() Wake {
 				snapshotFailed = snapshot == nil
 			}
 			if snapshot != nil && s.fitLocked(record.Id, record.Version, snapshot.Task(record.Kind)).reason != "" {
-				continue
+				return false
 			}
 		}
-		active = true
+		return true
 	}
-	return Wake{Active: active, At: at}
+	found := false
+	s.wakeIndex.ready.Range(func(id durable.TaskId) bool {
+		found = runnable(id)
+		return !found
+	})
+	if found {
+		return true
+	}
+	for _, sleeper := range s.wakeIndex.sleepers {
+		if sleeper.until > now {
+			break
+		}
+		if runnable(sleeper.id) {
+			return true
+		}
+	}
+	return false
 }
 
 // snapshotOrReportLocked takes a registry snapshot; one that panics is reported and yields nil.
@@ -3190,15 +3206,7 @@ func (s *TaskScheduler) notDueLocked(record anyTaskRecord) bool {
 
 // earliestSleepLocked is wakeLocked's At: the earliest until of a sleep not yet due.
 func (s *TaskScheduler) earliestSleepLocked() *float64 {
-	var at *float64
-	s.sleeping.Range(func(id durable.TaskId) bool {
-		if record, live := s.live[id]; live && s.notDueLocked(record) && (at == nil || *record.State.Until < *at) {
-			until := *record.State.Until
-			at = &until
-		}
-		return true
-	})
-	return at
+	return s.wakeIndex.nextSleep(s.options.Now())
 }
 
 // wakeDueLocked makes every sleeping task whose time has come a reservation candidate.
