@@ -840,6 +840,7 @@ class MirrorLinkTests(unittest.TestCase):
         build = self.root / "store" / "build-x"
         (build / "node_modules").mkdir(parents=True)
         (build / "src" / "node_modules" / "typebox").mkdir(parents=True)
+        (build / "src" / "package.json").write_text("{}")
         if stamp is not None:
             (build / oracle.STAMP).write_text(json.dumps(stamp))
         (oracle.SDK_TS / "node_modules").symlink_to(build / "node_modules")
@@ -854,6 +855,24 @@ class MirrorLinkTests(unittest.TestCase):
         self.assertTrue((link / "typebox").is_dir())
         self.assertEqual(self.mirror.stat().st_mode & 0o777, 0o555)
         self.assertEqual(oracle.link_mirror(TAG).resolve(), modules.resolve())  # idempotent
+
+    def test_workspace_packages_a_restored_build_lost_are_relinked_from_the_sources_workspaces(self):
+        """Pi's telemetry leap added packages/telemetry, which chord imports; a build restored without npm's workspace links
+        resolved typebox (a real directory) but not @earendil-works/pi-telemetry."""
+        modules = self.install({"commit": TAG.commit, "source": "build"})
+        source = modules.parent
+        (source / "package.json").write_text(json.dumps({"workspaces": ["packages/*", "apps/*"]}))
+        for directory, name in (("packages/telemetry", "@earendil-works/pi-telemetry"), ("packages/chord", "@earendil-works/chord"), ("apps/web", "pi-web")):
+            (source / directory).mkdir(parents=True)
+            (source / directory / "package.json").write_text(json.dumps({"name": name}))
+        (modules / "@earendil-works").mkdir()
+        (modules / "@earendil-works" / "chord").symlink_to("../../packages/chord", target_is_directory=True)  # an intact link stays
+        (modules / "@earendil-works" / "pi-telemetry").symlink_to("../../packages/missing", target_is_directory=True)  # a dangling one is replaced
+        oracle.link_mirror(TAG)
+        for name, directory in (("@earendil-works/pi-telemetry", "packages/telemetry"), ("@earendil-works/chord", "packages/chord"), ("pi-web", "apps/web")):
+            self.assertEqual(json.loads((self.mirror / "node_modules" / name / "package.json").read_text())["name"], name)
+            self.assertEqual(Path(os.path.realpath(modules / name)), (source / directory).resolve())
+        self.assertTrue((self.mirror / "node_modules" / "typebox").is_dir())
 
     def test_a_published_install_or_another_commits_build_links_nothing(self):
         for stamp in (None, {"commit": "c" * 40, "source": "build"}):

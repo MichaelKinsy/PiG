@@ -702,6 +702,48 @@ def source_modules(pin: Pin) -> Path | None:
     return modules
 
 
+def workspace_dirs(source: Path) -> dict[str, Path]:
+    """Every workspace package of the pinned monorepo (the globs of its root package.json `workspaces`) by name."""
+    names = {}
+    for pattern in json.loads((source / "package.json").read_text()).get("workspaces", []):
+        for manifest in sorted(source.glob(f"{pattern}/package.json")):
+            names[json.loads(manifest.read_text())["name"]] = manifest.parent
+    return names
+
+
+def link_directory(link: Path, target: Path) -> None:
+    if os.name == "nt":
+        import _winapi  # a junction needs no symlink privilege and is what npm itself links workspaces with on Windows
+
+        _winapi.CreateJunction(str(target.resolve()), str(link))
+    else:
+        link.symlink_to(os.path.relpath(target, link.parent), target_is_directory=True)
+
+
+def restore_workspace_links(source: Path) -> None:
+    """Make `node_modules/<name>` of the source build resolve to each workspace package, as `npm ci` linked them.
+
+    The links are the one part of the build tree that is not plain files: a build restored from the CI cache (tar of a
+    junction on Windows) can come back without them, while real directories (typebox) survive, so the mirror resolved
+    typebox but not the workspace packages.
+    A mirrored package that imports a workspace package (chord imports
+    @earendil-works/pi-telemetry) then fails with "Cannot find package". Every workspace is relinked from the source
+    tree's own `workspaces`, so a package a pin adds needs no list here."""
+    modules = source / "node_modules"
+    for name, directory in workspace_dirs(source).items():
+        link = modules / name
+        if (link / "package.json").is_file():
+            continue
+        if os.path.isjunction(link):
+            os.rmdir(link)
+        elif link.is_symlink() or link.is_file():
+            link.unlink()
+        elif link.exists():
+            shutil.rmtree(link)
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link_directory(link, directory)
+
+
 def link_mirror(pin: Pin) -> Path | None:
     """Point .upstream/<mirror>/node_modules at the source build's node_modules, so Node resolves the imports of the mirrored
     source (typebox, the workspace packages) the way the pinned source resolves them, without installing anything into the
@@ -713,6 +755,7 @@ def link_mirror(pin: Pin) -> Path | None:
     if modules is None:
         print(f"link-mirror: no source build of {pin.ref} is installed; imports of third-party packages from {mirror} stay unresolved (run `make parity-deps` without PIG_PARITY_PI_PUBLISHED=1)", file=sys.stderr)
         return None
+    restore_workspace_links(modules.parent)
     link = mirror / "node_modules"
     if link.is_symlink() and Path(os.path.realpath(link)) == modules.resolve():
         return modules
