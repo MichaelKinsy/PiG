@@ -214,7 +214,7 @@ func (l *lister) walk(dir, raw, shown string) (bool, *Failure) {
 			entryShown = shown + "/" + entryShown
 		}
 		size := uint64(len(entryShown)) + 2
-		if l.result.count >= l.options.maxEntries || uint64(len(l.result.payload))+size > l.options.maxBytes || time.Since(l.started) > l.options.timeout {
+		if l.result.count >= l.options.maxEntries || uint64(len(l.result.payload))+size > l.options.maxBytes || time.Since(l.started) >= l.options.timeout {
 			l.result.truncated = true
 			return true, nil
 		}
