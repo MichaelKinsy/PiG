@@ -15,7 +15,7 @@ import (
 // A tool that reports partial results hands each tool_execution_update the whole result so far, and Pi's handler receives that object by reference. A tool that prints M bytes in n chunks would send an extension process n frames that grow to M bytes: O(n*M) bytes in all. The host sends the first update of a tool call to an extension whole (a keyframe) and every later one as the operations that turn the payload the extension last received for that call into the new one, as message_update does (message_update_delta.go); the runtime applies them to its copy and hands each handler a fresh full object, so a handler sees the same partialResult it saw before. An update then costs O(what it added) on the wire and, to encode, the structure of the result around its long strings.
 
 // toolUpdateStreamCap is the number of tool calls whose last update the host keeps for an extension. A call's replica is released when the host evicts it (EventStream.Evict), because the host sees a call end only when the extension subscribed to tool_execution_end.
-const toolUpdateStreamCap = 8
+const toolUpdateStreamCap = 8 // pig additive (D112): a bounded replica cache; an evicted call gets a whole keyframe again, so the extension sees the same payloads
 
 // orderedWire is an object whose members were swapped for the delta and encode as the wire value they stand for (extension.WireMembers).
 type orderedWire struct {
