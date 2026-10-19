@@ -2,8 +2,10 @@ package ai
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 )
 
@@ -23,7 +25,6 @@ func TestOpenAIResponsesOutputItemTypeErrorsMatchPi(t *testing.T) {
 	event := func(kind, item string) string {
 		return `{"type":"response.output_item.` + kind + `","output_index":0` + item + `}`
 	}
-	created := `{"type":"response.created","response":{"id":"r1"}}`
 	for _, test := range []struct {
 		name   string
 		events []string
@@ -70,24 +71,7 @@ func TestOpenAIResponsesOutputItemTypeErrorsMatchPi(t *testing.T) {
 	} {
 		for _, api := range []API{APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses} {
 			t.Run(string(api)+"/"+test.name, func(t *testing.T) {
-				body := "data: " + created + "\n\n"
-				for _, e := range test.events {
-					body += "data: " + e + "\n\n"
-				}
-				body += "data: " + `{"type":"response.completed","response":{"id":"r1","status":"completed"}}` + "\n\n"
-				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					_, _ = io.Copy(io.Discard, r.Body)
-					w.Header().Set("Content-Type", "text/event-stream")
-					_, _ = io.WriteString(w, body)
-				}))
-				defer server.Close()
-				provider := observationProvider(t, api, server.URL)
-				defer func() { _ = provider.Close() }()
-				stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("x")}}}), StreamOptions{Transport: TransportSSE})
-				if err != nil {
-					t.Fatal(err)
-				}
-				result := stream.Result()
+				result := itemStreamResult(t, api, nil, itemStreamBody(test.events...))
 				wantStop, wantError := StopReasonStop, test.error
 				switch test.error {
 				case "":
@@ -100,6 +84,69 @@ func TestOpenAIResponsesOutputItemTypeErrorsMatchPi(t *testing.T) {
 					t.Fatalf("stop=%q error=%q, want %q %q", result.StopReason, result.ErrorMessage, wantStop, wantError)
 				}
 			})
+		}
+	}
+}
+
+// itemStreamBody is the Responses event stream a subtest serves: response.created, the events, response.completed.
+func itemStreamBody(events ...string) string {
+	body := "data: " + `{"type":"response.created","response":{"id":"r1"}}` + "\n\n"
+	for _, e := range events {
+		body += "data: " + e + "\n\n"
+	}
+	return body + "data: " + `{"type":"response.completed","response":{"id":"r1","status":"completed"}}` + "\n\n"
+}
+
+// itemStreamResult is one request through the provider for api to a loopback server on listener (a fresh port when nil) that answers it with body, and the stream's result. When it returns the server is closed and
+// the client's process-wide connection pool holds no connection to it.
+//
+// The server closes its connection after its response (Connection: close), so the client never pools one. Every provider shares one keep-alive pool per host:port (baseStreamingHTTPClient), and the next subtest's server
+// can get the closed server's address again: the kernel hands a freed loopback port out again, as the llama.cpp classify oracle's probes found. A request that finds the closed server's pooled connection first writes to it
+// and fails before response headers ("Connection error." where Pi's stream reports the item's TypeError): the client's connection reader must run between the close and that request to drop the connection, a loaded
+// machine does not run it in time, and a POST is never replayed (nor is a plain fetch failure by Pi's retryProviderRequest).
+func itemStreamResult(t *testing.T, api API, listener net.Listener, body string) *AssistantMessage {
+	t.Helper()
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Connection", "close")
+		_, _ = io.WriteString(w, body)
+	}))
+	if listener != nil {
+		_ = server.Listener.Close()
+		server.Listener = listener
+	}
+	server.Start()
+	defer server.Close()
+	provider := observationProvider(t, api, server.URL)
+	defer func() { _ = provider.Close() }()
+	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("x")}}}), StreamOptions{Transport: TransportSSE})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stream.Result()
+}
+
+// TestOpenAIResponsesItemStreamServerLeavesNothingForTheNextServer pins what keeps the subtests of TestOpenAIResponsesOutputItemTypeErrorsMatchPi independent of each other: the server of one request, closed, must leave no
+// pooled connection for the next server at the same address to meet. Pinning one P makes the schedule that is a rare failure under load certain: the test goroutine goes on to the second server's request without the client's
+// connection reader ever running in between, so a server that lets the client pool its connection fails every time with "Connection error." instead of the item's TypeError.
+func TestOpenAIResponsesItemStreamServerLeavesNothingForTheNextServer(t *testing.T) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	const want = "item.content?.map is not a function"
+	body := itemStreamBody(`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","summary":[],"content":"x"}}`)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	for i, api := range []API{APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses, APIOpenAIResponses} {
+		if i > 0 {
+			if listener, err = net.Listen("tcp", address); err != nil {
+				t.Fatalf("listening on %s again: %v", address, err)
+			}
+		}
+		if result := itemStreamResult(t, api, listener, body); result.StopReason != StopReasonError || result.ErrorMessage != want {
+			t.Fatalf("%s server %d at %s: stop=%q error=%q, want %q %q", api, i, address, result.StopReason, result.ErrorMessage, StopReasonError, want)
 		}
 	}
 }
