@@ -856,22 +856,41 @@ class MirrorLinkTests(unittest.TestCase):
         self.assertEqual(self.mirror.stat().st_mode & 0o777, 0o555)
         self.assertEqual(oracle.link_mirror(TAG).resolve(), modules.resolve())  # idempotent
 
-    def test_workspace_packages_a_restored_build_lost_are_relinked_from_the_sources_workspaces(self):
-        """Pi's telemetry leap added packages/telemetry, which chord imports; a build restored without npm's workspace links
-        resolved typebox (a real directory) but not @earendil-works/pi-telemetry."""
+    def test_every_workspace_link_that_is_not_a_link_to_its_package_is_replaced_and_logged(self):
+        """Pi's telemetry leap added packages/telemetry, which chord imports; a build restored from the CI cache resolved
+        typebox (a real directory) but not @earendil-works/pi-telemetry. The link a restore leaves can be missing, stale
+        (to a path that is gone or to another package that has a package.json), a copy of the package, or a plain file."""
         modules = self.install({"commit": TAG.commit, "source": "build"})
         source = modules.parent
         (source / "package.json").write_text(json.dumps({"workspaces": ["packages/*", "apps/*"]}))
-        for directory, name in (("packages/telemetry", "@earendil-works/pi-telemetry"), ("packages/chord", "@earendil-works/chord"), ("apps/web", "pi-web")):
-            (source / directory).mkdir(parents=True)
-            (source / directory / "package.json").write_text(json.dumps({"name": name}))
-        (modules / "@earendil-works").mkdir()
-        (modules / "@earendil-works" / "chord").symlink_to("../../packages/chord", target_is_directory=True)  # an intact link stays
-        (modules / "@earendil-works" / "pi-telemetry").symlink_to("../../packages/missing", target_is_directory=True)  # a dangling one is replaced
-        oracle.link_mirror(TAG)
-        for name, directory in (("@earendil-works/pi-telemetry", "packages/telemetry"), ("@earendil-works/chord", "packages/chord"), ("pi-web", "apps/web")):
-            self.assertEqual(json.loads((self.mirror / "node_modules" / name / "package.json").read_text())["name"], name)
-            self.assertEqual(Path(os.path.realpath(modules / name)), (source / directory).resolve())
+        packages = {"intact": "@earendil-works/chord", "missing": "@earendil-works/pi-telemetry", "gone": "@earendil-works/pi-ai", "elsewhere": "@earendil-works/pi-tui", "copy": "@earendil-works/pi-mcp", "file": "@earendil-works/pi-env", "app": "pi-web"}
+        for key, name in packages.items():
+            directory = source / ("apps" if key == "app" else "packages") / key
+            directory.mkdir(parents=True)
+            (directory / "package.json").write_text(json.dumps({"name": name}))
+        scope = modules / "@earendil-works"
+        scope.mkdir()
+        (scope / "chord").symlink_to("../../packages/intact", target_is_directory=True)
+        (scope / "pi-ai").symlink_to("../../packages/removed", target_is_directory=True)
+        (scope / "pi-tui").symlink_to("../../packages/intact", target_is_directory=True)  # resolves, to the wrong package
+        shutil.copytree(source / "packages" / "copy", scope / "pi-mcp")
+        (scope / "pi-env").write_text("!<symlink>../../packages/file")
+        (modules / "pi-web").symlink_to("../apps/app", target_is_directory=True)
+        intact = os.readlink(scope / "chord")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            oracle.link_mirror(TAG)
+        for key, name in packages.items():
+            directory = source / ("apps" if key == "app" else "packages") / key
+            link = self.mirror / "node_modules" / name
+            self.assertEqual(json.loads((link / "package.json").read_text())["name"], name)
+            self.assertEqual(Path(os.path.realpath(modules / name)), directory.resolve(), name)
+            self.assertTrue((modules / name).is_symlink(), name)
+        self.assertEqual(os.readlink(scope / "chord"), intact)  # a correct link is left as it is
+        log = stderr.getvalue()
+        self.assertIn("workspace @earendil-works/chord: ok", log)
+        for name, state in (("pi-telemetry", "missing"), ("pi-ai", "stale"), ("pi-tui", "stale"), ("pi-mcp", "copy"), ("pi-env", "file")):
+            self.assertRegex(log, rf"workspace @earendil-works/{name}: {state}.*relinked, now linked")
         self.assertTrue((self.mirror / "node_modules" / "typebox").is_dir())
 
     def test_a_published_install_or_another_commits_build_links_nothing(self):

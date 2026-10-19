@@ -720,28 +720,77 @@ def link_directory(link: Path, target: Path) -> None:
         link.symlink_to(os.path.relpath(target, link.parent), target_is_directory=True)
 
 
-def restore_workspace_links(source: Path) -> None:
-    """Make `node_modules/<name>` of the source build resolve to each workspace package, as `npm ci` linked them.
+def workspace_link_state(link: Path, directory: Path) -> tuple[str, str]:
+    """How `link` stands against the workspace package `directory` it must be a link to: (state, what the link names).
+    States: `missing`; `linked` (a symlink or junction whose real path is `directory`); `stale` (a link to anywhere else,
+    including a path that no longer exists); `copy` (a real directory, as a restore that follows links writes);
+    `file` (a regular file, as an archiver that cannot make a link leaves)."""
+    if not os.path.lexists(link):
+        return "missing", ""
+    if link.is_symlink() or os.path.isjunction(link):
+        try:
+            named = os.readlink(link)
+        except OSError as error:
+            named = f"unreadable: {error}"
+        same = os.path.normcase(os.path.realpath(link)) == os.path.normcase(os.path.realpath(directory))
+        return ("linked" if same else "stale"), named
+    return ("copy" if link.is_dir() else "file"), ""
 
-    The links are the one part of the build tree that is not plain files: a build restored from the CI cache (tar of a
-    junction on Windows) can come back without them, while real directories (typebox) survive, so the mirror resolved
-    typebox but not the workspace packages.
-    A mirrored package that imports a workspace package (chord imports
-    @earendil-works/pi-telemetry) then fails with "Cannot find package". Every workspace is relinked from the source
-    tree's own `workspaces`, so a package a pin adds needs no list here."""
+
+def remove_link(link: Path) -> None:
+    """Remove whatever stands at `link` without following it: a junction, a symlink, a file or a copied directory."""
+    if os.path.isjunction(link):
+        os.rmdir(link)
+    elif link.is_symlink() or not link.is_dir():
+        link.unlink()
+    else:
+        shutil.rmtree(link)
+
+
+def restore_workspace_links(source: Path) -> None:
+    """Make `node_modules/<name>` of the source build a link to each workspace package, as `npm ci` linked them, and say
+    what each one was and what was done.
+
+    The links are the one part of the build tree that is not plain files: a build restored from the CI cache can come back
+    with them missing, stale, copied or flattened to files, while real directories (typebox) survive, so the mirror
+    resolved typebox but not the workspace packages. A mirrored package that imports a workspace package (chord imports
+    @earendil-works/pi-telemetry) then fails with "Cannot find package". Only a link to the package's current directory is
+    kept; every other state is replaced. The workspaces are read from the source tree's own package.json, so a package a
+    pin adds needs no list here."""
     modules = source / "node_modules"
     for name, directory in workspace_dirs(source).items():
         link = modules / name
-        if (link / "package.json").is_file():
+        state, named = workspace_link_state(link, directory)
+        detail = f" -> {named}" if named else ""
+        # A junction restored from the Windows CI cache can read as a link to the right directory while Node cannot
+        # resolve through it, so on Windows every workspace link is recreated.
+        if state == "linked" and os.name != "nt":
+            print(f"link-mirror: workspace {name}: ok{detail} (expected {directory})", file=sys.stderr)
             continue
-        if os.path.isjunction(link):
-            os.rmdir(link)
-        elif link.is_symlink() or link.is_file():
-            link.unlink()
-        elif link.exists():
-            shutil.rmtree(link)
+        if state != "missing":
+            remove_link(link)
         link.parent.mkdir(parents=True, exist_ok=True)
         link_directory(link, directory)
+        after, now = workspace_link_state(link, directory)
+        print(f"link-mirror: workspace {name}: {state}{detail} (expected {directory}): relinked, now {after} -> {now}", file=sys.stderr)
+        if after != "linked":
+            raise PinError(f"could not link workspace package {name} at {link} to {directory}: {after} {now}")
+
+
+def report_resolution(mirror: Path, source: Path) -> None:
+    """Print what Node resolves each importable workspace package (one whose manifest names `exports` or `main`) to from the
+    mirrored chord package, as the parity tests import them. Informational: it never fails the mirror."""
+    node = shutil.which("node")
+    where = mirror / "packages" / "chord"
+    if node is None or not where.is_dir():
+        return
+    importable = sorted(name for name, directory in workspace_names(source).items() if {"exports", "main"} & json.loads((directory / "package.json").read_text()).keys())
+    script = (
+        "for (const name of JSON.parse(process.env.PIG_WORKSPACES)) {"
+        " try { console.error(`link-mirror: node resolves ${name} -> ${import.meta.resolve(name)}`); }"
+        " catch (error) { console.error(`link-mirror: node cannot resolve ${name}: ${error.message}`); } }"
+    )
+    subprocess.run([node, "--input-type=module", "-e", script], cwd=where, env={**os.environ, "PIG_WORKSPACES": json.dumps(importable)}, check=False, timeout=120)
 
 
 def link_mirror(pin: Pin) -> Path | None:
@@ -757,18 +806,18 @@ def link_mirror(pin: Pin) -> Path | None:
         return None
     restore_workspace_links(modules.parent)
     link = mirror / "node_modules"
-    if link.is_symlink() and Path(os.path.realpath(link)) == modules.resolve():
-        return modules
-    mode = mirror.stat().st_mode
-    mirror.chmod(mode | 0o200)  # the mirror is read-only (mirror-upstream.sh); only this link is added
-    try:
-        if link.is_symlink() or link.is_file():
-            link.unlink()
-        elif link.exists():
-            shutil.rmtree(link)
-        link.symlink_to(modules)
-    finally:
-        mirror.chmod(mode)
+    if not (link.is_symlink() and Path(os.path.realpath(link)) == modules.resolve()):
+        mode = mirror.stat().st_mode
+        mirror.chmod(mode | 0o200)  # the mirror is read-only (mirror-upstream.sh); only this link is added
+        try:
+            if link.is_symlink() or link.is_file():
+                link.unlink()
+            elif link.exists():
+                shutil.rmtree(link)
+            link.symlink_to(modules)
+        finally:
+            mirror.chmod(mode)
+    report_resolution(mirror, modules.parent)
     return modules
 
 
