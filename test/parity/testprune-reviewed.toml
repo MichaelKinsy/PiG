@@ -730,3 +730,43 @@ commit = "0c3963388f"
 class = "CITE"
 cite = "packages/ai/src/api/transform-messages.ts:42"
 reason = "replaceImagesWithPlaceholder pushes every non-image block unchanged, so a text-only history needs no copy for a model without image input; the allocation bound follows"
+
+[[entry]]
+path = "durable/core/graph_build_scaling_test.go"
+commit = "a5ac63382b"
+class = "NOBEHAVIOR"
+reason = "Cost only: buildTaskGraph reads each task's conversations from the owner index instead of passing over the conversation records; the graph (tasks, conversations in ascending order) is unchanged, and the wall-clock scaling assertion became a structural one"
+
+[[entry]]
+path = "tui/tree_selector_constructor_upstream_test.go"
+commit = "87b8d3f90c"
+class = "NOBEHAVIOR"
+reason = "Test timing only: the empty tree selector still cancels after its delay; the real-clock test stopped asserting 'not cancelled' after a 40 ms sleep and the synctest sibling asserts the delay; user_message_selector.go gained a private constructor taking the timer function, with unchanged behavior"
+
+[[entry]]
+path = "extensions/sdk/context_event_test.go"
+commit = "e215cf92f8"
+class = "CITE"
+cite = "packages/coding-agent/src/core/extensions/runner.ts:280"
+reason = "Pi treats a handler's context list as unchanged when it is the same list of the same objects (sameMessages) and keeps system messages in place for it; the Go SDK now answers an unchanged list with the identity marker instead of the list, and an in-place edit with the list and the marker"
+
+[[entry]]
+path = "coding/extension/host/subprocess/state_push_test.go"
+commit = "0a01a68005"
+class = "CITE"
+cite = "packages/coding-agent/src/core/extensions/loader.ts:273"
+reason = "Pi's registerTool writes the definition and refreshes the registry; getAllTools and getActiveTools read the live registry. The PiG-only state push no longer replicates the tool catalog no SDK read, so its expected frames drop allTools and activeTools"
+
+[[entry]]
+path = "coding/extension/tool_registry_names_test.go"
+commit = "0a01a68005"
+class = "CITE"
+cite = "packages/coding-agent/src/core/extensions/loader.ts:273"
+reason = "Pi's registerTool refreshes the live registry that getAllTools reads; the PiG-only registry version counter that fed the removed catalog replica is gone, so its expectations are removed"
+
+[[entry]]
+path = "durable/codemode/codemode_test.go"
+commit = "e0e0f81670"
+class = "DIVERGENCE"
+cite = "D184"
+reason = "D184 records that an unawaited code mode call can still be aborted before its tool starts; the test's expectation follows the recorded divergence"
