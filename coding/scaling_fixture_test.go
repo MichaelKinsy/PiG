@@ -13,7 +13,11 @@ import (
 )
 
 // scalingDeltaProvider streams one text answer in a fixed number of deltas. Its own cost is linear in the deltas and does not read the transcript, so a gate measures the Session.
-type scalingDeltaProvider struct{ deltas int }
+// A positive durationMs is the answer's durationMs. The event stream measures a response's duration with a monotonic clock only when the message has none (ai/event_stream.go timeLocked, event-stream.ts:127), so a test that compares the requests of two runs pins it: two runs of one provider otherwise differ by whole milliseconds on a loaded host.
+type scalingDeltaProvider struct {
+	deltas     int
+	durationMs int64
+}
 
 func (p scalingDeltaProvider) ID() string   { return "scaling" }
 func (p scalingDeltaProvider) Close() error { return nil }
@@ -37,6 +41,9 @@ func (p scalingDeltaProvider) Stream(context.Context, ai.TranscriptContext, ai.S
 	push(ai.TextEndEvent{ContentIndex: 0, Content: full, Partial: partial(full)})
 	final := partial(full)
 	final.Usage = ai.Usage{Input: 1000, Output: 50, TotalTokens: 1050}
+	if p.durationMs > 0 {
+		final.DurationMs = &p.durationMs
+	}
 	push(ai.DoneEvent{Reason: ai.StopReasonStop, Message: final})
 	return stream, nil
 }

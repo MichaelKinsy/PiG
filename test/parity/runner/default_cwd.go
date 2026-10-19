@@ -29,6 +29,9 @@ import (
 // cannot differ between the binaries or between runs.
 const snapshotIDDigits = 10
 
+// extensionSnapshotPrefix names the per-binary copy of an extension fixture (snapshotExtensionPath).
+const extensionSnapshotPrefix = "parity-snap-extension-"
+
 // mkdirTempFixed creates a directory under the canonical, context-free os.TempDir, named prefix followed by snapshotIDDigits random decimal digits.
 func mkdirTempFixed(prefix string) (string, error) {
 	root, err := cleanSnapshotRoot(os.TempDir())
@@ -184,30 +187,29 @@ func initSnapshotGitBranch(ctx context.Context, dir, branch string) error {
 	return nil
 }
 
-// cwdSnapshotID matches the random suffix of a cwd snapshot directory, also
-// when a renderer truncated the path inside it.
-var cwdSnapshotID = regexp.MustCompile(`(parity-snap-cwd-)([0-9]{1,` + fmt.Sprint(snapshotIDDigits) + `})`)
+// snapshotID matches the random suffix of a cwd or extension snapshot
+// directory, also when a renderer truncated the path inside it.
+var snapshotID = regexp.MustCompile(`(parity-snap-(?:cwd|extension)-)([0-9]{1,` + fmt.Sprint(snapshotIDDigits) + `})`)
 
-// maskCWDSnapshotIDs replaces the random digits of every cwd snapshot
-// directory name with zeros of the same count. The digits are the only part
-// of the path that differs between pig and pi, and the equal count keeps
-// padding and truncation byte-identical.
-func maskCWDSnapshotIDs(s string) string {
-	if !strings.Contains(s, "parity-snap-cwd-") {
+// maskSnapshotIDs replaces the random digits of every cwd and extension
+// snapshot directory name with zeros of the same count. The digits are the
+// only part of the path that differs between pig and pi, and the equal count
+// keeps padding and truncation byte-identical.
+func maskSnapshotIDs(s string) string {
+	if !strings.Contains(s, "parity-snap-") {
 		return s
 	}
-	return cwdSnapshotID.ReplaceAllStringFunc(s, func(m string) string {
-		digits := len(m) - len("parity-snap-cwd-")
-		return "parity-snap-cwd-" + strings.Repeat("0", digits)
+	return snapshotID.ReplaceAllStringFunc(s, func(m string) string {
+		prefix := m[:strings.LastIndexByte(m, '-')+1]
+		return prefix + strings.Repeat("0", len(m)-len(prefix))
 	})
 }
 
-// maskResultCWDSnapshotIDs applies maskCWDSnapshotIDs to every compared
-// field of r.
-func maskResultCWDSnapshotIDs(r Result) Result {
-	r.Output = maskCWDSnapshotIDs(r.Output)
-	r.Escaped = maskCWDSnapshotIDs(r.Escaped)
-	r.Artifact = maskCWDSnapshotIDs(r.Artifact)
+// maskResultSnapshotIDs applies maskSnapshotIDs to every compared field of r.
+func maskResultSnapshotIDs(r Result) Result {
+	r.Output = maskSnapshotIDs(r.Output)
+	r.Escaped = maskSnapshotIDs(r.Escaped)
+	r.Artifact = maskSnapshotIDs(r.Artifact)
 	return r
 }
 

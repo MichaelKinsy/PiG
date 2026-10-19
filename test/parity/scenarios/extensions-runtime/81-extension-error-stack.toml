@@ -8,25 +8,31 @@
 # spaces and dimmed, joined into one ThemedText. testdata/ext/error-stack.mjs
 # throws an Error whose stack is fixed, with a tab-indented frame, trailing
 # spaces and an empty line, then a second handler marks the input handled. The
-# crop starts at the message, after the extension path, which differs between
-# the hosts' snapshots; its length follows TMPDIR, so at 100 columns "error:"
-# may wrap away from the message. The crop ends at the last frame.
+# crop starts at "error:", which ends the notice's path, and ends at the last
+# frame, so it holds the message and the stack. The notice names the extension's
+# snapshot path and the TUI wraps it at 100 columns, so where the notice breaks
+# follows the path length, which follows TMPDIR: the break may fall between
+# "Extension" and the quoted path, or inside the message ("stack probe failed"),
+# so a crop that starts at either is absent whenever the break falls there, and
+# "error:" itself may end a line. The runner gives both binaries' snapshots one
+# path length (a fixed-width suffix), so the two notices break at the same
+# column and the crops are byte-identical whatever TMPDIR is.
 #
-# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 100x32 tmux):
+# Upstream evidence (Pi 1.3.0, parity harness, 2026-10-19, 100x32 tmux,
+# TMPDIR /var/tmp/aaaaaaaaaaaaa, where the notice wraps inside the message):
 #   pi --no-extensions -e ../../testdata/test-faux-provider.ts \
 #     -e testdata/ext/error-stack.mjs --model test-faux/faux-1
 #   keys: "stack-probe" Enter
 #   wait: "stack-probe-last-frame"
-#   crop: start="stack probe failed" end="stack-probe-last-frame"
+#   crop: start="error:" end="stack-probe-last-frame"
 #   raw cropped upstream block (frames dimmed, the empty line a dimmed "  "):
-#     stack probe failed
+#     error: stack
+#      probe failed
 #        at firstFrame (probe.mjs:1:1)
 #        at secondFrame (probe.mjs:2:2)
 #
 #        stack-probe-last-frame
-#   PiG's crop was byte-identical; 3 of 3 declared pairs passed (rerun with
-#   this crop on the Linux lab host, TMPDIR /tmp/extra120-home.XXXX/tmp, where the
-#   extension path wraps "error:" onto its own line on both hosts).
+#   PiG's crop was byte-identical once both snapshot paths had one length.
 
 name = "81-extension-error-stack"
 description = "A failed input handler's stack renders dimmed, trimmed and indented below its error"
@@ -50,7 +56,7 @@ height = 32
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
-capture_start = "stack probe failed"
+capture_start = "error:"
 capture_end = "stack-probe-last-frame"
 
 [[tmux.steps]]
@@ -60,7 +66,7 @@ wait_timeout_seconds = 20
 
 [assert]
 both_reach_ready = true
-both_contain = ["stack probe failed", "  at firstFrame (probe.mjs:1:1)", "  at secondFrame (probe.mjs:2:2)", "stack-probe-last-frame"]
+both_contain = ["error:", "failed", "  at firstFrame (probe.mjs:1:1)", "  at secondFrame (probe.mjs:2:2)", "stack-probe-last-frame"]
 both_not_contain = ["panic:", "goroutine "]
 output_equal = true
 runs = 3

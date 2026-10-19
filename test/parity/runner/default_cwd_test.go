@@ -22,10 +22,10 @@ func TestMkdirTempFixedWidth(t *testing.T) {
 	}
 }
 
-func TestMaskCWDSnapshotIDsKeepsWidth(t *testing.T) {
+func TestMaskSnapshotIDsKeepsWidth(t *testing.T) {
 	pig := "/tmp/parity-snap-cwd-0123456789 (main)\n~/x/parity-snap-cwd-98..."
 	pi := "/tmp/parity-snap-cwd-9876543210 (main)\n~/x/parity-snap-cwd-12..."
-	gotPig, gotPi := maskCWDSnapshotIDs(pig), maskCWDSnapshotIDs(pi)
+	gotPig, gotPi := maskSnapshotIDs(pig), maskSnapshotIDs(pi)
 	if gotPig != gotPi {
 		t.Fatalf("masked outputs differ:\n%q\n%q", gotPig, gotPi)
 	}
@@ -35,8 +35,40 @@ func TestMaskCWDSnapshotIDsKeepsWidth(t *testing.T) {
 	if want := "/tmp/parity-snap-cwd-0000000000 (main)\n~/x/parity-snap-cwd-00..."; gotPig != want {
 		t.Fatalf("masked = %q, want %q", gotPig, want)
 	}
-	if other := "parity-snap-PIG_HOME-0123456789"; maskCWDSnapshotIDs(other) != other {
+	if other := "parity-snap-PIG_HOME-0123456789"; maskSnapshotIDs(other) != other {
 		t.Fatalf("masked a non-cwd snapshot name")
+	}
+}
+
+func TestMaskSnapshotIDsCoversExtensionSnapshots(t *testing.T) {
+	pig := ` Extension "/tmp/parity-snap-extension-0123456789/error-stack.mjs" error: stack` + "\n" + ` parity-snap-extension-98...`
+	pi := ` Extension "/tmp/parity-snap-extension-9876543210/error-stack.mjs" error: stack` + "\n" + ` parity-snap-extension-12...`
+	gotPig, gotPi := maskSnapshotIDs(pig), maskSnapshotIDs(pi)
+	if gotPig != gotPi {
+		t.Fatalf("masked outputs differ:\n%q\n%q", gotPig, gotPi)
+	}
+	if want := ` Extension "/tmp/parity-snap-extension-0000000000/error-stack.mjs" error: stack` + "\n" + ` parity-snap-extension-00...`; gotPig != want {
+		t.Fatalf("masked = %q, want %q", gotPig, want)
+	}
+}
+
+// An extension error prints the snapshot path and the TUI wraps it, so the two binaries' snapshot paths must have one length: a one-digit difference moves a wrap point between their screens.
+func TestSnapshotExtensionPathHasFixedWidthSuffix(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "extension.mjs")
+	if err := os.WriteFile(source, []byte("export default function () {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// os.MkdirTemp's suffix is one to ten digits, nine in a fifth of the names: 200 names make a pass by chance impossible in practice.
+	for range 200 {
+		snapshot, err := snapshotExtensionPath(t, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		base := filepath.Base(filepath.Dir(snapshot))
+		digits, ok := strings.CutPrefix(base, extensionSnapshotPrefix)
+		if !ok || len(digits) != snapshotIDDigits || strings.Trim(digits, "0123456789") != "" {
+			t.Fatalf("snapshot directory %q: want %q followed by %d digits", base, extensionSnapshotPrefix, snapshotIDDigits)
+		}
 	}
 }
 

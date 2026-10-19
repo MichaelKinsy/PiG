@@ -47,7 +47,8 @@ func TestSessionRequestsMatchTheStandardConversionAfterHistoryOperations(t *test
 	run := func(standard bool) []string {
 		var mu sync.Mutex
 		var requests []string
-		provider := recordingDeltaProvider{scalingDeltaProvider: scalingDeltaProvider{deltas: 2}, mu: &mu, requests: &requests}
+		// Each answer carries the same durationMs: the stream would otherwise measure it per run, and a loaded host makes the two runs' requests differ by whole milliseconds while the conversion is identical.
+		provider := recordingDeltaProvider{scalingDeltaProvider: scalingDeltaProvider{deltas: 2, durationMs: 7}, mu: &mu, requests: &requests}
 		model := &ai.Model{ID: "scaling-model", DisplayName: "scaling", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 10_000_000, MaxThinking: ai.ThinkingLevelHigh}}
 		s, err := NewSession(services, SessionOptions{Model: model, SessionManager: scalingSessionManager(t, 40), ResourceLoader: NoResources, SkipBuiltinTools: true, SystemPrompt: "Test"})
 		if err != nil {
@@ -117,5 +118,9 @@ func TestSessionRequestsMatchTheStandardConversionAfterHistoryOperations(t *test
 	// The edit must reach the provider: otherwise the test proves nothing about invalidation.
 	if want := fmt.Sprintf("%q", "edited question"); !regexp.MustCompile(regexp.QuoteMeta("edited question")).MatchString(got[2]) {
 		t.Fatalf("request 3 does not carry the edited message %s: %s", want, got[2])
+	}
+	// The requests are compared with their durations, not with the field removed: the earlier answers of the second request carry the one pinned value.
+	if !regexp.MustCompile(`"durationMs":7[,}]`).MatchString(got[1]) {
+		t.Fatalf("request 2 does not carry the pinned durationMs: %s", got[1])
 	}
 }

@@ -106,8 +106,8 @@ func RunScenario(ctx context.Context, t *testing.T, sc *Scenario, pig, pi Binary
 			pigResult = d.Run(ctx, t, pig, runSc)
 		}
 		if sc.Driver == "interactive-tmux" || sc.Driver == "headless-terminal" {
-			pigResult = maskResultCWDSnapshotIDs(pigResult)
-			piResult = maskResultCWDSnapshotIDs(piResult)
+			pigResult = maskResultSnapshotIDs(pigResult)
+			piResult = maskResultSnapshotIDs(piResult)
 		}
 		pigResult.System = pig.Label
 		o.Pig.Runs = append(o.Pig.Runs, pigResult)

@@ -187,6 +187,12 @@ func snapshotCWD(t *testing.T, src string) (string, error) {
 // directory). This prevents a reload/self-edit scenario from mutating
 // checked-in fixtures or changing the source subsequently observed by the
 // other binary.
+//
+// The root is named like a cwd snapshot, with a fixed-width random suffix
+// (mkdirTempFixed), so the extension paths of pig and pi have equal length:
+// both print the path (an extension error names it) and wrap it at the same
+// column. os.MkdirTemp's suffix is one to ten digits, which moved a wrap point
+// between the two binaries' screens from run to run.
 func snapshotExtensionPath(t *testing.T, src string) (string, error) {
 	t.Helper()
 	info, err := os.Stat(src)
@@ -194,7 +200,7 @@ func snapshotExtensionPath(t *testing.T, src string) (string, error) {
 		return "", err
 	}
 	if info.IsDir() {
-		tmp, err := os.MkdirTemp("", "parity-snap-extension-*")
+		tmp, err := mkdirTempFixed(extensionSnapshotPrefix)
 		if err != nil {
 			return "", err
 		}
@@ -206,7 +212,7 @@ func snapshotExtensionPath(t *testing.T, src string) (string, error) {
 		return dst, nil
 	}
 	parent := filepath.Dir(src)
-	tmp, err := os.MkdirTemp("", "parity-snap-extension-*")
+	tmp, err := mkdirTempFixed(extensionSnapshotPrefix)
 	if err != nil {
 		return "", err
 	}

@@ -42,6 +42,26 @@ func TestTokenContext_PerCallFreshTempdir(t *testing.T) {
 	}
 }
 
+// macOS spells its temporary directory through a symlink. The per-run root, the "temp" identity root and every {{TEMP}} expansion must name the canonical directory, as a binary's Path.resolve, pwd or process.cwd does, or a path alias cannot match what the binaries print.
+func TestTokenContext_TempRootIsCanonicalUnderSymlinkedTMPDIR(t *testing.T) {
+	real, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("cannot create a symlink: %v", err)
+	}
+	t.Setenv(tempDirVar, link)
+	tc := newTokenContext(t, "symlinked")
+	if got := filepath.Dir(tc.tempRoot); got != real {
+		t.Fatalf("tempRoot = %q, want a directory of the canonical %q, not of the symlink %q", tc.tempRoot, real, link)
+	}
+	if got := tc.expand("{{TEMP}}/x"); strings.Contains(got, filepath.ToSlash(link)) {
+		t.Fatalf("expand = %q still spells the symlink %q", got, link)
+	}
+}
+
 func TestTokenContext_ExpandSliceIsIndependent(t *testing.T) {
 	tc := newTokenContext(t, "slice")
 	in := []string{"--session-dir", "{{TEMP}}/s", "--log", "{{TEMP}}/l"}

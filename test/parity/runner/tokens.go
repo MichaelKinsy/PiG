@@ -63,6 +63,14 @@ type tokenContext struct {
 // registers it for automatic cleanup. Callers receive a distinct
 // context per (binary, run), guaranteeing no cross-side or cross-run
 // state visibility.
+//
+// The root is the canonical path, like the cwd copies (cleanSnapshotRoot).
+// macOS spells its temporary directory through a symlink (/var/folders is
+// /private/var/folders), and a binary that resolves a path under {{TEMP}}
+// (Python's Path.resolve, bash's pwd, Node's process.cwd) reports the
+// canonical spelling. The "temp" identity root and every {{TEMP}} expansion
+// must be that spelling, or a path alias cannot match the paths the binaries
+// print.
 func newTokenContext(t *testing.T, label string) *tokenContext {
 	t.Helper()
 	dir, err := os.MkdirTemp("", fmt.Sprintf("parity-%s-*", label))
@@ -74,7 +82,11 @@ func newTokenContext(t *testing.T, label string) *tokenContext {
 			t.Error(err)
 		}
 	})
-	return &tokenContext{tempRoot: dir}
+	canonical, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatalf("parity: resolve tempdir %s for %s: %v", dir, label, err)
+	}
+	return &tokenContext{tempRoot: canonical}
 }
 
 // expand performs token substitution on a single string. Returns the

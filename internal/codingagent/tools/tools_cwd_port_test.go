@@ -35,7 +35,11 @@ func TestToolsContextCWDPort(t *testing.T) {
 		{"bash", "", "", map[string]any{"command": "pwd"}, "cwd", ""},
 	} {
 		t.Run(tc.name+" uses ctx.cwd when provided", func(t *testing.T) {
-			dir := t.TempDir()
+			// bash's pwd prints the canonical directory, and macOS spells its temporary directory through a symlink (/var is /private/var): the directory the tool is given must be spelled as the shell reports it, or the __CWD__ rewrite below leaves "/private" behind.
+			dir, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
 			if tc.file != "" {
 				if err := os.WriteFile(filepath.Join(dir, tc.file), []byte(tc.content), 0o600); err != nil {
 					t.Fatal(err)
