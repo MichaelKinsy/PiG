@@ -314,11 +314,11 @@ func applyReplacements(content string, replacements []matchedEdit, offset int) s
 	position := 0
 	for _, r := range replacements {
 		i := r.matchIndex - offset
-		result.WriteString(content[position:i])
+		result.WriteString(content[position:i]) //portlint:allow utf16units offsets come from strings.Index on the same string and never leave Go
 		result.WriteString(r.newText)
 		position = i + r.matchLength
 	}
-	result.WriteString(content[position:])
+	result.WriteString(content[position:]) //portlint:allow utf16units offsets come from strings.Index on the same string and never leave Go
 	return result.String()
 }
 

@@ -609,7 +609,7 @@ type EventStream struct {
 	Base  uint64          `json:"base,omitempty"`
 	Ops   json.RawMessage `json:"ops,omitempty"`
 	Key   string          `json:"key,omitempty"`
-	Evict []string        `json:"evict,omitempty"`
+	Evict []string        `json:"evict,omitempty"` //portlint:allow emptydrop a PiG-only frame field (D112 bounded cache); Pi has no such frame
 }
 
 // RequestWithSession (host→ext) runs the withSession callback that a newSession, fork or switchSession call registered under WithSessionArgs.Handle. The call's args name that handle in their withSession field. The host sends it after the replacement Session is bound and before the call returns, as Pi's finishSessionReplacement awaits withSession (agent-session-runtime.ts:187-194). Host calls whose parent is this request act on the replacement Session; the response settles the callback, and its error rejects the call.

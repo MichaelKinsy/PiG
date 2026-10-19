@@ -2724,12 +2724,6 @@ snippet = "args, err := json.Marshal(map[string]any{"
 
 [[hit]]
 check = "mapkeyorder"
-file = "coding/extension/host/subprocess/tool_registration.go"
-func = "Host.handleToolRegistration"
-snippet = "result, err := json.Marshal(map[string]any{\"allTools\": allTools.Tools, \"activeTools\": activeTools.Tools})"
-
-[[hit]]
-check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.Snapshot"
 snippet = "if encoded, err := json.Marshal(actions.GetSettings()); err == nil {"
@@ -3236,18 +3230,6 @@ check = "nilslicenull"
 file = "ai/openai_responses.go"
 func = "openAIResponsesProvider.Stream"
 snippet = "inputJSON, marshalErr := json.Marshal(msgs)"
-
-[[hit]]
-check = "nilslicenull"
-file = "coding/extension/host/inproc/runner.go"
-func = "sameMessageValues"
-snippet = "a, errA := json.Marshal(left)"
-
-[[hit]]
-check = "nilslicenull"
-file = "coding/extension/host/inproc/runner.go"
-func = "sameMessageValues"
-snippet = "b, errB := json.Marshal(right)"
 
 [[hit]]
 check = "nilslicenull"
@@ -7062,12 +7044,6 @@ check = "jsonclone"
 file = "coding/extension/builtin/codemode/execute.go"
 func = "storeOf"
 snippet = "if err != nil || json.Unmarshal(raw, &fields) != nil || fields.CustomType != StoreEntryType {"
-
-[[hit]]
-check = "jsonclone"
-file = "coding/extension/host/inproc/runner.go"
-func = "sameMessageValues"
-snippet = "return json.Unmarshal(a, &av) == nil && json.Unmarshal(b, &bv) == nil && reflect.DeepEqual(av, bv)"
 
 [[hit]]
 check = "jsonclone"

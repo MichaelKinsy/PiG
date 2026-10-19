@@ -237,3 +237,13 @@ func TestSequentialToolCallsReadAsTheEagerParse(t *testing.T) {
 		})
 	}
 }
+
+// sseRecords joins server-sent event records, each ending in a blank line.
+func sseRecords(records ...string) string {
+	var body strings.Builder
+	for _, record := range records {
+		body.WriteString(record)
+		body.WriteString("\n\n")
+	}
+	return body.String()
+}

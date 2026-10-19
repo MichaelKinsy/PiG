@@ -25,15 +25,6 @@ type streamFrameShape struct {
 	minEvents func(frames int) int
 }
 
-func sseRecords(records ...string) string {
-	var body strings.Builder
-	for _, record := range records {
-		body.WriteString(record)
-		body.WriteString("\n\n")
-	}
-	return body.String()
-}
-
 var streamFrameShapes = []streamFrameShape{
 	{
 		name: "openai-completions-text", api: APIOpenAICompletions, providerID: "openai", model: "gpt-bench",

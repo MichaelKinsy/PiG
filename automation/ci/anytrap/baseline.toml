@@ -237,13 +237,6 @@ count = 1
 
 [[hit]]
 file = "coding/extension/host/inproc/runner.go"
-func = "sameMessageValues"
-call = "json.Unmarshal"
-dest = "*any"
-count = 2
-
-[[hit]]
-file = "coding/extension/host/inproc/runner.go"
 func = "typedDetails"
 call = "json.Unmarshal"
 dest = "*T"
@@ -1359,9 +1352,3 @@ dest = "*durable.JsonValue"
 count = 2
 
 # dev/bench tooling (linux-only harness, its RPC handshake reply); missed by a scan on macOS, which skips linux-only files
-[[hit]]
-file = "bench/sessionscale/cmd/sessionscale/run.go"
-func = "startRPC"
-call = "json.Unmarshal"
-dest = "*map[string]any"
-count = 1

@@ -35,7 +35,7 @@ func TestPollRPCStateResendsUntilTheStateAndDropsItsResponses(t *testing.T) {
 	counts := []int{1, 2, 3}
 	sent := 0
 	write := func(line string) error {
-		out.Write([]byte(`{"id":"settled","type":"response","data":{"messageCount":` + string(rune('0'+counts[sent])) + "}}\n"))
+		_, _ = out.Write([]byte(`{"id":"settled","type":"response","data":{"messageCount":` + string(rune('0'+counts[sent])) + "}}\n"))
 		sent++
 		return nil
 	}
@@ -43,7 +43,7 @@ func TestPollRPCStateResendsUntilTheStateAndDropsItsResponses(t *testing.T) {
 	if err != nil || id != "settled" || sent != 3 {
 		t.Fatalf("id=%q sent=%d err=%v", id, sent, err)
 	}
-	out.Write([]byte(`{"id":"after","type":"response"}` + "\n"))
+	_, _ = out.Write([]byte(`{"id":"after","type":"response"}` + "\n"))
 	if got := dropPolledResponses(out.String(), []string{id}); got != `{"id":"after","type":"response"}`+"\n" {
 		t.Fatalf("polled responses kept: %q", got)
 	}
@@ -52,7 +52,7 @@ func TestPollRPCStateResendsUntilTheStateAndDropsItsResponses(t *testing.T) {
 func TestPollRPCStateFailsWhenTheStateNeverArrives(t *testing.T) {
 	var out synchronizedBuffer
 	write := func(string) error {
-		out.Write([]byte(`{"id":"settled","type":"response","data":{"messageCount":1}}` + "\n"))
+		_, _ = out.Write([]byte(`{"id":"settled","type":"response","data":{"messageCount":1}}` + "\n"))
 		return nil
 	}
 	_, err := pollRPCState(context.Background(), &out, `{"id":"settled","type":"get_state"}`, `{"data":{"messageCount":9}}`, 1, write)
