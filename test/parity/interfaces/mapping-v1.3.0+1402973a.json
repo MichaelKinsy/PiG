@@ -130753,8 +130753,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -130775,8 +130775,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -138818,8 +138818,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -138840,8 +138840,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -141994,8 +141994,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -142016,8 +142016,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -149590,8 +149590,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -149612,8 +149612,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -150369,8 +150369,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -150391,8 +150391,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -153949,8 +153949,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -153971,8 +153971,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -157051,8 +157051,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -157073,8 +157073,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -161799,8 +161799,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -161821,8 +161821,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -168388,8 +168388,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -168410,8 +168410,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -168892,8 +168892,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -168914,8 +168914,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -181404,8 +181404,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -181426,8 +181426,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -190728,8 +190728,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -190750,8 +190750,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -191138,8 +191138,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -191160,8 +191160,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -193363,8 +193363,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -193385,8 +193385,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -194225,8 +194225,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -194247,8 +194247,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -199456,8 +199456,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -199478,8 +199478,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -253497,8 +253497,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -253519,8 +253519,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -254539,8 +254539,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -254561,8 +254561,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -256550,8 +256550,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -256572,8 +256572,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -257651,8 +257651,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -257673,8 +257673,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -264520,8 +264520,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -264542,8 +264542,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -265718,8 +265718,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -265740,8 +265740,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -266945,8 +266945,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -266967,8 +266967,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -267550,8 +267550,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -267572,8 +267572,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -270570,8 +270570,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -270592,8 +270592,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -272566,8 +272566,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -272588,8 +272588,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -274469,8 +274469,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -274491,8 +274491,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -277356,8 +277356,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
@@ -277378,8 +277378,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/header_frame_window_norace_test.go#TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
+        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
       ]
     },
     {
