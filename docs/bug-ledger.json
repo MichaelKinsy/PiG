@@ -29670,6 +29670,111 @@
       ]
     },
     {
+      "id": "BF-1f50dd5",
+      "title": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again…",
+      "symptom": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.",
+      "rootCause": "Every stream event re-parsed each finished deferred tool call's arguments and re-published and re-boxed the call, so a message with k sequential tool calls cost O(k) per event: 6,140 allocations per event at k=640 for openai-completions. Pi reparses only the block that received the delta. cellArguments now keeps the settled call for the last parsed text, settleContent reuses it while the text is unchanged, publish publishes it directly, and cloneAssistantContentFrom no longer boxes a block equal to the previous one.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1f50dd5112",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "4b87529357",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "5ec13792c3",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "ai/assistant_observation_settle_cache_test.go::TestSettledToolCallsAreReusedForAnUnchangedText",
+        "ai/assistant_observation_settle_norace_test.go::TestSettledToolCallsAreNotParsedCopiedOrBoxedAgain",
+        "ai/assistant_snapshot_test.go::TestCloneAssistantContentFromMatchesCloneAssistantContent",
+        "ai/assistant_snapshot_test.go::TestCloneAssistantContentFromSharesOnlyImmutableSnapshots",
+        "ai/sequential_tool_calls_scaling_norace_test.go::TestScalingSequentialToolCallsPerEvent",
+        "ai/sequential_tool_calls_test.go::TestSequentialToolCallsReadAsTheEagerParse",
+        "ai/unmanaged_snapshot_norace_test.go::TestUnmanagedProducerSnapshotsDoNotRevalidateTheArgumentAtEveryPush",
+        "ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsEqualTheirFullCopy",
+        "ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsJudgeWhatFollowsALongValidString",
+        "coding/extension/host/subprocess/boundary_scaling_norace_test.go::TestBoundaryScalingToolExecutionUpdateStream",
+        "coding/extension/host/subprocess/tool_registration_scaling_norace_test.go::TestRegisteringAToolAfterLoadAllocatesTheSameAtAnyCatalogSize",
+        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateAfterAFailedRequestIsAKeyframe",
+        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateDeltaEqualsTheWholePayload",
+        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdatePatchesAreTheSizeOfTheirDelta",
+        "coding/extension/tool_registry_names_test.go::TestRegisteredToolRevisionIdentifiesEachRegistration",
+        "coding/session_tool_registry_refresh_norace_test.go::TestRefreshingTheToolRegistryDoesNotWrapUnchangedToolsAgain",
+        "coding/session_tool_registry_replace_test.go::TestRegisteringAToolAgainReplacesWhatTheSessionRuns",
+        "extensions/sdk/event_stream_test.go::TestEventStreamKeysAreIndependentAndEvicted",
+        "test/extension-conformance/tool_execution_update_delta_test.go::TestConformance_ToolExecutionUpdateDeltas"
+      ]
+    },
+    {
+      "id": "BF-484865a",
+      "title": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a…",
+      "symptom": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.",
+      "rootCause": "A task-graph watch published the whole graph value with every frame, and a view watch held the view's value and rebuilt it on each commit, so one commit cost grew with live tasks or entries: 20 graph commits allocated 145 MB at 8,000 live tasks, and buildTaskGraph took 2.74 s at 8,000 tasks. A graph frame is now {\"watchId\":N,\"frame\":{\"ops\":[...]}}, the shape view frames already had; the view watch keeps one {id, hasHead} record per active entry and emits the same ops. The driver reduces each view or graph frame's ops into the next typed value (watch_reduce.go), falling back to the full conversion for an op it does not recognise; document watches are unchanged. buildTaskGraph and sortU32 no…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e70b95851",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "484865a109",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "6ef10b65b8",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "8d5c6bac13",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/watch_reduce_test.go::TestGraphFrameCostsOneMapCopy",
+        "durable/core/driver/watch_reduce_test.go::TestReducersRefuseUnknownOps",
+        "durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion",
+        "durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries",
+        "durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion",
+        "durable/core/graph_build_scaling_test.go::TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations",
+        "durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey",
+        "durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete",
+        "durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete",
+        "durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime",
+        "durable/core/sortu32_scaling_test.go::TestSortU32CostsLogLinearInTheWatchCount",
+        "durable/core/view_differential_test.go::TestViewAdvanceMatchesTheWatchThatHeldTheValue",
+        "durable/core/watch_frames_scaling_test.go::TestGraphWatchCommitCostDoesNotGrowWithLiveTasks",
+        "durable/core/watch_frames_scaling_test.go::TestViewWatchCommitCostDoesNotGrowWithEntries",
+        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
+        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
+        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
+        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
+        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
+        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
+        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize"
+      ]
+    },
+    {
       "id": "BF-3363d44",
       "title": "An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each…",
       "symptom": "An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each registration.",
@@ -29814,6 +29919,67 @@
       ]
     },
     {
+      "id": "BF-c6fd79d",
+      "title": "Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the…",
+      "symptom": "Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length.",
+      "rootCause": "The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length. Extension headers and footers still update every frame.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c6fd79d51f",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers",
+        "internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
+        "internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange",
+        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame",
+        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame",
+        "test/parity/runner/rpc_poll_test.go::TestJSONSubsetMatchesNestedObjectsExactlyOtherwise",
+        "test/parity/runner/rpc_poll_test.go::TestPollRPCStateFailsWhenTheStateNeverArrives",
+        "test/parity/runner/rpc_poll_test.go::TestPollRPCStateResendsUntilTheStateAndDropsItsResponses",
+        "tui/markdown_latex_random_oracle_test.go::TestMarkdownInlineMathRandomMatchesPiOracle",
+        "tui/markdown_latex_scaling_norace_test.go::TestScalingInlineDollarPairing",
+        "tui/tui_surface_incremental_test.go::TestSurfacePollsEveryIsDirtyOverride"
+      ]
+    },
+    {
+      "id": "BF-c6fd79d-2",
+      "title": "Markdown with many inline `$` signs renders in linear time, as in Pi",
+      "symptom": "Markdown with many inline `$` signs renders in linear time, as in Pi.",
+      "rootCause": "The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Markdown with many inline `$` signs renders in linear time, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c6fd79d51f",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers",
+        "internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
+        "internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange",
+        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame",
+        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame",
+        "tui/markdown_latex_random_oracle_test.go::TestMarkdownInlineMathRandomMatchesPiOracle",
+        "tui/markdown_latex_scaling_norace_test.go::TestScalingInlineDollarPairing",
+        "tui/tui_surface_incremental_test.go::TestSurfacePollsEveryIsDirtyOverride"
+      ]
+    },
+    {
       "id": "BF-6dba8f0",
       "title": "Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is…",
       "symptom": "Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is appended no longer costs time proportional to the session length, in the Go, Node, Python and Rust SDKs.",
@@ -29839,6 +30005,69 @@
         "extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchReturnsCopies",
         "extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchSideEntryAndRepeatedID",
         "test/extension-conformance/session_branch_append_test.go::TestSessionBranchReadsFollowAppendsAndLeafMovesAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-199027e",
+      "title": "Choosing a bundled model no longer builds every model of its provider on each request, and providers in…",
+      "symptom": "Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically.",
+      "rootCause": "ModelRuntime.GetModel built every model of a bundled provider on each call (3,268 allocations for openrouter's 402 models) and runs once per request. GetProviderModelDataByID now finds the catalog entry and builds only the match, through OfferedGeneratedModels so stripped APIs stay hidden; native, overlay and models.json providers keep their path. 10 allocations per call at any catalog size.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically. Branch summaries of long sessions are prepared in linear time.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "199027e74d",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "6a197185c5",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "b106c51c4f",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "coding/model_registry_oracle_test.go::TestModelRegistryMatchesPi",
+        "coding/model_resolver_oracle_test.go::TestResolveCliModelAndScopeMatchPi",
+        "coding/model_runtime_get_model_allocs_test.go::TestGetModelAllocationsDoNotGrowWithTheProviderCatalog",
+        "coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry",
+        "coding/testmain_test.go::TestMain",
+        "coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory",
+        "internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate",
+        "internal/codingagent/complexity_scaling_models_json_unix_norace_test.go::TestScalingModelsJSONProviderComposition",
+        "internal/codingagent/native_model_index_test.go::TestNativeModelIndexMatchesScanThroughReplacementsAndAppends",
+        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionLeavesTheSourceUntouched",
+        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionProjectionEqualsAppendedPreview"
+      ]
+    },
+    {
+      "id": "BF-792f185",
+      "title": "PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting…",
+      "symptom": "PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).",
+      "rootCause": "Host.Shutdown retires each generation with Conn.Retire, which waits for the peer to close. When a Node process held two extensions and the main thread was blocked in a synchronous host call (xref.hello while handling its first ready, runtime.mjs callSync), checkSendState refused the call_result once the connection was closing, so Node never read the shutdown frame and the host waited until the 30 s heartbeat. It hit only when the extension with the call in flight was retired first (map order), so project-trust 08 timed out 16 of 100 runs at GOMAXPROCS=1. Pi's extension calls are in-process and a call made before the runner is invalidated always returns (runner.ts:729-736).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "792f185c22",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/retire_answers_calls_test.go::TestRetiringConnSendsTheResultOfACallTheShutdownFrameDidNotBeat",
+        "coding/extension/host/subprocess/retire_answers_calls_test.go::TestShutdownAnswersTheCallOfAGenerationItRetires"
       ]
     },
     {
@@ -29880,6 +30109,112 @@
         "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
         "test/extension-conformance/tool_execution_update_delta_test.go::TestConformance_ToolExecutionUpdateDeltas",
         "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
+      ]
+    },
+    {
+      "id": "BF-8d5c6ba",
+      "title": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a…",
+      "symptom": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.",
+      "rootCause": "Every commit to pi.live, pi.inbox, pi.usage, pi.agent and pi.provider marshalled the whole document and decoded it into its Go type to run CheckpointWhen, so each nested or parallel model-issued tool call re-decoded the live state: 2,000 sequential nested calls took 115 s and k=512 parallel calls 13 s. CommonDocDefinition gains CheckpointWhenRaw, which these documents use on the prepared value. Before it runs, the delta's changed members are decoded one at a time against the document's type, falling back to the whole-value decode for op shapes it cannot attribute, so a malformed value fails the commit with the same error at the same point as the typed path did. User documents keep the typed…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d5c6bac13",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
+        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
+        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
+        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize"
+      ]
+    },
+    {
+      "id": "BF-6a19718",
+      "title": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a…",
+      "symptom": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.",
+      "rootCause": "findPersistedMessageEntryID called BuildSessionProjection, which deep copies the whole history, once per tool result of every turn_end with an extension handler: 13 ms per tool result at 16,000 entries. It reads the kept incremental projection view instead, with the same newest-first lookup.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e70b95851",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "6a197185c5",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry",
+        "coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
+        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
+        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
+        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
+        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionLeavesTheSourceUntouched",
+        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionProjectionEqualsAppendedPreview"
+      ]
+    },
+    {
+      "id": "BF-b15e50a",
+      "title": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a…",
+      "symptom": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b15e50a7d8",
+          "date": "2026-10-18"
+        }
+      ],
+      "commitsFrom": "release note",
+      "tests": []
+    },
+    {
+      "id": "BF-6ef10b6",
+      "title": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…",
+      "symptom": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.",
+      "rootCause": "Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6ef10b65b8",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey",
+        "durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete",
+        "durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete",
+        "durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime"
       ]
     },
     {
@@ -30532,56 +30867,6 @@
       ]
     },
     {
-      "id": "BF-6ef10b6",
-      "title": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…",
-      "symptom": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.",
-      "rootCause": "Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "6ef10b65b8",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey",
-        "durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete",
-        "durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete",
-        "durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime"
-      ]
-    },
-    {
-      "id": "BF-8d5c6ba",
-      "title": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a…",
-      "symptom": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.",
-      "rootCause": "Every commit to pi.live, pi.inbox, pi.usage, pi.agent and pi.provider marshalled the whole document and decoded it into its Go type to run CheckpointWhen, so each nested or parallel model-issued tool call re-decoded the live state: 2,000 sequential nested calls took 115 s and k=512 parallel calls 13 s. CommonDocDefinition gains CheckpointWhenRaw, which these documents use on the prepared value. Before it runs, the delta's changed members are decoded one at a time against the document's type, falling back to the whole-value decode for op shapes it cannot attribute, so a malformed value fails the commit with the same error at the same point as the typed path did. User documents keep the typed…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "8d5c6bac13",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
-        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
-        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize"
-      ]
-    },
-    {
       "id": "BF-b1421b7",
       "title": "`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a…",
       "symptom": "`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.",
@@ -30617,291 +30902,6 @@
         "internal/codingagent/ext_special_lines_paint_test.go::TestExtensionFooterFromAHostGoroutineIsPaintedByTheOwnerLoop",
         "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
         "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
-      ]
-    },
-    {
-      "id": "BF-484865a",
-      "title": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a…",
-      "symptom": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.",
-      "rootCause": "A task-graph watch published the whole graph value with every frame, and a view watch held the view's value and rebuilt it on each commit, so one commit cost grew with live tasks or entries: 20 graph commits allocated 145 MB at 8,000 live tasks, and buildTaskGraph took 2.74 s at 8,000 tasks. A graph frame is now {\"watchId\":N,\"frame\":{\"ops\":[...]}}, the shape view frames already had; the view watch keeps one {id, hasHead} record per active entry and emits the same ops. The driver reduces each view or graph frame's ops into the next typed value (watch_reduce.go), falling back to the full conversion for an op it does not recognise; document watches are unchanged. buildTaskGraph and sortU32 no…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2e70b95851",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "484865a109",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "6ef10b65b8",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "8d5c6bac13",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/core/driver/watch_reduce_test.go::TestGraphFrameCostsOneMapCopy",
-        "durable/core/driver/watch_reduce_test.go::TestReducersRefuseUnknownOps",
-        "durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion",
-        "durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries",
-        "durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion",
-        "durable/core/graph_build_scaling_test.go::TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations",
-        "durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey",
-        "durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete",
-        "durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete",
-        "durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime",
-        "durable/core/sortu32_scaling_test.go::TestSortU32CostsLogLinearInTheWatchCount",
-        "durable/core/view_differential_test.go::TestViewAdvanceMatchesTheWatchThatHeldTheValue",
-        "durable/core/watch_frames_scaling_test.go::TestGraphWatchCommitCostDoesNotGrowWithLiveTasks",
-        "durable/core/watch_frames_scaling_test.go::TestViewWatchCommitCostDoesNotGrowWithEntries",
-        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
-        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
-        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
-        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize"
-      ]
-    },
-    {
-      "id": "BF-6a19718",
-      "title": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a…",
-      "symptom": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.",
-      "rootCause": "findPersistedMessageEntryID called BuildSessionProjection, which deep copies the whole history, once per tool result of every turn_end with an extension handler: 13 ms per tool result at 16,000 entries. It reads the kept incremental projection view instead, with the same newest-first lookup.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2e70b95851",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "6a197185c5",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry",
-        "coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionLeavesTheSourceUntouched",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionProjectionEqualsAppendedPreview"
-      ]
-    },
-    {
-      "id": "BF-b15e50a",
-      "title": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a…",
-      "symptom": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "b15e50a7d8",
-          "date": "2026-10-18"
-        }
-      ],
-      "commitsFrom": "release note",
-      "tests": []
-    },
-    {
-      "id": "BF-1f50dd5",
-      "title": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again…",
-      "symptom": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.",
-      "rootCause": "Every stream event re-parsed each finished deferred tool call's arguments and re-published and re-boxed the call, so a message with k sequential tool calls cost O(k) per event: 6,140 allocations per event at k=640 for openai-completions. Pi reparses only the block that received the delta. cellArguments now keeps the settled call for the last parsed text, settleContent reuses it while the text is unchanged, publish publishes it directly, and cloneAssistantContentFrom no longer boxes a block equal to the previous one.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1f50dd5112",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "4b87529357",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "5ec13792c3",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "ai/assistant_observation_settle_cache_test.go::TestSettledToolCallsAreReusedForAnUnchangedText",
-        "ai/assistant_observation_settle_norace_test.go::TestSettledToolCallsAreNotParsedCopiedOrBoxedAgain",
-        "ai/assistant_snapshot_test.go::TestCloneAssistantContentFromMatchesCloneAssistantContent",
-        "ai/assistant_snapshot_test.go::TestCloneAssistantContentFromSharesOnlyImmutableSnapshots",
-        "ai/sequential_tool_calls_scaling_norace_test.go::TestScalingSequentialToolCallsPerEvent",
-        "ai/sequential_tool_calls_test.go::TestSequentialToolCallsReadAsTheEagerParse",
-        "ai/unmanaged_snapshot_norace_test.go::TestUnmanagedProducerSnapshotsDoNotRevalidateTheArgumentAtEveryPush",
-        "ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsEqualTheirFullCopy",
-        "ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsJudgeWhatFollowsALongValidString",
-        "coding/extension/host/subprocess/boundary_scaling_norace_test.go::TestBoundaryScalingToolExecutionUpdateStream",
-        "coding/extension/host/subprocess/tool_registration_scaling_norace_test.go::TestRegisteringAToolAfterLoadAllocatesTheSameAtAnyCatalogSize",
-        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateAfterAFailedRequestIsAKeyframe",
-        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateDeltaEqualsTheWholePayload",
-        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdatePatchesAreTheSizeOfTheirDelta",
-        "coding/extension/tool_registry_names_test.go::TestRegisteredToolRevisionIdentifiesEachRegistration",
-        "coding/session_tool_registry_refresh_norace_test.go::TestRefreshingTheToolRegistryDoesNotWrapUnchangedToolsAgain",
-        "coding/session_tool_registry_replace_test.go::TestRegisteringAToolAgainReplacesWhatTheSessionRuns",
-        "extensions/sdk/event_stream_test.go::TestEventStreamKeysAreIndependentAndEvicted",
-        "test/extension-conformance/tool_execution_update_delta_test.go::TestConformance_ToolExecutionUpdateDeltas"
-      ]
-    },
-    {
-      "id": "BF-c6fd79d",
-      "title": "Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the…",
-      "symptom": "Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length.",
-      "rootCause": "The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length. Extension headers and footers still update every frame.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "c6fd79d51f",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers",
-        "internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange",
-        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame",
-        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame",
-        "test/parity/runner/rpc_poll_test.go::TestJSONSubsetMatchesNestedObjectsExactlyOtherwise",
-        "test/parity/runner/rpc_poll_test.go::TestPollRPCStateFailsWhenTheStateNeverArrives",
-        "test/parity/runner/rpc_poll_test.go::TestPollRPCStateResendsUntilTheStateAndDropsItsResponses",
-        "tui/markdown_latex_random_oracle_test.go::TestMarkdownInlineMathRandomMatchesPiOracle",
-        "tui/markdown_latex_scaling_norace_test.go::TestScalingInlineDollarPairing",
-        "tui/tui_surface_incremental_test.go::TestSurfacePollsEveryIsDirtyOverride"
-      ]
-    },
-    {
-      "id": "BF-c6fd79d-2",
-      "title": "Markdown with many inline `$` signs renders in linear time, as in Pi",
-      "symptom": "Markdown with many inline `$` signs renders in linear time, as in Pi.",
-      "rootCause": "The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Markdown with many inline `$` signs renders in linear time, as in Pi.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "c6fd79d51f",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers",
-        "internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines",
-        "internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange",
-        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame",
-        "internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame",
-        "tui/markdown_latex_random_oracle_test.go::TestMarkdownInlineMathRandomMatchesPiOracle",
-        "tui/markdown_latex_scaling_norace_test.go::TestScalingInlineDollarPairing",
-        "tui/tui_surface_incremental_test.go::TestSurfacePollsEveryIsDirtyOverride"
-      ]
-    },
-    {
-      "id": "BF-792f185",
-      "title": "PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting…",
-      "symptom": "PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).",
-      "rootCause": "Host.Shutdown retires each generation with Conn.Retire, which waits for the peer to close. When a Node process held two extensions and the main thread was blocked in a synchronous host call (xref.hello while handling its first ready, runtime.mjs callSync), checkSendState refused the call_result once the connection was closing, so Node never read the shutdown frame and the host waited until the 30 s heartbeat. It hit only when the extension with the call in flight was retired first (map order), so project-trust 08 timed out 16 of 100 runs at GOMAXPROCS=1. Pi's extension calls are in-process and a call made before the runner is invalidated always returns (runner.ts:729-736).",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "792f185c22",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/retire_answers_calls_test.go::TestRetiringConnSendsTheResultOfACallTheShutdownFrameDidNotBeat",
-        "coding/extension/host/subprocess/retire_answers_calls_test.go::TestShutdownAnswersTheCallOfAGenerationItRetires"
-      ]
-    },
-    {
-      "id": "BF-199027e",
-      "title": "Choosing a bundled model no longer builds every model of its provider on each request, and providers in…",
-      "symptom": "Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically.",
-      "rootCause": "ModelRuntime.GetModel built every model of a bundled provider on each call (3,268 allocations for openrouter's 402 models) and runs once per request. GetProviderModelDataByID now finds the catalog entry and builds only the match, through OfferedGeneratedModels so stripped APIs stay hidden; native, overlay and models.json providers keep their path. 10 allocations per call at any catalog size.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically. Branch summaries of long sessions are prepared in linear time.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "199027e74d",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "6a197185c5",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "b106c51c4f",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "coding/model_registry_oracle_test.go::TestModelRegistryMatchesPi",
-        "coding/model_resolver_oracle_test.go::TestResolveCliModelAndScopeMatchPi",
-        "coding/model_runtime_get_model_allocs_test.go::TestGetModelAllocationsDoNotGrowWithTheProviderCatalog",
-        "coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry",
-        "coding/testmain_test.go::TestMain",
-        "coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory",
-        "internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate",
-        "internal/codingagent/complexity_scaling_models_json_unix_norace_test.go::TestScalingModelsJSONProviderComposition",
-        "internal/codingagent/native_model_index_test.go::TestNativeModelIndexMatchesScanThroughReplacementsAndAppends",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionLeavesTheSourceUntouched",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionProjectionEqualsAppendedPreview"
       ]
     }
   ],

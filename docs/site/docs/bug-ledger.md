@@ -902,11 +902,21 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
+| [BF-1f50dd5](#bf-1f50dd5) | A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again… | PiG's own defect | All platforms | Unreleased |
+| [BF-484865a](#bf-484865a) | Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-3363d44](#bf-3363d44) | An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each… | PiG's own defect | All platforms | Unreleased |
 | [BF-3675522](#bf-3675522) | A `context` event with several extension handlers is encoded once per request instead of once per handler… | PiG's own defect | All platforms | Unreleased |
 | [BF-3675522-2](#bf-3675522-2) | Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a… | PiG's own defect | All platforms | Unreleased |
+| [BF-c6fd79d](#bf-c6fd79d) | Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the… | PiG's own defect | All platforms | Unreleased |
+| [BF-c6fd79d-2](#bf-c6fd79d-2) | Markdown with many inline `$` signs renders in linear time, as in Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-6dba8f0](#bf-6dba8f0) | Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is… | PiG's own defect | All platforms | Unreleased |
+| [BF-199027e](#bf-199027e) | Choosing a bundled model no longer builds every model of its provider on each request, and providers in… | PiG's own defect | All platforms | Unreleased |
+| [BF-792f185](#bf-792f185) | PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting… | PiG's own defect | All platforms | Unreleased |
 | [BF-af18171](#bf-af18171) | A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on… | PiG's own defect | All platforms | Unreleased |
+| [BF-8d5c6ba](#bf-8d5c6ba) | Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a19718](#bf-6a19718) | With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-b15e50a](#bf-b15e50a) | Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a… | PiG's own defect | All platforms | Unreleased |
+| [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
 | [BF-97ecff0](#bf-97ecff0) | A Durable core session with many live tasks recomputes its next wake without walking every live task on each… | PiG's own defect | All platforms | Unreleased |
@@ -921,17 +931,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-b1a68e0](#bf-b1a68e0) | A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of… | PiG's own defect | All platforms | Unreleased |
 | [BF-02ed4f1](#bf-02ed4f1) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
 | [BF-2e70b95](#bf-2e70b95) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
-| [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
-| [BF-8d5c6ba](#bf-8d5c6ba) | Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-b1421b7](#bf-b1421b7) | `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a… | PiG's own defect | All platforms | Unreleased |
-| [BF-484865a](#bf-484865a) | Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a… | PiG's own defect | All platforms | Unreleased |
-| [BF-6a19718](#bf-6a19718) | With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a… | PiG's own defect | All platforms | Unreleased |
-| [BF-b15e50a](#bf-b15e50a) | Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a… | PiG's own defect | All platforms | Unreleased |
-| [BF-1f50dd5](#bf-1f50dd5) | A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again… | PiG's own defect | All platforms | Unreleased |
-| [BF-c6fd79d](#bf-c6fd79d) | Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the… | PiG's own defect | All platforms | Unreleased |
-| [BF-c6fd79d-2](#bf-c6fd79d-2) | Markdown with many inline `$` signs renders in linear time, as in Pi | PiG's own defect | All platforms | Unreleased |
-| [BF-792f185](#bf-792f185) | PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting… | PiG's own defect | All platforms | Unreleased |
-| [BF-199027e](#bf-199027e) | Choosing a bundled model no longer builds every model of its provider on each request, and providers in… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13239,6 +13239,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/message_go_escapes_allocs_norace_test.go::TestSystemMessageWithEscapedCharactersDecodesAtTheCostOfOneWithout`, `agent/message_go_escapes_test.go::TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing`, `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `ai/main_test.go::TestMain` and 29 more in docs/bug-ledger.json
 - **Release note:** A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it. The abort cancelled the call before its tool started, and the native core driver ended the call without telling the core, which settles a cancelled call only on that report. The call now reports the cancelled lookup as a thrown result, as it reports a tool that observes the cancel. It stalled once in about 1,000 CI runs of the abort-with-generation test under the race detector.
 
+### BF-1f50dd5
+
+**A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.
+- **Root cause:** Every stream event re-parsed each finished deferred tool call's arguments and re-published and re-boxed the call, so a message with k sequential tool calls cost O(k) per event: 6,140 allocations per event at k=640 for openai-completions. Pi reparses only the block that received the delta. cellArguments now keeps the settled call for the last parsed text, settleContent reuses it while the text is unchanged, publish publishes it directly, and cloneAssistantContentFrom no longer boxes a block equal to the previous one.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1f50dd5112` (2026-10-18), `4b87529357` (2026-10-18), `5ec13792c3` (2026-10-18)
+- **Tests:** `ai/assistant_observation_settle_cache_test.go::TestSettledToolCallsAreReusedForAnUnchangedText`, `ai/assistant_observation_settle_norace_test.go::TestSettledToolCallsAreNotParsedCopiedOrBoxedAgain`, `ai/assistant_snapshot_test.go::TestCloneAssistantContentFromMatchesCloneAssistantContent`, `ai/assistant_snapshot_test.go::TestCloneAssistantContentFromSharesOnlyImmutableSnapshots`, `ai/sequential_tool_calls_scaling_norace_test.go::TestScalingSequentialToolCallsPerEvent`, `ai/sequential_tool_calls_test.go::TestSequentialToolCallsReadAsTheEagerParse`, `ai/unmanaged_snapshot_norace_test.go::TestUnmanagedProducerSnapshotsDoNotRevalidateTheArgumentAtEveryPush`, `ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsEqualTheirFullCopy` and 11 more in docs/bug-ledger.json
+- **Release note:** A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.
+
+### BF-484865a
+
+**Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.
+- **Root cause:** A task-graph watch published the whole graph value with every frame, and a view watch held the view's value and rebuilt it on each commit, so one commit cost grew with live tasks or entries: 20 graph commits allocated 145 MB at 8,000 live tasks, and buildTaskGraph took 2.74 s at 8,000 tasks. A graph frame is now {"watchId":N,"frame":{"ops":[...]}}, the shape view frames already had; the view watch keeps one {id, hasHead} record per active entry and emits the same ops. The driver reduces each view or graph frame's ops into the next typed value (watch_reduce.go), falling back to the full conversion for an op it does not recognise; document watches are unchanged. buildTaskGraph and sortU32 no…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e70b95851` (2026-10-18), `484865a109` (2026-10-18), `6ef10b65b8` (2026-10-18), `8d5c6bac13` (2026-10-18)
+- **Tests:** `durable/core/driver/watch_reduce_test.go::TestGraphFrameCostsOneMapCopy`, `durable/core/driver/watch_reduce_test.go::TestReducersRefuseUnknownOps`, `durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion`, `durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries`, `durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion`, `durable/core/graph_build_scaling_test.go::TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations`, `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete` and 16 more in docs/bug-ledger.json
+- **Release note:** Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.
+
 ### BF-3363d44
 
 **An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each…**
@@ -13281,6 +13309,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `ai/anthropic_e2e_catalog_test.go::TestAnthropicEagerToolInputCatalogDenominator`, `ai/anthropic_e2e_catalog_test.go::TestAnthropicLongCacheRetentionCatalogDenominator`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `coding/extension/host/inproc/context_dispatch_scaling_norace_test.go::TestScalingContextDispatchOfUnchangedSubprocessHandlers`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextDispatchOfUnchangedSubprocessHandlersCopiesNothing`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextGoHandlerAfterSubprocessHandlersEditsACopy`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextSubprocessReplyListIsUsedAndAnUnchangedReplyKeepsIt`, `coding/extension/host/subprocess/context_fanout_norace_test.go::TestContextDispatchEncodesOncePerEmitForEveryHandler` and 16 more in docs/bug-ledger.json
 - **Release note:** Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a replacement, and an in-place edit marked with `pig_sdk::context_unchanged()` keeps system messages in place, as in Pi and the other SDKs. Return `None` for an unchanged conversation.
 
+### BF-c6fd79d
+
+**Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length.
+- **Root cause:** The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c6fd79d51f` (2026-10-18)
+- **Tests:** `internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers`, `internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines`, `internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame`, `test/parity/runner/rpc_poll_test.go::TestJSONSubsetMatchesNestedObjectsExactlyOtherwise`, `test/parity/runner/rpc_poll_test.go::TestPollRPCStateFailsWhenTheStateNeverArrives`, `test/parity/runner/rpc_poll_test.go::TestPollRPCStateResendsUntilTheStateAndDropsItsResponses` and 3 more in docs/bug-ledger.json
+- **Release note:** Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length. Extension headers and footers still update every frame.
+
+### BF-c6fd79d-2
+
+**Markdown with many inline `$` signs renders in linear time, as in Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** Markdown with many inline `$` signs renders in linear time, as in Pi.
+- **Root cause:** The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c6fd79d51f` (2026-10-18)
+- **Tests:** `internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers`, `internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines`, `internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame`, `tui/markdown_latex_random_oracle_test.go::TestMarkdownInlineMathRandomMatchesPiOracle`, `tui/markdown_latex_scaling_norace_test.go::TestScalingInlineDollarPairing`, `tui/tui_surface_incremental_test.go::TestSurfacePollsEveryIsDirtyOverride`
+- **Release note:** Markdown with many inline `$` signs renders in linear time, as in Pi.
+
 ### BF-6dba8f0
 
 **Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is…**
@@ -13295,6 +13351,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/extension/host/subprocess/runtime_node_branch_append_test.go::TestNodeRuntimeSessionReadsAfterAppendDoNotRescanTheLog`, `extensions/sdk-py/tests/test_session_mirror_append.py`, `extensions/sdk/session_mirror_append_test.go::TestAppendThenReadBranchAllocatesTheSameAtAnyLength`, `extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchMatchesUncachedWalkAcrossLeafMoves`, `extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchReturnsCopies`, `extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchSideEntryAndRepeatedID`, `test/extension-conformance/session_branch_append_test.go::TestSessionBranchReadsFollowAppendsAndLeafMovesAcrossSDKs`
 - **Release note:** Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is appended no longer costs time proportional to the session length, in the Go, Node, Python and Rust SDKs.
 
+### BF-199027e
+
+**Choosing a bundled model no longer builds every model of its provider on each request, and providers in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically.
+- **Root cause:** ModelRuntime.GetModel built every model of a bundled provider on each call (3,268 allocations for openrouter's 402 models) and runs once per request. GetProviderModelDataByID now finds the catalog entry and builds only the match, through OfferedGeneratedModels so stripped APIs stay hidden; native, overlay and models.json providers keep their path. 10 allocations per call at any catalog size.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `199027e74d` (2026-10-18), `6a197185c5` (2026-10-18), `b106c51c4f` (2026-10-18)
+- **Tests:** `coding/model_registry_oracle_test.go::TestModelRegistryMatchesPi`, `coding/model_resolver_oracle_test.go::TestResolveCliModelAndScopeMatchPi`, `coding/model_runtime_get_model_allocs_test.go::TestGetModelAllocationsDoNotGrowWithTheProviderCatalog`, `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/testmain_test.go::TestMain`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_models_json_unix_norace_test.go::TestScalingModelsJSONProviderComposition` and 3 more in docs/bug-ledger.json
+- **Release note:** Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically. Branch summaries of long sessions are prepared in linear time.
+
+### BF-792f185
+
+**PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting…**
+
+- **Source:** PiG's own defect
+- **Symptom:** PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).
+- **Root cause:** Host.Shutdown retires each generation with Conn.Retire, which waits for the peer to close. When a Node process held two extensions and the main thread was blocked in a synchronous host call (xref.hello while handling its first ready, runtime.mjs callSync), checkSendState refused the call_result once the connection was closing, so Node never read the shutdown frame and the host waited until the 30 s heartbeat. It hit only when the extension with the call in flight was retired first (map order), so project-trust 08 timed out 16 of 100 runs at GOMAXPROCS=1. Pi's extension calls are in-process and a call made before the runner is invalidated always returns (runner.ts:729-736).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `792f185c22` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/retire_answers_calls_test.go::TestRetiringConnSendsTheResultOfACallTheShutdownFrameDidNotBeat`, `coding/extension/host/subprocess/retire_answers_calls_test.go::TestShutdownAnswersTheCallOfAGenerationItRetires`
+- **Release note:** PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).
+
 ### BF-af18171
 
 **A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on…**
@@ -13308,6 +13392,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `af18171964` (2026-10-18), `c2cdd5b680` (2026-10-18), `d0c524009a` (2026-10-18)
 - **Tests:** `coding/extension/host/subprocess/boundary_scaling_norace_test.go::TestBoundaryScalingToolExecutionUpdateStream`, `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateAfterAFailedRequestIsAKeyframe`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateDeltaEqualsTheWholePayload`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdatePatchesAreTheSizeOfTheirDelta`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration`, `extensions/sdk/event_stream_test.go::TestEventStreamKeysAreIndependentAndEvicted` and 4 more in docs/bug-ledger.json
 - **Release note:** A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on every update; updates carry only what changed, and handlers still receive the full `partialResult`.
+
+### BF-8d5c6ba
+
+**Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.
+- **Root cause:** Every commit to pi.live, pi.inbox, pi.usage, pi.agent and pi.provider marshalled the whole document and decoded it into its Go type to run CheckpointWhen, so each nested or parallel model-issued tool call re-decoded the live state: 2,000 sequential nested calls took 115 s and k=512 parallel calls 13 s. CommonDocDefinition gains CheckpointWhenRaw, which these documents use on the prepared value. Before it runs, the delta's changed members are decoded one at a time against the document's type, falling back to the whole-value decode for op shapes it cannot attribute, so a malformed value fails the commit with the same error at the same point as the typed path did. User documents keep the typed…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d5c6bac13` (2026-10-18)
+- **Tests:** `durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy`, `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode`, `durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount`, `durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize`
+- **Release note:** Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.
+
+### BF-6a19718
+
+**With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.
+- **Root cause:** findPersistedMessageEntryID called BuildSessionProjection, which deep copies the whole history, once per tool result of every turn_end with an extension handler: 13 ms per tool result at 16,000 entries. It reads the kept incremental projection view instead, with the same newest-first lookup.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e70b95851` (2026-10-18), `6a197185c5` (2026-10-18)
+- **Tests:** `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn` and 2 more in docs/bug-ledger.json
+- **Release note:** With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.
+
+### BF-b15e50a
+
+**Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `b15e50a7d8` (2026-10-18)
+- **Tests:** None recorded.
+- **Release note:** Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.
+
+### BF-6ef10b6
+
+**Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
+- **Root cause:** Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6ef10b65b8` (2026-10-18)
+- **Tests:** `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete`, `durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete`, `durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime`
+- **Release note:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
 
 ### BF-9f31a8b
 
@@ -13505,34 +13645,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn`, `durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder`
 - **Release note:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
 
-### BF-6ef10b6
-
-**Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
-- **Root cause:** Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `6ef10b65b8` (2026-10-18)
-- **Tests:** `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete`, `durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete`, `durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime`
-- **Release note:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
-
-### BF-8d5c6ba
-
-**Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.
-- **Root cause:** Every commit to pi.live, pi.inbox, pi.usage, pi.agent and pi.provider marshalled the whole document and decoded it into its Go type to run CheckpointWhen, so each nested or parallel model-issued tool call re-decoded the live state: 2,000 sequential nested calls took 115 s and k=512 parallel calls 13 s. CommonDocDefinition gains CheckpointWhenRaw, which these documents use on the prepared value. Before it runs, the delta's changed members are decoded one at a time against the document's type, falling back to the whole-value decode for op shapes it cannot attribute, so a malformed value fails the commit with the same error at the same point as the typed path did. User documents keep the typed…
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `8d5c6bac13` (2026-10-18)
-- **Tests:** `durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy`, `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode`, `durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount`, `durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize`
-- **Release note:** Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.
-
 ### BF-b1421b7
 
 **`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a…**
@@ -13546,118 +13658,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b1421b7ef6` (2026-10-18), `c2cdd5b680` (2026-10-18)
 - **Tests:** `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues`, `chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered` and 5 more in docs/bug-ledger.json
 - **Release note:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
-
-### BF-484865a
-
-**Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.
-- **Root cause:** A task-graph watch published the whole graph value with every frame, and a view watch held the view's value and rebuilt it on each commit, so one commit cost grew with live tasks or entries: 20 graph commits allocated 145 MB at 8,000 live tasks, and buildTaskGraph took 2.74 s at 8,000 tasks. A graph frame is now {"watchId":N,"frame":{"ops":[...]}}, the shape view frames already had; the view watch keeps one {id, hasHead} record per active entry and emits the same ops. The driver reduces each view or graph frame's ops into the next typed value (watch_reduce.go), falling back to the full conversion for an op it does not recognise; document watches are unchanged. buildTaskGraph and sortU32 no…
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `2e70b95851` (2026-10-18), `484865a109` (2026-10-18), `6ef10b65b8` (2026-10-18), `8d5c6bac13` (2026-10-18)
-- **Tests:** `durable/core/driver/watch_reduce_test.go::TestGraphFrameCostsOneMapCopy`, `durable/core/driver/watch_reduce_test.go::TestReducersRefuseUnknownOps`, `durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion`, `durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries`, `durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion`, `durable/core/graph_build_scaling_test.go::TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations`, `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete` and 16 more in docs/bug-ledger.json
-- **Release note:** Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.
-
-### BF-6a19718
-
-**With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a…**
-
-- **Source:** PiG's own defect
-- **Symptom:** With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.
-- **Root cause:** findPersistedMessageEntryID called BuildSessionProjection, which deep copies the whole history, once per tool result of every turn_end with an extension handler: 13 ms per tool result at 16,000 entries. It reads the kept incremental projection view instead, with the same newest-first lookup.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `2e70b95851` (2026-10-18), `6a197185c5` (2026-10-18)
-- **Tests:** `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn` and 2 more in docs/bug-ledger.json
-- **Release note:** With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.
-
-### BF-b15e50a
-
-**Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.
-- **Root cause:** Not recorded.
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Commit that wrote the release note (the fix commit is not identified):** `b15e50a7d8` (2026-10-18)
-- **Tests:** None recorded.
-- **Release note:** Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.
-
-### BF-1f50dd5
-
-**A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.
-- **Root cause:** Every stream event re-parsed each finished deferred tool call's arguments and re-published and re-boxed the call, so a message with k sequential tool calls cost O(k) per event: 6,140 allocations per event at k=640 for openai-completions. Pi reparses only the block that received the delta. cellArguments now keeps the settled call for the last parsed text, settleContent reuses it while the text is unchanged, publish publishes it directly, and cloneAssistantContentFrom no longer boxes a block equal to the previous one.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `1f50dd5112` (2026-10-18), `4b87529357` (2026-10-18), `5ec13792c3` (2026-10-18)
-- **Tests:** `ai/assistant_observation_settle_cache_test.go::TestSettledToolCallsAreReusedForAnUnchangedText`, `ai/assistant_observation_settle_norace_test.go::TestSettledToolCallsAreNotParsedCopiedOrBoxedAgain`, `ai/assistant_snapshot_test.go::TestCloneAssistantContentFromMatchesCloneAssistantContent`, `ai/assistant_snapshot_test.go::TestCloneAssistantContentFromSharesOnlyImmutableSnapshots`, `ai/sequential_tool_calls_scaling_norace_test.go::TestScalingSequentialToolCallsPerEvent`, `ai/sequential_tool_calls_test.go::TestSequentialToolCallsReadAsTheEagerParse`, `ai/unmanaged_snapshot_norace_test.go::TestUnmanagedProducerSnapshotsDoNotRevalidateTheArgumentAtEveryPush`, `ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsEqualTheirFullCopy` and 11 more in docs/bug-ledger.json
-- **Release note:** A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.
-
-### BF-c6fd79d
-
-**Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length.
-- **Root cause:** The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `c6fd79d51f` (2026-10-18)
-- **Tests:** `internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers`, `internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines`, `internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame`, `test/parity/runner/rpc_poll_test.go::TestJSONSubsetMatchesNestedObjectsExactlyOtherwise`, `test/parity/runner/rpc_poll_test.go::TestPollRPCStateFailsWhenTheStateNeverArrives`, `test/parity/runner/rpc_poll_test.go::TestPollRPCStateResendsUntilTheStateAndDropsItsResponses` and 3 more in docs/bug-ledger.json
-- **Release note:** Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the same at any transcript length. Extension headers and footers still update every frame.
-
-### BF-c6fd79d-2
-
-**Markdown with many inline `$` signs renders in linear time, as in Pi**
-
-- **Source:** PiG's own defect
-- **Symptom:** Markdown with many inline `$` signs renders in linear time, as in Pi.
-- **Root cause:** The extension-UI header and footer component had no dirty state, so the surface redrew from it on every frame and each frame cost O(all transcript lines): 386 µs per idle frame at 25,600 lines against 5.5 µs at 128. specialLinesComponent now reports IsDirty: pushed lines are dirty until drawn once, an extension's render function or view is dirty every frame (so it never freezes), and the built-in header is clean while its render inputs are unchanged. 3 µs per frame at both sizes.
-- **User impact:** Wrong display
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `c6fd79d51f` (2026-10-18)
-- **Tests:** `internal/codingagent/extension_header_spacing_test.go::TestExtensionHeaderKeepsHostSpacers`, `internal/codingagent/header_frame_window_norace_test.go::TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines`, `internal/codingagent/header_frame_window_test.go::TestBuiltInHeaderIsCleanUntilItsInputsChange`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderAndFooterRendersReachTheNextFrame`, `internal/codingagent/header_frame_window_test.go::TestExtensionHeaderViewAndLinesReachTheNextFrame`, `tui/markdown_latex_random_oracle_test.go::TestMarkdownInlineMathRandomMatchesPiOracle`, `tui/markdown_latex_scaling_norace_test.go::TestScalingInlineDollarPairing`, `tui/tui_surface_incremental_test.go::TestSurfacePollsEveryIsDirtyOverride`
-- **Release note:** Markdown with many inline `$` signs renders in linear time, as in Pi.
-
-### BF-792f185
-
-**PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting…**
-
-- **Source:** PiG's own defect
-- **Symptom:** PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).
-- **Root cause:** Host.Shutdown retires each generation with Conn.Retire, which waits for the peer to close. When a Node process held two extensions and the main thread was blocked in a synchronous host call (xref.hello while handling its first ready, runtime.mjs callSync), checkSendState refused the call_result once the connection was closing, so Node never read the shutdown frame and the host waited until the 30 s heartbeat. It hit only when the extension with the call in flight was retired first (map order), so project-trust 08 timed out 16 of 100 runs at GOMAXPROCS=1. Pi's extension calls are in-process and a call made before the runner is invalidated always returns (runner.ts:729-736).
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `792f185c22` (2026-10-18)
-- **Tests:** `coding/extension/host/subprocess/retire_answers_calls_test.go::TestRetiringConnSendsTheResultOfACallTheShutdownFrameDidNotBeat`, `coding/extension/host/subprocess/retire_answers_calls_test.go::TestShutdownAnswersTheCallOfAGenerationItRetires`
-- **Release note:** PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).
-
-### BF-199027e
-
-**Choosing a bundled model no longer builds every model of its provider on each request, and providers in…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically.
-- **Root cause:** ModelRuntime.GetModel built every model of a bundled provider on each call (3,268 allocations for openrouter's 402 models) and runs once per request. GetProviderModelDataByID now finds the catalog entry and builds only the match, through OfferedGeneratedModels so stripped APIs stay hidden; native, overlay and models.json providers keep their path. 10 allocations per call at any catalog size.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `199027e74d` (2026-10-18), `6a197185c5` (2026-10-18), `b106c51c4f` (2026-10-18)
-- **Tests:** `coding/model_registry_oracle_test.go::TestModelRegistryMatchesPi`, `coding/model_resolver_oracle_test.go::TestResolveCliModelAndScopeMatchPi`, `coding/model_runtime_get_model_allocs_test.go::TestGetModelAllocationsDoNotGrowWithTheProviderCatalog`, `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/testmain_test.go::TestMain`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_models_json_unix_norace_test.go::TestScalingModelsJSONProviderComposition` and 3 more in docs/bug-ledger.json
-- **Release note:** Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically. Branch summaries of long sessions are prepared in linear time.
 
 ## Divergences from Pi added in this release
 
