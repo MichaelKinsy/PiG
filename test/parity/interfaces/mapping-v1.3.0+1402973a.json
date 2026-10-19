@@ -129812,9 +129812,9 @@
         "call:internal/codingagent/tools/tools.go#CreateBashTool"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
         "test:internal/codingagent/tools/bash_definition_test.go#TestBashToolDefinitionDropsTheSessionGuidelineWhenTheEnvironmentIsHidden",
-        "test:internal/codingagent/tools/bash_definition_test.go#TestBashToolDefinitionRunsInTheInvocationContextCWD",
-        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations"
+        "test:internal/codingagent/tools/bash_definition_test.go#TestBashToolDefinitionRunsInTheInvocationContextCWD"
       ]
     },
     {
@@ -129877,6 +129877,7 @@
         "call:internal/codingagent/tools/tools.go#CreateBashTool"
       ],
       "evidence": [
+        "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
         "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations"
       ]
     },
@@ -137120,8 +137121,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_operations_oracle_test.go#TestLocalBashOperationsMatchPi",
-        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort",
-        "test:internal/codingagent/emergency_exit_children_test.go#TestUncaughtCrashKillsTheShellOfARunningBashCall"
+        "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
+        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort"
       ]
     },
     {
@@ -137142,8 +137143,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_operations_oracle_test.go#TestLocalBashOperationsMatchPi",
-        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort",
-        "test:internal/codingagent/emergency_exit_children_test.go#TestUncaughtCrashKillsTheShellOfARunningBashCall"
+        "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
+        "test:coding/session_tool_registry_port_test.go#TestAgentSessionDynamicToolsPort"
       ]
     },
     {
@@ -220276,7 +220277,7 @@
       "evidence": [
         "test:durable/env/node/shell_execution_error_pi_test.go#TestExecExpectedFailuresCarryPisCodesMessagesAndCauses",
         "test:durable/env/node/shell_test.go#TestShellOutputInfoNamesTheStreamOfEachChunk",
-        "test:durable/env/node/shell_test.go#TestShellReturnsCallbackErrorsFromExecStreamHandlers"
+        "test:durable/env/node/shell_test.go#TestShellReportsTheSpillOfACommandThatTimesOut"
       ]
     },
     {
@@ -220429,7 +220430,7 @@
       "evidence": [
         "test:durable/env/node/shell_execution_error_pi_test.go#TestExecExpectedFailuresCarryPisCodesMessagesAndCauses",
         "test:durable/env/node/shell_test.go#TestShellOutputInfoNamesTheStreamOfEachChunk",
-        "test:durable/env/node/shell_test.go#TestShellReturnsCallbackErrorsFromExecStreamHandlers"
+        "test:durable/env/node/shell_test.go#TestShellReportsTheSpillOfACommandThatTimesOut"
       ]
     },
     {
