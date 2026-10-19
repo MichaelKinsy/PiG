@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -865,7 +866,16 @@ func TestEditor_AsyncFileSearch_RealSubprocessDoesNotBlock(t *testing.T) {
 // search runs under ends its fd subprocess: the stub cannot exit before the
 // test releases it, and the test never does, so the search returns only
 // because exec.CommandContext killed the process.
+//
+// Not on Windows: the stub is a #!/bin/sh script, and killing the sh.exe
+// launcher leaves the shell that runs the loop holding stdout open. Upstream's
+// search also kills only the process it spawned and waits for "close"
+// (packages/tui/src/autocomplete.ts:207-221), so it waits the same way; a real
+// fd.exe has no such child.
 func TestFileSearchTask_RealSubprocessIsCancelled(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a #!/bin/sh stub fd outlives its launcher on Windows; upstream waits for stdout close the same way")
+	}
 	fakeFd, started, _ := blockedFdStub(t, t.TempDir())
 	prov := NewCombinedProvider(nil, t.TempDir(), fakeFd)
 	prov.SetAsyncFileSearch(true)
