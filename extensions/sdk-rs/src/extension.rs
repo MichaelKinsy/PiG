@@ -2403,6 +2403,8 @@ impl Extension {
                 }
                 // Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the value, so the reply carries the input the handler left when it differs from the one it received.
                 let tool_call_input_before = (req.event.as_deref() == Some("tool_call")).then(|| data.get("input").cloned());
+                // A reply for a list the handler left as it was omits the list: the host already holds it.
+                let context_messages_before = matches!(req.event.as_deref(), Some("context" | "context_with_system")).then(|| data.get("messages").cloned());
                 let result = if let Some(handler) = self.events.handler(handler_id) {
                     let mut ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                     if req.event.as_deref() == Some("before_agent_start") {
@@ -2434,19 +2436,33 @@ impl Extension {
                 if req.event.as_deref() == Some("user_bash") {
                     value = crate::user_bash::user_bash_event_result(value);
                 }
-                // Upstream runner.ts emitContext uses `handlerResult?.messages`, or
-                // event.messages when the handler edited that list in place. The
-                // host cannot see an in-place edit, so send the list the handler
-                // left; the host compares it by value.
+                // Upstream runner.ts emitContext uses `handlerResult?.messages`, or event.messages when the handler edited that
+                // list in place, and sameMessages compares the lists by message identity. A Rust handler holds values, not Pi's
+                // objects, so it states identity itself: a list it returns is a replacement (fresh values, even equal ones), a
+                // conversation it leaves in place is unchanged only while no value differs, and `context_unchanged()` says the
+                // messages are the ones it received (edited in place or not). The reply is the report the other SDKs send: a
+                // list the host already holds is omitted.
                 if matches!(req.event.as_deref(), Some("context" | "context_with_system")) && error.is_none() {
-                    let returned = value
+                    let asserted = value
+                        .as_ref()
+                        .and_then(|result| result.get("_pigContextUnchanged"))
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false);
+                    let explicit = value
                         .as_ref()
                         .and_then(|result| result.get("messages"))
                         .filter(|messages| !messages.is_null())
-                        .or_else(|| data.get("messages"))
                         .cloned();
+                    let in_place = explicit.is_none();
+                    let returned = explicit.or_else(|| data.get("messages").cloned());
                     if let Some(messages) = returned {
-                        value = Some(serde_json::json!({ "messages": messages }));
+                        let as_received = context_messages_before.as_ref().and_then(Option::as_ref) == Some(&messages);
+                        let unchanged = asserted || (in_place && as_received);
+                        value = Some(if unchanged && as_received {
+                            serde_json::json!({ "_pigContextUnchanged": true })
+                        } else {
+                            serde_json::json!({ "messages": messages, "_pigContextUnchanged": unchanged })
+                        });
                     }
                 }
                 if req.event.as_deref() == Some("before_agent_start") {
@@ -2689,6 +2705,15 @@ impl Extension {
             }
         }
     }
+}
+
+/// The result of a `context` or `context_with_system` handler that returns Pi's own messages: the conversation it received,
+/// edited in place or not (runner.ts `sameMessages` holds when the returned list holds the same message objects). Pi's handlers
+/// keep identity by keeping their objects; a Rust handler holds values, so it says so. Without it, a list the handler returns,
+/// or an in-place edit that leaves the conversation different from the one it received, is a replacement, and the host then
+/// replaces every system message by one leading system message. Return `None` for a conversation left as it was.
+pub fn context_unchanged() -> Option<Value> {
+    Some(serde_json::json!({ "_pigContextUnchanged": true }))
 }
 
 /// Connect and close a failed packed member's socket so the host stops waiting for registration.

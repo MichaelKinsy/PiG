@@ -207,6 +207,15 @@ function catalogOf(models) {
   return catalog;
 }
 
+// The encoding a reply to a context event would carry for messages, or undefined when they do not encode: the reply then carries the list.
+function contextMessagesEncoding(messages) {
+  try {
+    return JSON.stringify(messages);
+  } catch {
+    return undefined;
+  }
+}
+
 // Pi's session projection and builtin provider modules load on first use:
 // most extensions never read them, and loading them costs every extension
 // process startup time. require() of an ES module is synchronous, as the
@@ -4432,6 +4441,8 @@ export class Runtime {
           }
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
+          // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
+          const encodedBefore = snapshot && (request.event === "context" || request.event === "context_with_system") ? contextMessagesEncoding(messages) : undefined;
           const pending = selected.handler(event, ctx);
           const shutdownOwner = this.requestContext.getStore();
           // The host also hears in print and JSON mode when the handler's window closes: Pi's run, held still while a signal's disposal runs synchronously, goes on from that turn of its loop.
@@ -4446,7 +4457,8 @@ export class Runtime {
           let result = await pending;
           if ((request.event === "context" || request.event === "context_with_system") && snapshot) {
             const returned = result?.messages ?? messages;
-            result = { messages: returned, _pigContextUnchanged: returned.length === snapshot.length && returned.every((message, i) => message === snapshot[i]) };
+            const unchanged = returned.length === snapshot.length && returned.every((message, i) => message === snapshot[i]);
+            result = unchanged && encodedBefore !== undefined && contextMessagesEncoding(returned) === encodedBefore ? { _pigContextUnchanged: true } : { messages: returned, _pigContextUnchanged: unchanged };
           }
           // before_provider_headers handlers mutate event.headers in place and
           // their return value is ignored (runner.ts emitBeforeProviderHeaders);

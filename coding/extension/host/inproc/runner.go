@@ -1859,7 +1859,11 @@ func cloneMessageValue(value reflect.Value) reflect.Value {
 }
 
 func (r *Runner) EmitContext(ctx context.Context, messages []extension.AgentMessage) ([]extension.AgentMessage, error) {
-	out, _, err := r.EmitContextTracked(ctx, messages)
+	out, _, owned, err := r.emitContext(ctx, messages)
+	if err == nil && !owned {
+		// No handler needed a copy, so out is messages itself; upstream hands back a structuredClone.
+		out = cloneAgentMessages(out)
+	}
 	return out, err
 }
 
@@ -1873,33 +1877,50 @@ func (r *Runner) EmitContext(ctx context.Context, messages []extension.AgentMess
 //
 // upstream: runner.ts emitContext, sameMessages, restoreSystemMessages
 func (r *Runner) EmitContextTracked(ctx context.Context, messages []extension.AgentMessage) ([]extension.AgentMessage, bool, error) {
+	out, replaced, _, err := r.emitContext(ctx, messages)
+	return out, replaced, err
+}
+
+// emitContext is EmitContextTracked that also reports whether the returned list is the runner's own: it is not when every handler read its event only as JSON and none replied with a list, so there was nothing to copy and the list is messages itself.
+func (r *Runner) emitContext(ctx context.Context, messages []extension.AgentMessage) (out []extension.AgentMessage, replaced, owned bool, err error) {
 	if err := r.assertActive(); err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 
-	dispatchCtx := r.dispatchContext(ctx)
-	current := cloneAgentMessages(messages)
-	replaced := false
+	dispatchCtx, wire := eventwire.WithDispatch(r.dispatchContext(ctx))
+	// current is the caller's own list until a handler that reads Go values is about to run or a reply replaces it: a subprocess handler reads the event only as JSON and cannot edit the caller's messages, so a dispatch of such handlers never copies them (upstream structuredClone protects the caller from a handler's edits).
+	current := messages
 
-	for _, snapshot := range snapshotEventHandlers(r.extensions, "context") {
+	for _, snapshot := range snapshotJSONEventHandlers(r.extensions, "context") {
 		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
-		for _, handler := range handlers {
+		for i, handler := range handlers {
 			if err := ctx.Err(); err != nil {
-				return nil, false, err
+				return nil, false, false, err
+			}
+			jsonOnly := snapshot.jsonOnly[i]
+			if !jsonOnly && !owned {
+				current, owned = cloneAgentMessages(current), true
 			}
 			// Handlers see their own list: an in-place reorder is a change to
 			// that list (compared with the snapshot below), and a handler that
 			// fails loses its list changes, as upstream's filtered
 			// visibleMessages array does. Field edits reach the shared messages.
 			snapshot := current
-			given := slices.Clone(current)
+			given := current
+			if !jsonOnly {
+				given = slices.Clone(current)
+			}
 			event := extension.ContextEvent{Type: "context", Messages: given}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			if !jsonOnly {
+				// A handler that holds the event's Go values may have edited the messages.
+				wire.Changed()
+			}
 			if contextErr := ctx.Err(); contextErr != nil {
-				return nil, false, contextErr
+				return nil, false, false, contextErr
 			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "context", err)
@@ -1920,18 +1941,20 @@ func (r *Runner) EmitContextTracked(ctx context.Context, messages []extension.Ag
 				if !contextListUnchanged(handlerResult, returned, snapshot) {
 					replaced = true
 				}
-				current = returned
+				current, owned = returned, true
+				wire.Changed()
 				continue
 			}
 			// No returned list: upstream uses event.messages when the handler
-			// changed that list in place.
-			if !sameMessageList(given, snapshot) {
+			// changed that list in place. A JSON-only handler's list is the one it
+			// was given.
+			if !jsonOnly && !sameMessageList(given, snapshot) {
 				replaced = true
 				current = given
 			}
 		}
 	}
-	return current, replaced, nil
+	return current, replaced, owned, nil
 }
 
 // contextListUnchanged reports whether a context handler's returned list is
@@ -1955,11 +1978,7 @@ func contextListUnchanged(handlerResult any, returned, given []extension.AgentMe
 		var report struct {
 			Unchanged *bool `json:"_pigContextUnchanged"`
 		}
-		if json.Unmarshal(raw, &report) == nil && report.Unchanged != nil {
-			return *report.Unchanged
-		}
-		// An SDK without an identity report (Rust) keeps value equality.
-		return sameMessageValues(returned, given)
+		return json.Unmarshal(raw, &report) == nil && report.Unchanged != nil && *report.Unchanged
 	}
 	return sameMessageList(returned, given)
 }
@@ -1976,21 +1995,6 @@ func sameMessageList(left, right []extension.AgentMessage) bool {
 		}
 	}
 	return true
-}
-
-// sameMessageValues compares messages by their JSON value, for transports
-// that cannot report identity.
-func sameMessageValues(left, right []extension.AgentMessage) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	a, errA := json.Marshal(left)
-	b, errB := json.Marshal(right)
-	if errA != nil || errB != nil {
-		return false
-	}
-	var av, bv any
-	return json.Unmarshal(a, &av) == nil && json.Unmarshal(b, &bv) == nil && reflect.DeepEqual(av, bv)
 }
 
 // sameMessageIdentity is JavaScript object identity for Go message values:
@@ -2044,19 +2048,27 @@ func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension
 	if err := r.assertActive(); err != nil {
 		return nil, err
 	}
-	dispatchCtx := r.dispatchContext(ctx)
-	// Handlers may edit messages in place; the transform is request-only
-	// (upstream structuredClone before both phases), so they get a copy.
-	current := cloneAgentMessages(messages)
-	for _, snapshot := range snapshotEventHandlers(r.extensions, "context_with_system") {
+	dispatchCtx, wire := eventwire.WithDispatch(r.dispatchContext(ctx))
+	// The transform is request-only (upstream structuredClone before both phases), so a handler that reads Go values and may edit messages in place gets a copy. A subprocess handler reads the event only as JSON and cannot edit the caller's messages: a dispatch of such handlers never copies them.
+	current := messages
+	owned := false
+	for _, snapshot := range snapshotJSONEventHandlers(r.extensions, "context_with_system") {
 		ext := snapshot.ext
-		for _, handler := range snapshot.handlers {
+		for i, handler := range snapshot.handlers {
 			if err := ctx.Err(); err != nil {
 				return nil, err
+			}
+			jsonOnly := snapshot.jsonOnly[i]
+			if !jsonOnly && !owned {
+				current, owned = cloneAgentMessages(current), true
 			}
 			hadLeadingSystem := len(current) > 0 && current[0].Role() == "system"
 			event := extension.ContextWithSystemEvent{Type: "context_with_system", Messages: current}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			if !jsonOnly {
+				// A handler that holds the event's Go values may have edited the messages.
+				wire.Changed()
+			}
 			if contextErr := ctx.Err(); contextErr != nil {
 				return nil, contextErr
 			}
@@ -2072,7 +2084,8 @@ func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension
 					continue
 				}
 				if typed.Messages != nil {
-					current = typed.Messages
+					current, owned = typed.Messages, true
+					wire.Changed()
 				}
 			}
 			if hadLeadingSystem && (len(current) == 0 || current[0].Role() != "system") {

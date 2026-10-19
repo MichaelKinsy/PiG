@@ -51,6 +51,14 @@ func TestContextEventResultHonorsTypedMessageSlices(t *testing.T) {
 		return map[string]any{"messages": "not-a-list"}, nil
 	})
 
+	// Handler 4: edits a message in place and returns nothing.
+	ext.OnEvent(EventContext, func(_ Context, data map[string]any) (any, error) {
+		data["messages"].([]any)[0].(map[string]any)["content"] = "edited"
+		return nil, nil
+	})
+	// Handler 5: returns nothing and edits nothing.
+	ext.OnEvent(EventContext, func(Context, map[string]any) (any, error) { return nil, nil })
+
 	t.Setenv("PIG_EXT_SOCKET", host.sockPath)
 	done := make(chan error, 1)
 	go func() { done <- ext.Run() }()
@@ -102,15 +110,9 @@ func TestContextEventResultHonorsTypedMessageSlices(t *testing.T) {
 	if same.Error != nil {
 		t.Fatalf("same handler error = %+v", same.Error)
 	}
-	var sameReport contextReport
-	if err := json.Unmarshal(same.Result, &sameReport); err != nil {
-		t.Fatalf("same result %s: %v", same.Result, err)
-	}
-	if sameReport.Unchanged == nil || !*sameReport.Unchanged {
-		t.Fatalf("same message objects reported as a replacement: %s", same.Result)
-	}
-	if len(sameReport.Messages) != 2 || sameReport.Messages[0]["content"] != "first" || sameReport.Messages[1]["content"] != "second" {
-		t.Fatalf("same messages = %s", same.Result)
+	// The host holds the list it sent, so a reply for one that is as it was sent carries the report alone.
+	if string(same.Result) != `{"_pigContextUnchanged":true}` {
+		t.Fatalf("same message objects reported %s, want the unchanged report alone", same.Result)
 	}
 
 	malformed := dispatch(3)
@@ -131,6 +133,19 @@ func TestContextEventResultHonorsTypedMessageSlices(t *testing.T) {
 	}
 	if json.Unmarshal(malformed.Result, &hostShape) == nil {
 		t.Fatalf("malformed result decodes as a message list: %s", malformed.Result)
+	}
+
+	// An edit in place keeps the list's identity, so it is unchanged, but the reply carries the list the host does not hold.
+	edited := dispatch(4)
+	var editedReport contextReport
+	if err := json.Unmarshal(edited.Result, &editedReport); err != nil {
+		t.Fatalf("edited result %s: %v", edited.Result, err)
+	}
+	if editedReport.Unchanged == nil || !*editedReport.Unchanged || len(editedReport.Messages) != 2 || editedReport.Messages[0]["content"] != "edited" {
+		t.Fatalf("in-place edit reported %s", edited.Result)
+	}
+	if untouched := dispatch(5); string(untouched.Result) != `{"_pigContextUnchanged":true}` {
+		t.Fatalf("no-op handler reported %s, want the unchanged report alone", untouched.Result)
 	}
 
 	host.writeEnvelope(t, envelope{Type: msgShutdown, Shutdown: &shutdownMsg{Reason: "done"}})

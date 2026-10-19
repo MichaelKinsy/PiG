@@ -3,11 +3,13 @@
 package subprocess
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -160,11 +162,11 @@ fn main() {
         let second = data["messages"][1].clone();
         match first["content"].as_str().unwrap_or_default() {
             "typed" => Some(json!({"messages": [second]})),
-            "same" => Some(json!({"messages": [first, second]})),
+            "same" => pig_sdk::context_unchanged(),
             "malformed" => Some(json!({"messages": "not-a-list"})),
             "inplace" | "null" => {
                 data["messages"][0]["content"] = json!("edited");
-                if second["content"] == "two-null" { Some(json!({"messages": Value::Null})) } else { None }
+                if second["content"] == "two-null" { Some(json!({"messages": Value::Null, "_pigContextUnchanged": true})) } else { pig_sdk::context_unchanged() }
             }
             _ => None,
         }
@@ -180,13 +182,12 @@ fn main() {
 // it when it holds the same objects); a messages value that is not a list is
 // that handler's error, never a silently unchanged context. A handler that
 // edits event.messages in place and returns nothing or a null messages value
-// keeps its edit. The Rust SDK reports no list identity, so the host compares
-// its lists by value and an in-place edit counts as a replacement there.
+// keeps its edit. The Rust SDK holds values, not Pi's objects, so its handler
+// states identity with pig_sdk::context_unchanged(), and every SDK reports the same.
 func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 	t.Parallel()
 	type loader struct {
-		load          func(t *testing.T) extension.Extension
-		valueIdentity bool
+		load func(t *testing.T) extension.Extension
 	}
 	loadSubprocess := func(t *testing.T, config ExtConfig) extension.Extension {
 		t.Helper()
@@ -245,7 +246,7 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 			}
 			return loadSubprocess(t, ExtConfig{Name: "context-result-shape", Path: source, Enabled: true, RuntimeLanguage: "python"})
 		}},
-		"rust": {valueIdentity: true, load: func(t *testing.T) extension.Extension {
+		"rust": {load: func(t *testing.T) extension.Extension {
 			dir := t.TempDir()
 			sdkRoot := filepath.ToSlash(filepath.Join(findModuleRoot(t), "extensions", "sdk-rs"))
 			cargo := fmt.Sprintf("[package]\nname = \"context-result-shape\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[dependencies]\npig-sdk = { path = %q }\nserde_json = \"1\"\n", sdkRoot)
@@ -263,8 +264,52 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 	}
 	for name, sdkLoader := range loaders {
 		t.Run(name, func(t *testing.T) {
-			runner := inproc.NewRunner([]extension.Extension{sdkLoader.load(t)}, t.TempDir())
+			loaded := sdkLoader.load(t)
+			runner := inproc.NewRunner([]extension.Extension{loaded}, t.TempDir())
 			defer runner.Invalidate("test complete")
+			// The reply's own shape (REFNL-003): a list the handler left as it received it, no message edited, is reported without the list, which the host holds; an edit in place or a replacement carries the list.
+			for _, tc := range []struct {
+				content, second string
+				wantList        bool
+				wantReport      string
+			}{
+				{content: "same", second: "two", wantReport: `{"_pigContextUnchanged":true}`},
+				{content: "plain", second: "two", wantReport: `{"_pigContextUnchanged":true}`},
+				{content: "inplace", second: "two", wantList: true, wantReport: "true"},
+				{content: "typed", second: "two", wantList: true, wantReport: "false"},
+			} {
+				event := extension.ContextEvent{Type: "context", Messages: []extension.AgentMessage{
+					wireMessage(map[string]any{"role": "user", "content": tc.content, "timestamp": 0}),
+					wireMessage(map[string]any{"role": "user", "content": tc.second, "timestamp": 0}),
+				}}
+				reply, err := loaded.EventHandlers("context")[0](event, t.Context())
+				if err != nil {
+					t.Fatalf("%s reply: %v", tc.content, err)
+				}
+				raw, ok := reply.(json.RawMessage)
+				if !ok {
+					t.Fatalf("%s reply = %#v, want JSON", tc.content, reply)
+				}
+				var report struct {
+					Messages  json.RawMessage `json:"messages"`
+					Unchanged *bool           `json:"_pigContextUnchanged"`
+				}
+				if err := json.Unmarshal(raw, &report); err != nil {
+					t.Fatalf("%s reply %s: %v", tc.content, raw, err)
+				}
+				if !tc.wantList {
+					if string(raw) != tc.wantReport {
+						t.Fatalf("%s reply = %s, want %s", tc.content, raw, tc.wantReport)
+					}
+					continue
+				}
+				if len(report.Messages) == 0 {
+					t.Fatalf("%s reply = %s, want the list", tc.content, raw)
+				}
+				if report.Unchanged == nil || strconv.FormatBool(*report.Unchanged) != tc.wantReport {
+					t.Fatalf("%s reply = %s, want _pigContextUnchanged %s", tc.content, raw, tc.wantReport)
+				}
+			}
 			var mu sync.Mutex
 			var failures []string
 			runner.AddErrorListener(func(e *extension.ExtensionError) {
@@ -283,8 +328,8 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 				{content: "typed", second: "two", want: []string{"two"}, wantReplaced: true},
 				{content: "same", second: "two", want: []string{"same", "two"}},
 				{content: "malformed", second: "two", want: []string{"malformed", "two"}, wantError: true},
-				{content: "inplace", second: "two", want: []string{"edited", "two"}, wantReplaced: sdkLoader.valueIdentity},
-				{content: "null", second: "two-null", want: []string{"edited", "two-null"}, wantReplaced: sdkLoader.valueIdentity},
+				{content: "inplace", second: "two", want: []string{"edited", "two"}},
+				{content: "null", second: "two-null", want: []string{"edited", "two-null"}},
 			} {
 				mu.Lock()
 				failures = nil
@@ -315,5 +360,49 @@ func TestContextResultShapesCrossSDKTransports(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The encoding of a context event is shared among the handlers of one dispatch only while no handler changed the list (eventwire): a handler after one that edited a message in place, or replaced the list, receives the edited list, and a handler that changed nothing leaves the next one the same.
+func TestContextEditReachesTheNextExtensionsHandler(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Fatalf("node is required: %v", err)
+	}
+	host := NewHost(t.TempDir())
+	t.Cleanup(func() { host.Shutdown("test complete") })
+	var exts []extension.Extension
+	for i, body := range []string{
+		`pi.on("context", () => {});`,
+		`pi.on("context", (event) => { event.messages[0].content = "edited"; });`,
+		`pi.on("context", () => {});`,
+		`pi.on("context", (event) => ({ messages: [{ ...event.messages[0], content: event.messages[0].content + "+replaced" }, event.messages[1]] }));`,
+		`pi.on("context", () => {});`,
+		`pi.on("context", (event) => ({ messages: [{ ...event.messages[0], content: event.messages[0].content + "+seen" }, event.messages[1]] }));`,
+	} {
+		source := filepath.Join(t.TempDir(), "index.mjs")
+		if err := os.WriteFile(source, []byte("export default function (pi) { "+body+" }\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := host.Load(testbudget.Context(t), ExtConfig{Name: fmt.Sprintf("chain-%d", i), Source: source, Enabled: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		exts = append(exts, *loaded)
+	}
+	runner := inproc.NewRunner(exts, t.TempDir())
+	defer runner.Invalidate("test complete")
+	messages := []extension.AgentMessage{
+		wireMessage(map[string]any{"role": "user", "content": "original", "timestamp": 0}),
+		wireMessage(map[string]any{"role": "user", "content": "two", "timestamp": 0}),
+	}
+	got, replaced, err := runner.EmitContextTracked(t.Context(), messages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !replaced || len(got) != 2 || wireContent(got[0]) != "edited+replaced+seen" || wireContent(got[1]) != "two" {
+		t.Fatalf("replaced = %t, context = %q, %q", replaced, wireContent(got[0]), wireContent(got[1]))
+	}
+	if wireContent(messages[0]) != "original" {
+		t.Fatal("the dispatch changed the caller's messages")
 	}
 }

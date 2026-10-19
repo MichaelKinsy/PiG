@@ -3374,6 +3374,14 @@ class OAuthLoginCallbacks:
         return payload.get("value", "")
 
 
+def _context_messages_encoding(messages: Any) -> str | None:
+    """The encoding a reply to a context event would carry for messages, or None when they do not encode: the reply then carries the list."""
+    try:
+        return json.dumps(messages)
+    except Exception:  # noqa: BLE001 - Any value a handler leaves in a message may fail to encode.
+        return None
+
+
 def _user_bash_event_result(value: Any) -> Any:
     """Preserve a present number-or-undefined exit code (None) across JSON."""
     if not isinstance(value, dict) or not isinstance(value.get("result"), dict):
@@ -4840,6 +4848,8 @@ class Extension:
                     return
                 messages = data.get("messages")
                 snapshot = list(messages) if isinstance(messages, list) else None
+                # A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
+                encoded_before = _context_messages_encoding(messages) if snapshot is not None and req.get("event") in {"context", "context_with_system"} else None
                 result = handler(ctx, data)
                 if req.get("event") == "user_bash":
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
@@ -4847,7 +4857,11 @@ class Extension:
                     returned = result.get("messages") if isinstance(result, dict) else None
                     if returned is None:
                         returned = messages
-                    result = {"messages": returned, "_pigContextUnchanged": len(returned) == len(snapshot) and all(a is b for a, b in zip(returned, snapshot))}
+                    unchanged = len(returned) == len(snapshot) and all(a is b for a, b in zip(returned, snapshot))
+                    if unchanged and encoded_before is not None and _context_messages_encoding(returned) == encoded_before:
+                        result = {"_pigContextUnchanged": True}
+                    else:
+                        result = {"messages": returned, "_pigContextUnchanged": unchanged}
                 self._respond(req_id, result, None)
             elif method == "shortcut":
                 key = req.get("tool", "")

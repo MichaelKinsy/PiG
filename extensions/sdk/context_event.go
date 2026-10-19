@@ -21,7 +21,8 @@ func snapshotContextMessages(event string, data map[string]any) []any {
 	return append([]any{}, messages...)
 }
 
-func contextEventResult(data map[string]any, snapshot []any, result any) any {
+// contextEventResult is the reply to a context event. A list that holds the incoming message objects in order is reported unchanged, and when no message differs from the list the host sent (pristine decodes it, or is nil when it cannot) the reply omits the list: the host already holds it.
+func contextEventResult(data map[string]any, snapshot []any, result any, pristine func() []any) any {
 	messages, _ := data["messages"].([]any)
 	if returned, ok := result.(map[string]any); ok {
 		// A nil list encodes as null, which leaves the in-place list in effect
@@ -64,6 +65,11 @@ func contextEventResult(data map[string]any, snapshot []any, result any) any {
 		}
 		return reflect.DeepEqual(a, b)
 	})
+	if unchanged && pristine != nil {
+		if sent := pristine(); sent != nil && reflect.DeepEqual(messages, sent) {
+			return map[string]any{"_pigContextUnchanged": true}
+		}
+	}
 	return map[string]any{"messages": messages, "_pigContextUnchanged": unchanged}
 }
 

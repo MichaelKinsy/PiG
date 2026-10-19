@@ -564,6 +564,8 @@ func TestHost_MixedFusedPackedAndIsolatedExtensions(t *testing.T) {
   });
   pi.on("context", async (event) => ({messages: event.messages.slice(1)}));
   pi.on("context_with_system", async (event) => { event.messages[0].content = "request-system"; event.messages[0].toolsAdded.shift(); });
+  pi.on("context", async () => {});
+  pi.on("context_with_system", async () => {});
   pi.on("turn_end", async (event, ctx) => ctx.ui.notify("turn-end=" + event.messageEntryId + ":" + event.toolResultEntryIds[0], "info"));
   for (const name of ["ui_prompt_start", "ui_prompt_end"]) {
     pi.on(name, async (event, ctx) => ctx.ui.notify("ui-prompt=" + event.type + ":" + event.kind + ":" + ("title" in event ? event.title : "(none)"), "info"));
@@ -583,6 +585,8 @@ func TestHost_MixedFusedPackedAndIsolatedExtensions(t *testing.T) {
 		head["toolsAdded"] = head["toolsAdded"].([]any)[1:]
 		return nil, nil
 	})
+	fused.OnEvent("context", func(sdk.Context, map[string]any) (any, error) { return nil, nil })
+	fused.OnEvent("context_with_system", func(sdk.Context, map[string]any) (any, error) { return nil, nil })
 	fused.Tool("fused-tool", "Return fused health", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
 		return sdk.ToolResult{Content: "fused ok"}, nil
 	})
@@ -1449,6 +1453,8 @@ def new_extension():
     ext.on_event("turn_end", lambda ctx, data: ctx.notify("turn-end=%%s:%%s" %% (data.get("messageEntryId", ""), data.get("toolResultEntryIds", [""])[0]), "info"))
     ext.on_event("context", context_event)
     ext.on_event("context_with_system", full_context_event)
+    ext.on_event("context", lambda ctx, data: None)
+    ext.on_event("context_with_system", lambda ctx, data: None)
     ext.on_event("ui_prompt_start", ui_prompt_event)
     ext.on_event("ui_prompt_end", ui_prompt_event)
     ext.on_project_trust(lambda _ctx, _data: {"trusted": "undecided"})
@@ -1541,6 +1547,8 @@ pub fn new_extension() -> Extension {
     ext.on_event("turn_end", |ctx, data| { ctx.notify(&format!("turn-end={}:{}", data.get("messageEntryId").and_then(|v| v.as_str()).unwrap_or_default(), data.get("toolResultEntryIds").and_then(|v| v.as_array()).and_then(|ids| ids.first()).and_then(|v| v.as_str()).unwrap_or_default()), "info"); None });
     ext.on_event("context", |_, mut data| { data["messages"].as_array_mut().unwrap().remove(0); Some(json!({"messages":data["messages"]})) });
     ext.on_event("context_with_system", |_, mut data| { data["messages"][0]["content"]=json!("request-system"); data["messages"][0]["toolsAdded"].as_array_mut().unwrap().remove(0); Some(json!({"messages":data["messages"]})) });
+    ext.on_event("context", |_, _| None);
+    ext.on_event("context_with_system", |_, _| None);
     let prompt_sequence = Arc::new(Mutex::new(0));
     for name in ["ui_prompt_start", "ui_prompt_end"] { let prompt_sequence = prompt_sequence.clone(); ext.on_event(name, move |ctx, data| { let sequence = { let mut n = prompt_sequence.lock().unwrap(); let value = *n; *n += 1; value }; let title = data.get("title").and_then(|v| v.as_str()).unwrap_or("(none)"); if title.starts_with("fifo:") { ctx.notify(&format!("fifo:{sequence}:{}:{title}", data["type"].as_str().unwrap()), "info"); return None; } ctx.notify(&format!("ui-prompt={}:{}:{title}", data.get("type").and_then(|v| v.as_str()).unwrap_or_default(), data.get("kind").and_then(|v| v.as_str()).unwrap_or_default()), "info"); None }); }
     ext.on_project_trust(|_, _| Ok(ProjectTrustResult { trusted: ProjectTrustDecision::Undecided, remember: None }));
@@ -1612,6 +1620,8 @@ func Extension() *sdk.Extension {
 	e.OnEvent("turn_end", func(ctx sdk.Context, data map[string]any) (any, error) { ids, _ := data["toolResultEntryIds"].([]any); ctx.Notify(fmt.Sprintf("turn-end=%%v:%%v", data["messageEntryId"], ids[0]), "info"); return nil, nil })
  e.OnEvent("context", func(_ sdk.Context, data map[string]any) (any,error) { return map[string]any{"messages":data["messages"].([]any)[1:]},nil })
  e.OnEvent("context_with_system", func(_ sdk.Context, data map[string]any) (any,error) { head:=data["messages"].([]any)[0].(map[string]any); head["content"]="request-system"; head["toolsAdded"]=head["toolsAdded"].([]any)[1:]; return nil,nil })
+	e.OnEvent("context", func(sdk.Context, map[string]any) (any,error) { return nil,nil })
+	e.OnEvent("context_with_system", func(sdk.Context, map[string]any) (any,error) { return nil,nil })
 	var promptMu sync.Mutex
 	promptSequence := 0
 	for _, name := range []string{"ui_prompt_start", "ui_prompt_end"} { e.OnEvent(name, func(ctx sdk.Context, data map[string]any) (any, error) { promptMu.Lock(); sequence := promptSequence; promptSequence++; promptMu.Unlock(); title := "(none)"; if value, ok := data["title"]; ok { title = fmt.Sprint(value) }; if strings.HasPrefix(title,"fifo:") { ctx.Notify(fmt.Sprintf("fifo:%%d:%%v:%%s",sequence,data["type"],title), "info"); return nil,nil }; ctx.Notify(fmt.Sprintf("ui-prompt=%%v:%%v:%%s", data["type"], data["kind"], title), "info"); return nil, nil }) }
@@ -1675,6 +1685,36 @@ func assertRealizedContextTransform(t *testing.T, ext extension.Extension) {
 	}
 	if wireContent(messages[0]) != "original" {
 		t.Fatal("context changed persisted transcript")
+	}
+	assertUnchangedContextReplyOmitsList(t, ext)
+}
+
+// A handler that leaves the conversation as it received it answers with the unchanged report alone: the host holds the list, so the reply does not carry it back (REFNL-003). Every SDK, isolated or packed, answers the same bytes. The fixtures register this no-op handler after their transforming one, so the chain above also ran it on the transformed list.
+func assertUnchangedContextReplyOmitsList(t *testing.T, ext extension.Extension) {
+	t.Helper()
+	messages := []extension.AgentMessage{
+		wireMessage(map[string]any{"role": "system", "content": "original", "timestamp": 0, "toolsAdded": []any{}}),
+		wireMessage(map[string]any{"role": "user", "content": "keep", "timestamp": 0}),
+	}
+	for _, event := range []struct {
+		name    string
+		payload any
+	}{
+		{"context", extension.ContextEvent{Type: "context", Messages: messages[1:]}},
+		{"context_with_system", extension.ContextWithSystemEvent{Type: "context_with_system", Messages: messages}},
+	} {
+		handlers := ext.EventHandlers(event.name)
+		if len(handlers) != 2 {
+			t.Fatalf("%s %s handlers = %d, want 2", ext.Path, event.name, len(handlers))
+		}
+		reply, err := handlers[1](event.payload, t.Context())
+		if err != nil {
+			t.Fatalf("%s %s no-op handler: %v", ext.Path, event.name, err)
+		}
+		raw, ok := reply.(json.RawMessage)
+		if !ok || string(raw) != `{"_pigContextUnchanged":true}` {
+			t.Fatalf("%s %s no-op reply = %#v, want the unchanged report alone", ext.Path, event.name, reply)
+		}
 	}
 }
 

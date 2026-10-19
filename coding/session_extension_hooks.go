@@ -221,6 +221,10 @@ func sameContextMessages(returned, visible []extension.AgentMessage) bool {
 	if len(returned) != len(visible) {
 		return false
 	}
+	if len(returned) > 0 && &returned[0] == &visible[0] {
+		// A dispatch of subprocess handlers that changed nothing hands the caller's own list back.
+		return true
+	}
 	for i := range returned {
 		if reflect.DeepEqual(returned[i], visible[i]) {
 			continue

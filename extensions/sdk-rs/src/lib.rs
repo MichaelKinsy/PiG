@@ -139,7 +139,7 @@ pub use events::*;
 #[doc(hidden)]
 pub use extension::report_load_failure;
 pub use extension::{
-    EventSubscriber, EventSubscription,
+    context_unchanged, EventSubscriber, EventSubscription,
     CommandResult, Extension, Factory, FlagOptions, FlagType, MarkdownTransformContext, ProjectTrustDecision, ProjectTrustResult, ToolDefinition,
     ToolHandler, ToolPrepareArguments, ToolResult,
 };

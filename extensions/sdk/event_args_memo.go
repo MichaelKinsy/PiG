@@ -35,8 +35,14 @@ var fusedEventArgs eventArgsMemo
 
 // decode returns what `var data map[string]any; json.Unmarshal(args, &data)` leaves in data: a fresh value the caller owns, or nil when the payload is not an object or does not decode. The caller calls release once its handler has returned.
 func (m *eventArgsMemo) decode(args []byte) (data map[string]any, release func()) {
+	data, _, release = m.decodeWithMaster(args)
+	return data, release
+}
+
+// decodeWithMaster is decode that also returns the decoded master, the value data was copied from. The caller only reads the master, and only until it calls release: other handlers copy it concurrently.
+func (m *eventArgsMemo) decodeWithMaster(args []byte) (data, master map[string]any, release func()) {
 	if len(args) == 0 {
-		return nil, func() {}
+		return nil, nil, func() {}
 	}
 	m.mu.Lock()
 	var entry *eventArgsMemoEntry
@@ -69,10 +75,10 @@ func (m *eventArgsMemo) decode(args []byte) (data map[string]any, release func()
 		m.mu.Unlock()
 	}
 	if !entry.isMap {
-		return nil, release
+		return nil, nil, release
 	}
 	out, _ := cloneStreamValue(entry.master).(map[string]any)
-	return out, release
+	return out, entry.master, release
 }
 
 // held reports how many entries the collector has not freed.

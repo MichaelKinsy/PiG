@@ -142,6 +142,10 @@ func marshalEventWire(wire any) ([]byte, error) {
 			Continue bool                             `json:"continue"`
 		}{w.Type, w.Outcome, w.Entries, w.Continue}
 		context = w.Context
+	case extension.ContextEvent:
+		return marshalContextWire(w.Type, w.Messages)
+	case extension.ContextWithSystemEvent:
+		return marshalContextWire(w.Type, w.Messages)
 	default:
 		return json.Marshal(wire)
 	}
@@ -323,4 +327,37 @@ func projectedEntries(sources []json.RawMessage, preview extension.BoundaryConte
 		entries[i] = projectedEntryWire{source, preview.ContextEntries[i].Messages}
 	}
 	return entries
+}
+
+// marshalContextWire returns json.Marshal of a context event: {"type":...,"messages":[...]}. Each message is encoded as an element of the list is and the list is joined from them, so the encoder does not pass the whole conversation through its compaction of a Marshaler's output once more, a cost that grows with the history on every model request.
+func marshalContextWire(eventType string, messages []extension.AgentMessage) ([]byte, error) {
+	if messages == nil {
+		return json.Marshal(struct {
+			Type     string                   `json:"type"`
+			Messages []extension.AgentMessage `json:"messages"`
+		}{eventType, nil})
+	}
+	typeJSON, err := json.Marshal(eventType)
+	if err != nil {
+		return nil, err
+	}
+	encoded := make([][]byte, len(messages))
+	size := len(`{"type":,"messages":[]}`) + len(typeJSON) + len(messages)
+	for i, message := range messages {
+		if encoded[i], err = marshalAgentMessage(message); err != nil {
+			return nil, err
+		}
+		size += len(encoded[i])
+	}
+	out := make([]byte, 0, size)
+	out = append(out, `{"type":`...)
+	out = append(out, typeJSON...)
+	out = append(out, `,"messages":[`...)
+	for i, message := range encoded {
+		if i > 0 {
+			out = append(out, ',')
+		}
+		out = append(out, message...)
+	}
+	return append(out, ']', '}'), nil
 }

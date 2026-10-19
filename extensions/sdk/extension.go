@@ -1413,7 +1413,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown event handler %d for %s", req.HandlerID, req.Event))
 			return
 		}
-		var data map[string]any
+		var data, master map[string]any
 		if req.Stream != nil {
 			if req.streamErr != nil {
 				_ = e.conn.respond(id, nil, req.streamErr)
@@ -1424,7 +1424,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if e.conn.fused {
 				// Fused extensions share one decode of a payload; each handler gets its own copy.
 				var release func()
-				data, release = fusedEventArgs.decode(req.Args)
+				data, master, release = fusedEventArgs.decodeWithMaster(req.Args)
 				defer release()
 			} else {
 				_ = json.Unmarshal(req.Args, &data)
@@ -1458,7 +1458,16 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			result, err = e.userBashEventResult(result)
 		}
 		if snapshot != nil && err == nil {
-			result = contextEventResult(data, snapshot, result)
+			result = contextEventResult(data, snapshot, result, func() []any {
+				if master == nil {
+					// The handler may have edited its copy: decode the payload again.
+					if json.Unmarshal(req.Args, &master) != nil {
+						return nil
+					}
+				}
+				messages, _ := master["messages"].([]any)
+				return messages
+			})
 		}
 		if req.Event == "before_agent_start" {
 			result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": result}

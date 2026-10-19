@@ -4,6 +4,8 @@
 //
 // Pi hands every handler of a before_agent_start or tool_call dispatch the same event object (runner.ts emitBeforeAgentStart, emitToolCall), so a handler's edit reaches the next handler. A subprocess handler receives the event as JSON and its edits come back in its reply. A Dispatch counts the changes to the event: the dispatcher calls Changed after a handler that reads Go values and after each edit of its own, and a subprocess handler calls Applied or Changed when it applies a reply. An encoding made at the current version is the encoding of the event the next handler receives.
 //
+// A context or context_with_system dispatch counts a change when a handler that reads Go values ran or a reply replaced the list: the encoding of the conversation, which grows with the session, is then made once for every handler that follows an unchanged conversation.
+//
 // Applying a reply assigns the values it carries, so applying the reply applied last again, with no change since, leaves the event as it is: Repeated lets the handler skip it.
 package eventwire
 

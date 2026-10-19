@@ -4240,7 +4240,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		}
 		// The dispatch's event, unchanged since an earlier handler encoded it, has that handler's encoding.
 		var eventWire *eventwire.Dispatch
-		if event == "before_agent_start" || event == "tool_call" {
+		if event == "before_agent_start" || event == "tool_call" || event == "context" || event == "context_with_system" {
 			eventWire = eventwire.FromContext(parent)
 		}
 		var encoded bool

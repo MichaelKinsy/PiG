@@ -85,6 +85,8 @@ ext.OnEvent("before_agent_start", func(_ sdk.Context, data map[string]any) (any,
 
 Node and Python handlers edit the section object or dictionary. Rust handlers edit the ordered JSON value and can use `on_event_result` to return an error. Native Go reference handlers use `extension.BeforeAgentStartOptions(ctx)` to access the shared per-run options and mutate its `Sections`, an `*ai.OrderedSections`. `BeforeAgentStartEvent.SystemPromptOptions` remains a value for source compatibility; assign collection replacements through the accessor. This transport carries section values, not cross-process object aliases.
 
+`context` handlers: Pi keeps every system message in place when a handler returns the conversation it received (the same message objects, edited or not) and replaces them with one leading system message when it returns anything else. Node, Python and Go decide this by object identity. A Rust handler holds values, so it states it: return `None` for a conversation left as received, return `pig_sdk::context_unchanged()` after editing messages in place, and any list it returns, even an equal one, is a replacement.
+
 ### Current system prompt
 
 In a `before_agent_start` handler, `event.systemPrompt` and `ctx.getSystemPrompt()` return the prompt the emission's shared options render when read, as Pi's `renderCurrentSystemPrompt` does. A handler sees its own edit to `systemPromptOptions` at once, a later handler sees it too, and after a handler returns `systemPrompt`, later handlers read exactly that prompt. Options that differ from those the host last rendered are rendered by the host with the `renderSystemPrompt` call; an invalid custom section makes the read fail, as Pi's builder throws.
