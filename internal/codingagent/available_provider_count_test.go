@@ -12,7 +12,8 @@ import (
 func TestAvailableProviderCountCountsEveryBuiltInProvider(t *testing.T) {
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
-		if name == "PATH" || name == "HOME" || name == "TMPDIR" {
+		// Windows keeps per-drive working directories as variables named "=C:"; the entry splits to an empty name, and Setenv rejects it (ERROR_INVALID_PARAMETER).
+		if name == "" || name == "PATH" || name == "HOME" || name == "TMPDIR" {
 			continue
 		}
 		t.Setenv(name, "")
