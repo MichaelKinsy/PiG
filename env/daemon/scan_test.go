@@ -1,5 +1,7 @@
 package daemon
 
+// pi: packages/env/daemon/src/scan.rs
+
 // Ports packages/env/daemon/src/scan.rs tests. The daemon scans with Durable's LineScanner.
 
 import (

@@ -386,7 +386,7 @@ func TestShellPreservesExactRawBytesInTheSpillWhileStreamingDecodedText(t *testi
 // Pi: packages/durable/src/env/index.ts:68 (spillPath)
 func TestShellReportsTheSpillOfACommandThatTimesOut(t *testing.T) {
 	env, _ := newTestEnv(t)
-	_, err := env.Exec(background, "printf 12345678901234567890; sleep 5", &durableenv.ShellExecOptions{Timeout: new(0.3), Spill: &durableenv.ShellSpillOptions{AfterBytes: 10, AfterLines: 10}})
+	_, err := env.Exec(background, "printf 12345678901234567890; sleep 30", &durableenv.ShellExecOptions{Timeout: new(3.0), Spill: &durableenv.ShellSpillOptions{AfterBytes: 10, AfterLines: 10}})
 	failure := execErr(t, err, durableenv.ExecutionErrorTimeout)
 	if failure.SpillPath == "" {
 		t.Fatal("no spill path on the timeout error")

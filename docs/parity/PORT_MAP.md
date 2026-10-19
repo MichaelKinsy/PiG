@@ -703,7 +703,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/documents.ts` | `durable/documents.go` | ✅ |
 | `packages/durable/src/entries.ts` | `durable/entries.go` | ✅ |
 | `packages/durable/src/env/decode.ts` | `durable/env/decode.go` | ✅ |
-| `packages/durable/src/env/index.ts` | `durable/env/env.go` (missing at Pi 1.3.0: `FileSystem.listFiles` and `ExecutionEnv.listFiles`; Go has them only as the separate FileLister interface, interface gaps `FileSystem::property:listFiles` and `ExecutionEnv::property:listFiles` member-missing) | 🟡 |
+| `packages/durable/src/env/index.ts` | `durable/env/env.go` (`FileSystem.ListFiles` is a member of the FileSystem and ExecutionEnv interfaces as in Pi, and `NodeExecutionEnv.ListFiles` answers not_supported as Pi's Node environment leaves `listFiles` undefined) | ✅ |
 | `packages/durable/src/env/line-scan.ts` | `durable/env/line_scan.go` | ✅ |
 | `packages/durable/src/env/node-watch.ts` | `durable/env/node/watch.go` | ✅ |
 | `packages/durable/src/env/node.ts` | `durable/env/node/binary_reader.go + durable/env/node/exec.go + durable/env/node/node.go`, `durable/env/node/watch.go` | ✅ |
@@ -748,7 +748,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/database.ts` | `(re-export barrel: re-exports chord/sqlite's facade types; durable/storage/sqlite/database.go aliases them)` | n/a |
 | `packages/durable/src/storage/sqlite/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/storage/sqlite/migrations.ts` | `durable/storage/sqlite/migrations.go` | ✅ |
-| `packages/durable/src/storage/sqlite/schema.ts` | `durable/storage/sqlite/schema.go` | 🟡 |
+| `packages/durable/src/storage/sqlite/schema.ts` | `durable/storage/sqlite/schema.go` (tests in durable/storage/sqlite/schema_test.go) | ✅ |
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` (re-exports chord/sqlite/node; OpenNodeSqliteStorage) | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
@@ -779,8 +779,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/codemode/models.ts` | `durable/codemode/models.go` | ✅ |
 | `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go` | ✅ |
-| `packages/durable/src/images/node-worker.ts` | `durable/images/node/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
-| `packages/durable/src/search.ts` | `durable/internal/search/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/durable/src/images/node-worker.ts` | `durable/images/node/node.go` (the worker goroutine; tests in durable/images/node/worker_test.go) | ✅ |
+| `packages/durable/src/search.ts` | `durable/internal/search/search.go` (tests in durable/internal/search/search_test.go) | ✅ |
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/tool-search/tool-search.ts` | `durable/toolsearch/` | ✅ |
 
@@ -795,7 +795,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/env/src/ssh.ts` | `env/ssh.go` | ✅ |
 | `packages/env/src/terminal.ts` | `env/terminal.go` | ✅ |
 | `packages/env/src/watch.ts` | `env/watch.go` | ✅ |
-| `packages/env/src/list-files.ts` | `env/ (mapped at the b06c1f2c pin; the interface ledger does not yet derive this row from exported members or `// pi:` test evidence)` | 🟡 |
+| `packages/env/src/list-files.ts` | `env/list_files.go` | ✅ |
 
 ## `packages/env/daemon/`
 
@@ -804,18 +804,18 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | Upstream | PiG | Status |
 |---|---|---|
 | `packages/env/daemon/build.rs` | `(Cargo build script: the daemon's version is env/cmd/pi-env's pigversion.UpstreamPackageVersion)` | n/a |
-| `packages/env/daemon/src/decode.rs` | `env/daemon/exec.go (durable/env StreamDecoder; tests in env/daemon/decode_test.go)` | 🟡 |
-| `packages/env/daemon/src/errors.rs` | `env/daemon/errors.go` | 🟡 |
-| `packages/env/daemon/src/exec.rs` | `env/daemon/exec.go + env/daemon/control.go` | 🟡 |
+| `packages/env/daemon/src/decode.rs` | `durable/env/decode.go` (StreamDecoder; tests in env/daemon/decode_test.go) | ✅ |
+| `packages/env/daemon/src/errors.rs` | `env/daemon/errors.go` (tests in env/daemon/errors_test.go) | ✅ |
+| `packages/env/daemon/src/exec.rs` | `env/daemon/exec.go`, `env/daemon/control.go` (tests in env/daemon/exec_test.go) | ✅ |
 | `packages/env/daemon/src/frame.rs` | `env/daemon/frame.go` | ✅ |
-| `packages/env/daemon/src/fs.rs` | `env/daemon/fs.go` | 🟡 |
-| `packages/env/daemon/src/main.rs` | `env/daemon/server.go + env/cmd/pi-env/main.go` | 🟡 |
-| `packages/env/daemon/src/output.rs` | `env/daemon/output.go` | 🟡 |
+| `packages/env/daemon/src/fs.rs` | `env/daemon/fs.go` (tests in env/daemon/fs_test.go) | ✅ |
+| `packages/env/daemon/src/main.rs` | `env/daemon/server.go`, `env/cmd/pi-env/main.go` (tests in env/daemon/server_test.go and env/cmd/pi-env/main_test.go) | ✅ |
+| `packages/env/daemon/src/output.rs` | `env/daemon/output.go` (tests in env/daemon/output_test.go) | ✅ |
 | `packages/env/daemon/src/pty.rs` | `env/daemon/pty.go + env/daemon/pty_unix.go + env/daemon/pty_linux.go (Linux, Android and macOS terminals through /dev/ptmx and x/sys/unix, no cgo, macOS in pty_darwin; other systems answer ENOTSUP from pty_other; the client tests in env/terminal_test.go and env/terminal_linux_test.go run against Pi's own daemon as oracle)` | ✅ |
-| `packages/env/daemon/src/scan.rs` | `env/daemon/fs.go (durable/env LineScanner; tests in env/daemon/scan_test.go)` | 🟡 |
+| `packages/env/daemon/src/scan.rs` | `durable/env/line_scan.go` (LineScanner; tests in env/daemon/scan_test.go) | ✅ |
 | `packages/env/daemon/src/sys/mod.rs` | `(Rust module barrel: Go selects sys_unix.go or sys_windows.go by build constraint)` | n/a |
 | `packages/env/daemon/src/sys/unix.rs` | `env/daemon/sys_unix.go` | ✅ |
-| `packages/env/daemon/src/sys/windows.rs` | `env/daemon/sys_windows.go (commands run through durable/env/node, so quote_argument has no Go counterpart here; its test is not ported)` | 🟡 |
+| `packages/env/daemon/src/sys/windows.rs` | `env/daemon/sys_windows.go (commands run through durable/env/node and os/exec, so quote_argument has no Go function; its test is ported as TestEscapeArgQuotesArgumentsLikeLibuv in env/daemon/sys_windows_test.go on syscall.EscapeArg, which runs on Windows only, so the row stays partial on this host)` | 🟡 |
 | `packages/env/daemon/src/watch.rs` | `env/daemon/watch.go` | ✅ |
 | `packages/env/daemon/src/window.rs` | `env/daemon/window.go (tests in env/daemon/window_test.go)` | ✅ |
 

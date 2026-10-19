@@ -1,5 +1,7 @@
 package node
 
+// pi: packages/durable/src/images/node-worker.ts
+
 import (
 	"bytes"
 	"context"

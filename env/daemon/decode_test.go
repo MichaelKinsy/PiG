@@ -1,5 +1,7 @@
 package daemon
 
+// pi: packages/env/daemon/src/decode.rs
+
 // Ports packages/env/daemon/src/decode.rs tests. The daemon decodes command output with Durable's StreamDecoder,
 // which these cases pin down for the daemon's use.
 

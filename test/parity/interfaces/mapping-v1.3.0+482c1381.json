@@ -217018,9 +217018,9 @@
       "id": "pkg:durable/env#ExecutionEnv::property:listFiles",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:ba0caa8c16cc1a193df3ef06ef4e02da3ef9d0821425fc240f42c73edd27ae04",
-      "rationale": "Derived by the interface gap detector: ExecutionEnv::property:listFiles is Go durable/env/env.go#FileLister.ListFiles (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecutionEnv::property:listFiles is Go durable/env/env.go#FileSystem.ListFiles (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "durable/env/env.go#FileLister.ListFiles"
+        "durable/env/env.go#FileSystem.ListFiles"
       ],
       "layers": {
         "behavior": "complete",
@@ -217028,7 +217028,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:durable/env/env.go#FileLister.ListFiles"
+        "public-api:durable/env/env.go#FileSystem.ListFiles"
       ],
       "evidence": [
         "test:durable/env/node/conformance_test.go#TestNodeExecutionEnvConformance"
@@ -218101,7 +218101,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:env/list_files.go#LocalExecutionEnv.ListFiles"
+        "call:durable/env/node/node.go#NodeExecutionEnv.ListFiles"
       ],
       "evidence": [
         "test:env/list_files_test.go#TestListFilesCancelsAListingInTheDaemon",
@@ -218731,9 +218731,9 @@
       "id": "pkg:durable/env#FileSystem::property:listFiles",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:ba0caa8c16cc1a193df3ef06ef4e02da3ef9d0821425fc240f42c73edd27ae04",
-      "rationale": "Derived by the interface gap detector: FileSystem::property:listFiles is Go durable/env/env.go#FileLister.ListFiles (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FileSystem::property:listFiles is Go durable/env/env.go#FileSystem.ListFiles (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "durable/env/env.go#FileLister.ListFiles"
+        "durable/env/env.go#FileSystem.ListFiles"
       ],
       "layers": {
         "behavior": "complete",
@@ -218741,7 +218741,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:durable/env/env.go#FileLister.ListFiles"
+        "public-api:durable/env/env.go#FileSystem.ListFiles"
       ],
       "evidence": [
         "test:durable/env/node/conformance_test.go#TestNodeExecutionEnvConformance"
@@ -219713,7 +219713,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:env/list_files.go#LocalExecutionEnv.ListFiles"
+        "call:durable/env/node/node.go#NodeExecutionEnv.ListFiles"
       ],
       "evidence": [
         "test:env/list_files_test.go#TestListFilesCancelsAListingInTheDaemon",

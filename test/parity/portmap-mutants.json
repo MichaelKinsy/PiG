@@ -545,11 +545,53 @@
    "new": "little := false"
   }
  ],
+ "packages/durable/src/images/node-worker.ts": [
+  {
+   "file": "durable/images/node/node.go",
+   "old": "return reply{result: result, err: err}",
+   "new": "_ = err\n\treturn reply{result: result}"
+  }
+ ],
+ "packages/durable/src/search.ts": [
+  {
+   "file": "durable/internal/search/search.go",
+   "old": "return term[:len(term)-3] + \"y\"",
+   "new": "return term[:len(term)-3] + \"i\""
+  }
+ ],
+ "packages/durable/src/storage/sqlite/schema.ts": [
+  {
+   "file": "durable/storage/sqlite/schema.go",
+   "old": "actual + \"record_ids\"",
+   "new": "actual + \"record_id\""
+  }
+ ],
  "packages/durable/src/timers.ts": [
   {
    "file": "durable/timers.go",
    "old": "\t\treported = true\n",
    "new": "\t\treported = false\n"
+  }
+ ],
+ "packages/env/daemon/src/decode.rs": [
+  {
+   "file": "durable/env/decode.go",
+   "old": "return strings.TrimPrefix(text, \"\\ufeff\")",
+   "new": "return strings.TrimPrefix(text, \"\\ufffe\")"
+  }
+ ],
+ "packages/env/daemon/src/errors.rs": [
+  {
+   "file": "env/daemon/errors.go",
+   "old": "code+\": \"+description+\", \"+syscallName+\" \"+target",
+   "new": "code+\": \"+description+\" \"+syscallName+\" \"+target"
+  }
+ ],
+ "packages/env/daemon/src/exec.rs": [
+  {
+   "file": "env/daemon/exec.go",
+   "old": "failure.Extra = Object{\"spillPath\": executionError.SpillPath}",
+   "new": "failure.Extra = nil"
   }
  ],
  "packages/env/daemon/src/frame.rs": [
@@ -559,11 +601,39 @@
    "new": "header[4] = 0"
   }
  ],
+ "packages/env/daemon/src/fs.rs": [
+  {
+   "file": "env/daemon/fs.go",
+   "old": "\"Path is a directory: rm returned EISDIR (is a directory) \"+path",
+   "new": "\"Path is a directory: \"+path"
+  }
+ ],
+ "packages/env/daemon/src/main.rs": [
+  {
+   "file": "env/cmd/pi-env/main.go",
+   "old": "\"pi-env %s\\n\"",
+   "new": "\"pi %s\\n\""
+  }
+ ],
+ "packages/env/daemon/src/output.rs": [
+  {
+   "file": "env/daemon/output.go",
+   "old": "case len(o.control) > 0:",
+   "new": "case false:"
+  }
+ ],
  "packages/env/daemon/src/pty.rs": [
   {
    "file": "env/daemon/pty.go",
    "old": "JSON: Object{\"kind\": \"started\", \"pid\": proc.pid}",
    "new": "JSON: Object{\"kind\": \"begun\", \"pid\": proc.pid}"
+  }
+ ],
+ "packages/env/daemon/src/scan.rs": [
+  {
+   "file": "durable/env/line_scan.go",
+   "old": "scanner.newlines++",
+   "new": "scanner.newlines += 2"
   }
  ],
  "packages/env/daemon/src/sys/unix.rs": [

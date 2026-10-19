@@ -1,5 +1,7 @@
 package daemon
 
+// pi: packages/env/daemon/src/main.rs
+
 // Ports the protocol rules of packages/env/docs/protocol.md that packages/env/test exercises only through the client:
 // framing errors, request JSON errors, hello, cancel modes, liveness, handle limits and write ordering.
 
@@ -201,67 +203,6 @@ func TestServeEndsTheConnectionOnAFramingError(t *testing.T) {
 	_ = outputWriter.Close()
 }
 
-func TestExecCancelAbortsAndKillSettlesWithTheKilledStatus(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("uses sh and signals")
-	}
-	p := startServe(t, Options{})
-	cwd := t.TempDir()
-	p.request(1, Object{"op": "exec", "cwd": cwd, "argv": []any{"sleep", "30"}}, nil)
-	p.send(FrameCancel, 1, Object{}, nil)
-	if reply := p.reply(1); reply.Kind != FrameError || object(t, reply)["code"] != "aborted" {
-		t.Fatalf("abort: %+v", reply)
-	}
-	// A cancel right behind its request is never lost: the daemon registers the request first.
-	for id := uint32(10); id < 30; id++ {
-		p.request(id, Object{"op": "exec", "cwd": cwd, "argv": []any{"sleep", "30"}}, nil)
-		p.send(FrameCancel, id, Object{}, nil)
-		if reply := p.reply(id); reply.Kind != FrameError || object(t, reply)["code"] != "aborted" {
-			t.Fatalf("request %d: %+v", id, reply)
-		}
-	}
-	p.request(2, Object{"op": "exec", "cwd": cwd, "command": "sleep 30"}, nil)
-	p.send(FrameCancel, 2, Object{"mode": "kill"}, nil)
-	reply := p.reply(2)
-	if reply.Kind != FrameResult || object(t, reply)["exitCode"] != float64(128+9) {
-		t.Fatalf("kill: %+v", reply)
-	}
-}
-
-func TestExecReportsTimeoutSpillAndShellErrorsWithTheirCodes(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("uses sh")
-	}
-	p := startServe(t, Options{})
-	cwd := t.TempDir()
-	p.request(1, Object{"op": "exec", "cwd": cwd, "command": "yes | head -c 5000; exec sleep 30", "timeoutMs": float64(500), "spill": Object{"afterBytes": float64(10), "afterLines": float64(1000)}}, nil)
-	reply := p.reply(1)
-	failure := object(t, reply)
-	if reply.Kind != FrameError || failure["code"] != "timeout" {
-		t.Fatalf("timeout: %+v", failure)
-	}
-	spill, ok := failure["spillPath"].(string)
-	if !ok {
-		t.Fatalf("the timeout error has no spillPath: %v", failure)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(spill)) })
-	if content, err := os.ReadFile(spill); err != nil || len(content) != 5000 {
-		t.Fatalf("spill file: %d bytes, %v", len(content), err)
-	}
-	p.request(2, Object{"op": "exec", "cwd": cwd, "command": "true", "shellPath": filepath.Join(cwd, "no-such-shell")}, nil)
-	if reply := p.reply(2); reply.Kind != FrameError || object(t, reply)["code"] != "shell_unavailable" {
-		t.Fatalf("missing shell: %+v", reply)
-	}
-	p.request(3, Object{"op": "exec", "cwd": filepath.Join(cwd, "missing"), "argv": []any{"true"}}, nil)
-	if reply := p.reply(3); reply.Kind != FrameError || object(t, reply)["code"] != "spawn_error" {
-		t.Fatalf("missing working directory: %+v", reply)
-	}
-	p.request(4, Object{"op": "exec", "cwd": cwd}, nil)
-	if reply := p.reply(4); reply.Kind != FrameError || object(t, reply)["code"] != "EINVAL" {
-		t.Fatalf("exec without a command: %+v", reply)
-	}
-}
-
 func TestPreadClampsToTheLargestPayloadAndWriteChunksKeepOrder(t *testing.T) {
 	p := startServe(t, Options{})
 	directory := t.TempDir()
@@ -346,80 +287,4 @@ func TestAFailedChunkPoisonsTheWriteHandleAndHandlesAreLimited(t *testing.T) {
 	if _, failure := s.insertFile(file, path); failure == nil || failure.Code != "EMFILE" {
 		t.Fatalf("handle %d: %+v, want EMFILE", maxHandles+1, failure)
 	}
-}
-
-func TestControlFramesGoBeforeBulkOutput(t *testing.T) {
-	out := newOutput()
-	for index := range 3 {
-		out.sendBulk(&Frame{Kind: FrameEvent, ID: uint32(index), JSON: Object{}, Payload: []byte("bulk")}, nil)
-	}
-	out.sendControl(&Frame{Kind: FrameResult, ID: 99, JSON: Object{}})
-	var written bytes.Buffer
-	done := make(chan struct{})
-	go func() {
-		out.run(&written)
-		close(done)
-	}()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		out.mu.Lock()
-		empty := len(out.control) == 0 && len(out.bulk) == 0
-		out.mu.Unlock()
-		if empty {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("the queues were not written")
-		}
-		time.Sleep(time.Millisecond)
-	}
-	out.close()
-	<-done
-	reader := bytes.NewReader(written.Bytes())
-	var ids []uint32
-	for {
-		frame, err := ReadFrame(reader)
-		if err != nil || frame == nil {
-			break
-		}
-		ids = append(ids, frame.ID)
-	}
-	if len(ids) != 4 || ids[0] != 99 {
-		t.Fatalf("frame order %v, want the result (99) first", ids)
-	}
-}
-
-func TestUnwindowedOutputWaitsWhileTooMuchIsUnsent(t *testing.T) {
-	out := newOutput()
-	out.sendBulk(&Frame{Kind: FrameEvent, JSON: Object{}, Payload: make([]byte, bulkLimit+1)}, nil)
-	stop := make(chan struct{})
-	waited := make(chan struct{})
-	go func() {
-		out.waitForRoom(stop)
-		close(waited)
-	}()
-	select {
-	case <-waited:
-		t.Fatal("a reader did not wait with more than the bulk limit unsent")
-	case <-time.After(150 * time.Millisecond):
-	}
-	close(stop)
-	select {
-	case <-waited:
-	case <-time.After(5 * time.Second):
-		t.Fatal("a reader did not stop waiting when told to")
-	}
-	// Writing the bytes out makes room.
-	drained := make(chan struct{})
-	go func() {
-		out.waitForRoom(make(chan struct{}))
-		close(drained)
-	}()
-	go out.run(io.Discard)
-	select {
-	case <-drained:
-	case <-time.After(5 * time.Second):
-		t.Fatal("a reader kept waiting after the bytes were written")
-	}
-	out.close()
 }

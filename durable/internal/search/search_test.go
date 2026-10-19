@@ -3,6 +3,8 @@
 
 package search
 
+// pi: packages/durable/src/search.ts
+
 import (
 	"slices"
 	"strings"
