@@ -29,6 +29,9 @@ type loop struct {
 	taskMu sync.Mutex
 	tasks  int
 	idle   chan struct{}
+
+	// publications is the queue of the observer notifications of this loop's host (publish.go).
+	publications publisher
 }
 
 // onLoop reports whether the caller is running a task of this loop.

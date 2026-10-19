@@ -26,6 +26,9 @@ type SourceOptions struct {
 	// Upstream's writes are synchronous on one thread, so methods and tasks that write from several goroutines must not
 	// interleave a write's read of the current revision with another write's commit.
 	Exec func(write func())
+	// loop is the owning host's loop, whose publication queue delivers the source's notifications (publish.go); nil is
+	// the shared queue of a source that belongs to no host.
+	loop *loop
 }
 
 // WriteGuard is cell.ts WriteGuard: it checks that ctx may write an object's cells now and returns the refusal.
@@ -43,13 +46,15 @@ type fanout[T any] struct {
 	valueOrder []*func(T)
 	eventOrder []*func(StateEvent[T])
 	report     func(err error)
+	loop       *loop
 }
 
-func newFanout[T any](report func(err error)) *fanout[T] {
+func newFanout[T any](report func(err error), loop *loop) *fanout[T] {
 	return &fanout[T]{
 		values: map[*func(T)]struct{}{},
 		events: map[*func(StateEvent[T])]struct{}{},
 		report: report,
+		loop:   loop,
 	}
 }
 
@@ -94,7 +99,7 @@ func (f *fanout[T]) emit(event StateEvent[T]) {
 	events := slices.Clone(f.eventOrder)
 	values := slices.Clone(f.valueOrder)
 	f.mu.Unlock()
-	enqueue(func() {
+	enqueue(f.loop, func() {
 		for _, listener := range events {
 			if f.has(func() bool { _, ok := f.events[listener]; return ok }) {
 				call(f.report, *listener, event)
@@ -233,7 +238,7 @@ func newSource[T any](key string, options SourceOptions, value func() T, own fun
 		Seq:        sequence.Add(1),
 		Dependents: &dependents{},
 		options:    options,
-		fanout:     newFanout[T](options.Report),
+		fanout:     newFanout[T](options.Report, options.loop),
 		value:      value,
 		own:        own,
 	}
@@ -534,7 +539,7 @@ func (cell *Cell[T]) publish(prepared *delta.Prepared, kind StateEventType, vali
 		prepared.Abort()
 		return err
 	}
-	return holdPublications(func() error {
+	return holdPublications(cell.options.loop, func() error {
 		if err := cell.tracker.Adopt(prepared); err != nil {
 			return err
 		}
@@ -783,7 +788,7 @@ func (derived *Derived) Refresh() {
 		derived.options.Report(err)
 		return
 	}
-	holdPublications(func() struct{} {
+	holdPublications(derived.options.loop, func() struct{} {
 		derived.Install(next)
 		for _, candidate := range candidates {
 			candidate.derived.Install(candidate.value)

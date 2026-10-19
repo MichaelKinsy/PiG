@@ -672,15 +672,15 @@ var refBase = map[string]bool{
 type statusListener = func(status RefStatus, err error)
 
 // notifyStatus queues a status notification (after the change that caused it is complete, like every publication).
-func notifyStatus(listeners *orderedMap[*statusListener, struct{}], status RefStatus, err error, report func(error)) {
+func notifyStatus(host *HostImpl, listeners *orderedMap[*statusListener, struct{}], status RefStatus, err error) {
 	if listeners.Len() == 0 {
 		return
 	}
 	current := listeners.Keys()
-	enqueue(func() {
+	enqueue(&host.loop, func() {
 		for _, listener := range current {
 			if thrown := callReporting(func() { (*listener)(status, err) }); thrown != nil {
-				report(thrown)
+				host.report(thrown)
 			}
 		}
 	})
@@ -929,7 +929,7 @@ func (readable *memberReadable) bind() {
 		unseen := readable.unseen.Keys()
 		readable.unseen.Clear()
 		// Queued: a rebind during a commit must not run observers before the commit completes.
-		enqueue(func() {
+		enqueue(&readable.host().loop, func() {
 			for _, listener := range events {
 				if !readable.events.Has(listener) {
 					continue
@@ -1132,7 +1132,7 @@ func (ref *RefImpl) OnStatus(listener func(status RefStatus, err error)) func() 
 }
 
 func (ref *RefImpl) statusChanged() {
-	notifyStatus(ref.statusListeners, ref.status, ref.err, ref.object.host.report)
+	notifyStatus(ref.object.host, ref.statusListeners, ref.status, ref.err)
 }
 
 // Release releases the hold.
@@ -1200,7 +1200,7 @@ func (ref *RefImpl) shapeChanged() {
 		return
 	}
 	listeners := ref.shapeListeners.Keys()
-	enqueue(func() {
+	enqueue(&ref.object.host.loop, func() {
 		for _, listener := range listeners {
 			if err := callReporting(func() { (*listener)(*shape) }); err != nil {
 				ref.object.host.report(err)
@@ -2251,9 +2251,9 @@ func (object *ObjectImpl) detachTasks() []func() {
 // object (a reload gate waits for it like for any other root that touched the object), counts as an invocation
 // (disposal waits for it) and is cancelled by forced disposal.
 func (object *ObjectImpl) deliver(key string, event any) {
-	enqueue(func() {
+	enqueue(&object.host.loop, func() {
 		// The invocation starts synchronously inside the publication, as upstream's host.root does.
-		object.host.run(func() { object.startListener(key, event) })
+		object.startListener(key, event)
 	})
 }
 
@@ -2869,7 +2869,7 @@ func (s *SelfImpl) State(name string, schema Schema, initial any, options *State
 	}
 	if cell == nil {
 		var err error
-		options := SourceOptions{Dev: host.dev, Report: host.report, Exec: host.run}
+		options := SourceOptions{Dev: host.dev, Report: host.report, Exec: host.run, loop: &host.loop}
 		if init, isInit := stateInit(initial); isInit {
 			cell, err = NewCellAwaitingInit[any](name, schema, s.object.guard, options)
 			if err == nil {
@@ -2996,7 +2996,7 @@ func (s *SelfImpl) Derive(sources Sources, fn func(values ...any) any) (Readable
 	}
 	host := s.object.host
 	key := fmt.Sprintf("#%d", s.decls.derives.Len())
-	derived, err := NewDerived(key, sources, fn, SourceOptions{Dev: host.dev, Report: host.report})
+	derived, err := NewDerived(key, sources, fn, SourceOptions{Dev: host.dev, Report: host.report, loop: &host.loop})
 	if err != nil {
 		return nil, err
 	}

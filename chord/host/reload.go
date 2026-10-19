@@ -981,7 +981,7 @@ func (r *Reload) commit(beforeStart func()) (ReloadReport, error) {
 	}
 	// Pi reload.ts:519-531 wraps the whole step in try/catch: anything an install or start throws fails the host
 	// terminally (a panic is Go's throw).
-	outcome := holdPublications(func() (outcome result) {
+	outcome := holdPublications(&r.host.loop, func() (outcome result) {
 		thrown := callReporting(func() {
 			report, err := r.publish()
 			if err != nil {

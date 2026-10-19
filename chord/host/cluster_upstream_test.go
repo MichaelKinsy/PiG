@@ -513,11 +513,13 @@ func TestCrossHostReloadAnAbortWhileAWorkerIsStillPreparingALateOpenClosesItself
 		return slices.Clone(log)
 	}
 	gate := newClusterLatch()
+	started, startedOnce := make(chan struct{}), sync.Once{}
 	slow := Facet{Name: "greeter", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
 		return api.Serve(clusterGreeter, func(_ any, _ Principal, self Self) (Implementation, error) {
 			if _, err := self.Resource("late", ResourceDeclaration[any]{
 				Version: 1,
 				Open: func(ResourceOpenOptions) (any, error) {
+					startedOnce.Do(func() { close(started) })
 					gate.wait()
 					push("opened")
 					return nil, nil
@@ -542,14 +544,42 @@ func TestCrossHostReloadAnAbortWhileAWorkerIsStillPreparingALateOpenClosesItself
 	}}}
 	s.modules.set("greeter", slow)
 	codeVersion := s.worker.CodeVersion()
+	// Pi's one thread runs the worker's whole microtask chain, up to its pending open, before the vote deadline's timer
+	// callback. The server's loop, which runs that callback, is held until the worker's open began, so the deadline
+	// cannot abort a worker that is slower to start than 50 ms: it aborts one that is still preparing.
+	reloadBetweenPreparePasses = func(host *HostImpl) {
+		if host == s.server {
+			host.run(func() {
+				select {
+				case <-started:
+				case <-time.After(5 * time.Second):
+					t.Error("the worker's open did not begin")
+				}
+			})
+		}
+	}
+	t.Cleanup(func() { reloadBetweenPreparePasses = nil })
 	if _, err := s.server.Reload(nil, ReloadOptions{Remote: sessionRemote("greeter"), VoteDeadline: new(50 * time.Millisecond)}); !IsChordError(err, CodeAborted) {
 		t.Fatalf("err = %v", err)
 	}
+	// The abort reaches the worker before the open completes, as Pi's promise-chain link delivers it before the test's
+	// next step.
+	waitFor(t, "the worker to handle the abort", func() bool {
+		return reviewOnLoop(s.worker, func() bool {
+			operation := s.worker.childReloads.operation
+			return operation != nil && operation.cancelled
+		})
+	})
 	gate.open()
 	waitFor(t, "the late resource to close", func() bool { return slices.Contains(logged(), "closed") })
 	if got := logged(); !slices.Equal(got, []string{"opened", "closed"}) {
 		t.Fatalf("log = %v", got)
 	}
+	// Pi's tick loop returns once the worker's microtasks ran, so its aborted reload has unwound and freed the reload
+	// slot. That unwind follows the late resource's close on the worker's own goroutine: wait for the slot.
+	var unwound <-chan struct{}
+	s.worker.run(func() { unwound = s.worker.whenReloadEnded() })
+	<-unwound
 	if s.worker.CodeVersion() != codeVersion {
 		t.Fatalf("worker code version %d, want %d", s.worker.CodeVersion(), codeVersion)
 	}

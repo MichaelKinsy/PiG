@@ -605,20 +605,29 @@ func TestReviewReleasingTheLastRefWhileListenersStartUpDoesNotResurrectTheObject
 	}, ServeOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	first := reviewGet(t, host, reviewStore, map[string]any{}, nil)
-	mu.Lock()
-	ref = first
-	mu.Unlock()
+	// Pi's `ref = host.hold(Store, {})` is one synchronous turn: nothing the hold queues, the listener's start included,
+	// runs before ref is set. The section is that turn; a hold followed by an assignment outside it lets the activation
+	// start the listener first, which then finds no ref to release.
+	var first Ref
+	host.run(func() {
+		first = reviewGet(t, host, reviewStore, map[string]any{}, nil)
+		mu.Lock()
+		ref = first
+		mu.Unlock()
+	})
 	_ = readyErr(t, first)
 	waitFor(t, "open, close", func() bool { return len(log.list()) == 2 })
 	reviewQuiet(host)
 	if got := log.list(); fmt.Sprint(got) != "[open close]" {
 		t.Fatalf("log = %v", got)
 	}
-	again := reviewGet(t, host, reviewStore, map[string]any{}, nil)
-	mu.Lock()
-	ref = nil
-	mu.Unlock()
+	var again Ref
+	host.run(func() {
+		again = reviewGet(t, host, reviewStore, map[string]any{}, nil)
+		mu.Lock()
+		ref = nil
+		mu.Unlock()
+	})
 	reviewReady(t, again)
 	mu.Lock()
 	defer mu.Unlock()

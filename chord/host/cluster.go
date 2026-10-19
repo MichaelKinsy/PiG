@@ -404,9 +404,13 @@ func (reloads *ChildReloads) run(operation *childOperation, connection *Connecti
 	host.run(func() { reload = operation.reload })
 	if reload != nil {
 		reload.rollback()
-		host.run(func() { endReload(host) })
 	}
+	// One synchronous continuation, as upstream's after `await rollback()`: the reload slot, the operation and the
+	// vote change together, so a prepare that arrives next finds both free.
 	host.run(func() {
+		if reload != nil {
+			endReload(host)
+		}
 		if reloads.operation == operation {
 			reloads.operation = nil
 		}

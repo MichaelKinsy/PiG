@@ -1343,7 +1343,7 @@ func (host *HostImpl) installTables(codeVersion *CodeVersionState, tables map[st
 			continue
 		}
 		current := listeners.Keys()
-		enqueue(func() {
+		enqueue(&host.loop, func() {
 			for _, listener := range current {
 				host.callListener(listener, next, codeVersion.id)
 			}

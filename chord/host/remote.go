@@ -808,7 +808,7 @@ func (ref *RemoteRef) OnStatus(listener func(status RefStatus, err error)) func(
 }
 
 func (ref *RemoteRef) notify() {
-	notifyStatus(ref.statusListeners, ref.status, ref.err, ref.host().report)
+	notifyStatus(ref.host(), ref.statusListeners, ref.status, ref.err)
 }
 
 func (ref *RemoteRef) settleReady(err error) {

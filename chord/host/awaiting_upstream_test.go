@@ -55,12 +55,15 @@ type getResult struct {
 	err error
 }
 
+// getAsync is `host.get(...)` without its await: the call has run up to its first await, as upstream's synchronous part
+// does, when it returns. A bare `go host.Get(...)` has no such order: the next call, or an abort that follows, can run
+// before it has taken its reference.
 func getAsync(host *HostImpl, options *GetOptions) <-chan getResult {
 	done := make(chan getResult, 1)
-	go func() {
+	<-host.goEntered(func() {
 		ref, err := host.Get(awaitingSlow, map[string]any{}, options)
 		done <- getResult{ref, err}
-	}()
+	})
 	return done
 }
 
@@ -70,12 +73,11 @@ func TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysFo
 	abort, cancel := context.WithCancel(context.Background())
 	first := getAsync(browser, &GetOptions{Signal: abort})
 	second := getAsync(browser, nil)
-	time.Sleep(5 * time.Millisecond)
 	cancel()
 	if got := <-first; !IsChordError(got.err, CodeAborted) {
 		t.Fatalf("aborted get: %v", got.err)
 	}
-	time.Sleep(5 * time.Millisecond)
+	browser.run(func() {})
 	if got := link.countSent("release"); got != 0 {
 		t.Fatalf("releases = %d: the other awaiting get keeps the hold", got)
 	}
