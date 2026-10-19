@@ -4315,11 +4315,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				encodedArgs: !streamed,
 			}
 			envelope := &Envelope{Type: MsgRequest, Request: payload}
-			if update != nil {
+			switch {
+			case update != nil:
 				resp, err = conn.requestOrdered(parent, envelope, me.messageUpdates.order(&me.host.messageUpdateShare, conn, *update, payload, args[0], boundaryWire))
-			} else if toolUpdate != nil {
+			case toolUpdate != nil:
 				resp, err = conn.requestOrdered(parent, envelope, me.toolUpdates.order(conn, *toolUpdate, payload, args[0], boundaryWire))
-			} else {
+			default:
 				resp, err = conn.Request(parent, envelope)
 			}
 			return nil

@@ -105,7 +105,7 @@ func checkAgainst(t *testing.T, step int, o *Object, n *naiveObject) {
 // TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete drives Object and a naive ordered map with the same random
 // operations (small and large key pools, index and plain keys) and compares every view, plus Clone and Shallow copies.
 func TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete(t *testing.T) {
-	for seed := int64(0); seed < 40; seed++ {
+	for seed := range int64(40) {
 		rng := rand.New(rand.NewSource(seed))
 		pool := []int{6, 20, 60}[seed%3]
 		keyOf := func() string {
