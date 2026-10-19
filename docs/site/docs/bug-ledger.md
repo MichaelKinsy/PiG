@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-885 bugs. 835 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+892 bugs. 842 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -904,6 +904,13 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
+| [BF-97ecff0](#bf-97ecff0) | A Durable core session with many live tasks recomputes its next wake without walking every live task on each… | PiG's own defect | All platforms | Unreleased |
+| [BF-4334e0b](#bf-4334e0b) | A Durable code mode tool call made just before the script launches another call or ends has started before… | PiG's own defect | All platforms | Unreleased |
+| [BF-c2cdd5b](#bf-c2cdd5b) | An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted… | PiG's own defect | All platforms | Unreleased |
+| [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
+| [BF-c2cdd5b-3](#bf-c2cdd5b-3) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | Unreleased |
+| [BF-dea7cbc](#bf-dea7cbc) | A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no… | PiG's own defect | All platforms | Unreleased |
+| [BF-fb22c33](#bf-fb22c33) | `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer… | PiG's own defect | Windows | Unreleased |
 
 ## Entries
 
@@ -13239,6 +13246,104 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference`, `durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed`, `durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce`, `durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds` and 4 more in docs/bug-ledger.json
 - **Release note:** Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi. Stopping an event stream right after one of these waits no longer drops the end of a run.
 
+### BF-97ecff0
+
+**A Durable core session with many live tasks recomputes its next wake without walking every live task on each…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.
+- **Root cause:** Wake walked every live record and searched each record's keys on every commit, so ending a chain of n held tasks cost O(n^2): 50-65 s at depth 20,000, and 9m51s on a loaded 4-vCPU CI runner against the 10 m package budget. Wake now reads the earliest sleep from the index wakeDue already keeps and checks for a runnable task only when nothing running or reconciling already makes the session active, stopping at the first. Results are unchanged; Pi's wake() walks the records too, but each visit there is a property read.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `97ecff01fc` (2026-10-18), `c3c84b5a28` (2026-10-18), `d0c524009a` (2026-10-18), `da0fae4095` (2026-10-18), `f8ef05a7ae` (2026-10-18)
+- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds` and 19 more in docs/bug-ledger.json
+- **Release note:** A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.
+
+### BF-4334e0b
+
+**A Durable code mode tool call made just before the script launches another call or ends has started before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.
+- **Root cause:** Pi starts a script's tool call synchronously up to its first await (codemode.ts launch -> callTool -> executeTool), so a call launched earlier is never overtaken by one launched after it, and the script cannot end and abort it before it runs. Here each call ran on a bare goroutine, and Go's scheduler often ran the later call first: in CI the hold tool of "aborts a call still running when the script ends" never ran (holds.runs 0). launch and the replay path now return once the call's goroutine has entered (internal/entered).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4334e0bb6a` (2026-10-18)
+- **Tests:** `durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched`, `durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted`
+- **Release note:** A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.
+
+### BF-c2cdd5b
+
+**An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted the whole screen on that goroutine while the main loop was changing the transcript, so the two could read and write the same transcript state at once.
+- **Root cause:** /reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `068b86b66b` (2026-10-18), `1d8dab9122` (2026-10-18), `c2cdd5b680` (2026-10-18), `c3c84b5a28` (2026-10-18), `d0c524009a` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/core/driver/compaction_failure_core_test.go::TestCorePerModelCompactionOverrideSetsTheBlockingThreshold`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/host_inputs_core_test.go::TestCoreHostInputsAreReadAtEachUse`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration` and 12 more in docs/bug-ledger.json
+- **Release note:** An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted the whole screen on that goroutine while the main loop was changing the transcript, so the two could read and write the same transcript state at once. Such a change now asks the main loop for a frame, as Pi's `setExtensionHeader` and `setExtensionFooter` end with `ui.requestRender()`; a change made on the main loop still paints at once. The race detector reported it in about one run in ten of the Node scroll-view footer scenario, which sets its footer while a notification arrives.
+
+### BF-c2cdd5b-2
+
+**The terminal width and height the extension host tells extensions during `/reload`, and when one starts or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The terminal width and height the extension host tells extensions during `/reload`, and when one starts or restarts, were read while the main loop's frame updated them, and the handler that reports an extension's crash was replaced on each reload while the host's connection goroutines read it.
+- **Root cause:** /reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `068b86b66b` (2026-10-18), `c2cdd5b680` (2026-10-18), `d0c524009a` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/core/driver/compaction_failure_core_test.go::TestCorePerModelCompactionOverrideSetsTheBlockingThreshold`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/host_inputs_core_test.go::TestCoreHostInputsAreReadAtEachUse`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration` and 6 more in docs/bug-ledger.json
+- **Release note:** The terminal width and height the extension host tells extensions during `/reload`, and when one starts or restarts, were read while the main loop's frame updated them, and the handler that reports an extension's crash was replaced on each reload while the host's connection goroutines read it. Both now read an atomically published value. The race detector reported the width and height read in about one `/reload` run in twenty, and the crash handler once, in a shutdown from a `session_start` handler.
+
+### BF-c2cdd5b-3
+
+**A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
+- **Root cause:** /reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `2934eba06f` (2026-10-18), `4334e0bb6a` (2026-10-18), `c2cdd5b680` (2026-10-18), `c3c84b5a28` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched`, `durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference` and 12 more in docs/bug-ledger.json
+- **Release note:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
+
+### BF-dea7cbc
+
+**A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`.
+- **Root cause:** closeChildFiles decided which child files to leave open by comparing them with the os.Stdin/os.Stdout/os.Stderr variables, which the print and rpc output guard swaps and restores. The standard files are now captured once at package init; during a takeover the variable named the guard's pipe anyway, so the old comparison checked the wrong file.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c3c84b5a28` (2026-10-18), `dea7cbc08c` (2026-10-18), `f8ef05a7ae` (2026-10-18)
+- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds`, `durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt`, `durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed` and 9 more in docs/bug-ledger.json
+- **Release note:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.
+
+### BF-fb22c33
+
+**`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `263f65829f` (2026-10-18), `fb22c33c7b` (2026-10-18)
+- **Tests:** `durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut`, `durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix`, `durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers`, `env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon`, `env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields`, `env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths`, `env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv`, `env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus` and 9 more in docs/bug-ledger.json
+- **Release note:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+
 ## Divergences from Pi added in this release
 
 Each divergence record is accounted for here. A divergence that fixes a Pi defect links to its ledger entry; the others are deliberate differences and no bug fix.
@@ -13296,6 +13401,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D181 | The commits of an unawaited durable job are ordered by goroutine scheduling, not by Pi's microtask hops | deliberate difference |
 | D182 | A proxy start event with an unusable content index ends the stream with an error | deliberate difference |
 | D183 | A message delivered at the terminal proxy event is not changed by later events | deliberate difference |
+| D184 | A script's unawaited tool call can be aborted before its tool starts, where Pi always starts it first | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

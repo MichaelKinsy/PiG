@@ -29798,6 +29798,354 @@
         "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther",
         "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable"
       ]
+    },
+    {
+      "id": "BF-97ecff0",
+      "title": "A Durable core session with many live tasks recomputes its next wake without walking every live task on each…",
+      "symptom": "A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.",
+      "rootCause": "Wake walked every live record and searched each record's keys on every commit, so ending a chain of n held tasks cost O(n^2): 50-65 s at depth 20,000, and 9m51s on a loaded 4-vCPU CI runner against the 10 m package budget. Wake now reads the earliest sleep from the index wakeDue already keeps and checks for a runnable task only when nothing running or reconciling already makes the session active, stopping at the first. Results are unchanged; Pi's wake() walks the records too, but each visit there is a property read.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1d8dab9122",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "97ecff01fc",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "c3c84b5a28",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "d0c524009a",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "da0fae4095",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "f8ef05a7ae",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi",
+        "ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream",
+        "ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi",
+        "ai/main_test.go::TestMain",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestWakeAfterCloseReportsTheSessionClosed",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "durable/core/session/sched_scale_test.go::TestAChainOfHeldTasksFinalizesInLinearWork",
+        "durable/core/session/sched_scale_test.go::TestEndingATaskOfAHeldChainAllocatesTheSameAtAnyLength",
+        "durable/core/session/sched_scale_test.go::TestWakeNamesTheEarliestSleepWhileATaskRuns",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/durabletest/storage_conformance_cases_test.go::TestCreateStorageConformanceCasesMatchUpstream",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_generation_test.go::TestGeneration",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther",
+        "test/parity/interface-closure/autobind/rules/functions_test.go::TestS5wVoidAwaitableResult"
+      ]
+    },
+    {
+      "id": "BF-4334e0b",
+      "title": "A Durable code mode tool call made just before the script launches another call or ends has started before…",
+      "symptom": "A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.",
+      "rootCause": "Pi starts a script's tool call synchronously up to its first await (codemode.ts launch -\u003e callTool -\u003e executeTool), so a call launched earlier is never overtaken by one launched after it, and the script cannot end and abort it before it runs. Here each call ran on a bare goroutine, and Go's scheduler often ran the later call first: in CI the hold tool of \"aborts a call still running when the script ends\" never ran (holds.runs 0). launch and the replay path now return once the call's goroutine has entered (internal/entered).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4334e0bb6a",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched",
+        "durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted"
+      ]
+    },
+    {
+      "id": "BF-c2cdd5b",
+      "title": "An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted…",
+      "symptom": "An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted the whole screen on that goroutine while the main loop was changing the transcript, so the two could read and write the same transcript state at once.",
+      "rootCause": "/reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted the whole screen on that goroutine while the main loop was changing the transcript, so the two could read and write the same transcript state at once. Such a change now asks the main loop for a frame, as Pi's `setExtensionHeader` and `setExtensionFooter` end with `ui.requestRender()`; a change made on the main loop still paints at once. The race detector reported it in about one run in ten of the Node scroll-view footer scenario, which sets its footer while a notification arrives.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "068b86b66b",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "1d8dab9122",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "c2cdd5b680",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "c3c84b5a28",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "d0c524009a",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "da0fae4095",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead",
+        "durable/core/driver/compaction_failure_core_test.go::TestCorePerModelCompactionOverrideSetsTheBlockingThreshold",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/driver/host_inputs_core_test.go::TestCoreHostInputsAreReadAtEachUse",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_generation_test.go::TestGeneration",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther",
+        "internal/codingagent/ext_special_lines_paint_test.go::TestExtensionFooterFromAHostGoroutineIsPaintedByTheOwnerLoop",
+        "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
+        "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
+      ]
+    },
+    {
+      "id": "BF-c2cdd5b-2",
+      "title": "The terminal width and height the extension host tells extensions during `/reload`, and when one starts or…",
+      "symptom": "The terminal width and height the extension host tells extensions during `/reload`, and when one starts or restarts, were read while the main loop's frame updated them, and the handler that reports an extension's crash was replaced on each reload while the host's connection goroutines read it.",
+      "rootCause": "/reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal width and height the extension host tells extensions during `/reload`, and when one starts or restarts, were read while the main loop's frame updated them, and the handler that reports an extension's crash was replaced on each reload while the host's connection goroutines read it. Both now read an atomically published value. The race detector reported the width and height read in about one `/reload` run in twenty, and the crash handler once, in a shutdown from a `session_start` handler.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "068b86b66b",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "c2cdd5b680",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "d0c524009a",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "da0fae4095",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead",
+        "durable/core/driver/compaction_failure_core_test.go::TestCorePerModelCompactionOverrideSetsTheBlockingThreshold",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/driver/host_inputs_core_test.go::TestCoreHostInputsAreReadAtEachUse",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
+        "internal/codingagent/ext_special_lines_paint_test.go::TestExtensionFooterFromAHostGoroutineIsPaintedByTheOwnerLoop",
+        "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
+        "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
+      ]
+    },
+    {
+      "id": "BF-c2cdd5b-3",
+      "title": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…",
+      "symptom": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.",
+      "rootCause": "/reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1d8dab9122",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "2934eba06f",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "4334e0bb6a",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "c2cdd5b680",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "c3c84b5a28",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "da0fae4095",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead",
+        "durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched",
+        "durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_generation_test.go::TestGeneration",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
+        "durable/harness/harness_storage_failure_test.go::TestAFailedStorageCall",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther",
+        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder",
+        "internal/codingagent/ext_special_lines_paint_test.go::TestExtensionFooterFromAHostGoroutineIsPaintedByTheOwnerLoop",
+        "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
+        "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
+      ]
+    },
+    {
+      "id": "BF-dea7cbc",
+      "title": "A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no…",
+      "symptom": "A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`.",
+      "rootCause": "closeChildFiles decided which child files to leave open by comparing them with the os.Stdin/os.Stdout/os.Stderr variables, which the print and rpc output guard swaps and restores. The standard files are now captured once at package init; during a takeover the variable named the guard's pipe anyway, so the old comparison checked the wrong file.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c3c84b5a28",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "dea7cbc08c",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "f8ef05a7ae",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi",
+        "ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream",
+        "ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi",
+        "ai/main_test.go::TestMain",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed",
+        "durable/core/driver/harness_sleep_timer_core_test.go::TestWakeAfterCloseReportsTheSessionClosed",
+        "durable/durabletest/storage_conformance_cases_test.go::TestCreateStorageConformanceCasesMatchUpstream",
+        "durable/harness/harness_storage_failure_test.go::TestAFailedStorageCall",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther",
+        "internal/codingagent/output_guard_test.go::TestOutputGuardRestoreDoesNotRaceASpawnClosingItsChildFiles"
+      ]
+    },
+    {
+      "id": "BF-fb22c33",
+      "title": "`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…",
+      "symptom": "`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "263f65829f",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "fb22c33c7b",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut",
+        "durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix",
+        "durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers",
+        "env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon",
+        "env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields",
+        "env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths",
+        "env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv",
+        "env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus",
+        "env/daemon/exec_test.go::TestExecReportsTimeoutSpillAndShellErrorsWithTheirCodes",
+        "env/daemon/fs_test.go::TestFsyncRefusesADirectoryAsNodeDoes",
+        "env/daemon/fs_test.go::TestMkdtempAppendsSixRandomCharacters",
+        "env/daemon/fs_test.go::TestRenameAndTruncateReportNodesMessages",
+        "env/daemon/fs_test.go::TestRmFollowsNodesFsRm",
+        "env/daemon/output_test.go::TestControlFramesGoBeforeBulkOutput",
+        "env/daemon/output_test.go::TestUnwindowedOutputWaitsWhileTooMuchIsUnsent",
+        "env/daemon/server_test.go::TestAFailedChunkPoisonsTheWriteHandleAndHandlesAreLimited",
+        "env/daemon/sys_windows_test.go::TestEscapeArgQuotesArgumentsLikeLibuv"
+      ]
     }
   ],
   "divergences": [
@@ -30033,6 +30381,10 @@
     {
       "id": "D183",
       "title": "A message delivered at the terminal proxy event is not changed by later events"
+    },
+    {
+      "id": "D184",
+      "title": "A script's unawaited tool call can be aborted before its tool starts, where Pi always starts it first"
     }
   ],
   "exemptCommits": {
