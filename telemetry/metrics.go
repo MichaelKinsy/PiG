@@ -14,6 +14,8 @@ package telemetry
 // stubgen:omit SchemaTelemetryCounter
 // stubgen:omit SchemaTelemetryHistogram
 
+import "maps"
+
 // InstrumentOptions describes an instrument. A nil Description or Unit is upstream's undefined, which a recorder omits;
 // a pointer to the empty string is a defined empty string.
 type InstrumentOptions struct {
@@ -86,9 +88,7 @@ type TypedTelemetryMetrics struct {
 func CreateTypedMetrics(metrics TelemetryMetrics, schema *TelemetrySchemaDefinition, schemas ...*TelemetrySchemaDefinition) *TypedTelemetryMetrics {
 	definitions := map[string]TelemetryMetricDefinition{}
 	for _, candidate := range append([]*TelemetrySchemaDefinition{schema}, schemas...) {
-		for name, definition := range candidate.Metrics {
-			definitions[name] = definition
-		}
+		maps.Copy(definitions, candidate.Metrics)
 	}
 	return &TypedTelemetryMetrics{metrics: metrics, definitions: definitions}
 }
