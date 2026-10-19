@@ -3,6 +3,12 @@ import { readFileSync, realpathSync, mkdtempSync, writeFileSync, rmSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+// Pi gives a `!command` credential ten seconds (execSync timeout, resolve-config-value.ts); a loaded host must not decide the comparison, so the oracle waits as the Go side does.
+const childProcess = (await import("node:child_process")).default;
+const { syncBuiltinESMExports } = await import("node:module");
+const execSync = childProcess.execSync;
+childProcess.execSync = (command, options) => execSync(command, { ...options, timeout: undefined });
+syncBuiltinESMExports();
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
 const { ModelRuntime } = await import(pathToFileURL(root + "dist/core/model-runtime.js"));

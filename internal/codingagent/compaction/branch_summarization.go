@@ -302,7 +302,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) (
 		}
 	}
 
-	// Second pass: walk from newest to oldest, adding messages within the budget.
+	// Second pass: walk from newest to oldest, adding messages within the budget (collected newest first and reversed once; a prepend per message copied the list each time).
 	var messages []agent.AgentMessage
 	totalTokens := 0
 
@@ -336,7 +336,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) (
 			// as long as we're under 90% utilisation.
 			if entry.Base().Type == "compaction" || entry.Base().Type == "branch_summary" {
 				if float64(totalTokens) < float64(tokenBudget)*0.9 {
-					messages = append([]agent.AgentMessage{msg}, messages...)
+					messages = append(messages, msg)
 					totalTokens += tokens
 				}
 			}
@@ -344,10 +344,12 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) (
 			break
 		}
 
-		messages = append([]agent.AgentMessage{msg}, messages...)
+		messages = append(messages, msg)
 		totalTokens += tokens
 	}
 
+	// The walk collected newest first; the preparation is chronological.
+	slices.Reverse(messages)
 	return BranchPreparation{
 		Messages:    messages,
 		FileOps:     fileOps,

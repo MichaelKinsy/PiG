@@ -100,9 +100,10 @@ func firstModelDefinitionFailure(providerID string, provider providerConfig) str
 			builtIn = append(builtIn, generated.ToModel())
 		}
 	}
+	builtInIndex := newNativeModelIndex(builtIn)
 	for _, model := range provider.Models {
 		api := firstModelValue(model.API, provider.API)
-		defaults := findNativeModelDefaults(builtIn, model.ID, ai.API(api))
+		defaults := builtInIndex.find(model.ID, ai.API(api))
 		if api == "" && defaults != nil {
 			api = string(defaults.ProviderMeta.API)
 		}

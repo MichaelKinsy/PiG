@@ -63,4 +63,13 @@ func TestScalingCompactionAndContextEstimate(t *testing.T) {
 		messages := codingagent.ProjectSessionPath(scalingBranch(n)).Messages
 		return func() { EstimateContextTokens(messages) }
 	}})
+	// The branch summary walks the abandoned branch newest first within the token budget; collecting the messages must not copy the list again for each one.
+	testscaling.Check(t, testscaling.Case{Name: "branch summary PrepareBranchEntries at history n", Size: 100, Bound: testscaling.Linear, Prepare: func(n int) func() {
+		branch := scalingBranch(n)
+		return func() {
+			if _, err := PrepareBranchEntries(branch, 1_000_000_000); err != nil {
+				panic(err)
+			}
+		}
+	}})
 }

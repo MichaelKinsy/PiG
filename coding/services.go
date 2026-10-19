@@ -427,10 +427,8 @@ func (runtime *ModelRuntime) GetModel(providerID, modelID string) *ai.Model {
 	if model := runtime.virtuals.model(providerID, modelID); model != nil {
 		return model
 	}
-	for _, model := range runtime.services.Registry().GetProviderModelData(providerID) {
-		if model.ID == modelID {
-			return runtime.bindCatalogModel(model)
-		}
+	if model := runtime.services.Registry().GetProviderModelDataByID(providerID, modelID); model != nil {
+		return runtime.bindCatalogModel(model)
 	}
 	return nil
 }

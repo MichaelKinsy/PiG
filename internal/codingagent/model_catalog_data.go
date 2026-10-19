@@ -99,6 +99,25 @@ func plainModelData(generated []ai.GeneratedModel) []*ai.Model {
 	return ai.OfferedModels(models)
 }
 
+// GetProviderModelDataByID is the first model of GetProviderModelData(id) whose ID is modelID, or nil. A plain bundled catalog is searched
+// by entry and only the match is built, where GetProviderModelData builds every model of the provider (about 8 allocations and 1 KB each).
+func (r *ModelRegistry) GetProviderModelDataByID(id, modelID string) *ai.Model {
+	if plain, ok := r.plainGeneratedModels(id); ok {
+		for _, generated := range ai.OfferedGeneratedModels(plain) {
+			if generated.ID == modelID {
+				return generated.ToModel()
+			}
+		}
+		return nil
+	}
+	for _, model := range r.GetProviderModelData(id) {
+		if model.ID == modelID {
+			return model
+		}
+	}
+	return nil
+}
+
 // GetAllModelData returns the composed catalog in provider order without running credential configuration expressions.
 func (r *ModelRegistry) GetAllModelData() []*ai.Model {
 	var models []*ai.Model

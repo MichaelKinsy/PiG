@@ -3,6 +3,7 @@ package codingagent
 // Ports packages/coding-agent/src/core/provider-composer.ts.
 
 import (
+	"container/heap"
 	"context"
 	"fmt"
 	"maps"
@@ -48,12 +49,13 @@ func nativeModelFromEntry(entry ModelEntry) *ai.Model {
 func applyNativeExtensionModels(id string, base []*ai.Model, anyDefinitions []ai.AnyModel, extension ProviderConfigInput) ([]*ai.Model, error) {
 	definitions := chatModelsOf(anyDefinitions)
 	models := make([]*ai.Model, 0, len(definitions))
+	baseIndex := newNativeModelIndex(base)
 	for _, definition := range definitions {
 		model := new(*definition)
 		model.ProviderMeta.ProviderID = id
 		model.ProviderMeta.API = ai.API(firstModelValue(string(model.ProviderMeta.API), string(extension.API)))
 		model.ProviderMeta.BaseURL = firstModelValue(model.ProviderMeta.BaseURL, extension.BaseURL)
-		defaults := findNativeModelDefaults(base, model.ID, model.ProviderMeta.API)
+		defaults := baseIndex.find(model.ID, model.ProviderMeta.API)
 		if defaults != nil {
 			model.ProviderMeta.API = ai.API(firstModelValue(string(model.ProviderMeta.API), string(defaults.ProviderMeta.API)))
 			model.ProviderMeta.BaseURL = firstModelValue(model.ProviderMeta.BaseURL, defaults.ProviderMeta.BaseURL)
@@ -71,28 +73,110 @@ func applyNativeExtensionModels(id string, base []*ai.Model, anyDefinitions []ai
 	return models, nil
 }
 
-func findNativeModelDefaults(models []*ai.Model, id string, api ai.API) *ai.Model {
-	for _, model := range models {
-		if model.ID == id {
-			return model
+// nativeModelIndex answers findModelDefaults (provider-composer.ts) for a model list without scanning it for every lookup: the model with
+// the id (the first of any duplicates), else the first model with the api, else the first openai-completions model, else the first model.
+// replace and add keep the answers those scans would give after the list changes.
+type nativeModelIndex struct {
+	models []*ai.Model
+	byID   map[string]int
+	// byAPI holds, per api, candidate indexes of models with that api as a min-heap. An entry whose model has since changed api is
+	// dropped when it surfaces, so the top valid entry is the first model with the api.
+	byAPI map[ai.API]*nativeIndexHeap
+}
+
+type nativeIndexHeap []int
+
+func (h nativeIndexHeap) Len() int           { return len(h) }
+func (h nativeIndexHeap) Less(i, j int) bool { return h[i] < h[j] }
+func (h nativeIndexHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *nativeIndexHeap) Push(x any)        { *h = append(*h, x.(int)) }
+func (h *nativeIndexHeap) Pop() any {
+	old := *h
+	last := old[len(old)-1]
+	*h = old[:len(old)-1]
+	return last
+}
+
+// newNativeModelIndex indexes models, which the index keeps and updates in place through replace and add.
+func newNativeModelIndex(models []*ai.Model) *nativeModelIndex {
+	index := &nativeModelIndex{models: models, byID: make(map[string]int, len(models)), byAPI: map[ai.API]*nativeIndexHeap{}}
+	for i, model := range models {
+		if _, seen := index.byID[model.ID]; !seen {
+			index.byID[model.ID] = i
 		}
-	}
-	if api != "" {
-		for _, model := range models {
-			if model.ProviderMeta.API == api {
-				return model
-			}
+		// Ascending indexes appended in order are already a valid min-heap.
+		h := index.byAPI[model.ProviderMeta.API]
+		if h == nil {
+			h = &nativeIndexHeap{}
+			index.byAPI[model.ProviderMeta.API] = h
 		}
+		*h = append(*h, i)
 	}
-	for _, model := range models {
-		if model.ProviderMeta.API == ai.APIOpenAICompletions {
-			return model
+	return index
+}
+
+func (n *nativeModelIndex) push(i int, api ai.API) {
+	h := n.byAPI[api]
+	if h == nil {
+		h = &nativeIndexHeap{}
+		n.byAPI[api] = h
+	}
+	heap.Push(h, i)
+}
+
+func (n *nativeModelIndex) firstWithAPI(api ai.API) *ai.Model {
+	h := n.byAPI[api]
+	if h == nil {
+		return nil
+	}
+	for h.Len() > 0 {
+		if i := (*h)[0]; n.models[i].ProviderMeta.API == api {
+			return n.models[i]
 		}
-	}
-	if len(models) > 0 {
-		return models[0]
+		heap.Pop(h)
 	}
 	return nil
+}
+
+// find is provider-composer.ts findModelDefaults over the current models.
+func (n *nativeModelIndex) find(id string, api ai.API) *ai.Model {
+	if i, ok := n.byID[id]; ok {
+		return n.models[i]
+	}
+	if api != "" {
+		if model := n.firstWithAPI(api); model != nil {
+			return model
+		}
+	}
+	if model := n.firstWithAPI(ai.APIOpenAICompletions); model != nil {
+		return model
+	}
+	if len(n.models) > 0 {
+		return n.models[0]
+	}
+	return nil
+}
+
+// indexOf is the position of the first model with the id, or -1.
+func (n *nativeModelIndex) indexOf(id string) int {
+	if i, ok := n.byID[id]; ok {
+		return i
+	}
+	return -1
+}
+
+// replace puts model, which has the id of the model it replaces, at index i.
+func (n *nativeModelIndex) replace(i int, model *ai.Model) {
+	n.models[i] = model
+	n.push(i, model.ProviderMeta.API)
+}
+
+// add appends a model whose id no model has.
+func (n *nativeModelIndex) add(model *ai.Model) {
+	n.models = append(n.models, model)
+	i := len(n.models) - 1
+	n.byID[model.ID] = i
+	n.push(i, model.ProviderMeta.API)
 }
 
 // anyModelBaseURL reads the base URL of a model of any type.
@@ -248,10 +332,13 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 				entry.Compat = mergeCompat((*providerCompat)(entry.Compat), config.Compat)
 				models[i] = nativeModelFromEntry(entry)
 			}
+			// The definitions replace or extend the list one by one, each looking up the list as the definitions before it left it;
+			// the index answers those lookups without a scan of the list per definition.
+			composed := newNativeModelIndex(models)
 			for _, definition := range config.Models {
 				entry := modelDefinitionEntry(base.ID, config, definition)
-				index := slices.IndexFunc(models, func(model *ai.Model) bool { return model.ID == definition.ID })
-				defaults := findNativeModelDefaults(models, definition.ID, ai.API(firstModelValue(definition.API, config.API)))
+				index := composed.indexOf(definition.ID)
+				defaults := composed.find(definition.ID, ai.API(firstModelValue(definition.API, config.API)))
 				if defaults != nil {
 					entry.API = firstModelValue(entry.API, string(defaults.ProviderMeta.API))
 					entry.BaseURL = firstModelValue(entry.BaseURL, defaults.ProviderMeta.BaseURL)
@@ -266,11 +353,12 @@ func (r *ModelRegistry) composeNativeProvider(base *ai.ModelsProvider, extension
 				}
 				model := nativeModelFromEntry(entry)
 				if index >= 0 {
-					models[index] = model
+					composed.replace(index, model)
 				} else {
-					models = append(models, model)
+					composed.add(model)
 				}
 			}
+			models = composed.models
 		}
 		return models, nil
 	}
