@@ -695,8 +695,13 @@
  "packages/chord/src/publish.ts": [
   {
    "file": "chord/host/publish.go",
-   "old": "if publications.draining || publications.held > 0 {",
-   "new": "if publications.held > 0 {"
+   "old": "if queue.draining || queue.held > 0 {",
+   "new": "if queue.held > 0 {"
+  },
+  {
+   "file": "chord/host/publish.go",
+   "old": "if current := deliveringQueue(); current != nil && current != queue {\n\t\t// The queue",
+   "new": "if current := deliveringQueue(); current != nil && current == nil {\n\t\t// The queue"
   }
  ],
  "packages/chord/src/schema.ts": [
