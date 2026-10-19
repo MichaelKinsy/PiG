@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-892 bugs. 842 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+893 bugs. 843 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -902,6 +902,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
+| [BF-fb22c33](#bf-fb22c33) | `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer… | PiG's own defect | Windows | Unreleased |
 | [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
 | [BF-97ecff0](#bf-97ecff0) | A Durable core session with many live tasks recomputes its next wake without walking every live task on each… | PiG's own defect | All platforms | Unreleased |
@@ -910,7 +911,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b-3](#bf-c2cdd5b-3) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | Unreleased |
 | [BF-dea7cbc](#bf-dea7cbc) | A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no… | PiG's own defect | All platforms | Unreleased |
-| [BF-fb22c33](#bf-fb22c33) | `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer… | PiG's own defect | Windows | Unreleased |
+| [BF-4dbaccf](#bf-4dbaccf) | A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13218,6 +13219,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/message_go_escapes_allocs_norace_test.go::TestSystemMessageWithEscapedCharactersDecodesAtTheCostOfOneWithout`, `agent/message_go_escapes_test.go::TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing`, `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `ai/main_test.go::TestMain` and 29 more in docs/bug-ledger.json
 - **Release note:** A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it. The abort cancelled the call before its tool started, and the native core driver ended the call without telling the core, which settles a cancelled call only on that report. The call now reports the cancelled lookup as a thrown result, as it reports a tool that observes the cancel. It stalled once in about 1,000 CI runs of the abort-with-generation test under the race detector.
 
+### BF-fb22c33
+
+**`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `263f65829f` (2026-10-18), `fb22c33c7b` (2026-10-18)
+- **Tests:** `durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut`, `durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix`, `durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers`, `env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon`, `env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields`, `env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths`, `env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv`, `env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus` and 9 more in docs/bug-ledger.json
+- **Release note:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+
 ### BF-9f31a8b
 
 **A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…**
@@ -13330,19 +13345,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds`, `durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt`, `durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed` and 9 more in docs/bug-ledger.json
 - **Release note:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.
 
-### BF-fb22c33
+### BF-4dbaccf
 
-**`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…**
+**A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…**
 
 - **Source:** PiG's own defect
-- **Symptom:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** Windows
+- **Symptom:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.
+- **Root cause:** mirror.ScanTasks loaded every task into the mirror for status '' or terminal and filtered in memory, so a cold page cost O(all tasks): 36 ms per 100-task page at 8,000 tasks, and every page went cold after the mirror released its held terminal tasks. It now reads storage one page at a time with the id-ordered keyset statements (new SQLTasksDesc for newest first), filters on the row columns, parses only the page's rows and stops at limit+1 matches; the mirror's held tasks win over stored rows. A page costs about 0.55 ms at any task count. Pi's sqlite scanTasks reads storage per page the same way (storage.ts:433-470); hop and tick charging is unchanged (one modeled ReadRow per call).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `263f65829f` (2026-10-18), `fb22c33c7b` (2026-10-18)
-- **Tests:** `durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut`, `durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix`, `durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers`, `env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon`, `env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields`, `env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths`, `env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv`, `env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus` and 9 more in docs/bug-ledger.json
-- **Release note:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+- **Fix commits:** `2934eba06f` (2026-10-18), `4dbaccfae0` (2026-10-18), `b106c51c4f` (2026-10-18), `d0c524009a` (2026-10-18), `da0fae4095` (2026-10-18), `de44764ac1` (2026-10-18)
+- **Tests:** `ai/port_wave_12_zai_coding_plan_models_test.go::TestPortWave12ZAICodingPlanModels`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration`, `durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex`, `durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks` and 5 more in docs/bug-ledger.json
+- **Release note:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count. Listing a conversation owner's conversations reads only that owner's.
 
 ## Divergences from Pi added in this release
 

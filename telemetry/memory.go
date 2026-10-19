@@ -5,7 +5,6 @@ package telemetry
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"maps"
 	"math"
 	"reflect"
