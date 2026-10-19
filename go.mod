@@ -2,6 +2,9 @@ module github.com/MichaelKinsy/PiG
 
 go 1.26.0
 
+// v0.5.0 cannot be installed with go install: its module source is larger than the Go module size limit. Use v0.5.1 or later.
+retract v0.5.0
+
 // Equal to .go-version, the one Go pin. make compliance and TestGoVersionPolicy reject any other version.
 toolchain go1.27.2
 
