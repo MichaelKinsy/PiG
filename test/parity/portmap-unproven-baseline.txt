@@ -143,9 +143,6 @@ packages/ai/src/utils/sleep.ts
 packages/ai/src/utils/text.ts
 packages/ai/src/utils/typebox-helpers.ts
 packages/ai/src/utils/validation.ts
-packages/chord/src/delta/tracker.ts
-packages/chord/src/index.ts
-packages/chord/src/types.ts
 packages/codemode/src/wasm.ts
 packages/coding-agent/src/cli.ts
 packages/coding-agent/src/cli/auth-check.ts

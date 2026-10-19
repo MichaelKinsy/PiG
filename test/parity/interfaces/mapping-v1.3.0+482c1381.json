@@ -156739,9 +156739,9 @@
       "id": "pkg:coding-agent/.#FindToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:781940df6d4b596d74dc7f9855f1c1f25d7be977c08a236a3c021b4575cb1a5d",
-      "rationale": "Derived by the interface gap detector: FindToolInput is Go coding/extension/opaque_types.go#FindToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FindToolInput is Go coding/extension/find_tool_input.go#FindToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#FindToolInput"
+        "coding/extension/find_tool_input.go#FindToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -156749,7 +156749,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#FindToolInput"
+        "public-api:coding/extension/find_tool_input.go#FindToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
