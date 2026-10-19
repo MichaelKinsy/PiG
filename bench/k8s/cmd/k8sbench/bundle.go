@@ -128,6 +128,14 @@ var sourceAgentPins = map[string]agentPins{
 		},
 		tree: "70c54d0f40935fe4fa1d65b2f68fb6391ebb74e562cb6d4a93a4936a19b1bdc2",
 	},
+	"1402973a9dbe8c627341e04c9744c54953e285ca": {
+		files: map[string]string{
+			"pi-agent/package.json":      "49bcc92772c7bb1fbb6597e3a3d5671b586f34627bd76c964b25b291af9a3d5e",
+			"pi-agent/package-lock.json": "7a9e93040d613102a6ed3d0f27e395a28953dd0537d9f867d1ce983dd394ef7a",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "adb60a51ae5528a655308d856bdffef4ef4034c9976489511072f4e92d8cd3ee",
+	},
 	"8efd314fa3d3232ce197d8d7a6a5660530b9d83e": {
 		files: map[string]string{
 			"pi-agent/package.json":      "49bcc92772c7bb1fbb6597e3a3d5671b586f34627bd76c964b25b291af9a3d5e",
