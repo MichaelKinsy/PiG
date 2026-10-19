@@ -116068,6 +116068,17 @@
       "shapeHash": "sha256:ca18ce3f6367fcf272972e3f4e6d99f2dd73db0c325b8c8b1e842d2c61d8394c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.awaitConnection",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.awaitConnection",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, ln net.Listener, exited \u003c-chan struct{}) (net.Conn, acceptOutcome, error)"
+      },
+      "shapeHash": "sha256:5ad95d1ce6578a2ccbbdb520cdd4fc885599e78cfe96a9ae280430aea244ed7f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.awaitParkAck",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.awaitParkAck",
@@ -123581,6 +123592,83 @@
       "shapeHash": "sha256:a858f12363df3c5f0b142f363120388e7319597e8fd01de56daffd189e23b98a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptCancelled",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acceptCancelled",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "acceptOutcome"
+      },
+      "shapeHash": "sha256:c9774dc22080a8b9578e2fd554a10802f85bf2161668d3307da0a0e9372e83d8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptConnected",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acceptConnected",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "acceptOutcome"
+      },
+      "shapeHash": "sha256:c9774dc22080a8b9578e2fd554a10802f85bf2161668d3307da0a0e9372e83d8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptFailed",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acceptFailed",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "acceptOutcome"
+      },
+      "shapeHash": "sha256:c9774dc22080a8b9578e2fd554a10802f85bf2161668d3307da0a0e9372e83d8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptGateFunc",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acceptGateFunc",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "acceptGateFunc"
+      },
+      "shapeHash": "sha256:775703767ef2b2e8707219fefd31ef466b8aaeac95e4fd29c4dccf630cf38c84"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptOutcome",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acceptOutcome",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "acceptOutcome"
+      },
+      "shapeHash": "sha256:c9774dc22080a8b9578e2fd554a10802f85bf2161668d3307da0a0e9372e83d8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptProcessExited",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acceptProcessExited",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "acceptOutcome"
+      },
+      "shapeHash": "sha256:c9774dc22080a8b9578e2fd554a10802f85bf2161668d3307da0a0e9372e83d8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptQueued",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "acceptQueued",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ln net.Listener) (net.Conn, error)"
+      },
+      "shapeHash": "sha256:e196a0eba6bf6a9680f59fb070eaaaf1d892ac2039a67cd4de5b330d7353d7c2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptView",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "acceptView",
@@ -124912,6 +125000,17 @@
       "shapeHash": "sha256:b24cc7b34f8c50679901cbf1afef5f4513debb8d8fd35e380061eb83b5e238aa"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#deadlineListener",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "deadlineListener",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "deadlineListener"
+      },
+      "shapeHash": "sha256:201eda7332acf1f5db1156726c0cfad4aaa839499845d60383ead501ad54b103"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#decodeAuthEvent",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "decodeAuthEvent",
@@ -126210,6 +126309,688 @@
       "shapeHash": "sha256:6e0dd6935f1c114bc602a4be2fdb5f1214abe33a0b85bd2da676eaafdcf450e7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "time.Time"
+      },
+      "shapeHash": "sha256:a91914605e4a91aa52812a8629d1d6c4dc4e60e166e7dee5e83722371289bc97"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Add",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Add",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(d time.Duration) time.Time"
+      },
+      "shapeHash": "sha256:1bccb86dfff99e60b129a9b5d7c3d66f57d5cbf4d90dc40df4f5f1e2fe7c6c7d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.AddDate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.AddDate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(years int, months int, days int) time.Time"
+      },
+      "shapeHash": "sha256:dc5e455a8cd7091d102bedf1936e4ceaf7db0ab94dac8445382cd700d1b03364"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.After",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.After",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(u time.Time) bool"
+      },
+      "shapeHash": "sha256:60cbc65af6d6965614c5598311774361a9df0b9101bfb109d9de170a46d88228"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.AppendBinary",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.AppendBinary",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(b []byte) ([]byte, error)"
+      },
+      "shapeHash": "sha256:0480325936456c4be4738bfece9754f61c6f100f0a7465d8b83d6945bca369dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.AppendFormat",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.AppendFormat",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(b []byte, layout string) []byte"
+      },
+      "shapeHash": "sha256:0a518c5b0bc7de0d01b0d0039b457d779e7c235d695c4bf42dc0256173c913a3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.AppendText",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.AppendText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(b []byte) ([]byte, error)"
+      },
+      "shapeHash": "sha256:0480325936456c4be4738bfece9754f61c6f100f0a7465d8b83d6945bca369dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Before",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Before",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(u time.Time) bool"
+      },
+      "shapeHash": "sha256:60cbc65af6d6965614c5598311774361a9df0b9101bfb109d9de170a46d88228"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Clock",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Clock",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (hour int, min int, sec int)"
+      },
+      "shapeHash": "sha256:70468e7856551a92f0ada5fae5027c1b70ca11575e8bef06ede041ab320199a1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Compare",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Compare",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(u time.Time) int"
+      },
+      "shapeHash": "sha256:2af8befe3b7e244ac580b295b566de2ed5b6ef2b68897e0e16e159a6f0d0615d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Date",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Date",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (year int, month time.Month, day int)"
+      },
+      "shapeHash": "sha256:7717d42f48c9262b0f00367125dd65c2130b7582bbff805bb9b907a694589389"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Day",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Day",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Equal",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Equal",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(u time.Time) bool"
+      },
+      "shapeHash": "sha256:60cbc65af6d6965614c5598311774361a9df0b9101bfb109d9de170a46d88228"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Format",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Format",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(layout string) string"
+      },
+      "shapeHash": "sha256:4984ab40b58fe6531640f78232956c59f9d0b55ebf4783a8c77d6636f13169c7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.GoString",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.GoString",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.GobDecode",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.GobDecode",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.GobEncode",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.GobEncode",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Hour",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Hour",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.ISOWeek",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.ISOWeek",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (year int, week int)"
+      },
+      "shapeHash": "sha256:ac7cc3b61faae2fe9eb9108a723f4795a74b76b8cc9078a5ee963fff2ee03b95"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.In",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.In",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(loc *time.Location) time.Time"
+      },
+      "shapeHash": "sha256:3a5b24964b65611e27bc4c4011df951813a021286900554cfcf29170ec0f42b1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.IsDST",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.IsDST",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.IsZero",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.IsZero",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Local",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Local",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Time"
+      },
+      "shapeHash": "sha256:2e22bffc678f9368aec638f9e5c41c11f2326f6894a601fde6fd2616a093ec7b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Location",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Location",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *time.Location"
+      },
+      "shapeHash": "sha256:3f12dec3f39ed0edc5883c2ec2fee4721190314141e8a7037d48176e702788c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.MarshalBinary",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.MarshalBinary",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.MarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.MarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.MarshalText",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.MarshalText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() ([]byte, error)"
+      },
+      "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Minute",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Minute",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Month",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Month",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Month"
+      },
+      "shapeHash": "sha256:6fbb0bd5eec5581ff46d88e23ee6a983de2e585fa458dc34d103d4c25f324d1d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Nanosecond",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Nanosecond",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(d time.Duration) time.Time"
+      },
+      "shapeHash": "sha256:1bccb86dfff99e60b129a9b5d7c3d66f57d5cbf4d90dc40df4f5f1e2fe7c6c7d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Second",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Second",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Sub",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Sub",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(u time.Time) time.Duration"
+      },
+      "shapeHash": "sha256:a3b49d6e88a78894da02ed2c1e01be395a9c3fb50e7f69769856e3f2187f193a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(d time.Duration) time.Time"
+      },
+      "shapeHash": "sha256:1bccb86dfff99e60b129a9b5d7c3d66f57d5cbf4d90dc40df4f5f1e2fe7c6c7d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.UTC",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.UTC",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Time"
+      },
+      "shapeHash": "sha256:2e22bffc678f9368aec638f9e5c41c11f2326f6894a601fde6fd2616a093ec7b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Unix",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Unix",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.UnixMicro",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.UnixMicro",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.UnixMilli",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.UnixMilli",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.UnixNano",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.UnixNano",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.UnmarshalBinary",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.UnmarshalBinary",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.UnmarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.UnmarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.UnmarshalText",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.UnmarshalText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Weekday",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Weekday",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Weekday"
+      },
+      "shapeHash": "sha256:27422690a4b41ef85bc9f7ed864cc7d44f041a69c47c2c8dafc71f435381d05e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Year",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Year",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.YearDay",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.YearDay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.Zone",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.Zone",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (name string, offset int)"
+      },
+      "shapeHash": "sha256:86b8a6cce8a4e99d00f9e964d2218554f267aacf60e4f28d24a7c0ce9af957f9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.ZoneBounds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.ZoneBounds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (start time.Time, end time.Time)"
+      },
+      "shapeHash": "sha256:7a3b8f076b0814495710c6f82e737bc71939d4481da2b1183c6b6567ed736a5f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.absSec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.absSec",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() time.absSeconds"
+      },
+      "shapeHash": "sha256:53cd49a343d94f4acc99efec9f6783becbe1fee86a002b85c3d477e2413e6806"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.addSec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.addSec",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(d int64)"
+      },
+      "shapeHash": "sha256:6b20515ccbcf0946cc467b0121719f63349869a4fd1b1e10e40818143b2b2ab6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.appendFormat",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.appendFormat",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b []byte, layout string) []byte"
+      },
+      "shapeHash": "sha256:0a518c5b0bc7de0d01b0d0039b457d779e7c235d695c4bf42dc0256173c913a3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.appendFormatRFC3339",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.appendFormatRFC3339",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b []byte, nanos bool) []byte"
+      },
+      "shapeHash": "sha256:599ae2e43177433d2009884081c8ceabf94f0238bc1dbbf3dc7790dbf13c87b9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.appendStrictRFC3339",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.appendStrictRFC3339",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b []byte) ([]byte, error)"
+      },
+      "shapeHash": "sha256:0480325936456c4be4738bfece9754f61c6f100f0a7465d8b83d6945bca369dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.appendTo",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.appendTo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b []byte, errPrefix string) ([]byte, error)"
+      },
+      "shapeHash": "sha256:397390aed645346389014626984c6f65d55c7a9162e3c03ff6115099f3c9e757"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.locabs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.locabs",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (name string, offset int, abs time.absSeconds)"
+      },
+      "shapeHash": "sha256:a9515e56672a648cec34b1cc37c5ee9fb3d7be0925b6f62414a8cf134a45f703"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.mono",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.mono",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.nsec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.nsec",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int32"
+      },
+      "shapeHash": "sha256:497acb0f151fe3f0bf3a4577b97bef65b95399e81f77f8db664900273304fe7b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.sec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.sec",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.setLoc",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.setLoc",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(loc *time.Location)"
+      },
+      "shapeHash": "sha256:fc2c171aa958ff4e6c1b586dfa4ec13f10b28f24ecdf48e865d45a65529ec668"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.setMono",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.setMono",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(m int64)"
+      },
+      "shapeHash": "sha256:630d5c54c7cf692120f276c8ce64327ebb0deabd037631829cd67576cb5c7233"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.stripMono",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.stripMono",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline.unixSec",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "expiredDeadline.unixSec",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#extConfigOrigin",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "extConfigOrigin",
@@ -127231,6 +128012,17 @@
         "type": "func(p *int, fallback int) int"
       },
       "shapeHash": "sha256:1637c628c309b1c36ee194b588116ab9993dac1759f50aa09076ae84d0db3432"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#interruptAccept",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "interruptAccept",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ln net.Listener)"
+      },
+      "shapeHash": "sha256:ebeefbcf08374c98b4b1638c842564d7e27596b50a3fbab78c9ea24f71dfe481"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#invalidateGeneration",

@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-914 bugs. 864 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 136 bugs have no recorded test.
+915 bugs. 865 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 136 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -933,6 +933,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-02ed4f1](#bf-02ed4f1) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
 | [BF-2e70b95](#bf-2e70b95) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
 | [BF-b1421b7](#bf-b1421b7) | `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-ba44e9f](#bf-ba44e9f) | A Node extension whose factory failed, because it has no default export or throws while initializing, could… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13673,6 +13674,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b1421b7ef6` (2026-10-18), `c2cdd5b680` (2026-10-18)
 - **Tests:** `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues`, `chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered` and 5 more in docs/bug-ledger.json
 - **Release note:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
+
+### BF-ba44e9f
+
+**A Node extension whose factory failed, because it has no default export or throws while initializing, could…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension whose factory failed, because it has no default export or throws while initializing, could be reported as `connect:process_exited ... exit status 1` instead of Pi's "Extension does not export a valid factory function: <path>" or "Failed to load extension: <message>".
+- **Root cause:** Six tui tests raced or timed out under load because they shared state with real timers or waited on real process timing: - the empty user-message picker auto-cancels from a time.AfterFunc goroutine (user-message-selector.ts:146) while the test read its recorder unsynchronized (DATA RACE at native_selectors_test.go:344, which failed whichever test ran when it was reported); - overlay bounds, mouse hit-testing and the Kitty cleanup harness let a real frame timer render or write the buffer the test was reading; - the async fd search test needed two sleep 3 runs inside 11 s; - the empty tree selector test asserted no cancel after a 40 ms sleep.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0a01a68005` (2026-10-18), `14917a4072` (2026-10-18), `20d8539bc6` (2026-10-18), `54343f1288` (2026-10-18), `761bc17c1b` (2026-10-18), `7e2f89fc0d` (2026-10-18), `853104d25c` (2026-10-18), `ba010df022` (2026-10-18), `e215cf92f8` (2026-10-18), `4a0a8a0067` (2026-10-19), `87b8d3f90c` (2026-10-19), `ba44e9f6ba` (2026-10-19)
+- **Tests:** `agent/testmain_leak_test.go::TestMain`, `ai/llama_cpp_classify_oracle_test.go::TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer`, `ai/openai_responses_item_throws_test.go::TestOpenAIResponsesItemStreamServerLeavesNothingForTheNextServer`, `ai/openai_responses_item_throws_test.go::TestOpenAIResponsesOutputItemTypeErrorsMatchPi`, `chord/host/generations_sentinel_test.go::TestGenerationSentinelIsCollectedWhateverIsAllocatedNextToIt`, `chord/host/loader_entry_test.go::TestNodeLoaderEntryIsPrivateAndRemovable`, `chord/host/loader_entry_test.go::TestNodeLoaderLeavesNothingInTheTempDirectory`, `chord/host/loader_entry_test.go::TestNodeLoaderSurvivesAnotherProcessesCleanupOfTheTempDirectory` and 67 more in docs/bug-ledger.json
+- **Release note:** A Node extension whose factory failed, because it has no default export or throws while initializing, could be reported as `connect:process_exited ... exit status 1` instead of Pi's "Extension does not export a valid factory function: <path>" or "Failed to load extension: <message>". The extension's runtime reports that error over its socket and exits; on a loaded machine the host looked after the exit and chose between the connection and the exit by whichever it noticed first, which failed about 1 run in 20 of the upstream extension-discovery tests. The host now accepts the connection the extension made before it exited, in both a packed cell and an isolated process, and reports `process_exited` only for a process that never connected.
 
 ## Divergences from Pi added in this release
 
