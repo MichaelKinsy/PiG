@@ -91,10 +91,19 @@ func findBashOnPath(ctx context.Context) string {
 	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Pipe, nodespawn.Ignore)
 	nodespawn.SetProgram(command)
 	output, err := command.Output()
-	if err != nil || len(output) == 0 {
+	if err != nil {
 		return ""
 	}
-	firstMatch, _, _ := strings.Cut(strings.ReplaceAll(jsstring.Trim(string(output)), "\r\n", "\n"), "\n")
+	return bashFromWhichOutput(string(output))
+}
+
+// bashFromWhichOutput is upstream findBashOnPath's reading of the answer, `result.stdout.trim().split(/\r?\n/)[0]`, kept when that
+// path exists. A command that wrote nothing found no bash.
+func bashFromWhichOutput(stdout string) string {
+	if stdout == "" {
+		return ""
+	}
+	firstMatch, _, _ := strings.Cut(strings.ReplaceAll(jsstring.Trim(stdout), "\r\n", "\n"), "\n")
 	if firstMatch != "" && pathExists(firstMatch) {
 		return firstMatch
 	}

@@ -188,16 +188,16 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		timeMu   sync.Mutex
 	)
 	kill := func() { killOnce.Do(func() { _ = killProcessGroup(cmd.Process) }) }
+	var timer <-chan time.Time
+	if hasTimeout {
+		var stopTimer func()
+		timer, stopTimer = newTimeoutTimer(timeout)
+		defer stopTimer()
+	}
 	stopWatch := make(chan struct{})
 	watchDone := make(chan struct{})
 	go func() {
 		defer close(watchDone)
-		var timer <-chan time.Time
-		if hasTimeout {
-			t := time.NewTimer(timeout)
-			defer t.Stop()
-			timer = t.C
-		}
 		select {
 		case <-ctx.Done():
 			kill()
@@ -299,3 +299,16 @@ var (
 	testHookStdioGraceExpired func()
 	testHookAfterShellStart   func()
 )
+
+// testHookTimeoutTimer replaces the wall-clock timer that arms a command's timeout, so a test can fire the timeout once the command has done
+// what the test needs: Pi arms its timeout as a delay after the spawn, which a machine too loaded to start the shell in time overruns before
+// the command has run. It returns the channel the timeout arrives on and the function that stops the timer. Nil outside tests.
+var testHookTimeoutTimer func(timeout time.Duration) (<-chan time.Time, func())
+
+func newTimeoutTimer(timeout time.Duration) (<-chan time.Time, func()) {
+	if testHookTimeoutTimer != nil {
+		return testHookTimeoutTimer(timeout)
+	}
+	t := time.NewTimer(timeout)
+	return t.C, func() { t.Stop() }
+}

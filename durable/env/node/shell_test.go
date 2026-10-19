@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -131,29 +132,25 @@ func TestShellUsesStdinCommandTransportForLegacyWSLBashPaths(t *testing.T) {
 // Upstream gates this case to win32 and spawns a detached Node descendant. The
 // same inherited-stdio shape (a background process holding stdout open after the
 // shell exits) runs on every platform here.
+//
+// Upstream bounds the whole exec at 3 s, a wall clock that includes starting the shell and that a machine too loaded to start a process
+// that fast overruns. What the case shows is that exec settles without waiting for the descendant, so the descendant here ends only when
+// the test releases it after exec has settled: an exec that waited for the descendant's end would not have settled, and the descendant
+// would have written its exit marker. The descendant gives up after 60 s only so that such a regression fails the check instead of hanging.
 func TestShellSettlesAfterTheShellExitsWhenADetachedDescendantRetainsInheritedStdio(t *testing.T) {
 	root := t.TempDir()
 	pidFile := filepath.Join(root, "grandchild.pid")
+	release := filepath.Join(root, "release")
+	exited := filepath.Join(root, "exited")
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: root})
-	ctx, cancel := cancellable()
-	defer cancel()
 	t.Cleanup(func() { killRecordedProcess(pidFile) })
-	command := `sleep 60 & echo $! > ` + toBashSingleQuotedArg(pidFile) + `; echo child-exiting`
-	done := make(chan struct{})
-	var output string
-	var execErr error
-	go func() {
-		defer close(done)
-		_, output, execErr = collectShellOutput(env, command, nil, ctx)
-	}()
-	select {
-	case <-done:
-	case <-time.After(3 * time.Second):
-		cancel()
-		<-done
-		t.Fatal("exec did not settle within 3s of the shell exiting")
-	}
+	command := `(i=0; while [ ! -e ` + toBashSingleQuotedArg(release) + ` ] && [ $i -lt 1200 ]; do sleep 0.05; i=$((i+1)); done; echo > ` + toBashSingleQuotedArg(exited) + `) & echo $! > ` + toBashSingleQuotedArg(pidFile) + `; echo child-exiting`
+	_, output, execErr := collectShellOutput(env, command, nil, background)
 	mustDo(t, execErr)
+	if _, err := os.Stat(exited); err == nil {
+		t.Fatal("exec settled only after the descendant ended")
+	}
+	mustDo(t, os.WriteFile(release, nil, 0o600))
 	if !strings.Contains(output, "child-exiting") {
 		t.Fatalf("output = %q", output)
 	}
@@ -384,9 +381,31 @@ func TestShellPreservesExactRawBytesInTheSpillWhileStreamingDecodedText(t *testi
 
 // mutation-checked: dropping the reads and writes of ExecutionError.SpillPath fails it
 // Pi: packages/durable/src/env/index.ts:68 (spillPath)
+//
+// The timeout fires when the command's output has arrived, not 0.3 s after the spawn: a machine too loaded to start the shell in that time
+// would time the command out before it wrote anything, and there would be no spill to report.
 func TestShellReportsTheSpillOfACommandThatTimesOut(t *testing.T) {
 	env, _ := newTestEnv(t)
-	_, err := env.Exec(background, "printf 12345678901234567890; sleep 30", &durableenv.ShellExecOptions{Timeout: new(3.0), Spill: &durableenv.ShellSpillOptions{AfterBytes: 10, AfterLines: 10}})
+	original := afterTimeout
+	t.Cleanup(func() { afterTimeout = original })
+	var fire func()
+	var fired atomic.Bool
+	afterTimeout = func(_ time.Duration, f func()) func() bool {
+		fire = f
+		return func() bool { return !fired.Load() }
+	}
+	const output = "12345678901234567890"
+	var seen strings.Builder
+	_, err := env.Exec(background, "printf "+output+"; sleep 30", &durableenv.ShellExecOptions{
+		Timeout: new(0.3),
+		Spill:   &durableenv.ShellSpillOptions{AfterBytes: 10, AfterLines: 10},
+		OnOutput: func(_ context.Context, text string, _ durableenv.ShellOutputInfo) {
+			// Calls to OnOutput do not overlap, so seen needs no lock.
+			if seen.WriteString(text); seen.Len() >= len(output) && fired.CompareAndSwap(false, true) {
+				fire()
+			}
+		},
+	})
 	failure := execErr(t, err, durableenv.ExecutionErrorTimeout)
 	if failure.SpillPath == "" {
 		t.Fatal("no spill path on the timeout error")

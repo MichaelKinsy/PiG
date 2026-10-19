@@ -241,6 +241,31 @@ func TestBashTimeoutMessage(t *testing.T) {
 	}
 }
 
+// A timed-out command keeps the output it wrote before the kill, ahead of the status. Pi: packages/coding-agent/src/core/tools/bash.ts:133
+// arms the timeout after the spawn, :153 throws timeout:N once the child is gone, :377 turns it into appendStatus(output so far,
+// "Command timed out after N seconds").
+//
+// The timeout fires when the output has arrived, not a delay after the spawn: a machine too loaded to start the shell in time would
+// time the command out before it wrote anything, and what the command wrote first is what this test is about.
+func TestBashTimeoutKeepsTheOutputWrittenBeforeTheKill(t *testing.T) {
+	var fire func()
+	testHookTimeoutTimer = func(time.Duration) (<-chan time.Time, func()) {
+		timeout := make(chan time.Time, 1)
+		fire = func() { timeout <- time.Now() }
+		return timeout, func() {}
+	}
+	t.Cleanup(func() { testHookTimeoutTimer = nil })
+	bt := &BashTool{CWD: t.TempDir(), Operations: firstOutputOperations{BashOperations: CreateLocalBashOperations(nil), onFirstOutput: func() { fire() }}}
+	args, _ := json.Marshal(bashParams{Command: "echo start; exec sleep 30", Timeout: 1})
+	res, err := bt.Execute(t.Context(), "", args, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "start\n\n\nCommand timed out after 1 seconds"; !res.IsError || res.Text() != want {
+		t.Fatalf("result = %q (error %v), want %q", res.Text(), res.IsError, want)
+	}
+}
+
 // TestBashRejectsOverlargeTimeout guards the duration-overflow path: a timeout
 // beyond maxBashTimeoutSeconds must be rejected, not silently wrapped negative
 // (which would expire the command immediately). Mirrors upstream resolveTimeoutMs.

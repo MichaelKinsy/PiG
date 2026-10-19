@@ -25,6 +25,15 @@ const (
 	outputChunkSize = 64 * 1024
 )
 
+// afterTimeout arms a command's timeout: f runs after d, and stop reports whether it stopped f before f started. Tests replace it to fire
+// the timeout once the command has done what the test needs, not a wall-clock delay after the spawn, which a machine too loaded to start
+// the shell in time overruns before the command has run at all.
+var afterTimeout = func(d time.Duration, f func()) (stop func() bool) { return time.AfterFunc(d, f).Stop }
+
+// testHookGraceExpired runs each time the post-exit stdio grace expires, before drain decides whether to keep waiting, so a test can
+// order a descendant's output after the grace without sleeping. Nil outside tests.
+var testHookGraceExpired func()
+
 func abortedExecution() *durableenv.ExecutionError {
 	return durableenv.NewExecutionError(durableenv.ExecutionErrorAborted, "aborted", nil)
 }
@@ -132,8 +141,7 @@ func (run *shellRun) execute(spec spawnSpec, cwd string, timeout time.Duration) 
 	defer run.env.untrackChild(cmd.Process.Pid)
 	if timeout > 0 {
 		onTimeout, drainTimeout := ownedCallback(run.timeout)
-		timer := time.AfterFunc(timeout, onTimeout)
-		defer drainTimeout(timer.Stop)
+		defer drainTimeout(afterTimeout(timeout, onTimeout))
 	}
 	onAbort, drainAbort := ownedCallback(run.kill)
 	defer drainAbort(context.AfterFunc(run.ctx, onAbort))
@@ -315,6 +323,9 @@ func (run *shellRun) drain(pumps *sync.WaitGroup, stdout, stderr *os.File) {
 		case <-run.activity:
 			grace.Reset(exitStdioGrace)
 		case <-grace.C:
+			if testHookGraceExpired != nil {
+				testHookGraceExpired()
+			}
 			if run.feeding.Load() > 0 {
 				grace.Reset(exitStdioGrace)
 				continue

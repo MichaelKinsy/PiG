@@ -7,7 +7,9 @@ import (
 	"math/rand"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
@@ -17,11 +19,20 @@ import (
 // The bash tool against pinned Pi over seeded commands (output on stdout and stderr, exit codes, no output, output past the line and byte limits,
 // multi-byte and invalid UTF-8 output, CRLF, ANSI, a timeout): the result text, its details and the error text. The directory a probe runs in
 // and the path of the full output file differ between runs and are masked.
+//
+// Pi arms a timeout as a delay after the spawn, so what a command wrote before the kill depends on how long the machine took to start the
+// shell: on a loaded one the timer fires before the first command has run, on either side, and the results differ without a difference in
+// the tools (process starts there take seconds). A timeout therefore never fires on its own in this test: the probe that is meant to time
+// out fires it when the command's first output arrives (testHookTimeoutTimer here, a replaced setTimeout in the oracle), so both sides kill
+// the same command in the same state and the output kept across the kill is compared.
 func TestBashToolMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewSource(173))
 	pick := func(items ...string) string { return items[rng.Intn(len(items))] }
 	type probe struct {
 		Args map[string]any `json:"args"`
+		// TimeoutOnOutput makes the command's timeout fire when its first output arrives, on both sides, instead of a wall-clock
+		// delay after the spawn. Every other probe's timeout is armed and never fires.
+		TimeoutOnOutput bool `json:"timeoutOnOutput"`
 	}
 	var probes []probe
 	for range 200 {
@@ -52,20 +63,23 @@ func TestBashToolMatchesPi(t *testing.T) {
 		case 11:
 			command = "printf 'x%.0s' $(seq 1 " + pick("1000", "70000") + ")"
 		case 12:
+			// exec leaves the killed command a single process. Otherwise a group kill can reach the sleep before the shell, which then
+			// reports the sleep's death and runs what follows: how long the kill takes to reach each process is up to the system.
 			command = "echo start"
 			if rng.Intn(3) == 0 {
-				command = "echo start; sleep 5; echo never"
+				command = "echo start; exec sleep 5"
 			}
 		default:
 			command = "echo a && echo b >&2 && false"
 		}
 		args := map[string]any{"command": command}
-		if strings.Contains(command, "sleep 5") {
+		timeoutOnOutput := strings.Contains(command, "sleep 5")
+		if timeoutOnOutput {
 			args["timeout"] = float64(1)
 		} else if rng.Intn(10) == 0 {
 			args["timeout"] = float64(10)
 		}
-		probes = append(probes, probe{Args: args})
+		probes = append(probes, probe{Args: args, TimeoutOnOutput: timeoutOnOutput})
 	}
 	input, err := json.Marshal(probes)
 	if err != nil {
@@ -100,9 +114,20 @@ func TestBashToolMatchesPi(t *testing.T) {
 		return encoded
 	}
 	failures, ok := 0, 0
+	t.Cleanup(func() { testHookTimeoutTimer = nil })
 	for i, p := range probes {
 		dir := t.TempDir()
-		tool := CreateBashTool(dir, nil)
+		var fire func()
+		testHookTimeoutTimer = func(time.Duration) (<-chan time.Time, func()) {
+			timeout := make(chan time.Time, 1)
+			fire = func() { timeout <- time.Now() }
+			return timeout, func() {}
+		}
+		var options *BashToolOptions
+		if p.TimeoutOnOutput {
+			options = &BashToolOptions{Operations: firstOutputOperations{BashOperations: CreateLocalBashOperations(nil), onFirstOutput: func() { fire() }}}
+		}
+		tool := CreateBashTool(dir, options)
 		args, _ := json.Marshal(p.Args)
 		result, execErr := tool.Execute(context.Background(), "", args, nil)
 		var text string
@@ -140,4 +165,21 @@ func TestBashToolMatchesPi(t *testing.T) {
 	if ok < 60 {
 		t.Fatalf("Pi's bash tool succeeded in only %d of %d probes", ok, len(probes))
 	}
+}
+
+// firstOutputOperations runs commands through the wrapped operations and calls onFirstOutput once, after the first output reached the
+// tool.
+type firstOutputOperations struct {
+	BashOperations
+	onFirstOutput func()
+}
+
+func (o firstOutputOperations) Exec(ctx context.Context, command, cwd string, opts BashOperationsExecOptions) (BashOperationsResult, error) {
+	onData := opts.OnData
+	var once sync.Once
+	opts.OnData = func(chunk []byte) {
+		onData(chunk)
+		once.Do(o.onFirstOutput)
+	}
+	return o.BashOperations.Exec(ctx, command, cwd, opts)
 }
