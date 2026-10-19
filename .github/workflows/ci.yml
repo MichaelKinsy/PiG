@@ -422,6 +422,50 @@ jobs:
         shell: bash
         run: automation/ci/node-loader-check.sh
 
+  durable-cf-host:
+    name: Durable Cloudflare host
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Install pinned npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+      # TinyGo 0.42.0 (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
+      # TinyGo pass's core; the Pi reference the conformance tests read is the checkout durable/contract/PIN names.
+      - name: Restore TinyGo and the Pi reference
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pig-dev/tinygo
+            durable/contract/.cache
+          key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      - name: Install the pinned TinyGo
+        shell: bash
+        run: echo "TINYGO=$(sh durable/core/budget/tinygo-install.sh)" >> "$GITHUB_ENV"
+      # durable-core-host-check: durable-contract-setup, durable-core-host-deps (the locked npm tree), then check.sh: tsc and the
+      # whole suite against the core built with Go and with TinyGo.
+      - name: Typecheck and test the Cloudflare host
+        shell: bash
+        run: automation/ci/with-isolated-pig-home.sh make durable-core-host-check
+
   verify:
     name: Linux verification
     needs: [changes, linux]
@@ -852,7 +896,7 @@ jobs:
     # The one required check for this workflow. It runs even when a job it
     # needs failed, because a skipped job would otherwise count as passing.
     # A job may be skipped only where its own condition skips it.
-    needs: [changes, docs, dco, preflight, verify, node-runtime, windows, macos, android, node-loader]
+    needs: [changes, docs, dco, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -871,6 +915,7 @@ jobs:
           MACOS: ${{ needs.macos.result }}
           ANDROID: ${{ needs.android.result }}
           NODE_LOADER: ${{ needs.node-loader.result }}
+          DURABLE_CF_HOST: ${{ needs.durable-cf-host.result }}
           PREFLIGHT: ${{ needs.preflight.result }}
         shell: bash
         run: |
@@ -898,4 +943,5 @@ jobs:
           expect "macOS" "$MACOS" "$product_skip"
           expect "Android" "$ANDROID" "$product_skip"
           expect "Node loader" "$NODE_LOADER" "$product_skip"
+          expect "Durable Cloudflare host" "$DURABLE_CF_HOST" "$product_skip"
           exit "$status"
