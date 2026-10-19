@@ -27,7 +27,7 @@ parity-fast-1:
 	@$(MAKE) -s parity-fast PARITY_SHARD=1/2
 parity-fast-2:
 	@$(MAKE) -s parity-fast PARITY_SHARD=2/2
-ci-drift: lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard port-lint source-hygiene test-provenance docs-drift bug-ledger-check any-trap perf-lint perf-scoreboard-check
+ci-drift: lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard port-lint source-hygiene test-provenance docs-drift bug-ledger-check any-trap perf-lint perf-scoreboard-check module-size
 ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build
 ci-closure: closure-check
 # portmap-check runs the evidence tests of every proven PORT_MAP row under coverage; cold it needs more than an hour on a 4-CPU
