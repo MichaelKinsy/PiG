@@ -1,8 +1,9 @@
 package sdk
 
-import "slices"
-
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // Pi library helpers over session entries and skills: CURRENT_SESSION_VERSION (core/session-manager.ts:41), VIRTUAL_MODEL_STATE_ENTRY (core/virtual-models.ts:32),
 // getLatestCompactionEntry (core/session-manager.ts:372), parseSkillBlock (core/agent-session.ts:177) and formatSkillsForPrompt (core/skills.ts:358).

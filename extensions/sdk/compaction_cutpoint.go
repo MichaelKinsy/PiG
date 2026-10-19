@@ -3,9 +3,10 @@ package sdk
 // Pi's findCutPoint and findTurnStartIndex (core/compaction/compaction.ts) over the session entries an extension gets (for example from
 // [SessionManager.GetEntries]), each a decoded JSON object with a "type".
 
-import "maps"
-
-import "slices"
+import (
+	"maps"
+	"slices"
+)
 
 // CutPointResult is Pi's CutPointResult.
 type CutPointResult struct {

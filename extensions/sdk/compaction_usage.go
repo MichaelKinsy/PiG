@@ -1,8 +1,9 @@
 package sdk
 
-import "slices"
-
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 // Compaction usage helpers, mirroring Pi's exports of core/compaction/compaction.ts (CompactionSettings, DEFAULT_COMPACTION_SETTINGS,
 // calculateContextTokens, shouldCompact, getLastAssistantUsage). They are pure: they read values the caller already holds.
