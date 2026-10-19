@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -82,15 +83,29 @@ const consoleNegotiationResultEnv = "PIG_TUI_CONSOLE_NEGOTIATION_RESULT"
 
 // Pi consumes a DA reply and returns to its event loop. No key or EOF is
 // necessary to stop the terminal after negotiation, including on ReadConsoleW.
+//
+// The terminal under test owes one DA1 reply, to the keyboard protocol query
+// Start writes, and the pseudo console answers that query on the console input
+// by itself. The reply this test types is a second one that no query owes, which
+// Pi forwards as input (terminal.ts:262,272). Whether the reader takes the typed
+// reply before Stop cancels it depends on timing, so the child accepts it as
+// input and never counts it as a key. The child writes what it saw to the result
+// file instead of failing, because its own output does not reach the parent
+// until the pseudo console paints it.
 func TestStartedTerminalStopsAfterConsoleNegotiation(t *testing.T) {
 	if result := os.Getenv(consoleNegotiationResultEnv); result != "" {
 		output := &negotiationWriter{seen: make(chan struct{})}
 		terminal := NewProcessTerminalWithOutput(os.Stdin, os.Stdout, io.MultiWriter(os.Stdout, output))
+		var mu sync.Mutex
+		var keys []string
 		// ConPTY requests focus reporting (CSI ?1004h, first in the console output) and may deliver a focus event as input; that is not a key.
 		if err := terminal.Start(func(data string) {
-			if data != "\x1b[I" && data != "\x1b[O" {
-				t.Errorf("unexpected input: %q", data)
+			if data == "\x1b[I" || data == "\x1b[O" || deviceAttributesResponse.FindString(data) == data {
+				return
 			}
+			mu.Lock()
+			keys = append(keys, data)
+			mu.Unlock()
 		}, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +124,13 @@ func TestStartedTerminalStopsAfterConsoleNegotiation(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("Stop blocked after console negotiation without a following key")
 		}
-		if err := os.WriteFile(result, []byte("stopped"), 0o600); err != nil {
+		verdict := "stopped"
+		mu.Lock()
+		if len(keys) > 0 {
+			verdict = fmt.Sprintf("unexpected input: %q", keys)
+		}
+		mu.Unlock()
+		if err := os.WriteFile(result, []byte(verdict), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		return
