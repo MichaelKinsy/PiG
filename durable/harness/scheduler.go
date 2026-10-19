@@ -3242,6 +3242,11 @@ func (s *TaskScheduler) publishWake(first *float64, firstWake *Wake) {
 	s.wakeScheduled = false
 	if s.sealing.Load() {
 		s.mu.Unlock()
+		// Upstream's microtask ran right after the change, before any later commit could fail the Session; the value
+		// taken then is owed even if the seal won the race with this goroutine.
+		if firstWake != nil {
+			s.offerWake(*firstWake)
+		}
 		return
 	}
 	if s.options.OnWake == nil {

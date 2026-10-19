@@ -169,3 +169,18 @@ func tkMarkAdmitted(t *testing.T, harness Harness, id durable.TaskId) <-chan tkA
 	eventually(t, func() bool { return harness.(*harnessImpl).LineJobs() > jobs })
 	return aborting
 }
+
+// A wake taken at a change is owed to OnWake even when the Session failed, sealing the scheduler, before the goroutine
+// that publishes it ran (scheduler.ts #scheduleWake's microtask ran before any later commit could fail the Session).
+func TestPublishWakeOwedAfterSeal(t *testing.T) {
+	var got []Wake
+	harness, _, _ := openTasks(t, tkOpenSqlite(t, filepath.Join(t.TempDir(), "s.sqlite")), nil, openTasksOptions{onWake: func(w Wake) { got = append(got, w) }})
+	scheduler := harness.(*harnessImpl).tasks
+	mustClose(t, harness)
+	got = nil
+	at := 1e18
+	scheduler.publishWake(nil, &Wake{Active: true, At: &at})
+	if len(got) != 1 || !got[0].Active {
+		t.Fatalf("wakes %+v, want the one taken before the seal", got)
+	}
+}
