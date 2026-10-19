@@ -6,9 +6,11 @@
 package tools
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"unicode/utf16"
 )
@@ -179,11 +181,7 @@ func applyEditsToNormalizedContent(normalizedContent string, edits []editEntry, 
 	}
 
 	// Sort ascending by position, check overlaps.
-	for i := 1; i < len(matched); i++ {
-		for j := i; j > 0 && matched[j-1].matchIndex > matched[j].matchIndex; j-- {
-			matched[j-1], matched[j] = matched[j], matched[j-1]
-		}
-	}
+	slices.SortStableFunc(matched, func(a, b matchedEdit) int { return cmp.Compare(a.matchIndex, b.matchIndex) })
 	for i := 1; i < len(matched); i++ {
 		prev := matched[i-1]
 		cur := matched[i]
@@ -250,20 +248,12 @@ var errReplacementOutsideBase = errors.New("Replacement range is outside the bas
 func getReplacementLineRange(lines []lineSpan, r matchedEdit) (int, int, error) {
 	replacementStart := r.matchIndex
 	replacementEnd := r.matchIndex + r.matchLength
-	startLine := -1
-	for i, line := range lines {
-		if replacementStart >= line.start && replacementStart < line.end {
-			startLine = i
-			break
-		}
-	}
-	if startLine == -1 {
+	// The spans are contiguous and every one is non-empty, so the line holding an offset is the first whose end is past it.
+	startLine := sort.Search(len(lines), func(i int) bool { return lines[i].end > replacementStart })
+	if startLine == len(lines) || replacementStart < lines[startLine].start {
 		return 0, 0, errReplacementOutsideBase
 	}
-	endLine := startLine
-	for endLine < len(lines) && lines[endLine].end < replacementEnd {
-		endLine++
-	}
+	endLine := startLine + sort.Search(len(lines)-startLine, func(i int) bool { return lines[startLine+i].end >= replacementEnd })
 	if endLine >= len(lines) {
 		return 0, 0, errReplacementOutsideBase
 	}

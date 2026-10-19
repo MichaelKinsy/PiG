@@ -153,3 +153,75 @@ func BenchmarkDiffLinesLargeFile(b *testing.B) {
 		DiffLines(oldStr, newStr)
 	}
 }
+
+// scatteredPair is n lines in which about a tenth are changed, inserted or deleted at random places.
+func scatteredPair(rng *rand.Rand, n, alphabet int) (string, string) {
+	var oldText, newText strings.Builder
+	for i := range n {
+		line := fmt.Sprintf("line %d\n", rng.IntN(alphabet))
+		oldText.WriteString(line)
+		switch rng.IntN(20) {
+		case 0:
+			fmt.Fprintf(&newText, "changed %d\n", i)
+		case 1:
+		case 2:
+			newText.WriteString(line)
+			fmt.Fprintf(&newText, "inserted %d\n", i)
+		default:
+			newText.WriteString(line)
+		}
+	}
+	return oldText.String(), newText.String()
+}
+
+// TestDiffLinesScatteredChangesMatchFullSearch compares the search with the full one where many lines change, so that many paths are live
+// and the arena frees and reuses components.
+func TestDiffLinesScatteredChangesMatchFullSearch(t *testing.T) {
+	rng := rand.New(rand.NewPCG(20261018, 8))
+	for range 600 {
+		n := 1 + rng.IntN(300)
+		oldText, newText := scatteredPair(rng, n, 1+rng.IntN(40))
+		if rng.IntN(4) == 0 {
+			newText = strings.TrimSuffix(newText, "\n")
+		}
+		if rng.IntN(4) == 0 {
+			oldText, newText = newText, oldText
+		}
+		if got, want := DiffLines(oldText, newText), referenceDiffLines(oldText, newText); !reflect.DeepEqual(got, want) {
+			t.Fatalf("diff differs from the full search for\nold %q\nnew %q", oldText, newText)
+		}
+	}
+	for _, n := range []int{1000, 3000} {
+		oldText, newText := scatteredPair(rng, n, 50)
+		if got, want := DiffLines(oldText, newText), referenceDiffLines(oldText, newText); !reflect.DeepEqual(got, want) {
+			t.Fatalf("%d lines: diff differs from the full search", n)
+		}
+	}
+}
+
+// TestDiffLinesScatteredChangesAllocsStayFlat pins the allocation per changed line: the search allocates its slots and arena by doubling,
+// so 4x the lines with the same share changed must not allocate more than about 4x (jsdiff's per-step path and component allocation
+// grew with the square of the changes).
+func TestDiffLinesScatteredChangesAllocsStayFlat(t *testing.T) {
+	rng := rand.New(rand.NewPCG(20261018, 9))
+	allocs := func(n int) float64 {
+		oldText, newText := scatteredPair(rng, n, 1000000)
+		return testing.AllocsPerRun(3, func() { DiffLineRuns(oldText, newText) })
+	}
+	small, large := allocs(1000), allocs(4000)
+	if large > 8*small+100 {
+		t.Fatalf("allocations per diff: %.0f at 1000 lines, %.0f at 4000 lines; want growth far below the 16x of a quadratic search", small, large)
+	}
+}
+
+func BenchmarkDiffLinesScattered(b *testing.B) {
+	for _, n := range []int{1000, 2000, 4000, 8000, 16000} {
+		oldText, newText := scatteredPair(rand.New(rand.NewPCG(1, 2)), n, 1000000)
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				DiffLineRuns(oldText, newText)
+			}
+		})
+	}
+}

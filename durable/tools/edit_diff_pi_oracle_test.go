@@ -117,7 +117,7 @@ func TestEditDiffHelpersMatchPi(t *testing.T) {
 		case "restore":
 			got = restoreLineEndings(op.Text, op.Ending)
 		case "fuzzyFind":
-			result := fuzzyFindText(op.Content, op.OldText)
+			result := fuzzyFindText(&fuzzyContent{text: op.Content}, op.OldText)
 			// Pi's offsets count UTF-16 units; Go's count bytes.
 			// A miss leaves Go's index at zero where Pi answers -1; no caller reads it (internal result).
 			indexUnits, lengthUnits := -1, 0

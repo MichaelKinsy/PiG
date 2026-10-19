@@ -4,9 +4,11 @@ package tools
 // stripping, fuzzy matching, and the position-based edit application algorithm.
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -96,23 +98,38 @@ type fuzzyMatchResult struct {
 	contentForReplacement string
 }
 
+// fuzzyContent is the content an edit is matched against and its normalizeForFuzzyMatch form, which is computed once however many edits
+// look at it. normalizeForFuzzyMatch is idempotent, so the normalized form of already-normalized content is itself.
+type fuzzyContent struct {
+	text       string
+	normalized string
+	ready      bool
+}
+
+func (c *fuzzyContent) fuzzy() string {
+	if !c.ready {
+		c.normalized, c.ready = normalizeForFuzzyMatch(c.text), true
+	}
+	return c.normalized
+}
+
 // fuzzyFindText tries exact match first, then fuzzy. When fuzzy is used,
 // contentForReplacement is the normalized content.
-func fuzzyFindText(content, oldText string) fuzzyMatchResult {
-	if i := strings.Index(content, oldText); i != -1 {
+func fuzzyFindText(content *fuzzyContent, oldText string) fuzzyMatchResult {
+	if i := strings.Index(content.text, oldText); i != -1 {
 		return fuzzyMatchResult{
 			found:                 true,
 			index:                 i,
 			matchLength:           len(oldText),
 			usedFuzzyMatch:        false,
-			contentForReplacement: content,
+			contentForReplacement: content.text,
 		}
 	}
-	fc := normalizeForFuzzyMatch(content)
+	fc := content.fuzzy()
 	fo := normalizeForFuzzyMatch(oldText)
 	i := strings.Index(fc, fo)
 	if i == -1 {
-		return fuzzyMatchResult{contentForReplacement: content}
+		return fuzzyMatchResult{contentForReplacement: content.text}
 	}
 	return fuzzyMatchResult{
 		found:                 true,
@@ -125,8 +142,8 @@ func fuzzyFindText(content, oldText string) fuzzyMatchResult {
 
 // countOccurrences counts occurrences via fuzzy-normalized strings, as upstream
 // does with split().length - 1.
-func countOccurrences(content, oldText string) int {
-	fc := normalizeForFuzzyMatch(content)
+func countOccurrences(content *fuzzyContent, oldText string) int {
+	fc := content.fuzzy()
 	fo := normalizeForFuzzyMatch(oldText)
 	if fo == "" {
 		// JavaScript's split("") cuts between UTF-16 code units, and an empty
@@ -174,26 +191,29 @@ func applyEditsToNormalizedContent(normalizedContent string, edits []Edit, path 
 
 	// First probe: decide whether any edit needs fuzzy matching.
 	usedFuzzyAny := false
+	original := &fuzzyContent{text: normalizedContent}
 	for _, e := range normEdits {
-		m := fuzzyFindText(normalizedContent, e.OldText)
+		m := fuzzyFindText(original, e.OldText)
 		if m.usedFuzzyMatch {
 			usedFuzzyAny = true
 		}
 	}
-	baseContent := normalizedContent
+	base := original
 	if usedFuzzyAny {
-		baseContent = normalizeForFuzzyMatch(normalizedContent)
+		// The base is the normalized form; normalizing it again gives it back.
+		base = &fuzzyContent{text: original.fuzzy(), normalized: original.fuzzy(), ready: true}
 	}
+	baseContent := base.text
 
 	// Second probe: locate each edit in baseContent.
 	matched := make([]matchedEdit, 0, len(normEdits))
 	for i, e := range normEdits {
-		m := fuzzyFindText(baseContent, e.OldText)
+		m := fuzzyFindText(base, e.OldText)
 		if !m.found {
 			return appliedEditsResult{}, notFoundErr(path, i, len(normEdits))
 		}
 		// Count in baseContent (or its fuzzy normalization, same as upstream).
-		occ := countOccurrences(baseContent, e.OldText)
+		occ := countOccurrences(base, e.OldText)
 		if occ > 1 {
 			return appliedEditsResult{}, duplicateErr(path, i, len(normEdits), occ)
 		}
@@ -205,12 +225,7 @@ func applyEditsToNormalizedContent(normalizedContent string, edits []Edit, path 
 		})
 	}
 
-	// Sort ascending by position, check overlaps.
-	for i := 1; i < len(matched); i++ {
-		for j := i; j > 0 && matched[j-1].matchIndex > matched[j].matchIndex; j-- {
-			matched[j-1], matched[j] = matched[j], matched[j-1]
-		}
-	}
+	slices.SortStableFunc(matched, func(a, b matchedEdit) int { return cmp.Compare(a.matchIndex, b.matchIndex) })
 	for i := 1; i < len(matched); i++ {
 		prev := matched[i-1]
 		cur := matched[i]
@@ -277,20 +292,12 @@ var errReplacementOutsideBase = errors.New("Replacement range is outside the bas
 func getReplacementLineRange(lines []lineSpan, r matchedEdit) (int, int, error) {
 	replacementStart := r.matchIndex
 	replacementEnd := r.matchIndex + r.matchLength
-	startLine := -1
-	for i, line := range lines {
-		if replacementStart >= line.start && replacementStart < line.end {
-			startLine = i
-			break
-		}
-	}
-	if startLine == -1 {
+	// The spans are contiguous and every one is non-empty, so the line holding an offset is the first whose end is past it.
+	startLine := sort.Search(len(lines), func(i int) bool { return lines[i].end > replacementStart })
+	if startLine == len(lines) || replacementStart < lines[startLine].start {
 		return 0, 0, errReplacementOutsideBase
 	}
-	endLine := startLine
-	for endLine < len(lines) && lines[endLine].end < replacementEnd {
-		endLine++
-	}
+	endLine := startLine + sort.Search(len(lines)-startLine, func(i int) bool { return lines[startLine+i].end >= replacementEnd })
 	if endLine >= len(lines) {
 		return 0, 0, errReplacementOutsideBase
 	}
@@ -300,12 +307,19 @@ func getReplacementLineRange(lines []lineSpan, r matchedEdit) (int, int, error) 
 // applyReplacements mirrors upstream applyReplacements: replacements sorted
 // by position, applied from the end so offsets stay valid.
 func applyReplacements(content string, replacements []matchedEdit, offset int) string {
-	result := content
-	for _, r := range slices.Backward(replacements) {
+	// The replacements are in ascending order and do not overlap (the caller checked), so one forward pass builds what applying them from
+	// the end builds, without copying the content once per replacement.
+	var result strings.Builder
+	result.Grow(len(content))
+	position := 0
+	for _, r := range replacements {
 		i := r.matchIndex - offset
-		result = result[:i] + r.newText + result[i+r.matchLength:]
+		result.WriteString(content[position:i])
+		result.WriteString(r.newText)
+		position = i + r.matchLength
 	}
-	return result
+	result.WriteString(content[position:])
+	return result.String()
 }
 
 // applyReplacementsPreservingUnchangedLines mirrors the upstream function of

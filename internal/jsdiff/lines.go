@@ -178,11 +178,16 @@ func DiffLineRuns(oldStr, newStr string) *LineDiff {
 }
 
 // search is myers over the lazily located lines, starting after the common prefix (which jsdiff's first step consumes on diagonal 0).
+//
+// The paths are values in a slice indexed by diagonal, and the components they hang on are reference counted nodes of one arena, freed
+// when no path or later component refers to them. jsdiff allocates a path and a component per diagonal and step and leaves the garbage
+// to the collector, which dominates the run time when many lines change.
 func (d *LineDiff) search(prefixLines, suffixLines int) []LineRun {
 	oldLen, newLen := d.old.count, d.new.count
 	endDiagonal := oldLen - newLen
 	oldSuffixStart := oldLen - suffixLines
-	extractCommon := func(base *path, diagonal int) int {
+	var s pathSearch
+	extractCommon := func(base *searchPath, diagonal int) int {
 		oldPos := base.oldPos
 		newPos := oldPos - diagonal
 		common := 0
@@ -203,52 +208,67 @@ func (d *LineDiff) search(prefixLines, suffixLines int) []LineRun {
 			common++
 		}
 		if common > 0 {
-			base.last = &component{count: common, previous: base.last}
+			// The path's reference to its last component passes to the new one.
+			base.last = s.alloc(searchComponent{count: common, previous: base.last})
 		}
 		base.oldPos = oldPos
 		return newPos
 	}
 
-	first := &path{oldPos: prefixLines - 1}
+	first := searchPath{oldPos: prefixLines - 1, last: -1}
 	if prefixLines > 0 {
-		first.last = &component{count: prefixLines}
+		first.last = s.alloc(searchComponent{count: prefixLines, previous: -1})
 	}
 	newPos := prefixLines - 1
 	if first.oldPos+1 >= oldLen && newPos+1 >= newLen {
-		return lineRuns(first.last)
+		return s.runs(first.last)
 	}
-	bestPath := map[int]*path{0: first}
+	s.reserve(1)
+	*s.at(0) = first
+	s.present(0)
 	editLength := 1
 	maxEditLength := newLen + oldLen
 	const unbounded = int(^uint(0) >> 1)
 	minDiagonal, maxDiagonal := -unbounded, unbounded
 	for editLength <= maxEditLength {
+		s.reserve(editLength + 1)
 		for diagonal := max(minDiagonal, -editLength); diagonal <= min(maxDiagonal, editLength); diagonal += 2 {
-			removePath, addPath := bestPath[diagonal-1], bestPath[diagonal+1]
-			if removePath != nil {
-				bestPath[diagonal-1] = nil
+			removeSlot, addSlot := s.at(diagonal-1), s.at(diagonal+1)
+			removeOK, addOK := s.has(diagonal-1), s.has(diagonal+1)
+			// The remove path is consumed: its slot empties, and its reference to its last component is released below.
+			removePath, addPath := *removeSlot, *addSlot
+			if removeOK {
+				s.used[s.offset+diagonal-1] = false
 			}
 			canAdd := false
-			if addPath != nil {
+			if addOK {
 				addPathNewPos := addPath.oldPos - diagonal
 				canAdd = 0 <= addPathNewPos && addPathNewPos < newLen
 			}
-			canRemove := removePath != nil && removePath.oldPos+1 < oldLen
+			canRemove := removeOK && removePath.oldPos+1 < oldLen
 			if !canAdd && !canRemove {
-				bestPath[diagonal] = nil
+				if removeOK {
+					s.release(removePath.last)
+				}
+				s.clear(diagonal)
 				continue
 			}
-			var base *path
+			var base searchPath
 			if !canRemove || (canAdd && removePath.oldPos < addPath.oldPos) {
-				base = addToPath(addPath, true, false, 0)
+				base = s.extend(addPath, true, false, 0)
 			} else {
-				base = addToPath(removePath, false, true, 1)
+				base = s.extend(removePath, false, true, 1)
 			}
-			newPos = extractCommon(base, diagonal)
+			if removeOK {
+				s.release(removePath.last)
+			}
+			newPos = extractCommon(&base, diagonal)
 			if base.oldPos+1 >= oldLen && newPos+1 >= newLen {
-				return lineRuns(base.last)
+				return s.runs(base.last)
 			}
-			bestPath[diagonal] = base
+			s.clear(diagonal)
+			*s.at(diagonal) = base
+			s.present(diagonal)
 			if base.oldPos+1 >= oldLen {
 				maxDiagonal = min(maxDiagonal, diagonal-1)
 			}
@@ -261,17 +281,117 @@ func (d *LineDiff) search(prefixLines, suffixLines int) []LineRun {
 	return nil
 }
 
-// lineRuns is buildValues without the values: the components in order, each with the index of its first line.
-func lineRuns(last *component) []LineRun {
+// searchPath is a path of the search: the old position it has reached and the last component of its edit script (-1 for none).
+type searchPath struct {
+	oldPos int
+	last   int32
+}
+
+type searchComponent struct {
+	count    int
+	previous int32
+	refs     int32 // paths and later components that refer to this one
+	added    bool
+	removed  bool
+}
+
+// pathSearch holds the best path of each diagonal and the arena of components the paths hang on.
+type pathSearch struct {
+	slots  []searchPath
+	used   []bool
+	offset int // slots[offset+diagonal] is the slot of diagonal
+	nodes  []searchComponent
+	free   int32 // head of the list of freed nodes, chained through previous; -1 when none
+	init   bool
+}
+
+// reserve makes the slots of diagonals -n-1 .. n+1 available.
+func (s *pathSearch) reserve(n int) {
+	if s.offset >= n+1 {
+		return
+	}
+	offset := max(2*s.offset, n+1, 8)
+	slots := make([]searchPath, 2*offset+1)
+	used := make([]bool, 2*offset+1)
+	copy(slots[offset-s.offset:], s.slots)
+	copy(used[offset-s.offset:], s.used)
+	s.slots, s.used, s.offset = slots, used, offset
+}
+
+func (s *pathSearch) at(diagonal int) *searchPath { return &s.slots[s.offset+diagonal] }
+func (s *pathSearch) has(diagonal int) bool       { return s.used[s.offset+diagonal] }
+func (s *pathSearch) present(diagonal int)        { s.used[s.offset+diagonal] = true }
+
+// clear empties the slot of diagonal, releasing the path it holds.
+func (s *pathSearch) clear(diagonal int) {
+	if i := s.offset + diagonal; s.used[i] {
+		s.used[i] = false
+		s.release(s.slots[i].last)
+	}
+}
+
+// alloc adds a component referred to once, by the caller; the component's own reference to previous is the caller's to give.
+func (s *pathSearch) alloc(c searchComponent) int32 {
+	c.refs = 1
+	if !s.init {
+		s.init = true
+		s.free = -1
+	}
+	if s.free >= 0 {
+		i := s.free
+		s.free = s.nodes[i].previous
+		s.nodes[i] = c
+		return i
+	}
+	s.nodes = append(s.nodes, c)
+	return int32(len(s.nodes) - 1)
+}
+
+func (s *pathSearch) release(i int32) {
+	for i >= 0 {
+		c := &s.nodes[i]
+		c.refs--
+		if c.refs > 0 {
+			return
+		}
+		previous := c.previous
+		c.previous = s.free
+		s.free = i
+		i = previous
+	}
+}
+
+// extend is addToPath: p's edit script followed by one more added or removed line. p keeps its own reference.
+func (s *pathSearch) extend(p searchPath, added, removed bool, oldPosInc int) searchPath {
+	if p.last >= 0 {
+		last := s.nodes[p.last]
+		if last.added == added && last.removed == removed {
+			if last.previous >= 0 {
+				s.nodes[last.previous].refs++
+			}
+			return searchPath{oldPos: p.oldPos + oldPosInc, last: s.alloc(searchComponent{count: last.count + 1, added: added, removed: removed, previous: last.previous})}
+		}
+		s.nodes[p.last].refs++
+	}
+	return searchPath{oldPos: p.oldPos + oldPosInc, last: s.alloc(searchComponent{count: 1, added: added, removed: removed, previous: p.last})}
+}
+
+// runs is lineRuns over the component chain that ends at last.
+func (s *pathSearch) runs(last int32) []LineRun {
 	n := 0
-	for c := last; c != nil; c = c.previous {
+	for c := last; c >= 0; c = s.nodes[c].previous {
 		n++
 	}
 	runs := make([]LineRun, n)
-	for c := last; c != nil; c = c.previous {
+	for c := last; c >= 0; c = s.nodes[c].previous {
 		n--
-		runs[n] = LineRun{Count: c.count, Added: c.added, Removed: c.removed}
+		runs[n] = LineRun{Count: s.nodes[c].count, Added: s.nodes[c].added, Removed: s.nodes[c].removed}
 	}
+	return fillRunStarts(runs)
+}
+
+// fillRunStarts sets the Start of every run from the counts before it.
+func fillRunStarts(runs []LineRun) []LineRun {
 	newPos, oldPos := 0, 0
 	for i := range runs {
 		run := &runs[i]
