@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"slices"
 )
 
 // Start starts cmd, which this package's functions prepared, as Node's spawn
@@ -22,9 +23,9 @@ import (
 // Stdout, and Stderr are each nil, which gives the child the NUL device, or an
 // *os.File, and that has no Cancel and no WaitDelay; it returns an error for
 // any other. Whether the start succeeds or not, Start then closes each of
-// those files other than os.Stdin, os.Stdout, and os.Stderr, as Node's spawn
-// closes the child's ends of the pipes it creates and cmd.Start closes those
-// of its Pipe methods.
+// those files other than PiG's own standard files (standardFiles), as Node's
+// spawn closes the child's ends of the pipes it creates and cmd.Start closes
+// those of its Pipe methods.
 func Start(cmd *exec.Cmd) error {
 	defer closeChildFiles(cmd)
 	for _, stdio := range childStdio(cmd) {
@@ -43,11 +44,20 @@ func childStdio(cmd *exec.Cmd) [3]any {
 	return [3]any{cmd.Stdin, cmd.Stdout, cmd.Stderr}
 }
 
+// standardFiles are PiG's own standard files: the files os.Stdin, os.Stdout,
+// and os.Stderr hold when the program starts, the ones Node's "inherit" gives
+// a child. They are captured once because the variables are not stable: the
+// output guard reassigns os.Stdout while other goroutines run, so reading it
+// in Start would race with the guard's restore (a bash tool's spawn can overlap
+// the exit path's), and during a takeover it names the guard's pipe, not the
+// process's own stdout.
+var standardFiles = [...]*os.File{os.Stdin, os.Stdout, os.Stderr}
+
 // closeChildFiles closes each file of cmd's Stdin, Stdout, and Stderr other
 // than PiG's own standard files.
 func closeChildFiles(cmd *exec.Cmd) {
 	for _, stdio := range childStdio(cmd) {
-		if file, ok := stdio.(*os.File); ok && file != nil && file != os.Stdin && file != os.Stdout && file != os.Stderr {
+		if file, ok := stdio.(*os.File); ok && file != nil && !slices.Contains(standardFiles[:], file) {
 			// A file given twice, as stdout and stderr, is already closed the
 			// second time.
 			_ = file.Close()

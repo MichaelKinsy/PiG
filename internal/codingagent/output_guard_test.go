@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // output-guard tests. We verify isolation (stdout
@@ -142,6 +146,42 @@ func TestOutputGuardRestoreWithoutTakeoverIsNoOp(t *testing.T) {
 	if IsStdoutTakenOver() {
 		t.Errorf("IsStdoutTakenOver=true after no-op restore")
 	}
+}
+
+// A termination signal exits through RestoreStdout (coding/cli exitProcess) while a bash tool's spawn is still in
+// flight, and every spawn goes through nodespawn.Start, whose deferred closeChildFiles compared each child file with
+// os.Stdin, os.Stdout and os.Stderr. RestoreStdout assigns os.Stdout, so print-mode scenario
+// 09-print-json-signal-during-tool reported a data race between that read and the guard's write. The race detector
+// is the assertion: this test fails under -race when Start reads the os.Stdout variable, whatever the interleaving,
+// because nothing orders the two accesses.
+func TestOutputGuardRestoreDoesNotRaceASpawnClosingItsChildFiles(t *testing.T) {
+	if err := TakeOverStdout(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(RestoreStdout)
+	begin := make(chan struct{})
+	var spawns sync.WaitGroup
+	spawns.Go(func() {
+		<-begin
+		for range 64 {
+			childEnd, parentEnd, err := os.Pipe()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			_ = parentEnd.Close()
+			// A command with a WaitDelay is refused before it starts a process, and Start still closes the files it was
+			// given, so the spawn costs no process and runs the same closeChildFiles as a started one.
+			cmd := &exec.Cmd{Path: os.Args[0], Stdout: childEnd, WaitDelay: time.Second}
+			if err := nodespawn.Start(cmd); err == nil {
+				t.Error("Start of a command with a WaitDelay succeeded")
+				return
+			}
+		}
+	})
+	close(begin)
+	RestoreStdout()
+	spawns.Wait()
 }
 
 func TestWriteRawStdoutWithoutTakeoverWritesToOsStdout(t *testing.T) {
