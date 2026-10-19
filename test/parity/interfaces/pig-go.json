@@ -310856,6 +310856,17 @@
       "shapeHash": "sha256:51b8c58a05b00cbed1c0d09306710294c1b39b0c7014dbdcc7d95d9fb3ce0a7d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#newUserMessageSelectorComponent",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "newUserMessageSelectorComponent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(messages []UserMessageItem, onSelect func(entryID string), onCancel func(), initialSelectedID string, afterFunc func(time.Duration, func())) *UserMessageSelectorComponent"
+      },
+      "shapeHash": "sha256:09acd9278e7f7965d1fbae11002ae7ad7ea0eb0a90e7ba96e0639ce79e32dba7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#nextAutocompleteBoundary",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "nextAutocompleteBoundary",

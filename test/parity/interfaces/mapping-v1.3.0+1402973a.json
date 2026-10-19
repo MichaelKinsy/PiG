@@ -199239,9 +199239,9 @@
         "call:tui/user_message_selector.go#NewUserMessageSelectorComponent"
       ],
       "evidence": [
-        "test:tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
         "test:tui/select_page_keys_pr7680_test.go#TestPR7680SelectorsPageWithRemappedKeys",
-        "test:tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"
+        "test:tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
+        "test:tui/user_message_selector_test.go#TestUserMessageSelectorHandleInputMovesSelectionAndConfirms"
       ]
     },
     {
