@@ -86,29 +86,15 @@ func TestNewTreeSelectorComponentFromCallbacks(t *testing.T) {
 	}
 }
 
-// tree-selector.ts constructor: an empty tree runs onCancel from setTimeout(…, 100), not at once.
+// tree-selector.ts constructor: an empty tree runs onCancel from setTimeout(…, 100). The real timer is exercised here without asserting how long
+// it takes, which a loaded machine stretches; the fake-clock test below pins the delay, and that the cancel is neither synchronous nor repeated.
 func TestNewTreeSelectorComponentFromEmptyTreeCancelsAfterADelay(t *testing.T) {
-	var cancelled atomic.Int32
-	NewTreeSelectorComponentFrom(nil, nil, 24, nil, func() { cancelled.Add(1) }, nil, nil, "default")
-	if cancelled.Load() != 0 {
-		t.Fatal("an empty tree cancelled synchronously")
-	}
-	time.Sleep(40 * time.Millisecond)
-	if cancelled.Load() != 0 {
-		t.Fatal("an empty tree cancelled before 100ms")
-	}
-	deadline := time.Now().Add(2 * time.Second)
-	for cancelled.Load() == 0 && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if cancelled.Load() != 1 {
-		t.Fatalf("an empty tree called onCancel %d times, want 1", cancelled.Load())
-	}
-	// A non-empty tree never self-cancels.
-	NewTreeSelectorComponentFrom(treeSelectorTestNodes(), nil, 24, nil, func() { cancelled.Add(1) }, nil, nil, "default")
-	time.Sleep(200 * time.Millisecond)
-	if cancelled.Load() != 1 {
-		t.Fatal("a non-empty tree self-cancelled")
+	cancelled := make(chan struct{}, 2)
+	NewTreeSelectorComponentFrom(nil, nil, 24, nil, func() { cancelled <- struct{}{} }, nil, nil, "default")
+	select {
+	case <-cancelled:
+	case <-time.After(30 * time.Second):
+		t.Fatal("an empty tree never cancelled")
 	}
 }
 
@@ -120,6 +106,9 @@ func TestNewTreeSelectorComponentFromEmptyTreeCancelsAtExactlyOneHundredMillisec
 			return NewTreeSelectorComponentFrom(nil, nil, 24, nil, func() { cancelled.Add(1) }, nil, nil, "default")
 		}
 		_ = build()
+		if cancelled.Load() != 0 {
+			t.Fatal("an empty tree cancelled synchronously")
+		}
 		time.Sleep(99 * time.Millisecond)
 		synctest.Wait()
 		if cancelled.Load() != 0 {
@@ -129,6 +118,13 @@ func TestNewTreeSelectorComponentFromEmptyTreeCancelsAtExactlyOneHundredMillisec
 		synctest.Wait()
 		if cancelled.Load() != 1 {
 			t.Fatalf("cancel count at 100ms = %d, want 1", cancelled.Load())
+		}
+		// The cancel is not repeated, and a tree with nodes never self-cancels.
+		NewTreeSelectorComponentFrom(treeSelectorTestNodes(), nil, 24, nil, func() { cancelled.Add(1) }, nil, nil, "default")
+		time.Sleep(time.Hour)
+		synctest.Wait()
+		if cancelled.Load() != 1 {
+			t.Fatalf("cancel count after an hour = %d, want 1: a non-empty tree self-cancelled or the empty one repeated", cancelled.Load())
 		}
 	})
 }

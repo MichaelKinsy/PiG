@@ -22,7 +22,8 @@ type upstreamRenderHarness struct {
 func newUpstreamRenderHarness(t *testing.T, width, height int) *upstreamRenderHarness {
 	t.Helper()
 	h := &upstreamRenderHarness{content: &recordingComponent{}, vt: newScrollVT(width, height)}
-	h.ui = NewWithOutput(&h.output, width, height)
+	// Every frame is drawn by h.render on the test goroutine: a frame a request schedules would draw on a timer goroutine into the same output buffer.
+	h.ui = newManualRenderTUI(&h.output, width, height)
 	h.ui.Add(h.content)
 	t.Cleanup(h.ui.CancelPendingRender)
 	return h

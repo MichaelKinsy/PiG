@@ -186,7 +186,7 @@ func TestInputCallbacksDoNotLatch(t *testing.T) {
 }
 
 func TestOverlayBoundsAndMouseHitTesting(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 20, 6)
+	tu := newManualRenderTUI(io.Discard, 20, 6)
 	probe := &mouseProbe{lines: []string{"one", "two"}, result: &TuiMouseEventResult{Handled: true, Focus: true}}
 	handle := tu.ShowOverlay(probe, OverlayOptions{width: overlayCells(6), anchor: overlayTopLeft, row: overlayCells(2), col: overlayCells(3)})
 	if _, ok := handle.GetBounds(); ok {

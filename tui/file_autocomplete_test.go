@@ -771,21 +771,57 @@ func TestEditor_AsyncFileSearchDoesNotBlock(t *testing.T) {
 	}
 }
 
+// blockedFdStub writes a stub "fd" that records "<pid> <arguments>" in the returned started file, stays running until the returned release file
+// exists, then prints keep.txt. The test decides when the subprocess ends, so no assertion depends on how fast a process starts or on a sleep
+// outlasting the machine's load. Creating release lets every stub, current and future, finish; the stubs are released at cleanup so no fd
+// is left running when the temp dir holding it is removed (Windows cannot delete a running image).
+func blockedFdStub(t *testing.T, dir string) (fd, started, release string) {
+	t.Helper()
+	started = filepath.Join(dir, "fd-started")
+	release = filepath.Join(dir, "fd-release")
+	script := "#!/bin/sh\necho \"$$ $*\" >> '" + filepath.ToSlash(started) + "'\n" +
+		"while [ ! -e '" + filepath.ToSlash(release) + "' ]; do sleep 0.05; done\n" +
+		"echo 'keep.txt'\n"
+	fd = writeStubScript(t, filepath.Join(dir, "fd"), script)
+	t.Cleanup(func() { releaseFdStubs(release) })
+	return fd, started, release
+}
+
+// releaseFdStubs lets every blockedFdStub waiting on release finish.
+func releaseFdStubs(release string) {
+	if err := os.WriteFile(release, nil, 0o644); err != nil {
+		panic(err)
+	}
+}
+
+// awaitFdStart blocks until a stub fd has recorded an invocation whose last argument is query, so the search for that query is known to be
+// running in a subprocess.
+func awaitFdStart(t *testing.T, started, query string) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Minute)
+	for {
+		recorded, _ := os.ReadFile(started)
+		for line := range strings.SplitSeq(string(recorded), "\n") {
+			if strings.HasSuffix(line, " "+query) {
+				return
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no fd was started for %q; started: %q", query, recorded)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 // TestEditor_AsyncFileSearch_RealSubprocessDoesNotBlock drives the real
 // production path (CombinedProvider.FileSearchTask -> fdFileSuggestionsCtx ->
-// exec.CommandContext) with a stub "fd" that sleeps. It proves HandleInput
-// returns promptly while the subprocess is still running, and that the prior
-// subprocess is cancelled when the next keystroke supersedes it.
+// exec.CommandContext) with a stub "fd" that keeps running until the test
+// releases it. It proves HandleInput returns while the subprocess is still
+// running, that nothing is delivered while it runs, and that the search the
+// last keystroke started delivers its result once the subprocess exits.
 func TestEditor_AsyncFileSearch_RealSubprocessDoesNotBlock(t *testing.T) {
-	dir := t.TempDir()
-	// Stub fd: record that it ran, sleep long enough that a synchronous
-	// call would be an obvious freeze, then emit one result.
-	marker := filepath.Join(dir, "fd-ran")
-	fakeFd := filepath.Join(dir, "fd")
-	script := "#!/bin/sh\necho ran >> '" + filepath.ToSlash(marker) + "'\nsleep 3\necho 'source.txt'\n"
-	fakeFd = writeStubScript(t, fakeFd, script)
-
-	prov := NewCombinedProvider(nil, dir, fakeFd)
+	fakeFd, started, release := blockedFdStub(t, t.TempDir())
+	prov := NewCombinedProvider(nil, t.TempDir(), fakeFd)
 	prov.SetAsyncFileSearch(true)
 
 	e := NewEditor()
@@ -793,38 +829,69 @@ func TestEditor_AsyncFileSearch_RealSubprocessDoesNotBlock(t *testing.T) {
 	rendered := make(chan struct{}, 8)
 	e.SetAsyncApply(func(apply func()) { apply(); rendered <- struct{}{} })
 
-	start := time.Now()
-	e.HandleInput("@")
-	e.HandleInput("k")
-	if elapsed := time.Since(start); elapsed > time.Second {
-		t.Fatalf("HandleInput blocked %v (fd sleeps 3s): input thread not async", elapsed)
+	// No stub can exit before release, so a HandleInput that waits for fd never returns.
+	typed := make(chan struct{})
+	go func() {
+		defer close(typed)
+		e.HandleInput("@")
+		e.HandleInput("k")
+	}()
+	select {
+	case <-typed:
+	case <-time.After(time.Minute):
+		t.Fatal("HandleInput is waiting for the fd subprocess: input thread not async")
 	}
 
-	// The fd subprocess for the first ('@') keystroke must have been
-	// cancelled by the second ('k') keystroke before it could finish.
-	// Give the goroutines a moment, then assert no completion landed yet
-	// from the still-sleeping current fd.
+	// The search for "k" is running in a real subprocess, and the subprocess has not finished.
+	awaitFdStart(t, started, "k")
 	select {
 	case <-rendered:
-		t.Fatal("a search completed within 1s though fd sleeps 3s")
-	case <-time.After(1 * time.Second):
+		t.Fatal("a search delivered a result while its fd was still running")
+	default:
 	}
-	// The stub must actually have run, or the assertions above hold vacuously.
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if _, err := os.Stat(marker); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("stub fd never ran")
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	// Let the surviving search finish so its fd has exited before the temp
-	// dir holding it is removed (Windows cannot delete a running image).
+
+	releaseFdStubs(release)
 	select {
 	case <-rendered:
-	case <-time.After(10 * time.Second):
+	case <-time.After(time.Minute):
 		t.Fatal("the surviving search never completed")
+	}
+	if got := e.autocompleteItems; len(got) != 1 || got[0].Value != "@keep.txt" {
+		t.Fatalf("items = %+v, want the one @keep.txt from the fd that ran for %q", got, "@k")
+	}
+}
+
+// TestFileSearchTask_RealSubprocessIsCancelled proves cancelling the context a
+// search runs under ends its fd subprocess: the stub cannot exit before the
+// test releases it, and the test never does, so the search returns only
+// because exec.CommandContext killed the process.
+func TestFileSearchTask_RealSubprocessIsCancelled(t *testing.T) {
+	fakeFd, started, _ := blockedFdStub(t, t.TempDir())
+	prov := NewCombinedProvider(nil, t.TempDir(), fakeFd)
+	prov.SetAsyncFileSearch(true)
+	prefix, run, ok := prov.FileSearchTask([]string{"@k"}, 0, len("@k"))
+	if !ok || prefix != "@k" {
+		t.Fatalf("FileSearchTask = %q, %v, want @k, true", prefix, ok)
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	finished := make(chan []AutocompleteItem, 1)
+	go func() { finished <- run(ctx) }()
+	awaitFdStart(t, started, "k")
+	select {
+	case items := <-finished:
+		t.Fatalf("the search returned %+v while its fd was still running", items)
+	default:
+	}
+
+	cancel()
+	select {
+	case items := <-finished:
+		if len(items) != 0 {
+			t.Fatalf("a cancelled search returned %+v", items)
+		}
+	case <-time.After(time.Minute):
+		t.Fatal("cancelling the search left its fd subprocess running")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 )
@@ -328,11 +329,14 @@ func TestNativeScopedModelsListKeysRoundTrip(t *testing.T) {
 	}
 }
 
-// nativeUserMessageRecorder is a fork picker whose confirm and cancel callbacks are recorded, as the host observes them.
+// nativeUserMessageRecorder is a fork picker whose confirm and cancel callbacks are recorded, as the host observes them. An empty picker
+// cancels itself 100ms after it is built (user-message-selector.ts:146); the recorder holds that timer's callback in autoCancel for the test
+// to run, so no cancel arrives on another goroutine or at a time the test did not choose.
 type nativeUserMessageRecorder struct {
 	*UserMessageSelectorComponent
-	selected  []string
-	cancelled int
+	selected   []string
+	cancelled  int
+	autoCancel func()
 }
 
 func newNativeUserMessageRecorder(texts []string) *nativeUserMessageRecorder {
@@ -341,7 +345,8 @@ func newNativeUserMessageRecorder(texts []string) *nativeUserMessageRecorder {
 	for i, text := range texts {
 		items[i] = UserMessageItem{ID: "entry-" + strconv.Itoa(i), Text: text}
 	}
-	r.UserMessageSelectorComponent = NewUserMessageSelectorComponent(items, func(id string) { r.selected = append(r.selected, id) }, func() { r.cancelled++ }, "")
+	hold := func(_ time.Duration, f func()) { r.autoCancel = f }
+	r.UserMessageSelectorComponent = newUserMessageSelectorComponent(items, func(id string) { r.selected = append(r.selected, id) }, func() { r.cancelled++ }, "", hold)
 	return r
 }
 
@@ -403,13 +408,20 @@ func TestNativeUserMessageSelectorKeysRoundTrip(t *testing.T) {
 	}
 
 	empty := newNativeUserMessageRecorder(nil)
+	if empty.autoCancel == nil {
+		t.Fatal("an empty picker did not schedule its own cancel")
+	}
+	empty.autoCancel()
+	if empty.cancelled != 1 {
+		t.Fatalf("the empty picker's own cancel ran onCancel %d times, want 1", empty.cancelled)
+	}
 	surface, _, id = nselMount(t, empty)
 	if sent := nselAct(t, surface, empty, frontend.Action{Node: id, Kind: frontend.Highlight, Item: "0"}); sent != 0 {
 		t.Fatalf("highlight in an empty list sent %d keys", sent)
 	}
 	nselAct(t, surface, empty, frontend.Action{Node: id, Kind: frontend.Dismiss})
-	if empty.cancelled == 0 {
-		t.Fatal("dismiss did not cancel")
+	if empty.cancelled != 2 {
+		t.Fatalf("after its own cancel and a dismiss the empty picker cancelled %d times, want 2", empty.cancelled)
 	}
 }
 

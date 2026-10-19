@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
@@ -138,34 +138,20 @@ func TestUserMessageSelectorInputMatchesPi(t *testing.T) {
 		SetCapabilities(TerminalCapabilities{TrueColor: true})
 		SetTheme(probe.Theme)
 		SetKeybindings(NewKeybindingsManager(TUIKeybindingDefinitionsFor(HostKeybindingPlatform()), probe.Bindings))
-		// The empty selector's 100ms auto-cancel runs on a timer goroutine after the scripted keys; the oracle process exits before
-		// Pi's timer fires, so the timer's cancel is recorded only while the keys run.
-		var mu sync.Mutex
+		// The empty selector's 100ms auto-cancel never runs here: the oracle process exits before Pi's timer fires, so Pi's recorded steps hold only
+		// what the keys did. Holding the timer keeps a slow machine from recording its cancel among them.
 		var events []string
-		scripted := true
-		record := func(event string) {
-			mu.Lock()
-			defer mu.Unlock()
-			if scripted {
-				events = append(events, event)
-			}
-		}
 		items := make([]UserMessageItem, len(probe.Messages))
 		for index, text := range probe.Messages {
 			items[index] = UserMessageItem{ID: strconv.Itoa(index), Text: text}
 		}
-		selector := NewUserMessageSelectorComponent(items, func(id string) { record("select:" + id) }, func() { record("cancel") }, "")
+		selector := newUserMessageSelectorComponent(items, func(id string) { events = append(events, "select:"+id) }, func() { events = append(events, "cancel") }, "", func(time.Duration, func()) {})
 		got := userMessageResult{Steps: [][]string{{}}, Frames: [][]string{selector.Render(probe.Width)}}
 		for _, key := range probe.Keys {
 			selector.GetMessageList().HandleInput(key)
-			mu.Lock()
 			got.Steps = append(got.Steps, append([]string{}, events...))
-			mu.Unlock()
 			got.Frames = append(got.Frames, selector.Render(probe.Width))
 		}
-		mu.Lock()
-		scripted = false
-		mu.Unlock()
 		want := expected[i]
 		// A completed selector is closed by its host, so the script is compared up to the key that completes it; Pi keeps moving the selection on later keys.
 		for step := 1; step < len(got.Steps); step++ {

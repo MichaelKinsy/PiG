@@ -8,7 +8,7 @@ import (
 // PiG-only: the upstream overlay tests drive the handle's lowercase internals; this one drives the exported methods an
 // extension reaches through OverlayHandle (focus, unfocus, setHidden, isHidden, isFocused).
 func TestOverlayHandleExportedMethodsToggleFocusAndVisibility(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 80, 24)
+	tu := newManualRenderTUI(io.Discard, 80, 24)
 	first := &recordingComponent{lines: []string{"first"}}
 	second := &recordingComponent{lines: []string{"second"}}
 	firstHandle := tu.ShowOverlay(first, OverlayOptions{})

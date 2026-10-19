@@ -50,6 +50,12 @@ const userMessageSelectorEmptyCancelDelay = 100 * time.Millisecond
 // no messages, onCancel runs once after 100ms on a timer goroutine (user-message-selector.ts:146-148), so it must be safe to
 // call from there.
 func NewUserMessageSelectorComponent(messages []UserMessageItem, onSelect func(entryID string), onCancel func(), initialSelectedID string) *UserMessageSelectorComponent {
+	return newUserMessageSelectorComponent(messages, onSelect, onCancel, initialSelectedID, func(d time.Duration, f func()) { time.AfterFunc(d, f) })
+}
+
+// newUserMessageSelectorComponent is NewUserMessageSelectorComponent with the scheduler of the empty-list auto-cancel supplied, so a test
+// that drives the picker's keys decides when, and whether, that cancel runs.
+func newUserMessageSelectorComponent(messages []UserMessageItem, onSelect func(entryID string), onCancel func(), initialSelectedID string, afterFunc func(time.Duration, func())) *UserMessageSelectorComponent {
 	list := &UserMessageList{messages: append([]UserMessageItem(nil), messages...), maxVisible: 10, OnSelect: onSelect, OnCancel: onCancel}
 	list.selectedIndex = max(0, len(messages)-1)
 	if initialSelectedID != "" {
@@ -69,7 +75,7 @@ func NewUserMessageSelectorComponent(messages []UserMessageItem, onSelect func(e
 	sel.Add(NewSpacer(1))
 	sel.Add(NewDynamicBorder())
 	if len(messages) == 0 && onCancel != nil {
-		time.AfterFunc(userMessageSelectorEmptyCancelDelay, onCancel)
+		afterFunc(userMessageSelectorEmptyCancelDelay, onCancel)
 	}
 	return sel
 }

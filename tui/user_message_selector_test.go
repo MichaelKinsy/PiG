@@ -140,3 +140,32 @@ func TestUserMessageSelectorInitialSelectionAndAutoCancel(t *testing.T) {
 		t.Fatalf("cancel key ran onCancel %d times, want 1", cancels)
 	}
 }
+
+// TestUserMessageSelectorEmptyCancelIsScheduled pins user-message-selector.ts:146-148: a selector without messages schedules onCancel once,
+// 100ms out, and one with messages, or without onCancel, schedules nothing. The scheduler is held, so nothing here waits on a clock.
+func TestUserMessageSelectorEmptyCancelIsScheduled(t *testing.T) {
+	type scheduled struct {
+		delay time.Duration
+		run   func()
+	}
+	build := func(messages []UserMessageItem, onCancel func()) []scheduled {
+		var timers []scheduled
+		newUserMessageSelectorComponent(messages, nil, onCancel, "", func(d time.Duration, f func()) { timers = append(timers, scheduled{d, f}) })
+		return timers
+	}
+	cancels := 0
+	timers := build(nil, func() { cancels++ })
+	if len(timers) != 1 || timers[0].delay != 100*time.Millisecond || cancels != 0 {
+		t.Fatalf("empty selector scheduled %d timers (%+v), onCancel ran %d times; want one 100ms timer and no cancel yet", len(timers), timers, cancels)
+	}
+	timers[0].run()
+	if cancels != 1 {
+		t.Fatalf("the timer ran onCancel %d times, want 1", cancels)
+	}
+	if got := build(userMessageItems([]string{"alpha"}), func() { cancels++ }); len(got) != 0 {
+		t.Fatalf("a selector with messages scheduled %d timers", len(got))
+	}
+	if got := build(nil, nil); len(got) != 0 {
+		t.Fatalf("an empty selector without onCancel scheduled %d timers", len(got))
+	}
+}

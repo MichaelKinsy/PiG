@@ -7,7 +7,7 @@ import (
 
 // tui.ts OverlayHandle.getBounds: the most recent rendered bounds of that overlay, not of another visible one, and none once the overlay is gone.
 func TestOverlayHandleGetBoundsReportsItsOwnOverlay(t *testing.T) {
-	tu := NewWithOutput(io.Discard, 30, 10)
+	tu := newManualRenderTUI(io.Discard, 30, 10)
 	first := tu.ShowOverlay(&mouseProbe{lines: []string{"aa"}}, OverlayOptions{width: overlayCells(4), anchor: overlayTopLeft, row: overlayCells(1), col: overlayCells(2)})
 	second := tu.ShowOverlay(&mouseProbe{lines: []string{"b", "b", "b"}}, OverlayOptions{width: overlayCells(7), anchor: overlayTopLeft, row: overlayCells(5), col: overlayCells(9)})
 	tu.composeOverlayLines(make([]string, 10), 30, 10)
