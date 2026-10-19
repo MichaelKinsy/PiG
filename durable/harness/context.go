@@ -403,7 +403,7 @@ func settleSplit(open []ai.Message) ([]ai.Message, []ai.Message) {
 	if last <= 0 {
 		return nil, open
 	}
-	return OrderToolResults(open[:last]), slices.Clone(open[last:])
+	return OrderToolResults(open[:last]), slices.Clone(open[last:]) //perf:ok the open tail after the last assistant message, one turn, not the history
 }
 
 // findBaseline finds the baseline among entries, oldest first: the first pi.system entry after the head marker, or of

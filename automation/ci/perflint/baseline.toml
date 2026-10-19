@@ -1453,7 +1453,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/extension/host/inproc/runner.go"
-func = "Runner.EmitContextTracked"
+func = "Runner.emitContext"
 pattern = "history-clone"
 detail = "slices.Clone"
 count = 1
@@ -1481,14 +1481,6 @@ func = "isUserBashEventResult"
 pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
 count = 1
-class = "cold: once per user bash event"
-
-[[hit]]
-file = "coding/extension/host/inproc/runner.go"
-func = "sameMessageValues"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
-count = 2
 class = "cold: once per user bash event"
 
 [[hit]]
@@ -3588,22 +3580,6 @@ count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
 [[hit]]
-file = "durable/harness/context.go"
-func = "readContextFrom"
-pattern = "history-clone"
-detail = "slices.Clone"
-count = 1
-class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
-
-[[hit]]
-file = "durable/harness/context.go"
-func = "settle"
-pattern = "history-clone"
-detail = "slices.Clone"
-count = 1
-class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
-
-[[hit]]
 file = "durable/harness/drafts.go"
 func = "decodeJSON"
 pattern = "json-roundtrip"
@@ -3833,14 +3809,6 @@ func = "CrashRecord.MarshalJSON"
 pattern = "nested-marshal"
 detail = "orderedjson.MarshalJSON"
 count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "internal/codingagent/event_bridge.go"
-func = "toolResultWire.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 2
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]

@@ -180,7 +180,7 @@ func fullConvert[T any](prev T, ops []durable.Op, convert func(any) (T, error)) 
 	if err != nil {
 		return prev, false
 	}
-	value, err := delta.DecodeJson(raw)
+	value, err := delta.DecodeJson(raw) //perf:ok cold fallback: graph and view watches take the ops-only paths above
 	if err != nil {
 		return prev, false
 	}

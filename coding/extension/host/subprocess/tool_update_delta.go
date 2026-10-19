@@ -28,11 +28,11 @@ func (o orderedWire) MarshalJSON() ([]byte, error) {
 	var out []byte
 	out = append(out, '{')
 	for index, name := range o.names {
-		key, err := sdkjson.Marshal(name)
+		key, err := sdkjson.Marshal(name) //perf:ok each member is encoded once, in order; there is no outer re-encode
 		if err != nil {
 			return nil, err
 		}
-		value, err := sdkjson.Marshal(o.values[index])
+		value, err := sdkjson.Marshal(o.values[index]) //perf:ok each member is encoded once, in order; there is no outer re-encode
 		if err != nil {
 			return nil, err
 		}
