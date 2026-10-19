@@ -236,8 +236,7 @@ func dateTime(entry map[string]any) (float64, error) {
 // extractFileOpsFromMessage is Pi's extractFileOpsFromMessage (utils.ts): the tool calls of an assistant message. Pi also reads the calls a codemode script
 // made from a tool result, but prepareBranchEntries never passes one.
 func extractFileOpsFromMessage(message map[string]any, fileOps *FileOperations) {
-	switch message["role"] {
-	case "assistant":
+	if message["role"] == "assistant" {
 		blocks, _ := message["content"].([]any)
 		for _, raw := range blocks {
 			block, ok := raw.(map[string]any)
