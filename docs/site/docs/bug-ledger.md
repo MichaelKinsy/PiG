@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-890 bugs. 840 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+891 bugs. 841 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -909,6 +909,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c2cdd5b](#bf-c2cdd5b) | An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
 | [BF-dea7cbc](#bf-dea7cbc) | A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no… | PiG's own defect | All platforms | Unreleased |
+| [BF-29514f8](#bf-29514f8) | On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13313,6 +13314,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `c3c84b5a28` (2026-10-18), `dea7cbc08c` (2026-10-18), `f8ef05a7ae` (2026-10-18)
 - **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds`, `durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt`, `durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed` and 9 more in docs/bug-ledger.json
 - **Release note:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.
+
+### BF-29514f8
+
+**On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
+- **Root cause:** Pi runs every scheduler pass, invocation and commit listener in the context of the call that queued it, and an await resumes in its own function's context (scheduler.ts:1404-1426, 1656-1668; session.ts:765, 881). The CF host now snapshots each client call's context and passes its number as the step's origin; the core keeps a current origin that Loop.Defer, line jobs, pending effects and parked hops chains capture and restore, and effects and notices carry it, so the host starts effect handlers and timers and runs notice listeners inside that snapshot. The core frees an origin when nothing holds it (origin_free notice, kind 10). The native host passes origin 0.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `29514f8d63` (2026-10-18), `c3c84b5a28` (2026-10-18), `d677ba17ad` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports` and 18 more in docs/bug-ledger.json
+- **Release note:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
 
 ## Divergences from Pi added in this release
 
