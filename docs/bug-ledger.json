@@ -29712,6 +29712,34 @@
       ]
     },
     {
+      "id": "BF-55b7c3b",
+      "title": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of…",
+      "symptom": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
+      "rootCause": "Client.Begin returned the context error and told the core nothing when the caller's context ended while the begin was queued behind another transaction. When the line freed, the core's grant gave it to that transaction and answered ready to nobody; the transaction never ended, so EventClose, queued behind the line, never ran and Session.Close waited forever in Client.request(EventClose).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1d8dab9122",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "55b7c3b9dc",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction",
+        "durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns",
+        "durable/harness/harness_generation_test.go::TestGeneration"
+      ]
+    },
+    {
       "id": "BF-4dbaccf",
       "title": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…",
       "symptom": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.",
@@ -30202,31 +30230,58 @@
       ]
     },
     {
-      "id": "BF-55b7c3b",
-      "title": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of…",
-      "symptom": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
-      "rootCause": "Client.Begin returned the context error and told the core nothing when the caller's context ended while the begin was queued behind another transaction. When the line freed, the core's grant gave it to that transaction and answered ready to nobody; the transaction never ended, so EventClose, queued behind the line, never ran and Session.Close waited forever in Client.request(EventClose).",
+      "id": "BF-c1af1a0",
+      "title": "A Durable core request costs the same however many requests are in flight: a notice is tested only against…",
+      "symptom": "A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.",
+      "rootCause": "Host.notify tested every pending waiter's accept function against each notice, so a request's cost grew with the number of requests in flight (11 µs per request at 500 in flight, 57 µs at 4,000). Waiters that expect one kind and id now register through Host.ExpectNotice in a map keyed by both; notify tests that key's waiters and then the generic ones, as before. Client.request uses it. Cancel, discard and close remove a waiter from both structures. Notice and wire bytes are unchanged; delivery order among several waiters of one notice was already unspecified.",
       "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
+      "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
+      "releaseNote": "A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "1d8dab9122",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "55b7c3b9dc",
+          "hash": "c1af1a0f59",
           "date": "2026-10-18"
         }
       ],
       "tests": [
-        "durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction",
-        "durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns",
-        "durable/harness/harness_generation_test.go::TestGeneration"
+        "durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight",
+        "durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice"
+      ]
+    },
+    {
+      "id": "BF-a14e110",
+      "title": "A Durable reference harness turn no longer copies the whole conversation history to extend its context",
+      "symptom": "A Durable reference harness turn no longer copies the whole conversation history to extend its context.",
+      "rootCause": "extendRange copied the entries, active entries, contributions and settled messages of the whole history on every turn, and each shared read cloned them again: 1.79 ms and 5.6 MB per turn at 4,000 turns. A range lineage now keeps one backing array per field; only the first extender of a range appends in place (a tail-owner token), and writes go only past every earlier range's length, so handed-out views never change. Shared reads return the arrays with capacity capped at length, so a reader's append copies. settleSplit and composeMessages build the messages array in one copy, and the leading-system rule scans only the open tail. 69 µs and 206 KB per turn at 4,000 turns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable reference harness turn no longer copies the whole conversation history to extend its context.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2934eba06f",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "a14e110946",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
+        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
+        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
+        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
+        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
+        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder"
       ]
     }
   ],
