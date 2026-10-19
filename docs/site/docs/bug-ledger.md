@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-914 bugs. 864 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 136 bugs have no recorded test.
+915 bugs. 865 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -933,6 +933,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
+| [BF-pending-915](#bf-pending-915) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13675,6 +13676,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `2ab79ce358` (2026-10-06, #166), `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `c019ea9155` (2026-10-06, #163), `e2db9318fa` (2026-10-06, #173), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `e63c61c338` (2026-10-12, #208), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
 - **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11229 more in docs/bug-ledger.json
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
+
+### BF-pending-915
+
+**Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** Not yet committed.
+- **Tests:** None recorded.
+- **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
 ## Divergences from Pi added in this release
 
