@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-913 bugs. 863 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 136 bugs have no recorded test.
+914 bugs. 864 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 136 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -932,6 +932,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-02ed4f1](#bf-02ed4f1) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
 | [BF-2e70b95](#bf-2e70b95) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
 | [BF-b1421b7](#bf-b1421b7) | `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-77d8625](#bf-77d8625) | `chord/host`: the Node facet loader no longer writes its child entry under one fixed name in the shared… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13658,6 +13659,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b1421b7ef6` (2026-10-18), `c2cdd5b680` (2026-10-18)
 - **Tests:** `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues`, `chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered` and 5 more in docs/bug-ledger.json
 - **Release note:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
+
+### BF-77d8625
+
+**`chord/host`: the Node facet loader no longer writes its child entry under one fixed name in the shared…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/host`: the Node facet loader no longer writes its child entry under one fixed name in the shared temporary directory.
+- **Root cause:** nodeLoaderEntry wrote the child entry to one content-hashed path in the shared temporary directory and cached it for the process; the package TestMain removed it at exit. A later test process reused the first one's file, so when the first exited its cleanup removed the script the second was about to run (MODULE_NOT_FOUND, "child exited before ready", in CI portmap's parallel coverage runs). The fixed name in a world-writable directory also let another local user rewrite the file Node ran. Each load now writes its entry into its own 0700 MkdirTemp directory and removes it once Start has settled; the child reads its entry only at startup. testmain_test.go is gone.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b1421b7ef6` (2026-10-18), `b1a68e0af3` (2026-10-18), `77d86252ca` (2026-10-19)
+- **Tests:** `agent/testmain_leak_test.go::TestMain`, `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/loader_entry_test.go::TestNodeLoaderEntryIsPrivateAndRemovable`, `chord/host/loader_entry_test.go::TestNodeLoaderLeavesNothingInTheTempDirectory`, `chord/host/loader_entry_test.go::TestNodeLoaderSurvivesAnotherProcessesCleanupOfTheTempDirectory`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications` and 10 more in docs/bug-ledger.json
+- **Release note:** `chord/host`: the Node facet loader no longer writes its child entry under one fixed name in the shared temporary directory. Another process that cleaned that file up, or two processes racing it, made a starting load fail with `child exited before ready`; and any other user could rewrite the file Node ran. Each load now writes the entry into a private `0700` directory of its own and removes it once the child has started.
 
 ## Divergences from Pi added in this release
 
