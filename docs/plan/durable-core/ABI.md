@@ -179,7 +179,7 @@ Rules. (1) The core parks each await chain of Pi that stands between two Session
 
 | kind | name | payload | host action |
 |---|---|---|---|
-| 1 | `timer` | `u32 timerId`, `f64 at`, `u8 durable` | volatile: `setTimeout`; durable: keep the object alarm at the earliest durable `at` |
+| 1 | `timer` | `u32 timerId`, `f64 at`, `u8 class` | `class` 0, volatile (a throttle window): `setTimeout`, and a host may lose it; 1, durable (a sleeping task's wake): keep the object alarm at the earliest durable `at`, and the core re-derives the timer from the task's checkpoint on reopen; 2, background (an idle context or document expiring, memory only): a host that cannot keep a pending timer without keeping its process alive may decline it, and the core frees that memory at later commits instead |
 | 2 | `timer_clear` | `u32 timerId` | |
 | 3 | `model_context` | A body recipe (§10.2) whose expansion is the JSON `{model:{provider,modelId}, conversationId, context, options}`. The core builds the framing as text segments and names the model's messages as one range segment: the committed context of the conversation, cut off at the entry `tail` under the head marker entry `head`. The host derives the messages from the entries in storage (the `entries` table, `CAST(record AS BLOB)`) with pi-durable's range algorithm (`src/harness/context.ts`) before it parses the JSON, so a model request neither copies the transcript through the core nor requires the core to hold it. `context` is exactly the pi-ai `Context` pi-durable 1.0.4 passes, `{messages}` (`src/harness/generation.ts:402`): the system prompt and tool declarations are positional `pi.system` messages inside `messages` (§7.4), not separate fields. A request whose messages a `beforeRequest` hook replaced, or whose conversation or entry ids exceed `u32`, carries them as text instead. `options` is the request's `SimpleStreamOptions` without `signal` (`reasoning`, the provider `sessionId`, the pinned stream options). A host keeps the range it derived for a conversation, so a later request reads only the entries after it, and drops it when the conversation unloads or has been idle for `contextRetentionMs` | run pi-ai `streamSimple` (or the scripted model) on the derived message list; send `model_event` |
 | 4 | `model_http` | JSON head `{method, url, headers, auth}` then a body recipe (section 10.2) | add credentials for `auth`, `fetch`, stream `model_bytes` |
@@ -206,6 +206,7 @@ Rules. (1) The core parks each await chain of Pi that stands between two Session
 | 6 | `progress_ack` | `u32 waitId`, `u8 outcome` (0 committed, 1 rejected), JSON error when rejected: settles the promise of a tool's `api.details()` |
 | 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch pins) |
 | 8 | `index_sizes` | JSON `{live, settled, edges, below, roots, unloaded, dropQueue}`: a `harness`-mode core's scheduler ownership index sizes, published after a step in which they changed; the host's synchronous `SCHEDULER_INDEX_SIZES` getter replicates them |
+| 9 | `wake` | JSON `{active, at?}`: the `Harness.wake()` value of a `harness`-mode core whose `open` payload sets `onWake`, published after each recomputation (`HarnessOptions.onWake`); the host delivers a changed value to its callback, and again after a throw, so it keeps the last value it delivered. With `onWake` the core arms no timer for sleeping tasks: the host arms its own alarm from `at` |
 
 Sidecar writes, including the `CREATE TABLE IF NOT EXISTS` on first use, are ordinary commits on `pig_*` statements outside Pi's `next_seq` sequence; their `seq` is `-1` (ADR D6).
 
@@ -228,7 +229,8 @@ Host code reaches the core only through these channels. Every method of the faca
 | `memo(name)`, `snapshot`, `snapshotAsOf`, `getTask`, `outcomes`, `ownedTasks`, `entry`, `context`, `conversation`, `agent()` | `api` request answered by `api_result` from committed state |
 | `waitForTask`, `watchDoc` and other observations | `api` request; the core answers when the awaited state is published, and `published` notices drive watches |
 | `createTask` | `tx` with a single `createTask` op; the host computes the definition's `initial(input)` before sending it |
-| `sleep(until)` | `api` request; the core arms a durable `timer` and answers at the wake |
+| `sleepUntil(until, checkpoint)` | `api` request; the core commits the task's sleeping state (`checkpoint` is its next state) and answers once it is committed; the task then holds no invocation, and its wake is a durable `timer` (class 1), or a `wake` notice when the host took `onWake` |
+| `Harness.wake()`, `Harness.retryTask(taskId)` | `api` request answered by `api_result` (`wake`: at once; `retryTask`: once the parked task's restart count is cleared and scheduling is enabled) |
 | `output`, `diagnostic`, `details` | `tool_progress` (`details` waits for `progress_ack`) |
 | `env` | the `env` effect, issued by the core before `execute` (§8.4) |
 | `report` | handled in the host; the core's own reports arrive as `report` notices |
@@ -257,7 +259,9 @@ An `api` event is `u32 requestId` then JSON `{op, ...args}`. The answer is an `a
 | `context` | conversationId, at | the ContextView `{head?, entries, contributions, messages}`, or `{"$context":{conversationId, head, tail}}` for a conversation with a visible entry: the core does not build a long context, it names it (the same bounds a `model_context` range names, §10.2) and the host that serves the read derives the ContextView from storage with pi-durable's range algorithm and resolves the request with it. A conversation without a visible entry answers the empty view | at once |
 | `conversation` | conversationId | the conversation handle data or null | at once |
 | `agent` | conversationId | the resolved agent | at once |
-| `sleep` | taskId, until | null | at the wake of the durable timer the core arms |
+| `sleepUntil` | taskId, until, checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
+| `wake` | none | `{active, at?}`, the Harness's wake | at once; a `harness`-mode core only |
+| `retryTask` | taskId | null | once a parked task's restart count is cleared and scheduling is enabled; an error for an unknown task |
 | `usage` | none | the UsageState of the Session | at once |
 | `taskGraph` | none | the TaskGraph | at once |
 

@@ -203,7 +203,15 @@ test("a second trap on the same event fails the conversation with that error; a 
 
 const tick = (ms = 20) => new Promise(resolve => setTimeout(resolve, ms))
 
-test("quiet-point recycling: over the high-water mark a quiet host drops its instance and the next call reopens from SQLite; nothing in flight is recycled", { skip }, async () => {
+/** Resolves when the pool next takes an instance back: the host's recycle at a quiet point (or a close). Armed before the work whose end is awaited. */
+function nextRelease(pool: CorePool) {
+  return new Promise<void>(resolve => {
+    const released = pool.released.bind(pool)
+    pool.released = instance => { pool.released = released; released(instance); resolve() }
+  })
+}
+
+test("quiet-point recycling: over the high-water mark a quiet host drops its instance and the next call reopens from SQLite; nothing in flight is recycled", { skip, timeout: 30_000 }, async () => {
   const dir = tempDir("recycle-quiet")
   try {
     const mod = module()
@@ -221,20 +229,25 @@ test("quiet-point recycling: over the high-water mark a quiet host drops its ins
     assert.equal(h.host.counters.recycles, before.recycles, "the instance under a running tool is not recycled")
     assert.equal(pool.created, before.created, "and no new instance was made for it")
     assert.equal(h.quiet, false)
+    let dropped = nextRelease(pool)
     release()
     r.hold.gate = undefined
     assert.equal((await held.wait(context)).status, "done")
-    // Further turns: each quiet point over the mark recycles, and each next call opens a fresh instance.
+    // Further turns: each quiet point over the mark recycles, and each next call opens a fresh instance. The core is still running
+    // hops chains (Pi's line-job awaits, about forty microtask hops) when a turn's wait resolves, so the quiet point is awaited
+    // (`dropped`), not timed and not assumed: a caller that goes straight on to its next call leaves none.
     for (const id of ["a", "b"]) {
-      // A caller that pauses leaves a quiet point; one that goes straight on to its next call does not.
-      await tick(30)
+      await dropped
       assert.equal(pool.instances, 0, "a quiet host over the mark has given its instance back")
+      dropped = nextRelease(pool)
       assert.equal((await (await conversation.submit({ type: "input", content: `turn ${id}`, requestId: id }, context)).wait(context)).status, "done")
     }
+    await dropped
+    assert.equal(pool.instances, 0, "and so has the host after the last turn")
     const entries = await transcript(h, conversation.id)
     assert.equal(entries.filter((e: any) => e[0] === "pi.user").length, 3)
     assert.equal(entries.filter((e: any) => e[0] === "pi.assistant").length, 6, "two assistant entries per turn: the lookup call and the answer")
-    assert.ok(h.host.counters.recycles >= 3, `recycled at ${h.host.counters.recycles} quiet points`)
+    assert.equal(h.host.counters.recycles, 3, `recycled at ${h.host.counters.recycles} quiet points`)
     assert.equal(pool.created, 1 + h.host.counters.recycles, "one fresh instance per recycle, none leaked")
     assert.ok(pool.instances <= 1, `${pool.instances} instances alive`)
     assert.equal(h.host.counters.traps, 0)
