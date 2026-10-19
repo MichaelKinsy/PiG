@@ -264,6 +264,7 @@ func TestAFailedChunkPoisonsTheWriteHandleAndHandlesAreLimited(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { file.Close() }) // Windows cannot remove the temp directory under an open handle
 	id, failure := s.insertFile(file, path)
 	if failure != nil {
 		t.Fatal(failure)
