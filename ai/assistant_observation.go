@@ -49,11 +49,12 @@ func newAssistantMessageCell(message *AssistantMessage) *assistantMessageCell {
 
 // publish runs under producer ownership of message, before the producer suspends. It never changes delivered public fields.
 func (cell *assistantMessageCell) publish(message *AssistantMessage, replacements assistantMessageReplacements) {
-	// The previous snapshot's content is immutable once published, so the copy below may share what has not changed.
+	// The previous snapshot's content is immutable once published, so the copy below may share what has not changed. A call that
+	// still defers a text the cell has settled is published as its settled call (settledCalls).
 	cell.mu.RLock()
-	previous := cell.current.Content
+	previous, settled := cell.current.Content, cell.settledCalls(message.Content)
 	cell.mu.RUnlock()
-	next := cloneAssistantMessageFrom(*message, previous)
+	next := cloneAssistantMessageFrom(*message, previous, settled)
 	cell.mu.Lock()
 	defer cell.mu.Unlock()
 	// Absent optional properties are not object references; adding or removing one is an assignment even without an explicit replacement flag.

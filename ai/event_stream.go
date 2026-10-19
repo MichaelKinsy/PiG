@@ -36,6 +36,8 @@ type AssistantMessageEventStream struct {
 	done         chan struct{}
 	executor     *continuationExecutor
 	publications assistantPublications
+	// validated is the longest string of tool-call arguments that the last emission-time snapshot (publishPartialLocked) found to be valid UTF-8, which the next snapshot of a longer string does not read again.
+	validated string
 	// producer is the executor turn that owns pushes, if any. Only a producer under the executor publishes live partial views.
 	producer *continuationTurn
 
@@ -118,6 +120,7 @@ func (s *AssistantMessageEventStream) push(event AssistantMessageEvent, replacem
 	}
 
 	if terminal {
+		s.validated = ""
 		continuations = append(continuations, s.resolveResultLocked()...)
 	}
 	if len(s.waiters) == 0 {
@@ -223,6 +226,7 @@ func (s *AssistantMessageEventStream) End(result ...*AssistantMessage) {
 		s.timeLocked(result[0])
 	}
 	s.terminal = true
+	s.validated = ""
 	if len(result) > 0 && !s.resolved {
 		s.publishTerminalLocked(result[0], assistantMessageReplacements{})
 		s.result = result[0]

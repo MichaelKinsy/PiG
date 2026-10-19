@@ -58,7 +58,7 @@ func TestCloneAssistantContentFromMatchesCloneAssistantContent(t *testing.T) {
 			earlier := cloneAssistantContent(source)
 			change(source)
 			want := cloneAssistantContent(source)
-			got := cloneAssistantContentFrom(source, earlier)
+			got := cloneAssistantContentFrom(source, earlier, nil)
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("snapshot from earlier = %#v, want %#v", got, want)
 			}
@@ -73,8 +73,8 @@ func TestCloneAssistantContentFromMatchesCloneAssistantContent(t *testing.T) {
 // Unchanged arguments are shared between snapshots rather than copied, and a snapshot never shares a map with its source.
 func TestCloneAssistantContentFromSharesOnlyImmutableSnapshots(t *testing.T) {
 	source := snapshotSource()
-	first := cloneAssistantContentFrom(source, cloneAssistantContent(source))
-	second := cloneAssistantContentFrom(source, first)
+	first := cloneAssistantContentFrom(source, cloneAssistantContent(source), nil)
+	second := cloneAssistantContentFrom(source, first, nil)
 	firstArguments, secondArguments := first[2].(ToolCall).Arguments, second[2].(ToolCall).Arguments
 	if reflect.ValueOf(firstArguments).Pointer() != reflect.ValueOf(secondArguments).Pointer() {
 		t.Fatal("unchanged arguments were copied again")
@@ -86,7 +86,7 @@ func TestCloneAssistantContentFromSharesOnlyImmutableSnapshots(t *testing.T) {
 	if second[2].(ToolCall).Arguments["path"] != "a.go" {
 		t.Fatal("source mutation reached a snapshot")
 	}
-	third := cloneAssistantContentFrom(source, second)
+	third := cloneAssistantContentFrom(source, second, nil)
 	if third[2].(ToolCall).Arguments["path"] != "changed" || second[2].(ToolCall).Arguments["path"] != "a.go" {
 		t.Fatalf("third = %#v, second = %#v", third[2], second[2])
 	}
@@ -146,7 +146,7 @@ func BenchmarkCloneAssistantContent(b *testing.B) {
 	b.Run("from-earlier-snapshot", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			cloneAssistantContentFrom(source, earlier)
+			cloneAssistantContentFrom(source, earlier, nil)
 		}
 	})
 }

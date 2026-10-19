@@ -21,7 +21,7 @@ func (reader *publicationCheckingReader) Read(p []byte) (int, error) {
 		reader.builder.cell.mu.RLock()
 		published := reader.builder.cell.current
 		reader.builder.cell.mu.RUnlock()
-		if want := cloneAssistantMessageFrom(*reader.builder.partial, nil); !reflect.DeepEqual(published, want) {
+		if want := cloneAssistantMessageFrom(*reader.builder.partial, nil, nil); !reflect.DeepEqual(published, want) {
 			reader.t.Fatalf("before record %d the published message lags the producer's:\npublished %+v\n  partial %+v", reader.reads, published, want)
 		}
 	}

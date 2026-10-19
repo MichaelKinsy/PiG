@@ -9,6 +9,13 @@ type cellArguments struct {
 	parser streamingArgumentsParser
 	// settled is the arguments the last settlement stored, which the next one shares its unchanged members with.
 	settled JsonObject
+	// input is the text the last settlement parsed and call the settled call it stored for it, nil before the first. A block
+	// that defers the same text (a call that streamed nothing since) has this parse, whatever its identity: the parse is a
+	// function of the text alone. Neither a later settlement nor a later publication then parses, copies or boxes it again.
+	// The call is an immutable value that the content of every publication holding it shares, as a published block always is
+	// (cloneAssistantContentWith).
+	input string
+	call  AssistantContentBlock
 }
 
 // hasDeferredArguments reports whether a tool call in blocks waits for its argument parse.
@@ -63,8 +70,8 @@ func (cell *assistantMessageCell) settleLocked(shallow *assistantMessageReferenc
 }
 
 // settleContent returns a copy of blocks whose tool calls hold the parse of their deferred text. The current
-// publication's calls resume the cell's parsers (cached); a content object an earlier publication left behind parses
-// its text afresh.
+// publication's calls resume the cell's parsers (cached) and keep the settled call of a text they parsed already; a
+// content object an earlier publication left behind parses its text afresh.
 func (cell *assistantMessageCell) settleContent(blocks []AssistantContentBlock, cached bool) []AssistantContentBlock {
 	out := slices.Clone(blocks)
 	for index, block := range out {
@@ -76,15 +83,48 @@ func (cell *assistantMessageCell) settleContent(blocks []AssistantContentBlock, 
 		if cached {
 			state = cell.argumentsAt(index)
 		}
-		arguments, order, nonObject := state.parser.parse(call.deferredArguments)
-		if arguments != nil {
-			arguments = cloneArgumentsFrom(arguments, state.settled)
+		if state.call != nil && state.input == call.deferredArguments {
+			parsed := state.call.(ToolCall)
+			if sameToolCallIdentity(parsed, call) {
+				out[index] = state.call
+				continue
+			}
+			call.setParsedArguments(parsed.Arguments, parsed.argumentOrder, parsed.nonObjectArguments)
+		} else {
+			input := call.deferredArguments
+			arguments, order, nonObject := state.parser.parse(input)
+			if arguments != nil {
+				arguments = cloneArgumentsFrom(arguments, state.settled)
+			}
+			state.settled, state.input = arguments, input
+			call.setParsedArguments(arguments, order, nonObject)
 		}
-		state.settled = arguments
-		call.setParsedArguments(arguments, order, nonObject)
 		out[index] = call
+		if cached {
+			state.call = out[index]
+		}
 	}
 	return out
+}
+
+// settledCalls returns, at the index of each tool call of blocks that defers a text the cell has settled for a call of the same
+// identity, the settled call: the block that settlement would make. It returns nil when there is none. The caller holds a lock.
+func (cell *assistantMessageCell) settledCalls(blocks []AssistantContentBlock) (settled []AssistantContentBlock) {
+	for index, block := range blocks {
+		call, ok := block.(ToolCall)
+		if !ok || call.deferredArguments == "" {
+			continue
+		}
+		state := cell.arguments[index]
+		if state == nil || state.call == nil || state.input != call.deferredArguments || !sameToolCallIdentity(state.call.(ToolCall), call) {
+			continue
+		}
+		if settled == nil {
+			settled = make([]AssistantContentBlock, len(blocks))
+		}
+		settled[index] = state.call
+	}
+	return settled
 }
 
 func (cell *assistantMessageCell) argumentsAt(index int) *cellArguments {

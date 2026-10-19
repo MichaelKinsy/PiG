@@ -32,7 +32,20 @@ func (stream *AssistantMessageEventStream) publishPartialLocked(message *Assista
 	}
 	if stream.producer == nil {
 		// pig divergence (D82): a producer outside the JavaScript-order executor publishes an immutable emission-time snapshot. A live view would expose whatever revision a free-running goroutine reached when a consumer happened to observe it.
-		snapshot := cloneAssistantMessage(*message)
+		// A tool call whose arguments hold a long string that grows is not validated from its start at each push: the string the last snapshot found valid is the prefix the next one skips (plainWalk.knownValid).
+		validated := ""
+		snapshot := cloneAssistantMessageWith(*message, func(value any) any {
+			walk := plainWalk{knownValid: stream.validated}
+			copied, ok := clonePlainJSON(value, &walk)
+			if !ok {
+				return cloneJSONValue(value)
+			}
+			if len(walk.longest) > len(validated) {
+				validated = walk.longest
+			}
+			return copied
+		})
+		stream.validated = validated
 		return &snapshot
 	}
 	if stream.publications == nil {

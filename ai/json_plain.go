@@ -7,6 +7,7 @@ import (
 	"math"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"unicode/utf8"
 
@@ -22,6 +23,30 @@ type plainWalk struct {
 	overflow []uintptr
 	// validatedStrings skips the string check for a tree whose strings an earlier clone already checked.
 	validatedStrings bool
+	// knownValid is a string an earlier clone of the same growing value found to be valid UTF-8: a string that begins with it is checked from where it ends. longest is the longest string of at least rememberedStringLength bytes that this walk found valid UTF-8, which the caller hands to its next clone as knownValid.
+	knownValid string
+	longest    string
+}
+
+// rememberedStringLength is the length from which a string a walk found valid is worth remembering: shorter ones cost less to check again than to compare.
+const rememberedStringLength = 256
+
+// validString is isWTF8(text) for a walk that carries knownValid: only what follows a known valid prefix is read. A valid UTF-8 text that is longer than the longest one the walk has remembered is remembered.
+func (walk *plainWalk) validString(text string) bool {
+	var strict bool
+	if known := walk.knownValid; known != "" && len(text) >= len(known) && strings.HasPrefix(text, known) {
+		// known is valid UTF-8 and ends between two runes, so the text is valid UTF-8 exactly when what follows it is.
+		strict = utf8.ValidString(text[len(known):])
+	} else {
+		strict = utf8.ValidString(text)
+	}
+	if strict {
+		if len(text) >= rememberedStringLength && len(text) > len(walk.longest) {
+			walk.longest = text
+		}
+		return true
+	}
+	return isWTF8(text)
 }
 
 // enterSlice records a non-empty slice by its first element's address, which names its backing array without boxing the slice; it reports false when the slice is already on the path.
@@ -66,7 +91,7 @@ func clonePlainJSON(value any, walk *plainWalk) (copied any, ok bool) {
 	case bool:
 		return value, true
 	case string:
-		return value, walk.validatedStrings || isWTF8(typed)
+		return value, walk.validatedStrings || walk.validString(typed)
 	case float64:
 		return value, !math.IsNaN(typed) && !math.IsInf(typed, 0)
 	case float32:
