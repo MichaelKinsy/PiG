@@ -1305,6 +1305,42 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("session entries=%d branch=%d", len(entries), len(branch)), "info")
 		return nil
 	})
+	// session-branch-probe reports the branch, the leaf entry, the entry the argument names and that entry's label, as "branch=a>b leaf=b entry=a label=L" ("none" for an absent value).
+	ext.Command("session-branch-probe", "Read the branch, an entry and its label", func(ctx sdk.Context, args string) error {
+		branch, err := ctx.GetBranch()
+		if err != nil {
+			return err
+		}
+		ids := make([]string, len(branch))
+		for i, entry := range branch {
+			ids[i] = entry.ID
+		}
+		manager := ctx.SessionManager()
+		leaf, err := manager.GetLeafEntry()
+		if err != nil {
+			return err
+		}
+		entry, err := manager.GetEntry(args)
+		if err != nil {
+			return err
+		}
+		label, err := manager.GetLabel(args)
+		if err != nil {
+			return err
+		}
+		id := func(entry map[string]any) string {
+			if entry == nil {
+				return "none"
+			}
+			return fmt.Sprint(entry["id"])
+		}
+		labelText := "none"
+		if label != nil {
+			labelText = *label
+		}
+		ctx.Notify(fmt.Sprintf("branch=%s leaf=%s entry=%s label=%s", strings.Join(ids, ">"), id(leaf), id(entry), labelText), "info")
+		return nil
+	})
 
 	ext.Command("dialog-probe", "Exercise interactive dialog responses", func(ctx sdk.Context, args string) error {
 		selected, _, selectErr := ctx.Select("Pick", []string{"first", "second"})

@@ -298,7 +298,7 @@ class RuntimeSessionManager {
     }
     if (unconfirmed.length !== pending.length) {
       this.runtime.pendingEntries = unconfirmed;
-      this.runtime.branchCache = undefined;
+      this.runtime.dropBranchCache();
     }
     if (unconfirmed.length === 0) {
       this._view = undefined;
@@ -2999,6 +2999,7 @@ export class Runtime {
       if (snapshot.session.sessionId && snapshot.session.sessionId !== this.state.session.sessionId) {
         this.pendingEntries = [];
         this.contextValues.sessionManager._cachedIndex = undefined;
+        this.dropBranchCache();
         this.state.session = { entries: [] };
         this.sessionLogRequested = false;
         this.sessionLogGeneration++;
@@ -3008,6 +3009,7 @@ export class Runtime {
           (!persistedSession && typeof snapshot.session.entryCount === "number")) {
         this.sessionLogRequested = true;
       }
+      const previousEntries = this.state.session.entries;
       this.state.session = {
         ...this.state.session,
         sessionId: snapshot.session.sessionId ?? this.state.session.sessionId,
@@ -3017,7 +3019,8 @@ export class Runtime {
         info: snapshot.session.info ?? this.state.session.info,
         entries: this.applyEntryAppend(snapshot.session),
       };
-      this.branchCache = undefined;
+      // The branch cache and its index belong to one log array, which an append extends in place; a replaced log releases them.
+      if (this.state.session.entries !== previousEntries) this.dropBranchCache();
     }
     if (typeof snapshot.isIdle === "boolean") this.state.isIdle = snapshot.isIdle;
     if (typeof snapshot.projectTrusted === "boolean") this.state.projectTrusted = snapshot.projectTrusted;
@@ -3120,7 +3123,7 @@ export class Runtime {
     this.sessionLogRequested = true;
     const entries = this.readSessionFile();
     this.state.session.entries = entries;
-    this.branchCache = undefined;
+    this.dropBranchCache();
     const owner = this.activeRequest();
     let operation;
     operation = this.syncSessionLog(entries.length, this.sessionLogGeneration).catch((error) => {
@@ -3168,34 +3171,80 @@ export class Runtime {
     if (total === 0 && appended.length === 0) return local;
     if (total < local.length || total === appended.length) return appended;
     if (appended.length === 0) return local;
-    return local.concat(appended);
+    // The log only grows while it stays the same array, so the id index and the branch cache extend with the new entries instead of being rebuilt.
+    for (const entry of appended) local.push(entry);
+    return local;
+  }
+
+  dropBranchCache() {
+    this.branchCache = undefined;
+    this.branchIndex = undefined;
+  }
+
+  // branchById is the id → entry map of the replicated log, extended with the entries appended since it was last read. It is
+  // dropped whenever the log array is replaced or an entry in it is swapped (dropBranchCache). repeated marks a log in which
+  // one id occurs twice: the later entry wins, so nothing cached over the earlier one is valid.
+  branchById(entries) {
+    let index = this.branchIndex;
+    if (!index || index.entries !== entries || index.count > entries.length) {
+      index = { entries, count: 0, byId: new Map(), repeated: false };
+      this.branchIndex = index;
+    }
+    for (; index.count < entries.length; index.count++) {
+      const entry = entries[index.count];
+      if (!entry || entry.id === undefined) continue;
+      if (index.byId.has(entry.id)) index.repeated = true;
+      index.byId.set(entry.id, entry);
+    }
+    return index;
   }
 
   // branchFromEntries walks parent links back from the leaf, the same path
-  // upstream derives in process. Cached until the next entry append or leaf
-  // move so repeated reads within a turn stay O(1).
+  // upstream derives in process. The path is cached per log array and leaf. An
+  // append below the cached leaf extends it with the new entries only; a leaf
+  // anywhere else (fork, rewind, a different log) rebuilds it.
   branchFromEntries() {
     const session = this.state.session;
     const entries = session.entries || [];
-    if (this.branchCache && this.branchCacheLeaf === session.leafId) return [...this.branchCache];
     const leafId = session.leafId || undefined;
-    const byId = new Map();
-    for (const entry of entries) {
-      if (entry && entry.id !== undefined) byId.set(entry.id, entry);
+    const index = this.branchById(entries);
+    const cache = this.branchCache;
+    if (cache && cache.entries === entries && !index.repeated) {
+      // A leaf named before its entry arrived has an empty path that a later page can fill, so only a non-empty path outlives growth.
+      if (cache.leafId === leafId && (cache.path.length > 0 || cache.scanned === entries.length)) {
+        cache.scanned = entries.length;
+        return [...cache.path];
+      }
+      const tail = cache.path.at(-1);
+      if (tail !== undefined && leafId !== undefined) {
+        // The new entries are the only ones that can lie between the leaf and the cached tail.
+        const budget = entries.length - cache.scanned;
+        const fresh = [];
+        let current = index.byId.get(leafId);
+        while (current && current !== tail && fresh.length < budget) {
+          fresh.push(current);
+          current = current.parentId === undefined || current.parentId === null ? undefined : index.byId.get(current.parentId);
+        }
+        if (current === tail) {
+          for (let i = fresh.length - 1; i >= 0; i--) cache.path.push(fresh[i]);
+          cache.leafId = leafId;
+          cache.scanned = entries.length;
+          return [...cache.path];
+        }
+      }
     }
     const path = [];
     const seen = new Set();
-    let current = leafId === undefined ? undefined : byId.get(leafId);
+    let current = leafId === undefined ? undefined : index.byId.get(leafId);
     while (current && !seen.has(current.id)) {
       seen.add(current.id);
       path.push(current);
       current = current.parentId === undefined || current.parentId === null
         ? undefined
-        : byId.get(current.parentId);
+        : index.byId.get(current.parentId);
     }
     path.reverse();
-    this.branchCache = path;
-    this.branchCacheLeaf = session.leafId;
+    this.branchCache = index.repeated ? undefined : { entries, leafId, path, scanned: entries.length };
     return [...path];
   }
 

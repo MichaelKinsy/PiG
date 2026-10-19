@@ -1376,6 +1376,17 @@ def new_extension() -> pig_sdk.Extension:
             "info",
         ),
     )
+
+    def session_branch_probe(ctx: pig_sdk.Context, args: str) -> None:
+        manager = ctx.session_manager
+        leaf, entry, label = manager.get_leaf_entry(), manager.get_entry(args), manager.get_label(args)
+        ids = ">".join(item["id"] for item in ctx.get_branch())
+        ctx.notify(
+            f"branch={ids} leaf={leaf['id'] if leaf else 'none'} entry={entry['id'] if entry else 'none'} label={label if label is not None else 'none'}",
+            "info",
+        )
+
+    ext.command("session-branch-probe", "Read the branch, an entry and its label", session_branch_probe)
     ext.command("dialog-probe", "Exercise interactive dialog responses", dialog_probe)
 
     def focused_probe(ctx: pig_sdk.Context, args: str) -> None:

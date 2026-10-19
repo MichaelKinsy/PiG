@@ -2070,6 +2070,30 @@ fn main() {
         },
     );
     ext.command(
+        "session-branch-probe",
+        "Read the branch, an entry and its label",
+        |ctx, args| {
+            let manager = ctx.session_manager();
+            let id = |value: serde_json::Value| value.get("id").and_then(|id| id.as_str()).unwrap_or("none").to_string();
+            let ids: Vec<String> = ctx.get_branch().unwrap().iter().map(|entry| entry.id.clone()).collect();
+            let label = match manager.get_label(args).unwrap() {
+                serde_json::Value::String(text) => text,
+                _ => "none".to_string(),
+            };
+            ctx.notify(
+                &format!(
+                    "branch={} leaf={} entry={} label={}",
+                    ids.join(">"),
+                    id(manager.get_leaf_entry().unwrap()),
+                    id(manager.get_entry(args).unwrap()),
+                    label
+                ),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "dialog-probe",
         "Exercise interactive dialog responses",
         |ctx, _args| {

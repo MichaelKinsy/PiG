@@ -45,16 +45,39 @@ type sessionMirror struct {
 	// cannot do that, because entries can change under an unchanged leaf.
 	revision uint64
 
+	// resetGen increments whenever entries and index are replaced rather than
+	// extended (session switch, resync, seed, a repeated entry id). The branch
+	// caches below can be extended in place only while it is unchanged.
+	resetGen uint64
+
+	// branchCache is the root→leaf path as of revision branchCacheFor. After a
+	// miss the cache is extended with the entries appended since when the new
+	// leaf descends from the old one (the shape of every ordinary append) and
+	// rebuilt otherwise (leaf move, fork, rewind). branchTail is the id of the
+	// last path entry, "" when the cache holds the whole log because the mirror
+	// has no leaf; branchGen is the resetGen it was built under; branchScanned
+	// is len(entries) when it was built, so a walk from the new leaf reaches the
+	// cached path exactly when it stops at branchTail before any entry older
+	// than branchScanned; branchBuild counts full rebuilds.
 	branchCache    []json.RawMessage
 	branchCacheFor uint64
+	branchTail     string
+	branchGen      uint64
+	branchScanned  int
+	branchBuild    uint64
 
 	// Decoded form of the same branch. GetBranch is called per event by
 	// extensions that track the conversation, and decoding a long branch costs
 	// hundreds of milliseconds and six figures of allocations each time. The
 	// raw cache above does not help that: it hands back the same bytes to be
 	// parsed again. Invalidated together with branchCache.
-	branchDecoded    []*BranchEntry
-	branchDecodedFor uint64
+	// branchDecodedRaw is how many entries of branchCache have been decoded and
+	// branchDecodedBuild the branchBuild they belong to, so an extended cache
+	// decodes only its new tail.
+	branchDecoded      []*BranchEntry
+	branchDecodedFor   uint64
+	branchDecodedRaw   int
+	branchDecodedBuild uint64
 }
 
 type entryMeta struct {
@@ -88,6 +111,7 @@ func (m *sessionMirror) applySessionUpdate(session json.RawMessage) bool {
 		m.sessionID = s.SessionID
 		m.entries, m.index = nil, nil
 		m.branchCache, m.branchDecoded = nil, nil
+		m.resetGen++
 		m.leafID = ""
 		changed = true
 	}
@@ -117,6 +141,7 @@ func (m *sessionMirror) applySessionUpdate(session json.RawMessage) bool {
 		// Full reset: host switched session or we're out of sync.
 		m.entries = make([]json.RawMessage, 0, s.EntryCount)
 		m.index = make(map[string]entryMeta, s.EntryCount)
+		m.resetGen++
 		changed = true
 	}
 
@@ -128,6 +153,9 @@ func (m *sessionMirror) applySessionUpdate(session json.RawMessage) bool {
 		if id != "" {
 			if m.index == nil {
 				m.index = make(map[string]entryMeta, s.EntryCount)
+			}
+			if _, repeated := m.index[id]; repeated {
+				m.resetGen++
 			}
 			m.index[id] = entryMeta{pos: pos, parentID: parentID}
 		}
@@ -152,8 +180,8 @@ func (m *sessionMirror) getEntries() []json.RawMessage {
 	return out
 }
 
-// getBranch walks parent links from the leaf, returning the path from root
-// to leaf. Cached until the next mutation.
+// getBranch returns a copy of the path from root to leaf. The path is cached
+// and extended in place when entries are appended below the old leaf.
 func (m *sessionMirror) getBranch() []json.RawMessage {
 	m.mu.RLock()
 	if m.branchCache != nil && m.branchCacheFor == m.revision {
@@ -166,26 +194,68 @@ func (m *sessionMirror) getBranch() []json.RawMessage {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	branch := m.branchLocked()
+	out := make([]json.RawMessage, len(branch))
+	copy(out, branch)
+	return out
+}
 
-	// Double-check after upgrade.
+// branchLocked returns the cached path, bringing it up to date first. The
+// slice is the cache itself: callers hold m.mu and copy before releasing it.
+func (m *sessionMirror) branchLocked() []json.RawMessage {
 	if m.branchCache != nil && m.branchCacheFor == m.revision {
-		out := make([]json.RawMessage, len(m.branchCache))
-		copy(out, m.branchCache)
-		return out
+		return m.branchCache
 	}
+	if !m.extendBranchLocked() {
+		m.rebuildBranchLocked()
+	}
+	m.branchCacheFor = m.revision
+	return m.branchCache
+}
 
+// extendBranchLocked brings the cached path up to the current leaf by walking
+// parent links from the leaf back to the cached tail, visiting only entries
+// appended since the cache was built. It reports false, leaving the cache
+// untouched, when the leaf does not descend from the cached tail.
+func (m *sessionMirror) extendBranchLocked() bool {
+	if m.branchTail == "" || len(m.branchCache) == 0 || m.branchGen != m.resetGen || m.leafID == "" {
+		return false
+	}
+	var fresh []json.RawMessage
+	budget := len(m.entries) - m.branchScanned
+	for current := m.leafID; current != m.branchTail; {
+		meta, ok := m.index[current]
+		if !ok || meta.pos < m.branchScanned || len(fresh) >= budget {
+			return false
+		}
+		fresh = append(fresh, m.entries[meta.pos])
+		current = meta.parentID
+	}
+	for i := len(fresh) - 1; i >= 0; i-- {
+		m.branchCache = append(m.branchCache, fresh[i])
+	}
+	if len(fresh) > 0 {
+		m.branchTail = m.leafID
+	}
+	m.branchScanned = len(m.entries)
+	return true
+}
+
+// rebuildBranchLocked walks parent links from the leaf to the root.
+func (m *sessionMirror) rebuildBranchLocked() {
+	m.branchBuild++
+	m.branchGen = m.resetGen
+	m.branchScanned = len(m.entries)
+	m.branchTail = ""
 	entries := m.entries
 	if m.leafID == "" || len(m.index) == 0 {
 		// No leaf or no index: return all entries (matches upstream behavior
 		// when there's no branching).
-		branch := make([]json.RawMessage, len(entries))
-		copy(branch, entries)
-		m.branchCache = branch
-		m.branchCacheFor = m.revision
-		return branch
+		m.branchCache = make([]json.RawMessage, len(entries))
+		copy(m.branchCache, entries)
+		return
 	}
 
-	// Walk parent links from leaf to root.
 	var path []json.RawMessage
 	seen := make(map[string]bool, len(entries))
 	current := m.leafID
@@ -203,12 +273,10 @@ func (m *sessionMirror) getBranch() []json.RawMessage {
 	for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
 		path[i], path[j] = path[j], path[i]
 	}
-
+	if len(path) > 0 {
+		m.branchTail = m.leafID
+	}
 	m.branchCache = path
-	m.branchCacheFor = m.revision
-	out := make([]json.RawMessage, len(path))
-	copy(out, path)
-	return out
 }
 
 // extractEntryIDs pulls id and parentId from a raw session entry without
@@ -239,10 +307,14 @@ func (m *sessionMirror) seed(entries []json.RawMessage, count int, leafID string
 	}
 	m.entries = make([]json.RawMessage, 0, count)
 	m.index = make(map[string]entryMeta, count)
+	m.resetGen++
 	for _, raw := range entries {
 		pos := len(m.entries)
 		m.entries = append(m.entries, raw)
 		if id, parentID := extractEntryIDs(raw); id != "" {
+			if _, repeated := m.index[id]; repeated {
+				m.resetGen++
+			}
 			m.index[id] = entryMeta{pos: pos, parentID: parentID}
 		}
 	}
@@ -267,19 +339,23 @@ func (m *sessionMirror) getBranchEntries() []*BranchEntry {
 	}
 	m.mu.RUnlock()
 
-	raw := m.getBranch()
-
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.branchDecoded == nil || m.branchDecodedFor != m.revision {
-		decoded := make([]*BranchEntry, 0, len(raw))
-		for _, r := range raw {
+		raw := m.branchLocked()
+		decoded, from := m.branchDecoded, m.branchDecodedRaw
+		if m.branchDecodedBuild != m.branchBuild || from > len(raw) {
+			decoded, from = make([]*BranchEntry, 0, len(raw)), 0
+		}
+		for _, r := range raw[from:] {
 			var entry BranchEntry
 			if err := json.Unmarshal(r, &entry); err == nil {
 				decoded = append(decoded, &entry)
 			}
 		}
 		m.branchDecoded = decoded
+		m.branchDecodedRaw = len(raw)
+		m.branchDecodedBuild = m.branchBuild
 		m.branchDecodedFor = m.revision
 	}
 	return append([]*BranchEntry(nil), m.branchDecoded...)

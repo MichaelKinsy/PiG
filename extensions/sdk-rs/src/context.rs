@@ -1489,10 +1489,22 @@ pub struct SessionMirror {
     entries: Vec<std::sync::Arc<serde_json::Value>>,
     leaf_id: String,
     index: std::collections::HashMap<String, EntryMeta>,
+    /// Increments on every change to the log or the leaf. Both caches below are served only while the mirror is still at the revision they were built at.
+    revision: u64,
+    /// Increments whenever the log is replaced rather than extended (session switch, resync, seed, a repeated entry id). A branch is extended in place only while it is unchanged.
+    reset_gen: u64,
+    /// The root→leaf path as of `branch_cache_for`. After a miss it is extended with the entries appended since when the new leaf descends from the old one, and rebuilt otherwise (leaf move, fork, rewind). `branch_tail` is the id of its last entry, empty when it holds the whole log because there is no leaf; `branch_gen` is the `reset_gen` it was built under; `branch_scanned` is the log length when it was built; `branch_build` counts rebuilds.
     branch_cache: Option<Vec<std::sync::Arc<serde_json::Value>>>,
-    branch_cache_for: String,
+    branch_cache_for: u64,
+    branch_tail: String,
+    branch_gen: u64,
+    branch_scanned: usize,
+    branch_build: u64,
+    /// The decoded form of the same path; `branch_decoded_raw` entries of the cache have been decoded, under rebuild `branch_decoded_build`, so an extended cache decodes only its new tail.
     branch_decoded: Option<Vec<std::sync::Arc<BranchEntry>>>,
-    branch_decoded_for: String,
+    branch_decoded_for: u64,
+    branch_decoded_raw: usize,
+    branch_decoded_build: u64,
 }
 
 struct EntryMeta {
@@ -1519,9 +1531,8 @@ impl SessionMirror {
                 self.index.clear();
                 self.leaf_id.clear();
                 self.branch_cache = None;
-                self.branch_cache_for.clear();
                 self.branch_decoded = None;
-                self.branch_decoded_for.clear();
+                self.reset_gen += 1;
                 changed = true;
             }
         }
@@ -1535,11 +1546,10 @@ impl SessionMirror {
         if !subscribed || (entry_count == 0 && append_len == 0) {
             if !leaf_id.is_empty() && leaf_id != self.leaf_id {
                 self.leaf_id = leaf_id.to_string();
-                self.branch_cache = None;
-                self.branch_cache_for.clear();
-                self.branch_decoded = None;
-                self.branch_decoded_for.clear();
-                return true;
+                changed = true;
+            }
+            if changed {
+                self.revision += 1;
             }
             return changed;
         }
@@ -1548,6 +1558,7 @@ impl SessionMirror {
             self.entries.clear();
             self.index.clear();
             self.entries.reserve(entry_count);
+            self.reset_gen += 1;
             changed = true;
         }
 
@@ -1565,8 +1576,8 @@ impl SessionMirror {
                     .unwrap_or("")
                     .to_string();
                 self.entries.push(std::sync::Arc::new(entry.clone()));
-                if !id.is_empty() {
-                    self.index.insert(id, EntryMeta { pos, parent_id });
+                if !id.is_empty() && self.index.insert(id, EntryMeta { pos, parent_id }).is_some() {
+                    self.reset_gen += 1;
                 }
                 changed = true;
             }
@@ -1578,10 +1589,7 @@ impl SessionMirror {
         }
 
         if changed {
-            self.branch_cache = None;
-            self.branch_cache_for.clear();
-            self.branch_decoded = None;
-            self.branch_decoded_for.clear();
+            self.revision += 1;
         }
         changed
     }
@@ -1604,65 +1612,115 @@ impl SessionMirror {
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
-                self.index
-                    .insert(id.to_string(), EntryMeta { pos, parent_id });
+                if self
+                    .index
+                    .insert(id.to_string(), EntryMeta { pos, parent_id })
+                    .is_some()
+                {
+                    self.reset_gen += 1;
+                }
             }
         }
         self.entries = entries.into_iter().map(std::sync::Arc::new).collect();
         self.branch_cache = None;
-        self.branch_cache_for.clear();
         self.branch_decoded = None;
-        self.branch_decoded_for.clear();
+        self.reset_gen += 1;
+        self.revision += 1;
     }
 
     pub fn get_entries(&self) -> Vec<std::sync::Arc<serde_json::Value>> {
         self.entries.clone()
     }
 
-    pub fn get_branch(&mut self) -> Vec<std::sync::Arc<serde_json::Value>> {
-        if let Some(ref cache) = self.branch_cache {
-            if self.branch_cache_for == self.leaf_id {
-                return cache.clone();
+    /// The cached path, brought up to date first. Callers copy before the next mutation.
+    pub(crate) fn branch(&mut self) -> &[std::sync::Arc<serde_json::Value>] {
+        if self.branch_cache.is_none() || self.branch_cache_for != self.revision {
+            if !self.extend_branch() {
+                self.rebuild_branch();
             }
+            self.branch_cache_for = self.revision;
         }
+        self.branch_cache.as_deref().unwrap_or(&[])
+    }
 
-        let branch = if self.leaf_id.is_empty() || self.index.is_empty() {
-            self.entries.clone()
-        } else {
-            let mut path = Vec::new();
-            let mut seen = std::collections::HashSet::new();
-            let mut current = self.leaf_id.clone();
-            while !current.is_empty() && seen.insert(current.clone()) {
-                if let Some(meta) = self.index.get(&current) {
-                    path.push(self.entries[meta.pos].clone());
-                    current = meta.parent_id.clone();
-                } else {
-                    break;
-                }
-            }
-            path.reverse();
-            path
+    /// Brings the cached path up to the current leaf by walking parent links from the leaf back to the cached tail, visiting only entries appended since the cache was built. Reports false, leaving the cache untouched, when the leaf does not descend from the cached tail.
+    fn extend_branch(&mut self) -> bool {
+        if self.branch_tail.is_empty() || self.branch_gen != self.reset_gen || self.leaf_id.is_empty() {
+            return false;
+        }
+        let Some(cache) = self.branch_cache.as_mut() else {
+            return false;
         };
+        if cache.is_empty() {
+            return false;
+        }
+        let budget = self.entries.len().saturating_sub(self.branch_scanned);
+        let mut fresh = Vec::new();
+        let mut current = self.leaf_id.as_str();
+        while current != self.branch_tail {
+            let Some(meta) = self.index.get(current) else {
+                return false;
+            };
+            if meta.pos < self.branch_scanned || fresh.len() >= budget {
+                return false;
+            }
+            fresh.push(self.entries[meta.pos].clone());
+            current = meta.parent_id.as_str();
+        }
+        if !fresh.is_empty() {
+            cache.extend(fresh.into_iter().rev());
+            self.branch_tail = self.leaf_id.clone();
+        }
+        self.branch_scanned = self.entries.len();
+        true
+    }
 
-        self.branch_cache = Some(branch.clone());
-        self.branch_cache_for = self.leaf_id.clone();
-        branch
+    /// Walks parent links from the leaf to the root.
+    fn rebuild_branch(&mut self) {
+        self.branch_build += 1;
+        self.branch_gen = self.reset_gen;
+        self.branch_scanned = self.entries.len();
+        self.branch_tail.clear();
+        if self.leaf_id.is_empty() || self.index.is_empty() {
+            self.branch_cache = Some(self.entries.clone());
+            return;
+        }
+        let mut path = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let mut current = self.leaf_id.as_str();
+        while !current.is_empty() && seen.insert(current) {
+            let Some(meta) = self.index.get(current) else {
+                break;
+            };
+            path.push(self.entries[meta.pos].clone());
+            current = meta.parent_id.as_str();
+        }
+        path.reverse();
+        if !path.is_empty() {
+            self.branch_tail = self.leaf_id.clone();
+        }
+        self.branch_cache = Some(path);
     }
 
     pub fn get_branch_entries(&mut self) -> Vec<std::sync::Arc<BranchEntry>> {
         if let Some(ref cache) = self.branch_decoded {
-            if self.branch_decoded_for == self.leaf_id {
+            if self.branch_decoded_for == self.revision {
                 return cache.clone();
             }
         }
-        let decoded = self
-            .get_branch()
-            .iter()
-            .filter_map(|entry| serde_json::from_value((**entry).clone()).ok())
-            .map(std::sync::Arc::new)
-            .collect::<Vec<_>>();
+        self.branch();
+        let raw = self.branch_cache.as_deref().unwrap_or(&[]);
+        let (mut decoded, from) = match self.branch_decoded.take() {
+            Some(decoded) if self.branch_decoded_build == self.branch_build && self.branch_decoded_raw <= raw.len() => {
+                (decoded, self.branch_decoded_raw)
+            }
+            _ => (Vec::with_capacity(raw.len()), 0),
+        };
+        decoded.extend(raw[from..].iter().filter_map(|entry| BranchEntry::from_wire(entry)).map(std::sync::Arc::new));
+        self.branch_decoded_raw = raw.len();
+        self.branch_decoded_build = self.branch_build;
+        self.branch_decoded_for = self.revision;
         self.branch_decoded = Some(decoded.clone());
-        self.branch_decoded_for = self.leaf_id.clone();
         decoded
     }
 }

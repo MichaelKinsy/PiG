@@ -63,6 +63,8 @@ mod context;
 mod model_info_tests;
 #[cfg(test)]
 mod branch_entry_tests;
+#[cfg(test)]
+mod session_mirror_append_tests;
 mod editor_component;
 mod event_bus;
 #[cfg(all(test, unix))]

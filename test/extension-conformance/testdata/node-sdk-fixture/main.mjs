@@ -870,6 +870,13 @@ export default function (pi) {
       ctx.ui.notify(`session entries=${ctx.sessionManager.getEntries().length} branch=${ctx.sessionManager.getBranch().length}`, "info");
     },
   });
+  pi.registerCommand("session-branch-probe", {
+    description: "Read the branch, an entry and its label",
+    handler: async (args, ctx) => {
+      const manager = ctx.sessionManager;
+      ctx.ui.notify(`branch=${manager.getBranch().map((entry) => entry.id).join(">")} leaf=${manager.getLeafEntry()?.id ?? "none"} entry=${manager.getEntry(args)?.id ?? "none"} label=${manager.getLabel(args) ?? "none"}`, "info");
+    },
+  });
   pi.registerCommand("dialog-probe", {
     description: "Exercise interactive dialog responses",
     handler: async (_args, ctx) => {

@@ -667,8 +667,23 @@ class SessionMirror:
         self._entries: list[dict[str, Any]] = []
         self._leaf_id: str = ""
         self._index: dict[str, tuple[int, str]] = {}  # id -> (pos, parent_id)
+        # revision increments on every change to the log or the leaf; the branch
+        # cache is served only while the mirror is still at the revision it was
+        # built at. reset_gen increments whenever the log is replaced rather
+        # than extended (session switch, resync, seed, a repeated entry id).
+        self._revision: int = 0
+        self._reset_gen: int = 0
+        # The root->leaf path. After a miss it is extended with the entries
+        # appended since when the new leaf descends from the old one, and
+        # rebuilt otherwise (leaf move, fork, rewind). _branch_tail is the id of
+        # its last entry, "" when it holds the whole log because there is no
+        # leaf; _branch_gen is the reset_gen it was built under;
+        # _branch_scanned is the log length when it was built.
         self._branch_cache: list[dict[str, Any]] | None = None
-        self._branch_cache_for: str = ""
+        self._branch_cache_for: int = -1
+        self._branch_tail: str = ""
+        self._branch_gen: int = -1
+        self._branch_scanned: int = 0
 
     def apply_update(self, session: dict[str, Any]) -> bool:
         leaf_id = session.get("leafId", "")
@@ -683,7 +698,7 @@ class SessionMirror:
             self._index = {}
             self._leaf_id = ""
             self._branch_cache = None
-            self._branch_cache_for = ""
+            self._reset_gen += 1
             changed = True
 
         # The leaf is small and always tracked. The log itself is applied only
@@ -694,14 +709,15 @@ class SessionMirror:
         if not self.subscribed or (entry_count == 0 and not appended):
             if leaf_id and leaf_id != self._leaf_id:
                 self._leaf_id = leaf_id
-                self._branch_cache = None
-                self._branch_cache_for = ""
-                return True
+                changed = True
+            if changed:
+                self._revision += 1
             return changed
 
         if expected_base != len(self._entries):
             self._entries = []
             self._index = {}
+            self._reset_gen += 1
             changed = True
 
         for entry in appended:
@@ -709,6 +725,8 @@ class SessionMirror:
             self._entries.append(entry)
             eid = entry.get("id", "")
             if eid:
+                if eid in self._index:
+                    self._reset_gen += 1
                 self._index[eid] = (pos, entry.get("parentId", ""))
             changed = True
 
@@ -717,8 +735,7 @@ class SessionMirror:
             changed = True
 
         if changed:
-            self._branch_cache = None
-            self._branch_cache_for = ""
+            self._revision += 1
         return changed
 
     def seed(self, entries: list[dict[str, Any]], leaf_id: str) -> None:
@@ -735,38 +752,74 @@ class SessionMirror:
         for pos, entry in enumerate(entries):
             eid = entry.get("id", "")
             if eid:
+                if eid in self._index:
+                    self._reset_gen += 1
                 self._index[eid] = (pos, entry.get("parentId", ""))
         self._entries = list(entries)
         self._branch_cache = None
-        self._branch_cache_for = ""
+        self._reset_gen += 1
+        self._revision += 1
 
     def get_entries(self) -> list[dict[str, Any]]:
         return list(self._entries)
 
     def get_branch(self) -> list[dict[str, Any]]:
-        if self._branch_cache is not None and self._branch_cache_for == self._leaf_id:
-            return list(self._branch_cache)
+        if self._branch_cache is None or self._branch_cache_for != self._revision:
+            if not self._extend_branch():
+                self._rebuild_branch()
+            self._branch_cache_for = self._revision
+        return list(self._branch_cache or [])
 
+    def _extend_branch(self) -> bool:
+        """Bring the cached path up to the current leaf by walking parent links
+        from the leaf back to the cached tail, visiting only entries appended
+        since the cache was built. False, with the cache untouched, when the leaf
+        does not descend from the cached tail."""
+        cache = self._branch_cache
+        if not cache or not self._branch_tail or self._branch_gen != self._reset_gen or not self._leaf_id:
+            return False
+        scanned = self._branch_scanned
+        budget = len(self._entries) - scanned
+        fresh: list[dict[str, Any]] = []
+        current = self._leaf_id
+        while current != self._branch_tail:
+            meta = self._index.get(current)
+            if meta is None:
+                return False
+            pos, parent_id = meta
+            if pos < scanned or len(fresh) >= budget:
+                return False
+            fresh.append(self._entries[pos])
+            current = parent_id
+        if fresh:
+            fresh.reverse()
+            cache.extend(fresh)
+            self._branch_tail = self._leaf_id
+        self._branch_scanned = len(self._entries)
+        return True
+
+    def _rebuild_branch(self) -> None:
+        self._branch_gen = self._reset_gen
+        self._branch_scanned = len(self._entries)
+        self._branch_tail = ""
         if not self._leaf_id or not self._index:
-            branch = list(self._entries)
-        else:
-            path: list[dict[str, Any]] = []
-            seen: set[str] = set()
-            current = self._leaf_id
-            while current and current not in seen:
-                seen.add(current)
-                meta = self._index.get(current)
-                if meta is None:
-                    break
-                pos, parent_id = meta
-                path.append(self._entries[pos])
-                current = parent_id
-            path.reverse()
-            branch = path
-
-        self._branch_cache = branch
-        self._branch_cache_for = self._leaf_id
-        return list(branch)
+            self._branch_cache = list(self._entries)
+            return
+        path: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        current = self._leaf_id
+        while current and current not in seen:
+            seen.add(current)
+            meta = self._index.get(current)
+            if meta is None:
+                break
+            pos, parent_id = meta
+            path.append(self._entries[pos])
+            current = parent_id
+        path.reverse()
+        if path:
+            self._branch_tail = self._leaf_id
+        self._branch_cache = path
 
 
 @dataclass
