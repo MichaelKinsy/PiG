@@ -22,21 +22,17 @@ type taskGraph struct {
 // buildTaskGraph is TaskGraphView.#build: every live task of the Session, with the conversations each owns in ID order.
 func (h *handler) buildTaskGraph() *jv.Object {
 	tasks := jv.NewObject()
-	// One pass over the conversations (ascending ID) gives each owner task its conversations in ID order.
-	owned := map[float64][]any{}
-	for ci, c := range h.mir.convs.ids {
-		if owner := objOf(h.mir.convs.recs[ci], "owner"); owner != nil {
-			if task := numOf(owner, "taskId"); task != 0 {
-				owned[task] = append(owned[task], float64(c))
-			}
-		}
-	}
 	for i, id := range h.mir.tasks.ids {
 		if h.mir.tasks.heads[i].status == "terminal" {
 			continue
 		}
 		record := h.mir.task(id)
-		tasks.Set(strconv.FormatInt(int64(id), 10), graphNode(record, owned[float64(id)], h.blockedOf(record)))
+		// The conversations the task owns, in ID order, from the table's owner index: no pass over the conversations per task.
+		var conversations []any
+		for _, c := range h.mir.convs.byTask[id] {
+			conversations = append(conversations, float64(c))
+		}
+		tasks.Set(strconv.FormatInt(int64(id), 10), graphNode(record, conversations, h.blockedOf(record)))
 	}
 	graph := jv.NewObject()
 	graph.Set("tasks", tasks)

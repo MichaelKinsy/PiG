@@ -4,7 +4,6 @@ package core
 
 import (
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
@@ -30,28 +29,38 @@ func graphHandler(t *testing.T, n int) *handler {
 	return h
 }
 
-// graphBuildTime is the least of three builds of the task graph of n live tasks that each own one conversation.
-func graphBuildTime(t *testing.T, n int) time.Duration {
-	t.Helper()
-	h := graphHandler(t, n)
-	best := time.Duration(1 << 62)
-	for range 3 {
-		start := time.Now()
+// The graph finds the conversations each task owns through the conversation table's owner index. A pass over the conversations
+// for every live task made the build cost tasks x conversations (116x for 8x the tasks); the index is read once per task. The
+// conversation records are removed after the table indexed them, so a build that reads them (a scan per task, or one pass) finds no
+// owner and the nodes lose their conversations: the test is deterministic, with no clock.
+func TestBuildTaskGraphReadsOwnedConversationsFromTheOwnerIndex(t *testing.T) {
+	for _, n := range []int{1, 50, 1000} {
+		h := graphHandler(t, n)
+		clear(h.mir.convs.recs)
 		graph := h.buildTaskGraph()
-		best = min(best, time.Since(start))
-		if tasks := objOf(graph, "tasks"); tasks.Len() != n {
+		tasks := objOf(graph, "tasks")
+		if tasks.Len() != n {
 			t.Fatalf("graph has %d tasks, want %d", tasks.Len(), n)
 		}
+		for i := range n {
+			task := int64(2 + 2*i)
+			node := objOf(tasks, itoa(task))
+			if got, want := jv.Stringify(valueOf(node, "conversations")), "["+itoa(task+1)+"]"; got != want {
+				t.Fatalf("n=%d task %d: conversations %s, want %s", n, task, got, want)
+			}
+		}
 	}
-	return best
 }
 
-// Building the graph finds each task's conversations in one pass over the conversations, not one pass per task: the cost grows
-// with the live tasks and the conversations, not with their product.
-func TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations(t *testing.T) {
-	small, large := graphBuildTime(t, 1000), graphBuildTime(t, 8000)
-	t.Logf("graph build: 1000 tasks %v, 8000 tasks %v", small, large)
-	if large > 24*small+5*time.Millisecond {
-		t.Fatalf("8x the tasks and conversations cost %.1fx (%v vs %v): the build is not linear", float64(large)/float64(small), large, small)
+// Allocations of one build grow with the live tasks, not with tasks x conversations.
+func TestBuildTaskGraphAllocationsGrowLinearly(t *testing.T) {
+	allocs := func(n int) float64 {
+		h := graphHandler(t, n)
+		return testing.AllocsPerRun(3, func() { h.buildTaskGraph() })
+	}
+	small, large := allocs(1000), allocs(8000)
+	t.Logf("allocations per build: 1000 tasks %.0f, 8000 tasks %.0f", small, large)
+	if large > 9*small {
+		t.Fatalf("8x the tasks allocates %.1fx per build", large/small)
 	}
 }
