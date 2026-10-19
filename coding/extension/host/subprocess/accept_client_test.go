@@ -85,6 +85,12 @@ func TestAwaitConnectionHonorsAConnectionMadeBeforeTheExit(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			eachListenerKind(t, func(t *testing.T, node bool) {
+				if !node && runtime.GOOS == "windows" {
+					// acceptQueued (accept_client_windows.go): a Windows AF_UNIX listener has no readiness query, so
+					// a Go, Rust or Python runner that connected and then exited reads as process_exited. Those
+					// runners report no load error over the socket.
+					t.Skip("a Windows AF_UNIX listener cannot take a client queued before an interrupted Accept")
+				}
 				// Repeats cover both orders of the host's Accept and the exit watcher.
 				for range 50 {
 					ln, address := extensionListener(t, node)
