@@ -269016,7 +269016,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "7 normalized-name Pig candidates are ambiguous."
+        "8 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -269028,6 +269028,7 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#argumentSchemaCache.entry",
         "go:github.com/MichaelKinsy/PiG/ai#toolArgumentSchemas.entry",
+        "go:github.com/MichaelKinsy/PiG/coding#sessionToolRegistry.entry",
         "go:github.com/MichaelKinsy/PiG/coding#virtualModelStore.entry",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#lazyTree.entry",

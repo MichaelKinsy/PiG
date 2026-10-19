@@ -29670,69 +29670,6 @@
       ]
     },
     {
-      "id": "BF-29514f8",
-      "title": "On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that…",
-      "symptom": "On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.",
-      "rootCause": "Pi runs every scheduler pass, invocation and commit listener in the context of the call that queued it, and an await resumes in its own function's context (scheduler.ts:1404-1426, 1656-1668; session.ts:765, 881). The CF host now snapshots each client call's context and passes its number as the step's origin; the core keeps a current origin that Loop.Defer, line jobs, pending effects and parked hops chains capture and restore, and effects and notices carry it, so the host starts effect handlers and timers and runs notice listeners inside that snapshot. The core frees an origin when nothing holds it (origin_free notice, kind 10). The native host passes origin 0.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1d8dab9122",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "29514f8d63",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "c3c84b5a28",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "d677ba17ad",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "da0fae4095",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi",
-        "ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream",
-        "ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi",
-        "ai/main_test.go::TestMain",
-        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged",
-        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
-        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
-        "durable/core/driver/harness_reports_core_test.go::TestReports",
-        "durable/core/host/cf/test/origins-core.test.ts",
-        "durable/core/host/cf/test/origins.test.ts",
-        "durable/core/host/cf/test/tool-result-shape.test.ts",
-        "durable/core/origin_test.go::TestEffectCompletionContinuesInTheOriginOfItsStart",
-        "durable/core/origin_test.go::TestHopsChainContinuesInTheOriginOfItsPark",
-        "durable/core/origin_test.go::TestQueuedLineJobHoldsItsOrigin",
-        "durable/core/session/origin_test.go::TestKickQueuesTheDrainInTheKickersOrigin",
-        "durable/core/session/origin_test.go::TestLoopRunsEachItemInTheOriginItWasQueuedIn",
-        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
-        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
-        "durable/harness/harness_generation_test.go::TestGeneration",
-        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
-        "durable/harness/harness_storage_failure_test.go::TestAFailedStorageCall",
-        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
-        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds",
-        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
-        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
-        "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther"
-      ]
-    },
-    {
       "id": "BF-9f31a8b",
       "title": "A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…",
       "symptom": "A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started.",
@@ -30062,67 +29999,6 @@
       ]
     },
     {
-      "id": "BF-c2cdd5b-3",
-      "title": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…",
-      "symptom": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.",
-      "rootCause": "/reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).",
-      "rootCauseSource": "commit",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1d8dab9122",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "2934eba06f",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "4334e0bb6a",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "c2cdd5b680",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "c3c84b5a28",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "da0fae4095",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead",
-        "durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched",
-        "durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted",
-        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
-        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
-        "durable/core/driver/harness_reports_core_test.go::TestReports",
-        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
-        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
-        "durable/harness/harness_generation_test.go::TestGeneration",
-        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
-        "durable/harness/harness_storage_failure_test.go::TestAFailedStorageCall",
-        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
-        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds",
-        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
-        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
-        "durable/harness/wait_deliveries_test.go::TestListenersThatWaitForTheHarnessDoNotWaitForEachOther",
-        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder",
-        "internal/codingagent/ext_special_lines_paint_test.go::TestExtensionFooterFromAHostGoroutineIsPaintedByTheOwnerLoop",
-        "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
-        "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
-      ]
-    },
-    {
       "id": "BF-dea7cbc",
       "title": "A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no…",
       "symptom": "A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`.",
@@ -30169,274 +30045,7 @@
       ]
     },
     {
-      "id": "BF-90fd188",
-      "title": "`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…",
-      "symptom": "`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "Windows",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "263f65829f",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "90fd1882c6",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut",
-        "durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix",
-        "durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers",
-        "env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon",
-        "env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields",
-        "env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths",
-        "env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv",
-        "env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus",
-        "env/daemon/exec_test.go::TestExecReportsTimeoutSpillAndShellErrorsWithTheirCodes",
-        "env/daemon/fs_test.go::TestFsyncRefusesADirectoryAsNodeDoes",
-        "env/daemon/fs_test.go::TestMkdtempAppendsSixRandomCharacters",
-        "env/daemon/fs_test.go::TestRenameAndTruncateReportNodesMessages",
-        "env/daemon/fs_test.go::TestRmFollowsNodesFsRm",
-        "env/daemon/output_test.go::TestControlFramesGoBeforeBulkOutput",
-        "env/daemon/output_test.go::TestUnwindowedOutputWaitsWhileTooMuchIsUnsent",
-        "env/daemon/server_test.go::TestAFailedChunkPoisonsTheWriteHandleAndHandlesAreLimited",
-        "env/daemon/sys_windows_test.go::TestEscapeArgQuotesArgumentsLikeLibuv"
-      ]
-    },
-    {
-      "id": "BF-d34376d",
-      "title": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…",
-      "symptom": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.",
-      "rootCause": "mirror.ScanTasks loaded every task into the mirror for status '' or terminal and filtered in memory, so a cold page cost O(all tasks): 36 ms per 100-task page at 8,000 tasks, and every page went cold after the mirror released its held terminal tasks. It now reads storage one page at a time with the id-ordered keyset statements (new SQLTasksDesc for newest first), filters on the row columns, parses only the page's rows and stops at limit+1 matches; the mirror's held tasks win over stored rows. A page costs about 0.55 ms at any task count. Pi's sqlite scanTasks reads storage per page the same way (storage.ts:433-470); hop and tick charging is unchanged (one modeled ReadRow per call).",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count. Listing a conversation owner's conversations reads only that owner's.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2934eba06f",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "b106c51c4f",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "d0c524009a",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "d34376d0fc",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "da0fae4095",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "de44764ac1",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "ai/port_wave_12_zai_coding_plan_models_test.go::TestPortWave12ZAICodingPlanModels",
-        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
-        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
-        "durable/core/driver/harness_reports_core_test.go::TestReports",
-        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
-        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
-        "durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex",
-        "durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks",
-        "durable/core/mirror_scan_test.go::TestScanTasksPageCostIsFlatInTheTaskCount",
-        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
-        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
-        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
-        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder"
-      ]
-    },
-    {
-      "id": "BF-b1a68e0",
-      "title": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of…",
-      "symptom": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
-      "rootCause": "Client.Begin returned the context error and told the core nothing when the caller's context ended while the begin was queued behind another transaction. When the line freed, the core's grant gave it to that transaction and answered ready to nobody; the transaction never ended, so EventClose, queued behind the line, never ran and Session.Close waited forever in Client.request(EventClose).",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1d8dab9122",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "b1a68e0af3",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction",
-        "durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns",
-        "durable/harness/harness_generation_test.go::TestGeneration"
-      ]
-    },
-    {
-      "id": "BF-02ed4f1",
-      "title": "A Durable core request costs the same however many requests are in flight: a notice is tested only against…",
-      "symptom": "A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.",
-      "rootCause": "Host.notify tested every pending waiter's accept function against each notice, so a request's cost grew with the number of requests in flight (11 µs per request at 500 in flight, 57 µs at 4,000). Waiters that expect one kind and id now register through Host.ExpectNotice in a map keyed by both; notify tests that key's waiters and then the generic ones, as before. Client.request uses it. Cancel, discard and close remove a waiter from both structures. Notice and wire bytes are unchanged; delivery order among several waiters of one notice was already unspecified.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "02ed4f1419",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight",
-        "durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice"
-      ]
-    },
-    {
-      "id": "BF-2e70b95",
-      "title": "A Durable reference harness turn no longer copies the whole conversation history to extend its context",
-      "symptom": "A Durable reference harness turn no longer copies the whole conversation history to extend its context.",
-      "rootCause": "extendRange copied the entries, active entries, contributions and settled messages of the whole history on every turn, and each shared read cloned them again: 1.79 ms and 5.6 MB per turn at 4,000 turns. A range lineage now keeps one backing array per field; only the first extender of a range appends in place (a tail-owner token), and writes go only past every earlier range's length, so handed-out views never change. Shared reads return the arrays with capacity capped at length, so a reader's append copies. settleSplit and composeMessages build the messages array in one copy, and the leading-system rule scans only the open tail. 69 µs and 206 KB per turn at 4,000 turns.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Durable reference harness turn no longer copies the whole conversation history to extend its context.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2934eba06f",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "2e70b95851",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
-        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder"
-      ]
-    },
-    {
-      "id": "BF-706fda8",
-      "title": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…",
-      "symptom": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.",
-      "rootCause": "Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "706fda89cd",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey",
-        "durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete",
-        "durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete",
-        "durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime"
-      ]
-    },
-    {
-      "id": "BF-faca1af",
-      "title": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a…",
-      "symptom": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.",
-      "rootCause": "Every commit to pi.live, pi.inbox, pi.usage, pi.agent and pi.provider marshalled the whole document and decoded it into its Go type to run CheckpointWhen, so each nested or parallel model-issued tool call re-decoded the live state: 2,000 sequential nested calls took 115 s and k=512 parallel calls 13 s. CommonDocDefinition gains CheckpointWhenRaw, which these documents use on the prepared value. Before it runs, the delta's changed members are decoded one at a time against the document's type, falling back to the whole-value decode for op shapes it cannot attribute, so a malformed value fails the commit with the same error at the same point as the typed path did. User documents keep the typed…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "faca1af1e1",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
-        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
-        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize"
-      ]
-    },
-    {
-      "id": "BF-b1421b7",
-      "title": "`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a…",
-      "symptom": "`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.",
-      "rootCause": "A process-global publication queue let one host's goroutine deliver another host's notifications while it held its own loop: a server commit holding the queue later ran the worker's RefImpl.shapeChanged -\u003e Connection.send on the server's goroutine while the worker's loop sent on the same connection (DATA RACE at connection.go:611, 27/150 runs of TestLinksReview4 under -race at GOMAXPROCS=1). Each loop now has its own queue, delivered by a section of that loop, and a hold covers only the loop that made the change. A goroutine inside a hold or a drain appends what it enqueues for another loop behind the queue it delivers, as Pi's single queue does (publish.ts), so a state write from another…",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "b1421b7ef6",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "c2cdd5b680",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection",
-        "chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered",
-        "chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications",
-        "chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications",
-        "chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications",
-        "chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications",
-        "chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues",
-        "chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered",
-        "chord/host/publish_upstream_test.go::TestHoldPublicationsDeliversAfterFnReturnsInOrderAndNests",
-        "coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead",
-        "internal/codingagent/ext_special_lines_paint_test.go::TestExtensionFooterFromAHostGoroutineIsPaintedByTheOwnerLoop",
-        "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
-        "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
-      ]
-    },
-    {
-      "id": "BF-b6a7296",
+      "id": "BF-3363d44",
       "title": "An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each…",
       "symptom": "An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each registration.",
       "rootCause": "Pi's registerTool writes the definition and refreshes the runtime's registry (loader.ts:273-301); getAllTools and getActiveTools read the live registry. Pig's host answered every registration with the whole catalog and active list, and the next state push sent the catalog to every extension again, but no SDK read either: getAllTools and getActiveTools are live host calls in all four SDKs. The reply is now empty, StatePayload drops ActiveTools and AllTools, the catalog cache and the getAllToolsVersion host action are gone, and the Node runtime no longer stores them. Runner.ToolsVersion, Extension.ToolRegistryVersion and HostCallbacks.GetAllToolsVersion are removed.",
@@ -30449,11 +30058,7 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "2e70b95851",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "90e8ca2d9c",
+          "hash": "3363d4407b",
           "date": "2026-10-18"
         },
         {
@@ -30461,11 +30066,7 @@
           "date": "2026-10-18"
         },
         {
-          "hash": "b6a7296746",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "faca1af1e1",
+          "hash": "da0fae4095",
           "date": "2026-10-18"
         }
       ],
@@ -30474,24 +30075,19 @@
         "coding/extension/tool_registry_names_test.go::TestRegisteredToolRevisionIdentifiesEachRegistration",
         "coding/session_tool_registry_refresh_norace_test.go::TestRefreshingTheToolRegistryDoesNotWrapUnchangedToolsAgain",
         "coding/session_tool_registry_replace_test.go::TestRegisteringAToolAgainReplacesWhatTheSessionRuns",
-        "durable/core/host/cf/test/tool-result-shape.test.ts",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
         "durable/core/session/sched_scale_test.go::TestAChainOfHeldTasksFinalizesInLinearWork",
         "durable/core/session/sched_scale_test.go::TestEndingATaskOfAHeldChainAllocatesTheSameAtAnyLength",
         "durable/core/session/sched_scale_test.go::TestWakeNamesTheEarliestSleepWhileATaskRuns",
-        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
-        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
-        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
-        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize"
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed"
       ]
     },
     {
-      "id": "BF-3e6bad9",
+      "id": "BF-3675522",
       "title": "A `context` event with several extension handlers is encoded once per request instead of once per handler…",
       "symptom": "A `context` event with several extension handlers is encoded once per request instead of once per handler, and a handler that leaves the conversation unchanged no longer sends it back.",
       "rootCause": "Pi's emitContext clones the messages once per request and treats a handler's list as unchanged when it is the same list of the same objects (runner.ts:280-300, 1305-1336); an unchanged list keeps system messages in place and a replaced one gets getCurrentSystemMessage prepended. Pig encoded the conversation for each handler and decoded every reply. context and context_with_system now use eventwire.Dispatch, so one encoding serves every handler across isolated, packed and fused hosts until a handler changes the list; the runner clones only before a handler that reads Go values, and an unchanged reply ({\"_pigContextUnchanged\":true}) is not decoded.",
@@ -30504,15 +30100,15 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "2e70b95851",
+          "hash": "36755228be",
           "date": "2026-10-18"
         },
         {
-          "hash": "3e6bad93d1",
+          "hash": "d0c524009a",
           "date": "2026-10-18"
         },
         {
-          "hash": "b7ab092396",
+          "hash": "da0fae4095",
           "date": "2026-10-18"
         }
       ],
@@ -30527,26 +30123,20 @@
         "coding/extension/host/subprocess/context_wire_test.go::TestContextEventWireIsWhatMarshalGives",
         "coding/extension/host/subprocess/packed_go_test.go::TestHost_MixedFusedPackedAndIsolatedExtensions",
         "coding/session_context_system_boundaries_test.go::TestContextPhaseIdentityThroughSDKTransports",
-        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged",
-        "durable/core/host/cf/test/origins-core.test.ts",
-        "durable/core/host/cf/test/origins.test.ts",
-        "durable/core/origin_test.go::TestEffectCompletionContinuesInTheOriginOfItsStart",
-        "durable/core/origin_test.go::TestHopsChainContinuesInTheOriginOfItsPark",
-        "durable/core/origin_test.go::TestQueuedLineJobHoldsItsOrigin",
-        "durable/core/session/origin_test.go::TestKickQueuesTheDrainInTheKickersOrigin",
-        "durable/core/session/origin_test.go::TestLoopRunsEachItemInTheOriginItWasQueuedIn",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
         "extensions/sdk-py/tests/test_context_event_reply.py",
         "extensions/sdk/context_event_test.go::TestContextEventResultHonorsTypedMessageSlices"
       ]
     },
     {
-      "id": "BF-3e6bad9-2",
+      "id": "BF-3675522-2",
       "title": "Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a…",
       "symptom": "Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a replacement, and an in-place edit marked with `pig_sdk::context_unchanged()` keeps system messages in place, as in Pi and the other SDKs.",
       "rootCause": "Pi's emitContext clones the messages once per request and treats a handler's list as unchanged when it is the same list of the same objects (runner.ts:280-300, 1305-1336); an unchanged list keeps system messages in place and a replaced one gets getCurrentSystemMessage prepended. Pig encoded the conversation for each handler and decoded every reply. context and context_with_system now use eventwire.Dispatch, so one encoding serves every handler across isolated, packed and fused hosts until a handler changes the list; the runner clones only before a handler that reads Go values, and an unchanged reply ({\"_pigContextUnchanged\":true}) is not decoded.",
@@ -30559,35 +30149,22 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "02ed4f1419",
+          "hash": "36755228be",
           "date": "2026-10-18"
         },
         {
-          "hash": "2e70b95851",
+          "hash": "d0c524009a",
           "date": "2026-10-18"
         },
         {
-          "hash": "3e6bad93d1",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "793dabb35e",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "b106c51c4f",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "b7ab092396",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "d34376d0fc",
+          "hash": "da0fae4095",
           "date": "2026-10-18"
         }
       ],
       "tests": [
+        "ai/anthropic_e2e_catalog_test.go::TestAnthropicEagerToolInputCatalogDenominator",
+        "ai/anthropic_e2e_catalog_test.go::TestAnthropicLongCacheRetentionCatalogDenominator",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes",
         "coding/extension/host/inproc/context_dispatch_scaling_norace_test.go::TestScalingContextDispatchOfUnchangedSubprocessHandlers",
         "coding/extension/host/inproc/context_json_dispatch_test.go::TestContextDispatchOfUnchangedSubprocessHandlersCopiesNothing",
         "coding/extension/host/inproc/context_json_dispatch_test.go::TestContextGoHandlerAfterSubprocessHandlersEditsACopy",
@@ -30598,31 +30175,21 @@
         "coding/extension/host/subprocess/context_wire_test.go::TestContextEventWireIsWhatMarshalGives",
         "coding/extension/host/subprocess/packed_go_test.go::TestHost_MixedFusedPackedAndIsolatedExtensions",
         "coding/session_context_system_boundaries_test.go::TestContextPhaseIdentityThroughSDKTransports",
-        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged",
-        "durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight",
-        "durable/core/host/cf/test/origins-core.test.ts",
-        "durable/core/host/cf/test/origins.test.ts",
-        "durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex",
-        "durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks",
-        "durable/core/mirror_scan_test.go::TestScanTasksPageCostIsFlatInTheTaskCount",
-        "durable/core/origin_test.go::TestEffectCompletionContinuesInTheOriginOfItsStart",
-        "durable/core/origin_test.go::TestHopsChainContinuesInTheOriginOfItsPark",
-        "durable/core/origin_test.go::TestQueuedLineJobHoldsItsOrigin",
-        "durable/core/session/origin_test.go::TestKickQueuesTheDrainInTheKickersOrigin",
-        "durable/core/session/origin_test.go::TestLoopRunsEachItemInTheOriginItWasQueuedIn",
-        "durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
         "extensions/sdk-py/tests/test_context_event_reply.py",
-        "extensions/sdk/context_event_test.go::TestContextEventResultHonorsTypedMessageSlices"
+        "extensions/sdk/context_event_test.go::TestContextEventResultHonorsTypedMessageSlices",
+        "test/parity/interface-closure/autobind/rules/functions_test.go::TestS5wVoidAwaitableResult"
       ]
     },
     {
-      "id": "BF-5bf413e",
+      "id": "BF-6dba8f0",
       "title": "Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is…",
       "symptom": "Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is appended no longer costs time proportional to the session length, in the Go, Node, Python and Rust SDKs.",
       "rootCause": "Each SDK's session mirror rebuilt the branch (and, in Node, the id and label index behind getEntry, getLabel and getLeafEntry) on every entry append, so an append followed by a read cost O(history): 137 ms and 144,127 allocations in Go at 16,000 entries, 24 ms in Rust, 3.8 ms in Node and 3.0 ms in Python. An append whose new leaf descends from the cached tail now extends the raw and decoded branch caches, bounded by the new entries; a leaf move, fork, rewind, session switch, resync, seed or repeated id rebuilds as before. Node pushes the log in place and keeps its index; Rust decodes entries from the wire value without a deep clone. The remaining per-read cost is the shallow copy of the…",
@@ -30635,7 +30202,7 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "5bf413ec90",
+          "hash": "6dba8f0af3",
           "date": "2026-10-18"
         }
       ],
@@ -30650,120 +30217,7 @@
       ]
     },
     {
-      "id": "BF-cea2d81",
-      "title": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a…",
-      "symptom": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.",
-      "rootCause": "A task-graph watch published the whole graph value with every frame, and a view watch held the view's value and rebuilt it on each commit, so one commit cost grew with live tasks or entries: 20 graph commits allocated 145 MB at 8,000 live tasks, and buildTaskGraph took 2.74 s at 8,000 tasks. A graph frame is now {\"watchId\":N,\"frame\":{\"ops\":[...]}}, the shape view frames already had; the view watch keeps one {id, hasHead} record per active entry and emits the same ops. The driver reduces each view or graph frame's ops into the next typed value (watch_reduce.go), falling back to the full conversion for an op it does not recognise; document watches are unchanged. buildTaskGraph and sortU32 no…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2e70b95851",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "706fda89cd",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "cea2d81d6d",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "faca1af1e1",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "durable/core/driver/watch_reduce_test.go::TestGraphFrameCostsOneMapCopy",
-        "durable/core/driver/watch_reduce_test.go::TestReducersRefuseUnknownOps",
-        "durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion",
-        "durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries",
-        "durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion",
-        "durable/core/graph_build_scaling_test.go::TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations",
-        "durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey",
-        "durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete",
-        "durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete",
-        "durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime",
-        "durable/core/sortu32_scaling_test.go::TestSortU32CostsLogLinearInTheWatchCount",
-        "durable/core/view_differential_test.go::TestViewAdvanceMatchesTheWatchThatHeldTheValue",
-        "durable/core/watch_frames_scaling_test.go::TestGraphWatchCommitCostDoesNotGrowWithLiveTasks",
-        "durable/core/watch_frames_scaling_test.go::TestViewWatchCommitCostDoesNotGrowWithEntries",
-        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
-        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
-        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
-        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize"
-      ]
-    },
-    {
-      "id": "BF-0a3382d",
-      "title": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a…",
-      "symptom": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.",
-      "rootCause": "findPersistedMessageEntryID called BuildSessionProjection, which deep copies the whole history, once per tool result of every turn_end with an extension handler: 13 ms per tool result at 16,000 entries. It reads the kept incremental projection view instead, with the same newest-first lookup.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "0a3382da8b",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "2e70b95851",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry",
-        "coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionLeavesTheSourceUntouched",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionProjectionEqualsAppendedPreview"
-      ]
-    },
-    {
-      "id": "BF-03468bd",
-      "title": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a…",
-      "symptom": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "03468bd825",
-          "date": "2026-10-18"
-        }
-      ],
-      "commitsFrom": "release note",
-      "tests": []
-    },
-    {
-      "id": "BF-0dd691e",
+      "id": "BF-af18171",
       "title": "A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on…",
       "symptom": "A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on every update; updates carry only what changed, and handlers still receive the full `partialResult`.",
       "rootCause": "Every tool_execution_update sent a subscribed extension the whole partialResult, so a tool that streams a growing result cost O(size) bytes per update: 624 KB per update at 16,000 updates of a growing text, 11.7 ms each. The first update of a tool call now goes whole and each later one as set/append ops against that call's previous payload, using the message_update delta parser and diff. EventStream gains key (the toolCallId, so interleaved parallel tools keep their own sequence) and evict: the host keeps at most 8 calls per extension and tells the SDK which replicas to drop; a failed or unsent frame makes the next one a keyframe. Go, Python, Rust and the Node runtime keep replicas per…",
@@ -30776,19 +30230,7 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "0a3382da8b",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "0dd691ec51",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "2e70b95851",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "9e60a423f4",
+          "hash": "af18171964",
           "date": "2026-10-18"
         },
         {
@@ -30796,7 +30238,7 @@
           "date": "2026-10-18"
         },
         {
-          "hash": "faca1af1e1",
+          "hash": "d0c524009a",
           "date": "2026-10-18"
         }
       ],
@@ -30806,74 +30248,13 @@
         "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateAfterAFailedRequestIsAKeyframe",
         "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateDeltaEqualsTheWholePayload",
         "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdatePatchesAreTheSizeOfTheirDelta",
-        "coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry",
-        "coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory",
-        "durable/core/session/loop_tail_test.go::TestLoopQuietEndStartsTheNextJobWhereTheTailDoes",
-        "durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy",
-        "durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther",
-        "durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends",
-        "durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi",
-        "durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut",
-        "durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn",
-        "durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount",
-        "durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
         "extensions/sdk/event_stream_test.go::TestEventStreamKeysAreIndependentAndEvicted",
         "internal/codingagent/ext_special_lines_paint_test.go::TestExtensionFooterFromAHostGoroutineIsPaintedByTheOwnerLoop",
         "internal/codingagent/interactive_test.go::TestSwitchTuiModeMountDoesNotReenterRendererLock",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionLeavesTheSourceUntouched",
-        "internal/codingagent/session_branch_preview_test.go::TestBranchSessionProjectionEqualsAppendedPreview",
         "test/extension-conformance/tool_execution_update_delta_test.go::TestConformance_ToolExecutionUpdateDeltas",
         "tui/renderer_size_race_test.go::TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize"
-      ]
-    },
-    {
-      "id": "BF-04d3e2e",
-      "title": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again…",
-      "symptom": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.",
-      "rootCause": "Every stream event re-parsed each finished deferred tool call's arguments and re-published and re-boxed the call, so a message with k sequential tool calls cost O(k) per event: 6,140 allocations per event at k=640 for openai-completions. Pi reparses only the block that received the delta. cellArguments now keeps the settled call for the last parsed text, settleContent reuses it while the text is unchanged, publish publishes it directly, and cloneAssistantContentFrom no longer boxes a block equal to the previous one.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "04d3e2e572",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "0dd691ec51",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "b6a7296746",
-          "date": "2026-10-18"
-        }
-      ],
-      "tests": [
-        "ai/assistant_observation_settle_cache_test.go::TestSettledToolCallsAreReusedForAnUnchangedText",
-        "ai/assistant_observation_settle_norace_test.go::TestSettledToolCallsAreNotParsedCopiedOrBoxedAgain",
-        "ai/assistant_snapshot_test.go::TestCloneAssistantContentFromMatchesCloneAssistantContent",
-        "ai/assistant_snapshot_test.go::TestCloneAssistantContentFromSharesOnlyImmutableSnapshots",
-        "ai/sequential_tool_calls_scaling_norace_test.go::TestScalingSequentialToolCallsPerEvent",
-        "ai/sequential_tool_calls_test.go::TestSequentialToolCallsReadAsTheEagerParse",
-        "ai/unmanaged_snapshot_norace_test.go::TestUnmanagedProducerSnapshotsDoNotRevalidateTheArgumentAtEveryPush",
-        "ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsEqualTheirFullCopy",
-        "ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsJudgeWhatFollowsALongValidString",
-        "coding/extension/host/subprocess/boundary_scaling_norace_test.go::TestBoundaryScalingToolExecutionUpdateStream",
-        "coding/extension/host/subprocess/tool_registration_scaling_norace_test.go::TestRegisteringAToolAfterLoadAllocatesTheSameAtAnyCatalogSize",
-        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateAfterAFailedRequestIsAKeyframe",
-        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateDeltaEqualsTheWholePayload",
-        "coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdatePatchesAreTheSizeOfTheirDelta",
-        "coding/extension/tool_registry_names_test.go::TestRegisteredToolRevisionIdentifiesEachRegistration",
-        "coding/session_tool_registry_refresh_norace_test.go::TestRefreshingTheToolRegistryDoesNotWrapUnchangedToolsAgain",
-        "coding/session_tool_registry_replace_test.go::TestRegisteringAToolAgainReplacesWhatTheSessionRuns",
-        "extensions/sdk/event_stream_test.go::TestEventStreamKeysAreIndependentAndEvicted",
-        "test/extension-conformance/tool_execution_update_delta_test.go::TestConformance_ToolExecutionUpdateDeltas"
       ]
     }
   ],
