@@ -1,14 +1,14 @@
 # PORT_MAP coverage report
 
-Generated from `700` PORT_MAP entries and `783` parity scenarios.
+Generated from `701` PORT_MAP entries and `783` parity scenarios.
 
 ## Status
 
-- **Porting:** 624 / 627 intended-portable entries ✅ (99.5%).
-- **Behavior verification:** 562 / 624 ported entries (90.1%); 0 weak-only, 62 untested.
-- **Upstream test porting:** 659 ported / 0 partial / 0 pending (4 other dispositions; [file mapping](interfaces/test-mapping-v1.3.0+482c1381.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.3.0+482c1381.json) (`deferred-0.3.x`).
+- **Porting:** 625 / 628 intended-portable entries ✅ (99.5%).
+- **Behavior verification:** 562 / 625 ported entries (89.9%); 0 weak-only, 63 untested.
+- **Upstream test porting:** 662 ported / 0 partial / 0 pending (4 other dispositions; [file mapping](interfaces/test-mapping-v1.3.0+1402973a.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.3.0+1402973a.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 700. Breakdown: 73 n/a (designed out) · 3 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 701. Breakdown: 73 n/a (designed out) · 3 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -23,13 +23,13 @@ Raw PORT_MAP rows: 700. Breakdown: 73 n/a (designed out) · 3 🟡 partial. See 
 | `env` | 23 | 3 | 20 | 19 | 1 | 0 | 95.0% | 26.3% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 15 | 0 | 0 | 100.0% | 100.0% |
-| `telemetry` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `telemetry` | 7 | 1 | 6 | 6 | 0 | 0 | 100.0% | 83.3% |
 | `tui` | 46 | 0 | 46 | 46 | 0 | 0 | 100.0% | 100.0% |
 
 - **Four core packages (agent, ai, coding-agent, tui):** 459 / 461 intended-portable files ✅ (99.6%) from 511 rows; 451 behavioral (98.3%), 0 weak-only, 8 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 492 / 494 intended-portable files ✅ (99.6%) from 552 rows; 478 behavioral (97.2%), 0 weak-only, 14 untested.
-- **Whole monorepo (11 packages):** 624 / 627 intended-portable files ✅ (99.5%) from 700 rows; 562 behavioral (90.1%), 0 weak-only, 62 untested.
-- **Interface closure:** 12912 of 12912 semantic interface IDs closed (211 designed-out, 12701 ported). A file-level ✅ does not close an interface ID.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 493 / 495 intended-portable files ✅ (99.6%) from 553 rows; 478 behavioral (97.0%), 0 weak-only, 15 untested.
+- **Whole monorepo (11 packages):** 625 / 628 intended-portable files ✅ (99.5%) from 701 rows; 562 behavioral (89.9%), 0 weak-only, 63 untested.
+- **Interface closure:** 12999 of 12999 semantic interface IDs closed (216 designed-out, 12783 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -731,6 +731,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/evals/src/report.ts` | ✅ | 0 | 3 (unit:./internal/evals:TestReadTaskObservationMatchesUpstream, unit:./internal/evals:TestReportUpstream, unit:./internal/evals:TestSummarizeEvalObservationsMatchesUpstream) | not run | ./internal/evals:TestReadTaskObservationMatchesUpstream, ./internal/evals:TestReportUpstream, ./internal/evals:TestSummarizeEvalObservationsMatchesUpstream |
 | `packages/telemetry/src/index.ts` | ✅ | 0 | 3 (unit:./telemetry:TestTelemetrySchemaKeepsEmptyMembers, unit:./telemetry:TestTelemetryUpstream, unit:./telemetry:TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan) | not run | ./telemetry:TestTelemetrySchemaKeepsEmptyMembers, ./telemetry:TestTelemetryUpstream, ./telemetry:TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan |
 | `packages/telemetry/src/memory.ts` | ✅ | 0 | 30 (unit:./telemetry:TestConformanceFixtureIsOwnedAndDisposedByEachCase, unit:./telemetry:TestConformanceUpstream, unit:./telemetry:TestConformanceUpstream, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, unit:./telemetry:TestInMemoryAutomaticErrorStatusUsesTheErrorNameAsPi, unit:./telemetry:TestInMemoryAutomaticErrorStatusUsesTheErrorNameAsPi, unit:./telemetry:TestInMemoryRecordedSpanStatus, unit:./telemetry:TestInMemoryRecordedSpanStatus, unit:./telemetry:TestInMemoryRecordedSpanStatus, unit:./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, unit:./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, unit:./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, unit:./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, unit:./telemetry:TestInMemoryRecorderKeepsADetachedCopyOfTheSpanStatus, unit:./telemetry:TestInMemoryTelemetryContextKeepsEventsAndSnapshotsDetached, unit:./telemetry:TestInMemoryTelemetryContextNumbersSpansAndSettlements, unit:./telemetry:TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors, unit:./telemetry:TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors, unit:./telemetry:TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors, unit:./telemetry:TestTelemetryAdapterFixtureFactoryBuildsAFreshFixturePerCase, unit:./telemetry:TestTelemetryUpstream, unit:./telemetry:TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan, unit:./telemetry:TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan) | not run | ./telemetry:TestConformanceFixtureIsOwnedAndDisposedByEachCase, ./telemetry:TestConformanceUpstream, ./telemetry:TestConformanceUpstream, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAdapterPassesConformanceAndRecordsSpanStatus, ./telemetry:TestInMemoryAutomaticErrorStatusUsesTheErrorNameAsPi, ./telemetry:TestInMemoryAutomaticErrorStatusUsesTheErrorNameAsPi, ./telemetry:TestInMemoryRecordedSpanStatus, ./telemetry:TestInMemoryRecordedSpanStatus, ./telemetry:TestInMemoryRecordedSpanStatus, ./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, ./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, ./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, ./telemetry:TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents, ./telemetry:TestInMemoryRecorderKeepsADetachedCopyOfTheSpanStatus, ./telemetry:TestInMemoryTelemetryContextKeepsEventsAndSnapshotsDetached, ./telemetry:TestInMemoryTelemetryContextNumbersSpansAndSettlements, ./telemetry:TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors, ./telemetry:TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors, ./telemetry:TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors, ./telemetry:TestTelemetryAdapterFixtureFactoryBuildsAFreshFixturePerCase, ./telemetry:TestTelemetryUpstream, ./telemetry:TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan, ./telemetry:TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan |
+| `packages/telemetry/src/metrics.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/telemetry/src/noop.ts` | ✅ | 0 | 1 (unit:./telemetry:TestTelemetryUpstream) | not run | ./telemetry:TestTelemetryUpstream |
 | `packages/telemetry/src/testing/conformance.ts` | ✅ | 0 | 1 (unit:./telemetry:TestConformanceUpstream) | not run | ./telemetry:TestConformanceUpstream |
 | `packages/telemetry/src/testing/index.ts` | n/a | 0 | 0 | not run |  |
