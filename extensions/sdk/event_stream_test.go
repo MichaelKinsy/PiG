@@ -214,11 +214,11 @@ func TestEventStreamAppendsMatchConcatenation(t *testing.T) {
 			for n := rng.IntN(4); n >= 0; n-- {
 				path := paths[rng.IntN(len(paths))]
 				encodedPath, _ := json.Marshal(path)
-				switch roll := rng.IntN(20); {
-				case roll == 0:
+				switch rng.IntN(20) {
+				case 0:
 					encoded, _ := json.Marshal(string(source[:rng.IntN(len(source))]))
 					list = append(list, fmt.Sprintf(`{"op":"set","path":%s,"value":%s}`, encodedPath, encoded))
-				case roll == 1:
+				case 1:
 					list = append(list, fmt.Sprintf(`{"op":"set","path":["assistantMessageEvent","list",%d],"value":"item"}`, listLen))
 					listLen++
 				default:

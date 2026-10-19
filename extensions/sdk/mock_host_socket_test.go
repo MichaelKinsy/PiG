@@ -22,7 +22,7 @@ func TestMockHostSocketIsItsOwn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial the first host: %v", err)
 	}
-	defer nc.Close()
+	defer func() { _ = nc.Close() }()
 	if err := first.listener.(*net.UnixListener).SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		t.Fatal(err)
 	}

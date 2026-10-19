@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"slices"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestToolNamespaceAliasesKeepTheWireShapeAndComparability(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Errorf("%s(%q) = %s, want %s", mode.name, aliases, got, want)
 			}
 		}
