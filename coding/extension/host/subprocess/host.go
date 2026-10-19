@@ -603,13 +603,15 @@ func frameSkewHint(cfg ExtConfig, size uint64, recent bool) string {
 type managedExt struct {
 	// messageUpdates is the message_update payload the extension's connection last received (message_update_delta.go).
 	messageUpdates messageUpdateStream
-	facetBridge    *FacetBridge
-	pendingReady   *Envelope
-	nodeEntry      string
-	replacement    atomic.Pointer[managedExt]
-	config         ExtConfig
-	host           *Host
-	supervisor     *Supervisor
+	// toolUpdates are the tool_execution_update payloads it last received, one for each tool call (tool_update_delta.go).
+	toolUpdates  toolUpdateStreams
+	facetBridge  *FacetBridge
+	pendingReady *Envelope
+	nodeEntry    string
+	replacement  atomic.Pointer[managedExt]
+	config       ExtConfig
+	host         *Host
+	supervisor   *Supervisor
 	// conn is the current connection. Only setConnLocked stores it, and only while holding Host.mu, so a Host.mu holder reads a stable value; every other reader loads it once through connection() and keeps that snapshot for the whole operation.
 	conn atomic.Pointer[Conn]
 	// procMu guards the process handle: proc, processTree, cmd and exitedCh. An automatic restart replaces them in startExt while a stop, a crash handler or a status reader can run; it is a leaf lock, never held while calling out.
@@ -4235,9 +4237,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 
 		var argsJSON json.RawMessage
 		var update *extension.MessageUpdateEvent
+		var toolUpdate *extension.ToolExecutionUpdateEvent
 		if len(args) > 0 {
 			update = streamedMessageUpdate(event, args[0], boundaryWire)
+			toolUpdate = streamedToolUpdate(event, args[0], boundaryWire)
 		}
+		streamed := update != nil || toolUpdate != nil
 		// The dispatch's event, unchanged since an earlier handler encoded it, has that handler's encoding.
 		var eventWire *eventwire.Dispatch
 		if event == "before_agent_start" || event == "tool_call" || event == "context" || event == "context_with_system" {
@@ -4247,7 +4252,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		if eventWire != nil && len(args) > 0 {
 			argsJSON, encoded = eventWire.Args()
 		}
-		if len(args) > 0 && update == nil && !encoded {
+		if len(args) > 0 && !streamed && !encoded {
 			var err error
 			argsJSON, err = marshalEventWire(boundaryEventWire(wireEventPayload(args[0]), boundaryWire))
 			if err != nil {
@@ -4307,11 +4312,13 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				Event:       event,
 				HandlerID:   handlerID,
 				Args:        argsJSON,
-				encodedArgs: update == nil,
+				encodedArgs: !streamed,
 			}
 			envelope := &Envelope{Type: MsgRequest, Request: payload}
 			if update != nil {
 				resp, err = conn.requestOrdered(parent, envelope, me.messageUpdates.order(&me.host.messageUpdateShare, conn, *update, payload, args[0], boundaryWire))
+			} else if toolUpdate != nil {
+				resp, err = conn.requestOrdered(parent, envelope, me.toolUpdates.order(conn, *toolUpdate, payload, args[0], boundaryWire))
 			} else {
 				resp, err = conn.Request(parent, envelope)
 			}
@@ -4323,9 +4330,13 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		} else {
 			_ = request()
 		}
-		if update != nil && (err != nil || resp.Response == nil || resp.Response.Error != nil) {
-			// The runtime may not hold the payload this frame carried: the next message_update is a keyframe.
-			me.messageUpdates.invalidate()
+		if streamed && (err != nil || resp.Response == nil || resp.Response.Error != nil) {
+			// The runtime may not hold the payload this frame carried: the next one is a keyframe.
+			if update != nil {
+				me.messageUpdates.invalidate()
+			} else {
+				me.toolUpdates.invalidate()
+			}
 		}
 		if err != nil {
 			return nil, me.dispatchError(fmt.Errorf("event %s: %w", event, me.host.invocationError(err)))

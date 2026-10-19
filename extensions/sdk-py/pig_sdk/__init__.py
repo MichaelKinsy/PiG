@@ -3497,7 +3497,7 @@ class Extension:
         self._setups = _WithSessionRegistry()
         self._command_completions: dict[str, ArgumentCompletionsHandler] = {}
         self._event_handlers: dict[int, EventHandler] = {}
-        self._event_replicas: dict[str, tuple[int, Any]] = {}
+        self._event_replicas: dict[tuple[str, str], tuple[int, Any]] = {}
         self._event_lock = threading.Lock()
         self._event_next_id = 0
         self._shortcut_handlers: dict[str, ShortcutHandler] = {}
@@ -4376,21 +4376,25 @@ class Extension:
         if stream is None:
             return
         name = req.get("event") or ""
+        # A payload belongs to the sequence the event and the key name: tool_execution_update has one for each tool call.
+        ident = (name, str(stream.get("key") or ""))
         replicas = self._event_replicas
         try:
             if req.get("args") is not None:
                 root = req["args"]
             else:
-                replica = replicas.get(name)
+                replica = replicas.get(ident)
                 base = int(stream.get("base") or 0)
                 if replica is None or replica[0] != base:
                     raise RuntimeError(f"{name} delta applies to payload {base}, the replica holds a different one")
                 root = _apply_stream_ops(replica[1], stream.get("ops"))
-            replicas[name] = (int(stream.get("seq") or 0), root)
+            replicas[ident] = (int(stream.get("seq") or 0), root)
             req["args"] = _clone_stream_value(root)
         except Exception as exc:  # noqa: BLE001 - The request that follows reports why its payload is missing.
-            replicas.pop(name, None)
+            replicas.pop(ident, None)
             req["_stream_error"] = str(exc)
+        for evicted in stream.get("evict") or ():
+            replicas.pop((name, str(evicted)), None)
 
     def _handle_request_thread(self, env: dict[str, Any], ctx: Context) -> None:
         try:

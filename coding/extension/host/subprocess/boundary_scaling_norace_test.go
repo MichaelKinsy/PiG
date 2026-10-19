@@ -51,16 +51,24 @@ func historyEntries(h int) []extension.SessionEntry {
 	return entries
 }
 
-// tool_execution_update carries the accumulated partialResult: a bash command that prints M bytes in n chunks sends n events of growing size, O(n^2) bytes in all (Pi shares the partial result by reference). Quadratic: joins complexity-audit's delta design.
+// tool_execution_update carries the accumulated partialResult: a tool that prints M bytes in n chunks sends n events whose partial results grow to M bytes. The host sends the first update of a call whole and every later one as the operations that turn the previous payload into it (tool_update_delta.go), so the n updates cost O(n) in all, as a message_update stream does.
 func TestBoundaryScalingToolExecutionUpdateStream(t *testing.T) {
-	testscaling.Check(t, testscaling.Case{Name: "tool_execution_update stream of n output chunks (accumulated partialResult)", Size: 100, Bound: testscaling.Quadratic, Prepare: func(n int) func() {
+	testscaling.Check(t, testscaling.Case{Name: "tool_execution_update stream of n output chunks (accumulated partialResult)", Size: 100, Bound: testscaling.Linear, Prepare: func(n int) func() {
 		chunk := strings.Repeat("output line of a long running command\n", 2)
 		return func() {
+			streams := &toolUpdateStreams{}
+			conn := &Conn{}
 			var text strings.Builder
 			for range n {
 				text.WriteString(chunk)
 				partial := map[string]any{"content": []any{map[string]any{"type": "text", "text": text.String()}}}
-				wireSink += encodeEventForWire(extension.ToolExecutionUpdateEvent{Type: "tool_execution_update", ToolCallID: "c1", ToolName: "bash", Args: map[string]any{"command": "make"}, PartialResult: partial})
+				event := extension.ToolExecutionUpdateEvent{Type: "tool_execution_update", ToolCallID: "c1", ToolName: "bash", Args: map[string]any{"command": "make"}, PartialResult: partial}
+				prepared, args, stream, inStream, err := streams.prepare(conn, event, event, nil)
+				if err != nil || !inStream {
+					panic(fmt.Sprint("tool_execution_update left the stream: ", err))
+				}
+				wireSink += len(args) + len(stream.Ops)
+				streams.sent(conn, prepared, nil)
 			}
 		}
 	}})

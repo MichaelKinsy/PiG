@@ -173,11 +173,10 @@ type toolResultWire struct {
 	content []any
 }
 
-// MarshalJSON writes the members with the extension codec, which keeps an unmatched UTF-16 unit as JSON.stringify writes it.
-func (w toolResultWire) MarshalJSON() ([]byte, error) {
-	var out bytes.Buffer
-	out.WriteByte('{')
-	first := true
+// WireMembers names the members the result holds, in the order they are written, with their values.
+func (w toolResultWire) WireMembers() ([]string, []any) {
+	names := make([]string, 0, 6)
+	values := make([]any, 0, 6)
 	for _, name := range w.result.MemberNames() {
 		var value any
 		switch name {
@@ -197,18 +196,34 @@ func (w toolResultWire) MarshalJSON() ([]byte, error) {
 		case "terminate":
 			value = w.result.Terminate
 		}
+		names = append(names, name)
+		values = append(values, value)
+	}
+	return names, values
+}
+
+// MarshalJSON writes the members with the extension codec, which keeps an unmatched UTF-16 unit as JSON.stringify writes it.
+func (w toolResultWire) MarshalJSON() ([]byte, error) {
+	names, values := w.WireMembers()
+	return marshalWireMembers(names, values)
+}
+
+// marshalWireMembers writes an object with the extension codec.
+func marshalWireMembers(names []string, values []any) ([]byte, error) {
+	var out bytes.Buffer
+	out.WriteByte('{')
+	for index, name := range names {
 		key, err := sdkjson.Marshal(name)
 		if err != nil {
 			return nil, err
 		}
-		encoded, err := sdkjson.Marshal(value)
+		encoded, err := sdkjson.Marshal(values[index])
 		if err != nil {
 			return nil, err
 		}
-		if !first {
+		if index > 0 {
 			out.WriteByte(',')
 		}
-		first = false
 		out.Write(key)
 		out.WriteByte(':')
 		out.Write(encoded)
@@ -224,10 +239,21 @@ type toolResultTextBlock struct {
 	TextSignature string `json:"textSignature,omitempty"`
 }
 
+func (b toolResultTextBlock) WireMembers() ([]string, []any) {
+	if b.TextSignature == "" {
+		return []string{"type", "text"}, []any{b.Type, b.Text}
+	}
+	return []string{"type", "text", "textSignature"}, []any{b.Type, b.Text, b.TextSignature}
+}
+
 type toolResultImageBlock struct {
 	Type     string `json:"type"`
 	Data     string `json:"data"`
 	MimeType string `json:"mimeType"`
+}
+
+func (b toolResultImageBlock) WireMembers() ([]string, []any) {
+	return []string{"type", "data", "mimeType"}, []any{b.Type, b.Data, b.MimeType}
 }
 
 func extensionToolResultWire(result agent.AgentToolResult) toolResultWire {

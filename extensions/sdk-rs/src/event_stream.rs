@@ -1,4 +1,4 @@
-//! Event streams: the host sends the first payload of an event name whole and each later one as operations on the payload this connection last received (`EventStream` in the host's protocol.go). The reader applies a frame's operations as it reads it, in arrival order, and the request handler receives the full payload.
+//! Event streams: the host sends the first payload of an event name and key whole and each later one as operations on the payload this connection last received for them (`EventStream` in the host's protocol.go). The reader applies a frame's operations as it reads it, in arrival order, and the request handler receives the full payload.
 
 use std::collections::HashMap;
 
@@ -11,10 +11,10 @@ struct Replica {
     root: Value,
 }
 
-/// The payloads of the event streams one connection received; only its read loop touches it.
+/// The payloads of the event streams one connection received, by event name and key (a `tool_execution_update` has one for each tool call); only its read loop touches it.
 #[derive(Default)]
 pub struct EventReplicas {
-    replicas: HashMap<String, Replica>,
+    replicas: HashMap<(String, String), Replica>,
 }
 
 impl EventReplicas {
@@ -22,9 +22,10 @@ impl EventReplicas {
     pub fn apply(&mut self, req: &mut RequestMsg) {
         let Some(stream) = req.stream.clone() else { return };
         let name = req.event.clone().unwrap_or_default();
+        let id = (name.clone(), stream.key.clone());
         let produced = match req.args.take() {
             Some(keyframe) => Ok(keyframe),
-            None => match self.replicas.get_mut(&name) {
+            None => match self.replicas.get_mut(&id) {
                 Some(replica) if replica.seq == stream.base => {
                     let mut root = std::mem::take(&mut replica.root);
                     let ops = stream.ops.clone().unwrap_or(Value::Null);
@@ -36,12 +37,15 @@ impl EventReplicas {
         match produced {
             Ok(root) => {
                 req.args = Some(root.clone());
-                self.replicas.insert(name, Replica { seq: stream.seq, root });
+                self.replicas.insert(id, Replica { seq: stream.seq, root });
             }
             Err(message) => {
-                self.replicas.remove(&name);
+                self.replicas.remove(&id);
                 req.stream_error = Some(message);
             }
+        }
+        for evicted in &stream.evict {
+            self.replicas.remove(&(name.clone(), evicted.clone()));
         }
     }
 }
@@ -132,7 +136,7 @@ mod tests {
             tool_call_id: None,
             args,
             terminal_input: None,
-            stream: Some(EventStream { seq, base, ops }),
+            stream: Some(EventStream { seq, base, ops, key: String::new(), evict: Vec::new() }),
             stream_error: None,
         }
     }
@@ -178,6 +182,36 @@ mod tests {
             replicas.apply(&mut after);
             assert!(after.stream_error.is_some(), "{name}: the replica was kept after a failure");
         }
+    }
+
+    #[test]
+    fn keys_are_independent_and_evicted() {
+        let keyed = |key: &str, seq: u64, base: u64, args: Option<Value>, ops: Option<Value>, evict: &[&str]| {
+            let mut req = request(seq, base, args, ops);
+            req.event = Some("tool_execution_update".into());
+            let stream = req.stream.as_mut().unwrap();
+            stream.key = key.into();
+            stream.evict = evict.iter().map(|k| k.to_string()).collect();
+            req
+        };
+        let append = json!([{"op": "append", "path": ["text"], "value": "+"}]);
+        let mut replicas = EventReplicas::default();
+        for key in ["a", "b"] {
+            replicas.apply(&mut keyed(key, 1, 0, Some(json!({"text": key})), None, &[]));
+        }
+        let mut b1 = keyed("b", 2, 1, None, Some(append.clone()), &[]);
+        replicas.apply(&mut b1);
+        assert_eq!(b1.args, Some(json!({"text": "b+"})));
+        let mut a1 = keyed("a", 2, 1, None, Some(append.clone()), &[]);
+        replicas.apply(&mut a1);
+        assert_eq!(a1.args, Some(json!({"text": "a+"})));
+        replicas.apply(&mut keyed("c", 1, 0, Some(json!({"text": "c"})), None, &["a"]));
+        let mut stale = keyed("a", 3, 2, None, Some(append.clone()), &[]);
+        replicas.apply(&mut stale);
+        assert!(stale.stream_error.unwrap_or_default().contains("delta applies to payload 2"));
+        let mut b2 = keyed("b", 3, 2, None, Some(append), &[]);
+        replicas.apply(&mut b2);
+        assert_eq!(b2.args, Some(json!({"text": "b++"})));
     }
 
     /// Sets or concatenates at `path` the plain way: the payload a delta produces by definition.

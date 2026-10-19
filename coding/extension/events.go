@@ -700,6 +700,11 @@ func (e ToolExecutionStartEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(plain(e))
 }
 
+// WireMembers is a wire value that encodes as a JSON object. It names the members in the order the object writes them and holds each value, so the host can compare one such value with the one it sent before without encoding it again. Its MarshalJSON writes the same object.
+type WireMembers interface {
+	WireMembers() (names []string, values []any)
+}
+
 // ToolExecutionUpdateEvent: upstream types.ts ToolExecutionUpdateEvent.
 type ToolExecutionUpdateEvent struct {
 	Type       string `json:"type"`

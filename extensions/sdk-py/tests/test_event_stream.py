@@ -79,3 +79,35 @@ def test_helpers_share_strings_and_copy_containers():
     copy = _clone_stream_value(value)
     assert copy == value and copy is not value and copy["a"] is not value["a"]
     assert _apply_stream_ops(value, [{"op": "set", "path": [], "value": 5}]) == 5
+
+
+def keyed(key, seq, base=0, args=None, ops=None, evict=None):
+    req = request(seq, base=base, args=args, ops=ops)
+    req["event"] = "tool_execution_update"
+    req["stream"]["key"] = key
+    if evict:
+        req["stream"]["evict"] = evict
+    return req
+
+
+def test_keys_are_independent_and_evicted():
+    ext = prepare(extension())
+    for key in ("a", "b"):
+        ext._apply_event_stream(keyed(key, 1, args={"text": key}))
+    append = [{"op": "append", "path": ["text"], "value": "+"}]
+    first_b = keyed("b", 2, base=1, ops=append)
+    ext._apply_event_stream(first_b)
+    assert first_b["args"] == {"text": "b+"}
+    only_a = keyed("a", 2, base=1, ops=append)
+    ext._apply_event_stream(only_a)
+    assert only_a["args"] == {"text": "a+"}
+    second_b = keyed("b", 3, base=2, ops=append)
+    ext._apply_event_stream(second_b)
+    assert second_b["args"] == {"text": "b++"}
+    ext._apply_event_stream(keyed("c", 1, args={"text": "c"}, evict=["a"]))
+    stale = keyed("a", 3, base=2, ops=append)
+    ext._apply_event_stream(stale)
+    assert "delta applies to payload 2" in stale.get("_stream_error", "")
+    still_b = keyed("b", 4, base=3, ops=append)
+    ext._apply_event_stream(still_b)
+    assert still_b["args"] == {"text": "b+++"}

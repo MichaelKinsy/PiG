@@ -257,3 +257,46 @@ func TestEventStreamAppendsMatchConcatenation(t *testing.T) {
 		}
 	}
 }
+
+// TestEventStreamKeysAreIndependentAndEvicted: the payloads of one event name are numbered and kept per key (a tool_execution_update has one for each tool call), a frame's evict list drops the named keys after it applied, and a delta for an evicted key is refused.
+func TestEventStreamKeysAreIndependentAndEvicted(t *testing.T) {
+	e := &Extension{}
+	appendPlus := json.RawMessage(`[{"op":"append","path":["text"],"value":"+"}]`)
+	apply := func(key string, stream eventStreamMsg, args string) *requestMsg {
+		t.Helper()
+		stream.Key = key
+		req := &requestMsg{Method: "event", Event: "tool_execution_update", Stream: &stream}
+		if args != "" {
+			req.Args = json.RawMessage(args)
+		}
+		e.applyEventStream(req)
+		return req
+	}
+	for _, key := range []string{"a", "b"} {
+		if req := apply(key, eventStreamMsg{Seq: 1}, `{"text":"`+key+`"}`); req.streamErr != nil {
+			t.Fatal(req.streamErr)
+		}
+	}
+	for _, step := range []struct {
+		key       string
+		seq, base uint64
+		want      string
+	}{{"b", 2, 1, "b+"}, {"a", 2, 1, "a+"}, {"b", 3, 2, "b++"}} {
+		req := apply(step.key, eventStreamMsg{Seq: step.seq, Base: step.base, Ops: appendPlus}, "")
+		if req.streamErr != nil || req.streamData["text"] != step.want {
+			t.Fatalf("%s: %v, %v, want %s", step.key, req.streamData, req.streamErr, step.want)
+		}
+	}
+	if req := apply("c", eventStreamMsg{Seq: 1, Evict: []string{"a"}}, `{"text":"c"}`); req.streamErr != nil {
+		t.Fatal(req.streamErr)
+	}
+	if len(e.eventReplicas) != 2 {
+		t.Fatalf("replicas after eviction: %v", e.eventReplicas)
+	}
+	if stale := apply("a", eventStreamMsg{Seq: 3, Base: 2, Ops: appendPlus}, ""); stale.streamErr == nil {
+		t.Fatal("a delta applied to an evicted call")
+	}
+	if req := apply("b", eventStreamMsg{Seq: 4, Base: 3, Ops: appendPlus}, ""); req.streamErr != nil || req.streamData["text"] != "b+++" {
+		t.Fatalf("b after the eviction of a: %v, %v", req.streamData, req.streamErr)
+	}
+}

@@ -9,14 +9,16 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
-// eventStreamMsg is the request member that numbers one connection's payloads of an event name (EventStream in the host's protocol.go). A request with Args is a keyframe the extension keeps; one without Args applies Ops to the payload numbered Base. The handler receives the full payload either way.
+// eventStreamMsg is the request member that numbers one connection's payloads of an event name and key (EventStream in the host's protocol.go). A request with Args is a keyframe the extension keeps; one without Args applies Ops to the payload numbered Base. The handler receives the full payload either way. Evict names keys of the event whose payloads are dropped after this frame.
 type eventStreamMsg struct {
-	Seq  uint64          `json:"seq"`
-	Base uint64          `json:"base,omitempty"`
-	Ops  json.RawMessage `json:"ops,omitempty"`
+	Seq   uint64          `json:"seq"`
+	Base  uint64          `json:"base,omitempty"`
+	Ops   json.RawMessage `json:"ops,omitempty"`
+	Key   string          `json:"key,omitempty"`
+	Evict []string        `json:"evict,omitempty"`
 }
 
-// eventReplica is the payload of an event name that this connection last received.
+// eventReplica is the payload of an event name and key that this connection last received.
 type eventReplica struct {
 	seq  uint64
 	root any
@@ -25,23 +27,30 @@ type eventReplica struct {
 // applyEventStream replaces the request's payload with the full payload its stream member produces. The loop calls it as the frame is read, in arrival order, so the replica follows the host's frames whether or not a handler runs for them.
 func (e *Extension) applyEventStream(req *requestMsg) {
 	stream := req.Stream
+	// A payload belongs to the sequence the event and the key name: tool_execution_update has one for each tool call.
+	id := req.Event + "\x00" + stream.Key
+	defer func() {
+		for _, key := range stream.Evict {
+			delete(e.eventReplicas, req.Event+"\x00"+key)
+		}
+	}()
 	var root any
 	if len(req.Args) > 0 {
 		if err := json.Unmarshal(req.Args, &root); err != nil {
-			delete(e.eventReplicas, req.Event)
+			delete(e.eventReplicas, id)
 			req.streamErr = fmt.Errorf("event stream: decode keyframe: %w", err)
 			return
 		}
 	} else {
-		replica := e.eventReplicas[req.Event]
+		replica := e.eventReplicas[id]
 		if replica == nil || replica.seq != stream.Base {
-			delete(e.eventReplicas, req.Event)
+			delete(e.eventReplicas, id)
 			req.streamErr = fmt.Errorf("%s delta applies to payload %d, the replica holds a different one", req.Event, stream.Base)
 			return
 		}
 		var err error
 		if root, err = applyStreamOps(replica.root, stream.Ops); err != nil {
-			delete(e.eventReplicas, req.Event)
+			delete(e.eventReplicas, id)
 			req.streamErr = err
 			return
 		}
@@ -49,7 +58,7 @@ func (e *Extension) applyEventStream(req *requestMsg) {
 	if e.eventReplicas == nil {
 		e.eventReplicas = map[string]*eventReplica{}
 	}
-	e.eventReplicas[req.Event] = &eventReplica{seq: stream.Seq, root: root}
+	e.eventReplicas[id] = &eventReplica{seq: stream.Seq, root: root}
 	data, _ := cloneStreamValue(root).(map[string]any)
 	if data == nil {
 		data = map[string]any{}

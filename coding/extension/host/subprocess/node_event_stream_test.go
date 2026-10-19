@@ -37,6 +37,25 @@ replicas.apply(other);
 const third = request({seq: 3, base: 2, ops: [{op: "append", path: ["text"], value: "!"}]});
 replicas.apply(third);
 assert.equal(third.args.text, "abcd!");
+// Each key of an event name has its own payload and numbering, and a frame's evict list drops keys once it applied.
+const keyed = (key, stream, args) => ({event: "tool_execution_update", stream: {key, ...stream}, ...(args === undefined ? {} : {args})});
+const plus = [{op: "append", path: ["text"], value: "+"}];
+const calls = new EventReplicas();
+calls.apply(keyed("a", {seq: 1}, {text: "a"}));
+calls.apply(keyed("b", {seq: 1}, {text: "b"}));
+const b1 = keyed("b", {seq: 2, base: 1, ops: plus});
+calls.apply(b1);
+assert.equal(b1.args.text, "b+");
+const a1 = keyed("a", {seq: 2, base: 1, ops: plus});
+calls.apply(a1);
+assert.equal(a1.args.text, "a+");
+calls.apply(keyed("c", {seq: 1, evict: ["a"]}, {text: "c"}));
+const stale = keyed("a", {seq: 3, base: 2, ops: plus});
+calls.apply(stale);
+assert.ok(stale.streamError instanceof Error, "a delta applied to an evicted call");
+const b2 = keyed("b", {seq: 3, base: 2, ops: plus});
+calls.apply(b2);
+assert.equal(b2.args.text, "b++");
 // A delta for a payload the runtime does not hold is an error for its request, and drops the replica.
 for (const [name, ops, base] of [["wrong base", [], 7], ["append to a number", [{op: "append", path: ["list", 0], value: "x"}], 3], ["bad path", [{op: "set", path: ["no", "where"], value: 1}], 3], ["array past the end", [{op: "set", path: ["list", 9], value: 1}], 3], ["unknown op", [{op: "del", path: ["text"]}], 3]]) {
   const fresh = new EventReplicas();

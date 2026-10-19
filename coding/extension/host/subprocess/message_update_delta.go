@@ -62,11 +62,13 @@ type sparse struct {
 	ok    bool
 	// validated holds long strings known to be valid UTF-8: the previous payload's of the stream, then each this one validates.
 	validated []string
+	// strict has a short string checked for UTF-8 as a long one is: a payload whose encoder the keyframe does not share (a tool's partial result) must not write a lone unit differently from it.
+	strict bool
 }
 
 func (s *sparse) str(value string) string {
 	if len(value) < bigStringBytes {
-		if strings.Contains(value, bigOpen) {
+		if strings.Contains(value, bigOpen) || (s.strict && !utf8.ValidString(value)) {
 			s.ok = false
 		}
 		return value
@@ -120,6 +122,17 @@ func (s *sparse) value(value any) any {
 		return out
 	case ai.JsonObject:
 		return s.object(typed)
+	case json.RawMessage, *ai.Usage:
+		// Encoded as they are held: a raw value is not searched for long strings, so it is sent whole when it changes.
+		return value
+	case extension.WireMembers:
+		names, members := typed.WireMembers()
+		out := orderedWire{names: names, values: make([]any, len(members))}
+		for index, member := range members {
+			s.key(names[index])
+			out.values[index] = s.value(member)
+		}
+		return out
 	case []any:
 		out := make([]any, len(typed))
 		for index, member := range typed {

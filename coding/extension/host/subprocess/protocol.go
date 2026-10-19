@@ -595,17 +595,21 @@ type RequestPayload struct {
 	OwnSignal bool `json:"own_signal,omitempty"`
 	// ExecuteID, with OwnSignal, names the executeTool call of the same connection that made this nested call, so its runtime can hand the tool the very signal object its caller passed.
 	ExecuteID string `json:"execute_id,omitempty"`
-	// Stream, on a message_update event, says the payload is one of a numbered sequence on this connection: a request with Args is a keyframe the runtime keeps, a request without Args applies Stream.Ops to the payload numbered Stream.Base. The runtime hands the handler the full event either way.
+	// Stream, on a message_update or tool_execution_update event, says the payload is one of a numbered sequence on this connection: a request with Args is a keyframe the runtime keeps, a request without Args applies Stream.Ops to the payload numbered Stream.Base. The runtime hands the handler the full event either way.
 	Stream *EventStream `json:"stream,omitempty"`
 	// encodedArgs marks Args as json.Marshal output that nothing writes after the request is sent: the frame carries those bytes as they are, without the encoder's second pass over them (encodedFrame).
 	encodedArgs bool
 }
 
-// EventStream numbers the payloads of one connection's message_update events and carries the operations that turn the previous one into the next. An operation is {"op":"set"|"append","path":[...],"value":...}: set writes the value at the path (an object key, or an array index no further than the array's length), append adds the string value to the string at the path. A path element is an object key or an array index; an empty path is the whole payload. Members keep the order the full payload would have: set creates a new key last.
+// EventStream numbers the payloads of one connection's message_update and tool_execution_update events and carries the operations that turn the previous one into the next. An operation is {"op":"set"|"append","path":[...],"value":...}: set writes the value at the path (an object key, or an array index no further than the array's length), append adds the string value to the string at the path. A path element is an object key or an array index; an empty path is the whole payload. Members keep the order the full payload would have: set creates a new key last.
+//
+// A payload belongs to the sequence named by the event and Key: message_update has one sequence, and tool_execution_update has one for each toolCallId, which Key carries, so parallel tools that interleave their updates each send only what changed. Seq and Base number the payloads of one sequence. Evict names sequences of the same event whose payloads the runtime drops once it applied this frame: the host keeps a bounded number and releases the least recently updated, so a runtime's memory is bounded; the next frame of an evicted sequence is a keyframe.
 type EventStream struct {
-	Seq  uint64          `json:"seq"`
-	Base uint64          `json:"base,omitempty"`
-	Ops  json.RawMessage `json:"ops,omitempty"`
+	Seq   uint64          `json:"seq"`
+	Base  uint64          `json:"base,omitempty"`
+	Ops   json.RawMessage `json:"ops,omitempty"`
+	Key   string          `json:"key,omitempty"`
+	Evict []string        `json:"evict,omitempty"`
 }
 
 // RequestWithSession (host→ext) runs the withSession callback that a newSession, fork or switchSession call registered under WithSessionArgs.Handle. The call's args name that handle in their withSession field. The host sends it after the replacement Session is bound and before the call returns, as Pi's finishSessionReplacement awaits withSession (agent-session-runtime.ts:187-194). Host calls whose parent is this request act on the replacement Session; the response settles the callback, and its error rejects the call.

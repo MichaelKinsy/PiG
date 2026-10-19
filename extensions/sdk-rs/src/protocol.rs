@@ -336,7 +336,7 @@ pub struct RequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<Value>,
     pub terminal_input: Option<TerminalInputArgs>,
-    /// Numbers one connection's payloads of an event name (`EventStream` in the host's protocol.go).
+    /// Numbers one connection's payloads of an event name and key (`EventStream` in the host's protocol.go).
     pub stream: Option<EventStream>,
     /// Why `apply_event_stream` could not produce the payload.
     pub stream_error: Option<String>,
@@ -351,6 +351,12 @@ pub struct EventStream {
     pub base: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ops: Option<Value>,
+    /// Names the sequence of the event this payload belongs to: a `tool_execution_update` has one for each tool call.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    /// Keys of the event whose payloads are dropped once this frame is applied.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evict: Vec<String>,
 }
 
 /// The ordered chunk and owner snapshot use JS strings, not Unicode-scalar strings.

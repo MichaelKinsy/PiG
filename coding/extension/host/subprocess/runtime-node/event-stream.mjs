@@ -1,4 +1,4 @@
-// Event streams: the host sends the first payload of an event name whole and every later one as operations on the payload this connection last received (EventStream in the host's protocol.go). A runtime keeps one replica per event name, applies the operations as the frame arrives, in arrival order, and hands each handler its own copy.
+// Event streams: the host sends the first payload of an event name whole and every later one as operations on the payload this connection last received (EventStream in the host's protocol.go). A runtime keeps one replica per event name and key (a tool_execution_update has one for each tool call), applies the operations as the frame arrives, in arrival order, and hands each handler its own copy.
 
 export function cloneStreamValue(value) {
   if (Array.isArray(value)) return value.map(cloneStreamValue);
@@ -52,22 +52,24 @@ export function applyStreamOps(root, ops) {
 export class EventReplicas {
   #replicas = new Map();
 
-  // apply replaces request.args with the full payload request.stream produces, or sets request.streamError.
+  // apply replaces request.args with the full payload request.stream produces, or sets request.streamError. A frame's evict names keys of the event whose replicas the runtime drops once it applied the frame.
   apply(request) {
-    const { seq, base = 0, ops } = request.stream;
+    const { seq, base = 0, ops, key = "", evict } = request.stream;
+    const id = `${request.event}\0${key}`;
     try {
       if (request.args !== undefined) {
-        this.#replicas.set(request.event, { seq, value: request.args });
+        this.#replicas.set(id, { seq, value: request.args });
       } else {
-        const replica = this.#replicas.get(request.event);
+        const replica = this.#replicas.get(id);
         if (!replica || replica.seq !== base) throw new Error(`${request.event} delta applies to payload ${base}, the replica holds ${replica?.seq}`);
         replica.value = applyStreamOps(replica.value, ops);
         replica.seq = seq;
       }
-      request.args = cloneStreamValue(this.#replicas.get(request.event).value);
+      request.args = cloneStreamValue(this.#replicas.get(id).value);
     } catch (error) {
-      this.#replicas.delete(request.event);
+      this.#replicas.delete(id);
       request.streamError = error instanceof Error ? error : new Error(String(error));
     }
+    if (Array.isArray(evict)) for (const evicted of evict) this.#replicas.delete(`${request.event}\0${evicted}`);
   }
 }
