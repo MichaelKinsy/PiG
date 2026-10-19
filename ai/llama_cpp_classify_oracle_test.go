@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -242,8 +243,29 @@ func forgetLlamaLabelTokens(root string) {
 	}
 }
 
-// runLlamaOracleProbe is one probe through ClassifyLlamaCpp: a scripted llama-server on listener (a fresh loopback port when nil), the result and every request the server saw. When it returns the server is closed
-// and PiG knows nothing about it.
+// closeClassifierIdleConnections drops the keep-alive connections the classifier's process-wide HTTP client holds, whichever server they go to. A probe's server closes its end of every connection when the probe ends, but
+// the client's pool does not know until its connection reader runs, and a request that finds a pooled connection first writes to it and fails ("EOF", "connection reset by peer"): a POST is never replayed. Pi's oracle side
+// has a fresh process and no pool, and the kernel hands the closed server's address out again, so a probe closes its client side first and leaves nothing for the next server at that address to meet.
+// It reaches the transport classifierClient wraps, because that client's own CloseIdleConnections stops at the wrappers.
+func closeClassifierIdleConnections(t testing.TB) {
+	t.Helper()
+	fetch, ok := classifierClient().Transport.(*nodeFetchTransport)
+	if !ok {
+		t.Fatalf("classifierClient transport is %T, not the nodeFetchTransport this helper unwraps", classifierClient().Transport)
+	}
+	idle, ok := fetch.base.(*sseIdleTransport)
+	if !ok {
+		t.Fatalf("classifierClient fetch transport wraps %T, not the sseIdleTransport this helper unwraps", fetch.base)
+	}
+	pool, ok := idle.base.(interface{ CloseIdleConnections() })
+	if !ok {
+		t.Fatalf("classifierClient connection pool %T cannot close its idle connections", idle.base)
+	}
+	pool.CloseIdleConnections()
+}
+
+// runLlamaOracleProbe is one probe through ClassifyLlamaCpp: a scripted llama-server on listener (a fresh loopback port when nil), the result and every request the server saw. When it returns the server is closed, the
+// client holds no connection to it, and PiG knows nothing else about it.
 func runLlamaOracleProbe(t *testing.T, i int, probe llamaOracleProbe, listener net.Listener) (ClassifierResult, []llamaOracleExchange) {
 	t.Helper()
 	var state JsonObject
@@ -269,6 +291,7 @@ func runLlamaOracleProbe(t *testing.T, i int, probe llamaOracleProbe, listener n
 	request.Questions = classifierQuestionsOf(probe.Questions)
 	options := ClassifierOptions{APIKey: probe.APIKey, Temperature: probe.Temperature}
 	result := ClassifyLlamaCpp(t.Context(), model, request, options)
+	closeClassifierIdleConnections(t)
 	server.Close()
 	return result, seen
 }
@@ -429,9 +452,15 @@ func TestLlamaCppClassifyMatchesPi(t *testing.T) {
 	}
 }
 
-// TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer pins what keeps -count runs of TestLlamaCppClassifyMatchesPi independent: the second server a probe gets at the same address (the kernel hands a freed
-// loopback port out again, and a -count=100 run asks for 60000 of them) must see every request the first one saw, as Pi's fresh process does, not the ones its label cache already answered.
+// TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer pins what keeps runs of TestLlamaCppClassifyMatchesPi independent of each other and of -count: the second server a probe gets at the same address (the kernel hands a
+// freed loopback port out again, and a -count=100 run asks for 60000 of them) must see every request the first one saw, as Pi's fresh process does, not the ones its label cache already answered, and not fail on a
+// keep-alive connection the first server's client left pooled for that address.
+//
+// The pooled connection is the schedule-dependent half: after the first server closes, the client's connection reader must run before the next request to notice the close and drop the connection, and a loaded machine
+// does not run it in time. Pinning one P is that schedule on any machine: the test goroutine goes on to the second server's first request without the reader ever running in between, so a probe that leaves a connection
+// pooled fails every time ("EOF" or "connection reset by peer" on a reused connection, the second server seeing a request or two), not on one run in thirty under load.
 func TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer(t *testing.T) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
 	probe := llamaOracleProbe{
 		BaseSuffix: "/v1", APIKey: "k", State: `{"message":"hi"}`, Tokenizer: "words", Shape: "ok",
 		Questions: []llamaOracleQuestion{{ID: "urgent", Type: "bool", Instructions: "Urgent?", Yes: "now", No: "later"}},
