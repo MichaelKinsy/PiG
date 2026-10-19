@@ -75,19 +75,29 @@ type overlayInfo struct {
 
 func (f overlayInfo) Size() int64 { return f.size }
 
-// Hashes returns the module zip and go.mod h1 hashes using Go's module zip rules.
-// Overlay keys are slash-separated paths relative to root; only tracked files
-// participate, with working-tree bytes unless an overlay supplies planned bytes.
-func Hashes(root, dir string, mod module.Version, overlay map[string][]byte) (zipHash, modHash string, err error) {
+// ModuleFiles lists the tracked files of the module at root/dir as module zip inputs, with the overlay semantics of Hashes. The list includes files that Go's zip rules later omit, such as nested modules; modzip.CheckFiles and modzip.Create apply those rules.
+func ModuleFiles(root, dir string, overlay map[string][]byte) ([]modzip.File, error) {
 	moduleDir := filepath.Join(root, filepath.FromSlash(dir))
 	paths, err := TrackedFiles(moduleDir)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	files := make([]modzip.File, 0, len(paths))
 	for _, rel := range paths {
 		data, ok := overlay[filepath.ToSlash(filepath.Join(dir, rel))]
 		files = append(files, diskFile{rel: rel, abs: filepath.Join(moduleDir, filepath.FromSlash(rel)), data: data, overlaid: ok})
+	}
+	return files, nil
+}
+
+// Hashes returns the module zip and go.mod h1 hashes using Go's module zip rules.
+// Overlay keys are slash-separated paths relative to root; only tracked files
+// participate, with working-tree bytes unless an overlay supplies planned bytes.
+func Hashes(root, dir string, mod module.Version, overlay map[string][]byte) (zipHash, modHash string, err error) {
+	moduleDir := filepath.Join(root, filepath.FromSlash(dir))
+	files, err := ModuleFiles(root, dir, overlay)
+	if err != nil {
+		return "", "", err
 	}
 	out, err := os.CreateTemp("", "pig-module-*.zip")
 	if err != nil {
