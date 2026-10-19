@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
@@ -159,11 +160,11 @@ func llamaOracleLabelIDs(mode string) map[string]int {
 	return ids
 }
 
-// serveLlamaOracle is the scripted llama-server llama_cpp_classify.mjs also is; it records every request it gets.
-func serveLlamaOracle(t *testing.T, probe llamaOracleProbe, record func(llamaOracleExchange)) *httptest.Server {
+// serveLlamaOracle is the scripted llama-server llama_cpp_classify.mjs also is; it records every request it gets. It listens on listener, or on a fresh loopback port when that is nil.
+func serveLlamaOracle(t *testing.T, probe llamaOracleProbe, listener net.Listener, record func(llamaOracleExchange)) *httptest.Server {
 	t.Helper()
 	ids := llamaOracleLabelIDs(probe.Tokenizer)
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
 		exchange := llamaOracleExchange{Path: r.URL.Path, Body: string(raw)}
 		if v := r.Header.Get("Authorization"); v != "" {
@@ -220,6 +221,56 @@ func serveLlamaOracle(t *testing.T, probe llamaOracleProbe, record func(llamaOra
 		top = append(top, probe.Noise...)
 		reply(200, `{"completion_probabilities":[{"top_logprobs":[`+strings.Join(top, ",")+`]}]}`)
 	}))
+	if listener != nil {
+		_ = server.Listener.Close()
+		server.Listener = listener
+	}
+	server.Start()
+	return server
+}
+
+// forgetLlamaLabelTokens drops what ClassifyLlamaCpp learned about the server at root. PiG keeps label tokens for the whole process, per server root, model and label, as Pi's module-level labelTokenCache does, and
+// the oracle's Pi side runs in a fresh process with an empty cache. A probe's server that has gone away must leave no entry behind: the kernel hands a loopback port out again, so a later server (the next -count
+// iteration of the same probe, which reuses its model id) at the same address would find its labels already resolved and send fewer requests than Pi.
+func forgetLlamaLabelTokens(root string) {
+	labelTokenMu.Lock()
+	defer labelTokenMu.Unlock()
+	for key := range labelTokenCache {
+		if strings.HasPrefix(key, root+"\x00") {
+			delete(labelTokenCache, key)
+		}
+	}
+}
+
+// runLlamaOracleProbe is one probe through ClassifyLlamaCpp: a scripted llama-server on listener (a fresh loopback port when nil), the result and every request the server saw. When it returns the server is closed
+// and PiG knows nothing about it.
+func runLlamaOracleProbe(t *testing.T, i int, probe llamaOracleProbe, listener net.Listener) (ClassifierResult, []llamaOracleExchange) {
+	t.Helper()
+	var state JsonObject
+	if err := sdkjson.Unmarshal([]byte(probe.State), &state); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var seen []llamaOracleExchange
+	server := serveLlamaOracle(t, probe, listener, func(e llamaOracleExchange) {
+		mu.Lock()
+		seen = append(seen, e)
+		mu.Unlock()
+	})
+	model := ClassifierModel{ID: fmt.Sprintf("m%d", i), Name: "M", API: ClassifierAPILlamaCppClassify, Provider: "p", BaseURL: server.URL + probe.BaseSuffix, Input: []string{"text"}, ContextWindow: 1000}
+	if probe.Images {
+		model.Input = []string{"text", "image"}
+	}
+	defer forgetLlamaLabelTokens(LlamaCppServerRoot(model.BaseURL))
+	request := ClassifierContext{State: state}
+	if probe.WithImages {
+		request.Images = []ImageContent{{Data: "AAAA", MimeType: "image/png"}}
+	}
+	request.Questions = classifierQuestionsOf(probe.Questions)
+	options := ClassifierOptions{APIKey: probe.APIKey, Temperature: probe.Temperature}
+	result := ClassifyLlamaCpp(t.Context(), model, request, options)
+	server.Close()
+	return result, seen
 }
 
 // TestLlamaCppClassifyMatchesPi runs the pinned pi-ai llama-cpp-classify and PiG's ClassifyLlamaCpp against the same scripted llama-server for random
@@ -308,29 +359,7 @@ func TestLlamaCppClassifyMatchesPi(t *testing.T) {
 	}
 	failures, keyOrder := 0, 0
 	for i, probe := range probes {
-		var mu sync.Mutex
-		var seen []llamaOracleExchange
-		server := serveLlamaOracle(t, probe, func(e llamaOracleExchange) {
-			mu.Lock()
-			seen = append(seen, e)
-			mu.Unlock()
-		})
-		model := ClassifierModel{ID: fmt.Sprintf("m%d", i), Name: "M", API: ClassifierAPILlamaCppClassify, Provider: "p", BaseURL: server.URL + probe.BaseSuffix, Input: []string{"text"}, ContextWindow: 1000}
-		if probe.Images {
-			model.Input = []string{"text", "image"}
-		}
-		var state JsonObject
-		if err := sdkjson.Unmarshal([]byte(probe.State), &state); err != nil {
-			t.Fatal(err)
-		}
-		request := ClassifierContext{State: state}
-		if probe.WithImages {
-			request.Images = []ImageContent{{Data: "AAAA", MimeType: "image/png"}}
-		}
-		request.Questions = classifierQuestionsOf(probe.Questions)
-		options := ClassifierOptions{APIKey: probe.APIKey, Temperature: probe.Temperature}
-		result := ClassifyLlamaCpp(t.Context(), model, request, options)
-		server.Close()
+		result, seen := runLlamaOracleProbe(t, i, probe, nil)
 		answers, err := jsstring.MarshalJSON(result.Answers)
 		if err != nil {
 			t.Fatal(err)
@@ -397,5 +426,41 @@ func TestLlamaCppClassifyMatchesPi(t *testing.T) {
 	}
 	if keyOrder > 0 {
 		t.Errorf("%d of %d probes sent bodies whose bytes differ from Pi's (member order) though their parsed values agree", keyOrder, len(probes))
+	}
+}
+
+// TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer pins what keeps -count runs of TestLlamaCppClassifyMatchesPi independent: the second server a probe gets at the same address (the kernel hands a freed
+// loopback port out again, and a -count=100 run asks for 60000 of them) must see every request the first one saw, as Pi's fresh process does, not the ones its label cache already answered.
+func TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer(t *testing.T) {
+	probe := llamaOracleProbe{
+		BaseSuffix: "/v1", APIKey: "k", State: `{"message":"hi"}`, Tokenizer: "words", Shape: "ok",
+		Questions: []llamaOracleQuestion{{ID: "urgent", Type: "bool", Instructions: "Urgent?", Yes: "now", No: "later"}},
+		Template:  llamaOracleTemplate{Status: 200, Body: `{"prompt":"PROMPT"}`},
+		Ranks:     map[string]llamaOracleRank{"Yes": {Logprob: "-0.1"}, "No": {Logprob: "-2"}},
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	sent := func(exchanges []llamaOracleExchange) []string {
+		var out []string
+		for _, e := range exchanges {
+			out = append(out, e.Path+e.Body)
+		}
+		slices.Sort(out)
+		return out
+	}
+	result, first := runLlamaOracleProbe(t, 0, probe, listener)
+	if result.StopReason != ClassifierStopReasonStop || !slices.ContainsFunc(first, func(e llamaOracleExchange) bool { return e.Path == "/tokenize" }) {
+		t.Fatalf("first run: result %+v, requests %v; want a classification that tokenized the labels", result, sent(first))
+	}
+	listener, err = net.Listen("tcp", address)
+	if err != nil {
+		t.Fatalf("listening on %s again: %v", address, err)
+	}
+	_, second := runLlamaOracleProbe(t, 0, probe, listener)
+	if got, want := sent(second), sent(first); !slices.Equal(got, want) {
+		t.Errorf("a second server at %s saw %d requests, the first saw %d:\n second %q\n first  %q", address, len(got), len(want), got, want)
 	}
 }
