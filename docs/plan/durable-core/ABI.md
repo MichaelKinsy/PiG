@@ -220,6 +220,8 @@ Sidecar writes, including the `CREATE TABLE IF NOT EXISTS` on first use, are ord
 
 The line stays held from `begin` to `end`, across host awaits, as §4 requires; events for other work that arrive meanwhile are queued inside the core and processed after `end`. This plane is JSON because extension commits are not on the hot path; built-in tasks never use it.
 
+A host that stops waiting for `ready` (its caller's context ended while `begin` was `waiting`) sends `{op: "abort"}` for that `txId`. The begin stays queued behind the line, so the core marks it abandoned: it keeps its turn in the line's order, never answers `ready` and gives the line up when that turn comes, so a transaction nobody ends cannot hold the line and block every later job and the close. An `abort` of a transaction that already holds the line rolls it back as above.
+
 Host code reaches the core only through these channels. Every method of the facades Pi hands to host code (`TaskRuntime`, `src/types.ts:170`; `ToolExecutionApi`, `src/harness/types.ts:166-204`; `HookApi`, `src/harness/types.ts:605-610`) maps to one of them:
 
 | method | channel |

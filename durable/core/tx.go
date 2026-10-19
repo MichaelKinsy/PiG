@@ -31,6 +31,9 @@ type hostTx struct {
 	// elapsed is the microtask passes the host's callback spent holding the line (the end operation's `elapsed`): Pi's job duration
 	// includes them, so the commit is held for the rest.
 	elapsed int
+	// abandoned is set when the host aborted the transaction before it held the line (a caller that stopped waiting for it): the
+	// transaction still takes its turn in the line's order, which grant then gives up at once.
+	abandoned bool
 }
 
 // hostDoc is the definition of a document a host transaction opened, with the values the host computed for it.
@@ -80,6 +83,12 @@ func (h *handler) onTx(ev *abi.Event) error {
 		return h.txBegin(ev.ID, op)
 	}
 	t := h.txs[ev.ID]
+	if t != nil && t.tx == nil && name == "abort" {
+		// The host stopped waiting for the line: no callback will run for this transaction, so it must never hold the line (a
+		// holder nobody ends blocks every later job and the close). Its turn in the queue stays, as a job whose caller gave up does.
+		t.abandoned = true
+		return nil
+	}
 	if t == nil || t.tx == nil {
 		return &Rejection{"Error", "the transaction is not open"}
 	}
@@ -232,8 +241,13 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 	return h.grant(t)
 }
 
-// grant gives the Session line to a transaction and tells the host it is ready.
+// grant gives the Session line to a transaction and tells the host it is ready. A transaction the host abandoned while it waited
+// takes nothing.
 func (h *handler) grant(t *hostTx) error {
+	if t.abandoned {
+		delete(h.txs, t.id)
+		return nil
+	}
 	var tx *session.Tx
 	var err error
 	if t.rt != nil {

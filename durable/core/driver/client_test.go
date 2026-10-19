@@ -276,6 +276,93 @@ func TestBeginWaitsForReadyWhileTheLineIsHeldByAnother(t *testing.T) {
 	}
 }
 
+// waitingNotice resolves with the first `waiting` answer the core gives a begin: the line is held and the begin is queued behind it.
+func waitingNotice(t *testing.T, host *sqlhost.Host) *sqlhost.Expectation {
+	t.Helper()
+	expect, err := host.Expect(func(n abi.Notice) bool {
+		return n.Kind == abi.NoticeTxResult && len(n.Payload) > 4 && string(n.Payload[4:]) == `{"waiting":true}`
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return expect
+}
+
+// A Begin whose context ends while it waits for the line has no transaction to run, so the core must not keep one for it: the
+// client aborts the begin it sent, which the core is still holding for the line.
+func TestABeginThatStopsWaitingForTheLineAbortsItsTransaction(t *testing.T) {
+	var log []string
+	var ids []uint32
+	core := txCore(&log)
+	client, funcCore, host := clientRig(t, func(ev abi.Event) *abi.Step {
+		if ev.Kind == abi.EventTx {
+			ids = append(ids, ev.ID)
+			if strings.Contains(string(ev.Payload), `"begin"`) {
+				return &abi.Step{Notices: []abi.Notice{notice(abi.NoticeTxResult, ev.ID, `{"waiting":true}`)}}
+			}
+		}
+		return core(ev)
+	})
+	waiting := waitingNotice(t, host)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	begun := make(chan error, 1)
+	go func() { _, err := client.Begin(ctx, nil); begun <- err }()
+	if _, err := waiting.Wait(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	if err := <-begun; !errors.Is(err, context.Canceled) {
+		t.Fatalf("Begin = %v, want the context's cancellation", err)
+	}
+	if got := len(funcCore.events(abi.EventTx)); got != 2 || ids[0] != ids[1] {
+		t.Fatalf("the core saw %d tx events for ids %v, want the begin and the abort of the same transaction", got, ids)
+	}
+	if got := strings.Join(log, "|"); got != "abort" {
+		t.Fatalf("the transaction ops after the begin = %q, want abort", got)
+	}
+}
+
+// Closing a Session while a commit that stopped waiting for the line is still queued behind the holder must still reach the core's
+// answer: the abandoned begin takes its turn when the holder ends and gives the line up at once. A transaction that nobody ends
+// kept the line for good, and Close, queued on it, never returned (the Close hang of the race sweep).
+func TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns(t *testing.T) {
+	s := openCore(t)
+	client, host := s.Client(), s.Host()
+	holder, err := client.Begin(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting := waitingNotice(t, host)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	begun := make(chan error, 1)
+	go func() { _, err := client.Begin(ctx, nil); begun <- err }()
+	if _, err := waiting.Wait(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	if err := <-begun; !errors.Is(err, context.Canceled) {
+		t.Fatalf("Begin = %v, want the context's cancellation", err)
+	}
+	if err := holder.Abort(t.Context(), errors.New("the holder is done")); err != nil {
+		t.Fatal(err)
+	}
+	// The line is free: a later commit takes it. Were it still held by the abandoned begin, only the bound would end this wait.
+	bounded, stop := context.WithTimeout(t.Context(), 30*time.Second)
+	defer stop()
+	next, err := client.Begin(bounded, nil)
+	if err != nil {
+		t.Fatalf("the line stayed with the transaction that stopped waiting for it: %v", err)
+	}
+	if err := next.Abort(t.Context(), errors.New("done")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(bounded); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+}
+
 func TestCallbackRunsOnTheTransactionTheCoreOpened(t *testing.T) {
 	var log []string
 	txs := txCore(&log)

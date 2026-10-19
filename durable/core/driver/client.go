@@ -252,6 +252,12 @@ func (c *Client) Begin(ctx context.Context, options map[string]any) (*Tx, error)
 	tx := &Tx{client: c, id: c.txs.Add(1)}
 	body, err := tx.reply(ctx, merge("begin", options), isReady)
 	if err != nil {
+		if ctx.Err() != nil {
+			// The wait ended with the caller's context, but the begin event is queued or already ran: the core takes its turn on
+			// the Session line for a transaction nobody will end unless it is told to drop it. Without the abort, the line is
+			// granted to this transaction for good and every later commit, and Close, queues behind it.
+			_ = tx.Abort(context.WithoutCancel(ctx), err)
+		}
 		return nil, err
 	}
 	kind, value, err := txBody(body)

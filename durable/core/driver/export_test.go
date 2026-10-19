@@ -41,6 +41,9 @@ func (s *Session) IdleLive(ctx context.Context, root *durable.ConversationId) (b
 	return graph.liveIn(root), nil
 }
 
+// Client is the Session's request client, through which tests drive the transaction channel directly.
+func (s *Session) Client() *Client { return s.client }
+
 // HostCounters are the measurements of the Session's host: the reads the core ran through pig.read and the rows they returned.
 func (s *Session) HostCounters() sqlhost.Counters { return s.host.Counters() }
 
