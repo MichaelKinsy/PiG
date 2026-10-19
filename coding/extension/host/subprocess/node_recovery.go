@@ -174,7 +174,7 @@ func (h *Host) recoverNodeProcess(failed *packedProcessState, reason string) {
 	}
 	// Reserve the failed process's diagnostic before recovery teardown can remove it. Healthy processes and unreported crashes keep normal cleanup.
 	logPath := ""
-	if h.onCrash != nil {
+	if h.crashHandler() != nil {
 		logPath = failed.stderrLog.retain()
 	}
 	var configs []ExtConfig
@@ -199,14 +199,14 @@ func (h *Host) recoverNodeProcess(failed *packedProcessState, reason string) {
 	if breakerErr != nil && len(failed.members) == 1 {
 		disabled := failed.members[0].config.Name
 		configs = slices.DeleteFunc(configs, func(cfg ExtConfig) bool { return cfg.Name == disabled })
-		if h.onCrash != nil {
-			h.onCrash(disabled, 0, true, withStderrLog(reason+"; "+breakerErr.Error(), logPath))
+		if report := h.crashHandler(); report != nil {
+			report(disabled, 0, true, withStderrLog(reason+"; "+breakerErr.Error(), logPath))
 		}
 		delay = 0
 	}
 	for _, cfg := range configs {
-		if h.onCrash != nil {
-			h.onCrash(cfg.Name, delay, false, withStderrLog(reason+"; "+action+"; interrupted callbacks are not replayed", logPath))
+		if report := h.crashHandler(); report != nil {
+			report(cfg.Name, delay, false, withStderrLog(reason+"; "+action+"; interrupted callbacks are not replayed", logPath))
 		}
 	}
 	lifetime := h.newRecoveryLifetime(failed.originalOwner)
@@ -239,8 +239,8 @@ func (h *Host) recoverNodeProcess(failed *packedProcessState, reason string) {
 	h.stageCellsInOrder(ctx, cells, func(cell CellSpec, outcome stageOutcome, err error) {
 		outcomes, failures := h.isolateCellFailure(ctx, cell, nil, outcome, err)
 		for _, failure := range failures {
-			if h.onCrash != nil {
-				h.onCrash(failure.cfg.Name, 0, true, "recovery failed: "+failure.err.Error())
+			if report := h.crashHandler(); report != nil {
+				report(failure.cfg.Name, 0, true, "recovery failed: "+failure.err.Error())
 			}
 		}
 		for _, outcome := range outcomes {

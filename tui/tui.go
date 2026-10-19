@@ -665,15 +665,13 @@ type tuiBase struct {
 	terminal Terminal
 	// derivedTerminal is the Terminal that Terminal creates on first use for a renderer constructed without one.
 	derivedTerminal atomic.Pointer[Terminal]
-	// fixedSizeSnapshot publishes the width and height of a fixed-size renderer to its derived Terminal, which components read during a frame while t.mu is held.
-	fixedSizeSnapshot atomic.Uint64
+	// sizeSnapshot publishes the width and height the renderer last took (publishSize) to readers that hold neither the frame nor the owner loop: Width and Height, which the extension host calls from its own goroutines, and a fixed-size renderer's derived Terminal, which components read during a frame while t.mu is held.
+	sizeSnapshot atomic.Uint64
 	// direct is the unlogged writer for what upstream sends straight to stdout; nil when nothing is logged.
 	direct             io.Writer
 	terminalBackground *terminalBackgroundQueries
 	width              int
 	height             int
-	// fixedDims is a fixed-size renderer's width<<32|height, readable by a component that renders while mu is held (Editor.Render reads Terminal().Rows()).
-	fixedDims atomic.Uint64
 
 	fullRedrawCount atomic.Int64
 
@@ -1410,13 +1408,7 @@ func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 	}
 	t.setFixedDimensionsLocked(cols, rows)
 	t.render = t.doRender
-	t.storeFixedDims()
 	return t
-}
-
-// storeFixedDims publishes width and height for rendererTerminal.size.
-func (t *tuiBase) storeFixedDims() {
-	t.fixedDims.Store(uint64(uint32(t.width))<<32 | uint64(uint32(t.height)))
 }
 
 // SetOnDebug sets the global debug-key callback (tui.ts TuiBase.onDebug); nil clears it.
@@ -1495,6 +1487,7 @@ func (t *tuiBase) updateSize() {
 	}
 	if t.terminal != nil {
 		t.width, t.height = t.terminal.Columns(), t.terminal.Rows()
+		t.publishSize()
 		return
 	}
 	w, h, err := term.GetSize(int(os.Stdout.Fd()))
@@ -1503,6 +1496,7 @@ func (t *tuiBase) updateSize() {
 	}
 	t.width = w
 	t.height = h
+	t.publishSize()
 }
 
 // SetFixedSize changes the size of a renderer built with a fixed size
@@ -1516,8 +1510,8 @@ func (t *tuiBase) SetFixedSize(cols, rows int) {
 	}
 }
 
-// Width returns the current terminal width.
-func (t *tuiBase) Width() int { return t.width }
+// Width returns the terminal width of the last size the renderer took. It never takes t.mu and is safe from any goroutine: the extension host reads it off the owner loop while a frame updates it.
+func (t *tuiBase) Width() int { width, _ := t.size(); return width }
 
 // RenderSnapshot returns the current frame's fully rendered lines at the
 // given width without writing to the terminal. Used by the /debug command
@@ -1676,8 +1670,8 @@ func (t *tuiBase) SetTickDispatcher(dispatch func(func())) {
 	t.mu.Unlock()
 }
 
-// Height returns the current terminal height.
-func (t *tuiBase) Height() int { return t.height }
+// Height returns the terminal height of the last size the renderer took. It never takes t.mu and is safe from any goroutine.
+func (t *tuiBase) Height() int { _, height := t.size(); return height }
 
 // ForceFullRender marks the next Render() as a destructive full repaint.
 // Use it when the physical buffer is invalid, including semantic transcript

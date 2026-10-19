@@ -264,11 +264,11 @@ func (m *InteractiveMode) effectiveCopyClipboard() func(text string) error {
 	return copyToClipboard
 }
 
-// renderNow paints the current renderer race-safely: it holds rendererMu.RLock
-// across the call so a concurrent switchTuiMode (which holds the write lock
-// across stop+swap) cannot let this land on a renderer after its preserve-screen
-// stop. Used by the dynamic invalidation closures that can fire off the owner
-// loop (subprocess/extension goroutines).
+// renderNow paints the current renderer race-safely against a tui-mode swap: it
+// holds rendererMu.RLock across the call so a concurrent switchTuiMode (which
+// holds the write lock across stop+swap) cannot let this land on a renderer
+// after its preserve-screen stop. It renders on the calling goroutine, so only
+// the owner loop calls it; other goroutines use requestRender.
 func (m *InteractiveMode) renderNow() {
 	defer func() {
 		if value := recover(); value != nil {
@@ -278,6 +278,16 @@ func (m *InteractiveMode) renderNow() {
 	m.rendererMu.RLock()
 	defer m.rendererMu.RUnlock()
 	m.tuiInst.Render()
+}
+
+// repaintSpecialLines paints after an extension header, footer or login surface changed: it is the invalidate callback of extHeader and extFooter. The change arrives from the owner loop and from the extension host's goroutines, but only the owner loop may paint, because a frame walks the component tree, which has no lock of its own, while the loop mutates it. The loop paints at once; any other goroutine asks the loop for a frame through the renderer's request path, as Pi's setExtensionHeader and setExtensionFooter end with ui.requestRender().
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:setExtensionFooter
+func (m *InteractiveMode) repaintSpecialLines() {
+	if m.onOwnerLoop() {
+		m.renderNow()
+		return
+	}
+	m.requestRender()
 }
 
 // requestRender coalesces a render on the current renderer, race-safe like

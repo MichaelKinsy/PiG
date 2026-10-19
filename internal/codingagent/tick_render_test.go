@@ -62,9 +62,9 @@ func newTickRenderProbeIn(t testing.TB, mode, cwd string) (*InteractiveMode, *te
 	m.runCtx = t.Context()
 	m.createInteractiveTui(t.Context())
 	t.Cleanup(m.teardownCurrentTui)
-	m.extHeader = newSpecialLinesComponent(m.renderNow)
+	m.extHeader = newSpecialLinesComponent(m.repaintSpecialLines)
 	m.chatContainer = tui.NewContainer()
-	m.extFooter = newSpecialLinesComponent(m.renderNow)
+	m.extFooter = newSpecialLinesComponent(m.repaintSpecialLines)
 	m.editor = tui.NewEditor()
 	m.editor.EmbedWorkingStatus = true
 	m.editorContainer = tui.NewContainer()

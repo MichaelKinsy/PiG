@@ -314,7 +314,7 @@ type InteractiveMode struct {
 	// those take RLock and would self-deadlock on the same goroutine. In
 	// particular, do not push extension header/footer lines via
 	// specialLinesComponent.SetLines under the write lock: its invalidate callback
-	// is m.renderNow. Paint under the write lock only via the raw m.tuiInst.Render()
+	// is m.repaintSpecialLines. Paint under the write lock only via the raw m.tuiInst.Render()
 	// call switchTuiMode makes at the end. TestSwitchTuiModeMountDoesNotReenterRendererLock
 	// fails fast if a future edit violates this.
 	rendererMu sync.RWMutex
@@ -1575,18 +1575,20 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 
 	// Build the shared header before extensions bind so session_start handlers
 	// replace an already-mounted built-in identity.
-	// extHeader/extFooter invalidate through m.renderNow, which resolves
-	// m.tuiInst under rendererMu at call time. A live tui-mode switch (switchTuiMode)
+	// extHeader/extFooter invalidate through m.repaintSpecialLines: the owner
+	// loop paints through m.renderNow, which resolves m.tuiInst under
+	// rendererMu at call time. A live tui-mode switch (switchTuiMode)
 	// that replaces the renderer repaints through the new one, and the RLock keeps
-	// an off-owner-loop invalidation from racing the swap or hitting a stopped
-	// renderer.
+	// an invalidation from racing the swap or hitting a stopped renderer. An
+	// extension host goroutine's invalidation only requests a frame (m.requestRender),
+	// because only the owner loop may render the component tree.
 	m.keybindings = NewKeybindingsManager(m.opts.AgentDir)
 	m.publishExtensionKeybindings()
-	m.extHeader = newSpecialLinesComponent(m.renderNow)
+	m.extHeader = newSpecialLinesComponent(m.repaintSpecialLines)
 	m.startupHeaderPending = true
 	m.loadedResourcesContainer = tui.NewContainer()
 	m.chatContainer = tui.NewContainer()
-	m.extFooter = newSpecialLinesComponent(m.renderNow)
+	m.extFooter = newSpecialLinesComponent(m.repaintSpecialLines)
 	mark("tui-layout-built")
 	editorPaddingX, autocompleteMaxVisible := m.opts.Settings.GetEditorPaddingX(), m.opts.Settings.GetAutocompleteMaxVisible()
 	m.editor = NewEditorWithOptions(CustomEditorOptions{UI: m.tuiInst, PaddingX: &editorPaddingX, AutocompleteMaxVisible: &autocompleteMaxVisible, EmbedWorkingStatus: true})

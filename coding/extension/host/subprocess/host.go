@@ -372,8 +372,10 @@ type Host struct {
 
 	// onCrash is called when an extension process exits unexpectedly.
 	// The callback receives the extension name and the supervisor's decision
-	// (delay before restart, or error if circuit breaker tripped).
-	onCrash func(name string, delay time.Duration, disabled bool, reason string)
+	// (delay before restart, or error if circuit breaker tripped). The wiring
+	// layer sets it again on every reload while connection and recovery
+	// goroutines read it.
+	onCrash atomic.Pointer[func(name string, delay time.Duration, disabled bool, reason string)]
 
 	// configLoader supplies the authoritative normalized startup resolver for
 	// Reload. Startup and reload must use the same extension inputs.
@@ -494,9 +496,11 @@ type Host struct {
 
 	// widthFunc and heightFunc return the current terminal dimensions. Set by
 	// the wiring layer (interactive mode) so the host can pass real geometry
-	// to extensions in the ready payload and in change notifications.
-	widthFunc  func() int
-	heightFunc func() int
+	// to extensions in the ready payload and in change notifications. The
+	// wiring layer sets them again on every reload while host goroutines read
+	// them.
+	widthFunc  atomic.Pointer[func() int]
+	heightFunc atomic.Pointer[func() int]
 
 	// geometryMu orders geometry with its delivery: a goroutine records the
 	// value an extension has seen and enqueues the ready payload or change
@@ -947,9 +951,19 @@ func (h *Host) subscribedToSessionLog(name string) bool {
 	return ok
 }
 
-// SetCrashHandler registers a callback for extension crash events.
+// SetCrashHandler registers a callback for extension crash events. The host
+// reads it from its connection and recovery goroutines, so a later call (a
+// reload binds the host again) replaces it atomically.
 func (h *Host) SetCrashHandler(fn func(name string, delay time.Duration, disabled bool, reason string)) {
-	h.onCrash = fn
+	h.onCrash.Store(&fn)
+}
+
+// crashHandler is the callback SetCrashHandler registered, nil when none is.
+func (h *Host) crashHandler() func(name string, delay time.Duration, disabled bool, reason string) {
+	if fn := h.onCrash.Load(); fn != nil {
+		return *fn
+	}
+	return nil
 }
 
 // withStderrLog appends an extension's captured stderr log path to a crash
@@ -1036,9 +1050,27 @@ const hostInfoEnvName = "PIG_EXT_HOST_INFO"
 // width. The host uses this to populate the ready payload with the real
 // terminal width (instead of a hardcoded default) and to broadcast
 // width_change notifications to all connected extensions. The host calls fn
-// while holding its lock, so fn must not call back into the Host.
+// while holding its lock, so fn must not call back into the Host. fn runs on
+// host goroutines, so it must read the width without the owner loop; later
+// calls replace it atomically.
 func (h *Host) SetWidthFunc(fn func() int) {
-	h.widthFunc = fn
+	h.widthFunc.Store(&fn)
+}
+
+// terminalWidth is the width widthFunc reports, 0 when none is registered.
+func (h *Host) terminalWidth() int {
+	if fn := h.widthFunc.Load(); fn != nil && *fn != nil {
+		return (*fn)()
+	}
+	return 0
+}
+
+// terminalHeight is the height heightFunc reports, 0 when none is registered.
+func (h *Host) terminalHeight() int {
+	if fn := h.heightFunc.Load(); fn != nil && *fn != nil {
+		return (*fn)()
+	}
+	return 0
 }
 
 // readyGeometry returns the terminal geometry to advertise in a ready payload.
@@ -1049,14 +1081,10 @@ func (h *Host) SetWidthFunc(fn func() int) {
 // "not reported yet" and wait for the height_change notification.
 func (h *Host) readyGeometry() (width, height int) {
 	width = 120
-	if h.widthFunc != nil {
-		if w := h.widthFunc(); w > 0 {
-			width = w
-		}
+	if w := h.terminalWidth(); w > 0 {
+		width = w
 	}
-	if h.heightFunc != nil {
-		height = h.heightFunc()
-	}
+	height = h.terminalHeight()
 	return width, height
 }
 
@@ -1088,13 +1116,7 @@ func (h *Host) syncGeometry(mes []*managedExt) {
 	h.geometryMu.Lock()
 	defer h.geometryMu.Unlock()
 	h.mu.Lock()
-	var width, height int
-	if h.widthFunc != nil {
-		width = h.widthFunc()
-	}
-	if h.heightFunc != nil {
-		height = h.heightFunc()
-	}
+	width, height := h.terminalWidth(), h.terminalHeight()
 	for _, me := range mes {
 		conn := me.connection()
 		if conn == nil || me.pendingReady != nil || h.exts[me.config.Name] != me {
@@ -1142,10 +1164,12 @@ func geometryEnvelope(method, field string, value int) *Envelope {
 }
 
 // SetHeightFunc registers the current terminal height. The host calls fn while
-// holding its lock, so fn must not call back into the Host.
+// holding its lock, so fn must not call back into the Host. fn runs on host
+// goroutines, so it must read the height without the owner loop; later calls
+// replace it atomically.
 // pig additive (D52): expose height to extension SDKs.
 func (h *Host) SetHeightFunc(fn func() int) {
-	h.heightFunc = fn
+	h.heightFunc.Store(&fn)
 }
 
 // NotifyWidth sends a width_change notification to every connected
@@ -4018,7 +4042,7 @@ func toolUpdateSink(onUpdate extension.AgentToolUpdateCallback) func(json.RawMes
 
 // invocationError keeps transport failure propagation separate from diagnostic ownership.
 func (h *Host) invocationError(err error) error {
-	if h.onCrash == nil {
+	if h.crashHandler() == nil {
 		return err
 	}
 	_, transport := errors.AsType[*TransportError](err)
@@ -4587,8 +4611,8 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			if h.uiBridge != nil {
 				h.uiBridge.ClearExtensionConn(me.config.Name, conn)
 			}
-			if h.onCrash != nil {
-				h.onCrash(me.config.Name, 0, true, "the extension process exited with status 0; its tools and commands are unavailable until /reload")
+			if report := h.crashHandler(); report != nil {
+				report(me.config.Name, 0, true, "the extension process exited with status 0; its tools and commands are unavailable until /reload")
 			}
 			return
 		}
@@ -4624,17 +4648,17 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			if h.uiBridge != nil {
 				h.uiBridge.ClearExtensionConn(me.config.Name, conn)
 			}
-			if h.onCrash != nil {
+			if report := h.crashHandler(); report != nil {
 				reason := me.supervisor.DisableReason()
 				if hint != "" {
 					reason += "; " + hint
 				}
-				h.onCrash(me.config.Name, 0, true, withStderrLog(reason, me.retainStderrLog()))
+				report(me.config.Name, 0, true, withStderrLog(reason, me.retainStderrLog()))
 			}
 			return
 		}
-		if h.onCrash != nil {
-			h.onCrash(me.config.Name, delay, false, withStderrLog(hint, me.retainStderrLog()))
+		if report := h.crashHandler(); report != nil {
+			report(me.config.Name, delay, false, withStderrLog(hint, me.retainStderrLog()))
 		}
 		// Relaunch after the supervisor's backoff. The "restart in %s" notice
 		// above is only truthful because of this call.
@@ -4677,7 +4701,7 @@ func (h *Host) disablePackedMember(me *managedExt, reason string) {
 	}
 	// Reserve the diagnostic before detaching the member so process cleanup cannot remove its log first.
 	logPath := ""
-	if h.onCrash != nil {
+	if h.crashHandler() != nil {
 		logPath = me.retainStderrLog()
 	}
 	delete(h.exts, me.config.Name)
@@ -4703,8 +4727,8 @@ func (h *Host) disablePackedMember(me *managedExt, reason string) {
 	if h.providerRuntime != nil {
 		h.releaseExtensionAPI(me, nil)
 	}
-	if h.onCrash != nil {
-		h.onCrash(me.config.Name, 0, true, withStderrLog(reason, logPath))
+	if report := h.crashHandler(); report != nil {
+		report(me.config.Name, 0, true, withStderrLog(reason, logPath))
 	}
 }
 
@@ -4723,13 +4747,13 @@ func (h *Host) handleUnresponsiveExtension(me *managedExt, failure *ExtensionUnr
 	}
 	delay, err := me.supervisor.RecordCrash()
 	if err != nil {
-		if h.onCrash != nil {
-			h.onCrash(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason()+"; "+reason, me.retainStderrLog()))
+		if report := h.crashHandler(); report != nil {
+			report(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason()+"; "+reason, me.retainStderrLog()))
 		}
 		return
 	}
-	if h.onCrash != nil {
-		h.onCrash(me.config.Name, delay, false, withStderrLog(reason, me.retainStderrLog()))
+	if report := h.crashHandler(); report != nil {
+		report(me.config.Name, delay, false, withStderrLog(reason, me.retainStderrLog()))
 	}
 	h.scheduleRestart(me, delay)
 }
@@ -4782,13 +4806,13 @@ func (h *Host) attemptRestart(me *managedExt) {
 			if h.uiBridge != nil {
 				h.uiBridge.ClearExtensionConn(me.config.Name, me.connection())
 			}
-			if h.onCrash != nil {
-				h.onCrash(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason(), me.retainStderrLog()))
+			if report := h.crashHandler(); report != nil {
+				report(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason(), me.retainStderrLog()))
 			}
 			return
 		}
-		if h.onCrash != nil {
-			h.onCrash(me.config.Name, nextDelay, false, "restart failed: "+err.Error())
+		if report := h.crashHandler(); report != nil {
+			report(me.config.Name, nextDelay, false, "restart failed: "+err.Error())
 		}
 		h.scheduleRestart(me, nextDelay)
 		return

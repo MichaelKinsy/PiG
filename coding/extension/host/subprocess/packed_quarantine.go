@@ -121,7 +121,7 @@ func (h *Host) quarantinePackedCellGeneration(cellKey string, generation int, re
 	logPaths := make(map[*managedExt]string)
 	for name, me := range h.exts {
 		if me.packedCellKey == cellKey {
-			if h.onCrash != nil {
+			if h.crashHandler() != nil {
 				logPaths[me] = me.retainStderrLog()
 			}
 			delete(h.exts, name)
@@ -141,8 +141,8 @@ func (h *Host) quarantinePackedCellGeneration(cellKey string, generation int, re
 	for _, me := range members {
 		me.shuttingDown.Store(true)
 		h.stopManaged(me, "packed cell quarantined")
-		if h.onCrash != nil {
-			h.onCrash(me.config.Name, 0, true, withStderrLog(quarantineNotice(reason, names), logPaths[me]))
+		if report := h.crashHandler(); report != nil {
+			report(me.config.Name, 0, true, withStderrLog(quarantineNotice(reason, names), logPaths[me]))
 		}
 	}
 }

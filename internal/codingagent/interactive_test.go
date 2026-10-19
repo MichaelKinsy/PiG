@@ -2183,19 +2183,19 @@ func TestSwitchTuiModeConcurrentInvalidationRaceSafe(t *testing.T) {
 
 // TestSwitchTuiModeMountDoesNotReenterRendererLock is the fast-failing guard for
 // the rendererMu non-reentrancy invariant. It wires the extension header/footer/
-// runner slots with the PRODUCTION invalidate callback (m.renderNow, which takes
+// runner slots with the PRODUCTION invalidate callback (m.repaintSpecialLines, which takes
 // rendererMu.RLock) rather than the probe's plain closure, then runs a full
 // regular<->fullscreen round trip. switchTuiMode holds the write lock across the
 // swap; if any code under it (createInteractiveTui/mountInteractiveTui/re-apply)
-// ever pushes lines via specialLinesComponent.SetLines, its m.renderNow callback
+// ever pushes lines via specialLinesComponent.SetLines, its m.repaintSpecialLines callback
 // would RLock the held write lock and self-deadlock. A plain deadlock would hang
 // the suite until the global timeout, so this runs the swap on a goroutine with a
 // short deadline and fails loudly instead.
 func TestSwitchTuiModeMountDoesNotReenterRendererLock(t *testing.T) {
 	m := newSwitchTuiProbe(t)
 	// Production-faithful wiring: these callbacks take rendererMu.RLock.
-	m.extHeader = newSpecialLinesComponent(m.renderNow)
-	m.extFooter = newSpecialLinesComponent(m.renderNow)
+	m.extHeader = newSpecialLinesComponent(m.repaintSpecialLines)
+	m.extFooter = newSpecialLinesComponent(m.repaintSpecialLines)
 	// Give them content so a would-be SetLines under the lock has a live callback.
 	m.extHeader.SetLines([]string{"header"})
 	m.extFooter.SetLines([]string{"footer"})
