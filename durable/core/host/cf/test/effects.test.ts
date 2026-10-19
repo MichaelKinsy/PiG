@@ -320,7 +320,7 @@ test("deferred: fetch returns the polled message, cancel acknowledges", async ()
   await until(() => r.core.ofKind(EVENT.hook_done).length === 2, "deferred results")
   assert.deepEqual(calls, ['fetch {"id":"h"}', 'cancel {"id":"h"}'])
   const [fetched, cancelled] = r.core.ofKind(EVENT.hook_done)
-  assert.equal(JSON.parse(dec.decode(fetched!.payload.subarray(5))).output[0].text, "late")
+  assert.equal(JSON.parse(dec.decode(fetched!.payload.subarray(5))).content[0].text, "late")
   assert.equal(dec.decode(cancelled!.payload.subarray(5)), "null")
 })
 

@@ -1,3 +1,3 @@
-### Fixed
+### Changed
 
-- The Cloudflare Durable host follows Pi 1.3.0 in its facade and types as its core already did: tools return `{ output }`, as in Pi 1.3.0, and the facade pins Pi 1.3.0 packages. A tool returning the Pi 1.0.4 shape `{ content }` produced an empty tool result.
+- The Cloudflare Durable host's facade, types and tests follow Pi 1.3.0, as its core already did: tools return `{ output }`, and the facade pins Pi 1.3.0 packages. As in Pi 1.3.0, a tool that returns the Pi 1.0.4 shape `{ content }` produces an empty tool result.
