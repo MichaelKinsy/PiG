@@ -426,51 +426,39 @@ func TestCallbackRunsOnTheTransactionTheCoreOpened(t *testing.T) {
 	}
 }
 
-// A request is matched to its answer by kind and id, so what a notice costs does not grow with the requests in flight: with
-// 4,000 requests pending at once each costs at most twice what it does with 500. (Every pending request's id is tested
-// against every notice otherwise, which is the quadratic this guards.)
+// A request is matched to its answer by kind and id, so a notice is tested only against the request waiting for it: 4,000
+// requests in flight at once cost one waiter test each. (Testing every pending request against every notice instead is
+// the quadratic this guards.)
 func TestRequestCostIsFlatInTheNumberOfRequestsInFlight(t *testing.T) {
-	run := func(n int) time.Duration {
-		client, _, _ := clientRig(t, func(ev abi.Event) *abi.Step {
-			if ev.Kind != abi.EventAPI {
-				return nil
-			}
-			return &abi.Step{Notices: []abi.Notice{notice(abi.NoticeAPIResult, ev.ID, `{"ok":1}`)}}
+	const n = 4000
+	client, _, host := clientRig(t, func(ev abi.Event) *abi.Step {
+		if ev.Kind != abi.EventAPI {
+			return nil
+		}
+		return &abi.Step{Notices: []abi.Notice{notice(abi.NoticeAPIResult, ev.ID, `{"ok":1}`)}}
+	})
+	before := host.Counters().WaiterTests
+	gate := make(chan struct{})
+	var ready, done sync.WaitGroup
+	errs := make(chan error, n)
+	for range n {
+		ready.Add(1)
+		done.Go(func() {
+			ready.Done()
+			<-gate
+			_, err := client.API(t.Context(), "x", nil)
+			errs <- err
 		})
-		gate := make(chan struct{})
-		var ready, done sync.WaitGroup
-		errs := make(chan error, n)
-		for range n {
-			ready.Add(1)
-			done.Go(func() {
-				ready.Done()
-				<-gate
-				_, err := client.API(t.Context(), "x", nil)
-				errs <- err
-			})
-		}
-		ready.Wait()
-		start := time.Now()
-		close(gate)
-		done.Wait()
-		elapsed := time.Since(start)
-		for range n {
-			if err := <-errs; err != nil {
-				t.Fatal(err)
-			}
-		}
-		return elapsed / time.Duration(n)
 	}
-	best := func(n int) time.Duration {
-		d := run(n)
-		for range 2 {
-			d = min(d, run(n))
+	ready.Wait()
+	close(gate)
+	done.Wait()
+	for range n {
+		if err := <-errs; err != nil {
+			t.Fatal(err)
 		}
-		return d
 	}
-	small, large := best(500), best(4000)
-	t.Logf("per request: %v at 500, %v at 4000", small, large)
-	if large > 2*small {
-		t.Fatalf("a request costs %v with 4000 in flight and %v with 500: it grows with the requests in flight", large, small)
+	if tests := host.Counters().WaiterTests - before; tests > n {
+		t.Fatalf("%d requests in flight tested a waiter %d times: notices are tested against requests they do not answer", n, tests)
 	}
 }

@@ -105,7 +105,9 @@ type Counters struct {
 	ContextRows  int
 	Notices      int
 	Rejected     int
-	Effects      map[abi.EffectKind]int
+	// WaiterTests counts the pending waiters notify tested against a notice.
+	WaiterTests int
+	Effects     map[abi.EffectKind]int
 }
 
 // Stepper is the native binding of a core (ABI section 11): core.Session and the probe implement it.
@@ -793,6 +795,7 @@ func (h *Host) notify(n abi.Notice) {
 	h.mu.Lock()
 	var hit []*waiter
 	for w := range h.waiters {
+		h.counters.WaiterTests++
 		if w.test(n) {
 			hit = append(hit, w)
 			delete(h.waiters, w)
@@ -801,6 +804,7 @@ func (h *Host) notify(n abi.Notice) {
 	if len(n.Payload) >= 4 {
 		key := noticeKey{n.Kind, binary.LittleEndian.Uint32(n.Payload)}
 		for w := range h.byKey[key] {
+			h.counters.WaiterTests++
 			if w.test(n) {
 				hit = append(hit, w)
 				h.removeWaiterLocked(w)
