@@ -7,6 +7,7 @@ package daemon
 
 import (
 	"reflect"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -25,6 +26,10 @@ func TestIOFailureMessagesFollowNodeAndLibuv(t *testing.T) {
 		{syscall.ENOTEMPTY, "ENOTEMPTY", "", "directory not empty"},
 		{syscall.EISDIR, "EISDIR", "", "illegal operation on a directory"},
 	} {
+		if runtime.GOOS == "windows" && test.errno == syscall.ENOTDIR {
+			// syscall.ENOTDIR is ERROR_PATH_NOT_FOUND on Windows, which libuv's uv_translate_sys_error names ENOENT; Windows has no ENOTDIR.
+			test.code, test.description = "ENOENT", "no such file or directory"
+		}
 		failure := ioFailure(test.errno, "open", "/some/path")
 		want := test.code + ": " + test.description + ", open '/some/path'"
 		if failure.Code != test.code || failure.Message != want || failure.Syscall != "open" || failure.Path != "/some/path" {
