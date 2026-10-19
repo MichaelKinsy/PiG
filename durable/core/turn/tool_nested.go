@@ -74,13 +74,8 @@ func (r *toolRun) madeNested() bool {
 }
 
 // abortAll aborts every nested call of the list and returns once they are all terminal. It marks them all before waiting for
-// any: one may run until a sibling is cancelled.
+// any: one may run until a sibling is cancelled. ids is not empty: settleThen takes the call without nested calls on one chain.
 func (r *toolRun) abortAll(ids []ID, then func()) {
-	if len(ids) == 0 {
-		// `await Promise.all([])`: the promise is already resolved, so the await resumes one tick later.
-		r.hops(promiseAllResumeTicks, then)
-		return
-	}
 	remaining := len(ids)
 	var first error
 	for _, id := range ids {

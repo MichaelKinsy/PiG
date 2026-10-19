@@ -486,7 +486,7 @@ func (s *Scheduler) scheduleSweep() {
 		s.sweepScheduled = false
 		s.sweep()
 		return nil
-	}, func(error) {})
+	}, nil)
 }
 
 // sweep drops the queued nodes that are still unneeded: not live, nothing listed below. It runs once a publication is

@@ -161,6 +161,13 @@ func (r *run) eachHookRaw(name string, payload func() *jv.Object, handle func(re
 		then(nil)
 		return
 	}
+	if r.agentSeen && h.Hooks(name, r.conv) == 0 {
+		// hooks.each walks the handlers of the phase's resolved agent (scheduler.ts :1973 agentHooks(await agent())), which does not
+		// change once resolved: with none the walk is `await agent()` of a settled resolution (one tick) and the caller's await of
+		// the async function (one tick), nothing between them to run, so one chain carries both.
+		r.hops(eachHookNoHandlerHops, func() { then(nil) })
+		return
+	}
 	r.withAgent(func() {
 		n = h.Hooks(name, r.conv)
 		next(0)
@@ -187,6 +194,22 @@ func (r *run) provider(then func(sessionID string, err error)) {
 	// ensureProviderSessionId reads pi.provider through runtime.snapshot: a line job only on a cache miss.
 	// The function is async and its caller awaits it: the caller resumes one tick after it returns or throws (provider.ts :20-35, awaited at generation.ts :204).
 	done := func(id string, err error) { r.hops(1, func() { then(id, err) }) }
+	if existing, err, hit := r.snapshotCached(ProviderDef); hit {
+		if err != nil || existing != nil {
+			// The cached answer reaches its caller after snapshotHitHops, and the function returns it after one tick more, with
+			// nothing between them to run: one chain.
+			r.hops(snapshotHitHops+1, func() {
+				if err != nil {
+					then("", err)
+					return
+				}
+				then(str(existing, "sessionId"), nil)
+			})
+			return
+		}
+		r.hops(snapshotHitHops, func() { r.providerWith(nil, done) })
+		return
+	}
 	r.snapshotResult(ProviderDef, func(existing *jv.Object, err error) {
 		if err != nil {
 			done("", err)
@@ -306,6 +329,11 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 			cancel = nil
 		}
 		resulted, flushed := false, !inFlight
+		if flushed {
+			// No partial commit is in flight: the loop's two ticks and the return's two follow each other with nothing between.
+			r.hops(2+2, func() { then(message, err) })
+			return
+		}
 		join := func() {
 			if resulted && flushed {
 				r.hops(2, func() { then(message, err) })

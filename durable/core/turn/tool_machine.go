@@ -306,6 +306,14 @@ func (r *toolRun) settle(call *jv.Object, end ending, build func(slot *delta.Obj
 func (r *toolRun) settleThen(call *jv.Object, end ending, build func(slot *delta.Obj) *jv.Object, durationMs *float64, then func()) {
 	// A crash in between leaves the call in execute: a safe rerun reattaches to the calls, an interruption ends here.
 	r.nestedCallIds(func(nestedIds []ID) {
+		if len(nestedIds) == 0 {
+			// Nothing to abort: `await Promise.all([])` follows the memo's await with nothing between the three. The task's own memo
+			// cannot change before then (no admission starts after the call ended, and those underway were awaited), so it is read
+			// now and the settling commit starts after the ticks of all three awaits, on one chain.
+			made := r.madeNested()
+			r.hops(ownedTasksResumeTicks+memoResumeTicks+promiseAllResumeTicks, func() { r.settleCommit(call, end, build, durationMs, made, then) })
+			return
+		}
 		// `await runtime.ownedTasks()` resumes one tick after the read job ends, `await runtime.memo(...)` three (#read over an
 		// async arrow): tool.ts settle (tool_nested.go). The awaits before them are executeReturnHops and finalResultReturnHops.
 		r.hops(ownedTasksResumeTicks, func() {
@@ -526,11 +534,12 @@ func (r *toolRun) runTool(call *jv.Object, tool *Tool, args *jv.Object) {
 		rep.output.End()
 		// Details still waiting for a progress commit settle with the terminal commit, the final flush. The host reports after
 		// `await tool.execute()` and `await Promise.allSettled(admissions)`; `await progress.stop()` takes executeReturnHops (tool.ts run).
-		r.hops(executeReturnHops, func() {
+		stop := func(before int) {
 			prog.stop(func(pending []func(error)) {
-				r.finalResult(call, tool, result, rep, func(settled *jv.Object, err error) {
-					// finalResult is an async function: `await finalResult(...)` resumes one tick after it returns or throws.
-					r.hops(finalResultReturnHops, func() {
+				r.finalResult(call, tool, result, rep, before, func(settled *jv.Object, err error, lead int) {
+					// finalResult is an async function: `await finalResult(...)` resumes one tick after it returns or throws. lead
+					// is the ticks that passed before it settled and that its caller has not spent.
+					r.hops(lead+finalResultReturnHops, func() {
 						if err != nil {
 							for _, w := range pending {
 								w(err)
@@ -547,7 +556,15 @@ func (r *toolRun) runTool(call *jv.Object, tool *Tool, args *jv.Object) {
 					})
 				})
 			})
-		})
+		}
+		if prog.idle() && r.finalResultPure(tool, result) {
+			// Nothing waits for a progress commit and afterTool has no handler: the stop, the walk and the settled result run no host
+			// code and no job, and nothing they read changes in the two ticks of `await progress.stop()`, so they run now and
+			// those ticks are spent with the rest, on one chain.
+			stop(executeReturnHops)
+			return
+		}
+		r.hops(executeReturnHops, func() { stop(0) })
 	}
 	h.RunTool(run, io, r.rt.Signal(), onDone)
 }
@@ -653,7 +670,10 @@ func (r *toolRun) publishProgress(rep *reported) *progress {
 // finalResult is the settled result: the tool's result with the retained output and last details as fallbacks, its
 // diagnostics after those reported through the api, afterTool applied, and explicit text bounded, with the Harness's
 // truncation diagnostic last.
-func (r *toolRun) finalResult(call *jv.Object, tool *Tool, result *jv.Object, rep *reported, then func(*jv.Object, error)) {
+//
+// before is the ticks of the caller's awaits that have not passed yet: only with finalResultPure, which runs it at once, and then
+// they are part of lead, the ticks the caller spends before `await finalResult()` resumes.
+func (r *toolRun) finalResult(call *jv.Object, tool *Tool, result *jv.Object, rep *reported, before int, then func(settled *jv.Object, err error, lead int)) {
 	h := r.g.Host
 	var harness []any
 	var retained *BoundedOutput
@@ -678,14 +698,10 @@ func (r *toolRun) finalResult(call *jv.Object, tool *Tool, result *jv.Object, re
 		diagnostics = append(diagnostics, list...)
 	}
 	final.Set("diagnostics", diagnostics)
-	r.eachHook("afterTool", func() *jv.Object { return r.hookPayload(jobj("call", call, "result", final)) }, func(res any) bool {
-		if o, ok := res.(*jv.Object); ok {
-			final = o
-		}
-		return false
-	}, func(err error) {
+	// settle is what follows afterTool: lead is the ticks of hooks.each that already passed when it runs (see below).
+	settle := func(err error, lead int) {
 		if err != nil {
-			then(nil, err)
+			then(nil, err, lead)
 			return
 		}
 		finalContent, _ := arrayField(final, "output")
@@ -735,7 +751,7 @@ func (r *toolRun) finalResult(call *jv.Object, tool *Tool, result *jv.Object, re
 				}
 			}
 			out.Set("diagnostics", append(append([]any{}, list...), harness...))
-			then(out, nil)
+			then(out, nil, lead)
 		}
 		// The host holds the schema and judges the settled result, after afterTool (structuredOutputError); a result with no
 		// structured output from a tool with no schema keeps the contract without asking.
@@ -752,13 +768,36 @@ func (r *toolRun) finalResult(call *jv.Object, tool *Tool, result *jv.Object, re
 		}
 		h.CheckStructuredOutput(str(call, "name"), probe, func(text string, err error) {
 			if err != nil {
-				then(nil, err)
+				then(nil, err, lead)
 				return
 			}
 			finish(text)
 		})
-	})
+	}
+	if r.finalResultPure(tool, result) {
+		// No handler: hooks.each takes its two ticks (eachHookRaw) and what follows computes the settled result from the values at
+		// hand without a host call, so it runs now and the caller spends those ticks with its own: one chain, not three.
+		settle(nil, before+eachHookNoHandlerHops)
+		return
+	}
+	r.eachHook("afterTool", func() *jv.Object { return r.hookPayload(jobj("call", call, "result", final)) }, func(res any) bool {
+		if o, ok := res.(*jv.Object); ok {
+			final = o
+		}
+		return false
+	}, func(err error) { settle(err, 0) })
 }
+
+// finalResultPure reports whether finalResult settles the result without a host call: afterTool has no handler (the walk is
+// eachHookRaw's fixed ticks) and no structuredOutput is judged by the host.
+func (r *toolRun) finalResultPure(tool *Tool, result *jv.Object) bool {
+	_, hasStructured := result.Get("structuredOutput")
+	return !hasStructured && !tool.StructuredOutput && r.agentSeen && r.g.Host.Hooks != nil && r.g.Host.Hooks("afterTool", r.conv) == 0
+}
+
+// eachHookNoHandlerHops is the ticks hooks.each takes with no handler: `await agent()` of a settled resolution and the caller's
+// await of the async function (eachHookRaw).
+const eachHookNoHandlerHops = 2
 
 // hasErrorDiagnostic reports whether one of diagnostics has severity error.
 func hasErrorDiagnostic(diagnostics []any) bool {

@@ -415,6 +415,9 @@ func (s *Session) Loaded(def *DocDef, args DocArgs) bool {
 }
 
 // revealLoads makes the documents the finished job loaded visible to Loaded.
+// HasUnrevealedLoads reports whether a line job's loads wait for its publication to show (revealLoads has something to do).
+func (s *Session) HasUnrevealedLoads() bool { return s.unpublished != 0 }
+
 func (s *Session) revealLoads() {
 	if s.unpublished == 0 {
 		return

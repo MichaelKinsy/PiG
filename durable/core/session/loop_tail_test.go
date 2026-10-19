@@ -171,3 +171,44 @@ func TestLoopNextTickAfterAJobRidesTheTailChain(t *testing.T) {
 		t.Fatalf("begins %d, phase at %d, order %v; want no chain of its own, tick 6, next before phase", begins, at, order)
 	}
 }
+
+// A job with nothing to do at its end (no done, no publication) and its tail need no step between them: Hold parks the line for the
+// job's last tick and the tail's together (QuietEnd, QuietRelease), and the next job starts where it does with a step of each.
+func TestLoopQuietEndStartsTheNextJobWhereTheTailDoes(t *testing.T) {
+	run := func(quiet bool) (map[string]int, int) {
+		c := newTickLoop()
+		steps := 0
+		count := func(fn func()) func() { return func() { steps++; fn() } }
+		c.loop.Hold = func(release func()) bool {
+			n := c.next + c.loop.TakeStartDelay()
+			if quiet && c.loop.QuietEnd() {
+				c.due = append(c.due, tickDue{c.now + n + 1, count(c.loop.QuietRelease())})
+				return true
+			}
+			c.due = append(c.due, tickDue{c.now + n, count(release)})
+			return true
+		}
+		c.loop.Tail = func(release func()) bool { c.due = append(c.due, tickDue{c.now + 1, count(release)}); return true }
+		starts := map[string]int{}
+		done := false
+		c.loop.Line(c.job(starts, "a", 3, nil), nil)
+		c.loop.ReadLine(c.job(starts, "read", 5, nil), nil)
+		c.loop.Line(c.job(starts, "b", 4, nil), func(error) { done = true })
+		c.loop.Line(c.job(starts, "c", 2, nil), nil)
+		c.settle(t)
+		if !done {
+			t.Fatal("the job with a done did not complete")
+		}
+		return starts, steps
+	}
+	want, wantSteps := run(false)
+	got, gotSteps := run(true)
+	for name, at := range want {
+		if got[name] != at {
+			t.Errorf("job %s starts at tick %d with the quiet end, %d with a step for the end and one for the tail", name, got[name], at)
+		}
+	}
+	if gotSteps >= wantSteps {
+		t.Errorf("%d steps with the quiet end, %d without: the jobs without a done take one step less each", gotSteps, wantSteps)
+	}
+}

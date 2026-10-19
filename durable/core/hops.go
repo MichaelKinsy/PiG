@@ -223,6 +223,10 @@ func (h *handler) holdJobNow(release func()) bool {
 			// A host caller awaits the job's `run` promise, which settles a hop before the tail resolves (session.ts :105-115).
 			return h.holdFor(n-1, func() { h.loop.Settle(); release() })
 		}
+		if h.loop.QuietEnd() {
+			// The end and the tail that follows it would each run nothing: one chain of both.
+			return h.holdFor(n+tailHops, h.loop.QuietRelease())
+		}
 		return h.holdFor(n, release)
 	}
 	if h.opening {
@@ -252,6 +256,9 @@ func (h *handler) holdJobNow(release func()) bool {
 		}
 	})
 }
+
+// tailHops is the tick a finished line job's tail holds the line for (session.ts #enqueue :530-537; Loop.Tail).
+const tailHops = 1
 
 // pubBeforeEnd is the hops from a commit job's publication to its end: `#runCommit` returns after publishing and `#enqueue`'s
 // run resolves one hop later (session.ts :446-449, :531).

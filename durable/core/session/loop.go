@@ -61,7 +61,7 @@ type Loop struct {
 	pubs    []*Publication // the finished job's publications, until Publish
 	gated   *job           // a line job whose commit waits for the host's Storage: it holds the line, while other items keep running
 	// Method values made once: each captures only the loop, and a method value allocates every time it is taken.
-	runJobFn, completeFn, releaseFn, tailFn func()
+	runJobFn, completeFn, releaseFn, tailFn, quietFn func()
 	// after holds what the running job asked to run at its completion, right after its publication and before the line's
 	// next job: the code a caller runs on resuming from `await commitWith(...)`, which follows the commit's publication.
 	after []func()
@@ -236,7 +236,7 @@ func (l *Loop) kickLine() {
 // fns makes the method values on first use.
 func (l *Loop) fns() *Loop {
 	if l.runJobFn == nil {
-		l.runJobFn, l.completeFn, l.releaseFn, l.tailFn = l.runJob, l.complete, l.release, l.tailDone
+		l.runJobFn, l.completeFn, l.releaseFn, l.tailFn, l.quietFn = l.runJob, l.complete, l.release, l.tailDone, l.quiet
 	}
 	return l
 }
@@ -351,6 +351,24 @@ func (l *Loop) tailDone() {
 	for _, fn := range after {
 		l.Defer(fn)
 	}
+}
+
+// QuietEnd reports whether the completion of the job whose end Hold holds has nothing to do but the tail tick Tail asks for:
+// no done to run, no publication, no continuation of its own and no load to reveal. Such a job and its tail need no step of their
+// own between them: the line stays held from the job's last tick to the tail's and QuietRelease frees it there.
+func (l *Loop) QuietEnd() bool {
+	j := l.ending
+	return j != nil && j.done == nil && !j.bare && !j.client && l.Tail != nil && len(l.pubs) == 0 && len(l.after) == 0 &&
+		(l.Session == nil || !l.Session.HasUnrevealedLoads())
+}
+
+// QuietRelease is the release of a QuietEnd job: its end and the end of its tail, which both did nothing, in one.
+func (l *Loop) QuietRelease() func() { return l.fns().quietFn }
+
+func (l *Loop) quiet() {
+	l.ending, l.endErr = nil, nil
+	l.holding = false
+	l.kickLine()
 }
 
 // Publish delivers the finished job's publications now. Pi publishes a commit when `#runCommit` resumes from Storage.commit

@@ -79,8 +79,7 @@ func (r *run) snapshot(def *session.DocDef, then func(*jv.Object)) {
 
 // snapshotResult is snapshot with the read's error handed to the caller.
 func (r *run) snapshotResult(def *session.DocDef, then func(*jv.Object, error)) {
-	if r.g.Host.SnapshotLoaded != nil && r.g.Host.SnapshotLoaded(def, r.conv) {
-		value, err := r.g.Host.Snapshot(def, r.conv)
+	if value, err, hit := r.snapshotCached(def); hit {
 		r.hops(snapshotHitHops, func() { then(value, err) })
 		return
 	}
@@ -90,6 +89,15 @@ func (r *run) snapshotResult(def *session.DocDef, then func(*jv.Object, error)) 
 		value, rerr = r.g.Host.Snapshot(def, r.conv)
 		return rerr
 	}, func(err error) { then(value, err) })
+}
+
+// snapshotCached is the answer of a cached Session.snapshot, if the document is cached (a hit takes snapshotHitHops to reach its caller).
+func (r *run) snapshotCached(def *session.DocDef) (value *jv.Object, err error, hit bool) {
+	if r.g.Host.SnapshotLoaded == nil || !r.g.Host.SnapshotLoaded(def, r.conv) {
+		return nil, nil, false
+	}
+	value, err = r.g.Host.Snapshot(def, r.conv)
+	return value, err, true
 }
 
 // snapshotHitHops is the hops from a cached Session.snapshot call to its awaiting caller (dcore-trace E23).

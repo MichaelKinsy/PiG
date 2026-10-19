@@ -61,7 +61,7 @@ func (h *handler) startScheduler() error {
 			if h.loop.Answered {
 				return h.holdFor(2, release)
 			}
-			return h.holdFor(1, release)
+			return h.holdFor(tailHops, release)
 		},
 		Begin: func(start func()) bool { return h.holdFor(1, start) },
 	}

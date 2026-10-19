@@ -89,7 +89,7 @@ test("warm turns run the same events: equal counts, under the ceilings of the ho
   for (const w of [b!, c!]) assert.deepEqual({ ...w, statements: w.statements.length }, { ...a!, statements: a!.statements.length })
   assert.ok(a!.steps <= 980, `${a!.steps} steps per warm turn (1049 before)`)
   assert.ok(a!.hopped <= 830, `${a!.hopped} hopped events per warm turn (898 before)`)
-  assert.ok(a!.hopTicks > 5000, "the chains spend the microtask hops Pi's awaits spend (5,775, unchanged: only re-entries were removed)")
+  assert.equal(a!.hopTicks, 6776, "the chains spend the microtask hops Pi's awaits spend: fusing chains moves no tick (6,776 at Pi 1.3.0)")
 })
 
 test("the hop export answers an integer for a step the host would not decode, and the run is the same either way", async () => {

@@ -40,6 +40,9 @@ func (p *progress) markAndWait(then func(error)) {
 	p.mark()
 }
 
+// idle reports whether stop calls back at once: no progress commit is in flight.
+func (p *progress) idle() bool { return !p.inFlight }
+
 // stop stops committing and waits for the commit in flight; then receives the waiters the final commit must settle.
 func (p *progress) stop(then func(waiters []func(error))) {
 	p.stopped = true
