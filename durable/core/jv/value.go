@@ -20,11 +20,16 @@ import (
 
 // Object is a JSON object with ECMAScript key order.
 type Object struct {
-	keys     []string
-	vals     []any
-	index    map[string]int
-	indexKey bool // some key is a canonical array index
+	keys   []string // insertion order; a slot Delete retired holds a stale key and a tombstone in vals
+	vals   []any
+	index  map[string]int // live key -> slot; nil while the object is small, and then no slot is retired
+	nIndex int            // live keys that are canonical array indexes
+	dead   int            // retired slots
 }
+
+// tombstone marks a slot Delete retired. Retiring leaves the other slots where they are, so deleting members oldest
+// first costs O(1) each instead of renumbering every later member; the slots are squeezed out once half are retired.
+type tombstone struct{}
 
 const indexThreshold = 12
 
@@ -54,7 +59,7 @@ func NewObjectCap(n int) *Object {
 }
 
 // Len returns the number of members.
-func (o *Object) Len() int { return len(o.keys) }
+func (o *Object) Len() int { return len(o.keys) - o.dead }
 
 func (o *Object) find(key string) int {
 	if o.index != nil {
@@ -100,7 +105,7 @@ func (o *Object) Set(key string, value any) {
 	o.keys = append(o.keys, key)
 	o.vals = append(o.vals, value)
 	if IsIndexKey(key) {
-		o.indexKey = true
+		o.nIndex++
 	}
 	if o.index != nil {
 		o.index[key] = len(o.keys) - 1
@@ -118,24 +123,44 @@ func (o *Object) Delete(key string) bool {
 	if at < 0 {
 		return false
 	}
-	o.keys = append(o.keys[:at], o.keys[at+1:]...)
-	o.vals = append(o.vals[:at], o.vals[at+1:]...)
-	if o.index != nil {
-		delete(o.index, key)
-		for i := at; i < len(o.keys); i++ {
-			o.index[o.keys[i]] = i
-		}
+	if IsIndexKey(key) {
+		o.nIndex--
 	}
-	if o.indexKey {
-		o.indexKey = slices.ContainsFunc(o.keys, IsIndexKey)
+	if o.index == nil {
+		o.keys = append(o.keys[:at], o.keys[at+1:]...)
+		o.vals = append(o.vals[:at], o.vals[at+1:]...)
+		return true
+	}
+	delete(o.index, key)
+	o.vals[at] = tombstone{}
+	o.dead++
+	if o.dead*2 > len(o.keys) {
+		o.compact()
 	}
 	return true
+}
+
+// compact squeezes the retired slots out into fresh slices (a slice Keys returned earlier stays as it was) and numbers
+// the index again.
+func (o *Object) compact() {
+	live := len(o.keys) - o.dead
+	keys := make([]string, 0, live+1)
+	vals := make([]any, 0, live+1)
+	for at, k := range o.keys {
+		if _, gone := o.vals[at].(tombstone); gone {
+			continue
+		}
+		o.index[k] = len(keys)
+		keys = append(keys, k)
+		vals = append(vals, o.vals[at])
+	}
+	o.keys, o.vals, o.dead = keys, vals, 0
 }
 
 // Keys returns the keys in ECMAScript enumeration order. The result is shared
 // with the object and must not be modified.
 func (o *Object) Keys() []string {
-	if !o.indexKey {
+	if o.nIndex == 0 && o.dead == 0 {
 		return o.keys
 	}
 	return o.orderedKeys()
@@ -143,12 +168,8 @@ func (o *Object) Keys() []string {
 
 // Entries calls fn for each member in enumeration order until fn returns false.
 func (o *Object) Entries(fn func(key string, value any) bool) {
-	if !o.indexKey {
-		for at, k := range o.keys {
-			if !fn(k, o.vals[at]) {
-				return
-			}
-		}
+	if o.nIndex == 0 {
+		o.Members(fn)
 		return
 	}
 	for _, k := range o.orderedKeys() {
@@ -159,22 +180,46 @@ func (o *Object) Entries(fn func(key string, value any) bool) {
 	}
 }
 
+// Members calls fn for each member in insertion order, index keys not first, until fn returns false. fn may Set a key
+// that is already a member.
+func (o *Object) Members(fn func(key string, value any) bool) {
+	for at, k := range o.keys {
+		v := o.vals[at]
+		if o.dead > 0 {
+			if _, gone := v.(tombstone); gone {
+				continue
+			}
+		}
+		if !fn(k, v) {
+			return
+		}
+	}
+}
+
 func (o *Object) orderedKeys() []string {
 	var idx []string
-	rest := make([]string, 0, len(o.keys))
-	for _, k := range o.keys {
+	rest := make([]string, 0, o.Len())
+	for at, k := range o.keys {
+		if o.dead > 0 {
+			if _, gone := o.vals[at].(tombstone); gone {
+				continue
+			}
+		}
 		if IsIndexKey(k) {
 			idx = append(idx, k)
 		} else {
 			rest = append(rest, k)
 		}
 	}
-	// insertion sort by numeric value: index keys are rare and few
-	for i := 1; i < len(idx); i++ {
-		for j := i; j > 0 && indexLess(idx[j], idx[j-1]); j-- {
-			idx[j], idx[j-1] = idx[j-1], idx[j]
+	slices.SortFunc(idx, func(a, b string) int {
+		switch {
+		case indexLess(a, b):
+			return -1
+		case indexLess(b, a):
+			return 1
 		}
-	}
+		return 0
+	})
 	return append(idx, rest...)
 }
 
@@ -210,13 +255,20 @@ func IsIndexKey(key string) bool {
 func Clone(value any) any {
 	switch v := value.(type) {
 	case *Object:
-		c := NewObjectCap(len(v.keys))
-		c.keys = append(c.keys, v.keys...)
-		c.indexKey = v.indexKey
-		for _, item := range v.vals {
-			c.vals = append(c.vals, Clone(item))
+		c := NewObjectCap(v.Len())
+		c.nIndex = v.nIndex
+		for at, k := range v.keys {
+			if v.dead > 0 {
+				if _, gone := v.vals[at].(tombstone); gone {
+					continue
+				}
+			}
+			c.keys = append(c.keys, k)
+			c.vals = append(c.vals, Clone(v.vals[at]))
 		}
-		if v.index != nil {
+		if v.dead > 0 {
+			c.reindex()
+		} else if v.index != nil {
 			c.index = make(map[string]int, len(v.index))
 			maps.Copy(c.index, v.index)
 		}
@@ -237,19 +289,19 @@ func Equal(a, b any) bool {
 	switch x := a.(type) {
 	case *Object:
 		y, ok := b.(*Object)
-		if !ok || len(x.keys) != len(y.keys) {
+		if !ok || x.Len() != y.Len() {
 			return false
 		}
 		if x == y {
 			return true
 		}
-		for at, k := range x.keys {
+		equal := true
+		x.Members(func(k string, v any) bool {
 			other, present := y.Get(k)
-			if !present || !Equal(x.vals[at], other) {
-				return false
-			}
-		}
-		return true
+			equal = present && Equal(v, other)
+			return equal
+		})
+		return equal
 	case []any:
 		y, ok := b.([]any)
 		if !ok || len(x) != len(y) {
@@ -281,11 +333,19 @@ func Equal(a, b any) bool {
 
 // Shallow returns a copy that shares the member values.
 func (o *Object) Shallow() *Object {
-	c := &Object{
-		keys:     append(make([]string, 0, len(o.keys)+1), o.keys...),
-		vals:     append(make([]any, 0, len(o.vals)+1), o.vals...),
-		indexKey: o.indexKey,
+	c := &Object{nIndex: o.nIndex}
+	if o.dead > 0 {
+		c.keys, c.vals = make([]string, 0, o.Len()+1), make([]any, 0, o.Len()+1)
+		o.Members(func(k string, v any) bool {
+			c.keys = append(c.keys, k)
+			c.vals = append(c.vals, v)
+			return true
+		})
+		c.reindex()
+		return c
 	}
+	c.keys = append(make([]string, 0, len(o.keys)+1), o.keys...)
+	c.vals = append(make([]any, 0, len(o.vals)+1), o.vals...)
 	if o.index != nil {
 		c.index = make(map[string]int, len(o.index)+1)
 		maps.Copy(c.index, o.index)
@@ -293,12 +353,16 @@ func (o *Object) Shallow() *Object {
 	return c
 }
 
-// ValueAt returns the member at position i of insertion order. It exists for
-// walkers that already hold the position.
-func (o *Object) ValueAt(i int) any { return o.vals[i] }
-
-// KeyAt returns the key at position i of insertion order.
-func (o *Object) KeyAt(i int) string { return o.keys[i] }
+// reindex builds the index of an object whose slots are dense, when it is large enough to want one.
+func (o *Object) reindex() {
+	if len(o.keys) <= indexThreshold {
+		return
+	}
+	o.index = make(map[string]int, len(o.keys)*2)
+	for at, k := range o.keys {
+		o.index[k] = at
+	}
+}
 
 // Raw is a pre-serialized JSON value: valid JSON text that Append splices
 // verbatim. It lets a caller hand a large stored record (a model message) to a

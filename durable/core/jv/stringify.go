@@ -40,23 +40,28 @@ func Append(dst []byte, value any) []byte {
 		return append(dst, v...)
 	case *Object:
 		dst = append(dst, '{')
-		keys := v.keys
-		if v.indexKey {
-			keys = v.orderedKeys()
-		}
-		for i, k := range keys {
-			if i > 0 {
-				dst = append(dst, ',')
-			}
-			dst = AppendString(dst, k)
-			dst = append(dst, ':')
-			if v.indexKey {
-				item, _ := v.Get(k)
-				dst = Append(dst, item)
-			} else {
+		if v.nIndex == 0 && v.dead == 0 {
+			for i, k := range v.keys {
+				if i > 0 {
+					dst = append(dst, ',')
+				}
+				dst = AppendString(dst, k)
+				dst = append(dst, ':')
 				dst = Append(dst, v.vals[i])
 			}
+			return append(dst, '}')
 		}
+		first := true
+		v.Entries(func(k string, item any) bool {
+			if !first {
+				dst = append(dst, ',')
+			}
+			first = false
+			dst = AppendString(dst, k)
+			dst = append(dst, ':')
+			dst = Append(dst, item)
+			return true
+		})
 		return append(dst, '}')
 	case []any:
 		dst = append(dst, '[')

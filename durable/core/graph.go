@@ -97,21 +97,20 @@ func (h *handler) blockedChanged() {
 	}
 	tasks := objOf(h.graph.value, "tasks")
 	var ops []any
-	for i := range tasks.Len() {
-		key := tasks.KeyAt(i)
-		node := objOf(tasks, key)
+	tasks.Members(func(key string, value any) bool {
+		node, _ := value.(*jv.Object)
 		taskID, err := strconv.ParseInt(key, 10, 64)
 		if err != nil {
-			continue
+			return true
 		}
 		record := h.mir.task(session.ID(taskID))
 		if record == nil {
-			continue
+			return true
 		}
 		blocked := h.blockedOf(record)
 		current, _ := valueOf(node, "blocked").(string)
 		if blocked == current {
-			continue
+			return true
 		}
 		updated := node.Shallow()
 		if blocked == "" {
@@ -122,7 +121,8 @@ func (h *handler) blockedChanged() {
 			ops = append(ops, []any{"s", []any{"tasks", key, "blocked"}, blocked})
 		}
 		tasks.Set(key, updated)
-	}
+		return true
+	})
 	h.publishGraph(ops)
 }
 

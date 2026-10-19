@@ -123,12 +123,12 @@ func (o *Obj) Keys() []string {
 	n := o.n
 	base := n.base.(*jv.Object)
 	keys := make([]string, 0, base.Len()+len(n.order))
-	for at := 0; at < base.Len(); at++ {
-		key := base.KeyAt(at)
+	base.Members(func(key string, _ any) bool {
 		if !n.deletes[key] && !n.readded[key] {
 			keys = append(keys, key)
 		}
-	}
+		return true
+	})
 	for _, key := range n.writtenKeys() {
 		if base.Has(key) && !n.readded[key] {
 			continue

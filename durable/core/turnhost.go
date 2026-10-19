@@ -99,8 +99,8 @@ func (h *handler) turnSettings() turn.Settings {
 	out.Compaction.Enabled, _ = boolOf(compaction, "enabled")
 	if overrides := objOf(compaction, "modelOverrides"); overrides != nil {
 		out.CompactionOverrides = map[string]history.PolicyOverride{}
-		for i := range overrides.Len() {
-			key, entry := overrides.KeyAt(i), asObject(overrides.ValueAt(i))
+		overrides.Members(func(key string, value any) bool {
+			entry := asObject(value)
 			var override history.PolicyOverride
 			if v, ok := boolOf(entry, "enabled"); ok {
 				override.Enabled = &v
@@ -111,7 +111,8 @@ func (h *handler) turnSettings() turn.Settings {
 				}
 			}
 			out.CompactionOverrides[key] = override
-		}
+			return true
+		})
 	}
 	if v, ok := valueOf(retry, "maxAgentDelayMs").(float64); ok {
 		out.MaxAgentDelayMs = &v

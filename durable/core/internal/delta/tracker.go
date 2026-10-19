@@ -485,19 +485,19 @@ func (n *node) current() any {
 	if !n.isArray() {
 		base := n.base.(*jv.Object)
 		result := jv.NewObjectCap(base.Len() + len(n.writes))
-		for at := 0; at < base.Len(); at++ {
-			key := base.KeyAt(at)
+		base.Members(func(key string, value any) bool {
 			if n.deletes[key] || n.readded[key] {
-				continue
+				return true
 			}
 			if written, ok := n.writes[key]; ok {
 				result.Set(key, storedCurrent(written))
 			} else if kid := n.kids[key]; kid != nil {
 				result.Set(key, kid.current())
 			} else {
-				result.Set(key, base.ValueAt(at))
+				result.Set(key, value)
 			}
-		}
+			return true
+		})
 		for _, key := range n.writtenKeys() {
 			if base.Has(key) && !n.readded[key] {
 				continue
