@@ -192,7 +192,12 @@ func signedFixtureBinary(t *testing.T, source string) string {
 	if err := os.WriteFile(binary, []byte("a Piglet Binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := signature.Manifest{Piglet: "leaf", ReleaseVersion: "2.0.0", Target: "test/test", PigVersion: "test", PigletDigest: resolution.EffectiveDigest, SourceDigest: resolution.SourceDigest}
+	// The build signs the digest of the baked Piglet definition, not the extends graph digest.
+	baked, err := Bake(resolution.Piglet, filepath.Dir(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := signature.Manifest{Piglet: "leaf", ReleaseVersion: "2.0.0", Target: "test/test", PigVersion: "test", PigletDigest: digestPigletBytes(baked), SourceDigest: resolution.SourceDigest}
 	if _, err := signature.Sign(binary, manifest, private); err != nil {
 		t.Fatal(err)
 	}
@@ -207,27 +212,88 @@ func TestVerifyRechecksTheRecordedDigestsAgainstTheSource(t *testing.T) {
 	if code, stdout, stderr := runSigningCommand(t, "verify", binary, "--source", source); code != 0 || !strings.Contains(stdout, "Provenance: matches") {
 		t.Fatalf("matching source: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
-	// The source changes after the Binary was built: the digests it recorded no longer match.
+	verifyJSON := func() (int, ProvenanceCheck) {
+		t.Helper()
+		code, stdout, _ := runSigningCommand(t, "verify", binary, "--source", source, "--json")
+		var out struct {
+			Verified   bool             `json:"verified"`
+			Provenance *ProvenanceCheck `json:"provenance"`
+		}
+		if err := json.Unmarshal([]byte(stdout), &out); err != nil || out.Provenance == nil || out.Verified != (code == 0) {
+			t.Fatalf("verify --json: code=%d stdout=%q err=%v", code, stdout, err)
+		}
+		return code, *out.Provenance
+	}
+	// A comment changes the source file but not the Piglet definition the build bakes.
 	data, _ := os.ReadFile(source)
 	if err := os.WriteFile(source, append(data, []byte("# edited after the build\n")...), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	code, stdout, _ := runSigningCommand(t, "verify", binary, "--source", source, "--json")
-	if code != 1 {
-		t.Fatalf("a source that differs from the Binary's record must fail: code=%d stdout=%q", code, stdout)
+	if code, check := verifyJSON(); code != 1 || check.Matches || len(check.Mismatches) != 1 || !strings.HasPrefix(check.Mismatches[0], "source digest:") {
+		t.Fatalf("a comment-only edit must fail only the source digest: code=%d provenance=%+v", code, check)
 	}
-	var out struct {
-		Verified   bool             `json:"verified"`
-		Provenance *ProvenanceCheck `json:"provenance"`
-	}
-	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+	// A content change alters both the source and the baked definition.
+	if err := os.WriteFile(source, []byte(strings.Replace(string(data), "first, rewritten", "first, edited after the build", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if out.Verified || out.Provenance == nil || out.Provenance.Matches || len(out.Provenance.Mismatches) != 2 || !strings.HasPrefix(out.Provenance.Mismatches[0], "source digest:") || !strings.HasPrefix(out.Provenance.Mismatches[1], "Piglet digest:") {
-		t.Fatalf("provenance = %+v", *out.Provenance)
+	if code, check := verifyJSON(); code != 1 || check.Matches || len(check.Mismatches) != 2 || !strings.HasPrefix(check.Mismatches[0], "source digest:") || !strings.HasPrefix(check.Mismatches[1], "Piglet digest:") {
+		t.Fatalf("a content edit must fail both digests: code=%d provenance=%+v", code, check)
 	}
 	if code, _, _ := runSigningCommand(t, "verify", binary); code != 0 {
 		t.Fatalf("without --source the signature alone is checked: code=%d", code)
+	}
+}
+
+// A Piglet with a workspace:-anchored agentEnv.devContainer resolves only
+// against a workspace that holds it, as its build did. verify --workspace and
+// lineage --workspace name that workspace for the provenance check; the test's
+// working directory has no devcontainer, so without one the check fails.
+func TestProvenanceResolvesAgainstTheNamedWorkspace(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "dev.yaml")
+	if err := os.WriteFile(source, []byte("name: dev\nagentEnv:\n  devContainer: workspace:.devcontainer/devcontainer.json\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	workspace := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(workspace, ".devcontainer"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workspace, ".devcontainer", "devcontainer.json"), []byte(`{"image":"golang:1.26"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolution, err := ResolveEffectiveWithOptions(source, ResolveOptions{Workspace: workspace})
+	if err != nil {
+		t.Fatal(err)
+	}
+	baked, err := Bake(resolution.Piglet, filepath.Dir(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := filepath.Join(t.TempDir(), "author.key")
+	if code, _, stderr := runSigningCommand(t, "keygen", key); code != 0 {
+		t.Fatalf("keygen: %s", stderr)
+	}
+	private, err := signature.ReadPrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(t.TempDir(), "pig-dev")
+	if err := os.WriteFile(binary, []byte("a Piglet Binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := signature.Manifest{Piglet: "dev", ReleaseVersion: "1.0.0", Target: "test/test", PigVersion: "test", PigletDigest: digestPigletBytes(baked), SourceDigest: resolution.SourceDigest}
+	if _, err := signature.Sign(binary, manifest, private); err != nil {
+		t.Fatal(err)
+	}
+
+	if code, stdout, stderr := runSigningCommand(t, "verify", binary, "--source", source, "--workspace", workspace); code != 0 || !strings.Contains(stdout, "Provenance: matches") {
+		t.Fatalf("verify --workspace: code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if code, stdout, _ := runSigningCommand(t, "verify", binary, "--source", source); code != 1 || !strings.Contains(stdout, "devcontainer.json") {
+		t.Fatalf("verify from a directory without the devcontainer: code=%d stdout=%q", code, stdout)
+	}
+	out, err := Lineage(binary, source, workspace)
+	if err != nil || out.Provenance == nil || !out.Provenance.Matches {
+		t.Fatalf("lineage --workspace: provenance=%+v err=%v", out.Provenance, err)
 	}
 }
 

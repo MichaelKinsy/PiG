@@ -149409,6 +149409,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#Bake",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "Bake",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p *Piglet, pigletDir string) ([]byte, error)"
+      },
+      "shapeHash": "sha256:808f2c888870b0907d22046be510ab853e9b06f227a50719fea60fd1ea8c820f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#BinaryLineage",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "BinaryLineage",
@@ -149481,9 +149492,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(manifest github.com/MichaelKinsy/PiG/coding/piglet/signature.Manifest, source string) (*ProvenanceCheck, error)"
+        "type": "func(manifest github.com/MichaelKinsy/PiG/coding/piglet/signature.Manifest, source string, workspace string) (*ProvenanceCheck, error)"
       },
-      "shapeHash": "sha256:eb42d7c564dbbad5058f9383658354e0670361e9fd126a37932c96e2e467d41f"
+      "shapeHash": "sha256:c125cec649489efc199524178341b42127616e8e250cbb9599f3ba2cddf1ec58"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#CheckRemoteAddable",
@@ -150949,6 +150960,28 @@
       "shapeHash": "sha256:f79f782db85571977297359fcd188ca08d939a7a72a05b57970b01ab7ca2a38d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#bakePromptRef",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "bakePromptRef",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ref PromptRef, pigletDir string, label string) (PromptRef, error)"
+      },
+      "shapeHash": "sha256:c0667ba114522053035bf91ed41c97cf9adcfbbf94bcade912959d59270cfbee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#bakeSkills",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "bakeSkills",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *Piglet) error"
+      },
+      "shapeHash": "sha256:dcd85caaafafb7fe7aa297bd4862cca8f3c35e019090358abe5f191ddb6263e5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#binaryPayload",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "binaryPayload",
@@ -151090,6 +151123,17 @@
         "type": "func(p *Piglet) error"
       },
       "shapeHash": "sha256:dcd85caaafafb7fe7aa297bd4862cca8f3c35e019090358abe5f191ddb6263e5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#chooseSkillDef",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "chooseSkillDef",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string, defs []*github.com/MichaelKinsy/PiG/internal/codingagent.SkillDef) (*github.com/MichaelKinsy/PiG/internal/codingagent.SkillDef, error)"
+      },
+      "shapeHash": "sha256:019007ed8de317e0b58d011a2753a24f548c0ef74aca409418e9e938392b0b3d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#classifyLocation",
@@ -156735,39 +156779,6 @@
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#bakePiglet",
-      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
-      "name": "bakePiglet",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(p *github.com/MichaelKinsy/PiG/coding/piglet.Piglet, pigletDir string) ([]byte, error)"
-      },
-      "shapeHash": "sha256:fb9edab67444a51266c3808c4319bc5714a2127c868be3287f0bdbe8950d23ba"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#bakePromptRef",
-      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
-      "name": "bakePromptRef",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ref github.com/MichaelKinsy/PiG/coding/piglet.PromptRef, pigletDir string, label string) (github.com/MichaelKinsy/PiG/coding/piglet.PromptRef, error)"
-      },
-      "shapeHash": "sha256:97a8df6f0dd8d3a4e84a6bbc6ae1b7e755b27fd32661c5a78964a903259ac8f2"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#bakeSkills",
-      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
-      "name": "bakeSkills",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(p *github.com/MichaelKinsy/PiG/coding/piglet.Piglet) error"
-      },
-      "shapeHash": "sha256:9446a52c6a6c0e90ea7a1cb7b2a7307ceac34c69eb6c84eea9de0d3ba4f07fb5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#bakedPigletDir",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "bakedPigletDir",
@@ -157041,17 +157052,6 @@
         "type": "func(cell github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.CellSpec, plan github.com/MichaelKinsy/PiG/coding/piglet/artifact.Plan) (github.com/MichaelKinsy/PiG/coding/piglet/artifact.Realization, github.com/MichaelKinsy/PiG/coding/piglet/artifact.Materialization, error)"
       },
       "shapeHash": "sha256:df451983af940f63e96e198cd6bbdf474d7a8841dcda54cc2411916a947e0645"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#chooseSkillDef",
-      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
-      "name": "chooseSkillDef",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(name string, defs []*github.com/MichaelKinsy/PiG/internal/codingagent.SkillDef) (*github.com/MichaelKinsy/PiG/internal/codingagent.SkillDef, error)"
-      },
-      "shapeHash": "sha256:019007ed8de317e0b58d011a2753a24f548c0ef74aca409418e9e938392b0b3d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#collectFused",

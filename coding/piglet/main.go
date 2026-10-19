@@ -119,7 +119,7 @@ const pigletUsageText = `Usage:
   pig piglet build <name> --format <script|binary|image> --out <destination> [--sign-key <key>]
                                       Write a source script or build an artifact
   pig piglet keygen <key-path>     Create an ed25519 Piglet Binary signing key pair
-  pig piglet verify <binary> [--source <name|path>]
+  pig piglet verify <binary> [--source <name|path>] [--workspace <dir>]
                                       Check a Piglet Binary's signature, and with --source its recorded
                                       Piglet digests against that source, without running it
   pig piglet tree [name] [--depth <n>] [--json]

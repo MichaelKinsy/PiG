@@ -41,7 +41,7 @@ func TestBakePigletKeepsStrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	baked, err := bakePiglet(p, t.TempDir())
+	baked, err := piglet.Bake(p, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
