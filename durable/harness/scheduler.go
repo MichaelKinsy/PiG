@@ -224,6 +224,8 @@ type TaskScheduler struct {
 	contexts map[durable.ConversationId]*keptContext
 	// expiry is the background timer for the earliest expiry of an idle context, unless the host declined it.
 	expiry *contextExpiry
+	// assistantCalls serves tool tasks the calls of the assistant entries they read, without copying the entry per call.
+	assistantCalls assistantCalls
 
 	mu               sync.Mutex
 	live             map[durable.TaskId]anyTaskRecord

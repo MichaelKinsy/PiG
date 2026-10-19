@@ -392,18 +392,12 @@ func readCall(ctx context.Context, runtime toolRuntime, input ToolTaskInput) (ai
 		// A nested call carries its call, because no entry holds it.
 		return *input.Call, nil
 	}
-	entry, err := durable.TaskEntry(ctx, runtime, durable.AssistantEntry, input.Assistant)
+	call, found, err := durable.TaskAssistantToolCall(ctx, runtime, input.Assistant, input.CallId)
 	if err != nil {
 		return ai.ToolCall{}, err
 	}
-	if entry != nil && len(entry.Model) > 0 {
-		if message, ok := entry.Model[0].(ai.AssistantMessage); ok {
-			for _, block := range message.Content {
-				if call, ok := block.(ai.ToolCall); ok && call.ID == input.CallId {
-					return call, nil
-				}
-			}
-		}
+	if found {
+		return call, nil
 	}
 	return ai.ToolCall{}, fmt.Errorf("Entry %d has no tool call %s", input.Assistant, input.CallId)
 }

@@ -97,7 +97,14 @@ func eraseDocDefinition[T any](common CommonDocDefinition[T], semantics Document
 			return ToJsonObject(migrated)
 		}
 	}
-	if checkpointWhen := common.CheckpointWhen; checkpointWhen != nil {
+	if raw := common.CheckpointWhenRaw; raw != nil {
+		erased.CheckpointWhen = func(value JsonObject, ops []Op, info CheckpointInfo) (bool, error) {
+			if err := checkDecodes[T](value, ops); err != nil {
+				return false, err
+			}
+			return raw(value, ops, info), nil
+		}
+	} else if checkpointWhen := common.CheckpointWhen; checkpointWhen != nil {
 		erased.CheckpointWhen = func(value JsonObject, ops []Op, info CheckpointInfo) (bool, error) {
 			// A JSON-object document receives the exact prepared revision, as upstream passes it.
 			if exact, ok := any(value).(T); ok {

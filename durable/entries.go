@@ -3,6 +3,8 @@ package durable
 import (
 	"context"
 	"fmt"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // Ports packages/durable/src/entries.ts
@@ -67,6 +69,51 @@ func TaskEntry[D, I, S, R, H any](ctx context.Context, runtime TaskRuntime[I, S,
 		return nil, err
 	}
 	return token.As(entry)
+}
+
+// AssistantCallReader is implemented by a task runtime that serves one tool call of an assistant entry without copying
+// the whole entry for every read: a round of k parallel calls reads one entry k times, and the entry holds all k.
+type AssistantCallReader interface {
+	// AssistantToolCall returns tool call callId of assistant entry id, visible from the task's conversation, as the
+	// caller's own copy; found is false when the entry is absent, is not an assistant entry, or has no such call.
+	AssistantToolCall(ctx context.Context, id EntryId, callId string) (call ai.ToolCall, found bool, err error)
+}
+
+// TaskAssistantToolCall returns tool call callId of the assistant entry id visible from the task's conversation; found is
+// false when the entry is absent, is not an assistant entry, or has no such call. It is TaskEntry and a scan of the
+// entry's first message, through the runtime's AssistantCallReader when it has one.
+func TaskAssistantToolCall[I, S, R, H any](ctx context.Context, runtime TaskRuntime[I, S, R, H], id EntryId, callId string) (ai.ToolCall, bool, error) {
+	var target any = runtime
+	if typed, ok := runtime.(typedTaskRuntime[I, S, R, H]); ok {
+		target = typed.ErasedTaskRuntime
+	}
+	if reader, ok := target.(AssistantCallReader); ok {
+		return reader.AssistantToolCall(ctx, id, callId)
+	}
+	entry, err := TaskEntry(ctx, runtime, AssistantEntry, id)
+	if err != nil {
+		return ai.ToolCall{}, false, err
+	}
+	if entry != nil {
+		if call, ok := FindAssistantToolCall(entry.Model, callId); ok {
+			return call, true, nil
+		}
+	}
+	return ai.ToolCall{}, false, nil
+}
+
+// FindAssistantToolCall is the tool call callId of the first message of an assistant entry's model messages.
+func FindAssistantToolCall(model []ai.Message, callId string) (ai.ToolCall, bool) {
+	if len(model) > 0 {
+		if message, ok := model[0].(ai.AssistantMessage); ok {
+			for _, block := range message.Content {
+				if call, ok := block.(ai.ToolCall); ok && call.ID == callId {
+					return call, true
+				}
+			}
+		}
+	}
+	return ai.ToolCall{}, false
 }
 
 // TxAppendEntry appends an entry of the token's kind.

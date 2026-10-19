@@ -138,6 +138,10 @@ type CommonDocDefinition[T any] struct {
 	// CheckpointWhen returns true to store this ordinary change as a complete base instead of a delta; nil when
 	// absent.
 	CheckpointWhen func(value T, ops []Op, info CheckpointInfo) bool
+	// CheckpointWhenRaw is CheckpointWhen over the exact prepared JSON object, with no typed decode. It takes
+	// precedence over CheckpointWhen when both are set; a definition that sets both must make them agree. Built-in
+	// documents set it so the per-commit predicate costs nothing in the size of the value.
+	CheckpointWhenRaw func(value JsonObject, ops []Op, info CheckpointInfo) bool
 }
 
 // DocDefinition is a singleton document definition.

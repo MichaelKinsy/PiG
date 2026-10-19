@@ -20,7 +20,7 @@ var ProviderDoc = durable.DefineDoc(durable.DocDefinition[ProviderState]{
 	CommonDocDefinition: durable.CommonDocDefinition[ProviderState]{
 		Kind:    "pi.provider",
 		Version: 1,
-		CheckpointWhen: func(ProviderState, []durable.Op, durable.CheckpointInfo) bool {
+		CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool {
 			return true
 		},
 

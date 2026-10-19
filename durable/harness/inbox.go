@@ -43,8 +43,10 @@ var InboxDoc = durable.DefineDoc(durable.DocDefinition[InboxState]{
 	CommonDocDefinition: durable.CommonDocDefinition[InboxState]{
 		Kind:    "pi.inbox",
 		Version: 1,
-		CheckpointWhen: func(value InboxState, _ []durable.Op, _ durable.CheckpointInfo) bool {
-			return len(value.Items) == 0
+		CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
+			items, _ := value.Get("items")
+			list, _ := items.([]any)
+			return len(list) == 0
 		},
 
 		Initial: func() InboxState { return InboxState{Items: []InboxItem{}} },

@@ -145,18 +145,19 @@ var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 	CommonDocDefinition: durable.CommonDocDefinition[LiveState]{
 		Kind:    "pi.live",
 		Version: 1,
-		CheckpointWhen: func(value LiveState, _ []durable.Op, _ durable.CheckpointInfo) bool {
-			if value.Generation != nil {
+		CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
+			if generation, _ := value.Get("generation"); generation != nil {
 				return false
 			}
-			for _, slot := range value.Tools {
-				if slot.Status == ToolSlotRunning {
-					return false
-				}
-			}
-			for _, slot := range value.NestedTools {
-				if slot.Status == ToolSlotRunning {
-					return false
+			for _, key := range [...]string{"tools", "nestedTools"} {
+				list, _ := value.Get(key)
+				slots, _ := list.([]any)
+				for _, entry := range slots {
+					if slot, ok := entry.(*delta.JsonObject); ok {
+						if status, _ := slot.Get("status"); status == string(ToolSlotRunning) {
+							return false
+						}
+					}
 				}
 			}
 			return true

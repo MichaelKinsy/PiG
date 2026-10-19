@@ -52,7 +52,7 @@ var UsageDoc = durable.DefineDoc(durable.DocDefinition[UsageState]{
 	CommonDocDefinition: durable.CommonDocDefinition[UsageState]{
 		Kind:    "pi.usage",
 		Version: 1,
-		CheckpointWhen: func(UsageState, []durable.Op, durable.CheckpointInfo) bool {
+		CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool {
 			return true
 		},
 
