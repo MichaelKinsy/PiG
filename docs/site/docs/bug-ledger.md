@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-891 bugs. 841 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+909 bugs. 859 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 136 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -902,14 +902,32 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
+| [BF-29514f8](#bf-29514f8) | On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
 | [BF-97ecff0](#bf-97ecff0) | A Durable core session with many live tasks recomputes its next wake without walking every live task on each… | PiG's own defect | All platforms | Unreleased |
 | [BF-4334e0b](#bf-4334e0b) | A Durable code mode tool call made just before the script launches another call or ends has started before… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b](#bf-c2cdd5b) | An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
+| [BF-c2cdd5b-3](#bf-c2cdd5b-3) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | Unreleased |
 | [BF-dea7cbc](#bf-dea7cbc) | A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no… | PiG's own defect | All platforms | Unreleased |
-| [BF-29514f8](#bf-29514f8) | On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that… | PiG's own defect | All platforms | Unreleased |
+| [BF-90fd188](#bf-90fd188) | `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer… | PiG's own defect | Windows | Unreleased |
+| [BF-d34376d](#bf-d34376d) | A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of… | PiG's own defect | All platforms | Unreleased |
+| [BF-b1a68e0](#bf-b1a68e0) | A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of… | PiG's own defect | All platforms | Unreleased |
+| [BF-02ed4f1](#bf-02ed4f1) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
+| [BF-2e70b95](#bf-2e70b95) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
+| [BF-706fda8](#bf-706fda8) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
+| [BF-faca1af](#bf-faca1af) | Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a… | PiG's own defect | All platforms | Unreleased |
+| [BF-b1421b7](#bf-b1421b7) | `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-b6a7296](#bf-b6a7296) | An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each… | PiG's own defect | All platforms | Unreleased |
+| [BF-3e6bad9](#bf-3e6bad9) | A `context` event with several extension handlers is encoded once per request instead of once per handler… | PiG's own defect | All platforms | Unreleased |
+| [BF-3e6bad9-2](#bf-3e6bad9-2) | Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a… | PiG's own defect | All platforms | Unreleased |
+| [BF-5bf413e](#bf-5bf413e) | Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is… | PiG's own defect | All platforms | Unreleased |
+| [BF-cea2d81](#bf-cea2d81) | Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a… | PiG's own defect | All platforms | Unreleased |
+| [BF-0a3382d](#bf-0a3382d) | With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-03468bd](#bf-03468bd) | Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a… | PiG's own defect | All platforms | Unreleased |
+| [BF-0dd691e](#bf-0dd691e) | A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on… | PiG's own defect | All platforms | Unreleased |
+| [BF-04d3e2e](#bf-04d3e2e) | A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13217,6 +13235,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/message_go_escapes_allocs_norace_test.go::TestSystemMessageWithEscapedCharactersDecodesAtTheCostOfOneWithout`, `agent/message_go_escapes_test.go::TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing`, `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `ai/main_test.go::TestMain` and 29 more in docs/bug-ledger.json
 - **Release note:** A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it. The abort cancelled the call before its tool started, and the native core driver ended the call without telling the core, which settles a cancelled call only on that report. The call now reports the cancelled lookup as a thrown result, as it reports a tool that observes the cancel. It stalled once in about 1,000 CI runs of the abort-with-generation test under the race detector.
 
+### BF-29514f8
+
+**On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
+- **Root cause:** Pi runs every scheduler pass, invocation and commit listener in the context of the call that queued it, and an await resumes in its own function's context (scheduler.ts:1404-1426, 1656-1668; session.ts:765, 881). The CF host now snapshots each client call's context and passes its number as the step's origin; the core keeps a current origin that Loop.Defer, line jobs, pending effects and parked hops chains capture and restore, and effects and notices carry it, so the host starts effect handlers and timers and runs notice listeners inside that snapshot. The core frees an origin when nothing holds it (origin_free notice, kind 10). The native host passes origin 0.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `29514f8d63` (2026-10-18), `c3c84b5a28` (2026-10-18), `d677ba17ad` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports` and 18 more in docs/bug-ledger.json
+- **Release note:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
+
 ### BF-9f31a8b
 
 **A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…**
@@ -13301,6 +13333,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/core/driver/compaction_failure_core_test.go::TestCorePerModelCompactionOverrideSetsTheBlockingThreshold`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/host_inputs_core_test.go::TestCoreHostInputsAreReadAtEachUse`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration` and 6 more in docs/bug-ledger.json
 - **Release note:** The terminal width and height the extension host tells extensions during `/reload`, and when one starts or restarts, were read while the main loop's frame updated them, and the handler that reports an extension's crash was replaced on each reload while the host's connection goroutines read it. Both now read an atomically published value. The race detector reported the width and height read in about one `/reload` run in twenty, and the crash handler once, in a shutdown from a `session_start` handler.
 
+### BF-c2cdd5b-3
+
+**A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
+- **Root cause:** /reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `2934eba06f` (2026-10-18), `4334e0bb6a` (2026-10-18), `c2cdd5b680` (2026-10-18), `c3c84b5a28` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched`, `durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference` and 12 more in docs/bug-ledger.json
+- **Release note:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
+
 ### BF-dea7cbc
 
 **A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no…**
@@ -13315,19 +13361,243 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds`, `durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt`, `durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed` and 9 more in docs/bug-ledger.json
 - **Release note:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.
 
-### BF-29514f8
+### BF-90fd188
 
-**On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that…**
+**`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…**
 
 - **Source:** PiG's own defect
-- **Symptom:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
-- **Root cause:** Pi runs every scheduler pass, invocation and commit listener in the context of the call that queued it, and an await resumes in its own function's context (scheduler.ts:1404-1426, 1656-1668; session.ts:765, 881). The CF host now snapshots each client call's context and passes its number as the step's origin; the core keeps a current origin that Loop.Defer, line jobs, pending effects and parked hops chains capture and restore, and effects and notices carry it, so the host starts effect handlers and timers and runs notice listeners inside that snapshot. The core frees an origin when nothing holds it (origin_free notice, kind 10). The native host passes origin 0.
+- **Symptom:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `263f65829f` (2026-10-18), `90fd1882c6` (2026-10-18)
+- **Tests:** `durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut`, `durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix`, `durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers`, `env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon`, `env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields`, `env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths`, `env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv`, `env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus` and 9 more in docs/bug-ledger.json
+- **Release note:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+
+### BF-d34376d
+
+**A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.
+- **Root cause:** mirror.ScanTasks loaded every task into the mirror for status '' or terminal and filtered in memory, so a cold page cost O(all tasks): 36 ms per 100-task page at 8,000 tasks, and every page went cold after the mirror released its held terminal tasks. It now reads storage one page at a time with the id-ordered keyset statements (new SQLTasksDesc for newest first), filters on the row columns, parses only the page's rows and stops at limit+1 matches; the mirror's held tasks win over stored rows. A page costs about 0.55 ms at any task count. Pi's sqlite scanTasks reads storage per page the same way (storage.ts:433-470); hop and tick charging is unchanged (one modeled ReadRow per call).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2934eba06f` (2026-10-18), `b106c51c4f` (2026-10-18), `d0c524009a` (2026-10-18), `d34376d0fc` (2026-10-18), `da0fae4095` (2026-10-18), `de44764ac1` (2026-10-18)
+- **Tests:** `ai/port_wave_12_zai_coding_plan_models_test.go::TestPortWave12ZAICodingPlanModels`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration`, `durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex`, `durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks` and 5 more in docs/bug-ledger.json
+- **Release note:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count. Listing a conversation owner's conversations reads only that owner's.
+
+### BF-b1a68e0
+
+**A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.
+- **Root cause:** Client.Begin returned the context error and told the core nothing when the caller's context ended while the begin was queued behind another transaction. When the line freed, the core's grant gave it to that transaction and answered ready to nobody; the transaction never ended, so EventClose, queued behind the line, never ran and Session.Close waited forever in Client.request(EventClose).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `b1a68e0af3` (2026-10-18)
+- **Tests:** `durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction`, `durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns`, `durable/harness/harness_generation_test.go::TestGeneration`
+- **Release note:** A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.
+
+### BF-02ed4f1
+
+**A Durable core request costs the same however many requests are in flight: a notice is tested only against…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
+- **Root cause:** Host.notify tested every pending waiter's accept function against each notice, so a request's cost grew with the number of requests in flight (11 µs per request at 500 in flight, 57 µs at 4,000). Waiters that expect one kind and id now register through Host.ExpectNotice in a map keyed by both; notify tests that key's waiters and then the generic ones, as before. Client.request uses it. Cancel, discard and close remove a waiter from both structures. Notice and wire bytes are unchanged; delivery order among several waiters of one notice was already unspecified.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `1d8dab9122` (2026-10-18), `29514f8d63` (2026-10-18), `c3c84b5a28` (2026-10-18), `d677ba17ad` (2026-10-18), `da0fae4095` (2026-10-18)
-- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports` and 18 more in docs/bug-ledger.json
-- **Release note:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
+- **Fix commits:** `02ed4f1419` (2026-10-18)
+- **Tests:** `durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight`, `durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice`
+- **Release note:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
+
+### BF-2e70b95
+
+**A Durable reference harness turn no longer copies the whole conversation history to extend its context**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
+- **Root cause:** extendRange copied the entries, active entries, contributions and settled messages of the whole history on every turn, and each shared read cloned them again: 1.79 ms and 5.6 MB per turn at 4,000 turns. A range lineage now keeps one backing array per field; only the first extender of a range appends in place (a tail-owner token), and writes go only past every earlier range's length, so handed-out views never change. Shared reads return the arrays with capacity capped at length, so a reader's append copies. settleSplit and composeMessages build the messages array in one copy, and the leading-system rule scans only the open tail. 69 µs and 206 KB per turn at 4,000 turns.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2934eba06f` (2026-10-18), `2e70b95851` (2026-10-18)
+- **Tests:** `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn`, `durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder`
+- **Release note:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
+
+### BF-706fda8
+
+**Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
+- **Root cause:** Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `706fda89cd` (2026-10-18)
+- **Tests:** `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete`, `durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete`, `durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime`
+- **Release note:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
+
+### BF-faca1af
+
+**Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.
+- **Root cause:** Every commit to pi.live, pi.inbox, pi.usage, pi.agent and pi.provider marshalled the whole document and decoded it into its Go type to run CheckpointWhen, so each nested or parallel model-issued tool call re-decoded the live state: 2,000 sequential nested calls took 115 s and k=512 parallel calls 13 s. CommonDocDefinition gains CheckpointWhenRaw, which these documents use on the prepared value. Before it runs, the delta's changed members are decoded one at a time against the document's type, falling back to the whole-value decode for op shapes it cannot attribute, so a malformed value fails the commit with the same error at the same point as the typed path did. User documents keep the typed…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `faca1af1e1` (2026-10-18)
+- **Tests:** `durable/harness/assistant_calls_test.go::TestAssistantCallCacheHandsEachReadItsOwnCopy`, `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode`, `durable/harness/live_scaling_test.go::TestNestedToolCallsCostDoesNotGrowWithTheCallCount`, `durable/harness/live_scaling_test.go::TestParallelToolCallsCostDoesNotGrowWithTheRoundSize`
+- **Release note:** Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a commit no longer decodes the whole live document, and each tool reads only its own call.
+
+### BF-b1421b7
+
+**`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
+- **Root cause:** A process-global publication queue let one host's goroutine deliver another host's notifications while it held its own loop: a server commit holding the queue later ran the worker's RefImpl.shapeChanged -> Connection.send on the server's goroutine while the worker's loop sent on the same connection (DATA RACE at connection.go:611, 27/150 runs of TestLinksReview4 under -race at GOMAXPROCS=1). Each loop now has its own queue, delivered by a section of that loop, and a hold covers only the loop that made the change. A goroutine inside a hold or a drain appends what it enqueues for another loop behind the queue it delivers, as Pi's single queue does (publish.ts), so a state write from another…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b1421b7ef6` (2026-10-18), `c2cdd5b680` (2026-10-18)
+- **Tests:** `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues`, `chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered` and 5 more in docs/bug-ledger.json
+- **Release note:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
+
+### BF-b6a7296
+
+**An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each registration.
+- **Root cause:** Pi's registerTool writes the definition and refreshes the runtime's registry (loader.ts:273-301); getAllTools and getActiveTools read the live registry. Pig's host answered every registration with the whole catalog and active list, and the next state push sent the catalog to every extension again, but no SDK read either: getAllTools and getActiveTools are live host calls in all four SDKs. The reply is now empty, StatePayload drops ActiveTools and AllTools, the catalog cache and the getAllToolsVersion host action are gone, and the Node runtime no longer stores them. Runner.ToolsVersion, Extension.ToolRegistryVersion and HostCallbacks.GetAllToolsVersion are removed.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e70b95851` (2026-10-18), `90e8ca2d9c` (2026-10-18), `97ecff01fc` (2026-10-18), `b6a7296746` (2026-10-18), `faca1af1e1` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/tool_registration_scaling_norace_test.go::TestRegisteringAToolAfterLoadAllocatesTheSameAtAnyCatalogSize`, `coding/extension/tool_registry_names_test.go::TestRegisteredToolRevisionIdentifiesEachRegistration`, `coding/session_tool_registry_refresh_norace_test.go::TestRefreshingTheToolRegistryDoesNotWrapUnchangedToolsAgain`, `coding/session_tool_registry_replace_test.go::TestRegisteringAToolAgainReplacesWhatTheSessionRuns`, `durable/core/host/cf/test/tool-result-shape.test.ts`, `durable/core/session/sched_scale_test.go::TestAChainOfHeldTasksFinalizesInLinearWork`, `durable/core/session/sched_scale_test.go::TestEndingATaskOfAHeldChainAllocatesTheSameAtAnyLength`, `durable/core/session/sched_scale_test.go::TestWakeNamesTheEarliestSleepWhileATaskRuns` and 10 more in docs/bug-ledger.json
+- **Release note:** An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each registration. The registration reply and state pushes no longer carry the whole tool catalog, and the Session no longer re-reads every tool on each registration. `getAllTools` and `getActiveTools` return the same results as before.
+
+### BF-3e6bad9
+
+**A `context` event with several extension handlers is encoded once per request instead of once per handler…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `context` event with several extension handlers is encoded once per request instead of once per handler, and a handler that leaves the conversation unchanged no longer sends it back.
+- **Root cause:** Pi's emitContext clones the messages once per request and treats a handler's list as unchanged when it is the same list of the same objects (runner.ts:280-300, 1305-1336); an unchanged list keeps system messages in place and a replaced one gets getCurrentSystemMessage prepended. Pig encoded the conversation for each handler and decoded every reply. context and context_with_system now use eventwire.Dispatch, so one encoding serves every handler across isolated, packed and fused hosts until a handler changes the list; the runner clones only before a handler that reads Go values, and an unchanged reply ({"_pigContextUnchanged":true}) is not decoded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e70b95851` (2026-10-18), `3e6bad93d1` (2026-10-18), `b7ab092396` (2026-10-18)
+- **Tests:** `coding/extension/host/inproc/context_dispatch_scaling_norace_test.go::TestScalingContextDispatchOfUnchangedSubprocessHandlers`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextDispatchOfUnchangedSubprocessHandlersCopiesNothing`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextGoHandlerAfterSubprocessHandlersEditsACopy`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextSubprocessReplyListIsUsedAndAnUnchangedReplyKeepsIt`, `coding/extension/host/subprocess/context_fanout_norace_test.go::TestContextDispatchEncodesOncePerEmitForEveryHandler`, `coding/extension/host/subprocess/context_identity_test.go::TestContextEditReachesTheNextExtensionsHandler`, `coding/extension/host/subprocess/context_identity_test.go::TestContextResultShapesCrossSDKTransports`, `coding/extension/host/subprocess/context_wire_test.go::TestContextEventWireIsWhatMarshalGives` and 18 more in docs/bug-ledger.json
+- **Release note:** A `context` event with several extension handlers is encoded once per request instead of once per handler, and a handler that leaves the conversation unchanged no longer sends it back.
+
+### BF-3e6bad9-2
+
+**Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a replacement, and an in-place edit marked with `pig_sdk::context_unchanged()` keeps system messages in place, as in Pi and the other SDKs.
+- **Root cause:** Pi's emitContext clones the messages once per request and treats a handler's list as unchanged when it is the same list of the same objects (runner.ts:280-300, 1305-1336); an unchanged list keeps system messages in place and a replaced one gets getCurrentSystemMessage prepended. Pig encoded the conversation for each handler and decoded every reply. context and context_with_system now use eventwire.Dispatch, so one encoding serves every handler across isolated, packed and fused hosts until a handler changes the list; the runner clones only before a handler that reads Go values, and an unchanged reply ({"_pigContextUnchanged":true}) is not decoded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `02ed4f1419` (2026-10-18), `2e70b95851` (2026-10-18), `3e6bad93d1` (2026-10-18), `793dabb35e` (2026-10-18), `b106c51c4f` (2026-10-18), `b7ab092396` (2026-10-18), `d34376d0fc` (2026-10-18)
+- **Tests:** `coding/extension/host/inproc/context_dispatch_scaling_norace_test.go::TestScalingContextDispatchOfUnchangedSubprocessHandlers`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextDispatchOfUnchangedSubprocessHandlersCopiesNothing`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextGoHandlerAfterSubprocessHandlersEditsACopy`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextSubprocessReplyListIsUsedAndAnUnchangedReplyKeepsIt`, `coding/extension/host/subprocess/context_fanout_norace_test.go::TestContextDispatchEncodesOncePerEmitForEveryHandler`, `coding/extension/host/subprocess/context_identity_test.go::TestContextEditReachesTheNextExtensionsHandler`, `coding/extension/host/subprocess/context_identity_test.go::TestContextResultShapesCrossSDKTransports`, `coding/extension/host/subprocess/context_wire_test.go::TestContextEventWireIsWhatMarshalGives` and 23 more in docs/bug-ledger.json
+- **Release note:** Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a replacement, and an in-place edit marked with `pig_sdk::context_unchanged()` keeps system messages in place, as in Pi and the other SDKs. Return `None` for an unchanged conversation.
+
+### BF-5bf413e
+
+**Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is appended no longer costs time proportional to the session length, in the Go, Node, Python and Rust SDKs.
+- **Root cause:** Each SDK's session mirror rebuilt the branch (and, in Node, the id and label index behind getEntry, getLabel and getLeafEntry) on every entry append, so an append followed by a read cost O(history): 137 ms and 144,127 allocations in Go at 16,000 entries, 24 ms in Rust, 3.8 ms in Node and 3.0 ms in Python. An append whose new leaf descends from the cached tail now extends the raw and decoded branch caches, bounded by the new entries; a leaf move, fork, rewind, session switch, resync, seed or repeated id rebuilds as before. Node pushes the log in place and keeps its index; Rust decodes entries from the wire value without a deep clone. The remaining per-read cost is the shallow copy of the…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5bf413ec90` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_branch_append_test.go::TestNodeRuntimeSessionReadsAfterAppendDoNotRescanTheLog`, `extensions/sdk-py/tests/test_session_mirror_append.py`, `extensions/sdk/session_mirror_append_test.go::TestAppendThenReadBranchAllocatesTheSameAtAnyLength`, `extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchMatchesUncachedWalkAcrossLeafMoves`, `extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchReturnsCopies`, `extensions/sdk/session_mirror_append_test.go::TestIncrementalBranchSideEntryAndRepeatedID`, `test/extension-conformance/session_branch_append_test.go::TestSessionBranchReadsFollowAppendsAndLeafMovesAcrossSDKs`
+- **Release note:** Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is appended no longer costs time proportional to the session length, in the Go, Node, Python and Rust SDKs.
+
+### BF-cea2d81
+
+**Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.
+- **Root cause:** A task-graph watch published the whole graph value with every frame, and a view watch held the view's value and rebuilt it on each commit, so one commit cost grew with live tasks or entries: 20 graph commits allocated 145 MB at 8,000 live tasks, and buildTaskGraph took 2.74 s at 8,000 tasks. A graph frame is now {"watchId":N,"frame":{"ops":[...]}}, the shape view frames already had; the view watch keeps one {id, hasHead} record per active entry and emits the same ops. The driver reduces each view or graph frame's ops into the next typed value (watch_reduce.go), falling back to the full conversion for an op it does not recognise; document watches are unchanged. buildTaskGraph and sortU32 no…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e70b95851` (2026-10-18), `706fda89cd` (2026-10-18), `cea2d81d6d` (2026-10-18), `faca1af1e1` (2026-10-18)
+- **Tests:** `durable/core/driver/watch_reduce_test.go::TestGraphFrameCostsOneMapCopy`, `durable/core/driver/watch_reduce_test.go::TestReducersRefuseUnknownOps`, `durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion`, `durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries`, `durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion`, `durable/core/graph_build_scaling_test.go::TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations`, `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete` and 16 more in docs/bug-ledger.json
+- **Release note:** Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.
+
+### BF-0a3382d
+
+**With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.
+- **Root cause:** findPersistedMessageEntryID called BuildSessionProjection, which deep copies the whole history, once per tool result of every turn_end with an extension handler: 13 ms per tool result at 16,000 entries. It reads the kept incremental projection view instead, with the same newest-first lookup.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0a3382da8b` (2026-10-18), `2e70b95851` (2026-10-18)
+- **Tests:** `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn` and 2 more in docs/bug-ledger.json
+- **Release note:** With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.
+
+### BF-03468bd
+
+**Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Commit that wrote the release note (the fix commit is not identified):** `03468bd825` (2026-10-18)
+- **Tests:** None recorded.
+- **Release note:** Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.
+
+### BF-0dd691e
+
+**A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on every update; updates carry only what changed, and handlers still receive the full `partialResult`.
+- **Root cause:** Every tool_execution_update sent a subscribed extension the whole partialResult, so a tool that streams a growing result cost O(size) bytes per update: 624 KB per update at 16,000 updates of a growing text, 11.7 ms each. The first update of a tool call now goes whole and each later one as set/append ops against that call's previous payload, using the message_update delta parser and diff. EventStream gains key (the toolCallId, so interleaved parallel tools keep their own sequence) and evict: the host keeps at most 8 calls per extension and tells the SDK which replicas to drop; a failed or unsent frame makes the next one a keyframe. Go, Python, Rust and the Node runtime keep replicas per…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0a3382da8b` (2026-10-18), `0dd691ec51` (2026-10-18), `2e70b95851` (2026-10-18), `9e60a423f4` (2026-10-18), `c2cdd5b680` (2026-10-18), `faca1af1e1` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/boundary_scaling_norace_test.go::TestBoundaryScalingToolExecutionUpdateStream`, `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateAfterAFailedRequestIsAKeyframe`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateDeltaEqualsTheWholePayload`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdatePatchesAreTheSizeOfTheirDelta`, `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `durable/core/session/loop_tail_test.go::TestLoopQuietEndStartsTheNextJobWhereTheTailDoes` and 17 more in docs/bug-ledger.json
+- **Release note:** A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on every update; updates carry only what changed, and handlers still receive the full `partialResult`.
+
+### BF-04d3e2e
+
+**A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.
+- **Root cause:** Every stream event re-parsed each finished deferred tool call's arguments and re-published and re-boxed the call, so a message with k sequential tool calls cost O(k) per event: 6,140 allocations per event at k=640 for openai-completions. Pi reparses only the block that received the delta. cellArguments now keeps the settled call for the last parsed text, settleContent reuses it while the text is unchanged, publish publishes it directly, and cloneAssistantContentFrom no longer boxes a block equal to the previous one.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `04d3e2e572` (2026-10-18), `0dd691ec51` (2026-10-18), `b6a7296746` (2026-10-18)
+- **Tests:** `ai/assistant_observation_settle_cache_test.go::TestSettledToolCallsAreReusedForAnUnchangedText`, `ai/assistant_observation_settle_norace_test.go::TestSettledToolCallsAreNotParsedCopiedOrBoxedAgain`, `ai/assistant_snapshot_test.go::TestCloneAssistantContentFromMatchesCloneAssistantContent`, `ai/assistant_snapshot_test.go::TestCloneAssistantContentFromSharesOnlyImmutableSnapshots`, `ai/sequential_tool_calls_scaling_norace_test.go::TestScalingSequentialToolCallsPerEvent`, `ai/sequential_tool_calls_test.go::TestSequentialToolCallsReadAsTheEagerParse`, `ai/unmanaged_snapshot_norace_test.go::TestUnmanagedProducerSnapshotsDoNotRevalidateTheArgumentAtEveryPush`, `ai/unmanaged_snapshot_test.go::TestUnmanagedProducerSnapshotsEqualTheirFullCopy` and 11 more in docs/bug-ledger.json
+- **Release note:** A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again on every later stream event.
 
 ## Divergences from Pi added in this release
 
