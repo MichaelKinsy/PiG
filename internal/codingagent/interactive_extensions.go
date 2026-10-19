@@ -10,13 +10,11 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -511,25 +509,6 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 			runner = m.newRunner
 		}
 		return ExtensionToolInfos(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools)
-	})
-	// A reload replaces newRunner with a runner whose registry versions restart, so the version also counts runner replacements.
-	var (
-		versionMu       sync.Mutex
-		versionedRunner *inproc.Runner
-		runnerEpoch     uint64
-	)
-	b.SetHostAction("getAllToolsVersion", func() uint64 {
-		versionMu.Lock()
-		defer versionMu.Unlock()
-		runner := m.newRunner
-		if runner != versionedRunner {
-			versionedRunner = runner
-			runnerEpoch++
-		}
-		if runner == nil {
-			return runnerEpoch << 32
-		}
-		return runnerEpoch<<32 + runner.ToolsVersion()
 	})
 	// upstream: agent-session.ts:3339, 3382-3383 bind getSettings, executeTool and getCallableTools to the session in every mode.
 	b.SetHostAction("getSettings", func() extension.Settings {

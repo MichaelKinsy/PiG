@@ -154,8 +154,6 @@ var pigOnlyRunnerMethods = map[string]string{
 	// source instead, so getAllTools reads the extension's through this.
 	"ToolCallContext": "SDK-surface: attaches the extension Context and the per-call ToolContext from createToolContext (runner.ts:958-985) to ctx, as upstream wrapToolDefinition calls its context factory per call (wrapper.ts:14-19); Go passes the context through ctx",
 	"ToolSourceInfo":  "SDK-surface: registering extension's sourceInfo for getAllTools (upstream RegisteredTool.sourceInfo)",
-	// The subprocess state push re-encodes getAllTools only when the host's tool-registry version changes.
-	"ToolsVersion": "SDK-surface: sum of per-extension tool-registry versions, read by the subprocess host to cache the serialized getAllTools catalog between state pushes",
 	// Upstream's withUIPrompt is private because every ctx.ui call passes
 	// through the runner's wrapped UI context. Pig's subprocess dialogs reach
 	// the terminal through the subprocess UI bridge, which opens the same

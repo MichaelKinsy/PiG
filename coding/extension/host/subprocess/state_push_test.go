@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-	"bytes"
 	"encoding/json"
 	"maps"
 	"net"
@@ -17,18 +16,16 @@ import (
 
 // pushRig is a Host with one managed extension on a pipe connection, a UI bridge whose catalogs the test controls, and the state_update frames the extension side received.
 type pushRig struct {
-	h       *Host
-	me      *managedExt
-	conn    *Conn
-	bridge  *UIBridge
-	frames  chan *Envelope
-	version atomic.Uint64
-	prompt  atomic.Value // string
-	theme   atomic.Value // string, the active theme's name
-	tools   atomic.Value // []ToolInfo
-	reads   atomic.Int64 // GetAllTools calls
-	keys    atomic.Value // string, the interrupt key the keybinding table binds
-	caps    atomic.Value // TerminalCapabilitiesPayload
+	h        *Host
+	me       *managedExt
+	conn     *Conn
+	bridge   *UIBridge
+	frames   chan *Envelope
+	prompt   atomic.Value // string
+	theme    atomic.Value // string, the active theme's name
+	commands atomic.Value // []CommandInfo
+	keys     atomic.Value // string, the interrupt key the keybinding table binds
+	caps     atomic.Value // TerminalCapabilitiesPayload
 }
 
 func newPushRig(t *testing.T) *pushRig {
@@ -41,13 +38,7 @@ func newPushRig(t *testing.T) *pushRig {
 	rig.me = withConn(&managedExt{config: ExtConfig{Name: "push"}, host: rig.h}, rig.conn)
 	rig.h.exts = map[string]*managedExt{"push": rig.me}
 	rig.bridge = NewUIBridge(func() {})
-	rig.version.Store(1)
-	rig.tools.Store([]ToolInfo{{Name: "toolA", Description: "first"}})
-	rig.bridge.SetHostAction("getAllTools", func() []ToolInfo {
-		rig.reads.Add(1)
-		return rig.tools.Load().([]ToolInfo)
-	})
-	rig.bridge.SetHostAction("getAllToolsVersion", func() uint64 { return rig.version.Load() })
+	rig.commands.Store([]CommandInfo{{Name: "cmdA"}})
 	rig.prompt.Store("system prompt")
 	rig.theme.Store("dark")
 	rig.bridge.SetHostAction("getSystemPrompt", func() string { return rig.prompt.Load().(string) })
@@ -60,7 +51,7 @@ func newPushRig(t *testing.T) *pushRig {
 		return map[string]any{"definitions": map[string]any{"app.interrupt": rig.keys.Load().(string)}}
 	})
 	rig.bridge.SetTerminalCapabilitiesFunc(func() TerminalCapabilitiesPayload { return rig.caps.Load().(TerminalCapabilitiesPayload) })
-	rig.bridge.SetHostAction("getCommands", func() []CommandInfo { return []CommandInfo{{Name: "cmdA"}} })
+	rig.bridge.SetHostAction("getCommands", func() []CommandInfo { return rig.commands.Load().([]CommandInfo) })
 	rig.h.SetUIBridge(rig.bridge)
 	go func() {
 		for {
@@ -116,68 +107,25 @@ func (r *pushRig) nextState(t *testing.T) map[string]json.RawMessage {
 	}
 }
 
-// The catalog crosses the wire pre-encoded and byte-identical to marshaling []ToolInfo, and the bridge re-encodes it only when the host's tool-registry version changes.
-func TestSnapshotCachesTheToolCatalogByVersion(t *testing.T) {
-	rig := newPushRig(t)
-	tools := []ToolInfo{{Name: "toolA", Description: "first", Parameters: json.RawMessage(`{"type":"object"}`)}, {Name: "toolB", PromptGuidelines: []string{"Use B."}}}
-	rig.tools.Store(tools)
-	want, err := json.Marshal(tools)
-	if err != nil {
-		t.Fatal(err)
-	}
-	first := rig.bridge.Snapshot(nil, 0, false).AllTools
-	if !bytes.Equal(first, want) {
-		t.Fatalf("catalog = %s\nwant     %s", first, want)
-	}
-	rig.bridge.Snapshot(nil, 0, false)
-	rig.bridge.Snapshot(nil, 0, false)
-	if got := rig.reads.Load(); got != 1 {
-		t.Fatalf("GetAllTools ran %d times across 3 snapshots at one version, want 1", got)
-	}
-	rig.version.Store(2)
-	rig.tools.Store(tools[:1])
-	second := rig.bridge.Snapshot(nil, 0, false).AllTools
-	if wantSecond, _ := json.Marshal(tools[:1]); !bytes.Equal(second, wantSecond) {
-		t.Fatalf("catalog after a version change = %s, want %s", second, wantSecond)
-	}
-	// Rebinding the callbacks drops the cache even when the new ones report a version already served.
-	rig.tools.Store(tools)
-	rig.bridge.SetHostAction("getAllTools", func() []ToolInfo { return tools })
-	if got := rig.bridge.Snapshot(nil, 0, false).AllTools; !bytes.Equal(got, want) {
-		t.Fatalf("catalog after rebinding getAllTools = %s, want %s", got, want)
-	}
-	rig.bridge.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo { return nil }, GetAllToolsVersion: func() uint64 { return 2 }})
-	if got := string(rig.bridge.Snapshot(nil, 0, false).AllTools); got != "null" {
-		t.Fatalf("catalog after SetActions = %s, want the new callbacks' null", got)
-	}
-	// A bridge with no tool source keeps the explicit null the wire always carried.
-	if got := string(NewUIBridge(func() {}).Snapshot(nil, 0, false).AllTools); got != "null" {
-		t.Fatalf("catalog without a source = %s, want null", got)
-	}
-}
-
 // A push the recipient already holds is not sent; a catalog change goes out in full with the unchanged catalogs omitted; and the runtime-side merge of every lean push equals the full snapshot (the runtime's applyState keeps keys a state_update leaves out).
 func TestPushStateToSkipsIdenticalAndOmitsUnchangedCatalogs(t *testing.T) {
 	rig := newPushRig(t)
 	rig.push(t)
 	first := rig.nextState(t)
-	for _, key := range []string{"allTools", "commands"} {
-		if len(first[key]) == 0 {
-			t.Fatalf("the first push to a connection must carry %s", key)
-		}
+	if len(first["commands"]) == 0 {
+		t.Fatal("the first push to a connection must carry commands")
 	}
 	rig.push(t)
 	rig.expectNoFrame(t, "an identical push")
 
-	rig.version.Store(2)
-	rig.tools.Store([]ToolInfo{{Name: "toolA", Description: "first"}, {Name: "toolB", Description: "second"}})
+	rig.commands.Store([]CommandInfo{{Name: "cmdA"}, {Name: "cmdB"}})
 	rig.push(t)
 	second := rig.nextState(t)
-	if len(second["allTools"]) == 0 {
-		t.Fatal("a catalog change must deliver allTools")
+	if len(second["commands"]) == 0 {
+		t.Fatal("a catalog change must deliver commands")
 	}
-	if _, present := second["commands"]; present {
-		t.Fatal("unchanged commands must stay out of a catalog-change push")
+	if _, present := second["systemPromptOptions"]; present {
+		t.Fatal("an unchanged catalog must stay out of a catalog-change push")
 	}
 	rig.push(t)
 	rig.expectNoFrame(t, "an identical push after a catalog change")
@@ -186,7 +134,7 @@ func TestPushStateToSkipsIdenticalAndOmitsUnchangedCatalogs(t *testing.T) {
 	rig.theme.Store("light")
 	rig.push(t)
 	third := rig.nextState(t)
-	for _, key := range []string{"allTools", "commands", "systemPrompt", "keybindings", "terminalCapabilities"} {
+	for _, key := range []string{"commands", "systemPrompt", "keybindings", "terminalCapabilities"} {
 		if _, present := third[key]; present {
 			t.Fatalf("a theme-only push carried %s", key)
 		}
@@ -244,7 +192,7 @@ func TestPushStateToSendsChangedKeybindingsAndTerminalCapabilities(t *testing.T)
 	if !strings.Contains(string(second["keybindings"]), "ctrl+c") {
 		t.Fatalf("a rebound key did not reach the next push: %s", second["keybindings"])
 	}
-	for _, key := range []string{"terminalCapabilities", "theme", "allTools", "commands", "systemPrompt"} {
+	for _, key := range []string{"terminalCapabilities", "theme", "commands", "systemPrompt"} {
 		if _, present := second[key]; present {
 			t.Fatalf("a keybinding-only push carried %s", key)
 		}
@@ -259,7 +207,7 @@ func TestPushStateToSendsChangedKeybindingsAndTerminalCapabilities(t *testing.T)
 	if err := json.Unmarshal(third["terminalCapabilities"], &caps); err != nil || caps != (TerminalCapabilitiesPayload{Images: "iterm2", Hyperlinks: true}) {
 		t.Fatalf("changed terminal capabilities did not reach the next push: %s (%v)", third["terminalCapabilities"], err)
 	}
-	for _, key := range []string{"keybindings", "theme", "allTools", "commands", "systemPrompt"} {
+	for _, key := range []string{"keybindings", "theme", "commands", "systemPrompt"} {
 		if _, present := third[key]; present {
 			t.Fatalf("a capabilities-only push carried %s", key)
 		}
@@ -277,7 +225,7 @@ func TestPushStateToSendsChangedKeybindingsAndTerminalCapabilities(t *testing.T)
 	rig.expectNoFrame(t, "an identical push after changing back")
 }
 
-// A state field the runtime changes before the host does (thinking level, active tools, editor text) is not in the host's cache, so the next push is a full snapshot even when the host's state is unchanged: a host that clamps the value must still correct the runtime.
+// A state field the runtime changes before the host does (thinking level, editor text) is not in the host's cache, so the next push is a full snapshot even when the host's state is unchanged: a host that clamps the value must still correct the runtime.
 func TestPushStateToResendsAfterTheRuntimeMutatesItsOwnState(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -286,12 +234,6 @@ func TestPushStateToResendsAfterTheRuntimeMutatesItsOwnState(t *testing.T) {
 		{"setThinkingLevel", func(t *testing.T, rig *pushRig) {
 			rig.bridge.SetHostAction("setThinkingLevel", func(string) {})
 			if _, err := rig.bridge.handleCall(t.Context(), "push", rig.conn, &CallPayload{Method: "setThinkingLevel", Args: json.RawMessage(`{"level":"high"}`)}); err != nil {
-				t.Fatal(err)
-			}
-		}},
-		{"setActiveTools", func(t *testing.T, rig *pushRig) {
-			rig.bridge.SetHostAction("setActiveTools", func([]string) {})
-			if _, err := rig.bridge.handleCall(t.Context(), "push", rig.conn, &CallPayload{Method: "setActiveTools", Args: json.RawMessage(`{"tools":["x"]}`)}); err != nil {
 				t.Fatal(err)
 			}
 		}},
@@ -314,7 +256,7 @@ func TestPushStateToResendsAfterTheRuntimeMutatesItsOwnState(t *testing.T) {
 			tc.mutate(t, rig)
 			rig.push(t)
 			state := rig.nextState(t)
-			if len(state["allTools"]) == 0 || len(state["commands"]) == 0 {
+			if len(state["commands"]) == 0 {
 				t.Fatalf("the push after %s must be a full snapshot, got keys %v", tc.name, keysOf(state))
 			}
 			rig.push(t)

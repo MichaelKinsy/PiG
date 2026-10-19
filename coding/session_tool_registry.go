@@ -113,9 +113,20 @@ type sessionToolEntry struct {
 	registration extension.RegisteredTool
 }
 
+// wrappedTool is the agent tool built for one registration of a runner's extension tool, kept while that registration stays the one the runner lists.
+type wrappedTool struct {
+	revision uint64
+	runner   *inproc.Runner
+	tool     agent.AgentTool
+}
+
 type sessionToolRegistry struct {
-	base, custom      []sessionToolEntry
-	entries           []sessionToolEntry
+	base, custom []sessionToolEntry
+	entries      []sessionToolEntry
+	// index maps each name in entries to its position.
+	index map[string]int
+	// wrapped holds the tool of each registered extension tool by name, so a refresh builds a tool, which decodes the definition's schema, only for a registration it has not wrapped.
+	wrapped           map[string]wrappedTool
 	allowed, excluded map[string]struct{}
 	// filter is the compiled `--tools` and `--exclude-tools` entries, names or `*` patterns.
 	filter         extension.ToolFilter
@@ -181,6 +192,8 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 		registry.base = slices.Clone(registry.base)
 		registry.custom = slices.Clone(registry.custom)
 		registry.entries = slices.Clone(registry.entries)
+		registry.index = maps.Clone(registry.index)
+		registry.wrapped = maps.Clone(registry.wrapped)
 		registry.allowed = maps.Clone(registry.allowed)
 		registry.excluded = maps.Clone(registry.excluded)
 		registry.filter = extension.NewToolFilter(registry.allowed, registry.excluded)
@@ -297,15 +310,24 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 
 func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 	entries := slices.Clone(r.base)
+	var wrapped map[string]wrappedTool
 	if runner != nil && !r.skipExtensions {
-		for _, registration := range runner.Tools() {
-			source, _ := runner.ToolSourceInfo(registration.Definition.Name)
+		registrations := runner.Tools()
+		wrapped = make(map[string]wrappedTool, len(registrations))
+		for _, registration := range registrations {
+			name := registration.Definition.Name
+			source, _ := runner.ToolSourceInfo(name)
 			registration.SourceInfo = source
-			tool, err := WrapRegisteredTool(registration, runner)
-			if err != nil {
-				return err
+			cached, hit := r.wrapped[name]
+			if !hit || registration.Revision == 0 || cached.revision != registration.Revision || cached.runner != runner {
+				tool, err := WrapRegisteredTool(registration, runner)
+				if err != nil {
+					return err
+				}
+				cached = wrappedTool{revision: registration.Revision, runner: runner, tool: tool}
 			}
-			entries = append(entries, sessionToolEntry{tool: tool, registration: registration})
+			wrapped[name] = cached
+			entries = append(entries, sessionToolEntry{tool: cached.tool, registration: registration})
 		}
 	}
 	entries = append(entries, r.custom...)
@@ -324,7 +346,21 @@ func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 		}
 	}
 	r.entries = admitted
+	r.index = make(map[string]int, len(admitted))
+	for i, entry := range admitted {
+		r.index[entry.tool.Name()] = i
+	}
+	r.wrapped = wrapped
 	return nil
+}
+
+// entry is the admitted entry of name.
+func (r *sessionToolRegistry) entry(name string) (sessionToolEntry, bool) {
+	index, ok := r.index[name]
+	if !ok {
+		return sessionToolEntry{}, false
+	}
+	return r.entries[index], true
 }
 
 // extensionToolNames names the tools of runner and the SDK custom tools, the registrations upstream's _refreshToolRegistry wraps as extension tools (agent-session.ts:3434-3441).
@@ -391,12 +427,7 @@ func (s *Session) GetAllTools() []extension.ToolInfo {
 func (s *Session) GetToolDefinition(name string) (extension.ToolDefinition, bool) {
 	s.toolRegistryMu.RLock()
 	defer s.toolRegistryMu.RUnlock()
-	for _, entry := range s.toolRegistry.entries {
-		if entry.tool.Name() == name {
-			return entry.registration.Definition, true
-		}
-	}
-	return extension.ToolDefinition{}, false
+	return s.toolDefinitionLocked(name)
 }
 
 // BindExtensions stores the mode bindings the argument defines, always applies the stored bindings to the runner, awaits the configured session_start event and admits tools registered by its handlers before returning (upstream bindExtensions, agent-session.ts:3258-3282). Attach an event consumer before binding when handlers can send messages.

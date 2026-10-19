@@ -1930,8 +1930,6 @@ export class Runtime {
     this.sessionLogGeneration = 0;
     this.sessionLogSync = undefined;
     this.state = {
-      activeTools: [],
-      allTools: [],
       commands: [],
       thinkingLevel: "",
       model: undefined,
@@ -2069,7 +2067,6 @@ export class Runtime {
         this.fireAndForget("setThinkingLevel", { level });
       }),
       setActiveTools: action((tools) => {
-        this.state.activeTools = [...tools];
         this.fireAndForget("setActiveTools", { tools });
       }),
       setModel: async (model) => {
@@ -2203,7 +2200,7 @@ export class Runtime {
       throw new Error(`Tool "${definition.name}" registered by extension "${this.entry}" must define an object parameter schema.`);
     }
     this.tools.set(definition.name, definition);
-    if (this.conn) this.applyState(this.callSync("registerTool", this.toolDeclaration(definition)));
+    if (this.conn) this.callSync("registerTool", this.toolDeclaration(definition));
   }
 
   // A host call the factory may make before the extension registers: it opens the connection a loading factory needs, as the shared event bus does.
@@ -2980,7 +2977,7 @@ export class Runtime {
 
   applyState(snapshot) {
     if (!snapshot || typeof snapshot !== "object") return;
-    for (const key of ["activeTools", "allTools", "commands", "allThemes"]) {
+    for (const key of ["commands", "allThemes"]) {
       if (Object.hasOwn(snapshot, key)) this.state[key] = [...(snapshot[key] ?? [])];
     }
     if (typeof snapshot.thinkingLevel === "string") this.state.thinkingLevel = snapshot.thinkingLevel;
@@ -4771,8 +4768,6 @@ export class Runtime {
     const session = snapshot.session ?? {};
     runtime.state = {
       ...this.state,
-      activeTools: [...(snapshot.activeTools ?? [])],
-      allTools: [...(snapshot.allTools ?? [])],
       commands: [...(snapshot.commands ?? [])],
       thinkingLevel: typeof snapshot.thinkingLevel === "string" ? snapshot.thinkingLevel : this.state.thinkingLevel,
       scopedModels: Array.isArray(snapshot.scopedModels) ? snapshot.scopedModels : [],

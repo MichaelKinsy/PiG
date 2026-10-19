@@ -6,19 +6,27 @@ import (
 	"maps"
 	"slices"
 	"sync"
+	"sync/atomic"
 )
 
+// registrationRevision is the last [RegisteredTool.Revision] a live registry stamped.
+var registrationRevision atomic.Uint64
+
 type toolRegistry struct {
-	mu      sync.RWMutex
-	tools   map[string]RegisteredTool
-	order   []string
-	version uint64
+	mu    sync.RWMutex
+	tools map[string]RegisteredTool
+	order []string
 }
 
 // InitializeToolRegistry enables synchronized runtime registration before an Extension is shared with runners.
 func (e *Extension) InitializeToolRegistry() {
 	if e.toolState == nil {
-		e.toolState = &toolRegistry{tools: maps.Clone(e.Tools), order: slices.Clone(e.ToolOrder)}
+		tools := maps.Clone(e.Tools)
+		for name, tool := range tools {
+			tool.Revision = registrationRevision.Add(1)
+			tools[name] = tool
+		}
+		e.toolState = &toolRegistry{tools: tools, order: slices.Clone(e.ToolOrder)}
 	}
 }
 
@@ -27,7 +35,7 @@ func (e *Extension) SetRegisteredTool(tool RegisteredTool) {
 	e.SetRegisteredTools([]RegisteredTool{tool})
 }
 
-// SetRegisteredTools is SetRegisteredTool for several tools under one lock and one version, so a reader of the registry sees all of
+// SetRegisteredTools is SetRegisteredTool for several tools under one lock, so a reader of the registry sees all of
 // them or none, as Pi's registry looks to code that runs after a synchronous run of registerTool calls.
 func (e *Extension) SetRegisteredTools(tools []RegisteredTool) {
 	if len(tools) == 0 {
@@ -45,9 +53,9 @@ func (e *Extension) SetRegisteredTools(tools []RegisteredTool) {
 		if _, exists := state.tools[name]; !exists {
 			state.order = append(state.order, name)
 		}
+		tool.Revision = registrationRevision.Add(1)
 		state.tools[name] = tool
 	}
-	state.version++
 }
 
 // ReplaceRegisteredTools replaces the shared registry when the owning runtime restarts.
@@ -61,22 +69,12 @@ func (e *Extension) ReplaceRegisteredTools(source *Extension) {
 	state.order = make([]string, 0, len(tools))
 	for _, tool := range tools {
 		name := tool.Definition.Name
+		if tool.Revision == 0 {
+			tool.Revision = registrationRevision.Add(1)
+		}
 		state.tools[name] = tool
 		state.order = append(state.order, name)
 	}
-	state.version++
-}
-
-// ToolRegistryVersion reports how many registrations have mutated this
-// extension's tool registry. Snapshot consumers use it to detect that the
-// registered-tool list may have changed without walking every definition.
-func (e *Extension) ToolRegistryVersion() uint64 {
-	if state := e.toolState; state != nil {
-		state.mu.RLock()
-		defer state.mu.RUnlock()
-		return state.version
-	}
-	return 0
 }
 
 // RegisteredTool looks up the current definition without copying the registry.

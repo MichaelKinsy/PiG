@@ -73,10 +73,8 @@ func ExtensionToolStartsActive(definition extension.ToolDefinition, allowed map[
 
 // toolDefinitionLocked returns the admitted definition of name. The caller holds toolRegistryMu.
 func (s *Session) toolDefinitionLocked(name string) (extension.ToolDefinition, bool) {
-	for _, entry := range s.toolRegistry.entries {
-		if entry.tool.Name() == name {
-			return entry.registration.Definition, true
-		}
+	if entry, ok := s.toolRegistry.entry(name); ok {
+		return entry.registration.Definition, true
 	}
 	return extension.ToolDefinition{}, false
 }
@@ -192,10 +190,8 @@ func (s *Session) planToolLoadout(names []string) toolLoadoutPlan {
 		plan.tools = append(plan.tools, tool)
 	}
 	for _, tool := range plan.tools {
-		for _, entry := range s.toolRegistry.entries {
-			if entry.tool.Name() == tool.Name() && entry.registration.Definition.PrepareLoadout != nil {
-				plan.hooks = append(plan.hooks, loadoutHook{entry.registration.Definition.PrepareLoadout, entry.registration.SourceInfo.Path})
-			}
+		if entry, ok := s.toolRegistry.entry(tool.Name()); ok && entry.registration.Definition.PrepareLoadout != nil {
+			plan.hooks = append(plan.hooks, loadoutHook{entry.registration.Definition.PrepareLoadout, entry.registration.SourceInfo.Path})
 		}
 	}
 	if len(plan.hooks) == 0 {

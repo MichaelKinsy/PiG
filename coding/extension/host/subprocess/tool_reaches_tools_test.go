@@ -54,10 +54,6 @@ func TestGetAllToolsMarksReachesToolsAndRunsItForTheExtension(t *testing.T) {
 		!strings.Contains(listed, `{"name":"plain","description":"Plain","parameters":{},"exposure":"direct","sourceInfo":`) {
 		t.Fatalf("getAllTools result = %s, want finder marked reachesTools before sourceInfo and plain unmarked", listed)
 	}
-	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools)
-	if !strings.Contains(string(state), `"exposure":"direct","reachesTools":true,"sourceInfo":{"path":"/f"`) {
-		t.Fatalf("replicated allTools = %s, want finder marked reachesTools", state)
-	}
 	reach := func(args string) (string, error) {
 		t.Helper()
 		result, err := b.HandleCall("ext", &CallPayload{Method: CallToolReachesTools, Args: json.RawMessage(args)})

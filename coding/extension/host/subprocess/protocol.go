@@ -179,7 +179,7 @@ func (p *RegisterPayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// CallRegisterTool carries one ToolDecl after the initial registration. The host validates and replaces the definition, refreshes the Session registry, and replies with allTools and activeTools before the SDK returns.
+// CallRegisterTool carries one ToolDecl after the initial registration. The host validates and replaces the definition, refreshes the Session registry before replying, and replies with an empty result. The SDK reads the registry through getAllTools and getActiveTools, so the reply carries no catalog.
 const CallRegisterTool = "registerTool"
 
 // CallRegisterDeclaration carries a RegisterPayload holding only commands, shortcuts, flags, message renderers and entry renderers registered after the initial registration. The host applies each to the live extension, replacing an earlier one with the same key, and replies with an empty result.
@@ -470,22 +470,16 @@ type ReadyPayload struct {
 }
 
 // StatePayload is the host's view of state visible to extensions through
-// the upstream-faithful synchronous getters (pi.getActiveTools(),
-// pi.getThinkingLevel(), ctx.isIdle(), ctx.getContextUsage(), etc.). It is
+// the upstream-faithful synchronous getters (pi.getThinkingLevel(),
+// ctx.isIdle(), ctx.getContextUsage(), etc.). The tool registry is not state:
+// pi.getAllTools() and pi.getActiveTools() are host calls, so a registration
+// costs the SDK nothing in the size of the registry. It is
 // sent with [ReadyPayload] at startup and re-sent via "state_update"
 // notifies whenever the host knows it has changed.
-// State fields carry explicit empty/null values so a snapshot clears prior values; session log pages remain incremental. A state_update omits allTools, commands and systemPromptOptions while the recipient already holds them byte for byte; the ready state always carries them.
+// State fields carry explicit empty/null values so a snapshot clears prior values; session log pages remain incremental. A state_update omits commands and systemPromptOptions while the recipient already holds them byte for byte; the ready state always carries them.
 type StatePayload struct {
-	ActiveTools []string `json:"activeTools"`
-	// AllTools is the wire form of the registered-tool catalog (a JSON array
-	// of ToolInfo). It is carried pre-encoded so the UIBridge can cache the
-	// serialization behind HostCallbacks.GetAllToolsVersion and skip
-	// re-marshaling an unchanged catalog on every state push. The host also
-	// omits it from state_update notifies whose recipient already has this
-	// version; the runtime's applyState retains absent keys.
-	AllTools json.RawMessage `json:"allTools,omitempty"`
 	// Commands is the wire form of the slash-command catalog ([]CommandInfo),
-	// pre-encoded for the same omit-when-unchanged pushing as AllTools.
+	// pre-encoded so the host can omit it from a state_update whose recipient already holds it.
 	Commands            json.RawMessage            `json:"commands,omitempty"`
 	ThinkingLevel       string                     `json:"thinkingLevel"`
 	Model               any                        `json:"model"`

@@ -253,6 +253,8 @@ type RegisteredTool struct {
 	SourceInfo SourceInfo     `json:"sourceInfo"`
 	// Source is PiG's per-tool source attribution (D23): the tool's declared source, or the registering extension's name. It is not part of upstream's RegisteredTool and is empty for tools no extension registered.
 	Source string `json:"-"`
+	// Revision identifies this registration: a live registry stamps every registration, including one that replaces a name, with a value no other registration of the process has, so a consumer that derived something from a definition can tell that the definition is the one it saw. Zero is a registration no live registry stamped, which identifies nothing.
+	Revision uint64 `json:"-"`
 }
 
 // CallOrder is a reserved place in a tool's call order. Wait returns when every earlier reservation was released;

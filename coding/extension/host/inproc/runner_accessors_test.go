@@ -56,36 +56,3 @@ func TestRunnerGetModelRegistryFollowsTheBinding(t *testing.T) {
 		t.Fatalf("a rebinding replaces it: %v", got)
 	}
 }
-
-// ToolsVersion changes whenever Tools can return a different list: a tool registered after load in any extension, a replaced definition, and the extension count. It stays put across reads.
-func TestRunnerToolsVersionTracksEveryRegistryMutation(t *testing.T) {
-	exts := []extension.Extension{{Path: "a"}, {Path: "b"}}
-	for i := range exts {
-		exts[i].InitializeToolRegistry()
-	}
-	r := inproc.NewRunner(exts, "/tmp")
-	seen := map[uint64]string{r.ToolsVersion(): "start"}
-	step := func(what string, mutate func()) {
-		t.Helper()
-		before := r.ToolsVersion()
-		_ = r.Tools()
-		if r.ToolsVersion() != before {
-			t.Fatalf("%s: reading the tools moved the version", what)
-		}
-		mutate()
-		got := r.ToolsVersion()
-		if prior, dup := seen[got]; dup {
-			t.Fatalf("%s: version %d repeats the one after %q", what, got, prior)
-		}
-		seen[got] = what
-	}
-	step("register in the first extension", func() {
-		exts[0].SetRegisteredTool(extension.RegisteredTool{Definition: extension.ToolDefinition{Name: "one"}})
-	})
-	step("register in the second extension", func() {
-		exts[1].SetRegisteredTool(extension.RegisteredTool{Definition: extension.ToolDefinition{Name: "two"}})
-	})
-	step("replace a definition in place", func() {
-		exts[0].SetRegisteredTool(extension.RegisteredTool{Definition: extension.ToolDefinition{Name: "one", Description: "changed"}})
-	})
-}

@@ -33,10 +33,6 @@ type UIBridge struct {
 	// modelCatalogBatches counts open BatchModelCatalogPublication calls; modelCatalogPending records a publication one of them deferred.
 	modelCatalogBatches int
 	modelCatalogPending bool
-	// allToolsCacheVersion and allToolsCacheJSON memoize the serialized
-	// registered-tool catalog between matching GetAllToolsVersion readings.
-	allToolsCacheVersion uint64
-	allToolsCacheJSON    json.RawMessage
 	// commandsCache memoizes the encoded command catalog between matching GetCommandsVersion readings; version 0 is empty.
 	commandsCache struct {
 		version uint64
@@ -155,7 +151,7 @@ type UIBridge struct {
 	// state_update, so the host must proactively push one.
 	OnStateChanged func()
 	// onRuntimeStateMutated is called when an extension's runtime changes its
-	// replicated state ahead of the host: a setThinkingLevel or setActiveTools
+	// replicated state ahead of the host: a setThinkingLevel
 	// call (the runtime applies the value locally first) and a terminal_input
 	// request (the runtime adopts the editor text it carries). The host then
 	// sends that runtime a full snapshot on its next push.
@@ -271,12 +267,6 @@ type HostCallbacks struct {
 	// GetAllTools returns metadata about all available tools.
 	// upstream: types.ts:1455
 	GetAllTools func() []ToolInfo
-
-	// GetAllToolsVersion, when set, reports a value that changes whenever
-	// GetAllTools can return a different catalog. The bridge caches the
-	// catalog's serialization between matching versions so repeated state
-	// pushes skip re-marshaling it.
-	GetAllToolsVersion func() uint64
 
 	// GetSettings returns the effective settings object: global and project settings merged, with overrides. Backs pi.getSettings().
 	// upstream: types.ts:2135 (GetSettingsHandler)
@@ -560,7 +550,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 
 	// Upstream runner.ts:578-580 reports UI availability from the bound context.
 	// A catalog the host has no source for stays the explicit null the wire always carried, which the runtime reads as an empty list.
-	state := &StatePayload{AllTools: json.RawMessage("null"), Commands: json.RawMessage("null"), IsIdle: true, HasUI: uiCtx != nil && uiCtx != extension.NoopUIContext, Frontend: frontend, ProjectTrusted: true, ScopedModels: []scopedModelSnapshot{}, McpServers: []extension.RegisteredMcpServer{}}
+	state := &StatePayload{Commands: json.RawMessage("null"), IsIdle: true, HasUI: uiCtx != nil && uiCtx != extension.NoopUIContext, Frontend: frontend, ProjectTrusted: true, ScopedModels: []scopedModelSnapshot{}, McpServers: []extension.RegisteredMcpServer{}}
 	// pi.getMcpServers() is synchronous upstream (types.ts:1839), so the SDKs answer it from state.
 	if mcpServers != nil {
 		state.McpServers = mcpServers()
@@ -603,38 +593,6 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	}
 	if actions == nil {
 		return state
-	}
-	if actions.GetActiveTools != nil {
-		state.ActiveTools = nonNilNames(actions.GetActiveTools())
-	}
-	if actions.GetAllTools != nil {
-		if actions.GetAllToolsVersion != nil {
-			// The catalog is large (every registered tool with its schema), so
-			// re-encode it only when the version the host reports changes. The
-			// wire form is identical to marshaling []ToolInfo directly.
-			version := actions.GetAllToolsVersion()
-			b.mu.Lock()
-			if b.allToolsCacheVersion == version && b.allToolsCacheJSON != nil {
-				raw := b.allToolsCacheJSON
-				b.mu.Unlock()
-				state.AllTools = raw
-			} else {
-				b.mu.Unlock()
-				tools := actions.GetAllTools()
-				//portlint:allow nilslicenull the runtime's applyState reads a null catalog as [] (runtime-node/runtime.mjs:2934), so getAllTools still returns [] as Pi's does (agent-session.ts:1498)
-				if encoded, err := json.Marshal(tools); err == nil {
-					b.mu.Lock()
-					b.allToolsCacheVersion, b.allToolsCacheJSON = version, encoded
-					b.mu.Unlock()
-					state.AllTools = encoded
-				}
-			}
-		} else {
-			//portlint:allow nilslicenull the runtime's applyState reads a null catalog as [] (runtime-node/runtime.mjs:2934), so getAllTools still returns [] as Pi's does (agent-session.ts:1498)
-			if encoded, err := json.Marshal(actions.GetAllTools()); err == nil {
-				state.AllTools = encoded
-			}
-		}
 	}
 	// pi.getSettings() is synchronous upstream (types.ts:1708).
 	switch {
@@ -1012,9 +970,6 @@ func (b *UIBridge) SetActions(actions *HostCallbacks) {
 	defer b.mu.Unlock()
 	b.actions = actions
 	b.modelCatalogEncoder = nil
-	// The new callbacks may report a catalog for a version the old ones
-	// already served; drop the encoding so the next Snapshot re-reads them.
-	b.allToolsCacheVersion, b.allToolsCacheJSON = 0, nil
 	b.modelCache.valid = false
 	b.commandsCache.version = 0
 }
@@ -1161,10 +1116,6 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GetActiveTools = fn.(func() []string)
 	case "getAllTools":
 		b.actions.GetAllTools = fn.(func() []ToolInfo)
-		b.allToolsCacheVersion, b.allToolsCacheJSON = 0, nil
-	case "getAllToolsVersion":
-		b.actions.GetAllToolsVersion = fn.(func() uint64)
-		b.allToolsCacheVersion, b.allToolsCacheJSON = 0, nil
 	case "getSettings":
 		b.actions.GetSettings = fn.(func() extension.Settings)
 	case "getSettingsJSON":
@@ -1366,7 +1317,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	defer b.awaitUIPromptEvents(ctx, call)
 	defer b.beginUIPrompt(call)()
 	// The Node runtime applies the palette of the ui.theme reply it fetches after ui.setTheme, so a theme change reaches it outside a state_update too.
-	if (call.Method == "setThinkingLevel" || call.Method == "setActiveTools" || call.Method == "ui.setTheme" || call.Method == "ui.theme") && b.onRuntimeStateMutated != nil {
+	if (call.Method == "setThinkingLevel" || call.Method == "ui.setTheme" || call.Method == "ui.theme") && b.onRuntimeStateMutated != nil {
 		b.onRuntimeStateMutated(extName)
 	}
 	// Snapshot UI context and actions under lock.

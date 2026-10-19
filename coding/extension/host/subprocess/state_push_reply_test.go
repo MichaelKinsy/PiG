@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// The runtimes also write their replicas from host replies outside a state_update: a session-log page (entries and leaf), the registerTool result (allTools and activeTools), the palette the Node runtime fetches with ui.theme after ui.setTheme, and the reply of an MCP server registration (the Rust and Python SDKs' server list). Without a full push, a theme another extension or the user switches back to the last pushed one would leave the setting extension on its own palette. The host's record of what that runtime holds is then out of date, so the next push is a full snapshot rather than a skip of a payload that equals the last one sent.
+// The runtimes also write their replicas from host replies outside a state_update: a session-log page (entries and leaf), the palette the Node runtime fetches with ui.theme after ui.setTheme, and the reply of an MCP server registration (the Rust and Python SDKs' server list). Without a full push, a theme another extension or the user switches back to the last pushed one would leave the setting extension on its own palette. The host's record of what that runtime holds is then out of date, so the next push is a full snapshot rather than a skip of a payload that equals the last one sent.
 func TestPushStateToResendsAfterAReplyTheRuntimeAppliesToItsState(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -18,16 +18,6 @@ func TestPushStateToResendsAfterAReplyTheRuntimeAppliesToItsState(t *testing.T) 
 				return nil, cursor, false, "elsewhere"
 			})
 			rig.h.watchSessionLog("push", 0, true)
-		}},
-		{"registerTool", func(t *testing.T, rig *pushRig) {
-			rig.me.ext = &extension.Extension{Name: "push"}
-			rig.me.ext.InitializeToolRegistry()
-			rig.bridge.SetHostAction("getActiveTools", func() []string { return nil })
-			rig.bridge.SetHostAction("refreshTools", func() error { return nil })
-			args := json.RawMessage(`{"name":"late","description":"late","parameters":{"type":"object"}}`)
-			if _, err := rig.h.handleToolRegistration(t.Context(), rig.me, rig.conn, &CallPayload{Method: CallRegisterTool, Args: args}); err != nil {
-				t.Fatal(err)
-			}
 		}},
 		{"registerMcpServer", func(t *testing.T, rig *pushRig) {
 			args := json.RawMessage(`{"name":"srv","config":{"command":"true"}}`)
@@ -57,7 +47,7 @@ func TestPushStateToResendsAfterAReplyTheRuntimeAppliesToItsState(t *testing.T) 
 			tc.reply(t, rig)
 			rig.push(t)
 			state := rig.nextState(t)
-			if len(state["allTools"]) == 0 || len(state["commands"]) == 0 {
+			if len(state["commands"]) == 0 {
 				t.Fatalf("the push after %s must be a full snapshot, got keys %v", tc.name, keysOf(state))
 			}
 			rig.push(t)

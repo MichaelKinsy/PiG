@@ -646,7 +646,7 @@ type managedExt struct {
 	// holds byte-for-byte.
 	lastStatePush map[*Conn]*connStatePushCache
 	// runtimeStateGen counts the moments a runtime changed its own copy of the
-	// state ahead of the host (thinking level, active tools, editor text), so
+	// state ahead of the host (thinking level, editor text), so
 	// a push the host would otherwise skip still corrects the runtime. A cache
 	// from an older generation is not trusted.
 	runtimeStateGen    atomic.Uint64
@@ -1589,7 +1589,7 @@ func (h *Host) Builder() *Builder { return h.builder }
 // BroadcastStateUpdate sends a "state_update" notify to every connected
 // subprocess extension with a freshly-snapshotted [StatePayload]. Call this
 // after host-side transitions that mutate the synchronous getter surface
-// (active tools, thinking level, idle state, system prompt, context usage,
+// (thinking level, idle state, system prompt, context usage,
 // flag values, etc.) so extension caches stay accurate.
 //
 // Safe to call when no extensions are loaded or no UIBridge is wired -
@@ -1634,9 +1634,8 @@ type connStatePushCache struct {
 	gen uint64
 	// lastPayload is the encoded args of the most recent state_update sent.
 	lastPayload []byte
-	// tools, commands and promptOptions are the catalog encodings the
+	// commands and promptOptions are the catalog encodings the
 	// recipient holds; nil means it has not been sent one yet.
-	tools         []byte
 	commands      []byte
 	promptOptions []byte
 	// theme, keybindings and terminalCapabilities are the encodings of the
@@ -1716,9 +1715,6 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 			cache = nil
 		}
 		if cache != nil {
-			if bytes.Equal(state.AllTools, cache.tools) {
-				partial.AllTools = nil
-			}
 			if bytes.Equal(state.Commands, cache.commands) {
 				partial.Commands = nil
 			}
@@ -1742,9 +1738,9 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 		// sends none of them is the lean body itself, so the common push encodes
 		// the state once; the lean body is also the comparison baseline of the
 		// next push.
-		sendsHeavy := partial.AllTools != nil || partial.Commands != nil || partial.SystemPromptOptions != nil || partial.Theme != nil || partial.Keybindings != nil || partial.TerminalCapabilities != nil || partial.SystemPrompt != nil
+		sendsHeavy := partial.Commands != nil || partial.SystemPromptOptions != nil || partial.Theme != nil || partial.Keybindings != nil || partial.TerminalCapabilities != nil || partial.SystemPrompt != nil
 		lean := partial
-		lean.AllTools, lean.Commands, lean.SystemPromptOptions = nil, nil, nil
+		lean.Commands, lean.SystemPromptOptions = nil, nil
 		lean.Theme, lean.Keybindings, lean.TerminalCapabilities, lean.SystemPrompt = nil, nil, nil, nil
 		leanBody, err := json.Marshal(stateUpdateBody{State: &lean})
 		if err != nil {
@@ -1787,7 +1783,7 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 				delete(me.lastStatePush, held)
 			}
 		}
-		me.lastStatePush[conn] = &connStatePushCache{gen: gen, lastPayload: leanBody, tools: state.AllTools, commands: state.Commands, promptOptions: state.SystemPromptOptions, theme: state.Theme, keybindings: state.Keybindings, terminalCapabilities: state.TerminalCapabilities, systemPrompt: state.SystemPrompt, hasSystemPrompt: true}
+		me.lastStatePush[conn] = &connStatePushCache{gen: gen, lastPayload: leanBody, commands: state.Commands, promptOptions: state.SystemPromptOptions, theme: state.Theme, keybindings: state.Keybindings, terminalCapabilities: state.TerminalCapabilities, systemPrompt: state.SystemPrompt, hasSystemPrompt: true}
 		if state.Session == nil || !includeEntries {
 			return nil
 		}

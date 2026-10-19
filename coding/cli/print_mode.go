@@ -409,7 +409,6 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
 				return codingagent.ExtensionToolInfos(runner, opts.toolRegistryAllowed, opts.toolRegistryExcluded)
 			})
-			bridge.SetHostAction("getAllToolsVersion", func() uint64 { return runner.ToolsVersion() })
 			bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
 				return publishedCommands.Load().slashCatalog().SubprocessCommands()
 			})

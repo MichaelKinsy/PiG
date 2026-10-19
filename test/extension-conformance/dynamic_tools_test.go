@@ -92,7 +92,7 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 				bridge.SetHostAction("setActiveTools", session.SetActiveToolsByName)
 				bridge.SetHostAction("getActiveTools", session.ActiveToolNames)
 				bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
-					return codingagent.ExtensionToolInfos(runner, map[string]struct{}{"late": {}, "stable": {}, "shout": {}}, nil)
+					return codingagent.ExtensionToolInfos(runner, dynamicToolNames(), nil)
 				})
 				if got := api.GetActiveTools(); !slices.Equal(got, []string{"stable"}) {
 					t.Fatal(got)
@@ -126,12 +126,58 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 				if shout, ok := session.GetToolDefinition("shout"); !ok || shout.Label != "Label shout new" {
 					t.Fatalf("a tool registered after startup keeps its label: %+v", shout)
 				}
+				// Registering many tools one after another, an extension's getAllTools and getActiveTools answer the registry as it is after each registration, and a replaced definition reads back as the replacement: the host's reply to registerTool carries no catalog for the SDK to keep, so every read is the host's.
+				if err := loaded[0].Commands["burst"].Handler(t.Context(), ""); err != nil {
+					t.Fatalf("registry read after each registration: %v", err)
+				}
+				if def, ok := session.GetToolDefinition("b0"); !ok || def.Description != "d0x" {
+					t.Fatalf("b0 after replacement=%+v", def)
+				}
+				executeDynamicTool(t, session, "b7", "db7:hello")
 				api.SetActiveTools([]string{"late", "shout"})
 				executeDynamicTool(t, session, "late", "v2:hello")
 				executeDynamicTool(t, session, "shout", "new:hello")
 			})
 		}
 	}
+}
+
+// dynamicToolNames is the registry filter of the getAllTools host action: the tools the dynamic extension registers.
+func dynamicToolNames() map[string]struct{} {
+	names := map[string]struct{}{"late": {}, "stable": {}, "shout": {}}
+	for i := range dynamicBurstTools {
+		names[fmt.Sprintf("b%d", i)] = struct{}{}
+	}
+	return names
+}
+
+// dynamicBurstTools is how many tools the burst command registers, b0 to b7; after b3 it registers b0 again with another description.
+const dynamicBurstTools = 8
+
+// checkDynamicRegistry is the burst command's read after a registration: getAllTools lists exactly names in registration order with the described descriptions, and getActiveTools lists exactly active.
+func checkDynamicRegistry(ctx sdk.Context, names, active []string, described map[string]string) error {
+	infos, err := ctx.GetAllTools()
+	if err != nil {
+		return err
+	}
+	got := make([]string, len(infos))
+	for i, info := range infos {
+		got[i] = info.Name
+		if want, ok := described[info.Name]; ok && info.Description != want {
+			return fmt.Errorf("%s description=%q, want %q", info.Name, info.Description, want)
+		}
+	}
+	if !slices.Equal(got, names) {
+		return fmt.Errorf("getAllTools=%v, want %v", got, names)
+	}
+	gotActive, err := ctx.GetActiveTools()
+	if err != nil {
+		return err
+	}
+	if !slices.Equal(gotActive, active) {
+		return fmt.Errorf("getActiveTools=%v, want %v", gotActive, active)
+	}
+	return nil
 }
 
 func executeDynamicTool(t *testing.T, s *coding.Session, name, want string) {
@@ -173,6 +219,26 @@ func dynamicGoExtension() *sdk.Extension {
 		}
 		return nil
 	})
+	e.Command("burst", "", func(ctx sdk.Context, _ string) error {
+		names, active, described := []string{"stable", "late", "shout"}, []string{"stable", "shout"}, map[string]string{}
+		for i := range dynamicBurstTools {
+			name := fmt.Sprintf("b%d", i)
+			described[name] = "d" + name
+			ctx.RegisterTool(def(name, described[name]))
+			names, active = append(names, name), append(active, name)
+			if err := checkDynamicRegistry(ctx, names, active, described); err != nil {
+				return err
+			}
+			if i == 3 {
+				described["b0"] = "d0x"
+				ctx.RegisterTool(def("b0", "d0x"))
+				if err := checkDynamicRegistry(ctx, names, active, described); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
 	return e
 }
 
@@ -186,6 +252,7 @@ pi.registerTool({name:"stable",label:"stable",description:"stable",parameters:{}
 pi.on("session_start",()=>pi.registerTool(def("late","v1")));
 pi.events.on("inspect-dynamic-tools",values=>values.push(pi.getAllTools().some(t=>t.name==="shout")));
 pi.registerCommand("change",{handler:async()=>{pi.setActiveTools(["stable"]);pi.registerTool(def("late","v2"));pi.registerTool(def("shout","new"));if(JSON.stringify(pi.getActiveTools())!==JSON.stringify(["stable","shout"]))throw new Error("immediate active tools="+JSON.stringify(pi.getActiveTools()));if(!pi.getAllTools().some(t=>t.name==="shout"))throw new Error("immediate getAllTools missing shout");const values=[];pi.events.emit("inspect-dynamic-tools",values);if(values.some(v=>!v))throw new Error("peer registry is stale");}});
+pi.registerCommand("burst",{handler:async()=>{const names=["stable","late","shout"],active=["stable","shout"],desc={};const check=()=>{const tools=pi.getAllTools();const got=tools.map(t=>t.name);if(JSON.stringify(got)!==JSON.stringify(names))throw new Error("getAllTools="+JSON.stringify(got)+" want "+JSON.stringify(names));for(const t of tools)if(t.name in desc&&t.description!==desc[t.name])throw new Error(t.name+" description="+t.description+" want "+desc[t.name]);const act=pi.getActiveTools();if(JSON.stringify(act)!==JSON.stringify(active))throw new Error("getActiveTools="+JSON.stringify(act)+" want "+JSON.stringify(active));};for(let i=0;i<8;i++){const name="b"+i;desc[name]="d"+name;pi.registerTool(def(name,desc[name]));names.push(name);active.push(name);check();if(i===3){desc.b0="d0x";pi.registerTool(def("b0","d0x"));check();}}}});
 }`
 		if err := os.WriteFile(path, []byte(code), 0o600); err != nil {
 			t.Fatal(err)
@@ -206,6 +273,24 @@ e.Tool("stable","stable",sdk.Schema{},func(sdk.Context,map[string]any)(any,error
 def:=func(name,value string)sdk.ToolDefinition{return sdk.ToolDefinition{Name:name,Label:"Label "+name+" "+value,Description:value,PromptSnippet:"summary "+value,PromptGuidelines:[]string{"Use "+name+" "+value},Parameters:sdk.Schema{"type":"object","properties":map[string]any{"message":map[string]any{"type":"string"}},"required":[]string{"message"}},Execute:func(_ sdk.Context,args map[string]any)(any,error){return value+":"+args["message"].(string),nil}}}
 e.OnSessionStart(func(ctx sdk.Context,_ map[string]any)(any,error){e.RegisterTool(def("late","v1"));return nil,nil})
 e.Command("change","",func(ctx sdk.Context,_ string)error{ctx.SetActiveTools([]string{"stable"});ctx.RegisterTool(def("late","v2"));ctx.RegisterTool(def("shout","new"));if got,err:=ctx.GetActiveTools();err!=nil||!slices.Equal(got,[]string{"stable","shout"}){return fmt.Errorf("immediate active tools=%%v %%v",got,err)};return nil})
+e.Command("burst","",func(ctx sdk.Context,_ string)error{
+names,active,described:=[]string{"stable","late","shout"},[]string{"stable","shout"},map[string]string{}
+check:=func()error{
+infos,err:=ctx.GetAllTools();if err!=nil{return err}
+got:=make([]string,len(infos))
+for i,info:=range infos{got[i]=info.Name;if want,ok:=described[info.Name];ok&&info.Description!=want{return fmt.Errorf("%%s description=%%q, want %%q",info.Name,info.Description,want)}}
+if !slices.Equal(got,names){return fmt.Errorf("getAllTools=%%v, want %%v",got,names)}
+gotActive,err:=ctx.GetActiveTools();if err!=nil{return err}
+if !slices.Equal(gotActive,active){return fmt.Errorf("getActiveTools=%%v, want %%v",gotActive,active)}
+return nil}
+for i:=0;i<8;i++{
+name:=fmt.Sprintf("b%%d",i);described[name]="d"+name
+ctx.RegisterTool(def(name,described[name]))
+names,active=append(names,name),append(active,name)
+if err:=check();err!=nil{return err}
+if i==3{described["b0"]="d0x";ctx.RegisterTool(def("b0","d0x"));if err:=check();err!=nil{return err}}
+}
+return nil})
 return e
 }`, name)
 	case "python":
@@ -224,6 +309,22 @@ def new_extension():
   ctx.register_tool(definition("shout","new"))
   assert ctx.get_active_tools()==["stable","shout"]
  e.command("change","",change)
+ def burst(ctx,args):
+  names=["stable","late","shout"];active=["stable","shout"];desc={}
+  def check():
+   tools=ctx.get_all_tools()
+   assert [t["name"] for t in tools]==names,[t["name"] for t in tools]
+   for t in tools:
+    if t["name"] in desc: assert t["description"]==desc[t["name"]],t
+   assert ctx.get_active_tools()==active,ctx.get_active_tools()
+  for i in range(8):
+   name="b%%d"%%i
+   desc[name]="d"+name
+   ctx.register_tool(definition(name,desc[name]))
+   names.append(name);active.append(name);check()
+   if i==3:
+    desc["b0"]="d0x";ctx.register_tool(definition("b0","d0x"));check()
+ e.command("burst","",burst)
  return e
 `, name)
 	case "rust":
@@ -239,6 +340,33 @@ pub fn new_extension()->Extension{
  e.tool("stable","stable","{}".parse::<Schema>().unwrap(),|_,_|ToolResult::text("stable"));
  e.on_event("session_start",|ctx,_|{ctx.register_tool(definition("late","v1")).unwrap();None});
  e.command("change","",|ctx,_|{ctx.set_active_tools(&["stable"]);if let Err(e)=ctx.register_tool(definition("late","v2")).and_then(|_|ctx.register_tool(definition("shout","new"))){return CommandResult::Error(e.to_string())};if ctx.get_active_tools().unwrap()!=vec!["stable","shout"]{return CommandResult::Error("immediate active tools".into())};CommandResult::Ok});
+ e.command("burst","",|ctx,_|{
+  let mut names:Vec<String>=vec!["stable".into(),"late".into(),"shout".into()];
+  let mut active:Vec<String>=vec!["stable".into(),"shout".into()];
+  let mut desc=std::collections::HashMap::<String,String>::new();
+  let check=|names:&Vec<String>,active:&Vec<String>,desc:&std::collections::HashMap<String,String>|->Result<(),String>{
+   let tools=ctx.get_all_tools().map_err(|e|e.to_string())?;
+   let got:Vec<String>=tools.iter().map(|t|t.name.clone()).collect();
+   if &got!=names{return Err(format!("getAllTools={:?} want {:?}",got,names))}
+   for t in &tools{if let Some(d)=desc.get(&t.name){if &t.description!=d{return Err(format!("{} description={:?} want {:?}",t.name,t.description,d))}}}
+   let act=ctx.get_active_tools().map_err(|e|e.to_string())?;
+   if &act!=active{return Err(format!("getActiveTools={:?} want {:?}",act,active))}
+   Ok(())
+  };
+  for i in 0..8{
+   let name=format!("b{}",i);let value=format!("d{}",name);
+   desc.insert(name.clone(),value.clone());
+   if let Err(e)=ctx.register_tool(definition(&name,&value)){return CommandResult::Error(e.to_string())}
+   names.push(name.clone());active.push(name);
+   if let Err(e)=check(&names,&active,&desc){return CommandResult::Error(e)}
+   if i==3{
+    desc.insert("b0".into(),"d0x".into());
+    if let Err(e)=ctx.register_tool(definition("b0","d0x")){return CommandResult::Error(e.to_string())}
+    if let Err(e)=check(&names,&active,&desc){return CommandResult::Error(e)}
+   }
+  }
+  CommandResult::Ok
+ });
  e
 }`, name)
 	}

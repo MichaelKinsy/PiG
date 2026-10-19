@@ -451,7 +451,6 @@ func (h *rpcHost) bindExtensionActions(session *coding.Session, st *rpcModeSessi
 		bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
 			return codingagent.ExtensionToolInfos(runner, registryAllowed, registryExcluded)
 		})
-		bridge.SetHostAction("getAllToolsVersion", func() uint64 { return runner.ToolsVersion() })
 		bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
 			return st.published.Load().slashCatalog().SubprocessCommands()
 		})
