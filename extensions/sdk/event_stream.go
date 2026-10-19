@@ -181,7 +181,7 @@ func (t *streamText) view() string {
 	if len(t.buf) == 0 {
 		return ""
 	}
-	return unsafe.String(&t.buf[0], len(t.buf))
+	return unsafe.String(&t.buf[0], len(t.buf)) //nolint:gosec // G103: bytes are only appended past the end, so the prefix a view covers never changes
 }
 
 // appendStreamText returns current with the string value appended, or false when either is not a string.
