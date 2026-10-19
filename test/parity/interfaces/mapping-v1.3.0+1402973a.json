@@ -102106,7 +102106,8 @@
       ],
       "evidence": [
         "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAnAbortWhileAWorkerIsStillPreparingALateOpenClosesItselfAndTheWorkerCanReloadAgain",
-        "test:chord/host/links_review_upstream_test.go#TestLinksReview3AnAbortWhileTheChildIsStillLoadingModulesFreesItsReloadSlot"
+        "test:chord/host/links_review_upstream_test.go#TestLinksReview3AnAbortWhileTheChildIsStillLoadingModulesFreesItsReloadSlot",
+        "test:chord/host/cluster_unwind_test.go#TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection"
       ]
     },
     {

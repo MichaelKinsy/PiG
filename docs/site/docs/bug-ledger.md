@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-896 bugs. 846 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
+898 bugs. 848 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 135 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -904,6 +904,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
 | [BF-fb22c33](#bf-fb22c33) | `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer… | PiG's own defect | Windows | Unreleased |
 | [BF-55b7c3b](#bf-55b7c3b) | A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of… | PiG's own defect | All platforms | Unreleased |
+| [BF-c1af1a0](#bf-c1af1a0) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
+| [BF-a14e110](#bf-a14e110) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
 | [BF-4dbaccf](#bf-4dbaccf) | A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
@@ -913,8 +915,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b-3](#bf-c2cdd5b-3) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | Unreleased |
 | [BF-dea7cbc](#bf-dea7cbc) | A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no… | PiG's own defect | All platforms | Unreleased |
-| [BF-c1af1a0](#bf-c1af1a0) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
-| [BF-a14e110](#bf-a14e110) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
+| [BF-2dc9802](#bf-2dc9802) | On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that… | PiG's own defect | All platforms | Unreleased |
+| [BF-25863ea](#bf-25863ea) | `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13250,6 +13252,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction`, `durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns`, `durable/harness/harness_generation_test.go::TestGeneration`
 - **Release note:** A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.
 
+### BF-c1af1a0
+
+**A Durable core request costs the same however many requests are in flight: a notice is tested only against…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
+- **Root cause:** Host.notify tested every pending waiter's accept function against each notice, so a request's cost grew with the number of requests in flight (11 µs per request at 500 in flight, 57 µs at 4,000). Waiters that expect one kind and id now register through Host.ExpectNotice in a map keyed by both; notify tests that key's waiters and then the generic ones, as before. Client.request uses it. Cancel, discard and close remove a waiter from both structures. Notice and wire bytes are unchanged; delivery order among several waiters of one notice was already unspecified.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c1af1a0f59` (2026-10-18)
+- **Tests:** `durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight`, `durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice`
+- **Release note:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
+
+### BF-a14e110
+
+**A Durable reference harness turn no longer copies the whole conversation history to extend its context**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
+- **Root cause:** extendRange copied the entries, active entries, contributions and settled messages of the whole history on every turn, and each shared read cloned them again: 1.79 ms and 5.6 MB per turn at 4,000 turns. A range lineage now keeps one backing array per field; only the first extender of a range appends in place (a tail-owner token), and writes go only past every earlier range's length, so handed-out views never change. Shared reads return the arrays with capacity capped at length, so a reader's append copies. settleSplit and composeMessages build the messages array in one copy, and the leading-system rule scans only the open tail. 69 µs and 206 KB per turn at 4,000 turns.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2934eba06f` (2026-10-18), `a14e110946` (2026-10-18)
+- **Tests:** `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn`, `durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder`
+- **Release note:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
+
 ### BF-4dbaccf
 
 **A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…**
@@ -13376,33 +13406,33 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds`, `durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt`, `durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed` and 9 more in docs/bug-ledger.json
 - **Release note:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.
 
-### BF-c1af1a0
+### BF-2dc9802
 
-**A Durable core request costs the same however many requests are in flight: a notice is tested only against…**
+**On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
-- **Root cause:** Host.notify tested every pending waiter's accept function against each notice, so a request's cost grew with the number of requests in flight (11 µs per request at 500 in flight, 57 µs at 4,000). Waiters that expect one kind and id now register through Host.ExpectNotice in a map keyed by both; notify tests that key's waiters and then the generic ones, as before. Client.request uses it. Cancel, discard and close remove a waiter from both structures. Notice and wire bytes are unchanged; delivery order among several waiters of one notice was already unspecified.
+- **Symptom:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
+- **Root cause:** Pi runs every scheduler pass, invocation and commit listener in the context of the call that queued it, and an await resumes in its own function's context (scheduler.ts:1404-1426, 1656-1668; session.ts:765, 881). The CF host now snapshots each client call's context and passes its number as the step's origin; the core keeps a current origin that Loop.Defer, line jobs, pending effects and parked hops chains capture and restore, and effects and notices carry it, so the host starts effect handlers and timers and runs notice listeners inside that snapshot. The core frees an origin when nothing holds it (origin_free notice, kind 10). The native host passes origin 0.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `c1af1a0f59` (2026-10-18)
-- **Tests:** `durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight`, `durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice`
-- **Release note:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
+- **Fix commits:** `2dc9802985` (2026-10-18), `90e8ca2d9c` (2026-10-18)
+- **Tests:** `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`, `durable/core/host/cf/test/origins-core.test.ts`, `durable/core/host/cf/test/origins.test.ts`, `durable/core/host/cf/test/tool-result-shape.test.ts`, `durable/core/origin_test.go::TestEffectCompletionContinuesInTheOriginOfItsStart`, `durable/core/origin_test.go::TestHopsChainContinuesInTheOriginOfItsPark`, `durable/core/origin_test.go::TestQueuedLineJobHoldsItsOrigin`, `durable/core/session/origin_test.go::TestKickQueuesTheDrainInTheKickersOrigin` and 1 more in docs/bug-ledger.json
+- **Release note:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
 
-### BF-a14e110
+### BF-25863ea
 
-**A Durable reference harness turn no longer copies the whole conversation history to extend its context**
+**`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
-- **Root cause:** extendRange copied the entries, active entries, contributions and settled messages of the whole history on every turn, and each shared read cloned them again: 1.79 ms and 5.6 MB per turn at 4,000 turns. A range lineage now keeps one backing array per field; only the first extender of a range appends in place (a tail-owner token), and writes go only past every earlier range's length, so handed-out views never change. Shared reads return the arrays with capacity capped at length, so a reader's append copies. settleSplit and composeMessages build the messages array in one copy, and the leading-system rule scans only the open tail. 69 µs and 206 KB per turn at 4,000 turns.
-- **User impact:** Behavior differed from Pi
+- **Symptom:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
+- **Root cause:** A process-global publication queue let one host's goroutine deliver another host's notifications while it held its own loop: a server commit holding the queue later ran the worker's RefImpl.shapeChanged -> Connection.send on the server's goroutine while the worker's loop sent on the same connection (DATA RACE at connection.go:611, 27/150 runs of TestLinksReview4 under -race at GOMAXPROCS=1). Each loop now has its own queue, delivered by a section of that loop, and a hold covers only the loop that made the change. A goroutine inside a hold or a drain appends what it enqueues for another loop behind the queue it delivers, as Pi's single queue does (publish.ts), so a state write from another…
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2934eba06f` (2026-10-18), `a14e110946` (2026-10-18)
-- **Tests:** `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn`, `durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder`
-- **Release note:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
+- **Fix commits:** `25863ea04d` (2026-10-18), `c2cdd5b680` (2026-10-18)
+- **Tests:** `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues`, `chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered` and 5 more in docs/bug-ledger.json
+- **Release note:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
 
 ## Divergences from Pi added in this release
 
