@@ -18,8 +18,13 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// generationSentinel stands for the code of one generation. It is not zero-sized, so every one has its own address.
-type generationSentinel struct{ generation int }
+// generationSentinel stands for the code of one generation. It is not zero-sized, so every one has its own address, and
+// it holds a pointer, so the allocator gives it a block of its own: a pointer-free object under 16 bytes shares a tiny
+// block with its neighbours, and is collected, and its cleanup run, only with all of them.
+type generationSentinel struct {
+	generation int
+	_          *generationSentinel
+}
 
 // generationTracker tracks which sentinels are still reachable.
 type generationTracker struct {
@@ -85,7 +90,7 @@ func TestGenerationGCAReferenceHeldAcrossReloadsKeepsOnlyTheCurrentGenerationAli
 	generations := newGenerationTracker()
 	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	facet := func(generation int) *Facet {
-		sentinel := trackGeneration(generations, generation, &generationSentinel{generation})
+		sentinel := trackGeneration(generations, generation, &generationSentinel{generation: generation})
 		return &Facet{Name: "store", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
 			return api.Serve(generationStore, func(_ any, _ Principal, self Self) (Implementation, error) {
 				count, err := generationCount(self)
@@ -128,7 +133,7 @@ func TestGenerationGCAHostObjectWithStateAKeptResourceAListenerATaskAndRegistrat
 	generations := newGenerationTracker()
 	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	facet := func(generation int) *Facet {
-		sentinel := trackGeneration(generations, generation, &generationSentinel{generation})
+		sentinel := trackGeneration(generations, generation, &generationSentinel{generation: generation})
 		return &Facet{Name: "store", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
 			return api.Serve(generationStore, func(_ any, _ Principal, self Self) (Implementation, error) {
 				count, err := generationCount(self)
@@ -191,7 +196,7 @@ func TestGenerationGCAbortListenersThatCallsAndTasksAddToTheirCtxSignalDoNotOutl
 	generations := newGenerationTracker()
 	host := CreateHost(HostOptions{Self: kindHost(), OnError: func(error) {}})
 	facet := func(generation int) *Facet {
-		sentinel := trackGeneration(generations, generation, &generationSentinel{generation})
+		sentinel := trackGeneration(generations, generation, &generationSentinel{generation: generation})
 		return &Facet{Name: "store", FacetDefinition: FacetDefinition{Setup: func(api FacetApi) error {
 			return api.Serve(generationStore, func(_ any, _ Principal, self Self) (Implementation, error) {
 				count, err := generationCount(self)
