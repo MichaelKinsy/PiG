@@ -101,9 +101,15 @@ func (tr *tree) active() uint32 {
 }
 
 // stop ends every process of the job at once; Windows has no graceful group signal for a console-less child. It reports
-// whether any member was running when it began.
-func (tr *tree) stop(time.Duration) bool {
+// whether any member was still running after the grace period. The job counts a member until the kernel has torn it down,
+// which can trail the exit that signalled Wait (a console host, or the child itself, under load), so a member that
+// disappears within grace is an exit in progress, and only one that outlasts it is a descendant the child left behind.
+func (tr *tree) stop(grace time.Duration) bool {
 	left := tr.active() > 0
+	for deadline := time.Now().Add(grace); left && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		left = tr.active() > 0
+	}
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
 	if tr.job != 0 {
