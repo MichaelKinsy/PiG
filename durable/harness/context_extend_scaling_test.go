@@ -81,9 +81,7 @@ func TestContextRangeExtensionsFromOneRangeNeverWriteEachOther(t *testing.T) {
 	results := make([]fork, forks)
 	var group sync.WaitGroup
 	for index := range forks {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			// Every fork numbers its entries from the same tail, as concurrent reads of the same conversation do.
 			local := next
 			rng := base
@@ -99,7 +97,7 @@ func TestContextRangeExtensionsFromOneRangeNeverWriteEachOther(t *testing.T) {
 				}
 			}
 			results[index] = fork{rng: rng, view: rng.shared(), entries: all}
-		}()
+		})
 	}
 	group.Wait()
 	for index, got := range results {
@@ -121,9 +119,7 @@ func TestContextRangeViewsAreReadableWhileTheRangeExtends(t *testing.T) {
 	var group sync.WaitGroup
 	for range 8 {
 		view := rng.shared()
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			count := 0
 			for range 200 {
 				for index := range view.Entries {
@@ -135,7 +131,7 @@ func TestContextRangeViewsAreReadableWhileTheRangeExtends(t *testing.T) {
 				count += len(view.Messages)
 			}
 			_ = count
-		}()
+		})
 	}
 	for turn := range 400 {
 		added := extendTurnEntries(&next, turn)
