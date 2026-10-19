@@ -29712,6 +29712,60 @@
       ]
     },
     {
+      "id": "BF-4dbaccf",
+      "title": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…",
+      "symptom": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.",
+      "rootCause": "mirror.ScanTasks loaded every task into the mirror for status '' or terminal and filtered in memory, so a cold page cost O(all tasks): 36 ms per 100-task page at 8,000 tasks, and every page went cold after the mirror released its held terminal tasks. It now reads storage one page at a time with the id-ordered keyset statements (new SQLTasksDesc for newest first), filters on the row columns, parses only the page's rows and stops at limit+1 matches; the mirror's held tasks win over stored rows. A page costs about 0.55 ms at any task count. Pi's sqlite scanTasks reads storage per page the same way (storage.ts:433-470); hop and tick charging is unchanged (one modeled ReadRow per call).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count. Listing a conversation owner's conversations reads only that owner's.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2934eba06f",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "4dbaccfae0",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "b106c51c4f",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "d0c524009a",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "da0fae4095",
+          "date": "2026-10-18"
+        },
+        {
+          "hash": "de44764ac1",
+          "date": "2026-10-18"
+        }
+      ],
+      "tests": [
+        "ai/port_wave_12_zai_coding_plan_models_test.go::TestPortWave12ZAICodingPlanModels",
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
+        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
+        "durable/core/driver/harness_reports_core_test.go::TestReports",
+        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
+        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
+        "durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex",
+        "durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks",
+        "durable/core/mirror_scan_test.go::TestScanTasksPageCostIsFlatInTheTaskCount",
+        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
+        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
+        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
+        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder"
+      ]
+    },
+    {
       "id": "BF-9f31a8b",
       "title": "A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…",
       "symptom": "A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started.",
@@ -30148,57 +30202,31 @@
       ]
     },
     {
-      "id": "BF-4dbaccf",
-      "title": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…",
-      "symptom": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.",
-      "rootCause": "mirror.ScanTasks loaded every task into the mirror for status '' or terminal and filtered in memory, so a cold page cost O(all tasks): 36 ms per 100-task page at 8,000 tasks, and every page went cold after the mirror released its held terminal tasks. It now reads storage one page at a time with the id-ordered keyset statements (new SQLTasksDesc for newest first), filters on the row columns, parses only the page's rows and stops at limit+1 matches; the mirror's held tasks win over stored rows. A page costs about 0.55 ms at any task count. Pi's sqlite scanTasks reads storage per page the same way (storage.ts:433-470); hop and tick charging is unchanged (one modeled ReadRow per call).",
+      "id": "BF-55b7c3b",
+      "title": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of…",
+      "symptom": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
+      "rootCause": "Client.Begin returned the context error and told the core nothing when the caller's context ended while the begin was queued behind another transaction. When the line freed, the core's grant gave it to that transaction and answered ready to nobody; the transaction never ended, so EventClose, queued behind the line, never ran and Session.Close waited forever in Client.request(EventClose).",
       "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
+      "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count. Listing a conversation owner's conversations reads only that owner's.",
+      "releaseNote": "A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "2934eba06f",
+          "hash": "1d8dab9122",
           "date": "2026-10-18"
         },
         {
-          "hash": "4dbaccfae0",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "b106c51c4f",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "d0c524009a",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "da0fae4095",
-          "date": "2026-10-18"
-        },
-        {
-          "hash": "de44764ac1",
+          "hash": "55b7c3b9dc",
           "date": "2026-10-18"
         }
       ],
       "tests": [
-        "ai/port_wave_12_zai_coding_plan_models_test.go::TestPortWave12ZAICodingPlanModels",
-        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
-        "durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun",
-        "durable/core/driver/harness_reports_core_test.go::TestReports",
-        "durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion",
-        "durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration",
-        "durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex",
-        "durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks",
-        "durable/core/mirror_scan_test.go::TestScanTasksPageCostIsFlatInTheTaskCount",
-        "durable/core/tasks_test.go::TestReportCarriesTheInfo",
-        "durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference",
-        "durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed",
-        "durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder"
+        "durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction",
+        "durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns",
+        "durable/harness/harness_generation_test.go::TestGeneration"
       ]
     }
   ],
