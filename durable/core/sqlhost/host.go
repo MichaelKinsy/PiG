@@ -5,6 +5,7 @@ package sqlhost
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -183,7 +184,8 @@ type Host struct {
 	dead     error
 	closed   bool
 	counters Counters
-	waiters  map[*waiter]struct{}
+	waiters  map[*waiter]struct{}               // the waiters Expect registered: every notice is tested against each
+	byKey    map[noticeKey]map[*waiter]struct{} // the waiters ExpectNotice registered: a notice is tested against its own key's
 
 	// owner-only state
 	// lastEffect is the ID of the last effect started. The core issues effect IDs in increasing order for the life of a
@@ -201,8 +203,16 @@ type Host struct {
 	rangeLineages uint64
 }
 
+// noticeKey names the notice an ExpectNotice waiter is for: the kind and the u32 that starts the payload.
+type noticeKey struct {
+	kind abi.NoticeKind
+	id   uint32
+}
+
 type waiter struct {
 	test    func(abi.Notice) bool
+	key     noticeKey
+	keyed   bool
 	resolve chan abi.Notice
 	fail    chan error
 }
@@ -220,7 +230,7 @@ func New(opts Options) *Host {
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &Host{
 		opts: opts, box: newMailbox(), done: make(chan struct{}), ctx: ctx, cancel: cancel,
-		waiters: map[*waiter]struct{}{}, lastEffect: -1, running: map[uint32]context.CancelFunc{}, timers: map[uint32]func(){},
+		waiters: map[*waiter]struct{}{}, byKey: map[noticeKey]map[*waiter]struct{}{}, lastEffect: -1, running: map[uint32]context.CancelFunc{}, timers: map[uint32]func(){},
 	}
 	h.counters.Effects = map[abi.EffectKind]int{}
 	// A core that reads settled records on demand (ABI section 4.2, pig.read) reads them here, on the owner goroutine that
@@ -424,6 +434,56 @@ func (h *Host) Expect(test func(abi.Notice) bool) (*Expectation, error) {
 	return &Expectation{h: h, w: w}, nil
 }
 
+// ExpectNotice is Expect for a notice of the given kind whose payload starts with the u32 id (api_result, tx_result);
+// accept sees the payload after the id. A notice is tested only against the waiters of its own kind and id, so the cost
+// of a notice does not grow with the number of requests in flight.
+func (h *Host) ExpectNotice(kind abi.NoticeKind, id uint32, accept func(body []byte) bool) (*Expectation, error) {
+	w := &waiter{key: noticeKey{kind, id}, keyed: true, resolve: make(chan abi.Notice, 1), fail: make(chan error, 1)}
+	w.test = func(n abi.Notice) bool { return accept(n.Payload[4:]) }
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.dead != nil || h.closed {
+		return nil, h.closedErrLocked()
+	}
+	set := h.byKey[w.key]
+	if set == nil {
+		set = map[*waiter]struct{}{}
+		h.byKey[w.key] = set
+	}
+	set[w] = struct{}{}
+	return &Expectation{h: h, w: w}, nil
+}
+
+// removeWaiterLocked drops w from whichever structure holds it. h.mu must be held.
+func (h *Host) removeWaiterLocked(w *waiter) {
+	if !w.keyed {
+		delete(h.waiters, w)
+		return
+	}
+	if set := h.byKey[w.key]; set != nil {
+		delete(set, w)
+		if len(set) == 0 {
+			delete(h.byKey, w.key)
+		}
+	}
+}
+
+// takeWaitersLocked empties both structures and returns every waiter they held. h.mu must be held.
+func (h *Host) takeWaitersLocked() []*waiter {
+	all := make([]*waiter, 0, len(h.waiters))
+	for w := range h.waiters {
+		all = append(all, w)
+	}
+	for _, set := range h.byKey {
+		for w := range set {
+			all = append(all, w)
+		}
+	}
+	h.waiters = map[*waiter]struct{}{}
+	h.byKey = map[noticeKey]map[*waiter]struct{}{}
+	return all
+}
+
 // Wait resolves with the notice, or fails when ctx ends or the handle is discarded first. It releases the registration.
 func (e *Expectation) Wait(ctx context.Context) (abi.Notice, error) {
 	defer e.Cancel()
@@ -440,7 +500,7 @@ func (e *Expectation) Wait(ctx context.Context) (abi.Notice, error) {
 // Cancel releases the registration. It is safe after Wait.
 func (e *Expectation) Cancel() {
 	e.h.mu.Lock()
-	delete(e.h.waiters, e.w)
+	e.h.removeWaiterLocked(e.w)
 	e.h.mu.Unlock()
 }
 
@@ -465,8 +525,7 @@ func (h *Host) discard(err error) {
 		return
 	}
 	h.dead = err
-	waiters := h.waiters
-	h.waiters = map[*waiter]struct{}{}
+	waiters := h.takeWaitersLocked()
 	h.mu.Unlock()
 	h.cancel()
 	for _, stop := range h.timers {
@@ -474,7 +533,7 @@ func (h *Host) discard(err error) {
 	}
 	h.timers = map[uint32]func(){}
 	h.running = map[uint32]context.CancelFunc{}
-	for w := range waiters {
+	for _, w := range waiters {
 		select {
 		case w.fail <- err:
 		default:
@@ -739,6 +798,15 @@ func (h *Host) notify(n abi.Notice) {
 			delete(h.waiters, w)
 		}
 	}
+	if len(n.Payload) >= 4 {
+		key := noticeKey{n.Kind, binary.LittleEndian.Uint32(n.Payload)}
+		for w := range h.byKey[key] {
+			if w.test(n) {
+				hit = append(hit, w)
+				h.removeWaiterLocked(w)
+			}
+		}
+	}
 	h.mu.Unlock()
 	for _, w := range hit {
 		w.resolve <- n
@@ -905,10 +973,9 @@ func (h *Host) Close(ctx context.Context) error {
 	if h.dead == nil {
 		h.dead = ErrClosed
 	}
-	waiters := h.waiters
-	h.waiters = map[*waiter]struct{}{}
+	waiters := h.takeWaitersLocked()
 	h.mu.Unlock()
-	for w := range waiters {
+	for _, w := range waiters {
 		select {
 		case w.fail <- ErrClosed:
 		default:

@@ -4,7 +4,6 @@ package driver
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,20 +80,9 @@ func (c *Client) poisonedOr(err error) error {
 // NewClient returns a client of one host.
 func NewClient(host *sqlhost.Host) *Client { return &Client{host: host} }
 
-// noticeID is the u32 that starts an api_result or tx_result payload.
-func noticeID(n abi.Notice) (uint32, []byte, bool) {
-	if len(n.Payload) < 4 {
-		return 0, nil, false
-	}
-	return binary.LittleEndian.Uint32(n.Payload), n.Payload[4:], true
-}
-
 // request registers the wait, sends the event and waits for the answer, so no answer can arrive unseen.
 func (c *Client) request(ctx context.Context, kind abi.NoticeKind, id uint32, ev abi.Event, accept func(body []byte) bool) ([]byte, error) {
-	expect, err := c.host.Expect(func(n abi.Notice) bool {
-		got, body, ok := noticeID(n)
-		return n.Kind == kind && ok && got == id && accept(body)
-	})
+	expect, err := c.host.ExpectNotice(kind, id, accept)
 	if err != nil {
 		return nil, c.poisonedOr(err)
 	}

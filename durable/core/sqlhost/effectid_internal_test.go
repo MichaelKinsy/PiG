@@ -112,3 +112,72 @@ func TestHostDropsATimerWhenItFiresAndWhenItIsCleared(t *testing.T) {
 		t.Fatalf("armed timers after the clear = %d, want 0", got)
 	}
 }
+
+// echoNotices answers each api event with an api_result notice of the event's ID.
+type echoNotices struct{}
+
+func (echoNotices) Step(ev abi.Event) *abi.Step {
+	return &abi.Step{Status: abi.StatusOK, Notices: []abi.Notice{{Kind: abi.NoticeAPIResult, Payload: append(abi.U32Payload(ev.ID), "body"...)}}}
+}
+
+// A notice is tested against the waiters of its own kind and id, then the generic ones, not against every waiter: with 5,000
+// keyed waiters, each notice costs one test call of its own waiter, and Cancel, a resolved wait and Close leave nothing behind.
+func TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice(t *testing.T) {
+	const n = 5000
+	h := New(Options{Core: echoNotices{}, Clock: func() float64 { return 1000 }})
+	var calls [n + 2]int
+	exps := make([]*Expectation, n+2)
+	for id := 1; id <= n+1; id++ {
+		e, err := h.ExpectNotice(abi.NoticeAPIResult, uint32(id), func(body []byte) bool { calls[id]++; return string(body) == "body" })
+		if err != nil {
+			t.Fatal(err)
+		}
+		exps[id] = e
+	}
+	// A different kind with the same id never reaches an api_result waiter, and a cancelled waiter is gone.
+	exps[n+1].Cancel()
+	generic := 0
+	ge, err := h.Expect(func(abi.Notice) bool { generic++; return false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ge.Cancel()
+	const sent = 50
+	for id := 1; id <= sent; id++ {
+		if err := h.Send(t.Context(), abi.Event{Kind: abi.EventAPI, ID: uint32(id)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for id := 1; id <= sent; id++ {
+		if _, err := exps[id].Wait(t.Context()); err != nil {
+			t.Fatalf("waiter %d: %v", id, err)
+		}
+	}
+	total := 0
+	for id := 1; id <= n+1; id++ {
+		total += calls[id]
+		want := 0
+		if id <= sent {
+			want = 1
+		}
+		if calls[id] != want {
+			t.Fatalf("waiter %d tested %d times, want %d", id, calls[id], want)
+		}
+	}
+	if generic != sent {
+		t.Fatalf("the generic waiter was tested %d times, want %d", generic, sent)
+	}
+	// Close fails the keyed waiters still pending.
+	if err := h.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := exps[n].Wait(t.Context()); !errors.Is(err, ErrClosed) {
+		t.Fatalf("pending keyed waiter after Close: %v", err)
+	}
+	h.mu.Lock()
+	left := len(h.byKey) + len(h.waiters)
+	h.mu.Unlock()
+	if left != 0 {
+		t.Fatalf("%d waiters left after Close", left)
+	}
+}
