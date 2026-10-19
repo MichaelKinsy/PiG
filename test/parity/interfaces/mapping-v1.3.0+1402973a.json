@@ -32277,7 +32277,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/assistant_snapshot.go#sameToolCall"
+        "call:ai/assistant_snapshot.go#sameToolCallIdentity"
       ],
       "evidence": [
         "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
@@ -32343,7 +32343,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/assistant_snapshot.go#sameToolCall"
+        "call:ai/assistant_snapshot.go#sameToolCallIdentity"
       ],
       "evidence": [
         "test:agent/proxy_oracle_test.go#TestStreamProxyToolCallEndKeepsStreamedMembersTheWireOmits",
@@ -32365,7 +32365,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/assistant_snapshot.go#sameToolCall"
+        "call:ai/assistant_snapshot.go#sameToolCallIdentity"
       ],
       "evidence": [
         "test:ai/google_history_upstream_test.go#TestGoogleUnsignedToolCallsUpstream",
@@ -75420,7 +75420,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/assistant_snapshot.go#sameToolCall"
+        "call:ai/assistant_snapshot.go#sameToolCallIdentity"
       ],
       "evidence": [
         "test:ai/json_parse_upstream_test.go#TestParseToolCallArguments",
@@ -75486,7 +75486,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/assistant_snapshot.go#sameToolCall"
+        "call:ai/assistant_snapshot.go#sameToolCallIdentity"
       ],
       "evidence": [
         "test:agent/proxy_oracle_test.go#TestStreamProxyToolCallEndKeepsStreamedMembersTheWireOmits",
@@ -75508,7 +75508,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/assistant_snapshot.go#sameToolCall"
+        "call:ai/assistant_snapshot.go#sameToolCallIdentity"
       ],
       "evidence": [
         "test:ai/google_history_upstream_test.go#TestGoogleUnsignedToolCallsUpstream",
@@ -135065,7 +135065,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#Runner.EmitContextTracked"
+        "call:coding/extension/host/inproc/runner.go#Runner.emitContext"
       ],
       "evidence": [
         "test:coding/session_context_9789_upstream_test.go#TestUpstream9789AddedSystemAfterReplayedHead",
@@ -135130,7 +135130,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/runner.go#Runner.EmitContextTracked"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitContextWithSystem"
       ],
       "evidence": [
         "test:coding/session_context_9789_upstream_test.go#TestUpstream9789AddedSystemAfterReplayedHead",
@@ -152235,8 +152235,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/message_update_delta_test.go#TestConformance_MessageUpdateDeltas",
-        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
-        "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart"
+        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas",
+        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders"
       ]
     },
     {
@@ -152257,8 +152257,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/message_update_delta_test.go#TestConformance_MessageUpdateDeltas",
-        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
-        "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart"
+        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas",
+        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders"
       ]
     },
     {
@@ -156844,9 +156844,9 @@
       "id": "pkg:coding-agent/.#FindToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:781940df6d4b596d74dc7f9855f1c1f25d7be977c08a236a3c021b4575cb1a5d",
-      "rationale": "Derived by the interface gap detector: FindToolInput is Go coding/extension/opaque_types.go#FindToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: FindToolInput is Go coding/extension/find_tool_input.go#FindToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#FindToolInput"
+        "coding/extension/find_tool_input.go#FindToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -156854,7 +156854,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#FindToolInput"
+        "public-api:coding/extension/find_tool_input.go#FindToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
@@ -180206,7 +180206,7 @@
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
         "test:coding/session_manager_setup_test.go#TestNewSessionSetupReceivesTheNewSessionsSessionManager",
-        "test:internal/codingagent/session_persistence_0991_test.go#TestHeaderOnlySessionFileResumesAsFlushed"
+        "test:internal/codingagent/session_branch_preview_test.go#TestBranchSessionLeavesTheSourceUntouched"
       ]
     },
     {
@@ -180228,7 +180228,7 @@
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
         "test:coding/session_manager_setup_test.go#TestNewSessionSetupReceivesTheNewSessionsSessionManager",
-        "test:internal/codingagent/session_persistence_0991_test.go#TestHeaderOnlySessionFileResumesAsFlushed"
+        "test:internal/codingagent/session_branch_preview_test.go#TestBranchSessionLeavesTheSourceUntouched"
       ]
     },
     {
@@ -180719,8 +180719,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
-        "test:internal/codingagent/interactive_cache_miss_entries_test.go#TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder"
+        "test:test/extension-conformance/session_branch_append_test.go#TestSessionBranchReadsFollowAppendsAndLeafMovesAcrossSDKs",
+        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges"
       ]
     },
     {
@@ -180741,8 +180741,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/session_file_bytes_oracle_test.go#TestSessionFileBytesMatchPi",
-        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
-        "test:internal/codingagent/interactive_cache_miss_entries_test.go#TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder"
+        "test:test/extension-conformance/session_branch_append_test.go#TestSessionBranchReadsFollowAppendsAndLeafMovesAcrossSDKs",
+        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges"
       ]
     },
     {
@@ -196162,10 +196162,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitToolExecutionUpdate"
+        "call:coding/extension/host/subprocess/tool_update_delta.go#sparseToolUpdate"
       ],
       "evidence": [
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
+        "test:coding/extension/host/subprocess/tool_update_delta_test.go#TestToolUpdateDeltaEqualsTheWholePayload"
       ]
     },
     {
@@ -200821,7 +200822,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#appendAssistant"
+        "call:durable/entries.go#TaskAssistantToolCall"
       ],
       "evidence": [
         "test:durable/core/driver/harness_failed_run_inbox_core_test.go#TestInputsQueuedBehindAFailedRun",
@@ -202480,7 +202481,7 @@
       "evidence": [
         "test:durable/harness/events_pi_oracle_test.go#TestTranslateEventsMatchPi",
         "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi",
-        "test:durable/core/driver/listener_reports_core_test.go#TestCoreReportsAFailingStateListener"
+        "test:durable/core/driver/watch_reduce_test.go#TestViewFrameCostDoesNotGrowWithEntries"
       ]
     },
     {
@@ -205052,7 +205053,7 @@
       "evidence": [
         "test:durable/examples/inbox_override_examples_test.go#TestExample20Inbox",
         "test:durable/harness/harness_input_entries_test.go#TestInputEntries",
-        "test:durable/harness/harness_inbox_test.go#TestInbox"
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode"
       ]
     },
     {
@@ -205073,8 +205074,8 @@
       ],
       "evidence": [
         "test:durable/examples/inbox_override_examples_test.go#TestExample20Inbox",
-        "test:durable/harness/harness_inbox_test.go#TestInbox",
-        "test:durable/harness/harness_input_entries_test.go#TestDataOnlyWrites"
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode",
+        "test:durable/harness/harness_inbox_test.go#TestInbox"
       ]
     },
     {
@@ -205157,7 +205158,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codecs.go#DocumentContent.UnmarshalJSON"
+        "call:durable/checkpoint_decode.go#checkDecodes"
       ],
       "evidence": [
         "test:durable/doc_token_definition_upstream_test.go#TestDocTokensCarryTheirDefinitionAndValidateTheVersion",
@@ -206400,9 +206401,9 @@
         "call:durable/harness/harness.go#harnessImpl.conversationCreated"
       ],
       "evidence": [
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode",
         "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompaction",
-        "test:durable/harness/harness_conversations_test.go#TestHarnessAgent"
+        "test:durable/harness/harness_compaction_test.go#TestManualCompaction"
       ]
     },
     {
@@ -206422,9 +206423,9 @@
         "call:durable/harness/provider.go#ensureProviderSessionId"
       ],
       "evidence": [
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode",
         "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompaction",
-        "test:durable/harness/harness_conversations_test.go#TestHarnessAgent"
+        "test:durable/harness/harness_compaction_test.go#TestManualCompaction"
       ]
     },
     {
@@ -209904,9 +209905,9 @@
         "call:durable/harness/harness.go#harnessImpl.TaskGraph"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks",
-        "test:durable/core/driver/harness_task_graph_core_test.go#TestCoreTaskGraphBuildsFromCommittedTasksShowsSurvivorsPendingAfterReopenAndMarksAborts",
-        "test:durable/core/driver/harness_task_graph_core_test.go#TestCoreTaskGraphListsOwnedConversationsInIDOrder"
+        "test:durable/core/driver/watch_reduce_test.go#TestGraphFrameCostsOneMapCopy",
+        "test:durable/core/driver/watch_reduce_test.go#TestTaskGraphReducerMatchesFullConversion",
+        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
       ]
     },
     {
@@ -210968,7 +210969,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/entries.go#TaskEntry"
+        "call:durable/entries.go#TaskAssistantToolCall"
       ],
       "evidence": [
         "test:durable/core/driver/harness_lifecycle_core_test.go#TestCoreHarnessCloseJoinsATaskHandlerThatIgnoresItsSignal",
