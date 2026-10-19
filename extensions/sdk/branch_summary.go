@@ -3,6 +3,7 @@ package sdk
 import (
 	"errors"
 	"math"
+	"slices"
 )
 
 // FileOperations is Pi's FileOperations (core/compaction/utils.ts): the files a branch's tool calls read, wrote and edited. Each list is a JavaScript Set in
@@ -61,8 +62,8 @@ func CollectEntriesForBranchSummary(session SessionReader, oldLeafID *string, ta
 		return CollectEntriesResult{}, err
 	}
 	var commonAncestorID *string
-	for i := len(targetPath) - 1; i >= 0; i-- {
-		if id, ok := targetPath[i]["id"].(string); ok && oldPath[id] {
+	for _, t := range slices.Backward(targetPath) {
+		if id, ok := t["id"].(string); ok && oldPath[id] {
 			commonAncestorID = &id
 			break
 		}
@@ -114,8 +115,8 @@ func prepareBranchEntries(entries []map[string]any, tokenBudget int, standIns ma
 			}
 		}
 	}
-	for i := len(entries) - 1; i >= 0; i-- {
-		entry := entries[i]
+	for _, entry := range slices.Backward(entries) {
+
 		message, err := messageFromEntry(entry)
 		if err != nil {
 			return BranchPreparation{}, err

@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"encoding/json"
+	"slices"
 	"sync"
 	"sync/atomic"
 )
@@ -231,8 +232,8 @@ func (m *sessionMirror) extendBranchLocked() bool {
 		fresh = append(fresh, m.entries[meta.pos])
 		current = meta.parentID
 	}
-	for i := len(fresh) - 1; i >= 0; i-- {
-		m.branchCache = append(m.branchCache, fresh[i])
+	for _, f := range slices.Backward(fresh) {
+		m.branchCache = append(m.branchCache, f)
 	}
 	if len(fresh) > 0 {
 		m.branchTail = m.leafID

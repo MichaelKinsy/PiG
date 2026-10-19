@@ -1486,9 +1486,7 @@ func (r ModelRegistry) stream(model, request, options map[string]any, simple boo
 	r.context.ext.modelStreams[streamID] = stream
 	r.context.ext.modelStreamsMu.Unlock()
 	merged := make(map[string]any, len(request)+len(options))
-	for key, value := range request {
-		merged[key] = value
-	}
+	maps.Copy(merged, request)
 	callbacks := takeModelStreamCallbacks(options, model)
 	for key, value := range options {
 		if !modelStreamCallbackOption(key) {
@@ -2245,18 +2243,14 @@ func (c Context) NewSession(opts map[string]any) (CancelledResult, error) {
 // Fork creates a new branch from an entry. opts may hold "position" and a "withSession" WithSessionFunc.
 func (c Context) Fork(entryID string, opts map[string]any) (CancelledResult, error) {
 	args := map[string]any{"entryId": entryID}
-	for k, v := range opts {
-		args[k] = v
-	}
+	maps.Copy(args, opts)
 	return c.callReplacement("fork", args)
 }
 
 // NavigateTree moves to a different point in the session tree.
 func (c Context) NavigateTree(targetID string, opts map[string]any) (CancelledResult, error) {
 	args := map[string]any{"targetId": targetID}
-	for k, v := range opts {
-		args[k] = v
-	}
+	maps.Copy(args, opts)
 	result, err := c.callHost("navigateTree", args)
 	if err := callResultError(result, err); err != nil {
 		return CancelledResult{}, err
@@ -2267,9 +2261,7 @@ func (c Context) NavigateTree(targetID string, opts map[string]any) (CancelledRe
 // SwitchSession switches to a different session file. opts may hold a "withSession" WithSessionFunc.
 func (c Context) SwitchSession(sessionPath string, opts map[string]any) (CancelledResult, error) {
 	args := map[string]any{"sessionPath": sessionPath}
-	for k, v := range opts {
-		args[k] = v
-	}
+	maps.Copy(args, opts)
 	return c.callReplacement("switchSession", args)
 }
 

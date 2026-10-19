@@ -1,5 +1,7 @@
 package sdk
 
+import "slices"
+
 import "math"
 
 // Compaction usage helpers, mirroring Pi's exports of core/compaction/compaction.ts (CompactionSettings, DEFAULT_COMPACTION_SETTINGS,
@@ -35,8 +37,8 @@ func ShouldCompact(contextTokens, contextWindow int, settings CompactionSettings
 // the last assistant message that did not abort or fail and whose usage is not all zero, or nil. As in JavaScript's arithmetic, a null token count is 0 and
 // a missing or non-numeric one is NaN, so it never makes a usage valid.
 func GetLastAssistantUsage(entries []map[string]any) *UsageInfo {
-	for i := len(entries) - 1; i >= 0; i-- {
-		entry := entries[i]
+	for _, entry := range slices.Backward(entries) {
+
 		if kind, _ := entry["type"].(string); kind != "message" {
 			continue
 		}

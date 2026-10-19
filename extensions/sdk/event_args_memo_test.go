@@ -22,7 +22,7 @@ func TestEventArgsMemoGivesTheValueJSONUnmarshalGives(t *testing.T) {
 		var want map[string]any
 		_ = json.Unmarshal([]byte(args), &want)
 		m := &eventArgsMemo{}
-		for call := 0; call < 3; call++ {
+		for call := range 3 {
 			if got := decodeReleased(m, []byte(args)); !reflect.DeepEqual(got, want) {
 				t.Fatalf("args %s call %d: got %#v, want %#v", args, call, got, want)
 			}
@@ -81,7 +81,7 @@ func TestEventArgsMemoRepeatIsCheaperThanADecode(t *testing.T) {
 
 func repeatEntry(n int) string {
 	out := make([]byte, 0, n*96)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if i > 0 {
 			out = append(out, ',')
 		}

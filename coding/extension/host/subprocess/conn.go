@@ -520,7 +520,7 @@ func (c *Conn) sendEncoded(data encodedEnvelope) error {
 
 // checkSendState rejects a send on a connection that is closing or closed. answer marks a call result, the one frame a retiring connection still sends: Retire leaves the peer running until it closes, and a call it made before it read the shutdown frame, or that its teardown makes, waits for a result only this connection can carry. A peer that blocks on the result, as a Node runtime does in a synchronous host call, cannot read the shutdown frame until it arrives, so refusing it leaves the peer waiting for the result and the host waiting for the peer to close.
 func (c *Conn) checkSendState(answer bool) error {
-	if c.closed.Load() || (c.closing.Load() && !(answer && c.retiring.Load())) {
+	if c.closed.Load() || (c.closing.Load() && (!answer || !c.retiring.Load())) {
 		// A caller that keeps sending after the connection failed (for example
 		// a retry loop racing the writer's queue drain: a Send already queued
 		// when the connection fails can still succeed once the writer starts

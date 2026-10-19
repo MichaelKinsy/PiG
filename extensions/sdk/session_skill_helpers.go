@@ -1,5 +1,7 @@
 package sdk
 
+import "slices"
+
 import "strings"
 
 // Pi library helpers over session entries and skills: CURRENT_SESSION_VERSION (core/session-manager.ts:41), VIRTUAL_MODEL_STATE_ENTRY (core/virtual-models.ts:32),
@@ -14,9 +16,9 @@ const (
 
 // GetLatestCompactionEntry is Pi's getLatestCompactionEntry: the last "compaction" entry of the session entries, or nil.
 func GetLatestCompactionEntry(entries []map[string]any) map[string]any {
-	for i := len(entries) - 1; i >= 0; i-- {
-		if kind, _ := entries[i]["type"].(string); kind == "compaction" {
-			return entries[i]
+	for _, entrie := range slices.Backward(entries) {
+		if kind, _ := entrie["type"].(string); kind == "compaction" {
+			return entrie
 		}
 	}
 	return nil

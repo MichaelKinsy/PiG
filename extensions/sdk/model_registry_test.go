@@ -33,8 +33,7 @@ func TestModelEventStreamResultDoesNotDependOnAbandonedIterator(t *testing.T) {
 	stream.push(map[string]any{"type": "start"})
 	terminal := map[string]any{"stopReason": "stop"}
 	stream.push(map[string]any{"type": "done", "message": terminal})
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	_ = stream.Events(ctx)
 	time.Sleep(20 * time.Millisecond)
 	result := make(chan map[string]any, 1)
@@ -68,7 +67,7 @@ func TestModelEventStreamCancellationLeavesUnassignedEventForAnotherConsumer(t *
 
 func TestModelEventStreamCompetingConsumersShareFIFOWithoutRetention(t *testing.T) {
 	stream := newModelEventStream()
-	for sequence := 0; sequence < 1000; sequence++ {
+	for sequence := range 1000 {
 		stream.push(map[string]any{"type": "text_delta", "sequence": sequence})
 	}
 	stream.push(map[string]any{"type": "done", "message": map[string]any{"stopReason": "stop"}})
@@ -76,9 +75,7 @@ func TestModelEventStreamCompetingConsumersShareFIFOWithoutRetention(t *testing.
 	seen := map[int]int{}
 	var wait sync.WaitGroup
 	for range 2 {
-		wait.Add(1)
-		go func() {
-			defer wait.Done()
+		wait.Go(func() {
 			for _, event := range collectSDKModelEvents(stream.Events(context.Background())) {
 				if sequence, ok := event["sequence"].(int); ok {
 					mu.Lock()
@@ -86,10 +83,10 @@ func TestModelEventStreamCompetingConsumersShareFIFOWithoutRetention(t *testing.
 					mu.Unlock()
 				}
 			}
-		}()
+		})
 	}
 	wait.Wait()
-	for sequence := 0; sequence < 1000; sequence++ {
+	for sequence := range 1000 {
 		if seen[sequence] != 1 {
 			t.Fatalf("sequence %d deliveries = %d", sequence, seen[sequence])
 		}

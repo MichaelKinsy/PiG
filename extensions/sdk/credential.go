@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"maps"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -55,9 +56,7 @@ func (c *Credential) Clone() *Credential {
 		return &Credential{}
 	}
 	clone := &Credential{object: OrderedObject{keys: slices.Clone(c.object.keys), values: make(map[string]any, len(c.object.values))}}
-	for key, value := range c.object.values {
-		clone.object.values[key] = value
-	}
+	maps.Copy(clone.object.values, c.object.values)
 	return clone
 }
 

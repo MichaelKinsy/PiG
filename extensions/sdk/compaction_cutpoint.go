@@ -3,6 +3,10 @@ package sdk
 // Pi's findCutPoint and findTurnStartIndex (core/compaction/compaction.ts) over the session entries an extension gets (for example from
 // [SessionManager.GetEntries]), each a decoded JSON object with a "type".
 
+import "maps"
+
+import "slices"
+
 // CutPointResult is Pi's CutPointResult.
 type CutPointResult struct {
 	// FirstKeptEntryIndex is the index of the first entry to keep.
@@ -60,9 +64,7 @@ func sessionEntryToContextMessages(entry map[string]any) []map[string]any {
 
 func withContent(message map[string]any, content any) map[string]any {
 	copied := make(map[string]any, len(message))
-	for key, value := range message {
-		copied[key] = value
-	}
+	maps.Copy(copied, message)
 	copied["content"] = content
 	return copied
 }
@@ -99,12 +101,7 @@ func isTurnStartEntry(entry map[string]any) bool {
 	if entryType(entry) == "compaction" {
 		return false
 	}
-	for _, message := range sessionEntryToContextMessages(entry) {
-		if isTurnStartMessage(message) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(sessionEntryToContextMessages(entry), isTurnStartMessage)
 }
 
 // findValidCutPoints lists the indices of context-visible user-like or assistant messages: a tool result is never a cut point because it must follow its call.
@@ -115,11 +112,8 @@ func findValidCutPoints(entries []map[string]any, startIndex, endIndex int) []in
 		if entryType(entry) == "compaction" {
 			continue
 		}
-		for _, message := range sessionEntryToContextMessages(entry) {
-			if isCutPointMessage(message) {
-				cutPoints = append(cutPoints, i)
-				break
-			}
+		if slices.ContainsFunc(sessionEntryToContextMessages(entry), isCutPointMessage) {
+			cutPoints = append(cutPoints, i)
 		}
 	}
 	return cutPoints

@@ -240,8 +240,7 @@ func TestExecuteToolSignalCancelsTheNestedCall(t *testing.T) {
 // Upstream runner.ts:980 (`signal: options.signal ?? signal`): an explicit options.Signal replaces the calling tool's signal, so cancelling the calling request neither cancels the nested call nor ends executeTool; the call waits for the nested tool's outcome. The call is therefore not tied to the calling request on the wire.
 func TestExecuteToolExplicitSignalReplacesTheCallingRequest(t *testing.T) {
 	ext := New("orchestration")
-	signal, cancelSignal := context.WithCancel(context.Background())
-	defer cancelSignal()
+	signal := t.Context()
 	type result struct {
 		outcome AgentToolCallOutcome
 		err     error
