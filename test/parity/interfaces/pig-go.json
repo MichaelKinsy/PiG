@@ -261829,6 +261829,17 @@
       "shapeHash": "sha256:2334ba920b3abfa75a5c93fa9d0f3c8d913395a4576f2aa45f64b129c97320df"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newTimeoutTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "newTimeoutTimer",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(timeout time.Duration) (\u003c-chan time.Time, func())"
+      },
+      "shapeHash": "sha256:6e677cb65fae642219c3ded23944850a8b2290419dc2787424f7631200a978c8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newline",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "newline",
@@ -262817,6 +262828,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookTimeoutTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "testHookTimeoutTimer",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(timeout time.Duration) (\u003c-chan time.Time, func())"
+      },
+      "shapeHash": "sha256:6e677cb65fae642219c3ded23944850a8b2290419dc2787424f7631200a978c8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#toWireTruncation",
