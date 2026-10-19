@@ -423,8 +423,11 @@ func TestDurableCodeMode(t *testing.T) {
 		if hold == nil {
 			t.Fatal("no nested hold task")
 		}
-		if runs := f.holds.runs.Load(); runs != 1 {
-			t.Fatalf("hold ran %d times, want 1", runs)
+		// Pi: hold ran once. D184 allows 0 here, and only here: the script can end and abort hold before its tool started when
+		// hold's goroutine stalls between two steps of its task while echo's runs through (0.15% of runs at 8 CPUs, 0.8% at 3,
+		// GOMAXPROCS 2, 6 processes). The task is terminal aborted either way, which the next assertion checks.
+		if runs := f.holds.runs.Load(); runs != 0 && runs != 1 {
+			t.Fatalf("hold ran %d times, want 0 or 1 (D184)", runs)
 		}
 		if hold.State.Status != durable.TaskTerminal || hold.State.Outcome == nil || hold.State.Outcome.Status != durable.OutcomeAborted {
 			t.Fatalf("hold state = %+v, want terminal aborted", hold.State)

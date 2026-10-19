@@ -867,6 +867,7 @@ func (c *call) onCall(made cm.HostCall) {
 	}
 	c.afterGate(func() {
 		slot := c.reserveModelSlot(hostCall)
+		// pig divergence (D184): the call's goroutine has entered before the next event, but a stall of it between two steps of its task can still let the script end and abort it before its tool started; Pi's one thread always starts it first.
 		c.spawnEntered(func() {
 			done, err := c.callTool(hostCall, slot)
 			c.post(func() {
@@ -1073,6 +1074,7 @@ func (c *call) launch(hostCall cm.HostCall) {
 		return
 	}
 	slot := c.reserveModelSlot(hostCall)
+	// pig divergence (D184): the call's goroutine has entered before the next call is launched, but a stall of it between two steps of its task can still let the script end and abort it before its tool started; Pi's one thread always starts it first.
 	c.spawnEntered(func() {
 		var outcome cm.Outcome
 		var recorded *journalGlobal
