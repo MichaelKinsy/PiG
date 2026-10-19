@@ -69,4 +69,11 @@ func TestSessionExtensionHostIsItsBuildsHostWithProcessWideControls(t *testing.T
 	// HoldRetirements keeps a retired host's Node process, and the cell usage lease it holds, until TerminateProcesses, so a path
 	// that holds must end in it; Windows cannot remove a held lock file, and TempDir cleanup failed on it.
 	factory.TerminateProcesses()
+	// TerminateProcesses only kills, and the held release skipped the host's Shutdown, which reaps the process and releases its
+	// cell usage lease. Windows keeps the lock file open until the killed process is gone, so TempDir cleanup raced it; the
+	// test reaps the replacement build's host itself. The startup build's release ran before the hold.
+	t.Cleanup(func() {
+		rebuilt.Host.Shutdown("test end")
+		rebuilt.Services.Close()
+	})
 }
