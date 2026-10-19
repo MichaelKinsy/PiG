@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // RecordedTelemetryEvent is a detached span event snapshot.
