@@ -300,7 +300,20 @@ func subagentExtension() *durable.Extension {
 
 // 22-subagent-foreground.ts: the parent delegates, the child answers, and the parent reports. A UI finds the child
 // through the tool's running details and shows its events under the call.
+//
+// The tool does not wait for the UI's callback, which runs on a goroutine of its own after the commit that published the
+// details, so the UI attaches to the child at a point the child's turn does not wait for: before its submission, during
+// its turn, or after it answered. Whichever it is, the UI shows the answer once: from the snapshot it attached with if
+// the answer was already committed, from the event that follows otherwise. The second run holds the attachment until
+// the parent settled, so the child has answered by then on every schedule and only the snapshot can show the answer.
+//
+// mutation-checked: a UI that shows nothing from AgentEventStream.Snapshot fails the second run
 func TestExample22SubagentForeground(t *testing.T) {
+	t.Run("attached as the details arrive", func(t *testing.T) { subagentForeground(t, false) })
+	t.Run("attached after the parent settled", func(t *testing.T) { subagentForeground(t, true) })
+}
+
+func subagentForeground(t *testing.T, attachAfterSettled bool) {
 	registry := harness.CreateRegistry()
 	installed(t, registry, subagentExtension())
 	opened, err := harness.OpenHarness(background, storage.NewMemoryStorage(), harness.HarnessOptions{Models: fauxModels(
@@ -318,13 +331,28 @@ func TestExample22SubagentForeground(t *testing.T) {
 	lines := map[durable.ConversationId][]string{}
 	attached := map[durable.ConversationId]bool{}
 	var streams []*harness.AgentEventStream
+	settled := make(chan struct{})
+	settle := sync.OnceFunc(func() { close(settled) })
+	defer settle()
 	var attach func(id durable.ConversationId)
 	attach = func(id durable.ConversationId) {
 		mu.Lock()
 		attached[id] = true
 		mu.Unlock()
+		if attachAfterSettled && id != root.Id() {
+			<-settled
+		}
 		stream := must(harness.WatchEvents(background, opened, id))
+		// The snapshot is the conversation as of the attachment and the events that follow carry only what it lacks, so
+		// what the conversation already holds is shown from the snapshot before the stream starts.
 		mu.Lock()
+		for _, entry := range stream.Snapshot.Entries {
+			if entry.Kind == "pi.assistant" {
+				if text := assistantText(entry.Model[0].(ai.AssistantMessage)); text != "" {
+					lines[id] = append(lines[id], "assistant: "+text)
+				}
+			}
+		}
 		streams = append(streams, stream)
 		mu.Unlock()
 		stream.Start(func(_ context.Context, events []harness.AgentEvent) error {
@@ -368,6 +396,7 @@ func TestExample22SubagentForeground(t *testing.T) {
 	if err := opened.WaitForIdle(background); err != nil {
 		t.Fatal(err)
 	}
+	settle()
 	// Event callbacks run after their commit, so the last ones are awaited before the streams stop.
 	eventually(t, func() bool {
 		mu.Lock()
