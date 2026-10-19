@@ -5,6 +5,8 @@ package codingagent
 import (
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // A frame over unchanged history costs what the frame changes plus the children it polls, not the lines of the history: the
@@ -34,9 +36,7 @@ func TestFrameCostOverUnchangedTranscriptDoesNotGrowWithItsLines(t *testing.T) {
 			t.Run(mode+"/"+name, func(t *testing.T) {
 				short, long := frameCost(small, frame), frameCost(large, frame)
 				t.Logf("a frame costs %s over %d lines and %s over %d lines", short, children*small, long, children*large)
-				if long > 4*short+50*time.Microsecond {
-					t.Fatalf("a frame over %d lines costs %s, %.1fx the %s of one over %d lines: frame work grows with the transcript's lines", children*large, long, float64(long)/float64(short), short, children*small)
-				}
+				testenv.TimingGate(t, long > 4*short+50*time.Microsecond, "a frame over %d lines costs %s, %.1fx the %s of one over %d lines: frame work grows with the transcript's lines", children*large, long, float64(long)/float64(short), short, children*small)
 			})
 		}
 	}

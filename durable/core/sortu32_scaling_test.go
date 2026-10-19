@@ -6,6 +6,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // publishWatches and publishViews sort the open watch IDs (from a map, so in any order) on every commit. The sort is O(W log W): an
@@ -20,7 +22,6 @@ func TestSortU32CostsLogLinearInTheWatchCount(t *testing.T) {
 	if !slices.IsSorted(ids) {
 		t.Fatal("not sorted")
 	}
-	if d := time.Since(start); d > 500*time.Millisecond {
-		t.Fatalf("sorting %d watch IDs took %v: the sort is not log-linear", len(ids), d)
-	}
+	d := time.Since(start)
+	testenv.TimingGate(t, d > 500*time.Millisecond, "sorting %d watch IDs took %v: the sort is not log-linear", len(ids), d)
 }

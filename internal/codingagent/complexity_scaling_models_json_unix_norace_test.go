@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // processCPUOf is the CPU time the process uses while op runs, from the least of runs fresh operations. Other processes on a loaded host
@@ -59,7 +61,5 @@ func TestScalingModelsJSONProviderComposition(t *testing.T) {
 	largeCPU := processCPUOf(t, compose, large, 5)
 	ratio := float64(largeCPU) / float64(smallCPU)
 	t.Logf("composing %d models takes %s of CPU, %d models %s: ratio %.1f", small, smallCPU, large, largeCPU, ratio)
-	if ratio > bound {
-		t.Errorf("composing a provider's models.json definitions took %.1fx the CPU time for %dx the models: the cost per definition grows with the models before it", ratio, large/small)
-	}
+	testenv.TimingGate(t, ratio > bound, "composing a provider's models.json definitions took %.1fx the CPU time for %dx the models: the cost per definition grows with the models before it", ratio, large/small)
 }

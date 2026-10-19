@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestKeysOfManyIndexKeysAreSortedInLogLinearTime checks that an object whose keys are many array indexes, inserted in any
@@ -29,7 +31,5 @@ func TestKeysOfManyIndexKeysAreSortedInLogLinearTime(t *testing.T) {
 		}
 	}
 	// An insertion sort takes about 5 s here; a log-linear sort a few tens of milliseconds.
-	if elapsed > 2*time.Second {
-		t.Fatalf("Keys of %d shuffled index keys took %v: the sort is not log-linear", n, elapsed)
-	}
+	testenv.TimingGate(t, elapsed > 2*time.Second, "Keys of %d shuffled index keys took %v: the sort is not log-linear", n, elapsed)
 }
