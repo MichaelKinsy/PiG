@@ -5,10 +5,10 @@ package telemetry
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"maps"
 	"math"
 	"reflect"
-	"regexp"
 	"slices"
 	"strconv"
 	"sync"
@@ -82,8 +82,8 @@ const (
 )
 
 var (
-	scopePattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	spanPattern  = regexp.MustCompile(`^[1-9][0-9]*$`)
+	scopePattern = lazyregexp.New(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	spanPattern  = lazyregexp.New(`^[1-9][0-9]*$`)
 )
 
 // scopeLocked is the recorder's unique scope, created on first use so the zero value stays ready to use. It is
