@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strconv"
 	"testing"
-	"time"
 )
 
 // naiveObject is the specification of Object: a slice of members in insertion order, enumerated with the canonical array
@@ -192,29 +191,31 @@ func TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey(t *testing.T) {
 }
 
 // TestDeletingOldestFirstCostsConstantTimePerDelete checks that deleting an object's members in insertion order does
-// not renumber the rest per delete (the task graph deletes terminal tasks in creation order).
+// not renumber the rest per delete (the task graph deletes terminal tasks in creation order). It counts slot work, not
+// time: a Delete that changes the slot slices moves at most every slot it had, so the slots of the slices before each such
+// Delete bound the work. Retiring slots and squeezing them out once half are retired keeps that total within a few times
+// the member count; shifting and renumbering per delete makes it about n*n/2.
 func TestDeletingOldestFirstCostsConstantTimePerDelete(t *testing.T) {
-	run := func(n int) time.Duration {
+	for _, n := range []int{4000, 16000} {
 		o := NewObject()
 		keys := make([]string, n)
 		for i := range keys {
 			keys[i] = strconv.Itoa(i)
 			o.Set(keys[i], float64(i))
 		}
-		start := time.Now()
+		moved := 0
 		for _, k := range keys[:n-1] {
+			before := len(o.keys)
 			o.Delete(k)
+			if len(o.keys) != before {
+				moved += before
+			}
 		}
-		d := time.Since(start)
 		if o.Len() != 1 {
 			t.Fatalf("%d left", o.Len())
 		}
-		return d
-	}
-	run(1000) // warm up
-	small, large := run(4000), run(16000)
-	// Four times the deletes cost about four times as much; renumbering makes it about sixteen times.
-	if large > 8*small+5*time.Millisecond {
-		t.Fatalf("deleting 16000 oldest-first took %v against %v for 4000: per-delete cost grows with size", large, small)
+		if moved > 4*n {
+			t.Fatalf("deleting %d members oldest-first moved %d slots: per-delete cost grows with size", n, moved)
+		}
 	}
 }
