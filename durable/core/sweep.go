@@ -41,7 +41,12 @@ func (h *handler) runSessionSweeps() {
 }
 
 // publishDocCache tells the host the size of the document cache when it changed: the host's documentCacheSizes is a
-// synchronous getter (session.ts) and replicates this state.
+// synchronous getter (session.ts) and replicates this state. It runs after every event and does nothing in nearly every step:
+// out of line, so that Binaryen does not inline it through Handle into Session.dispatch, which would take dispatch from
+// under 1 KB to 2.7 KB (functionsize.test.ts keeps every hot function of the TinyGo core under its V8 whole-function-compile
+// budget; dispatch's is 2048 bytes).
+//
+//go:noinline
 func (h *handler) publishDocCache() {
 	h.publishIndexSizes()
 	if h.sess == nil {
@@ -62,7 +67,10 @@ func (h *handler) publishDocCache() {
 }
 
 // publishIndexSizes tells the host the sizes of the scheduler's ownership indexes when they changed (scheduler.ts indexSizes,
-// which the host's synchronous getter replicates).
+// which the host's synchronous getter replicates). Out of line for the reason publishDocCache is: it runs after every event
+// and inlined it adds 1.1 KB to Session.dispatch.
+//
+//go:noinline
 func (h *handler) publishIndexSizes() {
 	if h.sched == nil {
 		return
