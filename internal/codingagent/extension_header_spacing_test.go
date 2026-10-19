@@ -1,9 +1,11 @@
 package codingagent
 
 import (
+	"bytes"
 	"slices"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -21,7 +23,9 @@ func BenchmarkExtensionHeaderContainer(b *testing.B) {
 // Pi interactive-mode.ts:1008-1015,2467-2488 keeps host spacers outside the replaced header, including empty components and quiet startup.
 func TestExtensionHeaderKeepsHostSpacers(t *testing.T) {
 	for _, visible := range []bool{true, false} {
-		m := newSwitchTuiProbe(t)
+		// The layout is mounted once: a header component installed in two mounted layouts is drawn by the one that consumes its dirty flag first.
+		model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
+		m := newUnmountedSwitchTuiProbe(t, InteractiveModeOptions{CWD: t.TempDir(), Model: model, AgentDir: t.TempDir(), Settings: Settings{TuiMode: "regular"}}, &bytes.Buffer{})
 		m.opts.LoginVisible = visible
 		after := newSpecialLinesComponent(nil)
 		after.SetLines([]string{"after-header"})

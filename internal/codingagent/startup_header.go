@@ -74,21 +74,8 @@ type builtInHeaderRender struct {
 // renderBuiltInHeader renders the current startup help expansion. Verbose seeds this state only at initialization; tool toggles and header restoration subsequently select it.
 // The lines are kept until an input in builtInHeaderKey changes, as Pi's BuiltInHeader keeps its text until it is invalidated (themed-text.ts) and its Text keeps its lines per width (text.ts render); the frame loop calls this on every frame, and drawing the pig head and wrapping the hints beside it is most of a frame's allocations.
 func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
-	theme := tui.ActiveTheme()
-	var bindings *tui.TUIKeybindingsManager
-	if m.keybindings != nil {
-		bindings = m.keybindings.merged
-	}
-	m.toolMu.Lock()
-	expanded, showDetails := m.builtInHeaderExpanded, m.builtInHeaderShowDetails
-	m.toolMu.Unlock()
-	// The revision is read before the sprite, so a sprite registered in between is drawn again on the next frame.
-	spriteRevision := piglogin.Revision()
-	variant := piglogin.Active()
-	key := builtInHeaderKey{
-		width: width, theme: theme, bindings: bindings, sprite: variant.ID, spriteRevision: spriteRevision,
-		halfBlock: supportsHalfBlockMark(), expanded: expanded, showDetails: showDetails,
-	}
+	key, variant := m.builtInHeaderInputs(width)
+	bindings := key.bindings
 	if last := m.builtInHeaderLast.Load(); last != nil && last.key == key {
 		m.builtInHeaderLogo.Store(last.logo)
 		return last.lines
@@ -100,6 +87,37 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 	m.builtInHeaderLogo.Store(logo)
 	m.builtInHeaderLast.Store(&builtInHeaderRender{key: key, lines: lines, logo: logo})
 	return lines
+}
+
+// builtInHeaderInputs reads every input of the built-in header's lines at width, and the sprite variant its ID names.
+func (m *InteractiveMode) builtInHeaderInputs(width int) (builtInHeaderKey, piglogin.Variant) {
+	theme := tui.ActiveTheme()
+	var bindings *tui.TUIKeybindingsManager
+	if m.keybindings != nil {
+		bindings = m.keybindings.merged
+	}
+	m.toolMu.Lock()
+	expanded, showDetails := m.builtInHeaderExpanded, m.builtInHeaderShowDetails
+	m.toolMu.Unlock()
+	// The revision is read before the sprite, so a sprite registered in between is drawn again on the next frame.
+	spriteRevision := piglogin.Revision()
+	variant := piglogin.Active()
+	return builtInHeaderKey{
+		width: width, theme: theme, bindings: bindings, sprite: variant.ID, spriteRevision: spriteRevision,
+		halfBlock: supportsHalfBlockMark(), expanded: expanded, showDetails: showDetails,
+	}, variant
+}
+
+// builtInHeaderUnchanged reports that the built-in header would draw the lines it drew last, whatever the width: a parent
+// container draws a child again when the width changes, so only the other inputs are compared. It is the specialLinesComponent's
+// clean test, which keeps the frame's window over a long transcript unbroken between frames that change nothing.
+func (m *InteractiveMode) builtInHeaderUnchanged() bool {
+	last := m.builtInHeaderLast.Load()
+	if last == nil {
+		return false
+	}
+	key, _ := m.builtInHeaderInputs(last.key.width)
+	return last.key == key
 }
 
 // drawBuiltInHeader draws the built-in header for in with bindings and the sprite variant, and returns its lines and the logo's clickable area.

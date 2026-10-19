@@ -514,6 +514,7 @@ func TestSurfacePollsEveryIsDirtyOverride(t *testing.T) {
 		"tui.StaticText":                        true, // never dirty, embeds no invalidatable
 		"subprocess.toolRenderProxy":            true, // embeds no invalidatable
 		"subprocess.renderProxyComponent":       true, // embeds no invalidatable
+		"codingagent.specialLinesComponent":     true, // embeds no invalidatable
 	}
 	root, err := filepath.Abs("..")
 	if err != nil {

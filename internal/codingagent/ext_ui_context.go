@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -48,10 +49,44 @@ type specialLinesComponent struct {
 	// view draws the header or footer when the extension's frame carried a
 	// view (D107); linesWidth is then a Node frame's width, or 0.
 	view extension.ViewSurface
+	// unchanged, set with a built-in renderer, reports that what render draws is the same as at its last render for any width
+	// (the container re-renders a child whose width changed). An extension's renderer and view carry none: they draw from
+	// state the host cannot see, so they are dirty every frame.
+	unchanged func() bool
+	// dirty is set when content is installed and consumed by NeedsRedraw.
+	dirty atomic.Bool
 }
 
 func newSpecialLinesComponent(invalidate func()) *specialLinesComponent {
-	return &specialLinesComponent{invalidate: invalidate}
+	c := &specialLinesComponent{invalidate: invalidate}
+	c.dirty.Store(true)
+	return c
+}
+
+// IsDirty reports whether the next Render may differ from the last at the same width. Installed lines draw as installed, so
+// they are dirty until rendered once. A renderer without an unchanged probe and a view are dirty every frame; a parent
+// container that kept such a child clean would freeze an extension's header or footer.
+func (c *specialLinesComponent) IsDirty() bool {
+	return c.dirty.Load() || c.drawsLive()
+}
+
+// NeedsRedraw consumes the installed-content flag and reports whether the component must be drawn again.
+func (c *specialLinesComponent) NeedsRedraw() bool {
+	installed := c.dirty.Swap(false)
+	return c.drawsLive() || installed
+}
+
+// drawsLive reports a renderer or view whose output may have changed since it was last drawn.
+func (c *specialLinesComponent) drawsLive() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.view != nil {
+		return true
+	}
+	if c.render == nil {
+		return false
+	}
+	return c.unchanged == nil || !c.unchanged()
 }
 
 // Render returns the header/footer rows for width. A built-in or login
@@ -94,9 +129,10 @@ func (c *specialLinesComponent) SetLines(lines []string) { c.SetLinesAt(lines, 0
 // an authoritative view (width 0) or one annotating lines laid out at width.
 func (c *specialLinesComponent) SetView(view extension.ViewSurface, width int) {
 	c.mu.Lock()
-	c.render, c.mouse, c.click, c.lines = nil, nil, nil, nil
+	c.render, c.mouse, c.click, c.unchanged, c.lines = nil, nil, nil, nil, nil
 	c.view = view
 	c.linesWidth = width
+	c.dirty.Store(true)
 	c.mu.Unlock()
 	if c.invalidate != nil {
 		c.invalidate()
@@ -134,6 +170,7 @@ func (c *specialLinesComponent) SetLinesAt(lines []string, width int) {
 	c.render = nil
 	c.mouse = nil
 	c.click = nil
+	c.unchanged = nil
 	c.view = nil
 	c.linesWidth = width
 	if len(lines) == 0 {
@@ -141,6 +178,7 @@ func (c *specialLinesComponent) SetLinesAt(lines []string, width int) {
 	} else {
 		c.lines = append([]string(nil), lines...)
 	}
+	c.dirty.Store(true)
 	c.mu.Unlock()
 	if c.invalidate != nil {
 		c.invalidate()
@@ -155,18 +193,21 @@ func (c *specialLinesComponent) HasContent() bool {
 }
 
 func (c *specialLinesComponent) SetRenderer(render func(width int) []string) {
-	c.SetRendererWithMouse(render, nil, nil)
+	c.SetRendererWithMouse(render, nil, nil, nil)
 }
 
 // SetRendererWithMouse installs a renderer, the mouse handler of the component it draws, and the part of its lines that
-// takes a click (nil for none).
-func (c *specialLinesComponent) SetRendererWithMouse(render func(width int) []string, mouse func(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult, click func() (frontend.Area, bool)) {
+// takes a click (nil for none). unchanged, when not nil, reports that render would draw what it drew last at any width, so
+// the component is clean between frames that change nothing; nil keeps the renderer dirty every frame.
+func (c *specialLinesComponent) SetRendererWithMouse(render func(width int) []string, mouse func(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult, click func() (frontend.Area, bool), unchanged func() bool) {
 	c.mu.Lock()
 	c.lines = nil
 	c.view = nil
 	c.render = render
 	c.mouse = mouse
 	c.click = click
+	c.unchanged = unchanged
+	c.dirty.Store(true)
 	c.mu.Unlock()
 	if c.invalidate != nil {
 		c.invalidate()
@@ -658,7 +699,7 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 	// selection a game or another PiG wrote since startup (/reload restores the built-in header).
 	piglogin.Refresh()
 	piglogin.Active()
-	m.extHeader.SetRendererWithMouse(m.renderBuiltInHeader, m.handleBuiltInHeaderMouse, m.builtInHeaderClickArea)
+	m.extHeader.SetRendererWithMouse(m.renderBuiltInHeader, m.handleBuiltInHeaderMouse, m.builtInHeaderClickArea, m.builtInHeaderUnchanged)
 }
 
 func (u *ExtUIContext) SetTitle(title string) {
