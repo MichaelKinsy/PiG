@@ -49,7 +49,7 @@ function rig(lookups = 2) {
     tools: [defineTool({ name: "lookup", description: "Look up record n", parameters: Type.Object({ n: Type.Number() }), replay: "safe", execute: async ({ n }: { n: number }, _api: unknown, call: any) => {
       executed.push(n)
       if (hold.gate) await Promise.race([hold.gate, new Promise<void>(resolve => call?.abortSignal?.addEventListener("abort", () => resolve()))])
-      return { content: [{ type: "text", text: `record ${n}` }] }
+      return { output: [{ type: "text", text: `record ${n}` }] }
     } })],
   }))
   const model = { provider: faux.getModel().provider, modelId: faux.getModel().id }

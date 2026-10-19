@@ -32,7 +32,7 @@ const toolSpec = {
     const conversation = followUp.conversation
     followUp.conversation = undefined
     if (conversation) await als.run("follow-up", () => conversation.submit({ type: "input", content: "follow up" }, context))
-    return { content: [{ type: "text", text: "done" }] }
+    return { output: [{ type: "text", text: "done" }] }
   },
 }
 const piRegistry = () => { const r = Pi.createRegistry(); r.install(Pi.defineExtension({ name: "als", tools: [Pi.defineTool(toolSpec as any)] })); return r }
@@ -171,8 +171,8 @@ test("a compaction summary made inside another context does not lend it to the t
   assert.deepEqual(contexts(got.candidate), contexts(got.pi))
 })
 
-// RED on the Go core (dcore-history): six long turns compact twice in Pi (t,t,t,S,t,S,t,t); the candidate compacts a third time
-// before the sixth turn's model call (t,t,t,S,t,S,t,S,t). Independent of the async context: the same without the completeSimple wrapper.
+// Six long turns compact three times in Pi 1.2.0 and later (t,t,t,S,t,S,t,S,t); the oracle was npm Pi 1.0.4 (two compactions) until the
+// host's pi-* packages moved to 1.3.0. Independent of the async context: the same without the completeSimple wrapper.
 test("six long turns with example 25's compaction settings compact as often as Pi's", async () => {
   const got = await compactingRun()
   const kinds = (calls: (string | undefined)[]) => calls.map(s => s?.split(":")[0])

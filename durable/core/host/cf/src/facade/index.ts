@@ -40,8 +40,7 @@ export const ToolTask = define.ToolTask as unknown as typeof P.ToolTask
 
 export const InboxDoc = docs.InboxDoc as unknown as typeof P.InboxDoc
 export const LiveDoc = docs.LiveDoc as unknown as typeof P.LiveDoc
-// Not in the 1.0.4 declarations the facade types against: Pi 97195ec3 harness/tool.ts NestedCallDoc.
-export const NestedCallDoc = docs.NestedCallDoc
+export const NestedCallDoc = docs.NestedCallDoc as unknown as typeof P.NestedCallDoc
 export const ProviderDoc = docs.ProviderDoc as unknown as typeof P.ProviderDoc
 export const UsageDoc = docs.UsageDoc as unknown as typeof P.UsageDoc
 export const defineDoc = documents.defineDoc as typeof P.defineDoc

@@ -71,7 +71,7 @@ test("a model completion and a tool completion settle the submission; waitForNot
   r.host.sendJSON(EVENT.submit, { type: "input", content: "hello", requestId: "r1" })
   r.host.modelEvents(2, [{ type: "start" }, { type: "done", message: {} }])
   assert.deepEqual(r.seen.map(s => s.kind), [EFFECT.model_context, EFFECT.tool])
-  r.host.toolDone(r.seen[1]!.id, 0, { content: [] })
+  r.host.toolDone(r.seen[1]!.id, 0, { output: [] })
   await settled
   assert.equal(r.logRows().length, 4)
   assert.ok(r.timers.includes("clear 1") && r.timers.includes("liveness -1"))

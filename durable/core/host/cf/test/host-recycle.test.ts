@@ -122,9 +122,9 @@ test("the effects of the old handle are cancelled and their completions dropped;
   assert.deepEqual(timers, ["reset"], "the timers of the old handle are forgotten")
   assert.equal(host.inflight, 1)
   // Late completion of the old effect 1 would collide with the new effect 1: it is dropped.
-  running[0]!.host.toolDone(1, 0, { content: [] })
+  running[0]!.host.toolDone(1, 0, { output: [] })
   assert.equal(cores[1]!.ofKind(EVENT.tool_done).length, 0, "the old effect's completion never reaches the new core")
-  running[1]!.host.toolDone(1, 0, { content: [] })
+  running[1]!.host.toolDone(1, 0, { output: [] })
   assert.equal(cores[1]!.ofKind(EVENT.tool_done).length, 1, "the new effect's completion does")
 })
 
@@ -274,7 +274,7 @@ test("every completion an old effect makes after the handle was replaced is drop
     [EVENT.tool_progress, h => h.toolProgress(1, 0, 0, "x")],
     [EVENT.hook_done, h => h.hookDone(1, 0, null)],
     [EVENT.phase_done, h => h.phaseDone(1, 0, null)],
-    [EVENT.tool_done, h => h.toolDone(1, 0, { content: [] })],
+    [EVENT.tool_done, h => h.toolDone(1, 0, { output: [] })],
   ]
   for (const [kind, complete] of completions) {
     const before = cores[1]!.ofKind(kind).length

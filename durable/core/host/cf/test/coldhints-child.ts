@@ -21,7 +21,7 @@ const faux = fauxProvider({ tokenSize: { min: 1e9, max: 1e9 } })
 const models = createModels()
 models.setProvider(faux.provider)
 let calls = 0
-const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: Type.Object({ n: Type.Number() }), execute: async ({ n }: { n: number }) => ({ content: [{ type: "text", text: `record ${n}` }] }) })
+const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: Type.Object({ n: Type.Number() }), execute: async ({ n }: { n: number }) => ({ output: [{ type: "text", text: `record ${n}` }] }) })
 const registry = createRegistry()
 registry.install(defineExtension({ name: "bench", tools: [lookup] }))
 const respond = (transcript: { messages: { role: string }[] }): ReturnType<typeof fauxAssistantMessage> => {

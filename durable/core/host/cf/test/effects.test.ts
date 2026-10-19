@@ -135,7 +135,7 @@ test("tool: execute gets the invocation api; output, diagnostic and details beco
       api.diagnostic({ severity: "info", message: "m" })
       await api.details({ step: 1 }, context)
       api.output("tail", { bytes: 5, newlines: 1, endsWithNewline: true })
-      return { content: [{ type: "text", text: `n=${args.n} call=${api.callId} task=${api.taskId} conv=${api.conversationId}` }], details: { ok: true } }
+      return { output: [{ type: "text", text: `n=${args.n} call=${api.callId} task=${api.taskId} conv=${api.conversationId}` }], details: { ok: true } }
     },
   }
   const registry = registryOf([{ name: "x", tools: [tool] }])
@@ -161,7 +161,7 @@ test("tool: execute gets the invocation api; output, diagnostic and details beco
   assert.equal(dec.decode(progress[3]!.data.subarray(4 + meta)), "tail")
   const done = r.core.ofKind(EVENT.tool_done)[0]!
   assert.equal(done.payload[4], 0)
-  assert.equal(JSON.parse(dec.decode(done.payload.subarray(5))).content[0].text, "n=4 call=c1 task=11 conv=3")
+  assert.equal(JSON.parse(dec.decode(done.payload.subarray(5))).output[0].text, "n=4 call=c1 task=11 conv=3")
 })
 
 test("tool: a throw is tool_done outcome 1 with the error's name and message; an operation after the call settled rejects", async () => {
@@ -320,7 +320,7 @@ test("deferred: fetch returns the polled message, cancel acknowledges", async ()
   await until(() => r.core.ofKind(EVENT.hook_done).length === 2, "deferred results")
   assert.deepEqual(calls, ['fetch {"id":"h"}', 'cancel {"id":"h"}'])
   const [fetched, cancelled] = r.core.ofKind(EVENT.hook_done)
-  assert.equal(JSON.parse(dec.decode(fetched!.payload.subarray(5))).content[0].text, "late")
+  assert.equal(JSON.parse(dec.decode(fetched!.payload.subarray(5))).output[0].text, "late")
   assert.equal(dec.decode(cancelled!.payload.subarray(5)), "null")
 })
 
@@ -389,7 +389,7 @@ test("tool details() settles only at the progress_ack notice; a rejected ack rej
     execute: async (_a: any, api: any, context: any) => {
       const first = api.details({ n: 1 }, context).then(() => outcomes.push("first ok"), (e: Error) => outcomes.push(`first ${e.name}`))
       await first
-      return { content: [] }
+      return { output: [] }
     },
   }
   let wait = 0
@@ -411,7 +411,7 @@ test("tool details() settles only at the progress_ack notice; a rejected ack rej
 
 test("tool: the output window is offered as the core configured it, pace included", async () => {
   let seen: unknown
-  const tool = { name: "windowed", execute: async (_a: any, api: any) => { seen = api.outputWindow; return { content: [] } } }
+  const tool = { name: "windowed", execute: async (_a: any, api: any) => { seen = api.outputWindow; return { output: [] } } }
   const window = { maxBytes: 51200, maxLines: 1, minIntervalMs: 250, bytesPerSecond: 102400 }
   const r = rig(ev => ev.kind === EVENT.open ? { effects: [effect(5, EFFECT.tool, { taskId: 1, conversationId: 1, toolName: "windowed", callId: "c", arguments: {}, outputWindow: window, replay: "safe" })] } : undefined, { registry: registryOf([{ name: "x", tools: [tool] }]), models: fauxModels().models })
   r.host.send(EVENT.open)
@@ -426,12 +426,12 @@ test("tool: retainedOutput answers in the call's tick from the output pushed so 
     seen.push(api.retainedOutput())
     api.output("one\n"); api.output(new TextEncoder().encode("two\nthree\n"))
     seen.push(api.retainedOutput())
-    return { content: [] }
+    return { output: [] }
   } }
   const windowed = { name: "tailer", execute: async (_a: any, api: any) => {
     api.output("a\nb\n"); api.output("c\n", { bytes: 4, newlines: 2, endsWithNewline: true })
     seen.push(api.retainedOutput())
-    return { content: [] }
+    return { output: [] }
   } }
   const r = rig(ev => ev.kind === EVENT.open ? { effects: [
     effect(5, EFFECT.tool, { taskId: 1, conversationId: 1, toolName: "keeper", callId: "c1", arguments: {}, replay: "safe" }),
@@ -444,7 +444,7 @@ test("tool: retainedOutput answers in the call's tick from the output pushed so 
 
 test("tool: retainedOutput after the call settled throws as every other api call does", async () => {
   let late: any
-  const tool = { name: "late", execute: async (_a: any, api: any) => { late = api; return { content: [] } } }
+  const tool = { name: "late", execute: async (_a: any, api: any) => { late = api; return { output: [] } } }
   const r = rig(ev => ev.kind === EVENT.open ? { effects: [effect(5, EFFECT.tool, { taskId: 1, conversationId: 1, toolName: "late", callId: "c", arguments: {}, replay: "safe" })] } : undefined, { registry: registryOf([{ name: "x", tools: [tool] }]), models: fauxModels().models })
   r.host.send(EVENT.open)
   await until(() => r.core.ofKind(EVENT.tool_done).length === 1, "no tool_done")
@@ -453,7 +453,7 @@ test("tool: retainedOutput after the call settled throws as every other api call
 
 test("tool: api.commit begins with the call's invocation and returns the callback's value without making it the task's next state", async () => {
   let returned: unknown
-  const tool = { name: "writer", execute: async (_a: any, api: any, context: any) => { returned = await api.commit(async () => ({ entry: 7 }), context); return { content: [] } } }
+  const tool = { name: "writer", execute: async (_a: any, api: any, context: any) => { returned = await api.commit(async () => ({ entry: 7 }), context); return { output: [] } } }
   const r = rig(ev => {
     if (ev.kind === EVENT.open) return { effects: [effect(5, EFFECT.tool, { taskId: 11, conversationId: 3, toolName: "writer", callId: "c", arguments: {}, replay: "safe" })] }
     // The call's api.commit waits for the core's answer to `end` (the commit's job releasing), as Pi's commit promise does.

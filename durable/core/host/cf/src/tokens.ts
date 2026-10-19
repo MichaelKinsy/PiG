@@ -1,6 +1,6 @@
 // The token estimates of a context read (ports packages/ai/src/utils/estimate.ts and the getSystemMessageText of utils/text.ts at the
-// contract's reference commit, durable/contract/PIN main da866ada, as history/tokens.go does: 3.5 characters per token, where release
-// 1.0.4 and the host's installed pi-ai count 4). Lengths are JavaScript string lengths.
+// contract's reference commit, durable/contract/PIN main da866ada, as history/tokens.go does: 3.5 characters per token, as release
+// 1.3.0 and the host's installed pi-ai count; release 1.0.4 counted 4). Lengths are JavaScript string lengths.
 import type { Message } from "@earendil-works/pi-ai"
 
 const CHARS_PER_TOKEN = 3.5

@@ -39,7 +39,7 @@ async function harness(core: ScriptedCore, extra: Record<string, unknown> = {}) 
 }
 
 test("open sends the registry snapshot, settings and sidecar mode in one open event", async () => {
-  const tool = defineTool({ name: "read", description: "Read", parameters: { type: "object" }, replay: "safe", execute: async () => ({ content: [] }) })
+  const tool = defineTool({ name: "read", description: "Read", parameters: { type: "object" }, replay: "safe", execute: async () => ({ output: [] }) })
   const registry = createRegistry()
   registry.install(defineExtension({ name: "files", tools: [tool] }))
   const { core } = line(() => ({}))
@@ -149,8 +149,8 @@ test("a rejected submit is Pi's error: ConversationBusy", async () => {
 })
 
 test("agent() resolves the stored agent state against the live registry in the host, wraps included", async () => {
-  const keep = defineTool({ name: "keep", description: "k", parameters: {}, execute: async () => ({ content: [] }) })
-  const drop = defineTool({ name: "drop", description: "d", parameters: {}, execute: async () => ({ content: [] }) })
+  const keep = defineTool({ name: "keep", description: "k", parameters: {}, execute: async () => ({ output: [] }) })
+  const drop = defineTool({ name: "drop", description: "d", parameters: {}, execute: async () => ({ output: [] }) })
   const registry = createRegistry()
   registry.install(defineExtension({ name: "a", tools: [keep, drop] }))
   const core = new ScriptedCore(ev => ev.kind === EVENT.api && ev.body.op === "snapshot" ? { notices: [apiResult(ev.id!, { ok: { tools: { remove: ["drop"] }, thinkingLevel: "low" } })] } : undefined)
