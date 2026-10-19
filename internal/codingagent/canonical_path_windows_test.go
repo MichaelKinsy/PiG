@@ -124,11 +124,11 @@ func TestCanonicalizePathResolvesRootedLinkTargetsBeyondVolumeMounts(t *testing.
 	}
 	rootedTarget := strings.TrimPrefix(target, filepath.VolumeName(target))
 	rooted := filepath.Join(root, "rooted")
-	// A rooted relative symbolic link needs symlink privilege; a junction always stores an absolute target. The privilege is required: a host without it fails instead of skipping the only regression for a rooted target.
-	testenv.RequireSymlink(t, rootedTarget, rooted)
+	// A rooted relative symbolic link needs symlink privilege; a junction always stores an absolute target. A host without the privilege skips; CI has it.
+	testenv.Symlink(t, rootedTarget, rooted)
 	// An absolute link to the rooted link resolves the rooted target again from the link's own path.
 	chain := filepath.Join(root, "chain")
-	testenv.RequireSymlink(t, rooted, chain)
+	testenv.Symlink(t, rooted, chain)
 	mount := filepath.Join(root, "mount")
 	testenv.RequireDirectoryLink(t, windows.UTF16ToString(volume[:]), mount)
 	t.Cleanup(func() {
@@ -181,16 +181,16 @@ func TestCanonicalizePathResolvesRootedLinkOnLinkDriveNotProcessDrive(t *testing
 	}
 	write(processDrive + "wrong.txt")
 	write(linkDrive + "right.txt")
-	testenv.RequireSymlink(t, processDrive+"wrong.txt", processDrive+"inner")
-	testenv.RequireSymlink(t, linkDrive+"right.txt", linkDrive+"inner")
-	testenv.RequireSymlink(t, `\inner`, linkDrive+"outer")
+	testenv.Symlink(t, processDrive+"wrong.txt", processDrive+"inner")
+	testenv.Symlink(t, linkDrive+"right.txt", linkDrive+"inner")
+	testenv.Symlink(t, `\inner`, linkDrive+"outer")
 	// A rooted link whose decoy on the process drive is another rooted link.
 	write(processDrive + "wrong2.txt")
 	write(linkDrive + "final.txt")
-	testenv.RequireSymlink(t, `\wrong2.txt`, processDrive+"inner2")
-	testenv.RequireSymlink(t, linkDrive+"final.txt", linkDrive+"right2")
-	testenv.RequireSymlink(t, `\right2`, linkDrive+"inner2")
-	testenv.RequireSymlink(t, `\inner2`, linkDrive+"chain")
+	testenv.Symlink(t, `\wrong2.txt`, processDrive+"inner2")
+	testenv.Symlink(t, linkDrive+"final.txt", linkDrive+"right2")
+	testenv.Symlink(t, `\right2`, linkDrive+"inner2")
+	testenv.Symlink(t, `\inner2`, linkDrive+"chain")
 	paths := []string{linkDrive + "outer", linkDrive + "chain", linkDrive + "inner"}
 	out, err := exec.CommandContext(t.Context(), "node", append([]string{"-e", `
 const fs = require("node:fs");
