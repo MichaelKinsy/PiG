@@ -39,6 +39,17 @@ func ViewDocsOf(docs ViewDocs, kind string, document durable.JsonObject) ViewDoc
 	return ViewDocs{object}
 }
 
+// ViewDocsWithout returns docs without kind; docs itself is unchanged.
+func ViewDocsWithout(docs ViewDocs, kind string) ViewDocs {
+	object := delta.NewJsonObject(docs.Len())
+	for name, value := range docs.object.All() {
+		if name != kind {
+			object.Set(name, value)
+		}
+	}
+	return ViewDocs{object}
+}
+
 // Get returns the document of kind and whether it is present.
 func (docs ViewDocs) Get(kind string) (durable.JsonObject, bool) {
 	value, present := docs.object.Get(kind)

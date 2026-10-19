@@ -174,6 +174,31 @@ test("a view frame carries ops only: the host applies them to the value it holds
   assert.deepEqual(seen[2], ["publication", after, after, 0, { entries: [], tasks: [{ id: 7 }], submissions: [] }])
 })
 
+// The core publishes a graph frame as {ops} alone (core/graph.go publishGraph): serializing the whole graph per commit made a task commit cost O(live tasks).
+test("a graph frame carries ops only: the host applies them to the graph it holds", async () => {
+  const node = (id: number) => ({ id, kind: "k", conversationId: 1, background: false, abortRequested: false, state: { status: "pending", phase: "start" }, conversations: [] as number[] })
+  const first = { tasks: { "2": node(2), "4": node(4) } }
+  const core = watching(first, { frames: id => [
+    published({ watchId: id, frame: { ops: [["s", ["tasks", "6"], node(6)], ["d", ["tasks", "2"]]] } }),
+    published({ watchId: id, frame: { ops: [["s", ["tasks", "4", "conversations"], [5]], ["s", ["tasks", "4", "blocked"], "missing_task"]] } }),
+    published({ watchId: id, frame: { ops: [["d", ["tasks", "4", "blocked"]]] } }),
+  ] })
+  const h = await open(core)
+  const seen: any[] = []
+  const sink = await (h as any).watches.attach({ kind: "graph" }, context, (_value: unknown, release: () => void) => ({
+    advance: (after: unknown, ops: unknown[]) => seen.push([after, ops.length]),
+    closeSession: release,
+  }))
+  assert.ok(sink)
+  pump(h)
+  await tick()
+  assert.deepEqual(seen, [
+    [{ tasks: { "4": node(4), "6": node(6) } }, 2],
+    [{ tasks: { "4": { ...node(4), conversations: [5], blocked: "missing_task" }, "6": node(6) } }, 2],
+    [{ tasks: { "4": { ...node(4), conversations: [5] }, "6": node(6) } }, 1],
+  ])
+})
+
 // view.ts advance: one mount per conversation hands every observer the new revision, then every observer the publication. A view state
 // and an event stream of one conversation were two mounts (two core watches) and heard a commit in core notice order instead (the
 // differential rows F-*, seed 2).

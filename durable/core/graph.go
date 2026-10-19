@@ -22,18 +22,21 @@ type taskGraph struct {
 // buildTaskGraph is TaskGraphView.#build: every live task of the Session, with the conversations each owns in ID order.
 func (h *handler) buildTaskGraph() *jv.Object {
 	tasks := jv.NewObject()
+	// One pass over the conversations (ascending ID) gives each owner task its conversations in ID order.
+	owned := map[float64][]any{}
+	for ci, c := range h.mir.convs.ids {
+		if owner := objOf(h.mir.convs.recs[ci], "owner"); owner != nil {
+			if task := numOf(owner, "taskId"); task != 0 {
+				owned[task] = append(owned[task], float64(c))
+			}
+		}
+	}
 	for i, id := range h.mir.tasks.ids {
 		if h.mir.tasks.heads[i].status == "terminal" {
 			continue
 		}
 		record := h.mir.task(id)
-		var conversations []any
-		for ci, c := range h.mir.convs.ids {
-			if owner := objOf(h.mir.convs.recs[ci], "owner"); owner != nil && numOf(owner, "taskId") == float64(id) {
-				conversations = append(conversations, float64(c))
-			}
-		}
-		tasks.Set(strconv.FormatInt(int64(id), 10), graphNode(record, conversations, h.blockedOf(record)))
+		tasks.Set(strconv.FormatInt(int64(id), 10), graphNode(record, owned[float64(id)], h.blockedOf(record)))
 	}
 	graph := jv.NewObject()
 	graph.Set("tasks", tasks)
@@ -155,7 +158,8 @@ func (h *handler) graphWatchClose(id uint32) {
 }
 
 // advanceTaskGraph is task-graph.ts advance: the operations one publication makes on the graph, applied to the mount
-// and sent to every graph watch as a published frame {watchId, frame: {value, ops}}.
+// and sent to every graph watch as a published frame {watchId, frame: {ops}}: the host applies the ops to the graph it holds,
+// because serializing the whole graph for every commit would make a commit cost O(live tasks).
 //
 // Not inlined: it does work only for an open graph watch, and an inlined copy would be compiled by V8 with its hot caller, publishWatches.
 //
@@ -233,9 +237,7 @@ func (h *handler) publishGraph(ops []any) {
 	for _, id := range h.graph.watches {
 		out := append(make([]byte, 0, 256), `{"watchId":`...)
 		out = jv.Append(out, float64(id))
-		out = append(out, `,"frame":{"value":`...)
-		out = jv.Append(out, h.graph.value)
-		out = append(out, `,"ops":`...)
+		out = append(out, `,"frame":{"ops":`...)
 		out = jv.Append(out, ops)
 		h.b.Notice(abi.NoticePublished, append(out, '}', '}'))
 	}

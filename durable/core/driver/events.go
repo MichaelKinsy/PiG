@@ -23,7 +23,7 @@ func (s *coreSession) WatchEvents(ctx context.Context, conversationId durable.Co
 	if err != nil {
 		return nil, err
 	}
-	m, err := openWatch(ctx, s, map[string]any{"kind": "view", "conversationId": conversationId, "changes": true}, typed[harness.ConversationView])
+	m, err := openWatch(ctx, s, map[string]any{"kind": "view", "conversationId": conversationId, "changes": true}, typed[harness.ConversationView], viewReducer())
 	if err != nil {
 		return nil, err
 	}

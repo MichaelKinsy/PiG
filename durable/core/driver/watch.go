@@ -186,7 +186,10 @@ type mountSource[T any] struct {
 
 // openWatch sends watch.open for target and returns the mount, or nil when the target is absent. Cancelling ctx before the
 // core answers rejects with the cancellation and leaves no watch behind (session.ts watchDoc, view.ts attach).
-func openWatch[T any](ctx context.Context, s *coreSession, target map[string]any, convert func(any) (T, error)) (*mountSource[T], error) {
+//
+// A view or graph mount passes reduce, which makes the typed value each frame's ops produce without converting the whole value; a
+// document mount passes nil and applies each frame's ops to the generic value it holds.
+func openWatch[T any](ctx context.Context, s *coreSession, target map[string]any, convert func(any) (T, error), reduce reducer[T]) (*mountSource[T], error) {
 	release, err := s.admit()
 	if err != nil {
 		return nil, err
@@ -231,8 +234,37 @@ func openWatch[T any](ctx context.Context, s *coreSession, target map[string]any
 		closeCore()
 		return nil, err
 	}
-	held := value
 	m := &mountSource[T]{id: id, first: first, closeCore: closeCore, hub: hub}
+	if reduce != nil {
+		current := first
+		m.advance = func(f rawFrame) (T, bool) {
+			if f.value != nil {
+				value, err := delta.DecodeJson(f.value)
+				if err != nil {
+					var zero T
+					return zero, false
+				}
+				next, err := convert(value)
+				if err != nil {
+					var zero T
+					return zero, false
+				}
+				current = next
+				return next, true
+			}
+			next, ok := reduce(current, f.ops)
+			if !ok {
+				if next, ok = fullConvert(current, f.ops, convert); !ok {
+					var zero T
+					return zero, false
+				}
+			}
+			current = next
+			return next, true
+		}
+		return m, nil
+	}
+	held := value
 	m.advance = func(f rawFrame) (T, bool) {
 		if f.value != nil {
 			value, err := delta.DecodeJson(f.value)
@@ -337,12 +369,12 @@ func openDocWatch(ctx context.Context, s *coreSession, def *durable.AnyDocDefini
 		if migrated != nil {
 			target["migrated"] = migrated
 		}
-		return openWatch(ctx, s, target, jsonObject)
+		return openWatch(ctx, s, target, jsonObject, nil)
 	})
 }
 
 func (c *conversation) Watch(ctx context.Context) (harness.ConversationWatch, error) {
-	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView])
+	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView], viewReducer())
 	if err != nil || m == nil {
 		return nil, err
 	}
@@ -350,7 +382,7 @@ func (c *conversation) Watch(ctx context.Context) (harness.ConversationWatch, er
 }
 
 func (c *conversation) ViewState(ctx context.Context) (durable.AttachedReplicatedState[harness.ConversationView], error) {
-	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView])
+	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView], viewReducer())
 	if err != nil || m == nil {
 		return nil, err
 	}
@@ -359,7 +391,7 @@ func (c *conversation) ViewState(ctx context.Context) (durable.AttachedReplicate
 
 // TaskGraph is the task graph as a disposable read-only Chord state (task-graph.ts State).
 func (s *coreSession) TaskGraph(ctx context.Context) (durable.AttachedReplicatedState[harness.TaskGraph], error) {
-	m, err := openWatch(ctx, s, map[string]any{"kind": "graph"}, typed[harness.TaskGraph])
+	m, err := openWatch(ctx, s, map[string]any{"kind": "graph"}, typed[harness.TaskGraph], reduceTaskGraph)
 	if err != nil || m == nil {
 		return nil, err
 	}
@@ -368,7 +400,7 @@ func (s *coreSession) TaskGraph(ctx context.Context) (durable.AttachedReplicated
 
 // WatchTaskGraph is a serialized exact-frame watch of the task graph.
 func (s *coreSession) WatchTaskGraph(ctx context.Context) (harness.TaskGraphWatch, error) {
-	m, err := openWatch(ctx, s, map[string]any{"kind": "graph"}, typed[harness.TaskGraph])
+	m, err := openWatch(ctx, s, map[string]any{"kind": "graph"}, typed[harness.TaskGraph], reduceTaskGraph)
 	if err != nil || m == nil {
 		return nil, err
 	}

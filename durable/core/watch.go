@@ -4,6 +4,8 @@
 package core
 
 import (
+	"slices"
+
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
@@ -123,13 +125,7 @@ func (h *handler) publishWatches(pub *session.Publication) {
 	}
 }
 
-func sortU32(s []uint32) {
-	for i := 1; i < len(s); i++ {
-		for j := i; j > 0 && s[j] < s[j-1]; j-- {
-			s[j], s[j-1] = s[j-1], s[j]
-		}
-	}
-}
+func sortU32(s []uint32) { slices.Sort(s) }
 
 // dropWatch forgets a document watch and releases its pin.
 func (h *handler) dropWatch(id uint32) {

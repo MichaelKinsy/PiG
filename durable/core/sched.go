@@ -222,9 +222,6 @@ func (h *handler) report(err error, info *jv.Object) {
 	h.b.Notice(abi.NoticeReport, body)
 }
 
-// reportListener is report for a listener's failure, the default source of a report (session.ts LISTENER).
-func (h *handler) reportListener(err error) { h.report(err, jobj("type", "listener_error")) }
-
 // reportFrom reports a failure of code a task's phase called: through the task's runtime, which names the task, or
 // without a task when the invocation is not known (generation.ts runtime.report).
 func (h *handler) reportFrom(task session.ID, err error, from session.ReportFrom) {

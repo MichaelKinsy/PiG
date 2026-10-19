@@ -5,6 +5,7 @@ package core
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/docs"
@@ -17,13 +18,25 @@ import (
 )
 
 // viewWatch is one open conversation view (api watch.open, kind view): harness/view.ts ConversationViews' mount of one
-// conversation with one observer. value is the ConversationView {conversation, entries, docs}: the conversation record, the
-// active entries (the head marker, then the visible range's entries without a head) and the mounted built-in documents.
+// conversation with one observer. The view is the ConversationView {conversation, entries, docs}: the conversation record, the
+// active entries (the head marker, then the visible range's entries without a head) and the mounted built-in documents. The
+// watch does not hold it: a frame is the ops of one commit, and the host applies them to the view it holds. The watch keeps
+// only what choosing those ops reads, a slim record of each active entry.
 type viewWatch struct {
 	conv    session.ID
-	value   *jv.Object
+	entries []viewEntry
 	docs    map[string]viewDoc
 	changes bool // frames also carry the commit's entry, task and submission records of the conversation
+}
+
+// viewEntry is what the next head marker reads of an active entry: its id and whether it carries a head.
+type viewEntry struct {
+	id      float64
+	hasHead bool
+}
+
+func viewEntryOf(e *jv.Object) viewEntry {
+	return viewEntry{id: numOf(e, "id"), hasHead: e.Has("head")}
 }
 
 type viewDoc struct {
@@ -57,6 +70,7 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 		return nil, errors.New("Conversation " + itoa(int64(conv)) + " does not exist")
 	}
 	entries := []any{}
+	slim := make([]viewEntry, 0, 16)
 	view, err := h.contextView(int64(conv), 0)
 	if err != nil {
 		return nil, err
@@ -68,6 +82,7 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 			return nil, err
 		}
 		entries = append(entries, e)
+		slim = append(slim, viewEntryOf(e.(*jv.Object)))
 	}
 	docObject := jv.NewObject()
 	mounted := map[string]viewDoc{}
@@ -97,7 +112,7 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 		h.views = map[uint32]*viewWatch{}
 	}
 	changes, _ := boolOf(target, "changes")
-	h.views[uint32(numOf(req, "watchId"))] = &viewWatch{conv: conv, value: value, docs: mounted, changes: changes}
+	h.views[uint32(numOf(req, "watchId"))] = &viewWatch{conv: conv, entries: slim, docs: mounted, changes: changes}
 	answer := jv.NewObject()
 	answer.Set("value", value)
 	if want, _ := boolOf(target, "completing"); want {
@@ -188,11 +203,9 @@ func prefixed(op delta.Op, kind string) delta.Op {
 	return op
 }
 
-// advance is view.ts advance(): the ops one commit makes to the view, applied to its value.
-func (w *viewWatch) advance(pub *session.Publication) (ops []delta.Op, changes *jv.Object, err error) {
+// advance is view.ts advance(): the ops one commit makes to the view.
+func (w *viewWatch) advance(pub *session.Publication) (ops []delta.Op, changes *jv.Object) {
 	var docOps, entryOps []delta.Op
-	list, _ := w.value.Get("entries")
-	entries, _ := list.([]any)
 	var entryRecords, taskRecords, submissionRecords, nestedResults []any
 	for _, c := range pub.Changes {
 		switch c.Kind {
@@ -206,21 +219,20 @@ func (w *viewWatch) advance(pub *session.Publication) (ops []delta.Op, changes *
 				value := any(c.Record)
 				head, hasHead := c.Record.Get("head")
 				if !hasHead || head == nil {
-					entryOps = append(entryOps, delta.Op{Verb: delta.Splice, Path: delta.Path{delta.Key("entries")}, Index: len(entries), Items: []any{value}})
-					entries = append(append([]any{}, entries...), value)
+					entryOps = append(entryOps, delta.Op{Verb: delta.Splice, Path: delta.Path{delta.Key("entries")}, Index: len(w.entries), Items: []any{value}})
+					w.entries = append(w.entries, viewEntryOf(c.Record))
 					continue
 				}
 				target, _ := head.(float64)
-				kept := len(entries)
-				for i, e := range entries {
-					eo, _ := e.(*jv.Object)
-					if !eo.Has("head") && numOf(eo, "id") >= target {
+				kept := len(w.entries)
+				for i, e := range w.entries {
+					if !e.hasHead && e.id >= target {
 						kept = i
 						break
 					}
 				}
 				entryOps = append(entryOps, delta.Op{Verb: delta.Splice, Path: delta.Path{delta.Key("entries")}, Index: 0, Remove: kept, Items: []any{value}})
-				entries = append([]any{value}, entries[kept:]...)
+				w.entries = slices.Replace(w.entries, 0, kept, viewEntryOf(c.Record))
 			case session.WriteTask:
 				taskRecords = append(taskRecords, c.Record)
 			case session.WriteSubmission:
@@ -261,13 +273,6 @@ func (w *viewWatch) advance(pub *session.Publication) (ops []delta.Op, changes *
 	}
 	ops = append(ops, docOps...)
 	ops = append(ops, entryOps...)
-	if len(ops) > 0 {
-		next, err := delta.Apply(w.value, ops)
-		if err != nil {
-			return nil, nil, err
-		}
-		w.value = next.(*jv.Object)
-	}
 	if w.changes {
 		changes = jv.NewObject()
 		changes.Set("entries", orEmpty(entryRecords))
@@ -277,7 +282,7 @@ func (w *viewWatch) advance(pub *session.Publication) (ops []delta.Op, changes *
 			changes.Set("nestedResults", nestedResults)
 		}
 	}
-	return ops, changes, nil
+	return ops, changes
 }
 
 func orEmpty(list []any) []any {
@@ -305,11 +310,7 @@ func (h *handler) publishViews(pub *session.Publication) {
 	sortU32(ids)
 	for _, id := range ids {
 		w := h.views[id]
-		ops, changes, err := w.advance(pub)
-		if err != nil {
-			h.reportListener(err)
-			continue
-		}
+		ops, changes := w.advance(pub)
 		touched := len(ops) > 0 || (changes != nil && (changes.Len() > 0 && !emptyChanges(changes)))
 		if !touched {
 			continue

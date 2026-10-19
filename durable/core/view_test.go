@@ -18,11 +18,34 @@ func parsed(t *testing.T, text string) *jv.Object {
 	return v.(*jv.Object)
 }
 
-func newView(t *testing.T) *viewWatch {
-	return &viewWatch{
-		conv:  1,
-		value: parsed(t, `{"conversation":{"id":1},"entries":[{"id":3,"conversationId":1,"kind":"a"}],"docs":{"pi.live":{}}}`),
-		docs:  map[string]viewDoc{"pi.live": {id: 2, version: 1}},
+// viewHarness is a viewWatch with the value a host holds: advance applies the frame's ops to it, as the host does.
+type viewHarness struct {
+	*viewWatch
+	value *jv.Object
+}
+
+func (v *viewHarness) advance(pub *session.Publication) ([]delta.Op, *jv.Object, error) {
+	ops, changes := v.viewWatch.advance(pub)
+	if len(ops) > 0 {
+		next, err := delta.Apply(v.value, ops)
+		if err != nil {
+			return nil, nil, err
+		}
+		v.value = next.(*jv.Object)
+	}
+	return ops, changes, nil
+}
+
+func newView(t *testing.T) *viewHarness {
+	value := parsed(t, `{"conversation":{"id":1},"entries":[{"id":3,"conversationId":1,"kind":"a"}],"docs":{"pi.live":{}}}`)
+	list, _ := value.Get("entries")
+	var slim []viewEntry
+	for _, e := range list.([]any) {
+		slim = append(slim, viewEntryOf(e.(*jv.Object)))
+	}
+	return &viewHarness{
+		viewWatch: &viewWatch{conv: 1, entries: slim, docs: map[string]viewDoc{"pi.live": {id: 2, version: 1}}},
+		value:     value,
 	}
 }
 
