@@ -29753,7 +29753,7 @@
         "durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion",
         "durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries",
         "durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion",
-        "durable/core/graph_build_scaling_test.go::TestBuildTaskGraphCostGrowsLinearlyWithTasksAndConversations",
+        "durable/core/graph_build_scaling_test.go::TestBuildTaskGraphAllocationsGrowLinearly",
         "durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey",
         "durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete",
         "durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete",
