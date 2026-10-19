@@ -71,18 +71,18 @@ export class NativeCore {
     return out
   }
 
-  private send(op: number, handle: number, kind: number, now: number, payload: Uint8Array) {
-    const head = new Uint8Array(18)
+  private send(op: number, handle: number, kind: number, now: number, payload: Uint8Array, origin = 0) {
+    const head = new Uint8Array(22)
     const dv = new DataView(head.buffer)
-    dv.setUint8(0, op); dv.setUint32(1, handle, true); dv.setUint8(5, kind); dv.setFloat64(6, now, true); dv.setUint32(14, payload.length, true)
+    dv.setUint8(0, op); dv.setUint32(1, handle, true); dv.setUint8(5, kind); dv.setFloat64(6, now, true); dv.setUint32(14, origin, true); dv.setUint32(18, payload.length, true)
     this.writeAll(head)
     this.bytesCrossed += payload.length
     if (payload.length) this.writeAll(payload)
   }
 
   /** One request; answers the core's uuidv7 and read requests (type 2, ABI section 4.2 pig.read: `reader` answers it) until the op's own response arrives. */
-  call(op: number, handle: number, kind: number, now: number, payload: Uint8Array = new Uint8Array(0), reader?: (sql: number, params: Param[]) => Uint8Array): Uint8Array {
-    this.send(op, handle, kind, now, payload)
+  call(op: number, handle: number, kind: number, now: number, payload: Uint8Array = new Uint8Array(0), reader?: (sql: number, params: Param[]) => Uint8Array, origin = 0): Uint8Array {
+    this.send(op, handle, kind, now, payload, origin)
     for (;;) {
       const head = this.readExactly(5)
       const type = head[0]!
@@ -143,9 +143,9 @@ export class NativeSession {
   reader?: (sql: number, params: Param[]) => Uint8Array
   constructor(core: NativeCore, handle: number) { this.core = core; this.handle = handle }
 
-  step(kind: number, payload: Uint8Array | undefined, now: number): Step {
+  step(kind: number, payload: Uint8Array | undefined, now: number, origin = 0): Step {
     if (this.freed) throw new CoreTrap("the session handle is freed")
-    const out = this.core.call(4, this.handle, kind, now, payload ?? new Uint8Array(0), this.reader)
+    const out = this.core.call(4, this.handle, kind, now, payload ?? new Uint8Array(0), this.reader, origin)
     return decodeStep(out, 0, out.length)
   }
 

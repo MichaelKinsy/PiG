@@ -105,7 +105,8 @@ func (w *wasmCore) step(e *Entry) ([]byte, error) {
 		return nil, errors.New("the input buffer is outside linear memory")
 	}
 	w.cur, w.reads, w.uuids, w.spill, w.failure = e, 0, 0, nil, ""
-	ptr, err := w.call("step", w.handle, uint64(e.Kind), uint64(n), api.EncodeF64(e.Now))
+	// A recording carries no origins (ABI section 5.4): every event runs in none.
+	ptr, err := w.call("step", w.handle, uint64(e.Kind), uint64(n), api.EncodeF64(e.Now), 0)
 	if w.failure != "" {
 		return nil, errors.New(w.failure)
 	}

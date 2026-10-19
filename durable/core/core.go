@@ -97,6 +97,7 @@ func (s *Session) Step(ev abi.Event) *abi.Step {
 	if ev.Kind == abi.EventRows {
 		rows := ev // a copy of its own: taking &ev would move the parameter to the heap on every step
 		s.rows(&rows)
+		s.flushOrigins()
 		return s.b.Step()
 	}
 	if len(s.deferred) != 0 {
@@ -119,7 +120,43 @@ func (s *Session) Step(ev abi.Event) *abi.Step {
 			s.closed = true
 		}
 	}
+	s.flushOrigins()
 	return s.b.Step()
+}
+
+// origins is the handler's count of what holds each host async context (origin.go); a handler without one has none.
+type origins interface {
+	HoldOrigin(origin uint32)
+	ReleaseOrigin(origin uint32)
+	FlushOrigins()
+}
+
+// holdOrigin keeps origin o for an event that waits for rows.
+//
+//go:noinline
+func (s *Session) holdOrigin(o uint32) {
+	if h, ok := s.sess.(origins); ok {
+		h.HoldOrigin(o)
+	}
+}
+
+//go:noinline
+func (s *Session) releaseOrigin(o uint32) {
+	if h, ok := s.sess.(origins); ok {
+		h.ReleaseOrigin(o)
+	}
+}
+
+// flushOrigins tells the host which origins nothing holds any more, in a step that asks for no reads.
+//
+//go:noinline
+func (s *Session) flushOrigins() {
+	if len(s.deferred) != 0 {
+		return
+	}
+	if h, ok := s.sess.(origins); ok {
+		h.FlushOrigins()
+	}
 }
 
 //go:noinline
@@ -144,7 +181,11 @@ func (s *Session) rows(ev *abi.Event) {
 			return
 		}
 		s.dispatch(&queue[i])
+		s.releaseOrigin(queue[i].Origin)
 		if s.b.Step().Status != abi.StatusOK {
+			for _, rest := range queue[i+1:] {
+				s.releaseOrigin(rest.Origin)
+			}
 			return
 		}
 	}
@@ -158,10 +199,18 @@ func (s *Session) dispatch(ev *abi.Event) {
 	switch {
 	case err == nil:
 	case errors.Is(err, store.ErrPending):
-		s.deferred = append(s.deferred, detach(ev))
+		s.park(ev)
 	default:
 		s.fail(err)
 	}
+}
+
+// park keeps an event that needs rows until they arrive, and the origin it runs in.
+//
+//go:noinline
+func (s *Session) park(ev *abi.Event) {
+	s.holdOrigin(ev.Origin)
+	s.deferred = append(s.deferred, detach(ev))
 }
 
 func (s *Session) fail(err error) {
@@ -177,6 +226,8 @@ func (s *Session) fail(err error) {
 }
 
 // detach copies the parts of ev that alias the host's input buffer.
+//
+//go:noinline
 func detach(ev *abi.Event) abi.Event {
 	out := *ev
 	out.Payload = append([]byte(nil), ev.Payload...)

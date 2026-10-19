@@ -13,6 +13,9 @@ package abi
 //     that is a core bug); the host applies the commits before it runs the reads;
 //   - notices and effects keep call order and are applied by the host after every commit of the step.
 type Builder struct {
+	// Origin, when set, reports the host async context of the code that is running (ABI section 5.4): the builder stamps
+	// every notice and effect it is given with it. A core without it stamps 0.
+	Origin     func() uint32
 	step       Step
 	nextEffect uint32
 	nextRead   uint32
@@ -89,13 +92,16 @@ func (b *Builder) NoticeChunks(kind NoticeKind, c Chunks) {
 }
 
 func (b *Builder) notice(n Notice) {
+	if b.Origin != nil {
+		n.Origin = b.Origin()
+	}
 	b.step.Order = append(b.step.Order, OrderRef{Region: OrderNotice, Index: uint16(len(b.step.Notices))})
 	b.step.Notices = append(b.step.Notices, n)
 }
 
 // Effect starts an effect after the step's commits and returns its ID.
 func (b *Builder) Effect(kind EffectKind, payload []byte) uint32 {
-	return b.effect(Effect{Kind: kind, Payload: payload})
+	return b.effect(Effect{Kind: kind, Payload: payload}, true)
 }
 
 // EffectChunks starts an effect with the payload built in c, in one slice when it is one block, and returns its ID.
@@ -103,12 +109,29 @@ func (b *Builder) EffectChunks(kind EffectKind, c Chunks) uint32 {
 	if len(c) == 1 {
 		return b.Effect(kind, c[0])
 	}
-	return b.effect(Effect{Kind: kind, Chunks: c})
+	return b.effect(Effect{Kind: kind, Chunks: c}, true)
 }
 
-func (b *Builder) effect(e Effect) uint32 {
+// EffectBare is Effect for an effect the host starts in no context: a hops chain runs no host code, and the core keeps the origin of
+// the work parked on it.
+func (b *Builder) EffectBare(kind EffectKind, payload []byte) uint32 {
+	return b.effect(Effect{Kind: kind, Payload: payload}, false)
+}
+
+// EffectChunksBare is EffectChunks for an effect the host starts in no context (EffectBare).
+func (b *Builder) EffectChunksBare(kind EffectKind, c Chunks) uint32 {
+	if len(c) == 1 {
+		return b.EffectBare(kind, c[0])
+	}
+	return b.effect(Effect{Kind: kind, Chunks: c}, false)
+}
+
+func (b *Builder) effect(e Effect, stamp bool) uint32 {
 	if len(b.step.Reads) != 0 {
 		panic("abi: effect in a read step")
+	}
+	if stamp && b.Origin != nil {
+		e.Origin = b.Origin()
 	}
 	e.ID = b.nextEffect
 	b.nextEffect++

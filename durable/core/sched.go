@@ -63,7 +63,9 @@ func (h *handler) startScheduler() error {
 			}
 			return h.holdFor(tailHops, release)
 		},
-		Begin: func(start func()) bool { return h.holdFor(1, start) },
+		Begin:   func(start func()) bool { return h.holdFor(1, start) },
+		Retain:  h.holdOrigin,
+		Release: h.dropOrigin,
 	}
 	h.runtimes = map[session.ID]*session.Runtime{}
 	h.loadRegistry(objOf(h.open, "registry"))
@@ -181,6 +183,7 @@ func (h *handler) pump() error {
 	if h.loop == nil {
 		return nil
 	}
+	h.unpin()
 	h.loop.Kick()
 	err := h.loop.Run()
 	for err != nil {
@@ -189,6 +192,8 @@ func (h *handler) pump() error {
 			return &Rejection{"Error", "a scheduler job needs a host read: " + err.Error()}
 		}
 		if !h.resumeWait {
+			// The microtasks queued behind the parked job wait for the host's answer across steps.
+			h.pin()
 			return nil
 		}
 		h.resumeWait = false

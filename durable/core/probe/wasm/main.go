@@ -59,7 +59,7 @@ func inReserve(n uint32) unsafe.Pointer {
 // step runs one event and returns the address of its answer: the list of the parts the step is the concatenation of, here always the one part that is the step (ABI section 4.1 and the layout in section 5).
 //
 //go:wasmexport step
-func step(h, kind, n uint32, now float64) unsafe.Pointer {
+func step(h, kind, n uint32, now float64, origin uint32) unsafe.Pointer {
 	s := sessions[h]
 	if s == nil {
 		return answer(&abi.Step{Status: abi.StatusFatal, Err: []byte(`{"name":"UnknownHandle","message":"no such session"}`)})
@@ -68,6 +68,7 @@ func step(h, kind, n uint32, now float64) unsafe.Pointer {
 	if err != nil {
 		return answer(&abi.Step{Status: abi.StatusRejected, Err: []byte(`{"name":"InvalidEvent","message":"` + err.Error() + `"}`)})
 	}
+	ev.Origin = origin
 	return answer(s.Step(ev))
 }
 

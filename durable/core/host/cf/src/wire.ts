@@ -6,8 +6,9 @@ export type Param = null | number | string | Uint8Array
 export type Stmt = { sql: number; params: Param[] }
 export type Commit = { seq: number; stmts: Stmt[] }
 export type Read = { id: number; sql: number; params: Param[] }
-export type Notice = { kind: number; payload: Uint8Array }
-export type Effect = { id: number; kind: number; payload: Uint8Array }
+/** `origin` tags the async context the host runs a notice's listeners or an effect's handler in (ABI section 5.4); 0: none. */
+export type Notice = { kind: number; origin: number; payload: Uint8Array }
+export type Effect = { id: number; kind: number; origin: number; payload: Uint8Array }
 export type Step = {
   status: number
   commits: Commit[]
@@ -96,9 +97,9 @@ export function decodeStep(mem: Uint8Array, at: number, length: number): Step {
   const reads: Read[] = new Array(nReads)
   for (let i = 0; i < nReads; i++) { const id = dv.getUint32(off, true), sql = dv.getUint16(off + 4, true); r.off = off + 6; reads[i] = { id, sql, params: r.params() }; off = r.off }
   const notices: Notice[] = new Array(nNotices)
-  for (let i = 0; i < nNotices; i++) { const kind = dv.getUint8(off); const n = dv.getUint32(off + 1, true); off += 5; notices[i] = { kind, payload: mem.slice(base + off, base + off + n) }; off += n }
+  for (let i = 0; i < nNotices; i++) { const kind = dv.getUint8(off), origin = dv.getUint32(off + 1, true), n = dv.getUint32(off + 5, true); off += 9; notices[i] = { kind, origin, payload: mem.slice(base + off, base + off + n) }; off += n }
   const effects: Effect[] = new Array(nEffects)
-  for (let i = 0; i < nEffects; i++) { const id = dv.getUint32(off, true), kind = dv.getUint8(off + 4), n = dv.getUint32(off + 5, true); off += 9; effects[i] = { id, kind, payload: mem.slice(base + off, base + off + n) }; off += n }
+  for (let i = 0; i < nEffects; i++) { const id = dv.getUint32(off, true), kind = dv.getUint8(off + 4), origin = dv.getUint32(off + 5, true), n = dv.getUint32(off + 9, true); off += 13; effects[i] = { id, kind, origin, payload: mem.slice(base + off, base + off + n) }; off += n }
   const nOrder = dv.getUint16(off, true); off += 2
   const order: Array<[number, number]> | undefined = nOrder === 0 ? undefined : new Array(nOrder)
   for (let i = 0; i < nOrder; i++) {

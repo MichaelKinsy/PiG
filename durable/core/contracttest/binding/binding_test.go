@@ -142,7 +142,7 @@ func (w *wasmCore) steps(t *testing.T, events []abi.Event) [][]byte {
 		if !w.mod.Memory().Write(ptr, wire) {
 			t.Fatal("in_reserve returned a pointer outside memory")
 		}
-		answer := uint32(w.call(t, "step", h, uint64(ev.Kind), uint64(len(wire)), api.EncodeF64(ev.Now)))
+		answer := uint32(w.call(t, "step", h, uint64(ev.Kind), uint64(len(wire)), api.EncodeF64(ev.Now), uint64(ev.Origin)))
 		out[i] = w.stepAt(t, answer)
 	}
 	w.call(t, "session_free", h)

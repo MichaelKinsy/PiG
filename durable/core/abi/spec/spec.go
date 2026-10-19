@@ -70,6 +70,7 @@ var noticeRows = []kindRow{
 	{"doc_cache", uint8(abi.NoticeDocCache), "JSON {cached, idle, attached, sweeps}: the core's document cache sizes (attached: observers' pins), whenever they change"},
 	{"index_sizes", uint8(abi.NoticeIndexSizes), "JSON {live, settled, edges, below, roots, unloaded, dropQueue}: a harness-mode core's scheduler ownership index sizes, whenever they change"},
 	{"wake", uint8(abi.NoticeWake), "JSON {active, at?}: a harness-mode core's Harness.wake value (HarnessOptions.onWake), published when it changed; the core arms no timer for sleeping tasks then"},
+	{"origin_free", uint8(abi.NoticeOriginFree), "u32 n, u32 origin{n}: the origins the core holds no work for any more; the host drops their async contexts (ABI section 5.4); the host consumes it and its listeners never see it"},
 }
 
 var statusRows = []kindRow{
@@ -96,7 +97,7 @@ var exportRows = []exportRow{
 	{"session_new", "() -> u32"},
 	{"session_free", "(h u32)"},
 	{"in_reserve", "(n u32) -> ptr"},
-	{"step", "(h u32, kind u32, len u32, now f64) -> ptr"},
+	{"step", "(h u32, kind u32, len u32, now f64, origin u32) -> ptr"},
 	{"hop", "(h u32, effectId u32, now f64) -> ptr"},
 	{"mem_stats", "(h u32) -> ptr"},
 	{"alloc_stats", "() -> ptr"},
@@ -164,8 +165,9 @@ var layoutLines = []string{
 	"stmt := u16 sqlId, u8 nParams, value*",
 	"read := u32 readId, u16 sqlId, u8 nParams, value*",
 	"a step with reads has no effects; the host applies its commits, in order, before it runs its reads",
-	"notice := u8 kind, u32 len, payload",
-	"effect := u32 effectId, u8 kind, u32 len, payload",
+	"notice := u8 kind, u32 origin, u32 len, payload",
+	"effect := u32 effectId, u8 kind, u32 origin, u32 len, payload",
+	"origin: 0 for none, else the host's tag of the async context (AsyncLocalStorage snapshot) the notice's listeners or the effect's handler run in; the step export's origin argument tags the host call an event comes from; a hops effect has origin 0",
 	"order := u16 n, (u8 region, u16 index)*; n is 0 (all notices, then all effects) or nNotices + nEffects, region 0 notice, 1 effect, listing them in Pi's synchronous order; the builder emits it only when the step has both",
 	"rows-event := u16 nReads, (u32 readId, u32 nRows, u8 nCols, value{nRows*nCols})*",
 	"model_bytes phase: 0 head, 1 chunk, 2 end, 3 error",

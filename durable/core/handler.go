@@ -43,6 +43,11 @@ type handler struct {
 	payloadFree, payloadUsed [][]byte
 
 	b *abi.Builder
+	// refs counts what holds each origin of a host call; pinned are the holds a parked Loop's queue has taken; bareOrigin is the
+	// current origin of a core without a Loop (origin.go).
+	refs       originRefs
+	pinned     []uint32
+	bareOrigin uint32
 	// held are the statements of the line job that just ran, kept until Pi's COMMIT hop (hops.go holdJob).
 	held []abi.Commit
 	// hopArena holds the payloads of the hops effects of the step being built; StepStart reuses it once the step was encoded.
@@ -126,10 +131,20 @@ type handler struct {
 
 // newHandler builds the event handler over the Session kernel (durable/core/session) for one handle.
 func newHandler(b *abi.Builder, st *store.Store, uuid func() string) Handler {
-	return &handler{b: b, st: st, uuid: uuid, txs: map[uint32]*hostTx{}}
+	h := &handler{b: b, st: st, uuid: uuid, txs: map[uint32]*hostTx{}}
+	b.Origin = h.origin
+	return h
 }
 
+// Handle applies ev, holding its origin for the length of the step (origin.go).
 func (h *handler) Handle(ev *abi.Event) error {
+	h.holdOrigin(ev.Origin)
+	err := h.handleEvent(ev)
+	h.dropOrigin(ev.Origin)
+	return err
+}
+
+func (h *handler) handleEvent(ev *abi.Event) error {
 	h.stepNo++
 	if err := h.handle(ev); err != nil {
 		h.dropStepHops()
@@ -139,6 +154,8 @@ func (h *handler) Handle(ev *abi.Event) error {
 	if err != nil {
 		h.dropStepHops()
 	}
+	// What is left to do belongs to no host call.
+	h.setOrigin(0)
 	h.runSessionSweeps()
 	h.publishDocCache()
 	return h.readFailed(err)
@@ -159,6 +176,7 @@ func (h *handler) readFailed(err error) error {
 //go:noinline
 func (h *handler) handle(ev *abi.Event) error {
 	h.now = ev.Now
+	h.setOrigin(ev.Origin)
 	if ev.Kind == abi.EventOpen {
 		return h.onOpen(ev)
 	}

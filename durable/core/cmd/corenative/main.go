@@ -9,7 +9,7 @@
 //
 //	corenative <requests fifo> <responses fifo>
 //
-// A request is u8 op, u32 handle, u8 kind, f64 now, u32 length, then length bytes. Ops: 1 abi_id, 2 sql_table,
+// A request is u8 op, u32 handle, u8 kind, f64 now, u32 origin (the step export's origin argument, ABI section 5.4), u32 length, then length bytes. Ops: 1 abi_id, 2 sql_table,
 // 3 session_new, 4 step, 5 session_free, 6 mem_stats, 9 alloc_stats, 10 heap_threads (the count gate's heap net of the runtime's
 // threads). A response is u8 type, u32 length, then length bytes: type 0 is
 // the op's answer; type 1 asks the host for one pi-ai uuidv7() (the host answers with a request of op 7 whose payload is
@@ -52,20 +52,21 @@ type request struct {
 	handle  uint32
 	kind    uint8
 	now     float64
+	origin  uint32
 	payload []byte
 }
 
 func (s *server) read() (request, error) {
-	var head [18]byte
+	var head [22]byte
 	if _, err := io.ReadFull(s.in, head[:]); err != nil {
 		return request{}, err
 	}
-	n := binary.LittleEndian.Uint32(head[14:])
+	n := binary.LittleEndian.Uint32(head[18:])
 	if n > maxPayload {
 		return request{}, fmt.Errorf("request payload of %d bytes is over the %d byte bound", n, maxPayload)
 	}
 	r := request{op: head[0], handle: binary.LittleEndian.Uint32(head[1:]), kind: head[5],
-		now: math.Float64frombits(binary.LittleEndian.Uint64(head[6:])), payload: make([]byte, n)}
+		now: math.Float64frombits(binary.LittleEndian.Uint64(head[6:])), origin: binary.LittleEndian.Uint32(head[14:]), payload: make([]byte, n)}
 	_, err := io.ReadFull(s.in, r.payload)
 	return r, err
 }
@@ -131,6 +132,7 @@ func (s *server) serve(r request) []byte {
 		if err != nil {
 			return abi.AppendStep(nil, &abi.Step{Status: abi.StatusRejected, Err: abi.ErrorJSON("InvalidEvent", err.Error())})
 		}
+		ev.Origin = r.origin
 		return abi.AppendStep(nil, sess.Step(ev))
 	case 5:
 		delete(s.sessions, r.handle)

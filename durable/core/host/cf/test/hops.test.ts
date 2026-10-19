@@ -93,8 +93,8 @@ test("order: without an order list the host keeps all notices, then all effects"
 test("wire: decodeStep reads the order list and rejects an entry that names nothing or a list that is not complete", () => {
   const bytes = (order: number[][]) => {
     const parts: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0]                         // size, status 0, commits 0, reads 0, notices 1, effects 1
-    parts.push(1, 0, 0, 0, 0)                                                                 // notice kind 1, empty payload
-    parts.push(1, 0, 0, 0, 10, 0, 0, 0, 0)                                                    // effect id 1, kind 10, empty payload
+    parts.push(1, 0, 0, 0, 0, 0, 0, 0, 0)                                                     // notice kind 1, origin 0, empty payload
+    parts.push(1, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0)                                        // effect id 1, kind 10, origin 0, empty payload
     parts.push(order.length & 255, order.length >> 8)
     for (const [region, index] of order) parts.push(region!, index! & 255, index! >> 8)
     const out = Uint8Array.from(parts)
@@ -322,7 +322,7 @@ test("hop: a core that answers 1 opens the chain it names; 0 ends it; a step is 
   session.hop = (id: number, _now: number) => {
     log.push(`hop ${id}`)
     const next = answers.shift()!
-    if (next === "step") return { status: 0, commits: [], reads: [], notices: [], effects: [hops(40, 1)], bytes: 0 }
+    if (next === "step") return { status: 0, commits: [], reads: [], notices: [], effects: [{ ...hops(40, 1), origin: 0 }], bytes: 0 }
     session.hopId = 20 + log.length; session.hopTicks = 1 + log.length
     return next
   }
@@ -374,7 +374,7 @@ test("hop: a step answered through hop applies its effects before an event a han
       if (ev.kind === EVENT.hook_done) return { effects: [timer(60)] }
       return undefined
     }, { registry: undefined as any, models: undefined as any, hostApi: { client: {} } as any, client: {} as any }, { timers })
-    if (thin) (core as any).hop = (id: number) => { core.seen.push({ kind: EVENT.hopped, payload: u32(id) }); return { status: 0, commits: [], reads: [], notices: [], effects: effects(), bytes: 0 } }
+    if (thin) (core as any).hop = (id: number) => { core.seen.push({ kind: EVENT.hopped, payload: u32(id) }); return { status: 0, commits: [], reads: [], notices: [], effects: effects().map(e => ({ ...e, origin: 0 })), bytes: 0 } }
     host.send(EVENT.resume)
     for (let i = 0; i < 6; i++) await Promise.resolve()
     assert.equal(host.discarded, undefined)

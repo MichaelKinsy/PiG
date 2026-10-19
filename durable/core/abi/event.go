@@ -11,13 +11,18 @@ import (
 // Event is one input of a session (ABI sections 5 and 11). Payload and Rows alias the host's input buffer and are valid
 // only during the Step call that receives them; a core package that keeps any of it copies it first.
 type Event struct {
-	Kind    EventKind
-	Now     float64 // the Harness clock; the core never reads another clock
-	ID      uint32  // effect, tx, timer or request ID, by kind
-	Phase   uint8   // model_bytes phase, tool_progress kind, tool_done/hook_done/phase_done outcome
-	Skipped uint32  // tool_progress
-	WaitID  uint32  // tool_progress kind 1: the progress_ack to answer
-	Payload []byte  // JSON, bytes, or empty
+	Kind EventKind
+	Now  float64 // the Harness clock; the core never reads another clock
+	// Origin names the host's async context for the code this event starts (ABI section 4.1, step): the host's tag for the
+	// AsyncLocalStorage snapshot it took when the caller made the call, 0 for none. The core reads it for the events a host
+	// caller makes (open, submit, abort, registry, api, inspect, resume, seal, close, tx, timer) and ignores it for the
+	// completions of its own effects and for hopped, which continue the origin of the effect or chain they answer.
+	Origin  uint32
+	ID      uint32 // effect, tx, timer or request ID, by kind
+	Phase   uint8  // model_bytes phase, tool_progress kind, tool_done/hook_done/phase_done outcome
+	Skipped uint32 // tool_progress
+	WaitID  uint32 // tool_progress kind 1: the progress_ack to answer
+	Payload []byte // JSON, bytes, or empty
 	Rows    []ReadRows
 }
 

@@ -69,6 +69,7 @@ const (
 	NoticeDocCache
 	NoticeIndexSizes
 	NoticeWake
+	NoticeOriginFree
 )
 
 // Status is the outcome of a step (ABI section 4.4).

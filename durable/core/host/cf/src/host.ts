@@ -5,7 +5,8 @@
 //   4. notices are delivered after the step's commits are applied;
 //   5. effects start only after the step's commits are applied;
 //   6. effect IDs are unique for the life of the handle; discarding the handle cancels its effects and drops late completions.
-import { EFFECT, EVENT, NOTICE, STATUS, effectName } from "./abi.ts"
+import { EFFECT, EVENT, NOTICE, STATUS, effectName, noticeName } from "./abi.ts"
+import { captureContext, type ContextRun } from "./async-context.ts"
 import { answerContextRead } from "./contextreads.ts"
 import { ContextReader } from "./contextstore.ts"
 import { ContextSegments } from "./contextsegments.ts"
@@ -15,7 +16,8 @@ import { decodeHops, encodeAnswer, payloadBytes, u32Payload, type Commit, type E
 
 /** What the host loop needs from a core session: the Wasm binding, the TypeScript control, or a native bridge. */
 export interface CoreHandle {
-  step(kind: number, payload: Uint8Array | undefined, now: number): Step
+  /** `origin` tags the host's async context of the call (ABI section 5.4); 0 for none. */
+  step(kind: number, payload: Uint8Array | undefined, now: number, origin?: number): Step
   rows(answers: Rows[], now: number): Step
   free(): void
   /** Optional measurements: calls into the core and the time spent in them and in decoding their results. */
@@ -64,6 +66,8 @@ export interface ReplayableEvent {
   readonly result?: (step: Step) => void
   /** Already fed to a second session. */
   readonly retried?: boolean
+  /** The async context of the call that made the event: the new session runs the event's work in it. */
+  readonly context?: ContextRun
 }
 
 /** One delivered event as a trap report records it. */
@@ -202,6 +206,8 @@ class Chain {
 export type RecycleListener = (cause: Error | undefined, undelivered: ReadonlySet<Uint8Array>) => void
 
 type Queued = { kind: number; payload?: Uint8Array; rows?: Rows[]; now: number; result?: (step: Step) => void
+  /** The async context of the host call that made the event (ABI section 5.4), for the events a caller makes. The origin the core is told is numbered when the event is delivered. */
+  context?: ContextRun
   /** The `requestId` a client call waits on: the event may be fed again after a trap. */
   request?: number
   /** Sent by an owner that replays it when the handle is replaced (a client request, a transaction event): the host does not refeed it. */
@@ -215,6 +221,9 @@ type Queued = { kind: number; payload?: Uint8Array; rows?: Rows[]; now: number; 
 }
 
 /** Events that name something the replaced handle owned: an effect it issued, a timer it set, a hops chain, a transaction. The reopened core re-derives that work from the store and numbers it afresh, so these are dropped. */
+/** The events a host caller makes: the core runs their work in the context of the call. The other events complete work the core started, and continue its context. */
+const CALLER_EVENTS: ReadonlySet<number> = new Set([EVENT.open, EVENT.submit, EVENT.abort, EVENT.registry, EVENT.api, EVENT.inspect, EVENT.resume, EVENT.seal, EVENT.close, EVENT.tx, EVENT.timer])
+
 const handleBound = (kind: number) => kind === EVENT.rows || kind === EVENT.model_event || kind === EVENT.model_bytes || kind === EVENT.tool_progress || kind === EVENT.tool_done || kind === EVENT.hook_done || kind === EVENT.phase_done || kind === EVENT.timer || kind === EVENT.hopped || kind === EVENT.tx
 
 
@@ -233,6 +242,13 @@ export class HostSession {
   private readonly opts: HostOptions
   private readonly clock: () => number
   private readonly queue: Queued[] = []
+  /** The async contexts the core may still name (ABI section 5.4), by origin: numbered as events reach the core, dropped when it says it holds no work for one. */
+  private readonly origins = new Map<number, ContextRun>()
+  private nextOrigin = 1
+  /** The context of the first `open`: a reopened core resumes the work of the handle it replaces in it, as Harness.open's turns run in open's. */
+  private openContext?: ContextRun
+  /** The contexts of the owned events, by payload: a request fed again to a new session keeps its caller's. */
+  private readonly ownedContexts = new WeakMap<Uint8Array, ContextRun>()
   private readonly running = new Map<number, AbortController>()
   /** Open hops chains: cancelling one sets its flag, the chain stops at its next hop (no AbortController per chain). */
   private readonly chains = new Map<number, Chain>()
@@ -282,6 +298,8 @@ export class HostSession {
 
   get discarded(): FatalError | undefined { return this.dead }
   get inflight(): number { return this.running.size + this.chains.size }
+  /** The async contexts of host calls the core may still name (ABI section 5.4): none once the core has no work left that a call started. */
+  get originsHeld(): number { return this.origins.size }
   now(): number { return this.clock() }
 
   /** Queue an event and run the loop until no event is waiting. Returns the step the event produced when it ran in this call. */
@@ -295,7 +313,7 @@ export class HostSession {
 
   /** Queue an owned event again for the handle that replaced a dropped one (called from an `onRecycled` listener); `result` receives the step. The loop that is already running delivers it. */
   replay(kind: number, payload: Uint8Array | undefined, result: (step: Step) => void) {
-    this.enqueue({ kind, payload, now: this.clock(), owned: true, result })
+    this.enqueue({ kind, payload, now: this.clock(), owned: true, result, context: payload && this.ownedContexts.get(payload) })
   }
 
   /** The owner can have this host replace its handle (a renewal was given). */
@@ -317,7 +335,7 @@ export class HostSession {
 
   /** Feed an event a trapped session did not complete to this session, once: its answer reaches the original caller's `send`. */
   resend(event: ReplayableEvent) {
-    this.enqueue({ kind: event.kind, payload: event.payload, now: event.now, request: event.request, result: event.result, retried: true })
+    this.enqueue({ kind: event.kind, payload: event.payload, now: event.now, request: event.request, result: event.result, retried: true, context: event.context })
     this.pump()
   }
 
@@ -331,6 +349,8 @@ export class HostSession {
 
   private enqueue(q: Queued) {
     if (this.dead) throw this.dead
+    if (q.context === undefined && CALLER_EVENTS.has(q.kind)) q.context = captureContext()
+    if (q.context !== undefined && q.owned && q.payload !== undefined) this.ownedContexts.set(q.payload, q.context)
     if (this.opts.settings !== undefined && q.kind !== EVENT.close) {
       const text = JSON.stringify(this.opts.settings())
       if (q.kind !== EVENT.open && this.sentSettings !== undefined && text !== this.sentSettings) {
@@ -370,9 +390,18 @@ export class HostSession {
     this.opts.trace?.event?.(q.kind, q.payload, q.now)
     this.remember(q)
     let step: Step
-    try { step = q.rows ? this.core.rows(q.rows, q.now) : this.core.step(q.kind, q.payload, q.now) } catch (e) {
+    let origin = 0
+    if (q.context !== undefined) {
+      origin = this.nextOrigin++
+      this.origins.set(origin, q.context)
+      if (q.kind === EVENT.open) this.openContext ??= q.context
+    }
+    try { step = q.rows ? this.core.rows(q.rows, q.now) : this.core.step(q.kind, q.payload, q.now, origin) } catch (e) {
+      this.origins.delete(origin)
       return this.trapped(q, e, `the core failed on a ${q.kind} event`)
     }
+    // A step that is not ok leaves nothing of the event in the core, so it will not name the origin again.
+    if (step.status !== STATUS.ok) this.origins.delete(origin)
     if (step.status === STATUS.ok) { if (q.kind === EVENT.resume) this.resumed = true; else if (q.kind === EVENT.seal) this.sealed = true; else if (q.kind === EVENT.close) this.closePending = true }
     q.result?.(step)
     this.apply(step, q)
@@ -386,7 +415,7 @@ export class HostSession {
   /** A step that failed: a client request that began it may be fed again, and the recent events go with the report. */
   private failed(error: FatalError, q: Queued): FatalError {
     const root = q.root ?? q
-    error.event = { kind: root.kind, payload: root.payload, now: root.now, request: root.request, result: root.result, retried: root.retried }
+    error.event = { kind: root.kind, payload: root.payload, now: root.now, request: root.request, result: root.result, retried: root.retried, context: root.context }
     return error
   }
 
@@ -446,14 +475,14 @@ export class HostSession {
       // ABI section 5.3: the core lists its notices and effects in Pi's synchronous order; a chain started after an api_result must queue after the host resolves it.
       for (const [region, index] of step.order) {
         if (this.dead) return
-        if (region === 0) this.notify(step.notices[index]!)
-        else this.start(step.effects[index]!)
+        if (region === 0) this.notifyIn(step.notices[index]!)
+        else this.startIn(step.effects[index]!)
       }
     } else {
-      for (const notice of step.notices) this.notify(notice)
+      for (const notice of step.notices) this.notifyIn(notice)
       for (const effect of step.effects) {
         if (this.dead) return
-        this.start(effect)
+        this.startIn(effect)
       }
     }
     this.counters.msEffects += performance.now() - t1
@@ -478,6 +507,30 @@ export class HostSession {
   onNotice(listener: (n: Notice) => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
+  }
+
+  /** Run `fn` in the async context the core stamped on a notice or effect (ABI section 5.4). */
+  private within(origin: number, what: string, fn: () => void) {
+    if (origin === 0) return fn()
+    const run = this.origins.get(origin)
+    if (run === undefined) return this.discard(new FatalError(`${what} names origin ${origin}, which the host does not hold`))
+    run(fn)
+  }
+
+  private notifyIn(notice: Notice) {
+    if (notice.kind === NOTICE.origin_free) return this.freeOrigins(notice.payload)
+    this.within(notice.origin, `a ${noticeName(notice.kind)} notice`, () => this.notify(notice))
+  }
+
+  private startIn(effect: Effect) {
+    this.within(effect.origin, `${effectName(effect.kind)} effect ${effect.id}`, () => this.start(effect))
+  }
+
+  /** The core holds no work for these origins any more (ABI section 5.4). */
+  private freeOrigins(payload: Uint8Array) {
+    const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
+    const n = dv.getUint32(0, true)
+    for (let i = 0; i < n; i++) this.origins.delete(dv.getUint32(4 + 4 * i, true))
   }
 
   private notify(notice: Notice) {
@@ -634,6 +687,7 @@ export class HostSession {
     this.running.clear()
     for (const c of this.chains.values()) c.aborted = true
     this.chains.clear()
+    this.origins.clear()
     this.queue.length = 0
     try { this.core.free() } catch { /* a trapped instance is discarded by its owner */ }
     for (const w of this.waiters) w.reject(error)
@@ -672,6 +726,7 @@ export class HostSession {
     for (const c of this.chains.values()) c.aborted = true
     this.running.clear()
     this.chains.clear()
+    this.origins.clear()
     this.lastEffect = -1
     this.epoch++
     for (const id of ended) this.opts.onCancel?.(id)
@@ -695,10 +750,10 @@ export class HostSession {
     const now = this.clock()
     if (this.opts.settings !== undefined) this.sentSettings = JSON.stringify(this.opts.settings())
     let refused: Step | undefined
-    this.deliver({ kind: EVENT.open, payload: new TextEncoder().encode(JSON.stringify(fresh.open)), now, result: step => { if (step.status) refused = step } })
+    this.deliver({ kind: EVENT.open, payload: new TextEncoder().encode(JSON.stringify(fresh.open)), now, context: this.openContext, result: step => { if (step.status) refused = step } })
     if (!this.dead && refused) return this.discard(new FatalError(`the reopened core refused to open: ${refused.error?.raw ?? ""}`))
-    if (!this.dead && this.resumed) this.deliver({ kind: EVENT.resume, now })
-    if (!this.dead && this.sealed) this.deliver({ kind: EVENT.seal, now })
+    if (!this.dead && this.resumed) this.deliver({ kind: EVENT.resume, now, context: this.openContext })
+    if (!this.dead && this.sealed) this.deliver({ kind: EVENT.seal, now, context: this.openContext })
     if (this.dead) return
     // What the reopen's own steps queued, then what the owner re-registers, behind the refeed.
     const early = this.queue.splice(0)

@@ -11,8 +11,10 @@ const enc = new TextEncoder()
 const u32 = (n: number) => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n, true); return b }
 const cat = (...parts: Uint8Array[]) => { const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0)); let o = 0; for (const p of parts) { out.set(p, o); o += p.length } return out }
 
-export type Spec = { commits?: Commit[]; notices?: Notice[]; effects?: Effect[]; order?: Array<[number, number]>; status?: 0 | 1 | 2; error?: { name: string; message: string } }
-export type Seen = { kind: number; payload: Uint8Array; id?: number; body?: any }
+/** A notice or effect a test writes by hand: its origin (ABI section 5.4) is 0 unless it says. */
+type Bare<T> = Omit<T, "origin"> & { origin?: number }
+export type Spec = { commits?: Commit[]; notices?: Bare<Notice>[]; effects?: Bare<Effect>[]; order?: Array<[number, number]>; status?: 0 | 1 | 2; error?: { name: string; message: string } }
+export type Seen = { kind: number; payload: Uint8Array; id?: number; body?: any; origin?: number }
 
 /** A model_context payload is a recipe (ABI section 10.2); these are one text segment. */
 export const textRecipe = (text: Uint8Array): Uint8Array => {
@@ -25,12 +27,12 @@ export const textRecipe = (text: Uint8Array): Uint8Array => {
 }
 export const effect = (id: number, kind: number, json: unknown): Effect => {
   const text = enc.encode(JSON.stringify(json))
-  return { id, kind, payload: kind === EFFECT.model_context ? textRecipe(text) : text }
+  return { id, kind, origin: 0, payload: kind === EFFECT.model_context ? textRecipe(text) : text }
 }
-export const apiResult = (id: number, body: unknown): Notice => ({ kind: NOTICE.api_result, payload: cat(u32(id), enc.encode(JSON.stringify(body))) })
-export const txResult = (id: number, body: unknown): Notice => ({ kind: NOTICE.tx_result, payload: cat(u32(id), enc.encode(JSON.stringify(body))) })
-export const progressAck = (waitId: number, outcome: 0 | 1, error?: unknown): Notice => ({ kind: NOTICE.progress_ack, payload: cat(u32(waitId), Uint8Array.of(outcome), enc.encode(error ? JSON.stringify(error) : "")) })
-export const published = (body: unknown): Notice => ({ kind: NOTICE.published, payload: enc.encode(JSON.stringify(body)) })
+export const apiResult = (id: number, body: unknown): Notice => ({ origin: 0, kind: NOTICE.api_result, payload: cat(u32(id), enc.encode(JSON.stringify(body))) })
+export const txResult = (id: number, body: unknown): Notice => ({ origin: 0, kind: NOTICE.tx_result, payload: cat(u32(id), enc.encode(JSON.stringify(body))) })
+export const progressAck = (waitId: number, outcome: 0 | 1, error?: unknown): Notice => ({ origin: 0, kind: NOTICE.progress_ack, payload: cat(u32(waitId), Uint8Array.of(outcome), enc.encode(error ? JSON.stringify(error) : "")) })
+export const published = (body: unknown): Notice => ({ origin: 0, kind: NOTICE.published, payload: enc.encode(JSON.stringify(body)) })
 
 const dec = new TextDecoder()
 /** Decode the events whose first four bytes are an ID and the rest JSON (api, tx, model_event). */
@@ -44,8 +46,8 @@ export class ScriptedCore implements CoreHandle {
   freed = false
   respond: (ev: Seen) => Spec | undefined
   constructor(respond: (ev: Seen) => Spec | undefined = () => undefined) { this.respond = respond }
-  step(kind: number, payload: Uint8Array | undefined, _now: number): Step {
-    const ev: Seen = { kind, payload: payload ?? new Uint8Array(0), ...decode(payload ?? new Uint8Array(0)) }
+  step(kind: number, payload: Uint8Array | undefined, _now: number, origin = 0): Step {
+    const ev: Seen = { kind, payload: payload ?? new Uint8Array(0), origin, ...decode(payload ?? new Uint8Array(0)) }
     this.seen.push(ev)
     const spec = this.respond(ev)
     // What the real core always answers (PROTOCOL.md): `opened` when the scheduler's open job finished, and the close it ran behind its line as the api_result of request 0.
@@ -60,7 +62,7 @@ export class ScriptedCore implements CoreHandle {
 }
 
 const toStep = (spec: Spec | undefined): Step => ({
-  status: spec?.status ?? 0, commits: spec?.commits ?? [], reads: [], notices: spec?.notices ?? [], effects: spec?.effects ?? [], bytes: 0,
+  status: spec?.status ?? 0, commits: spec?.commits ?? [], reads: [], notices: (spec?.notices ?? []).map(n => ({ ...n, origin: n.origin ?? 0 })), effects: (spec?.effects ?? []).map(e => ({ ...e, origin: e.origin ?? 0 })), bytes: 0,
   ...(spec?.order ? { order: spec.order } : {}),
   ...(spec?.error ? { error: { ...spec.error, raw: JSON.stringify(spec.error) } } : {}),
 })

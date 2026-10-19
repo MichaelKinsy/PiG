@@ -42,7 +42,8 @@ export interface RecorderOptions {
 export interface RecordedRead { request: Uint8Array; answer: Uint8Array }
 
 /** One event of the core's input stream with what the core took while it ran. `wire` is the payload bytes (abi.Event.Wire). */
-export interface RecordedEvent { seq: number; kind: number; now: number; wire: Uint8Array; reads: RecordedRead[]; uuids: string[] }
+/** `origin` is the step export's origin argument (ABI section 5.4); the binary recording of the Go count tool does not carry it, so a replay of one runs every event with none. */
+export interface RecordedEvent { seq: number; kind: number; now: number; origin?: number; wire: Uint8Array; reads: RecordedRead[]; uuids: string[] }
 
 export interface StepRecord {
   /** The event's ordinal in this session (0 is the open). */
@@ -92,7 +93,7 @@ export interface TrapReport {
   events: ReportEvent[]
   steps: StepRecord[]
 }
-export interface ReportEvent { seq: number; kind: number; event: string; now: number; wire: string; reads: { request: string; answer: string }[]; uuids: string[] }
+export interface ReportEvent { seq: number; kind: number; event: string; now: number; origin?: number; wire: string; reads: { request: string; answer: string }[]; uuids: string[] }
 
 class Ring<T> {
   private items: T[] = []
@@ -148,9 +149,10 @@ export class FlightRecorder {
   }
 
   /** @internal One event through the core: record its inputs, run it, record what it cost. */
-  observe(session: Observable, kind: number, wire: Uint8Array, now: number, run: () => Step): Step {
+  observe(session: Observable, kind: number, wire: Uint8Array, now: number, origin: number, run: () => Step): Step {
     this.finish()
     const event: RecordedEvent = { seq: this.events.total, kind, now, wire, reads: [], uuids: [] }
+    if (origin !== 0) event.origin = origin
     this.events.push(event)
     this.opened ??= event
     this.current = event
@@ -238,13 +240,13 @@ class ObservedCore implements CoreHandle {
   private readonly recorder: FlightRecorder
   private readonly session: Observable
   constructor(recorder: FlightRecorder, session: Observable) { this.recorder = recorder; this.session = session }
-  step(kind: number, payload: Uint8Array | undefined, now: number) {
-    return this.recorder.observe(this.session, kind, payload ? payload.slice() : new Uint8Array(0), now, () => this.session.step(kind, payload, now))
+  step(kind: number, payload: Uint8Array | undefined, now: number, origin = 0) {
+    return this.recorder.observe(this.session, kind, payload ? payload.slice() : new Uint8Array(0), now, origin, () => this.session.step(kind, payload, now, origin))
   }
   rows(answers: Rows[], now: number) {
     let wire!: Uint8Array
     encodeRows(answers, n => (wire = new Uint8Array(n)))
-    return this.recorder.observe(this.session, EVENT.rows, wire, now, () => this.session.rows(answers, now))
+    return this.recorder.observe(this.session, EVENT.rows, wire, now, 0, () => this.session.rows(answers, now))
   }
   free() { this.session.free() }
   stats() { return this.session.stats?.() as { steps: number; msStep: number; msDecode: number } }
@@ -261,11 +263,11 @@ const b64 = (bytes: Uint8Array) => {
 const unb64 = (text: string) => Uint8Array.from(atob(text), c => c.charCodeAt(0))
 
 const reportEvent = (e: RecordedEvent): ReportEvent => ({
-  seq: e.seq, kind: e.kind, event: eventName(e.kind), now: e.now, wire: b64(e.wire),
+  seq: e.seq, kind: e.kind, event: eventName(e.kind), now: e.now, ...(e.origin === undefined ? {} : { origin: e.origin }), wire: b64(e.wire),
   reads: e.reads.map(r => ({ request: b64(r.request), answer: b64(r.answer) })), uuids: e.uuids,
 })
 export const recordedEvent = (e: ReportEvent): RecordedEvent => ({
-  seq: e.seq, kind: e.kind, now: e.now, wire: unb64(e.wire), reads: e.reads.map(r => ({ request: unb64(r.request), answer: unb64(r.answer) })), uuids: e.uuids,
+  seq: e.seq, kind: e.kind, now: e.now, ...(e.origin === undefined ? {} : { origin: e.origin }), wire: unb64(e.wire), reads: e.reads.map(r => ({ request: unb64(r.request), answer: unb64(r.answer) })), uuids: e.uuids,
 })
 
 // The recording format of durable/core/contracttest/counts (record.go): items of u8 kind, u32 length, body, little endian.
@@ -372,7 +374,7 @@ export function replayEvents(module: WebAssembly.Module, events: RecordedEvent[]
   try {
     for (; at < events.length; at++) {
       readAt = uuidAt = 0
-      steps.push(session.step(events[at]!.kind, events[at]!.wire, events[at]!.now))
+      steps.push(session.step(events[at]!.kind, events[at]!.wire, events[at]!.now, events[at]!.origin ?? 0))
       const want = events[at]!
       if (readAt < want.reads.length || uuidAt < want.uuids.length) throw new Error(`replay: event ${at} took ${readAt} reads and ${uuidAt} uuids, the recorded run ${want.reads.length} and ${want.uuids.length}`)
     }

@@ -73,7 +73,9 @@ type Read struct {
 
 // Notice is published after the step's commits are applied.
 type Notice struct {
-	Kind    NoticeKind
+	Kind NoticeKind
+	// Origin is the host async context the notice was published from (ABI section 5.4): the host runs its listeners in it. 0: none.
+	Origin  uint32
 	Payload []byte
 	// Chunks, when not nil, is the payload in blocks (see Chunks), and Payload is nil. A decoded step never has it.
 	Chunks Chunks
@@ -84,8 +86,10 @@ func (n *Notice) Data() []byte { return joinPayload(n.Payload, n.Chunks) }
 
 // Effect is work the host starts after the step's commits are applied.
 type Effect struct {
-	ID      uint32
-	Kind    EffectKind
+	ID   uint32
+	Kind EffectKind
+	// Origin is the host async context the effect starts in (ABI section 5.4). 0: none; a hops effect always has 0.
+	Origin  uint32
 	Payload []byte
 	// Chunks, when not nil, is the payload in blocks (see Chunks), and Payload is nil. A decoded step never has it.
 	Chunks Chunks
@@ -199,10 +203,10 @@ func StepSize(s *Step) int {
 		n += 6 + paramsSize(s.Reads[i].Params)
 	}
 	for i := range s.Notices {
-		n += 5 + payloadLen(s.Notices[i].Payload, s.Notices[i].Chunks)
+		n += 9 + payloadLen(s.Notices[i].Payload, s.Notices[i].Chunks)
 	}
 	for i := range s.Effects {
-		n += 9 + payloadLen(s.Effects[i].Payload, s.Effects[i].Chunks)
+		n += 13 + payloadLen(s.Effects[i].Payload, s.Effects[i].Chunks)
 	}
 	n += 2
 	if len(s.Notices) != 0 && len(s.Effects) != 0 {
@@ -275,6 +279,7 @@ func appendStep(dst []byte, s *Step, big int, parts []Part) ([]byte, []Part) {
 	for i := range s.Notices {
 		n := &s.Notices[i]
 		dst = append(dst, byte(n.Kind))
+		dst = binary.LittleEndian.AppendUint32(dst, n.Origin)
 		dst = binary.LittleEndian.AppendUint32(dst, uint32(payloadLen(n.Payload, n.Chunks)))
 		dst = sp.payload(dst, n.Payload, n.Chunks)
 	}
@@ -282,6 +287,7 @@ func appendStep(dst []byte, s *Step, big int, parts []Part) ([]byte, []Part) {
 		e := &s.Effects[i]
 		dst = binary.LittleEndian.AppendUint32(dst, e.ID)
 		dst = append(dst, byte(e.Kind))
+		dst = binary.LittleEndian.AppendUint32(dst, e.Origin)
 		dst = binary.LittleEndian.AppendUint32(dst, uint32(payloadLen(e.Payload, e.Chunks)))
 		dst = sp.payload(dst, e.Payload, e.Chunks)
 	}
@@ -513,12 +519,14 @@ func DecodeStep(b []byte) (*Step, error) {
 	}
 	for i := 0; i < nNotices && r.err == nil; i++ {
 		kind := NoticeKind(r.u8())
-		s.Notices = append(s.Notices, Notice{Kind: kind, Payload: r.take(int(r.u32()))})
+		origin := r.u32()
+		s.Notices = append(s.Notices, Notice{Kind: kind, Origin: origin, Payload: r.take(int(r.u32()))})
 	}
 	for i := 0; i < nEffects && r.err == nil; i++ {
 		id := r.u32()
 		kind := EffectKind(r.u8())
-		s.Effects = append(s.Effects, Effect{ID: id, Kind: kind, Payload: r.take(int(r.u32()))})
+		origin := r.u32()
+		s.Effects = append(s.Effects, Effect{ID: id, Kind: kind, Origin: origin, Payload: r.take(int(r.u32()))})
 	}
 	nOrder := int(r.u16())
 	for i := 0; i < nOrder && r.err == nil; i++ {

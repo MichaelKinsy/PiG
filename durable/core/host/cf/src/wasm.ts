@@ -241,13 +241,13 @@ export class WasmSession {
     return new Uint8Array(this.core.x.memory.buffer, ptr, n)
   }
 
-  /** Deliver an event whose payload is bytes (every kind but rows). */
-  step(kind: number, payload: Uint8Array | undefined, now: number): Step {
+  /** Deliver an event whose payload is bytes (every kind but rows). `origin` tags the host's async context of the call (ABI section 5.4): 0 for none. */
+  step(kind: number, payload: Uint8Array | undefined, now: number, origin = 0): Step {
     if (this.freed) throw new CoreTrap("the session handle is freed")
     const n = payload?.length ?? 0
     if (payload && n) this.reserve(n).set(payload)
     this.core.bytesCrossed += n
-    return this.run(kind, n, now)
+    return this.run(kind, n, now, origin)
   }
 
   /** Deliver a rows event. */
@@ -255,7 +255,7 @@ export class WasmSession {
     if (this.freed) throw new CoreTrap("the session handle is freed")
     const n = encodeRows(answers, this.reserve)
     this.core.bytesCrossed += n
-    return this.run(EVENT.rows, n, now)
+    return this.run(EVENT.rows, n, now, 0)
   }
 
   /** The effect ID and hop count of the last `hop` that answered 1. */
@@ -297,14 +297,14 @@ export class WasmSession {
     return step
   }
 
-  private run(kind: number, n: number, now: number): Step {
+  private run(kind: number, n: number, now: number, origin: number): Step {
     const x = this.core.x
     const t0 = performance.now()
     let ptr: number
     const outer = this.core.activeReader, outerTap = this.core.activeTap
     this.core.activeReader = this.reader
     this.core.activeTap = this.tap
-    try { ptr = x.step(this.handle, kind, n, now) as number } catch (e) {
+    try { ptr = x.step(this.handle, kind, n, now, origin) as number } catch (e) {
       if (e instanceof CoreTrap) throw e
       throw new CoreTrap(`the core trapped: ${(e as Error).message}`)
     } finally { this.core.activeReader = outer; this.core.activeTap = outerTap }

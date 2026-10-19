@@ -13,10 +13,12 @@ import (
 // events that do not end the effect (model_event batches, tool_progress); done receives the one that ends it
 // (hook_done, tool_done or phase_done: outcome 0 value, 1 thrown). A model_context effect ends with the model_event batch
 // whose last event is done or error, which progress reports by returning true. A payload aliases the host's input
-// buffer: a continuation that keeps it copies it.
+// buffer: a continuation that keeps it copies it. origin is the host async context the effect started in (origin.go): the
+// continuations run in it, as an `await` resumes in the context of its function whoever settles the promise.
 type pending struct {
 	progress func(ev *abi.Event) (finished bool)
 	done     func(outcome uint8, payload []byte)
+	origin   uint32
 }
 
 // startEffect emits an effect and registers its continuation; the returned ID names it in a cancel.
@@ -25,6 +27,8 @@ func (h *handler) startEffect(kind abi.EffectKind, payload []byte, p *pending) u
 	if h.effects == nil {
 		h.effects = map[uint32]*pending{}
 	}
+	p.origin = h.origin()
+	h.holdOrigin(p.origin)
 	h.effects[id] = p
 	return id
 }
@@ -96,8 +100,10 @@ func (h *handler) onCompletion(ev *abi.Event) error {
 		if p == nil || p.progress == nil {
 			break
 		}
+		h.setOrigin(p.origin)
 		if p.progress(ev) {
 			delete(h.effects, ev.ID)
+			h.dropOrigin(p.origin)
 		}
 	case abi.EventHookDone, abi.EventToolDone, abi.EventPhaseDone:
 		p := h.effects[ev.ID]
@@ -105,9 +111,11 @@ func (h *handler) onCompletion(ev *abi.Event) error {
 			break
 		}
 		delete(h.effects, ev.ID)
+		h.setOrigin(p.origin)
 		if p.done != nil {
 			p.done(ev.Phase, ev.Payload)
 		}
+		h.dropOrigin(p.origin)
 	}
 	return nil
 }

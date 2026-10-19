@@ -338,19 +338,21 @@ func (h *handler) holdChain(c abi.Hops, release func()) bool {
 	case len(h.hopArena)+size <= cap(h.hopArena):
 		at := len(h.hopArena)
 		h.hopArena = abi.AppendHops(h.hopArena, c)
-		id = h.b.Effect(abi.EffectHops, h.hopArena[at:len(h.hopArena):len(h.hopArena)])
+		id = h.b.EffectBare(abi.EffectHops, h.hopArena[at:len(h.hopArena):len(h.hopArena)])
 	case size <= abi.ChunkSize:
-		id = h.b.Effect(abi.EffectHops, abi.AppendHops(make([]byte, 0, size), c))
+		id = h.b.EffectBare(abi.EffectHops, abi.AppendHops(make([]byte, 0, size), c))
 	default:
 		var payload abi.Chunks
 		abi.AppendHopsChunks(&payload, c)
-		id = h.b.EffectChunks(abi.EffectHops, payload)
+		id = h.b.EffectChunksBare(abi.EffectHops, payload)
 	}
 	due := 0
 	if h.capsql() != nil {
 		due = h.vnow + int(c.N)
 	}
-	h.hops = append(h.hops, parkedHops{id, due, release, h.stepNo})
+	origin := h.origin()
+	h.holdOrigin(origin)
+	h.hops = append(h.hops, parkedHops{id, due, release, h.stepNo, origin})
 	return true
 }
 
@@ -360,6 +362,7 @@ type parkedHops struct {
 	due     int // the virtual tick the chain ends (capsql.go); zero without a statement queue
 	release func()
 	step    uint64 // the step that opened the chain: a rejected step takes its chains back (dropStepHops)
+	origin  uint32 // the host async context of the code that parked the work: it continues in it (origin.go)
 }
 
 // onHopped runs the work parked on a hops chain (ABI section 5, event 18).
@@ -372,7 +375,9 @@ func (h *handler) onHopped(ev *abi.Event) error {
 			if h.q != nil {
 				h.vnow = max(h.vnow, p.due)
 			}
+			h.setOrigin(p.origin)
 			p.release()
+			h.dropOrigin(p.origin)
 			break
 		}
 	}
@@ -397,6 +402,8 @@ func (h *handler) dropStepHops() {
 	for _, p := range h.hops {
 		if p.step != h.stepNo {
 			kept = append(kept, p)
+		} else {
+			h.dropOrigin(p.origin)
 		}
 	}
 	clear(h.hops[len(kept):])

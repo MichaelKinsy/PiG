@@ -73,11 +73,11 @@ func inReserve(n uint32) unsafe.Pointer {
 }
 
 // step runs one event and returns the address of its answer: the list of the parts the step is the concatenation of,
-// whose first four bytes are its size (ABI section 4.1 and the layout in section 5). The answer stays valid until the
-// next export call.
+// whose first four bytes are its size (ABI section 4.1 and the layout in section 5). origin tags the host's async context of
+// the call (ABI section 5.4). The answer stays valid until the next export call.
 //
 //go:wasmexport step
-func step(h, kind, n uint32, now float64) unsafe.Pointer {
+func step(h, kind, n uint32, now float64, origin uint32) unsafe.Pointer {
 	clear(parts) // the host has read the last step: its payloads may go
 	s := sessions[h]
 	if s == nil {
@@ -87,6 +87,7 @@ func step(h, kind, n uint32, now float64) unsafe.Pointer {
 	if err != nil {
 		return answer(&abi.Step{Status: abi.StatusRejected, Err: abi.ErrorJSON("InvalidEvent", err.Error())})
 	}
+	ev.Origin = origin
 	return answer(s.Step(ev))
 }
 

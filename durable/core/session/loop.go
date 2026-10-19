@@ -44,11 +44,16 @@ type Loop struct {
 	// tailFresh is set from the Tail asked as a job finishes until the loop drains: a NextTick asked then joins the tail's chain.
 	tailFresh bool
 	afterTail []func()
+	// Origin is the host async context of the code that is running (ABI section 5.4): Defer and the line capture it, and the
+	// Loop makes it current again when it runs the item or job. 0 is none. Retain and Release, when set, are told of every
+	// origin the line holds a job for, from the job's queuing to the end of its run.
+	Origin          uint32
+	Retain, Release func(origin uint32)
 	// Started, when set, runs as each line job starts.
 	Started func()
 	// Reading is set while a Session.readOnLine job (ReadLine) runs and when it finishes: Hold asks it for the job's duration.
 	Reading bool
-	queue   []func() // the microtasks from qhead on; a drained queue starts over at the front of its array instead of ending up with none left
+	queue   []queued // the microtasks from qhead on; a drained queue starts over at the front of its array instead of ending up with none left
 	qhead   int
 	jobs    []*job // the line jobs from jhead on; a drained line starts over at the front of its array, as the queue does
 	jhead   int
@@ -67,12 +72,19 @@ type Loop struct {
 	after []func()
 }
 
+// queued is a microtask and the origin it was queued in, which is current again when it runs.
+type queued struct {
+	fn     func()
+	origin uint32
+}
+
 type job struct {
-	run  func() error // returns a *NeedRead to park, any other error is the job's own
-	done func(error)  // continuation, enqueued as a microtask after the job
-	bare bool         // the job takes no time of its own: Hold is not asked (a host transaction's turn on the line)
-	read bool         // a Session.readOnLine job: no change callback, settle or commit
-	idle bool         // queued while the line was idle: it starts a tick later (Begin)
+	origin uint32       // the origin the job was queued in: the line runs it, and its completion, in it
+	run    func() error // returns a *NeedRead to park, any other error is the job's own
+	done   func(error)  // continuation, enqueued as a microtask after the job
+	bare   bool         // the job takes no time of its own: Hold is not asked (a host transaction's turn on the line)
+	read   bool         // a Session.readOnLine job: no change callback, settle or commit
+	idle   bool         // queued while the line was idle: it starts a tick later (Begin)
 	// client: done answers a host caller (ClientReadLine) and runs at Settle, a hop before the job's end.
 	client  bool
 	settled bool // done already ran at Settle
@@ -114,7 +126,16 @@ func (l *Loop) Defer(fn func()) {
 		clear(l.queue[n:])
 		l.queue, l.qhead = l.queue[:n], 0
 	}
-	l.queue = append(l.queue, fn)
+	l.queue = append(l.queue, queued{fn, l.Origin})
+}
+
+// QueuedOrigins calls f with the origin of every microtask still queued: a Loop parked on a host answer keeps them across steps.
+func (l *Loop) QueuedOrigins(f func(origin uint32)) {
+	for _, q := range l.queue[l.qhead:] {
+		if q.origin != 0 {
+			f(q.origin)
+		}
+	}
 }
 
 func (l *Loop) queued() int { return len(l.queue) - l.qhead }
@@ -126,6 +147,10 @@ func (l *Loop) pushJob(j *job) {
 		n := copy(l.jobs, l.jobs[l.jhead:])
 		clear(l.jobs[n:])
 		l.jobs, l.jhead = l.jobs[:n], 0
+	}
+	j.origin = l.Origin
+	if j.origin != 0 && l.Retain != nil {
+		l.Retain(j.origin)
 	}
 	l.jobs = append(l.jobs, j)
 }
@@ -250,6 +275,7 @@ func (l *Loop) runJob() {
 		return
 	}
 	j := l.jobs[l.jhead]
+	l.Origin = j.origin
 	if j.idle && l.Begin != nil && !j.bare && l.Hold != nil {
 		// The job runs now and its hold lasts the tick it would have waited: the job body takes no tick of its own, and the
 		// hold's offsets (the statements' COMMIT, the publication, the end) are all counted from the start tick.
@@ -292,6 +318,9 @@ func (l *Loop) runJob() {
 		return
 	}
 	l.pubs = pubs
+	if j.origin != 0 && l.Release != nil {
+		l.Release(j.origin)
+	}
 	// The popped job and the closures it captured must not stay reachable through the backing array.
 	l.jobs[l.jhead] = nil
 	if l.jhead++; l.jhead == len(l.jobs) {
@@ -390,7 +419,7 @@ func (l *Loop) Ungate() {
 	if l.gated != nil {
 		l.gated = nil
 		l.running = true
-		l.queue, l.qhead = append([]func(){l.fns().runJobFn}, l.queue[l.qhead:]...), 0
+		l.queue, l.qhead = append([]queued{{fn: l.fns().runJobFn}}, l.queue[l.qhead:]...), 0
 	}
 }
 
@@ -415,12 +444,13 @@ var ErrParked = errors.New("loop parked on a read")
 // ErrParked when parked; call Resume after the host served the reads.
 func (l *Loop) Run() error {
 	for l.parked == nil && l.queued() > 0 {
-		fn := l.queue[l.qhead]
-		l.queue[l.qhead] = nil // the run item's captured data must not stay reachable through the backing array
+		q := l.queue[l.qhead]
+		l.queue[l.qhead] = queued{} // the run item's captured data must not stay reachable through the backing array
 		if l.qhead++; l.qhead == len(l.queue) {
 			l.queue, l.qhead = l.queue[:0], 0
 		}
-		fn()
+		l.Origin = q.origin
+		q.fn()
 	}
 	l.tailFresh = false
 	if l.parked != nil {
@@ -434,7 +464,7 @@ func (l *Loop) Resume() error {
 	if l.parked != nil {
 		l.parked, l.need = nil, nil
 		l.running = true
-		l.queue, l.qhead = append([]func(){l.fns().runJobFn}, l.queue[l.qhead:]...), 0
+		l.queue, l.qhead = append([]queued{{fn: l.fns().runJobFn}}, l.queue[l.qhead:]...), 0
 	}
 	return l.Run()
 }
