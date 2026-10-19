@@ -465,6 +465,9 @@ type Host struct {
 	// when startup tracing is enabled; extension hosting otherwise pays one nil check.
 	startupMark func(string)
 
+	// acceptGate is a test seam over an extension's Accept (acceptGateFunc). Production leaves it nil.
+	acceptGate acceptGateFunc
+
 	runtimeDrainHandler func()
 	// runtimeDrains holds, per Node process and report, the connections that reported it. Guarded by h.mu.
 	runtimeDrains map[runtimeDrainKey]*runtimeDrainReports
@@ -3208,29 +3211,19 @@ func (me *managedExt) exitErr() error {
 // acceptExtConn waits for the extension to connect. Upstream awaits the extension factory
 // with no deadline, and a Node factory runs before its runtime connects, so
 // the wait ends only when the extension connects, its process exits, or the
-// caller cancels.
+// caller cancels. A connection the process made before it exited is honored
+// first (awaitConnection), so a factory error the process reported before exiting is
+// the load error.
 func (h *Host) acceptExtConn(ctx context.Context, cancel context.CancelFunc, me *managedExt, listener net.Listener) (net.Conn, error) {
-	connCh := make(chan net.Conn, 1)
-	errCh := make(chan error, 1)
-	go func() {
-		c, err := listener.Accept()
-		if err != nil {
-			errCh <- err
-			return
-		}
-		connCh <- c
-	}()
-
-	var rawConn net.Conn
-	select {
-	case rawConn = <-connCh:
-	case err := <-errCh:
+	rawConn, outcome, err := h.awaitConnection(ctx, listener, me.exited())
+	switch outcome {
+	case acceptFailed:
 		cancel()
 		loadErr := newLoadError(me.config.Name, "connect", "accept_failed", fmt.Errorf("accept: %w", err))
 		loadErr.StderrLog = me.stderrLogPath
 		loadErr.Hint = standaloneRebuildHint(me.config)
 		return nil, loadErr
-	case <-me.exited():
+	case acceptProcessExited:
 		cancel()
 		exitErr := errors.New("extension process exited before connecting")
 		if err := me.exitErr(); err != nil {
@@ -3245,22 +3238,12 @@ func (h *Host) acceptExtConn(ctx context.Context, cancel context.CancelFunc, me 
 		loadErr.StderrLog = me.stderrLogPath
 		loadErr.Hint = standaloneRebuildHint(me.config)
 		return nil, loadErr
-	case <-ctx.Done():
-		// Close listener to unblock the Accept goroutine, then drain
-		// the channel to close any late-arriving connection.
-		_ = listener.Close()
-		select {
-		case c := <-connCh:
-			_ = c.Close()
-		case <-errCh:
-			// Accept failed (expected from listener.Close): fine.
-		}
+	case acceptCancelled:
 		cancel()
-		loadErr := newLoadError(me.config.Name, "connect", "load_cancelled", fmt.Errorf("extension load cancelled before it connected: %w", ctx.Err()))
+		loadErr := newLoadError(me.config.Name, "connect", "load_cancelled", fmt.Errorf("extension load cancelled before it connected: %w", err))
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
-
 	return rawConn, nil
 }
 

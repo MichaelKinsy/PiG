@@ -830,25 +830,13 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 			}
 		}
 	}()
-	connCh := make(chan net.Conn, 1)
-	errCh := make(chan error, 1)
-	go func() {
-		c, err := ln.Accept()
-		if err != nil {
-			errCh <- err
-			return
-		}
-		connCh <- c
-	}()
-
-	var rawConn net.Conn
-	select {
-	case rawConn = <-connCh:
-	case err := <-errCh:
+	rawConn, outcome, err := h.awaitConnection(ctx, ln, me.packedProcess.startWait())
+	switch outcome {
+	case acceptFailed:
 		loadErr := newLoadError(me.config.Name, "connect", "accept_failed", fmt.Errorf("accept packed extension: %w", err))
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
-	case <-me.packedProcess.startWait():
+	case acceptProcessExited:
 		exitErr := errors.New("packed process exited before extension connected")
 		if me.packedProcess.exitErr() != nil {
 			exitErr = fmt.Errorf("packed process exited before extension connected: %w", me.packedProcess.exitErr())
@@ -862,8 +850,8 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		loadErr := newLoadError(me.config.Name, "connect", "process_exited", exitErr)
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
-	case <-ctx.Done():
-		loadErr := newLoadError(me.config.Name, "connect", "load_cancelled", fmt.Errorf("packed extension load cancelled before it connected: %w", ctx.Err()))
+	case acceptCancelled:
+		loadErr := newLoadError(me.config.Name, "connect", "load_cancelled", fmt.Errorf("packed extension load cancelled before it connected: %w", err))
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}

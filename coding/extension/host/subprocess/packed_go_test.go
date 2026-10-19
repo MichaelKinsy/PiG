@@ -105,8 +105,11 @@ func TestPackedAcceptReportsExitBeforeListenerCompletes(t *testing.T) {
 	})
 }
 
+// packedExitTestListener has no deadline, so ending its Accept means closing it,
+// which awaitConnection does when the process exits and the test does again.
 type packedExitTestListener struct {
-	closed chan struct{}
+	closed    chan struct{}
+	closeOnce sync.Once
 }
 
 func (l *packedExitTestListener) Accept() (net.Conn, error) {
@@ -115,7 +118,7 @@ func (l *packedExitTestListener) Accept() (net.Conn, error) {
 }
 
 func (l *packedExitTestListener) Close() error {
-	close(l.closed)
+	l.closeOnce.Do(func() { close(l.closed) })
 	return nil
 }
 

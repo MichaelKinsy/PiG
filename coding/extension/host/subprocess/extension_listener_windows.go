@@ -69,14 +69,21 @@ func ListenExtension(sockPath string, node bool) (net.Listener, string, error) {
 // cancellation, which it cannot while a goroutine holds it in a synchronous
 // read: os/exec copies a silent Node cell's output that way for as long as
 // the cell lives.
+//
+// interrupt ends the wait for a client that has not connected, as a deadline
+// in the past ends a Unix listener's Accept (awaitConnection). A client that
+// has connected stays queued and its Accept returns it: the pipe driver sets
+// the connect's event as the client's open completes, so the listener, unlike
+// a Unix socket, has no connection the poller has yet to notice.
 type pipeListener struct {
 	path  string
 	attrs *windows.SecurityAttributes
 
-	mu        sync.Mutex
-	closed    bool
-	next      *pipeInstance   // the spare, waiting for the next Accept
-	accepting []*pipeInstance // the instance each waiting Accept waits on
+	mu          sync.Mutex
+	closed      bool
+	interrupted bool            // an Accept that would wait for a client returns os.ErrDeadlineExceeded
+	next        *pipeInstance   // the spare, waiting for the next Accept
+	accepting   []*pipeInstance // the instance each waiting Accept waits on
 }
 
 // pipeInstance is one server instance of the pipe and its connect. While the
@@ -98,6 +105,12 @@ type pipeInstance struct {
 	// overlapped after that.
 	done       bool
 	clientGone bool
+	// preConnected is set before the instance is shared when a client had
+	// connected by the time the connect was issued.
+	preConnected bool
+	// interrupted is set, under the listener's lock, when interrupt closed the
+	// pipe handle of an instance no client had connected to.
+	interrupted bool
 }
 
 func listenPipe(path, sddl string) (*pipeListener, error) {
@@ -158,9 +171,9 @@ func connectPipeInstance(path string, h windows.Handle) (*pipeInstance, error) {
 	instance := &pipeInstance{handle: h, event: event, overlapped: &windows.Overlapped{HEvent: event | 1}}
 	switch err := windows.ConnectNamedPipe(h, instance.overlapped); {
 	case err == nil, errors.Is(err, windows.ERROR_PIPE_CONNECTED):
-		instance.done = true
+		instance.done, instance.preConnected = true, true
 	case errors.Is(err, windows.ERROR_NO_DATA):
-		instance.done, instance.clientGone = true, true
+		instance.done, instance.clientGone, instance.preConnected = true, true, true
 	case errors.Is(err, windows.ERROR_IO_PENDING):
 	default:
 		instance.release()
@@ -192,6 +205,17 @@ func (p *pipeInstance) wait() error {
 		return nil
 	}
 	return err
+}
+
+// connected reports whether a client has connected to the instance, without
+// waiting for one. The connect's event is set as the client's open completes.
+// It is safe while an Accept waits on the instance, which writes done.
+func (p *pipeInstance) connected() bool {
+	if p.preConnected {
+		return true
+	}
+	state, err := windows.WaitForSingleObject(p.event, 0)
+	return err == nil && state == windows.WAIT_OBJECT_0
 }
 
 // abort closes the instance's pipe handle. The pipe driver then completes a
@@ -228,6 +252,12 @@ func (l *pipeListener) Accept() (net.Conn, error) {
 			return nil, err
 		}
 	}
+	if l.interrupted && !instance.connected() {
+		// An interrupt forbids waiting for a client, and none has connected.
+		l.next = instance
+		l.mu.Unlock()
+		return nil, os.ErrDeadlineExceeded
+	}
 	l.accepting = append(l.accepting, instance)
 	l.mu.Unlock()
 
@@ -236,7 +266,8 @@ func (l *pipeListener) Accept() (net.Conn, error) {
 	l.mu.Lock()
 	l.accepting = slices.DeleteFunc(l.accepting, func(p *pipeInstance) bool { return p == instance })
 	closed := l.closed
-	if err == nil && !closed && l.next == nil {
+	interrupted := instance.interrupted
+	if err == nil && !closed && !interrupted && l.next == nil {
 		// Keep an instance waiting for the next client before this one
 		// is handed out. A concurrent Accept may already have made it.
 		if next, nextErr := newPipeInstance(l.path, l.attrs, false); nextErr == nil {
@@ -247,11 +278,16 @@ func (l *pipeListener) Accept() (net.Conn, error) {
 	}
 	l.mu.Unlock()
 	// A Close that ran while this instance was waiting closed its handle,
-	// even when a client had connected first.
-	if err != nil || closed {
+	// even when a client had connected first. An interrupt closed it only
+	// because no client had connected, so whatever the closed connect
+	// reported is not a client.
+	if err != nil || closed || interrupted {
 		instance.release()
-		if closed {
+		switch {
+		case closed:
 			return nil, net.ErrClosed
+		case interrupted:
+			return nil, os.ErrDeadlineExceeded
 		}
 		return nil, &os.PathError{Op: "connect named pipe", Path: l.path, Err: err}
 	}
@@ -296,6 +332,23 @@ func (l *pipeListener) Close() error {
 		l.next = nil
 	}
 	return nil
+}
+
+// interrupt ends every Accept that waits for a client that has not connected
+// and makes a later one return at once instead of waiting; each returns
+// os.ErrDeadlineExceeded. An Accept whose client has connected returns that
+// client. The caller has seen the client's process exit, so no client can
+// connect after the check.
+func (l *pipeListener) interrupt() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.interrupted = true
+	for _, instance := range l.accepting {
+		if !instance.connected() {
+			instance.interrupted = true
+			instance.abort()
+		}
+	}
 }
 
 func (l *pipeListener) Addr() net.Addr { return pipeAddr(l.path) }
