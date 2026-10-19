@@ -424,7 +424,7 @@ func (c *Conn) writeInline(frame *encodedFrame) (written bool, err error) {
 		c.writeMu.Unlock()
 		return false, nil
 	}
-	if err := c.checkSendState(); err != nil {
+	if err := c.checkSendState(false); err != nil {
 		c.writeMu.Unlock()
 		frame.release()
 		return true, err
@@ -509,7 +509,7 @@ func (c *Conn) sendOrdered(ctx context.Context, env *Envelope, order *sendOrder)
 type encodedEnvelope []byte
 
 func (c *Conn) sendEncoded(data encodedEnvelope) error {
-	if err := c.checkSendState(); err != nil {
+	if err := c.checkSendState(false); err != nil {
 		return err
 	}
 	if err := checkFrameSize(data); err != nil {
@@ -518,8 +518,9 @@ func (c *Conn) sendEncoded(data encodedEnvelope) error {
 	return c.enqueue(context.Background(), outboundFrame{data: data, work: true})
 }
 
-func (c *Conn) checkSendState() error {
-	if c.closing.Load() || c.closed.Load() {
+// checkSendState rejects a send on a connection that is closing or closed. answer marks a call result, the one frame a retiring connection still sends: Retire leaves the peer running until it closes, and a call it made before it read the shutdown frame, or that its teardown makes, waits for a result only this connection can carry. A peer that blocks on the result, as a Node runtime does in a synchronous host call, cannot read the shutdown frame until it arrives, so refusing it leaves the peer waiting for the result and the host waiting for the peer to close.
+func (c *Conn) checkSendState(answer bool) error {
+	if c.closed.Load() || (c.closing.Load() && !(answer && c.retiring.Load())) {
 		// A caller that keeps sending after the connection failed (for example
 		// a retry loop racing the writer's queue drain: a Send already queued
 		// when the connection fails can still succeed once the writer starts
@@ -542,7 +543,7 @@ func checkFrameSize(data []byte) error {
 }
 
 func (c *Conn) encodeEnvelope(env *Envelope) (*encodedFrame, error) {
-	if err := c.checkSendState(); err != nil {
+	if err := c.checkSendState(env.Type == MsgCallResult); err != nil {
 		return nil, err
 	}
 	if err := checkResultFrameSize(env); err != nil {
@@ -860,7 +861,7 @@ func (c *Conn) Incoming() <-chan *Envelope {
 	return c.inCh
 }
 
-// Retire asks the peer to end its side and waits for it to close after tearing down, then closes. A retiring peer that shares its process with a live successor generation must finish its teardown, such as leaving the shared event bus, before the successor is visible as the only generation. The peer closing ends the read loop. The wait is outstanding work, so the heartbeat fails a peer that stops answering, and a peer that answers keeps its teardown running, as Pi awaits session_shutdown handlers without a deadline (agent-session.ts:3291-3314).
+// Retire asks the peer to end its side and waits for it to close after tearing down, then closes. A retiring peer that shares its process with a live successor generation must finish its teardown, such as leaving the shared event bus, before the successor is visible as the only generation. The peer closing ends the read loop. The wait is outstanding work, so the heartbeat fails a peer that stops answering, and a peer that answers keeps its teardown running, as Pi awaits session_shutdown handlers without a deadline (agent-session.ts:3291-3314). Until the peer closes, the connection still sends the result of every call the peer makes, as Pi's in-process calls never go unanswered: a Node runtime blocked in a synchronous host call reads no shutdown frame until its result arrives (checkSendState).
 func (c *Conn) Retire(reason string) error {
 	c.retiring.Store(true)
 	return c.Close(reason)
