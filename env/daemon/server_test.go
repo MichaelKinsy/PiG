@@ -264,14 +264,20 @@ func TestAFailedChunkPoisonsTheWriteHandleAndHandlesAreLimited(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { file.Close() }) // Windows cannot remove the temp directory under an open handle
+	t.Cleanup(func() { _ = file.Close() }) // Windows cannot remove the temp directory under an open handle
 	id, failure := s.insertFile(file, path)
 	if failure != nil {
 		t.Fatal(failure)
 	}
 	request := Object{"op": "writeChunk", "handle": float64(id)}
-	if _, _, failure := s.dispatch(1, request, []byte("x"), newControl()); failure == nil || failure.Code != "EBADF" {
-		t.Fatalf("first chunk: %+v", failure)
+	// Node (libuv) names a write to a read-only handle EBADF on POSIX and EPERM on Windows, where the kernel answers
+	// ERROR_ACCESS_DENIED (internal/nodeerrno); the daemon reports what the platform's Node would.
+	want := "EBADF"
+	if runtime.GOOS == "windows" {
+		want = "EPERM"
+	}
+	if _, _, failure := s.dispatch(1, request, []byte("x"), newControl()); failure == nil || failure.Code != want {
+		t.Fatalf("first chunk: %+v, want %s", failure, want)
 	}
 	if _, _, failure := s.dispatch(2, request, []byte("y"), newControl()); failure == nil || failure.Code != "EBADF" || failure.Message != "an earlier write failed" {
 		t.Fatalf("second chunk: %+v", failure)
