@@ -42398,6 +42398,26 @@
         "tui/word_navigation_pi_test.go::TestFindWordForwardMatchesPi",
         "tui/word_navigation_pi_test.go::TestFindWordNavigationAtomicSegmentsMatchPi"
       ]
+    },
+    {
+      "id": "BF-efa8809",
+      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB",
+      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB.",
+      "rootCause": "The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "efa8809410",
+          "date": "2026-10-19"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [
