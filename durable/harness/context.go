@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -107,6 +108,47 @@ type contextRange struct {
 	baseline baseline
 	// firstSystem is the id of the first active entry that contributes a system message, 0 when none does.
 	firstSystem durable.EntryId
+	// settledSystem and settledNonUser are the indexes in settled of its first system message and of its first message
+	// that is not a user message, -1 when it has none; they spare a read from scanning the settled messages again.
+	settledSystem, settledNonUser int
+	// owners tell which later range may append in place to the arrays of entries, view.Entries, view.Contributions and
+	// settled; see growOwned.
+	owners rangeOwners
+}
+
+// rangeOwners are the tail owners of the arrays a range extends in place. A nil owner means the array is not the
+// range's own, e.g. it came from storage, and the first extension copies it.
+type rangeOwners struct {
+	entries, active, contributions, settled *atomic.Int64
+}
+
+// growOwned is base followed by add. An array's tail owner holds the length its newest range uses: the one extender
+// that moves it from len(base) appends in place, behind every length any earlier range shows, and so never writes what
+// a view handed out earlier reaches. Any other extender, and one without an owner, copies into a new array with room to
+// grow and a new owner, so amortized an extension costs what it adds.
+func growOwned[T any](base []T, owner *atomic.Int64, add []T) ([]T, *atomic.Int64) {
+	n := len(base)
+	if len(add) == 0 {
+		return base, owner
+	}
+	if owner != nil && cap(base)-n >= len(add) && owner.CompareAndSwap(int64(n), int64(n+len(add))) {
+		return append(base, add...), owner
+	}
+	grown := make([]T, n+len(add), max(2*(n+len(add)), 16))
+	copy(grown, base)
+	copy(grown[n:], add)
+	fresh := new(atomic.Int64)
+	fresh.Store(int64(len(grown)))
+	return grown, fresh
+}
+
+// clip caps s at its length, so a caller that appends to a view's array copies it instead of writing the range's spare room.
+func clip[T any](s []T) []T { return s[:len(s):len(s)] }
+
+// shared is the range's view as handed to readers: the arrays are the range's own, which later extensions only write
+// past their length, so readers must not modify them.
+func (r *contextRange) shared() durable.ContextView {
+	return durable.ContextView{Head: r.view.Head, Entries: clip(r.view.Entries), Contributions: clip(r.view.Contributions), Messages: clip(r.view.Messages)}
 }
 
 // baseline is the harness baseline among a range's entries. resolved is false while a later entry may be one; id is
@@ -118,8 +160,8 @@ type baseline struct {
 
 // readContextFrom is readContext reusing previous, an earlier range of the same conversation: with the same head
 // marker, only entries after its tail are scanned. It returns the view and the range to pass to the next read; the
-// range is nil when the conversation has no entry. The view has its own arrays but shares the entries and messages
-// with the range, so callers must not modify them.
+// range is nil when the conversation has no entry. The view shares its arrays, entries and messages with the range
+// and with later views, so callers must not modify them; a caller that modifies its view detaches it first.
 func readContextFrom(ctx context.Context, session lineReader, storage durable.Storage, conversationId durable.ConversationId, at *durable.EntryId, previous *contextRange) (durable.ContextView, *contextRange, error) {
 	bounds, err := captureOnLine(ctx, session, storage, conversationId, at)
 	if err != nil {
@@ -147,11 +189,7 @@ func readContextFrom(ctx context.Context, session lineReader, storage durable.St
 		}
 		next = extendRange(previous, *bounds, added)
 	}
-	view := next.view
-	view.Entries = slices.Clone(view.Entries)
-	view.Contributions = slices.Clone(view.Contributions)
-	view.Messages = slices.Clone(view.Messages)
-	return view, next, nil
+	return next.shared(), next, nil
 }
 
 func sameHead(a, b *durable.EntryRecord) bool {
@@ -218,7 +256,7 @@ func deriveRange(bounds ContextBounds, scanned []durable.EntryRecord) *contextRa
 		contributions = append(contributions, kept)
 		flat = append(flat, kept...)
 	}
-	settled, open := settle(nil, flat)
+	settled, open := settleSplit(flat)
 	edited := make(map[durable.EntryId]struct{}, len(edits))
 	for target := range edits {
 		edited[target] = struct{}{}
@@ -227,17 +265,17 @@ func deriveRange(bounds ContextBounds, scanned []durable.EntryRecord) *contextRa
 	base := findBaseline(bounds.Head, entries)
 	first := firstSystemEntry(entries, contributions)
 	view.Messages = leadWithSystem(view.Messages, leadsBaseline(base, first, edited))
-	return &contextRange{bounds: bounds, entries: scanned, view: view, edited: edited, settled: settled, open: open, baseline: base, firstSystem: first}
+	system, nonUser := leadingScan(settled)
+	return &contextRange{bounds: bounds, entries: scanned, view: view, edited: edited, settled: settled, open: open, baseline: base, firstSystem: first, settledSystem: system, settledNonUser: nonUser}
 }
 
 // extendRange is previous extended by the entries added after its tail under the same head marker: only their
 // contributions and the open messages are derived. An added edit can change an earlier entry, so it derives the whole
 // range again.
 func extendRange(previous *contextRange, bounds ContextBounds, added []durable.EntryRecord) *contextRange {
-	entries := slices.Concat(previous.entries, added)
 	for index := range added {
 		if _, edited := previous.edited[added[index].Id]; edited || len(added[index].Edits) > 0 || added[index].Head != nil {
-			return deriveRange(bounds, entries)
+			return deriveRange(bounds, slices.Concat(previous.entries, added))
 		}
 	}
 	contributions := make([][]ai.Message, 0, len(added))
@@ -247,7 +285,7 @@ func extendRange(previous *contextRange, bounds ContextBounds, added []durable.E
 		contributions = append(contributions, kept)
 		flat = append(flat, kept...)
 	}
-	settled, open := settle(previous.settled, flat)
+	chunk, open := settleSplit(flat)
 	base := previous.baseline
 	if !base.resolved {
 		base = findBaseline(bounds.Head, added)
@@ -256,13 +294,79 @@ func extendRange(previous *contextRange, bounds ContextBounds, added []durable.E
 	if first == 0 {
 		first = firstSystemEntry(added, contributions)
 	}
+	owners := previous.owners
+	entries, entriesOwner := growOwned(previous.entries, owners.entries, added)
+	active, activeOwner := entries, entriesOwner
+	if bounds.Head != nil {
+		// With a head marker the active entries are their own array; without one they are the range's entries.
+		active, activeOwner = growOwned(previous.view.Entries, owners.active, added)
+	}
+	contributed, contributionsOwner := growOwned(previous.view.Contributions, owners.contributions, contributions)
+	settled, settledOwner := growOwned(previous.settled, owners.settled, chunk)
+	system, nonUser := previous.settledSystem, previous.settledNonUser
+	if system < 0 || nonUser < 0 {
+		chunkSystem, chunkNonUser := leadingScan(chunk)
+		if system < 0 && chunkSystem >= 0 {
+			system = len(previous.settled) + chunkSystem
+		}
+		if nonUser < 0 && chunkNonUser >= 0 {
+			nonUser = len(previous.settled) + chunkNonUser
+		}
+	}
 	view := durable.ContextView{
 		Head:          bounds.Head,
-		Entries:       slices.Concat(previous.view.Entries, added),
-		Contributions: slices.Concat(previous.view.Contributions, contributions),
-		Messages:      leadWithSystem(append(append([]ai.Message{}, settled...), OrderToolResults(open)...), leadsBaseline(base, first, previous.edited)),
+		Entries:       active,
+		Contributions: contributed,
+		Messages:      composeMessages(settled, system, nonUser, OrderToolResults(open), leadsBaseline(base, first, previous.edited)),
 	}
-	return &contextRange{bounds: bounds, entries: entries, view: view, edited: previous.edited, settled: settled, open: open, baseline: base, firstSystem: first}
+	return &contextRange{bounds: bounds, entries: entries, view: view, edited: previous.edited, settled: settled, open: open, baseline: base, firstSystem: first,
+		settledSystem: system, settledNonUser: nonUser, owners: rangeOwners{entries: entriesOwner, active: activeOwner, contributions: contributionsOwner, settled: settledOwner}}
+}
+
+// leadingScan is the index of the first system message of messages and of the first message that is not a user
+// message, -1 for none.
+func leadingScan(messages []ai.Message) (system, nonUser int) {
+	system, nonUser = -1, -1
+	for index, message := range messages {
+		if nonUser < 0 {
+			if _, user := message.(ai.UserMessage); !user {
+				nonUser = index
+			}
+		}
+		if system < 0 && isSystemMessage(message) {
+			system = index
+		}
+		if system >= 0 && nonUser >= 0 {
+			break
+		}
+	}
+	return system, nonUser
+}
+
+// composeMessages is leadWithSystem(settled followed by ordered, baseline) in one array, given the first system and
+// first non-user indexes of settled (see leadingScan). It scans only ordered.
+func composeMessages(settled []ai.Message, settledSystem, settledNonUser int, ordered []ai.Message, baseline bool) []ai.Message {
+	out := make([]ai.Message, len(settled)+len(ordered))
+	copy(out, settled)
+	copy(out[len(settled):], ordered)
+	system, nonUser := leadingScan(ordered)
+	if settledSystem >= 0 {
+		system = settledSystem
+	} else if system >= 0 {
+		system += len(settled)
+	}
+	if settledNonUser >= 0 {
+		nonUser = settledNonUser
+	} else if nonUser >= 0 {
+		nonUser += len(settled)
+	}
+	if system <= 0 || (!baseline && nonUser >= 0 && nonUser < system) {
+		return out
+	}
+	led := out[system]
+	copy(out[1:system+1], out[:system])
+	out[0] = led
+	return out
 }
 
 // contribute is one active entry's model messages after its edit and the excluded stop reasons, before tool result
@@ -285,9 +389,10 @@ func contribute(entry *durable.EntryRecord, edit durable.ContextEdit, edited boo
 	return kept
 }
 
-// settle moves the ordered messages before the last assistant message of open to settled. OrderToolResults of a
-// sequence equals the concatenation over its parts when each later part starts with an assistant message.
-func settle(settled, open []ai.Message) ([]ai.Message, []ai.Message) {
+// settleSplit moves the ordered messages before the last assistant message of open to its first result, and returns
+// the rest as the new open messages. OrderToolResults of a sequence equals the concatenation over its parts when each
+// later part starts with an assistant message.
+func settleSplit(open []ai.Message) ([]ai.Message, []ai.Message) {
 	last := -1
 	for index, o := range slices.Backward(open) {
 		if _, ok := o.(ai.AssistantMessage); ok {
@@ -296,9 +401,9 @@ func settle(settled, open []ai.Message) ([]ai.Message, []ai.Message) {
 		}
 	}
 	if last <= 0 {
-		return settled, open
+		return nil, open
 	}
-	return slices.Concat(settled, OrderToolResults(open[:last])), slices.Clone(open[last:])
+	return OrderToolResults(open[:last]), slices.Clone(open[last:])
 }
 
 // findBaseline finds the baseline among entries, oldest first: the first pi.system entry after the head marker, or of

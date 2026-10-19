@@ -235,13 +235,22 @@ func TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut(t *testing.T) {
 			t.Fatal("a view changed after later reads extended the range")
 		}
 	}
-	// Every view has its own arrays, so a caller's change to one never reaches the range or a later view.
+	// A view's arrays are capped at their length, so a caller's append copies them instead of writing the range's spare room.
 	view := read()
-	view.Entries[0].Kind = "damaged"
-	view.Messages = view.Messages[:0]
-	view.Contributions[0] = nil
-	if again := read(); again.Entries[0].Kind == "damaged" || len(again.Messages) == 0 || again.Contributions[0] == nil {
-		t.Fatal("a change to a returned view's arrays reached the kept range")
+	_ = append(view.Entries, durable.EntryRecord{Kind: "damaged"})
+	_ = append(view.Contributions, nil)
+	_ = append(view.Messages, ai.UserMessage{})
+	s.turn(1)
+	again := read()
+	for _, entry := range again.Entries {
+		if entry.Kind == "damaged" {
+			t.Fatal("a caller's append to a returned view reached the kept range")
+		}
+	}
+	for _, message := range again.Messages {
+		if reflect.DeepEqual(message, ai.UserMessage{}) {
+			t.Fatal("a caller's append to a returned view reached the kept range")
+		}
 	}
 }
 

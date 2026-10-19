@@ -86,6 +86,47 @@ func TestTaskRuntimeContextIsDetachedFromLaterReads(t *testing.T) {
 	mustClose(t, opened.harness)
 }
 
+// A reader that did not ask for shared reads (task handlers, extensions, the SDKs, codemode) gets a view whose arrays
+// are its own: replacing elements of them must not reach a later read, as the kept range's arrays are shared by the
+// generation handlers' views.
+func TestTaskRuntimeContextArraysAreTheCallersOwn(t *testing.T) {
+	var first, again durable.ContextView
+	reader := tkOneStep("test.context-array-damage", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
+		view, err := runtime.Context(ctx, runtime.ConversationId(), nil)
+		if err != nil {
+			return err
+		}
+		first = detach.ContextView(view)
+		view.Entries[0].Kind = "damaged"
+		view.Entries[0] = view.Entries[len(view.Entries)-1]
+		view.Contributions[0] = nil
+		view.Messages[0] = ai.UserMessage{Content: ai.UserText("damaged")}
+		_ = append(view.Entries[:0], durable.EntryRecord{Kind: "damaged"})
+		if again, err = runtime.Context(ctx, runtime.ConversationId(), nil); err != nil {
+			return err
+		}
+		return tkComplete(ctx, runtime)
+	})
+	opened := tkOpenRoot(t, []durable.AnyTask{reader.Erased()}, tkOptions{storage: cacheTestStorage(t)})
+	for _, text := range []string{"one", "two", "three"} {
+		if _, err := opened.root.Commit(testContext, func(tx durable.Tx) (any, error) {
+			return tx.AppendEntry(opened.root.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{ai.UserMessage{Content: ai.UserText(text), Timestamp: 1}}})
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	id := tkStart(t, opened.root, reader.Erased())
+	opened.harness.Resume()
+	tkWaitOutcome(t, opened.harness, id)
+	if len(first.Entries) != 3 {
+		t.Fatalf("the task read %d entries, want 3", len(first.Entries))
+	}
+	if !reflect.DeepEqual(again, first) {
+		t.Fatal("a task handler's writes to its context view's arrays reached a later read")
+	}
+	mustClose(t, opened.harness)
+}
+
 // TestBeforeRequestHookChangesDoNotReachTheStoredContext Conversation.submit durably admits user input (packages/durable/src/harness/types.ts:514-518).
 // mutation-checked: Conversation.Submit returning no submission fails it.
 func TestBeforeRequestHookChangesDoNotReachTheStoredContext(t *testing.T) {
