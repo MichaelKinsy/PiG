@@ -26,6 +26,10 @@ func settingsWithEveryKind(t testing.TB) Settings {
 
 // The scalar getters read the merged settings under the read lock; they do not deep-copy all of Settings per call (AS-F8).
 func TestSettingsScalarGettersDoNotCopySettings(t *testing.T) {
+	// GetExternalEditorCommand reads VISUAL and EDITOR as Pi reads process.env. On Windows a set variable allocates its UTF-16 to string
+	// conversion (os.Getenv), while an unset or empty one does not (env_lookup_windows.go); a runner that sets either would count as an allocation.
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
 	sm := NewInMemorySettingsManager(settingsWithEveryKind(t))
 	getters := map[string]func(){
 		"GetBlockImages":                func() { _ = sm.GetBlockImages() },
