@@ -91,6 +91,7 @@ func TestGitignoreMatchesTheCratesTable(t *testing.T) {
 // Pi source: gitignore.rs parse_excludes_file1-5 and expand_tilde.
 func TestParseExcludesFileReadsGitsExcludesFile(t *testing.T) {
 	t.Setenv("HOME", "/home/someone")
+	t.Setenv("USERPROFILE", "/home/someone") // os.UserHomeDir reads this on Windows
 	for _, test := range []struct {
 		name, config, want string
 		found              bool
