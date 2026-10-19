@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
@@ -290,20 +291,50 @@ func currentOnly(rec *jv.Object) bool {
 // Conversation implements session.Store.
 func (m *mirror) Conversation(id session.ID) (*jv.Object, error) { return m.convs.get(id), nil }
 
-// ScanConversations implements session.Store.
+// ScanConversations implements session.Store. It walks the conversations of the owner the query names (all of them
+// without one) from the page's start, and stops at limit+1 matches.
 func (m *mirror) ScanConversations(q session.ConversationQuery, limit int, after session.ID) (session.Page, error) {
-	var out []*jv.Object
-	for _, c := range m.convs.recs {
+	ids := m.convs.ids
+	switch {
+	case q.OwnerTaskID != 0:
+		ids = m.convs.byTask[q.OwnerTaskID]
+	case q.OwnerConversationID != 0:
+		ids = m.convs.byConvOwn[q.OwnerConversationID]
+	}
+	// Both owners may be named: the index served one, the other filters.
+	match := func(c *jv.Object) bool {
 		o := sub(c, "owner")
-		if q.OwnerTaskID != 0 && (o == nil || num(o, "taskId") != q.OwnerTaskID) {
-			continue
+		return (q.OwnerTaskID == 0 || (o != nil && num(o, "taskId") == q.OwnerTaskID)) && (q.OwnerConversationID == 0 || (o != nil && num(o, "conversationId") == q.OwnerConversationID))
+	}
+	var out []*jv.Object
+	more := false
+	take := func(id session.ID) bool {
+		c := m.convs.get(id)
+		if c == nil || !match(c) {
+			return true
 		}
-		if q.OwnerConversationID != 0 && (o == nil || num(o, "conversationId") != q.OwnerConversationID) {
-			continue
+		if limit > 0 && len(out) == limit {
+			more = true
+			return false
 		}
 		out = append(out, c)
+		return true
 	}
-	return pageOf(out, limit, after, q.Descending), nil
+	if q.Descending {
+		start := len(ids)
+		if after != 0 {
+			start, _ = slices.BinarySearch(ids, after)
+		}
+		for i := start - 1; i >= 0 && take(ids[i]); i-- {
+		}
+	} else {
+		for i := firstAbove(ids, after); i < len(ids) && take(ids[i]); i++ {
+		}
+	}
+	if more {
+		return session.Page{Items: out, After: num(out[len(out)-1], "id")}, nil
+	}
+	return session.Page{Items: out}, nil
 }
 
 func pageOf(items []*jv.Object, limit int, after session.ID, descending bool) session.Page {
@@ -498,26 +529,46 @@ func (m *mirror) scanEntriesRaw(q session.EntryQuery, limit int, after session.I
 // Task implements session.Store.
 func (m *mirror) Task(id session.ID) (*jv.Object, error) { return m.task(id), nil }
 
-// ScanTasks implements session.Store.
+// ScanTasks implements session.Store. It reads storage only a page at a time and stops at the first limit+1 matches, and
+// parses only the records it returns, so a page costs what it returns, not the number of tasks.
 func (m *mirror) ScanTasks(q session.TaskQuery, limit int, after session.ID) (session.Page, error) {
-	if q.Status == "" || q.Status == "terminal" {
-		m.loadAllTasks()
+	match := func(h *taskHead) bool {
+		return (q.Status == "" || h.status == q.Status) && (q.ConversationID == 0 || h.conv == q.ConversationID) && (q.Kind == "" || h.kind == q.Kind) &&
+			(q.AbortRequested == nil || h.abort == *q.AbortRequested) && (q.Background == nil || h.bg == *q.Background)
 	}
 	var out []*jv.Object
-	for i, id := range m.tasks.ids {
-		h := &m.tasks.heads[i]
-		if (q.Status != "" && h.status != q.Status) || (q.ConversationID != 0 && h.conv != q.ConversationID) || (q.Kind != "" && h.kind != q.Kind) {
-			continue
+	more := false
+	// take offers a matching task; it reports whether the scan goes on.
+	take := func(rec func() *jv.Object) bool {
+		if limit > 0 && len(out) == limit {
+			more = true
+			return false
 		}
-		if q.AbortRequested != nil && h.abort != *q.AbortRequested {
-			continue
+		if r := rec(); r != nil {
+			out = append(out, r)
 		}
-		if q.Background != nil && h.bg != *q.Background {
-			continue
-		}
-		out = append(out, m.task(id))
+		return true
 	}
-	return pageOf(out, limit, after, q.Descending), nil
+	// The mirror holds the live tasks and the terminal ones this handle wrote; the rest are in storage when the scan can
+	// return terminal tasks.
+	stored := m.lazy.read != nil && (q.Status == "" || q.Status == "terminal")
+	m.scanTaskRows(stored, q.Descending, after, func(id session.ID, held bool, row []abi.Value) bool {
+		if held {
+			if i, _ := m.tasks.at(id); match(&m.tasks.heads[i]) {
+				return take(func() *jv.Object { return m.task(id) })
+			}
+			return true
+		}
+		h := taskHead{conv: int64(row[1].Number()), kind: unquoteColumn(row[2].Bytes), status: string(row[3].Bytes), abort: row[4].Number() != 0, bg: row[5].Number() != 0}
+		if match(&h) {
+			return take(func() *jv.Object { return parseRaw(row[6].Bytes) })
+		}
+		return true
+	})
+	if more {
+		return session.Page{Items: out, After: num(out[len(out)-1], "id")}, nil
+	}
+	return session.Page{Items: out}, nil
 }
 
 // Submission implements session.Store.

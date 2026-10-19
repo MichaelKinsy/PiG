@@ -25,6 +25,8 @@ const (
 	// id the page follows.
 	SQLTasksPage       = stmtDumpTasks
 	SQLSubmissionsPage = stmtDumpSubmissions
+	// SQLTasksDesc reads a page of tasks newest first, with the columns of SQLTasksPage. Parameters: the id the page precedes.
+	SQLTasksDesc = stmtTasksDesc
 	// SQLRecordType reads the record_ids row of an id. Parameters: id.
 	SQLRecordType = stmtRecordType
 	// SQLEntryByID reads one entry: conversation_id, commit_seq, record. Parameters: id.

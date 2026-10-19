@@ -18,10 +18,13 @@ import (
 // is pointer-free and never scanned; a column of records holds only real pointers. Lookups are binary searches over
 // the ID column; records are minted in ascending ID order, so an insert is almost always an append.
 
-// convTable holds the conversation records.
+// convTable holds the conversation records, and the ascending IDs of the conversations each task and each conversation
+// owns, so the scan of one owner's conversations reads only those.
 type convTable struct {
-	ids  []session.ID
-	recs []*jv.Object
+	ids       []session.ID
+	recs      []*jv.Object
+	byTask    map[session.ID][]session.ID
+	byConvOwn map[session.ID][]session.ID
 }
 
 func (t *convTable) get(id session.ID) *jv.Object {
@@ -36,14 +39,51 @@ func (t *convTable) has(id session.ID) bool {
 	return ok
 }
 
+// ownerOf is the task and conversation that own a conversation record; 0 for none.
+func ownerOf(rec *jv.Object) (task, conv session.ID) {
+	if o := sub(rec, "owner"); o != nil {
+		return num(o, "taskId"), num(o, "conversationId")
+	}
+	return 0, 0
+}
+
 func (t *convTable) put(id session.ID, rec *jv.Object) {
 	i, ok := slices.BinarySearch(t.ids, id)
 	if ok {
+		oldTask, oldConv := ownerOf(t.recs[i])
+		newTask, newConv := ownerOf(rec)
+		if oldTask != newTask {
+			t.unindex(t.byTask, oldTask, id)
+			t.index(&t.byTask, newTask, id)
+		}
+		if oldConv != newConv {
+			t.unindex(t.byConvOwn, oldConv, id)
+			t.index(&t.byConvOwn, newConv, id)
+		}
 		t.recs[i] = rec
 		return
 	}
 	t.ids = slices.Insert(t.ids, i, id)
 	t.recs = slices.Insert(t.recs, i, rec)
+	task, conv := ownerOf(rec)
+	t.index(&t.byTask, task, id)
+	t.index(&t.byConvOwn, conv, id)
+}
+
+func (t *convTable) index(m *map[session.ID][]session.ID, owner, id session.ID) {
+	if owner == 0 {
+		return
+	}
+	if *m == nil {
+		*m = map[session.ID][]session.ID{}
+	}
+	(*m)[owner] = insertSorted((*m)[owner], id)
+}
+
+func (t *convTable) unindex(m map[session.ID][]session.ID, owner, id session.ID) {
+	if at, ok := slices.BinarySearch(m[owner], id); ok && owner != 0 {
+		m[owner] = slices.Delete(m[owner], at, at+1)
+	}
 }
 
 // entryTable holds the stored record text and commit sequence of every entry the mirror holds (all of them, or with a

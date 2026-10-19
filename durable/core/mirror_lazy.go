@@ -28,8 +28,8 @@ type lazyState struct {
 	// storedBounds are the newest stored entry and head marker of the conversations whose bounds a read asked for,
 	// sorted by conversation, kept current as entries move to storage, so the latest head marker is read once.
 	storedBounds []storedBound
-	// tasksAll and subsAll report that every task or submission is in the mirror.
-	tasksAll, subsAll bool
+	// subsAll reports that every submission is in the mirror.
+	subsAll bool
 	// taskMiss and subMiss are IDs below below the store answered absent; requestMiss are (conversation, requestId)
 	// pairs it answered absent.
 	taskMiss, subMiss []session.ID
@@ -62,7 +62,7 @@ func (m *mirror) mayLack(id session.ID, all bool, miss []session.ID) bool {
 
 // loadTask reads task id when the mirror may lack it and returns its position.
 func (m *mirror) loadTask(id session.ID) (int, bool) {
-	if !m.mayLack(id, m.lazy.tasksAll, m.lazy.taskMiss) {
+	if !m.mayLack(id, false, m.lazy.taskMiss) {
 		return 0, false
 	}
 	rows, ok := m.lazyRead(store.SQLTaskByID, abi.Int(id))
@@ -142,29 +142,77 @@ func (m *mirror) loadSubmissionByRequest(conv session.ID, request string) (sessi
 	return id, true
 }
 
-// loadAllTasks reads every task the mirror lacks, for a scan that may return terminal tasks. A task the mirror holds
-// keeps the mirror's record: it may be newer than the stored row.
-func (m *mirror) loadAllTasks() {
-	if m.lazy.read == nil || m.lazy.tasksAll {
+// scanTaskRows offers the tasks after id after (before it, descending) in ID order to visit, until it returns false: the
+// ones the mirror holds (held, no row) and, with stored, the ones storage has and the mirror lacks (a row of the
+// SQLTasksPage columns). A held task shadows the stored row of its ID: it may be newer. Storage is read a page at a time,
+// and only as far as visit asks for.
+func (m *mirror) scanTaskRows(stored, desc bool, after session.ID, visit func(id session.ID, held bool, row []abi.Value) bool) {
+	ids := m.tasks.ids
+	// pos is the next held task to offer: ids[pos:] ascending, ids[:pos] descending.
+	var pos int
+	cursor := after
+	if desc {
+		if cursor == 0 {
+			cursor = maxSafeID
+		}
+		pos, _ = slices.BinarySearch(ids, cursor)
+	} else {
+		pos, _ = slices.BinarySearch(ids, cursor+1)
+	}
+	// heldBefore offers the held tasks that come before id (all of them for id 0) and reports whether the scan goes on.
+	heldBefore := func(id session.ID) bool {
+		for {
+			if desc {
+				if pos == 0 || ids[pos-1] < id {
+					return true
+				}
+				pos--
+				if !visit(ids[pos], true, nil) {
+					return false
+				}
+			} else {
+				if pos == len(ids) || (id != 0 && ids[pos] > id) {
+					return true
+				}
+				pos++
+				if !visit(ids[pos-1], true, nil) {
+					return false
+				}
+			}
+		}
+	}
+	if !stored {
+		heldBefore(0)
 		return
 	}
-	for after := int64(0); ; {
-		rows, ok := m.lazyRead(store.SQLTasksPage, abi.Int(after))
+	for {
+		sql := store.SQLTasksPage
+		if desc {
+			sql = store.SQLTasksDesc
+		}
+		rows, ok := m.lazyRead(sql, abi.Int(cursor))
 		if !ok {
 			return
 		}
 		for _, r := range rows {
 			id := int64(r[0].Number())
-			if _, held := m.tasks.at(id); !held {
-				m.putTask(id, taskHead{conv: int64(r[1].Number()), kind: unquoteColumn(r[2].Bytes), status: string(r[3].Bytes), abort: r[4].Number() != 0, bg: r[5].Number() != 0}, nil, r[6].Bytes)
+			if !heldBefore(id) {
+				return
 			}
-			after = id
+			// A held task of this ID was offered by heldBefore or shadows the row.
+			if m.tasks.has(id) {
+				continue
+			}
+			if !visit(id, false, r) {
+				return
+			}
 		}
 		if len(rows) < store.PageRows {
-			break
+			heldBefore(0)
+			return
 		}
+		cursor = int64(rows[len(rows)-1][0].Number())
 	}
-	m.lazy.tasksAll, m.lazy.taskMiss = true, nil
 }
 
 // loadAllSubmissions reads every submission the mirror lacks, for a scan that may return settled submissions.
@@ -272,7 +320,7 @@ func (m *mirror) releaseHeld() {
 	m.subs.keepLive()
 	m.lazy.below = max(m.lazy.below, m.nextID)
 	// A released record is read again from storage, so neither a scan nor an absent answer from before stands.
-	m.lazy.tasksAll, m.lazy.subsAll = false, false
+	m.lazy.subsAll = false
 	m.lazy.taskMiss, m.lazy.subMiss, m.lazy.requestMiss = nil, nil, nil
 }
 

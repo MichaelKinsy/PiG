@@ -62,6 +62,7 @@ const (
 	stmtEntriesPage
 	stmtEntryCount
 	stmtEntriesDesc
+	stmtTasksDesc
 	// The context reads the host answers from the context it derived and holds, not from SQL (hostctx.go in the core).
 	stmtContextSummary
 	stmtContextMessages
@@ -249,6 +250,7 @@ func buildTable() []string {
 		"SELECT id, commit_seq, CAST(record AS BLOB) FROM entries WHERE conversation_id = ? AND id > ? AND id <= ? ORDER BY id LIMIT "+dumpPageText,
 		"SELECT count(*) FROM entries WHERE conversation_id = ? AND id >= ? AND id <= ?",
 		"SELECT id, commit_seq, CAST(record AS BLOB) FROM entries WHERE conversation_id = ? AND id >= ? AND id <= ? ORDER BY id DESC LIMIT ?",
+		"SELECT id, conversation_id, kind, status, abort_requested, background, CAST(record AS BLOB) FROM tasks WHERE id < ? ORDER BY id DESC LIMIT "+dumpPageText,
 		// The host's context reads (ABI section 4.2). They look like reads so every host answers them through pig.read, and name
 		// functions SQLite does not have, so a host that ran one as SQL would fail loudly.
 		TextContextSummary,
