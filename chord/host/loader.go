@@ -22,11 +22,8 @@ package host
 // contracts the Go host serves.
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	_ "embed" // loader_child.mjs
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -91,41 +88,25 @@ func (loader *NodeLoaderImpl) Close() error {
 	return errors.Join(errs...)
 }
 
-var (
-	nodeLoaderEntryOnce sync.Once
-	nodeLoaderEntryPath string
-	nodeLoaderEntryErr  error
-)
-
-// nodeLoaderEntry writes loader_child.mjs once, under a name that carries its content, and returns its path.
-func nodeLoaderEntry() (string, error) {
-	nodeLoaderEntryOnce.Do(func() {
-		sum := sha256.Sum256(nodeLoaderChild)
-		path := filepath.Join(os.TempDir(), "chord-node-loader-"+hex.EncodeToString(sum[:8])+".mjs")
-		if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, nodeLoaderChild) {
-			nodeLoaderEntryPath = path
-			return
-		}
-		temp, err := os.CreateTemp(os.TempDir(), "chord-node-loader-*.tmp")
-		if err != nil {
-			nodeLoaderEntryErr = err
-			return
-		}
-		_, err = temp.Write(nodeLoaderChild)
-		if closeErr := temp.Close(); err == nil {
-			err = closeErr
-		}
-		if err == nil {
-			err = os.Rename(temp.Name(), path)
-		}
-		if err != nil {
-			_ = os.Remove(temp.Name())
-			nodeLoaderEntryErr = err
-			return
-		}
-		nodeLoaderEntryPath = path
-	})
-	return nodeLoaderEntryPath, nodeLoaderEntryErr
+// nodeLoaderEntry writes loader_child.mjs into a directory only this load can reach and returns its path and the
+// function that removes the directory. The child reads its entry once, at start, so the caller removes the directory as
+// soon as the start has settled. Nothing is shared between loads or processes: a process that ends or cleans up
+// cannot take another's entry away, and no other user can swap the code the child runs.
+func nodeLoaderEntry() (path string, remove func(), err error) {
+	dir, err := os.MkdirTemp("", "chord-node-loader-")
+	if err != nil {
+		return "", nil, err
+	}
+	remove = func() {
+		// Best effort: the directory holds only this copy, and a failed removal changes no result.
+		_ = os.RemoveAll(dir)
+	}
+	path = filepath.Join(dir, "loader_child.mjs")
+	if err := os.WriteFile(path, nodeLoaderChild, 0o600); err != nil {
+		remove()
+		return "", nil, err
+	}
+	return path, remove, nil
 }
 
 // Load imports the facet modules in a child process and returns their facets, named by module URL, in module order.
@@ -135,10 +116,11 @@ func (loader *NodeLoaderImpl) Load(modules []string) ([]Facet, error) {
 	if len(modules) == 0 {
 		return []Facet{}, nil
 	}
-	entry, err := nodeLoaderEntry()
+	entry, removeEntry, err := nodeLoaderEntry()
 	if err != nil {
 		return nil, err
 	}
+	defer removeEntry()
 	names := make([]any, len(modules))
 	for index, module := range modules {
 		names[index] = module
