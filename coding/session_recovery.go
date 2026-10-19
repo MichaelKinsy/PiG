@@ -111,7 +111,8 @@ func (s *Session) findPersistedMessageEntryID(message agent.AgentMessage) (strin
 		return id, true
 	}
 	if message.ToolResult != nil {
-		projection := s.inner.BuildSessionProjection()
+		// The newest projected entries are the turn's own: the kept projection extends by each append, so the lookup reads them without projecting the history, and a match ends the walk.
+		projection := s.inner.BuildSessionProjectionView()
 		for _, entry := range slices.Backward(projection.Entries) {
 			for _, projected := range entry.Messages {
 				if projected.ToolResult != nil && projected.ToolResult.ToolCallID == message.ToolResult.ToolCallID {
@@ -127,7 +128,7 @@ func (s *Session) findPersistedMessageEntryID(message agent.AgentMessage) (strin
 	if messageIndex < 0 {
 		return "", false
 	}
-	projection := s.inner.BuildSessionProjection()
+	projection := s.inner.BuildSessionProjectionView()
 	// Restoring a transcript without a system entry prepends the current
 	// baseline. It has no persisted entry and shifts projected positions.
 	messages := s.agent.Messages()
