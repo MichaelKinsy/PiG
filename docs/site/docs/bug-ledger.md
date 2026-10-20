@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-915 bugs. 865 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 136 bugs have no recorded test.
+915 bugs. 865 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -520,7 +520,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-1390c9d](#bf-1390c9d) | fix(ai): the Anthropic event reader matches the type member exactly | PiG's own defect | All platforms | Unreleased |
 | [BF-42e3d0e](#bf-42e3d0e) | fix(hljs): a class that negates only \r still reaches across lines; gate the streamed code block Linear | PiG's own defect | All platforms | Unreleased |
-| [BF-74f806c](#bf-74f806c) | fix(agent): end the tool flow at custom user messages after /tree navigation (#203) | PiG's own defect | All platforms | Unreleased |
 | [BF-34f7594](#bf-34f7594) | An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-2](#bf-34f7594-2) | Fixed the interactive bash block stripping escape sequences with the wrong rule… | PiG's own defect | All platforms | 0.5.0 |
@@ -622,6 +621,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-ca06a0b](#bf-ca06a0b) | Tool arguments that TypeBox's Convert wraps in an array (an object where the schema asks for an array, such… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b78cdae](#bf-b78cdae) | A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `\|description: ...`)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 | [BF-e48a02f](#bf-e48a02f) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
@@ -789,7 +789,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-79f9a9e](#bf-79f9a9e) | fix(agent): convert a live partial with one clone and keep events at an unchanged publication (TU-T7 rest) | PiG's own defect | All platforms | Unreleased |
 | [BF-8c3f5a1](#bf-8c3f5a1) | fix(tui): a finished block's hidden thinking run keeps no streaming memos | PiG's own defect | All platforms | Unreleased |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
-| [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-2](#bf-928e15c-2) | A stored models catalog whose `contextWindow` or `maxTokens` is written as `128000.0` or `1.28E5` loads like… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-3](#bf-928e15c-3) | Provider HTTP error bodies are decoded like `response.text()`: ill-formed UTF-8 becomes one U+FFFD per… | PiG's own defect | All platforms | 0.5.0 |
@@ -885,55 +884,56 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c5ce588](#bf-c5ce588) | Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e3f39b7](#bf-e3f39b7) | Automatic retry now triggers for the gateway error "Unable to forward upstream stream" | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7cf8dc0](#bf-7cf8dc0) | A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with… | PiG's own defect | All platforms | Unreleased |
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-167dae3](#bf-167dae3) | fix(codingagent): the idle collection runs two GC cycles again so pool victims are freed (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-20718f7](#bf-20718f7) | fix(coding-agent): resolve model references through one provider selection policy (Pi) | PiG's own defect | All platforms | Unreleased |
-| [BF-36c3d14](#bf-36c3d14) | `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one | PiG's own defect | All platforms | Unreleased |
-| [BF-471db1a](#bf-471db1a) | A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does | A fix Pi shipped that PiG ported | All platforms | Unreleased |
-| [BF-f2f1caa](#bf-f2f1caa) | Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
-| [BF-7cf8dc0](#bf-7cf8dc0) | A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with… | PiG's own defect | All platforms | Unreleased |
-| [BF-7cf8dc0-2](#bf-7cf8dc0-2) | Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort… | PiG's own defect | All platforms | Unreleased |
-| [BF-7cf8dc0-3](#bf-7cf8dc0-3) | The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."… | PiG's own defect | All platforms | Unreleased |
-| [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb](#bf-b8df7eb) | On Windows, a session's private snapshot file is created in the temporary directory instead of the session… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-3](#bf-b8df7eb-3) | Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render… | PiG's own defect | Windows | 0.5.0 |
+| [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
+| [BF-36c3d14](#bf-36c3d14) | `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one | PiG's own defect | All platforms | Unreleased |
+| [BF-7cf8dc0-2](#bf-7cf8dc0-2) | Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort… | PiG's own defect | All platforms | Unreleased |
+| [BF-7cf8dc0-3](#bf-7cf8dc0-3) | The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."… | PiG's own defect | All platforms | Unreleased |
+| [BF-471db1a](#bf-471db1a) | A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-f2f1caa](#bf-f2f1caa) | Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-1d3b1d0](#bf-1d3b1d0) | MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one… | PiG's own defect | All platforms | Unreleased |
-| [BF-a31d771](#bf-a31d771) | Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c46363b](#bf-c46363b) | Selecting a `go.work` member module that is itself an exact factory package resolves that module's factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-05b4c52](#bf-05b4c52) | A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for… | PiG's own defect | All platforms | Unreleased |
+| [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
+| [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
+| [BF-c2cdd5b-3](#bf-c2cdd5b-3) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | Unreleased |
+| [BF-90fd188](#bf-90fd188) | `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer… | PiG's own defect | Windows | Unreleased |
 | [BF-1f50dd5](#bf-1f50dd5) | A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again… | PiG's own defect | All platforms | Unreleased |
 | [BF-484865a](#bf-484865a) | Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a… | PiG's own defect | All platforms | Unreleased |
+| [BF-b7ab092](#bf-b7ab092) | On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that… | PiG's own defect | All platforms | Unreleased |
+| [BF-b1a68e0](#bf-b1a68e0) | A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of… | PiG's own defect | All platforms | Unreleased |
 | [BF-3363d44](#bf-3363d44) | An extension that registers many tools after load (`pi.registerTool`) no longer slows down with each… | PiG's own defect | All platforms | Unreleased |
 | [BF-3675522](#bf-3675522) | A `context` event with several extension handlers is encoded once per request instead of once per handler… | PiG's own defect | All platforms | Unreleased |
 | [BF-3675522-2](#bf-3675522-2) | Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a… | PiG's own defect | All platforms | Unreleased |
+| [BF-97ecff0](#bf-97ecff0) | A Durable core session with many live tasks recomputes its next wake without walking every live task on each… | PiG's own defect | All platforms | Unreleased |
 | [BF-c6fd79d](#bf-c6fd79d) | Idle and typing frames in a long interactive session no longer redraw from the header down: a frame costs the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c6fd79d-2](#bf-c6fd79d-2) | Markdown with many inline `$` signs renders in linear time, as in Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-6dba8f0](#bf-6dba8f0) | Extension SDKs: reading the session branch, an entry, a label or the leaf entry right after a new entry is… | PiG's own defect | All platforms | Unreleased |
 | [BF-199027e](#bf-199027e) | Choosing a bundled model no longer builds every model of its provider on each request, and providers in… | PiG's own defect | All platforms | Unreleased |
+| [BF-b1421b7](#bf-b1421b7) | `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-4334e0b](#bf-4334e0b) | A Durable code mode tool call made just before the script launches another call or ends has started before… | PiG's own defect | All platforms | Unreleased |
 | [BF-792f185](#bf-792f185) | PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting… | PiG's own defect | All platforms | Unreleased |
+| [BF-ba44e9f](#bf-ba44e9f) | A Node extension whose factory failed, because it has no default export or throws while initializing, could… | PiG's own defect | All platforms | Unreleased |
 | [BF-af18171](#bf-af18171) | A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on… | PiG's own defect | All platforms | Unreleased |
+| [BF-02ed4f1](#bf-02ed4f1) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d5c6ba](#bf-8d5c6ba) | Durable tool calls that the model issues in parallel or nested no longer slow down as the live state grows: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-6a19718](#bf-6a19718) | With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a… | PiG's own defect | All platforms | Unreleased |
+| [BF-2e70b95](#bf-2e70b95) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
+| [BF-dea7cbc](#bf-dea7cbc) | A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no… | PiG's own defect | All platforms | Unreleased |
 | [BF-77d8625](#bf-77d8625) | `chord/host`: the Node facet loader no longer writes its child entry under one fixed name in the shared… | PiG's own defect | All platforms | Unreleased |
+| [BF-d34376d](#bf-d34376d) | A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of… | PiG's own defect | All platforms | Unreleased |
 | [BF-b15e50a](#bf-b15e50a) | Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a… | PiG's own defect | All platforms | Unreleased |
-| [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
-| [BF-9f31a8b](#bf-9f31a8b) | A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine… | PiG's own defect | Windows, macOS, Linux | Unreleased |
-| [BF-c3c84b5](#bf-c3c84b5) | Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has… | PiG's own defect | All platforms | Unreleased |
-| [BF-97ecff0](#bf-97ecff0) | A Durable core session with many live tasks recomputes its next wake without walking every live task on each… | PiG's own defect | All platforms | Unreleased |
-| [BF-4334e0b](#bf-4334e0b) | A Durable code mode tool call made just before the script launches another call or ends has started before… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b](#bf-c2cdd5b) | An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
-| [BF-c2cdd5b-3](#bf-c2cdd5b-3) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | Unreleased |
-| [BF-dea7cbc](#bf-dea7cbc) | A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no… | PiG's own defect | All platforms | Unreleased |
-| [BF-90fd188](#bf-90fd188) | `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer… | PiG's own defect | Windows | Unreleased |
-| [BF-d34376d](#bf-d34376d) | A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of… | PiG's own defect | All platforms | Unreleased |
-| [BF-b7ab092](#bf-b7ab092) | On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that… | PiG's own defect | All platforms | Unreleased |
-| [BF-b1a68e0](#bf-b1a68e0) | A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of… | PiG's own defect | All platforms | Unreleased |
-| [BF-02ed4f1](#bf-02ed4f1) | A Durable core request costs the same however many requests are in flight: a notice is tested only against… | PiG's own defect | All platforms | Unreleased |
-| [BF-2e70b95](#bf-2e70b95) | A Durable reference harness turn no longer copies the whole conversation history to extend its context | PiG's own defect | All platforms | Unreleased |
-| [BF-b1421b7](#bf-b1421b7) | `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a… | PiG's own defect | All platforms | Unreleased |
-| [BF-ba44e9f](#bf-ba44e9f) | A Node extension whose factory failed, because it has no default export or throws while initializing, could… | PiG's own defect | All platforms | Unreleased |
+| [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
+| [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
+| [BF-pending-915](#bf-pending-915) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -7935,19 +7935,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `42e3d0eb5b` (2026-10-10)
 - **Tests:** `tui/highlight_resume_scaling_norace_test.go::TestScalingStreamedCodeBlockHighlight`, `tui/internal/hljs/resume_test.go::TestPatternReach`
 
-### BF-74f806c
-
-**fix(agent): end the tool flow at custom user messages after /tree navigation (#203)**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(agent): end the tool flow at custom user messages after /tree navigation (#203)
-- **Root cause:** Custom messages that become user messages (branch and compaction summaries) now end an open tool flow, and system messages that arrive while tool calls are pending are held until after the results, as Pi does. Fixes an Anthropic HTTP 400 for an orphaned tool_result after /tree navigation.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `74f806c799` (2026-10-10, #203)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow`
-
 ### BF-34f7594
 
 **An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or…**
@@ -9365,6 +9352,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b78cdae340` (2026-10-11)
 - **Tests:** `internal/yaml12/parse_mutation_test.go::TestParseMatchesTheLibraryOnErrorRangesPastNonASCII`
 - **Release note:** A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `|description: ...`) draws the carets of the `Implicit keys need to be on a single line` message as the yaml library does when the scalar's content holds a non-ASCII character: the range ends one UTF-16 unit per character after the key's offset, where it used to count bytes and print one caret or too many.
+
+### BF-a31d771
+
+**Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `<file>/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with "local Go replacements: not a directory".
+- **Root cause:** localGoReplacementDirs read <extension>/go.mod for every extension; for a single-file extension (a lone .ts or .js file, documented in piglet-binaries.md) that read fails with ENOTDIR, which os.IsNotExist does not cover, and the build stopped at 'Locking build inputs'. A source that is not a directory has no Go replacements.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a31d77153a` (2026-10-11)
+- **Tests:** `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialDoesNotScoreAnArmThatDoesNotStart`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialRefusesTestsThatAreNotLocked`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialScoresTheAgentAfterItExits`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialVerifiesAFailedOrTimedOutAgent`, `coding/piglet/testmain_test.go::TestAgentEnvIsIsolatedToThePackageRun`, `coding/piglet/testmain_test.go::TestMain`, `coding/pigletbuild/records_go_replacement_test.go::TestBuildInputsLocksASingleFileExtension`
+- **Release note:** Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `<file>/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with "local Go replacements: not a directory". A file extension has no Go replacements and now locks like a directory extension without a `go.mod`.
 
 ### BF-e48a02f
 
@@ -11663,19 +11664,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `57a1687bc4` (2026-10-13)
 - **Tests:** `agent/messages_projection_test.go::TestAssistantMessageProjectionEqualsObserve`, `ai/assistant_observation_projection_norace_test.go::TestObserveProjectionAllocatesNothing`, `ai/assistant_observation_projection_test.go::TestObserveProjectionEqualsObserve`, `ai/stream_builder_deferred_arguments_test.go::TestDeferredToolArgumentsReadAsTheEagerParse`, `internal/codingagent/reload_allocs_norace_test.go::TestInteractiveSessionReloadAllocatesPerRetainedMessageWithinBudget`
 
-### BF-e63c61c
-
-**fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `e63c61c338` (2026-10-12, #208)
-- **Tests:** `internal/codingagent/interactive_model_tools_deadlock_test.go::TestInteractiveModelSelectionPumpsToolRegistration`
-
 ### BF-928e15c
 
 **A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no…**
@@ -13006,6 +12994,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification`
 - **Release note:** Automatic retry now triggers for the gateway error "Unable to forward upstream stream". Carried forward from Pi 7efebff1 (earendil-works/pi#10920), past the 1.2.0+3daa2028 pin.
 
+### BF-7cf8dc0
+
+**A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
+- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `368f33bae1` (2026-10-14), `7cf8dc042f` (2026-10-15)
+- **Tests:** `chord/host/host_test.go::TestHostRecognizesItsOwnPrincipalByKey`, `chord/host/placement_upstream_test.go::TestPlacementAGetGoesWhereTheContractPlacesTheInputHereAChildOrTheParentNeverNamedByTheCaller`, `chord/host/placement_upstream_test.go::TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees`, `chord/host/placement_upstream_test.go::TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter`, `chord/host/placement_upstream_test.go::TestPlacementServeRefusesATypeTheHostIsNotThePlaceOfAlsoAtAReload`, `chord/host/placement_upstream_test.go::TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt`, `chord/host/placement_upstream_test.go::TestPlacementTypesAndRemoteContractsNeedAHost`, `chord/host/principals_upstream_test.go::TestPrincipalsAChildsParentActsAsThePrincipalTheChildGaveConnectRelayedCallersKeepTheirs` and 11 more in docs/bug-ledger.json
+- **Release note:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
+
 ### BF-edb73db
 
 **fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…**
@@ -13044,104 +13046,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fixed in:** Unreleased
 - **Fix commits:** `20718f71ec` (2026-10-14)
 - **Tests:** `coding/cli/credential_print_test.go::TestCredentialPrintModelWithoutProviderUsesCatalogOfConfiguredProviders`, `internal/codingagent/model_reference_upstream_test.go::TestResolveCliModelDuplicateRawIDsMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelReferenceMatchesUpstream`, `internal/codingagent/model_reference_upstream_test.go::TestResolveModelScopeAmbiguousProvidersMatchesUpstream`
-
-### BF-36c3d14
-
-**`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one**
-
-- **Source:** PiG's own defect
-- **Symptom:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one.
-- **Root cause:** showExtensionCustom's close() hid the overlay with ui.hideOverlay(), which removes the topmost overlay, so closing a lower overlay removed the one above it and left the finished one on screen (interactive-mode.ts:2992-3000, :3028 keeps the handle showOverlay returned and close() calls overlayHandle?.hide()). customCall.teardown (ext_ui_custom.go) and RunRemoteOverlay (ext_ui_context.go) now hide the handle they showed. A factory's own tui.hideOverlay() still pops the topmost overlay (HideTopOverlay).
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `36c3d14b23` (2026-10-15, #10999)
-- **Tests:** `internal/codingagent/ext_ui_custom_stack_test.go::TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`, `internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`
-- **Release note:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one. With a shell overlay open under a dialog overlay from another extension, the shell's exit no longer removes the dialog or leaves the finished shell on screen (Pi #10999, #10648).
-
-### BF-471db1a
-
-**A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does**
-
-- **Source:** A fix Pi shipped that PiG ported
-- **Symptom:** A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.
-- **Root cause:** Pi moves OutputBuffer, Progress, boundOutput, sanitizeOutput, characterEnd and the output types from packages/durable/src/harness/output.ts to the Chord subpath packages/chord/src/output.ts, adds OutputSkip (output.ts:20-31) and utf8ByteLength (output.ts:268-290), and has Durable import them (harness/tool.ts:4-10, tools/read.ts:2, truncate.ts:1,47).
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `471db1ac1b` (2026-10-15)
-- **Tests:** `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission`, `chord/output/output_test.go::TestOutputBuffer`, `chord/output/output_test.go::TestProgress`, `chord/output/output_test.go::TestSystemProgressClockUsesNodesTimerDelayRule`, `chord/output/output_test.go::TestToolOutputBounds`, `durable/harness/harness_tools_progress_test.go::TestToolProgressAndLifetime` and 4 more in docs/bug-ledger.json
-- **Release note:** A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.
-
-### BF-f2f1caa
-
-**Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the…**
-
-- **Source:** A fix Pi shipped that PiG ported
-- **Symptom:** Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)).
-- **Root cause:** Anthropic and Claude on Bedrock reject an error tool result that holds images. Pi now replaces each run of images in such a result with "(image attached after the tool results)" and sends the images after all tool results of the turn, in the same user message, under a caption naming the call (transform-messages.ts:14-39 splitErrorToolResultImages; anthropic-messages.ts:1339 convertToolResult and :1500-1523 convertMessages; bedrock-converse-stream.ts:1093-1124 convertMessages, Claude only).
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `29dadf1e5e` (2026-10-15), `471db1ac1b` (2026-10-15), `f2f1caa6d2` (2026-10-15), `fb72e1fde8` (2026-10-15)
-- **Tests:** `ai/anthropic_error_tool_result_image_test.go::TestAnthropicErrorToolResultImages`, `ai/auth_path_oracle_test.go::TestAuthStorageAuthPathSpellingsMatchPi`, `ai/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketFallsBackToTheHTTPProxy`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketProxyFollowsEnvHttpProxyAgent`, `ai/sse_event_idle_scan_norace_test.go::TestSSEIdleTrackerScanIsNotAPerByteLoop`, `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput` and 10 more in docs/bug-ledger.json
-- **Release note:** Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)). Other Bedrock models keep the images in the result.
-
-### BF-7cf8dc0
-
-**A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
-- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `368f33bae1` (2026-10-14), `7cf8dc042f` (2026-10-15)
-- **Tests:** `chord/host/host_test.go::TestHostRecognizesItsOwnPrincipalByKey`, `chord/host/placement_upstream_test.go::TestPlacementAGetGoesWhereTheContractPlacesTheInputHereAChildOrTheParentNeverNamedByTheCaller`, `chord/host/placement_upstream_test.go::TestPlacementAHostRefusesAHoldItsOwnContractPlacesElsewhereAndARelayOneWhoseTargetDisagrees`, `chord/host/placement_upstream_test.go::TestPlacementIsPartOfTheContractAMovedTypeIsABreakingChangeNeverBridgedByAnAdapter`, `chord/host/placement_upstream_test.go::TestPlacementServeRefusesATypeTheHostIsNotThePlaceOfAlsoAtAReload`, `chord/host/placement_upstream_test.go::TestPlacementTheHostComesFromTheNormalizedInputUnknownFieldsAndDefaultsDoNotChangeIt`, `chord/host/placement_upstream_test.go::TestPlacementTypesAndRemoteContractsNeedAHost`, `chord/host/principals_upstream_test.go::TestPrincipalsAChildsParentActsAsThePrincipalTheChildGaveConnectRelayedCallersKeepTheirs` and 11 more in docs/bug-ledger.json
-- **Release note:** A call through a remote Chord reference with a `ctx` from another host, or one not made by Chord, fails with `invalid/foreign_ctx` before anything crosses the link, like a call through a local reference.
-
-### BF-7cf8dc0-2
-
-**Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
-- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `7cf8dc042f` (2026-10-15)
-- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
-- **Release note:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
-
-### BF-7cf8dc0-3
-
-**The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."…**
-
-- **Source:** PiG's own defect
-- **Symptom:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
-- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `7cf8dc042f` (2026-10-15)
-- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
-- **Release note:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
-
-### BF-83fea11
-
-**On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…**
-
-- **Source:** PiG's own defect
-- **Symptom:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
-- **Root cause:** nodeNetErrorMessage accepted only the connect syscall, but Go names the Windows call connectex, so on Windows a refused connect fell through to 'fetch failed' and a retryable Bedrock error where Node reports 'connect ECONNREFUSED 127.0.0.1:N', not retryable (TestNodeNetErrorMessageIsNodesText, TestBedrockRefusedConnectIsNodesErrorLikePi on the release PR's Windows native-2 job).
-- **User impact:** An operation failed or was rejected
-- **Platform:** Windows
-- **Fixed in:** 0.5.0
-- **Fix commits:** `83fea11dbf` (2026-10-15)
-- **Tests:** `ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
-- **Release note:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
 
 ### BF-b8df7eb
 
@@ -13185,6 +13089,90 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/agent_session_runtime_oracle_test.go::TestAgentSessionRuntimeMatchesPi`, `tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling`, `tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads`
 - **Release note:** Alt-screen frames outside the Kitty protocol no longer read the environment for WezTerm on every render, which allocated on Windows.
 
+### BF-83fea11
+
+**On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
+- **Root cause:** nodeNetErrorMessage accepted only the connect syscall, but Go names the Windows call connectex, so on Windows a refused connect fell through to 'fetch failed' and a retryable Bedrock error where Node reports 'connect ECONNREFUSED 127.0.0.1:N', not retryable (TestNodeNetErrorMessageIsNodesText, TestBedrockRefusedConnectIsNodesErrorLikePi on the release PR's Windows native-2 job).
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** 0.5.0
+- **Fix commits:** `83fea11dbf` (2026-10-15)
+- **Tests:** `ai/bedrock_error_metadata_upstream_test.go::TestBedrockRefusedConnectIsNodesErrorLikePi`, `ai/node_net_error_test.go::TestNodeNetErrorMessageIsNodesText`, `ai/oauth_page_corpus_test.go::TestOAuthPageCorpusMatchesThePinnedPackage`
+- **Release note:** On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.
+
+### BF-36c3d14
+
+**`done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one**
+
+- **Source:** PiG's own defect
+- **Symptom:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one.
+- **Root cause:** showExtensionCustom's close() hid the overlay with ui.hideOverlay(), which removes the topmost overlay, so closing a lower overlay removed the one above it and left the finished one on screen (interactive-mode.ts:2992-3000, :3028 keeps the handle showOverlay returned and close() calls overlayHandle?.hide()). customCall.teardown (ext_ui_custom.go) and RunRemoteOverlay (ext_ui_context.go) now hide the handle they showed. A factory's own tui.hideOverlay() still pops the topmost overlay (HideTopOverlay).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `36c3d14b23` (2026-10-15, #10999)
+- **Tests:** `internal/codingagent/ext_ui_custom_stack_test.go::TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`, `internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay`
+- **Release note:** `done()` of an overlay `ui.custom` component hides that component's own overlay instead of the topmost one. With a shell overlay open under a dialog overlay from another extension, the shell's exit no longer removes the dialog or leaves the finished shell on screen (Pi #10999, #10648).
+
+### BF-7cf8dc0-2
+
+**Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
+- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7cf8dc042f` (2026-10-15)
+- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
+- **Release note:** Turning thinking off on Claude Haiku 5.5 and Opus 5 sends plain `thinking: {type: "disabled"}` without effort markers, which Anthropic rejects while thinking is disabled.
+
+### BF-7cf8dc0-3
+
+**The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..."…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
+- **Root cause:** -: the remote reference caller refuses a foreign or forged ctx (chord/host/remote.go; Pi remote.ts:631-645) -: the retry pattern matches "The service is temporarily unavailable" (assistant_retry.go; Pi utils/retry.ts:46) -: off thinking on managed-effort models sends plain disabled thinking with no effort markers, and providerThinkingLevel is recorded after buildParams (ai/anthropic.go; Pi anthropic-messages.ts:1201-1203) -: the kimi-coding base URL returns to /coding and its tests return to Chat Completions
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7cf8dc042f` (2026-10-15)
+- **Tests:** `chord/host/review_upstream_test.go::TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling`
+- **Release note:** The retry classifier treats "The service is temporarily unavailable" and Bedrock's "Service unavailable: ..." as retryable.
+
+### BF-471db1a
+
+**A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.
+- **Root cause:** Pi moves OutputBuffer, Progress, boundOutput, sanitizeOutput, characterEnd and the output types from packages/durable/src/harness/output.ts to the Chord subpath packages/chord/src/output.ts, adds OutputSkip (output.ts:20-31) and utf8ByteLength (output.ts:268-290), and has Durable import them (harness/tool.ts:4-10, tools/read.ts:2, truncate.ts:1,47).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `471db1ac1b` (2026-10-15)
+- **Tests:** `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutputEndsAnIncompleteCharacterBeforeTheOmission`, `chord/output/output_test.go::TestOutputBuffer`, `chord/output/output_test.go::TestProgress`, `chord/output/output_test.go::TestSystemProgressClockUsesNodesTimerDelayRule`, `chord/output/output_test.go::TestToolOutputBounds`, `durable/harness/harness_tools_progress_test.go::TestToolProgressAndLifetime` and 4 more in docs/bug-ledger.json
+- **Release note:** A `Progress` pause longer than Node's timer maximum, or not a number, runs after 1 ms as a Node timer does.
+
+### BF-f2f1caa
+
+**Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)).
+- **Root cause:** Anthropic and Claude on Bedrock reject an error tool result that holds images. Pi now replaces each run of images in such a result with "(image attached after the tool results)" and sends the images after all tool results of the turn, in the same user message, under a caption naming the call (transform-messages.ts:14-39 splitErrorToolResultImages; anthropic-messages.ts:1339 convertToolResult and :1500-1523 convertMessages; bedrock-converse-stream.ts:1093-1124 convertMessages, Claude only).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `29dadf1e5e` (2026-10-15), `471db1ac1b` (2026-10-15), `f2f1caa6d2` (2026-10-15), `fb72e1fde8` (2026-10-15)
+- **Tests:** `ai/anthropic_error_tool_result_image_test.go::TestAnthropicErrorToolResultImages`, `ai/auth_path_oracle_test.go::TestAuthStorageAuthPathSpellingsMatchPi`, `ai/bedrock_convert_upstream_test.go::TestBedrockUpstreamConvertMessages`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketFallsBackToTheHTTPProxy`, `ai/openai_codex_websocket_proxy_test.go::TestCodexWebSocketProxyFollowsEnvHttpProxyAgent`, `ai/sse_event_idle_scan_norace_test.go::TestSSEIdleTrackerScanIsNotAPerByteLoop`, `chord/output/output_pi_oracle_test.go::TestOutputBufferMatchesPi`, `chord/output/output_skip_test.go::TestOutputBufferSkippedOutput` and 10 more in docs/bug-ledger.json
+- **Release note:** Anthropic and Claude on Bedrock no longer lose the images of an error tool result: Pi sends them after the tool results of the turn, under a caption naming the tool call, instead of replacing them with a note ([#10794](https://github.com/earendil-works/pi/issues/10794)). Other Bedrock models keep the images in the result.
+
 ### BF-1d3b1d0
 
 **MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one…**
@@ -13198,20 +13186,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `1d3b1d00b3` (2026-10-15), `2b78e00a1c` (2026-10-15)
 - **Tests:** `chord/host/awaiting_upstream_test.go::TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference`, `chord/host/awaiting_upstream_test.go::TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold`, `chord/host/awaiting_upstream_test.go::TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers`, `chord/host/awaiting_upstream_test.go::TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds`, `chord/host/bindings_upstream_test.go::TestBindingsAHeldReferenceStaysSubscribedWithoutListenersValuesAreReadableAtOnceAfterReady`, `chord/host/bindings_upstream_test.go::TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot`, `chord/host/bindings_upstream_test.go::TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink`, `chord/host/bindings_upstream_test.go::TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst` and 29 more in docs/bug-ledger.json
 - **Release note:** MCP: a server's tools, the tools it stopped offering, and the resource tools now reach the session as one change, as Pi registers them in one synchronous turn. A prompt that started while a server was connecting could see only some of its tools.
-
-### BF-a31d771
-
-**Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js`…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `<file>/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with "local Go replacements: not a directory".
-- **Root cause:** localGoReplacementDirs read <extension>/go.mod for every extension; for a single-file extension (a lone .ts or .js file, documented in piglet-binaries.md) that read fails with ENOTDIR, which os.IsNotExist does not cover, and the build stopped at 'Locking build inputs'. A source that is not a directory has no Go replacements.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `a31d77153a` (2026-10-11)
-- **Tests:** `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialDoesNotScoreAnArmThatDoesNotStart`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialRefusesTestsThatAreNotLocked`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialScoresTheAgentAfterItExits`, `bench/k8s/cmd/k8sbench/gpu_test.go::TestRunTrialVerifiesAFailedOrTimedOutAgent`, `coding/piglet/testmain_test.go::TestAgentEnvIsIsolatedToThePackageRun`, `coding/piglet/testmain_test.go::TestMain`, `coding/pigletbuild/records_go_replacement_test.go::TestBuildInputsLocksASingleFileExtension`
-- **Release note:** Fixed `pig piglet build` failing on a Piglet that carries a single-file extension (a lone `.ts` or `.js` file): locking it read `<file>/go.mod`, which fails with ENOTDIR rather than ENOENT, so the build stopped with "local Go replacements: not a directory". A file extension has no Go replacements and now locks like a directory extension without a `go.mod`.
 
 ### BF-c46363b
 
@@ -13241,6 +13215,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/message_go_escapes_allocs_norace_test.go::TestSystemMessageWithEscapedCharactersDecodesAtTheCostOfOneWithout`, `agent/message_go_escapes_test.go::TestSystemMessageWithEscapedCharactersDecodesWithoutCanonicalizing`, `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `ai/main_test.go::TestMain` and 29 more in docs/bug-ledger.json
 - **Release note:** A Durable tool call aborted while the Harness was still resolving the tool to run could stay running for good, with the generation that called it waiting on it. The abort cancelled the call before its tool started, and the native core driver ended the call without telling the core, which settles a cancelled call only on that report. The call now reports the cancelled lookup as a thrown result, as it reports a tool that observes the cancel. It stalled once in about 1,000 CI runs of the abort-with-generation test under the race detector.
 
+### BF-9f31a8b
+
+**A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started.
+- **Root cause:** TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows, macOS, Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `22e05718a7` (2026-10-17), `338f5de671` (2026-10-17), `44e623504c` (2026-10-17), `6d94e31216` (2026-10-17), `73d897751d` (2026-10-17), `9a4bd0e452` (2026-10-17), `a9642f65b8` (2026-10-17), `b229d49c15` (2026-10-17), `cfa8e90d0f` (2026-10-17), `9f31a8bee0` (2026-10-18)
+- **Tests:** `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `coding/cli/runtime_policy_test.go::TestRPCRunsOnTheRPCCap`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseDoesNotWaitForABlockedWriter`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseWritesPendingChunks`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCoalescesPendingChunksIntoOneWrite`, `coding/cli/stdout_queue_test.go::TestStdoutQueueFailureDropsPendingChunksAndReportsOnce`, `coding/cli/stdout_queue_test.go::TestStdoutQueueReportsWriteFailureOnce` and 24 more in docs/bug-ledger.json
+- **Release note:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started. The reader's goroutine could pick up a reaction loop that belonged to the response, run the reader's code beside a reaction that had not returned, and leave the stream's executor marked busy with nothing running. A goroutine now continues only a reaction loop its own turn holds, so no code runs beside a reaction and every stream ends. It stalled once in CI on Windows (`TestGoogleProviderStreamMatchesPi`); the same stall reproduces on macOS and Linux when the executor's lock hand-offs are delayed.
+
+### BF-c3c84b5
+
+**Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi.
+- **Root cause:** TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `22e05718a7` (2026-10-17), `c3c84b5a28` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference`, `durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed`, `durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce`, `durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds` and 4 more in docs/bug-ledger.json
+- **Release note:** Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi. Stopping an event stream right after one of these waits no longer drops the end of a run.
+
+### BF-c2cdd5b-3
+
+**A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
+- **Root cause:** /reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `2934eba06f` (2026-10-18), `4334e0bb6a` (2026-10-18), `c2cdd5b680` (2026-10-18), `c3c84b5a28` (2026-10-18), `da0fae4095` (2026-10-18)
+- **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched`, `durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference` and 12 more in docs/bug-ledger.json
+- **Release note:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
+
+### BF-90fd188
+
+**`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `263f65829f` (2026-10-18), `90fd1882c6` (2026-10-18)
+- **Tests:** `durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut`, `durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix`, `durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers`, `env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon`, `env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields`, `env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths`, `env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv`, `env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus` and 9 more in docs/bug-ledger.json
+- **Release note:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+
 ### BF-1f50dd5
 
 **A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again…**
@@ -13268,6 +13298,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `2e70b95851` (2026-10-18), `484865a109` (2026-10-18), `6ef10b65b8` (2026-10-18), `8d5c6bac13` (2026-10-18)
 - **Tests:** `durable/core/driver/watch_reduce_test.go::TestGraphFrameCostsOneMapCopy`, `durable/core/driver/watch_reduce_test.go::TestReducersRefuseUnknownOps`, `durable/core/driver/watch_reduce_test.go::TestTaskGraphReducerMatchesFullConversion`, `durable/core/driver/watch_reduce_test.go::TestViewFrameCostDoesNotGrowWithEntries`, `durable/core/driver/watch_reduce_test.go::TestViewReducerMatchesFullConversion`, `durable/core/graph_build_scaling_test.go::TestBuildTaskGraphAllocationsGrowLinearly`, `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete` and 16 more in docs/bug-ledger.json
 - **Release note:** Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a commit costs the same at any number of live tasks or entries.
+
+### BF-b7ab092
+
+**On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
+- **Root cause:** Pi runs every scheduler pass, invocation and commit listener in the context of the call that queued it, and an await resumes in its own function's context (scheduler.ts:1404-1426, 1656-1668; session.ts:765, 881). The CF host now snapshots each client call's context and passes its number as the step's origin; the core keeps a current origin that Loop.Defer, line jobs, pending effects and parked hops chains capture and restore, and effects and notices carry it, so the host starts effect handlers and timers and runs notice listeners inside that snapshot. The core frees an origin when nothing holds it (origin_free notice, kind 10). The native host passes origin 0.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `90e8ca2d9c` (2026-10-18), `b7ab092396` (2026-10-18)
+- **Tests:** `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`, `durable/core/host/cf/test/origins-core.test.ts`, `durable/core/host/cf/test/origins.test.ts`, `durable/core/host/cf/test/tool-result-shape.test.ts`, `durable/core/origin_test.go::TestEffectCompletionContinuesInTheOriginOfItsStart`, `durable/core/origin_test.go::TestHopsChainContinuesInTheOriginOfItsPark`, `durable/core/origin_test.go::TestQueuedLineJobHoldsItsOrigin`, `durable/core/session/origin_test.go::TestKickQueuesTheDrainInTheKickersOrigin` and 1 more in docs/bug-ledger.json
+- **Release note:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
+
+### BF-b1a68e0
+
+**A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.
+- **Root cause:** Client.Begin returned the context error and told the core nothing when the caller's context ended while the begin was queued behind another transaction. When the line freed, the core's grant gave it to that transaction and answered ready to nobody; the transaction never ended, so EventClose, queued behind the line, never ran and Session.Close waited forever in Client.request(EventClose).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `b1a68e0af3` (2026-10-18)
+- **Tests:** `durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction`, `durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns`, `durable/harness/harness_generation_test.go::TestGeneration`
+- **Release note:** A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.
 
 ### BF-3363d44
 
@@ -13310,6 +13368,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `36755228be` (2026-10-18), `d0c524009a` (2026-10-18), `da0fae4095` (2026-10-18)
 - **Tests:** `ai/anthropic_e2e_catalog_test.go::TestAnthropicEagerToolInputCatalogDenominator`, `ai/anthropic_e2e_catalog_test.go::TestAnthropicLongCacheRetentionCatalogDenominator`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `coding/extension/host/inproc/context_dispatch_scaling_norace_test.go::TestScalingContextDispatchOfUnchangedSubprocessHandlers`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextDispatchOfUnchangedSubprocessHandlersCopiesNothing`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextGoHandlerAfterSubprocessHandlersEditsACopy`, `coding/extension/host/inproc/context_json_dispatch_test.go::TestContextSubprocessReplyListIsUsedAndAnUnchangedReplyKeepsIt`, `coding/extension/host/subprocess/context_fanout_norace_test.go::TestContextDispatchEncodesOncePerEmitForEveryHandler` and 16 more in docs/bug-ledger.json
 - **Release note:** Rust SDK: a `context` handler that returns a new list equal to the one it received now counts as a replacement, and an in-place edit marked with `pig_sdk::context_unchanged()` keeps system messages in place, as in Pi and the other SDKs. Return `None` for an unchanged conversation.
+
+### BF-97ecff0
+
+**A Durable core session with many live tasks recomputes its next wake without walking every live task on each…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.
+- **Root cause:** Wake walked every live record and searched each record's keys on every commit, so ending a chain of n held tasks cost O(n^2): 50-65 s at depth 20,000, and 9m51s on a loaded 4-vCPU CI runner against the 10 m package budget. Wake now reads the earliest sleep from the index wakeDue already keeps and checks for a runnable task only when nothing running or reconciling already makes the session active, stopping at the first. Results are unchanged; Pi's wake() walks the records too, but each visit there is a property read.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d8dab9122` (2026-10-18), `97ecff01fc` (2026-10-18), `c3c84b5a28` (2026-10-18), `d0c524009a` (2026-10-18), `da0fae4095` (2026-10-18), `f8ef05a7ae` (2026-10-18)
+- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds` and 19 more in docs/bug-ledger.json
+- **Release note:** A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.
 
 ### BF-c6fd79d
 
@@ -13367,6 +13439,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/model_registry_oracle_test.go::TestModelRegistryMatchesPi`, `coding/model_resolver_oracle_test.go::TestResolveCliModelAndScopeMatchPi`, `coding/model_runtime_get_model_allocs_test.go::TestGetModelAllocationsDoNotGrowWithTheProviderCatalog`, `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/testmain_test.go::TestMain`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_models_json_unix_norace_test.go::TestScalingModelsJSONProviderComposition` and 3 more in docs/bug-ledger.json
 - **Release note:** Choosing a bundled model no longer builds every model of its provider on each request, and providers in `models.json` with many custom models no longer slow down quadratically. Branch summaries of long sessions are prepared in linear time.
 
+### BF-b1421b7
+
+**`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
+- **Root cause:** A process-global publication queue let one host's goroutine deliver another host's notifications while it held its own loop: a server commit holding the queue later ran the worker's RefImpl.shapeChanged -> Connection.send on the server's goroutine while the worker's loop sent on the same connection (DATA RACE at connection.go:611, 27/150 runs of TestLinksReview4 under -race at GOMAXPROCS=1). Each loop now has its own queue, delivered by a section of that loop, and a hold covers only the loop that made the change. A goroutine inside a hold or a drain appends what it enqueues for another loop behind the queue it delivers, as Pi's single queue does (publish.ts), so a state write from another…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b1421b7ef6` (2026-10-18), `c2cdd5b680` (2026-10-18)
+- **Tests:** `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues`, `chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered` and 5 more in docs/bug-ledger.json
+- **Release note:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
+
+### BF-4334e0b
+
+**A Durable code mode tool call made just before the script launches another call or ends has started before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.
+- **Root cause:** Pi starts a script's tool call synchronously up to its first await (codemode.ts launch -> callTool -> executeTool), so a call launched earlier is never overtaken by one launched after it, and the script cannot end and abort it before it runs. Here each call ran on a bare goroutine, and Go's scheduler often ran the later call first: in CI the hold tool of "aborts a call still running when the script ends" never ran (holds.runs 0). launch and the replay path now return once the call's goroutine has entered (internal/entered).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4334e0bb6a` (2026-10-18)
+- **Tests:** `durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched`, `durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted`
+- **Release note:** A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.
+
 ### BF-792f185
 
 **PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting…**
@@ -13381,6 +13481,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/extension/host/subprocess/retire_answers_calls_test.go::TestRetiringConnSendsTheResultOfACallTheShutdownFrameDidNotBeat`, `coding/extension/host/subprocess/retire_answers_calls_test.go::TestShutdownAnswersTheCallOfAGenerationItRetires`
 - **Release note:** PiG no longer hangs for 30 seconds at exit when two extensions share a Node process and one is still waiting on a host call (seen with a global project-trust extension and a project extension).
 
+### BF-ba44e9f
+
+**A Node extension whose factory failed, because it has no default export or throws while initializing, could…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension whose factory failed, because it has no default export or throws while initializing, could be reported as `connect:process_exited ... exit status 1` instead of Pi's "Extension does not export a valid factory function: <path>" or "Failed to load extension: <message>".
+- **Root cause:** Six tui tests raced or timed out under load because they shared state with real timers or waited on real process timing: - the empty user-message picker auto-cancels from a time.AfterFunc goroutine (user-message-selector.ts:146) while the test read its recorder unsynchronized (DATA RACE at native_selectors_test.go:344, which failed whichever test ran when it was reported); - overlay bounds, mouse hit-testing and the Kitty cleanup harness let a real frame timer render or write the buffer the test was reading; - the async fd search test needed two sleep 3 runs inside 11 s; - the empty tree selector test asserted no cancel after a 40 ms sleep.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0a01a68005` (2026-10-18), `14917a4072` (2026-10-18), `20d8539bc6` (2026-10-18), `54343f1288` (2026-10-18), `761bc17c1b` (2026-10-18), `7e2f89fc0d` (2026-10-18), `853104d25c` (2026-10-18), `ba010df022` (2026-10-18), `e215cf92f8` (2026-10-18), `4a0a8a0067` (2026-10-19), `87b8d3f90c` (2026-10-19), `ba44e9f6ba` (2026-10-19)
+- **Tests:** `agent/testmain_leak_test.go::TestMain`, `ai/llama_cpp_classify_oracle_test.go::TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer`, `ai/openai_responses_item_throws_test.go::TestOpenAIResponsesItemStreamServerLeavesNothingForTheNextServer`, `ai/openai_responses_item_throws_test.go::TestOpenAIResponsesOutputItemTypeErrorsMatchPi`, `chord/host/generations_sentinel_test.go::TestGenerationSentinelIsCollectedWhateverIsAllocatedNextToIt`, `chord/host/loader_entry_test.go::TestNodeLoaderEntryIsPrivateAndRemovable`, `chord/host/loader_entry_test.go::TestNodeLoaderLeavesNothingInTheTempDirectory`, `chord/host/loader_entry_test.go::TestNodeLoaderSurvivesAnotherProcessesCleanupOfTheTempDirectory` and 67 more in docs/bug-ledger.json
+- **Release note:** A Node extension whose factory failed, because it has no default export or throws while initializing, could be reported as `connect:process_exited ... exit status 1` instead of Pi's "Extension does not export a valid factory function: <path>" or "Failed to load extension: <message>". The extension's runtime reports that error over its socket and exits; on a loaded machine the host looked after the exit and chose between the connection and the exit by whichever it noticed first, which failed about 1 run in 20 of the upstream extension-discovery tests. The host now accepts the connection the extension made before it exited, in both a packed cell and an isolated process, and reports `process_exited` only for a process that never connected.
+
 ### BF-af18171
 
 **A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on…**
@@ -13394,6 +13508,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `af18171964` (2026-10-18), `c2cdd5b680` (2026-10-18), `d0c524009a` (2026-10-18)
 - **Tests:** `coding/extension/host/subprocess/boundary_scaling_norace_test.go::TestBoundaryScalingToolExecutionUpdateStream`, `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateAfterAFailedRequestIsAKeyframe`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdateDeltaEqualsTheWholePayload`, `coding/extension/host/subprocess/tool_update_delta_test.go::TestToolUpdatePatchesAreTheSizeOfTheirDelta`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration`, `extensions/sdk/event_stream_test.go::TestEventStreamKeysAreIndependentAndEvicted` and 4 more in docs/bug-ledger.json
 - **Release note:** A tool that streams a growing partial result no longer sends the whole result to each subscribed extension on every update; updates carry only what changed, and handlers still receive the full `partialResult`.
+
+### BF-02ed4f1
+
+**A Durable core request costs the same however many requests are in flight: a notice is tested only against…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
+- **Root cause:** Host.notify tested every pending waiter's accept function against each notice, so a request's cost grew with the number of requests in flight (11 µs per request at 500 in flight, 57 µs at 4,000). Waiters that expect one kind and id now register through Host.ExpectNotice in a map keyed by both; notify tests that key's waiters and then the generic ones, as before. Client.request uses it. Cancel, discard and close remove a waiter from both structures. Notice and wire bytes are unchanged; delivery order among several waiters of one notice was already unspecified.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `02ed4f1419` (2026-10-18)
+- **Tests:** `durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight`, `durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice`
+- **Release note:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
 
 ### BF-8d5c6ba
 
@@ -13423,6 +13551,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/session_boundary_preview_scaling_test.go::TestBoundaryPreviewWithDraftsCostsAFewAllocationsPerEntry`, `coding/turn_end_entry_ids_scaling_test.go::TestTurnEndEntryIDsScaleWithTheTurnNotTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn` and 2 more in docs/bug-ledger.json
 - **Release note:** With an extension `turn_end` handler, each tool result no longer copies the whole session history, and a boundary preview no longer re-encodes every entry: long sessions stay fast at turn ends.
 
+### BF-2e70b95
+
+**A Durable reference harness turn no longer copies the whole conversation history to extend its context**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
+- **Root cause:** extendRange copied the entries, active entries, contributions and settled messages of the whole history on every turn, and each shared read cloned them again: 1.79 ms and 5.6 MB per turn at 4,000 turns. A range lineage now keeps one backing array per field; only the first extender of a range appends in place (a tail-owner token), and writes go only past every earlier range's length, so handed-out views never change. Shared reads return the arrays with capacity capped at length, so a reader's append copies. settleSplit and composeMessages build the messages array in one copy, and the leading-system rule scans only the open tail. 69 µs and 206 KB per turn at 4,000 turns.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2934eba06f` (2026-10-18), `2e70b95851` (2026-10-18)
+- **Tests:** `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn`, `durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder`
+- **Release note:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
+
+### BF-dea7cbc
+
+**A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`.
+- **Root cause:** closeChildFiles decided which child files to leave open by comparing them with the os.Stdin/os.Stdout/os.Stderr variables, which the print and rpc output guard swaps and restores. The standard files are now captured once at package init; during a takeover the variable named the guard's pipe anyway, so the old comparison checked the wrong file.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c3c84b5a28` (2026-10-18), `dea7cbc08c` (2026-10-18), `f8ef05a7ae` (2026-10-18)
+- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds`, `durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt`, `durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed` and 9 more in docs/bug-ledger.json
+- **Release note:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.
+
 ### BF-77d8625
 
 **`chord/host`: the Node facet loader no longer writes its child entry under one fixed name in the shared…**
@@ -13437,6 +13593,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/testmain_leak_test.go::TestMain`, `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/loader_entry_test.go::TestNodeLoaderEntryIsPrivateAndRemovable`, `chord/host/loader_entry_test.go::TestNodeLoaderLeavesNothingInTheTempDirectory`, `chord/host/loader_entry_test.go::TestNodeLoaderSurvivesAnotherProcessesCleanupOfTheTempDirectory`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications` and 10 more in docs/bug-ledger.json
 - **Release note:** `chord/host`: the Node facet loader no longer writes its child entry under one fixed name in the shared temporary directory. Another process that cleaned that file up, or two processes racing it, made a starting load fail with `child exited before ready`; and any other user could rewrite the file Node ran. Each load now writes the entry into a private `0700` directory of its own and removes it once the child has started.
 
+### BF-d34376d
+
+**A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.
+- **Root cause:** mirror.ScanTasks loaded every task into the mirror for status '' or terminal and filtered in memory, so a cold page cost O(all tasks): 36 ms per 100-task page at 8,000 tasks, and every page went cold after the mirror released its held terminal tasks. It now reads storage one page at a time with the id-ordered keyset statements (new SQLTasksDesc for newest first), filters on the row columns, parses only the page's rows and stops at limit+1 matches; the mirror's held tasks win over stored rows. A page costs about 0.55 ms at any task count. Pi's sqlite scanTasks reads storage per page the same way (storage.ts:433-470); hop and tick charging is unchanged (one modeled ReadRow per call).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2934eba06f` (2026-10-18), `b106c51c4f` (2026-10-18), `d0c524009a` (2026-10-18), `d34376d0fc` (2026-10-18), `da0fae4095` (2026-10-18), `de44764ac1` (2026-10-18)
+- **Tests:** `ai/port_wave_12_zai_coding_plan_models_test.go::TestPortWave12ZAICodingPlanModels`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration`, `durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex`, `durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks` and 5 more in docs/bug-ledger.json
+- **Release note:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count. Listing a conversation owner's conversations reads only that owner's.
+
 ### BF-b15e50a
 
 **Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a…**
@@ -13450,76 +13620,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Commit that wrote the release note (the fix commit is not identified):** `b15e50a7d8` (2026-10-18)
 - **Tests:** None recorded.
 - **Release note:** Edit diffs and the `edit` tool with many replacements on a large file use far less memory and time: a 16,000-line diff takes a quarter of the time and 2 MB instead of 336 MB.
-
-### BF-6ef10b6
-
-**Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
-- **Root cause:** Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `6ef10b65b8` (2026-10-18)
-- **Tests:** `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete`, `durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete`, `durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime`
-- **Release note:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
-
-### BF-9f31a8b
-
-**A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started.
-- **Root cause:** TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.
-- **User impact:** Behavior differed from Pi
-- **Platform:** Windows, macOS, Linux
-- **Fixed in:** Unreleased
-- **Fix commits:** `22e05718a7` (2026-10-17), `338f5de671` (2026-10-17), `44e623504c` (2026-10-17), `6d94e31216` (2026-10-17), `73d897751d` (2026-10-17), `9a4bd0e452` (2026-10-17), `a9642f65b8` (2026-10-17), `b229d49c15` (2026-10-17), `cfa8e90d0f` (2026-10-17), `9f31a8bee0` (2026-10-18)
-- **Tests:** `ai/continuation_late_driver_test.go::TestContinuationLateDriverDoesNotContinueAnotherTurnsDrain`, `ai/google_stream_oracle_test.go::TestGoogleProviderStreamMatchesPi`, `coding/cli/runtime_policy_test.go::TestRPCRunsOnTheRPCCap`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseDoesNotWaitForABlockedWriter`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCloseWritesPendingChunks`, `coding/cli/stdout_queue_test.go::TestStdoutQueueCoalescesPendingChunksIntoOneWrite`, `coding/cli/stdout_queue_test.go::TestStdoutQueueFailureDropsPendingChunksAndReportsOnce`, `coding/cli/stdout_queue_test.go::TestStdoutQueueReportsWriteFailureOnce` and 24 more in docs/bug-ledger.json
-- **Release note:** A provider stream could stop for good, with the turn waiting for events that never came, when the goroutine that reads the stream and the goroutine that runs the provider's response were scheduled against each other as the stream started. The reader's goroutine could pick up a reaction loop that belonged to the response, run the reader's code beside a reaction that had not returned, and leave the stream's executor marked busy with nothing running. A goroutine now continues only a reaction loop its own turn holds, so no code runs beside a reaction and every stream ends. It stalled once in CI on Windows (`TestGoogleProviderStreamMatchesPi`); the same stall reproduces on macOS and Linux when the executor's lock hand-offs are delayed.
-
-### BF-c3c84b5
-
-**Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi.
-- **Root cause:** TestSecondScriptedSessionStoresMatchPiDurable flaked as `$.entries[4].commit_seq 21 != 20` (CI 39077168089) and as 21 != 19 and 47 != 48. The note tool started an app.job and returned while the job still had its start, first phase and terminal commits to make, so those raced the tool's settle and the generation's next commits. Pi's single thread orders them by microtask hops, the same every run (scenario2.mjs: 120 of 120 raw dumps equal, scenario.mjs: 146 of 146). Go's goroutines order them by scheduling.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `22e05718a7` (2026-10-17), `c3c84b5a28` (2026-10-18), `da0fae4095` (2026-10-18)
-- **Tests:** `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference`, `durable/harness/harness_reports_test.go::TestAFailedSessionIsReportedAsSessionFailed`, `durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce`, `durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds` and 4 more in docs/bug-ledger.json
-- **Release note:** Durable: `Submission.Wait`, `WaitForIdle` and `WaitForTask` return only after every event-stream listener has been given the batches committed before the wait, as in Pi. Stopping an event stream right after one of these waits no longer drops the end of a run.
-
-### BF-97ecff0
-
-**A Durable core session with many live tasks recomputes its next wake without walking every live task on each…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.
-- **Root cause:** Wake walked every live record and searched each record's keys on every commit, so ending a chain of n held tasks cost O(n^2): 50-65 s at depth 20,000, and 9m51s on a loaded 4-vCPU CI runner against the 10 m package budget. Wake now reads the earliest sleep from the index wakeDue already keeps and checks for a runnable task only when nothing running or reconciling already makes the session active, stopping at the first. Results are unchanged; Pi's wake() walks the records too, but each visit there is a property read.
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `1d8dab9122` (2026-10-18), `97ecff01fc` (2026-10-18), `c3c84b5a28` (2026-10-18), `d0c524009a` (2026-10-18), `da0fae4095` (2026-10-18), `f8ef05a7ae` (2026-10-18)
-- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds` and 19 more in docs/bug-ledger.json
-- **Release note:** A Durable core session with many live tasks recomputes its next wake without walking every live task on each commit: ending a chain of 20,000 held tasks takes under a second instead of about a minute.
-
-### BF-4334e0b
-
-**A Durable code mode tool call made just before the script launches another call or ends has started before…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.
-- **Root cause:** Pi starts a script's tool call synchronously up to its first await (codemode.ts launch -> callTool -> executeTool), so a call launched earlier is never overtaken by one launched after it, and the script cannot end and abort it before it runs. Here each call ran on a bare goroutine, and Go's scheduler often ran the later call first: in CI the hold tool of "aborts a call still running when the script ends" never ran (holds.runs 0). launch and the replay path now return once the call's goroutine has entered (internal/entered).
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `4334e0bb6a` (2026-10-18)
-- **Tests:** `durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched`, `durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted`
-- **Release note:** A Durable code mode tool call made just before the script launches another call or ends has started before the script goes on, as in Pi: a later call no longer overtakes it, and the end of the script no longer aborts it before its tool ran.
 
 ### BF-c2cdd5b
 
@@ -13549,145 +13649,47 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/core/driver/compaction_failure_core_test.go::TestCorePerModelCompactionOverrideSetsTheBlockingThreshold`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/host_inputs_core_test.go::TestCoreHostInputsAreReadAtEachUse`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration` and 6 more in docs/bug-ledger.json
 - **Release note:** The terminal width and height the extension host tells extensions during `/reload`, and when one starts or restarts, were read while the main loop's frame updated them, and the handler that reports an extension's crash was replaced on each reload while the host's connection goroutines read it. Both now read an atomically published value. The race detector reported the width and height read in about one `/reload` run in twenty, and the crash handler once, in a shutdown from a `session_start` handler.
 
-### BF-c2cdd5b-3
+### BF-6ef10b6
 
-**A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
-- **Root cause:** /reload: the extension host read the terminal width and height off the main loop while a frame updated them. Width and Height now read one atomically published size snapshot, which updateSize and the fixed-size path publish (the mechanism the fixed-size renderer already used).
-- **User impact:** Lost or altered data
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `1d8dab9122` (2026-10-18), `2934eba06f` (2026-10-18), `4334e0bb6a` (2026-10-18), `c2cdd5b680` (2026-10-18), `c3c84b5a28` (2026-10-18), `da0fae4095` (2026-10-18)
-- **Tests:** `coding/extension/host/subprocess/callback_rebind_race_test.go::TestHostCallbacksRebindWhileHostGoroutinesRead`, `durable/codemode/call_test.go::TestALaunchedCallEntersBeforeTheNextOneIsLaunched`, `durable/codemode/call_test.go::TestAReplayedCallEntersBeforeTheNextOneIsStarted`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/tasks_test.go::TestReportCarriesTheInfo`, `durable/harness/harness_blocked_test.go::TestBlockedTasksOnTheReference` and 12 more in docs/bug-ledger.json
-- **Release note:** A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.
-
-### BF-dea7cbc
-
-**A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no…**
+**Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`.
-- **Root cause:** closeChildFiles decided which child files to leave open by comparing them with the os.Stdin/os.Stdout/os.Stderr variables, which the print and rpc output guard swaps and restores. The standard files are now captured once at package init; during a takeover the variable named the guard's pipe anyway, so the old comparison checked the wrong file.
+- **Symptom:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
+- **Root cause:** Delete on an object with an index (more than 12 slots) shifted the member slices and renumbered the index on every call, so deleting the oldest of n members cost O(n): 80 ms at 4,000 oldest-first deletes and 1.54 s at 16,000. It now retires the slot and drops the key from the index, and compacts into fresh slices once more than half the slots are dead; small objects keep the dense shift. Len, Keys, Entries, Equal, Clone, Shallow and stringify skip retired slots and never mutate on read, since delta tracker bases are shared. KeyAt and ValueAt are replaced by Members, which iterates live members in insertion order; graph.go, turnhost.go and the delta handles and tracker use it. orderedKeys…
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `c3c84b5a28` (2026-10-18), `dea7cbc08c` (2026-10-18), `f8ef05a7ae` (2026-10-18)
-- **Tests:** `ai/auth_storage_file_oracle_test.go::TestAuthStorageFileMatchesPi`, `ai/auth_storage_first_half_upstream_test.go::TestAuthStorageFirstHalfUpstream`, `ai/auth_storage_readonly_oracle_test.go::TestReadOnlyAuthStorageMatchesPi`, `ai/main_test.go::TestMain`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes`, `durable/core/driver/harness_sleep_timer_core_test.go::TestAFiredTimerIsNotKeptUntilTheInvocationEnds`, `durable/core/driver/harness_sleep_timer_core_test.go::TestASleepUntilANegativeTimeNamesItAsJavaScriptPrintsIt`, `durable/core/driver/harness_sleep_timer_core_test.go::TestATimerArmedAsItsInvocationEndsIsDisarmed` and 9 more in docs/bug-ledger.json
-- **Release note:** A `--print` or `--mode json` run that SIGTERM or SIGHUP reaches while its bash tool is starting the shell no longer has a data race on `os.Stdout`. Starting a child process (a shell, an extension command, a Durable child) decided which of the child's files to leave open by reading the `os.Stdout` variable, which the exit path's restore of the output guard assigns at the same time. It now compares them with the files `os.Stdin`, `os.Stdout` and `os.Stderr` held when pig started, which stay open as before. The output and exit status are unchanged.
+- **Fix commits:** `6ef10b65b8` (2026-10-18)
+- **Tests:** `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete`, `durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete`, `durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime`
+- **Release note:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
 
-### BF-90fd188
+### BF-b341a82
 
-**`env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer…**
+**`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again**
 
 - **Source:** PiG's own defect
-- **Symptom:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
+- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.
+- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `c019ea9155` (2026-10-06, #163), `e2db9318fa` (2026-10-06, #173), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `e63c61c338` (2026-10-12, #208), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
+- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11229 more in docs/bug-ledger.json
+- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
+
+### BF-pending-915
+
+**Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 - **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
-- **Platform:** Windows
-- **Fixed in:** Unreleased
-- **Fix commits:** `263f65829f` (2026-10-18), `90fd1882c6` (2026-10-18)
-- **Tests:** `durable/env/node/shell_test.go::TestShellReportsTheSpillOfACommandThatTimesOut`, `durable/storage/sqlite/schema_test.go::TestCreateSqliteSchemaPrefixesEveryIdentifierAndValidatesThePrefix`, `durable/storage/sqlite/schema_test.go::TestSqliteSchemaNamesAreUpstreamsImmutableIdentifiers`, `env/cmd/pi-env/main_test.go::TestCommandLineMatchesPisDaemon`, `env/daemon/errors_test.go::TestFailureJSONCarriesSyscallPathAndExtraFields`, `env/daemon/errors_test.go::TestIOFailureBetweenNamesBothPaths`, `env/daemon/errors_test.go::TestIOFailureMessagesFollowNodeAndLibuv`, `env/daemon/exec_test.go::TestExecCancelAbortsAndKillSettlesWithTheKilledStatus` and 9 more in docs/bug-ledger.json
-- **Release note:** `env/daemon`: `listFiles` with `timeoutMs` 0 truncates at once on Windows too; the deadline check no longer misses on the platform's coarse clock.
-
-### BF-d34376d
-
-**A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count.
-- **Root cause:** mirror.ScanTasks loaded every task into the mirror for status '' or terminal and filtered in memory, so a cold page cost O(all tasks): 36 ms per 100-task page at 8,000 tasks, and every page went cold after the mirror released its held terminal tasks. It now reads storage one page at a time with the id-ordered keyset statements (new SQLTasksDesc for newest first), filters on the row columns, parses only the page's rows and stops at limit+1 matches; the mirror's held tasks win over stored rows. A page costs about 0.55 ms at any task count. Pi's sqlite scanTasks reads storage per page the same way (storage.ts:433-470); hop and tick charging is unchanged (one modeled ReadRow per call).
-- **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2934eba06f` (2026-10-18), `b106c51c4f` (2026-10-18), `d0c524009a` (2026-10-18), `d34376d0fc` (2026-10-18), `da0fae4095` (2026-10-18), `de44764ac1` (2026-10-18)
-- **Tests:** `ai/port_wave_12_zai_coding_plan_models_test.go::TestPortWave12ZAICodingPlanModels`, `durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks`, `durable/core/driver/harness_failed_run_inbox_core_test.go::TestInputsQueuedBehindAFailedRun`, `durable/core/driver/harness_reports_core_test.go::TestReports`, `durable/core/driver/tool_cancel_lookup_test.go::TestToolCancelledWhileItsRegistrationResolvesStillPostsItsCompletion`, `durable/core/driver/tool_structured_callers_core_test.go::TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration`, `durable/core/mirror_scan_test.go::TestScanConversationsByOwnerUsesTheIndex`, `durable/core/mirror_scan_test.go::TestScanTasksMergesHeldAndStoredTasks` and 5 more in docs/bug-ledger.json
-- **Release note:** A Durable core listing of all or terminal tasks (`ScanTasks`) reads one page from storage per call instead of loading every task: a page costs the same at any task count. Listing a conversation owner's conversations reads only that owner's.
-
-### BF-b7ab092
-
-**On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that…**
-
-- **Source:** PiG's own defect
-- **Symptom:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
-- **Root cause:** Pi runs every scheduler pass, invocation and commit listener in the context of the call that queued it, and an await resumes in its own function's context (scheduler.ts:1404-1426, 1656-1668; session.ts:765, 881). The CF host now snapshots each client call's context and passes its number as the step's origin; the core keeps a current origin that Loop.Defer, line jobs, pending effects and parked hops chains capture and restore, and effects and notices carry it, so the host starts effect handlers and timers and runs notice listeners inside that snapshot. The core frees an origin when nothing holds it (origin_free notice, kind 10). The native host passes origin 0.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `90e8ca2d9c` (2026-10-18), `b7ab092396` (2026-10-18)
-- **Tests:** `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`, `durable/core/host/cf/test/origins-core.test.ts`, `durable/core/host/cf/test/origins.test.ts`, `durable/core/host/cf/test/tool-result-shape.test.ts`, `durable/core/origin_test.go::TestEffectCompletionContinuesInTheOriginOfItsStart`, `durable/core/origin_test.go::TestHopsChainContinuesInTheOriginOfItsPark`, `durable/core/origin_test.go::TestQueuedLineJobHoldsItsOrigin`, `durable/core/session/origin_test.go::TestKickQueuesTheDrainInTheKickersOrigin` and 1 more in docs/bug-ledger.json
-- **Release note:** On the Cloudflare Durable host, an `AsyncLocalStorage` value set around a call stays visible in the work that call queues (turns, tool effects, timers and commit listeners), as in Pi.
-
-### BF-b1a68e0
-
-**A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.
-- **Root cause:** Client.Begin returned the context error and told the core nothing when the caller's context ended while the begin was queued behind another transaction. When the line freed, the core's grant gave it to that transaction and answered ready to nobody; the transaction never ended, so EventClose, queued behind the line, never ran and Session.Close waited forever in Client.request(EventClose).
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `1d8dab9122` (2026-10-18), `b1a68e0af3` (2026-10-18)
-- **Tests:** `durable/core/driver/client_test.go::TestABeginThatStopsWaitingForTheLineAbortsItsTransaction`, `durable/core/driver/client_test.go::TestAnAbandonedBeginNeverHoldsTheLineAndCloseReturns`, `durable/harness/harness_generation_test.go::TestGeneration`
-- **Release note:** A Durable Session whose commit was cancelled while it waited for the Session line now closes instead of hanging in `Close`.
-
-### BF-02ed4f1
-
-**A Durable core request costs the same however many requests are in flight: a notice is tested only against…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
-- **Root cause:** Host.notify tested every pending waiter's accept function against each notice, so a request's cost grew with the number of requests in flight (11 µs per request at 500 in flight, 57 µs at 4,000). Waiters that expect one kind and id now register through Host.ExpectNotice in a map keyed by both; notify tests that key's waiters and then the generic ones, as before. Client.request uses it. Cancel, discard and close remove a waiter from both structures. Notice and wire bytes are unchanged; delivery order among several waiters of one notice was already unspecified.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `02ed4f1419` (2026-10-18)
-- **Tests:** `durable/core/driver/client_test.go::TestRequestCostIsFlatInTheNumberOfRequestsInFlight`, `durable/core/sqlhost/effectid_internal_test.go::TestNotifyTestsOnlyTheKeyedWaitersOfTheNotice`
-- **Release note:** A Durable core request costs the same however many requests are in flight: a notice is tested only against the requests waiting for it.
-
-### BF-2e70b95
-
-**A Durable reference harness turn no longer copies the whole conversation history to extend its context**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
-- **Root cause:** extendRange copied the entries, active entries, contributions and settled messages of the whole history on every turn, and each shared read cloned them again: 1.79 ms and 5.6 MB per turn at 4,000 turns. A range lineage now keeps one backing array per field; only the first extender of a range appends in place (a tail-owner token), and writes go only past every earlier range's length, so handed-out views never change. Shared reads return the arrays with capacity capped at length, so a reader's append copies. settleSplit and composeMessages build the messages array in one copy, and the leading-system rule scans only the open tail. 69 µs and 206 KB per turn at 4,000 turns.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `2934eba06f` (2026-10-18), `2e70b95851` (2026-10-18)
-- **Tests:** `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionDoesNotCopyTheHistory`, `durable/harness/context_extend_scaling_test.go::TestContextRangeExtensionsFromOneRangeNeverWriteEachOther`, `durable/harness/context_extend_scaling_test.go::TestContextRangeViewsAreReadableWhileTheRangeExtends`, `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/context_range_test.go::TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut`, `durable/harness/context_shared_test.go::TestTaskRuntimeContextArraysAreTheCallersOwn`, `durable/interop/unawaited_job_test.go::TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder`
-- **Release note:** A Durable reference harness turn no longer copies the whole conversation history to extend its context.
-
-### BF-b1421b7
-
-**`chord/host`: a host no longer sends on another host's connection while delivering notifications, and a…**
-
-- **Source:** PiG's own defect
-- **Symptom:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
-- **Root cause:** A process-global publication queue let one host's goroutine deliver another host's notifications while it held its own loop: a server commit holding the queue later ran the worker's RefImpl.shapeChanged -> Connection.send on the server's goroutine while the worker's loop sent on the same connection (DATA RACE at connection.go:611, 27/150 runs of TestLinksReview4 under -race at GOMAXPROCS=1). Each loop now has its own queue, delivered by a section of that loop, and a hold covers only the loop that made the change. A goroutine inside a hold or a drain appends what it enqueues for another loop behind the queue it delivers, as Pi's single queue does (publish.ts), so a state write from another…
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `b1421b7ef6` (2026-10-18), `c2cdd5b680` (2026-10-18)
-- **Tests:** `chord/host/cluster_unwind_test.go::TestCrossHostReloadAnAbortedChildFreesItsReloadSlotAndItsOperationInOneSection`, `chord/host/publish_loops_test.go::TestAStateWriteFromAnotherHostsNotificationIsDeliveredAfterTheNotificationBeingDelivered`, `chord/host/publish_loops_test.go::TestPublicationsOfAHostAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestShapeOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStateEventsOfAHostsObjectAreDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_loops_test.go::TestStatusOfAHostsRefIsDeliveredOnItsLoopWhileAnotherHostHoldsItsPublications`, `chord/host/publish_pi_oracle_test.go::TestPublicationsMatchPiAcrossQueues`, `chord/host/publish_upstream_test.go::TestEnqueueRunsAReentrantTaskAfterTheOneBeingDelivered` and 5 more in docs/bug-ledger.json
-- **Release note:** `chord/host`: a host no longer sends on another host's connection while delivering notifications, and a reload that unwinds frees its slot and ends its operation together, so a following reload is not refused as already running.
-
-### BF-ba44e9f
-
-**A Node extension whose factory failed, because it has no default export or throws while initializing, could…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Node extension whose factory failed, because it has no default export or throws while initializing, could be reported as `connect:process_exited ... exit status 1` instead of Pi's "Extension does not export a valid factory function: <path>" or "Failed to load extension: <message>".
-- **Root cause:** Six tui tests raced or timed out under load because they shared state with real timers or waited on real process timing: - the empty user-message picker auto-cancels from a time.AfterFunc goroutine (user-message-selector.ts:146) while the test read its recorder unsynchronized (DATA RACE at native_selectors_test.go:344, which failed whichever test ran when it was reported); - overlay bounds, mouse hit-testing and the Kitty cleanup harness let a real frame timer render or write the buffer the test was reading; - the async fd search test needed two sleep 3 runs inside 11 s; - the empty tree selector test asserted no cancel after a 40 ms sleep.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `0a01a68005` (2026-10-18), `14917a4072` (2026-10-18), `20d8539bc6` (2026-10-18), `54343f1288` (2026-10-18), `761bc17c1b` (2026-10-18), `7e2f89fc0d` (2026-10-18), `853104d25c` (2026-10-18), `ba010df022` (2026-10-18), `e215cf92f8` (2026-10-18), `4a0a8a0067` (2026-10-19), `87b8d3f90c` (2026-10-19), `ba44e9f6ba` (2026-10-19)
-- **Tests:** `agent/testmain_leak_test.go::TestMain`, `ai/llama_cpp_classify_oracle_test.go::TestLlamaCppClassifyOracleProbeLeavesNothingForTheNextServer`, `ai/openai_responses_item_throws_test.go::TestOpenAIResponsesItemStreamServerLeavesNothingForTheNextServer`, `ai/openai_responses_item_throws_test.go::TestOpenAIResponsesOutputItemTypeErrorsMatchPi`, `chord/host/generations_sentinel_test.go::TestGenerationSentinelIsCollectedWhateverIsAllocatedNextToIt`, `chord/host/loader_entry_test.go::TestNodeLoaderEntryIsPrivateAndRemovable`, `chord/host/loader_entry_test.go::TestNodeLoaderLeavesNothingInTheTempDirectory`, `chord/host/loader_entry_test.go::TestNodeLoaderSurvivesAnotherProcessesCleanupOfTheTempDirectory` and 67 more in docs/bug-ledger.json
-- **Release note:** A Node extension whose factory failed, because it has no default export or throws while initializing, could be reported as `connect:process_exited ... exit status 1` instead of Pi's "Extension does not export a valid factory function: <path>" or "Failed to load extension: <message>". The extension's runtime reports that error over its socket and exits; on a loaded machine the host looked after the exit and chose between the connection and the exit by whichever it noticed first, which failed about 1 run in 20 of the upstream extension-discovery tests. The host now accepts the connection the extension made before it exited, in both a packed cell and an isolated process, and reports `process_exited` only for a process that never connected.
+- **Fix commits:** Not yet committed.
+- **Tests:** None recorded.
+- **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
 ## Divergences from Pi added in this release
 
