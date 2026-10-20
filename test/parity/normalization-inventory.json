@@ -82,7 +82,7 @@
     },
     {
       "source": "test/parity/testdata/session-wire.py",
-      "sha256": "6e2e7dd9ff053d6f4ba1717543c7ce77aa77fa8d9673b27cb9d84dc8d8c15f5f",
+      "sha256": "796ae00ad8c91c26e1adf50e15d2808633246eeecb9ba6e8a6ae7cceeaaf662f",
       "reason": "The Session query probe validates unique eight-hex generated IDs and exact millisecond ISO timestamps before injective substitution. Imported IDs/times remain unchanged; only reconstructed label identities are aliased after collision checks. Complete get_entries records are compared, not unrelated mutation events. Signal probes compare process wait status after real provider/command barriers, not terminal rendering. The session_shutdown signal cases replace the probe's temporary directory with <root> in stderr, because the extension path a handler's error names lives there; the rest of stderr, stdout, the session records and the request count are compared exactly."
     },
     {

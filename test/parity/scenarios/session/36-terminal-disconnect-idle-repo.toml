@@ -4,7 +4,7 @@
 # master while nothing is pending, and no Ctrl+D byte is sent. Pi's footer watches .git/HEAD, so its event loop
 # stays alive and the kernel's SIGHUP runs the graceful shutdown, whose title and keyboard-protocol writes meet EIO
 # and take the emergency exit: 129. PiG reads the end of input on a hung-up terminal as a dead terminal and exits 129
-# (D102 records its exit.log line). The probe adds no ticker, unlike 10-terminal-disconnect-exit: that scenario keeps
+# (D102 records its exit.log line; D186 records that Pi exits 0 instead when its event loop holds nothing). The probe adds no ticker, unlike 10-terminal-disconnect-exit: that scenario keeps
 # a plain-directory session working so a render is pending, because an idle Pi with nothing left in its event loop
 # can exit 0 before its SIGHUP handler runs.
 name = "36-terminal-disconnect-idle-repo"

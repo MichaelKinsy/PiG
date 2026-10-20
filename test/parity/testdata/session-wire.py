@@ -209,7 +209,7 @@ def terminal_probe(binary, root, case):
     and the shutdown's terminal writes meet EIO (interactive-mode.ts shutdown fromSignal, then emergencyTerminalExit):
     129 without any pending render. Without a controlling terminal no SIGHUP arrives, and an idle Pi in a repository
     stays alive until some write fails. In a plain directory an idle Pi has nothing left in its loop, so it can exit
-    0 before the handler runs (docs/additive-features.md D102 states the live-terminal half of this)."""
+    0 before the handler runs (D186; D102 states the live-terminal half of this)."""
     action = "live-hup" if case == "live-hup" else "disconnect"
     cwd, env, args = setup(root, "http://127.0.0.1:1/v1")
     spawn = {}
