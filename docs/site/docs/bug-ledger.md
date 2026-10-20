@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-915 bugs. 865 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
+917 bugs. 867 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -933,7 +933,9 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
-| [BF-pending-915](#bf-pending-915) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
+| [BF-2d13115](#bf-2d13115) | `pig piglet verify <binary> --source <name\|path>` and `pig piglet lineage <binary> --source <name\|path>`… | PiG's own defect | All platforms | Unreleased |
+| [BF-2d13115-2](#bf-2d13115-2) | `pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the… | PiG's own defect | All platforms | Unreleased |
+| [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13677,7 +13679,35 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11229 more in docs/bug-ledger.json
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
 
-### BF-pending-915
+### BF-2d13115
+
+**`pig piglet verify <binary> --source <name|path>` and `pig piglet lineage <binary> --source <name|path>`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig piglet verify <binary> --source <name|path>` and `pig piglet lineage <binary> --source <name|path>` report `Provenance: matches` for a Binary built from that unchanged source.
+- **Root cause:** the build signs the digest of the baked Piglet definition as the manifest's Piglet digest (the Binary checks the same digest at startup), but CheckProvenance compared it with the extends graph digest, a different value that never matches. The bake logic moves from pigletbuild into piglet.Bake, which the build and the provenance check now share, so a check recomputes exactly what the build signed. The JSON provenance field effectiveDigest is renamed pigletDigest.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e0f88f794` (2026-10-06, #160), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `9b63b2bc4e` (2026-10-07, #176), `c80500f022` (2026-10-08, #199), `2d13115ca8` (2026-10-19), `6af0806f7a` (2026-10-19, #213)
+- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11130 more in docs/bug-ledger.json
+- **Release note:** `pig piglet verify <binary> --source <name|path>` and `pig piglet lineage <binary> --source <name|path>` report `Provenance: matches` for a Binary built from that unchanged source. They compared the Piglet digest the Binary signs, which is the digest of its baked Piglet definition, with the extends graph digest, so every check reported `MISMATCH`. They now bake the source as the build does. A change to a file the build inlines, such as a system prompt file, is now a Piglet digest mismatch. The JSON `provenance` object's `effectiveDigest` field is renamed `pigletDigest`. Binaries built by 0.5.0 and 0.5.1 need no rebuild.
+
+### BF-2d13115-2
+
+**`pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the provenance check too.
+- **Root cause:** the build signs the digest of the baked Piglet definition as the manifest's Piglet digest (the Binary checks the same digest at startup), but CheckProvenance compared it with the extends graph digest, a different value that never matches. The bake logic moves from pigletbuild into piglet.Bake, which the build and the provenance check now share, so a check recomputes exactly what the build signed. The JSON provenance field effectiveDigest is renamed pigletDigest.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4fc8c2e65f` (2026-10-06, #169), `c019ea9155` (2026-10-06, #163), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `c80500f022` (2026-10-08, #199), `2d13115ca8` (2026-10-19), `6af0806f7a` (2026-10-19, #213)
+- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11083 more in docs/bug-ledger.json
+- **Release note:** `pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the provenance check too. A Piglet whose `agentEnv.devContainer` is a `workspace:` path is checked against the workspace its build used instead of failing to resolve from another directory.
+
+### BF-0e3411c
 
 **Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
 
@@ -13687,7 +13717,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** Not yet committed.
+- **Commit that wrote the release note (the fix commit is not identified):** `0e3411c597` (2026-10-19, #224)
 - **Tests:** None recorded.
 - **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
