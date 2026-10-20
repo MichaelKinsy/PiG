@@ -146,7 +146,7 @@ type Extension struct {
 	footerSubs         footerSubscribers
 	toolFuncs          map[string]ToolFunc
 	toolPrepareFuncs   map[string]ToolPrepareArgumentsFunc
-	toolStarts         toolStartOrder
+	toolBatches        toolBatchOrders
 	commandFuncs       map[string]CommandFunc
 	eventFuncs         map[int]EventFunc
 	shortcutFuncs      map[string]ShortcutFunc
@@ -1187,7 +1187,7 @@ func (e *Extension) loop() error {
 			}
 			ctx, finish := e.armRequest(env.ID)
 			if env.Request != nil && env.Request.Method == "tool_call" {
-				ctx.start = e.toolStarts.reserve()
+				ctx.start = e.toolBatches.reserve(env.Request.Batch)
 			}
 			e.requestWG.Go(func() {
 				defer finish()

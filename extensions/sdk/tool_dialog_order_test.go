@@ -170,3 +170,45 @@ func TestToolRetainedContextDialogAfterTheRequestEndedLeavesNoSlot(t *testing.T)
 	}()
 	<-done
 }
+
+// The orders are one batch's: a request of another batch, or one that names no batch, is in none of them, so a long request of one batch never holds a dialog of another
+// (a subagent's tool calls reach the same connection while the tool that runs the subagent has not returned).
+func TestToolBatchOrdersAreIndependentAcrossBatches(t *testing.T) {
+	var orders toolBatchOrders
+	long := orders.reserve("batch-a")  // never opens a dialog and does not end
+	other := orders.reserve("batch-b") // arrived after it, and is in another batch
+	bare := orders.reserve("")
+	if bare != nil {
+		t.Fatal("a request that names no batch took a place")
+	}
+	other.beforeCall(true) // would block forever behind long if the batches shared an order
+	other.afterCall(true)
+	bare.beforeCall(true)
+	bare.respond(func() {})
+
+	// Within a batch the later request waits.
+	second := orders.reserve("batch-a")
+	hook, parked := parkedCounter()
+	orders.mu.Lock()
+	orders.batches["batch-a"].order.parked = hook
+	orders.mu.Unlock()
+	second.parked = hook
+	opened := make(chan struct{})
+	go func() {
+		second.beforeCall(true)
+		close(opened)
+	}()
+	<-parked
+	long.release()
+	<-opened
+
+	// A batch is forgotten when its last request ended; a later request of it starts a new order.
+	second.release()
+	other.release()
+	orders.mu.Lock()
+	left := len(orders.batches)
+	orders.mu.Unlock()
+	if left != 0 {
+		t.Fatalf("%d batches left after every request ended", left)
+	}
+}

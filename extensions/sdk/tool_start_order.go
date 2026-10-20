@@ -31,13 +31,60 @@ type toolStartOrder struct {
 	parked func()
 }
 
+// toolBatchOrders keeps one toolStartOrder for each parallel batch in flight. The orders are Pi's single thread's orders of one batch's calls: another batch, another
+// session's calls (a subagent's tool calls on this connection) or a call outside a batch has no place in them, and a long call of one batch never holds a dialog of
+// another. A request without a batch takes part in no order.
+type toolBatchOrders struct {
+	mu      sync.Mutex
+	batches map[string]*toolBatch
+}
+
+type toolBatch struct {
+	order toolStartOrder
+	live  int
+}
+
+// reserve takes the next place in the batch's order, in the order the requests arrive. It returns nil for a request that names no batch.
+func (b *toolBatchOrders) reserve(id string) *toolStart {
+	if id == "" {
+		return nil
+	}
+	b.mu.Lock()
+	if b.batches == nil {
+		b.batches = make(map[string]*toolBatch)
+	}
+	batch := b.batches[id]
+	if batch == nil {
+		batch = &toolBatch{}
+		b.batches[id] = batch
+	}
+	batch.live++
+	b.mu.Unlock()
+	start := batch.order.reserve()
+	start.owner, start.batchID = b, id
+	return start
+}
+
+// ended forgets a batch once its last request ended; a request of the batch that arrives later finds a new order, with nothing ahead of it.
+func (b *toolBatchOrders) ended(id string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if batch := b.batches[id]; batch != nil {
+		if batch.live--; batch.live <= 0 {
+			delete(b.batches, id)
+		}
+	}
+}
+
 // toolStart is one request's place in the orders. begin returns when every earlier request began its handler or ended without one.
 type toolStart struct {
 	previous <-chan struct{}
 	done     chan struct{}
 	once     sync.Once
 
-	order *toolStartOrder
+	order   *toolStartOrder
+	owner   *toolBatchOrders
+	batchID string
 	// dialogWaiting is closed when the request waits for its first dialog and every earlier request passed its place; it is made only when the request has to wait,
 	// and with dialogPassed guarded by order.mu.
 	dialogWaiting chan struct{}
@@ -82,10 +129,14 @@ func (s *toolStart) release() {
 	s.passDialog()
 	o := s.order
 	o.mu.Lock()
+	first := !s.ended
 	s.ended = true
 	slot := s.slot.Load()
 	o.mu.Unlock()
 	slot.close()
+	if first && s.owner != nil {
+		s.owner.ended(s.batchID)
+	}
 }
 
 // responseSlot returns the request's place in the response order, made on first use. A request that ended has none: a dialog a retained Context opens
