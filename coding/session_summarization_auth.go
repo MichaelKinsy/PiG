@@ -32,11 +32,12 @@ func (s *Session) runDefaultCompaction(ctx context.Context, prep compaction.Comp
 		return compaction.CompactionResult{}, err
 	}
 	retry, retryCallbacks := s.summarizationRetryOptions("compaction", reason)
-	if s.completer == nil && s.agent.StreamFunction() == nil {
-		// upstream compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, streamFn, env, retry, callbacks, sessionId): the provider's own stream.
-		return compaction.Compact(ctx, prep, request.model, request.apiKey, request.headers, customInstructions, request.thinkingLevel, request.streamFn, request.env, retry, retryCallbacks, "")
+	// upstream compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, this.agent.streamFunction, env, retry, callbacks, sessionId): request.completer holds the Agent's stream function.
+	streamFn := request.streamFn
+	if streamFn == nil {
+		streamFn = compaction.CompleterStreamFn(request.completer)
 	}
-	return compaction.CompactUsing(ctx, prep, request.model, request.apiKey, request.headers, customInstructions, request.thinkingLevel, request.completer, request.streamFn, request.env, retry, retryCallbacks, "")
+	return compaction.Compact(ctx, prep, request.model, request.apiKey, request.headers, customInstructions, request.thinkingLevel, streamFn, request.env, retry, retryCallbacks, "")
 }
 
 // withoutDeletedHeaders drops the headers an auth result deletes; summary requests take only header values.

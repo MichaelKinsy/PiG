@@ -33,6 +33,9 @@ func (s *Session) installExtensionHooks(agentSupplied bool) {
 	s.agent.SetTransformContextWithContext(s.extensionContextHook)
 	s.agent.SetBeforeProviderHook(s.extensionProviderRequestHook)
 	s.agent.SetTransformHeaders(s.extensionProviderHeadersHook)
+	// sdk.ts:432-434 createAgent: onResponse and onProviderStreamEvent are Agent options, so they reach the agent's own requests only; summaries pass options of their own to the stream function.
+	s.agent.SetOnResponse(s.extensionProviderResponseHook)
+	s.agent.SetOnProviderStreamEvent(s.extensionProviderStreamEventHook)
 }
 
 // extensionToolCallHook emits tool_call. A handler error blocks the call with

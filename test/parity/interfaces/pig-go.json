@@ -293,6 +293,17 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.EffectiveStreamFunction",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "Agent.EffectiveStreamFunction",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() StreamFn"
+      },
+      "shapeHash": "sha256:dd5b7ebb2a2e13f75f2e1477d891c33bced26afdfb5930ac17b289807f57d96f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.ErrorMessage",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "Agent.ErrorMessage",
@@ -251478,17 +251489,6 @@
       "shapeHash": "sha256:91eb4c15a00488b513f5bb6c2a40e961c0662221b82c4d9cc12da5cbf1708c9e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#CompactUsing",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
-      "name": "CompactUsing",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(ctx context.Context, prep CompactionPreparation, model *github.com/MichaelKinsy/PiG/ai.Model, apiKey string, headers map[string]string, customInstructions string, thinkingLevel github.com/MichaelKinsy/PiG/ai.ModelThinkingLevel, completer SimpleCompleter, streamFn StreamFn, env map[string]string, retry *github.com/MichaelKinsy/PiG/ai.RetryPolicy, callbacks github.com/MichaelKinsy/PiG/ai.RetryCallbacks, sessionID string) (CompactionResult, error)"
-      },
-      "shapeHash": "sha256:578c37e2dfd2f6aee62ae4bff2463cc3d664aad45f4f3f804549739acde0c1a4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#CompactionDetails",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
       "name": "CompactionDetails",
@@ -251531,6 +251531,17 @@
         "type": "CompactionSettings"
       },
       "shapeHash": "sha256:fcfb9dc23f0021fa888b553ba44a31f1577d1bed8673127106840683fc646ec3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#CompleterStreamFn",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+      "name": "CompleterStreamFn",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(completer SimpleCompleter) StreamFn"
+      },
+      "shapeHash": "sha256:cf83cab943646b4453a2f1921f1d09496a995729d856ae1616a811342c0511d6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#ComputeFileLists",
@@ -252026,6 +252037,39 @@
         "type": "func(ctx context.Context, model *github.com/MichaelKinsy/PiG/ai.Model, completer SimpleCompleter, streamFn StreamFn, retry *github.com/MichaelKinsy/PiG/ai.RetryPolicy, callbacks github.com/MichaelKinsy/PiG/ai.RetryCallbacks, systemPrompt string, messages []github.com/MichaelKinsy/PiG/agent.AgentMessage, options github.com/MichaelKinsy/PiG/ai.StreamOptions) (string, *github.com/MichaelKinsy/PiG/ai.Usage, error)"
       },
       "shapeHash": "sha256:4453f3ff2617edf27908be624754dbadbce8749557ff9de29ab688752d028099"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#completerError",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+      "name": "completerError",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "completerError"
+      },
+      "shapeHash": "sha256:5c0eb24edb42e80dce31596343a15a3bb38d63f27e909898a54c74e15899350e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#completerError.Error",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+      "name": "completerError.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#completerError.Unwrap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+      "name": "completerError.Unwrap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#contentBlocksChars",

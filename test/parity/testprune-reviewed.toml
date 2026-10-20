@@ -1,1 +1,13 @@
 # Reviewed per-file ledger for testprune lint: each entry satisfies the expected-value finding of exactly one commit+path.
+
+[[entry]]
+path = "internal/codingagent/compaction/compaction_test.go"
+commit = "ad3567de30"
+class = "NOBEHAVIOR"
+reason = "call-site rename only: CompactUsing(..., completer, ...) -> Compact(..., CompleterStreamFn(completer), ...); expected summaries and errors unchanged (Pi has one compact(), agent-session.ts:2633-2661)"
+
+[[entry]]
+path = "internal/codingagent/compaction/over_window_review_test.go"
+commit = "ad3567de30"
+class = "NOBEHAVIOR"
+reason = "call-site rename only: CompactUsing -> Compact with CompleterStreamFn; expected values unchanged"
