@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -25,6 +24,8 @@ type coverageEntry struct {
 	Covered map[string]int `json:"covered"`
 	// Failed names an evidence test package whose named tests fail: the row is not proven while they are red.
 	Failed string `json:"failed,omitempty"`
+	// Killed records that a reviewed mutant of a marker row's cited file made its tests fail; the digest covers the mutants.
+	Killed bool `json:"killed,omitempty"`
 }
 
 // evidenceTests lists the Go tests (`dir#TestName`) that carry a proven row: the evidence of its ledger members, or the `// pi:` tests of
@@ -56,36 +57,69 @@ func evidenceTests(_ string, pi string, inv *inventory, markers map[string][]str
 // installing, removing or upgrading the oracle re-runs the tests instead of reusing a record made without it.
 const oracleInstall = "extensions/sdk-ts/node_modules/.package-lock.json"
 
-// digestOf hashes the cited Go files and every Go file of the packages that hold the evidence tests.
 // digestSalt changes whenever the way evidence tests run changes (environment, flags), so a cached result from the old way is not reused.
-const digestSalt = "evidence-env-2"
+const digestSalt = "evidence-env-3"
 
-func digestOf(root string, res result) string {
+// digester hashes the files a row's record depends on, reading each file once per check however many rows name it.
+type digester struct {
+	root string
+	sums map[string]string
+	pkgs map[string][]string
+}
+
+func newDigester(root string) *digester {
+	return &digester{root: root, sums: map[string]string{}, pkgs: map[string][]string{}}
+}
+
+// sum is the content digest of one repository file; a missing file digests as empty content.
+func (d *digester) sum(rel string) string {
+	if s, ok := d.sums[rel]; ok {
+		return s
+	}
+	b, _ := os.ReadFile(filepath.Join(d.root, rel))
+	h := sha256.Sum256(b)
+	s := strconv.Itoa(len(b)) + ":" + hex.EncodeToString(h[:])
+	d.sums[rel] = s
+	return s
+}
+
+// goFiles lists the Go files of an evidence package: its tests and the sources they link.
+func (d *digester) goFiles(dir string) []string {
+	if f, ok := d.pkgs[dir]; ok {
+		return f
+	}
+	matches, _ := filepath.Glob(filepath.Join(d.root, dir, "*.go"))
+	files := make([]string, 0, len(matches))
+	for _, m := range matches {
+		rel, _ := filepath.Rel(d.root, m)
+		files = append(files, filepath.ToSlash(rel))
+	}
+	d.pkgs[dir] = files
+	return files
+}
+
+// of hashes the cited Go files, every Go file of the packages that hold the evidence tests, the tests, and for a marker row the
+// mutants it must kill (a killed mutant is part of the record).
+func (d *digester) of(res result, mutants []mutant) string {
 	h := sha256.New()
 	h.Write([]byte(digestSalt + "\x00"))
 	files := append([]string{}, res.Cited...)
 	for _, t := range res.Tests {
 		dir, _, _ := strings.Cut(t, "#")
-		matches, _ := filepath.Glob(filepath.Join(root, dir, "*.go")) // the evidence package: its tests and the sources they link
-		for _, m := range matches {
-			rel, _ := filepath.Rel(root, m)
-			files = append(files, filepath.ToSlash(rel))
-		}
+		files = append(files, d.goFiles(dir)...)
 	}
 	files = append(files, oracleInstall)
 	sort.Strings(files)
-	prev := ""
+	files = slices.Compact(files)
 	for _, f := range files {
-		if f == prev {
-			continue
-		}
-		prev = f
-		b, _ := os.ReadFile(filepath.Join(root, f))
-		h.Write([]byte(f + "\x00" + strconv.Itoa(len(b)) + "\x00"))
-		h.Write(b)
+		h.Write([]byte(f + "\x00" + d.sum(f) + "\x00"))
 	}
 	for _, t := range res.Tests {
 		h.Write([]byte(t + "\x00"))
+	}
+	if res.Marker {
+		b, _ := json.Marshal(mutants)
+		h.Write(b)
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -142,104 +176,15 @@ func coverageFiles(res result) []string {
 	return out
 }
 
-// coverageFor returns the coverage record of a proven row: the cached one for the current digest, or the result of running its evidence
-// tests with -coverpkg over the cited packages (cached under build/portmap-coverage, keyed by the digest of the cited files and tests).
-func coverageFor(root string, r result) coverageEntry {
-	digest := digestOf(root, r)
-	cacheFile := filepath.Join(root, "build", "portmap-coverage", digest+".json")
-	if b, err := os.ReadFile(cacheFile); err == nil {
-		var e coverageEntry
-		if json.Unmarshal(b, &e) == nil && e.Digest == digest {
-			return e
-		}
-	}
-	e := runRow(root, r, digest)
-	// A red run is never cached: a failure can come from the environment (a missing Node dependency of a Pi-oracle test, a toolchain),
-	// which the digest of the cited files and tests cannot see, so the next check runs the tests again.
-	if b, err := json.Marshal(e); err == nil && e.Failed == "" && os.MkdirAll(filepath.Dir(cacheFile), 0o755) == nil {
-		_ = os.WriteFile(cacheFile, b, 0o644)
-	}
-	return e
-}
-
-// runRow executes the evidence tests of one row and records the statements they execute in each cited file.
-func runRow(root string, r result, digest string) coverageEntry {
-	covered := map[string]int{}
-	failed := ""
-	byDir := map[string][]string{}
-	for _, t := range r.Tests {
-		dir, name, _ := strings.Cut(t, "#")
-		byDir[dir] = append(byDir[dir], name)
-	}
-	pkgs := map[string]bool{}
-	for _, f := range coverageFiles(r) {
-		pkgs["./"+path.Dir(f)] = true
-	}
-	var pkgList []string
-	for p := range pkgs {
-		pkgList = append(pkgList, p)
-	}
-	sort.Strings(pkgList)
-	for dir, names := range byDir {
-		sort.Strings(names)
-		profileDir, err := os.MkdirTemp("", "portmap-cover-")
-		if err != nil {
-			failed = dir
-			continue
-		}
-		profile := filepath.Join(profileDir, "cover.out")
-		cmd := exec.Command("go", "test", "-count=1", "-run", "^("+strings.Join(names, "|")+")$", "-coverpkg="+strings.Join(pkgList, ","), "-coverprofile="+profile, "./"+dir)
-		cmd.Dir = root
-		scratch, err := os.MkdirTemp("", "portmap-agent-")
-		if err != nil {
-			_ = os.RemoveAll(profileDir)
-			failed = dir
-			continue
-		}
-		cmd.Env = evidenceEnv(scratch)
-		out, err := cmd.CombinedOutput()
-		_ = os.RemoveAll(scratch)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "portmap: evidence tests of %s failed: %v\n%s\n", dir, err, lastLines(out, 40))
-			_ = os.RemoveAll(profileDir)
-			failed = dir
-			continue
-		}
-		prof, err := os.ReadFile(profile)
-		_ = os.RemoveAll(profileDir)
-		if err != nil {
-			failed = dir
-			continue
-		}
-		_ = os.Remove(profile)
-		for line := range strings.SplitSeq(string(prof), "\n") {
-			file, rest, ok := strings.Cut(line, ":")
-			if !ok {
-				continue
-			}
-			fields := strings.Fields(rest)
-			if len(fields) != 3 {
-				continue
-			}
-			stmts, _ := strconv.Atoi(fields[1])
-			count, _ := strconv.Atoi(fields[2])
-			if count > 0 {
-				covered[repoRel(root, file)] += stmts
-			}
-		}
-	}
-	return coverageEntry{Digest: digest, Covered: covered, Failed: failed}
-}
-
-// repoRel strips the module path from a coverage profile file name.
-func repoRel(root, file string) string {
+// modulePath is the module path of the repository under root, the prefix of every file name in a coverage profile.
+func modulePath(root string) string {
 	b, _ := os.ReadFile(filepath.Join(root, "go.mod"))
 	for line := range strings.SplitSeq(string(b), "\n") {
 		if mod, ok := strings.CutPrefix(line, "module "); ok {
-			return strings.TrimPrefix(file, strings.TrimSpace(mod)+"/")
+			return strings.TrimSpace(mod)
 		}
 	}
-	return file
+	return ""
 }
 
 // agentDirVariables name the directories a Pig or Pi process reads credentials and settings from; HOME is their fallback.
