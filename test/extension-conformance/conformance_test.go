@@ -1108,6 +1108,17 @@ func makeInprocGoHarness(t *testing.T) *harness {
 // context-probe (#40).
 const conformanceMode = "tui"
 
+// rpcRowMode, when set, is the mode every harness host runs in. TestConformance_RPCModeDropsFrameWidgetsInEverySDK sets it for its run; that test
+// is not parallel, so it owns the value while it runs. Empty keeps conformanceMode.
+var rpcRowMode string
+
+func harnessHostMode() string {
+	if rpcRowMode != "" {
+		return rpcRowMode
+	}
+	return conformanceMode
+}
+
 // conformanceProjectTrusted is the fixed ctx.isProjectTrusted() every
 // transport reports for the context-probe.
 //
@@ -2767,7 +2778,7 @@ func makeSubprocessGoHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -2806,7 +2817,7 @@ func makeFusedGoHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	host := subprocess.NewHost(t.TempDir())
-	host.SetMode(conformanceMode)
+	host.SetMode(harnessHostMode())
 	host.SetHostInfo(conformanceHostInfo)
 	host.SetUIBridge(bridge)
 	wire := observeWire(t, host)
@@ -2941,7 +2952,7 @@ func makeSubprocessNodeHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -2991,7 +3002,7 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -3024,7 +3035,7 @@ func makeSubprocessPythonHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -3059,7 +3070,7 @@ func makeSubprocessRustHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)

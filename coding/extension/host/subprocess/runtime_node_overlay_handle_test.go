@@ -117,6 +117,8 @@ import assert from "node:assert/strict";
 const { Runtime } = await import(new URL("../runtime.mjs", process.argv[2]));
 const runtime = new Runtime("surface-owner.mjs");
 runtime.ready = { width: 80, height: 24 };
+// A widget factory runs only where the TUI renders it (Pi's RPC mode ignores it).
+runtime.contextValues.mode = "tui";
 const calls = [];
 const frames = [];
 runtime.callSync = (method, args) => {

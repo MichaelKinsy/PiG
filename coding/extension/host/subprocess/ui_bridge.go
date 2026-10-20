@@ -4302,9 +4302,11 @@ func (b *UIBridge) handleSetWidget(extName string, owner *Conn, args json.RawMes
 	request := b.widgetRequestFunc
 	b.mu.RUnlock()
 	if request != nil {
-		// An authoritative view is a component widget of a native SDK, which
-		// Pi's non-interactive modes do not forward; lines still reach them.
-		if lines != nil || !hasView(p.View) {
+		// A width marks a frame a component rendered, and a view is a native SDK's
+		// component widget: Pi's non-interactive modes forward neither (rpc-mode.ts
+		// setWidget sends undefined and string arrays only). A clear and a string list
+		// still reach them.
+		if p.Width == 0 && (lines != nil || !hasView(p.View)) || lines == nil && !hasView(p.View) {
 			request(extName, p.Key, lines, p.Options)
 		}
 		return &CallResultPayload{}, nil

@@ -578,3 +578,13 @@ func TestUIBridge_HandleUnsupported(t *testing.T) {
 		t.Errorf("expected unsupported error, got %+v", result.Error)
 	}
 }
+
+// A component's rendered frame is not a string list: RPC mode, which forwards string lists only, tells them apart with IsFrame.
+func TestPushProxyIsFrameOnlyForRenderedFrames(t *testing.T) {
+	text, frame := NewPushProxy(nil, nil), NewPushProxy(nil, nil)
+	text.UpdateContent([]string{"a"})
+	frame.UpdateLinesAt([]string{"a"}, 80)
+	if text.IsFrame() || !frame.IsFrame() {
+		t.Fatalf("IsFrame: text %v, frame %v", text.IsFrame(), frame.IsFrame())
+	}
+}
