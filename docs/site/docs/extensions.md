@@ -630,3 +630,7 @@ All runtime bridges target the same current extension behavior. A new capability
 - [Packages](/docs/latest/packages)
 - [Derivative harnesses](/docs/latest/derivative-harnesses)
 - [Upstream Pi extensions](https://pi.dev/docs/latest/extensions)
+
+### What one upgrade run does
+
+One run rewrites every changed API it can do safely, in statement and expression position (including a getter that is the only argument of `len`, `cap` or `panic`). A `Context.ConfigHome` in a function with no error result is rewritten to `ctx.Notify(...)` the error and return. A getter that cannot move before its statement (a `&&` operand, an `else if`, a loop condition) calls a helper in `pig_upgrade_getters.go` that returns the old zero value on failure. Uses that have no safe form stay, and are listed with file, line and the form to write; the extension is then `partly upgraded` and the command exits 1. `--dry-run` compiles the rewritten extension in a temporary directory and reports `would upgrade` only when it builds, `would partly upgrade` when it builds once the listed uses are changed. Startup offers every Go extension the upgrade would touch, so one yes covers them all.

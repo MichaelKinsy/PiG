@@ -4,9 +4,11 @@ package upgrade
 
 import (
 	"cmp"
+	"errors"
 	"go/ast"
 	"go/token"
 	"go/types"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -52,7 +54,7 @@ func (p *filePlanner) planGetters() {
 		stack = append(stack, node)
 		switch node := node.(type) {
 		case *ast.CallExpr:
-			g, drifted := p.driftedGetter(node)
+			g, drifted := p.driftedGetter(node, stack[len(stack)-2])
 			spread := false
 			if !drifted {
 				g, drifted = p.spreadGetter(node, stack[len(stack)-2])
@@ -71,6 +73,7 @@ func (p *filePlanner) planGetters() {
 			}
 			if g, drifted := p.driftedMethodValue(node); drifted {
 				p.skip(RuleContextGetters, "Context."+g.Name, node.Pos(), "the method value is "+g.shape(g.New)+" now")
+				p.skipped[len(p.skipped)-1].Suggest = "pass a func with the old signature, " + g.shape(g.Old) + ", that calls ctx." + g.Name + "() and handles its error"
 			}
 		}
 		return true
@@ -88,12 +91,11 @@ func (p *filePlanner) planGetters() {
 				break
 			}
 		}
-		symbol := s.symbol
 		switch {
 		case s.stmtAt < 0:
-			p.skip(s.rule, symbol, s.call.Pos(), "the call is not inside a statement list")
+			p.fallback(s, "the call is not inside a statement list")
 		case containsDrifted(s, sites):
-			p.skip(s.rule, symbol, s.call.Pos(), "the call holds another getter call")
+			p.skipSite(s, "the call holds another getter call")
 		default:
 			usable = append(usable, s)
 		}
@@ -130,8 +132,8 @@ func containsDrifted(outer *getterSite, all []*getterSite) bool {
 }
 
 // driftedGetter reports whether call is a Context getter the compiler rejects
-// for returning two results.
-func (p *filePlanner) driftedGetter(call *ast.CallExpr) (getter, bool) {
+// for returning two results. parent is the node that holds the call.
+func (p *filePlanner) driftedGetter(call *ast.CallExpr, parent ast.Node) (getter, bool) {
 	selector, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return getter{}, false
@@ -144,6 +146,14 @@ func (p *filePlanner) driftedGetter(call *ast.CallExpr) (getter, bool) {
 	for _, typeErr := range p.errors {
 		if typeErr.Pos == call.Pos() && isArityDiagnostic(typeErr.Msg) {
 			return g, true
+		}
+	}
+	// A builtin that takes one argument, such as len(ctx.GetAllTools()), counts the two results as two arguments and reports at its closing parenthesis.
+	if outer, ok := parent.(*ast.CallExpr); ok && len(outer.Args) == 1 && outer.Args[0] == ast.Expr(call) {
+		for _, typeErr := range p.errors {
+			if typeErr.Pos == outer.Rparen && strings.HasPrefix(typeErr.Msg, builtinArityPrefix) {
+				return g, true
+			}
 		}
 	}
 	return getter{}, false
@@ -282,31 +292,38 @@ func isSDKReceiver(recv *types.Var, name string) bool {
 func (p *filePlanner) planGetterGroup(stmt ast.Stmt, group []*getterSite) {
 	skipGroup := func(reason string) {
 		for _, member := range group {
-			p.skip(member.rule, member.symbol, member.call.Pos(), reason)
+			p.skipSite(member, reason)
 		}
 	}
 	hoisted := map[ast.Expr]bool{}
 	for _, s := range group {
 		hoisted[s.call] = true
 	}
-	accessors := map[*ast.CallExpr]bool{}
-	for _, s := range group {
-		if reason := p.hoistBlocker(s, hoisted, accessors); reason != "" {
-			skipGroup(reason)
-			return
-		}
-	}
 	results := p.enclosingResults(group[0].stack)
-	if !returnsError(results) {
-		// A spread call compiled with its error in hand: discarding the error
-		// would lose what the call passed on.
-		for _, s := range group {
-			if s.getter.MustHandle || s.spread {
-				skipGroup("the function does not return an error, so the error of " + s.symbol + " has nowhere to go")
-				return
-			}
+	// A getter that cannot move before the statement, or whose error has nowhere
+	// to go, leaves the group: it takes a helper or is listed, and the rest of the
+	// statement's getters still move.
+	accessors := map[*ast.CallExpr]bool{}
+	var members []*getterSite
+	for _, s := range group {
+		local := map[*ast.CallExpr]bool{}
+		if reason := p.hoistBlocker(s, hoisted, local); reason != "" {
+			p.fallback(s, reason)
+			continue
 		}
+		// A spread call compiled with its error in hand: discarding the error
+		// would lose what the call passed on, so the error is reported to the user.
+		if !returnsError(results) && (s.getter.MustHandle || s.spread) && p.notifyReceiver(s) == "" {
+			p.skipSite(s, "the function does not return an error, so the error of "+s.symbol+" has nowhere to go, and the call's receiver is not a plain variable to report it through")
+			continue
+		}
+		maps.Copy(accessors, local)
+		members = append(members, s)
 	}
+	if len(members) == 0 {
+		return
+	}
+	group = members
 	// Only a getter that fails to compile for an error it took in 0.3.0 dates
 	// the file before the nullable ContextUsage fields of the same release.
 	legacy := slices.ContainsFunc(group, func(s *getterSite) bool {
@@ -317,7 +334,7 @@ func (p *filePlanner) planGetterGroup(stmt ast.Stmt, group []*getterSite) {
 	if assign, ok := stmt.(*ast.AssignStmt); ok && len(group) == 1 && len(accessors) == 0 && p.isPlainDefine(assign, group[0]) {
 		s := group[0]
 		rewrite := Rewrite{Rule: s.rule, Symbol: s.symbol, Line: p.line(s.call.Pos())}
-		lines, err := p.getterLines(s.getter, assign.Lhs[0].(*ast.Ident).Name, s.text, errName, results)
+		lines, err := p.getterLines(s, assign.Lhs[0].(*ast.Ident).Name, errName, results)
 		if err != nil {
 			skipGroup(err.Error())
 			return
@@ -346,7 +363,7 @@ func (p *filePlanner) planGetterGroup(stmt ast.Stmt, group []*getterSite) {
 		var name string
 		if s, isGetter := getterAt[call]; isGetter {
 			name = p.fresh(s.value)
-			lines, err = p.getterLines(s.getter, name, s.text, errName, results)
+			lines, err = p.getterLines(s, name, errName, results)
 			rewrites = append(rewrites, Rewrite{Rule: s.rule, Symbol: s.symbol, Line: p.line(call.Pos())})
 			replacement = name
 			if s.commaOK {
@@ -389,24 +406,70 @@ func (p *filePlanner) isPlainDefine(assign *ast.AssignStmt, s *getterSite) bool 
 }
 
 // getterLines writes the statements that call the getter, return the error in
-// the handler's style, and leave the old value in name.
-func (p *filePlanner) getterLines(g getter, name, callText, errName string, results *types.Tuple) ([]string, error) {
+// the handler's style, and leave the old value in name. A function that cannot
+// return the error reports a getter that must be handled to the user through the
+// call's own Context and returns the zero values of its results.
+func (p *filePlanner) getterLines(s *getterSite, name, errName string, results *types.Tuple) ([]string, error) {
+	g, callText := s.getter, s.text
 	target, ptr := name, ""
 	if g.Pointer {
 		ptr = p.fresh(name + "Ptr")
 		target = ptr
 	}
 	var statements strings.Builder
-	if returnsError(results) {
+	switch {
+	case returnsError(results):
 		statements.WriteString(target + ", " + errName + " := " + callText + "\nif " + errName + " != nil {\n" + p.returnStatement(results, errName) + "\n}\n")
-	} else {
-		// The old getter returned its zero value on failure; MustHandle getters never get here.
+	case g.MustHandle || s.spread:
+		recv := p.notifyReceiver(s)
+		if recv == "" {
+			return nil, errors.New("the call's receiver is not a plain variable to report the error through")
+		}
+		statements.WriteString(target + ", " + errName + " := " + callText + "\nif " + errName + " != nil {\n" + recv + ".Notify(" + strconv.Quote(s.symbol+" failed: ") + "+" + errName + ".Error(), \"error\")\n" + p.zeroReturn(results) + "\n}\n")
+	default:
+		// The old getter returned its zero value on failure.
 		statements.WriteString(target + ", _ := " + callText + " // the SDK now returns an error here: handle it\n")
 	}
 	if g.Pointer {
 		statements.WriteString("var " + name + " string\nif " + ptr + " != nil {\n" + name + " = *" + ptr + "\n}\n")
 	}
 	return snippet(statements.String())
+}
+
+// zeroReturn is `return` with the zero value of each result.
+func (p *filePlanner) zeroReturn(results *types.Tuple) string {
+	if results == nil || results.Len() == 0 {
+		return "return"
+	}
+	values := make([]string, results.Len())
+	for i := range values {
+		values[i] = p.zeroValue(results.At(i).Type())
+	}
+	return "return " + strings.Join(values, ", ")
+}
+
+// notifyReceiver is the text of the Context a getter call reads, when the call
+// is made on a plain variable or field path that can be used again, else "".
+func (p *filePlanner) notifyReceiver(s *getterSite) string {
+	call, ok := s.call.(*ast.CallExpr)
+	if !ok {
+		return ""
+	}
+	selector, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok || !isPlainPath(selector.X) {
+		return ""
+	}
+	return p.text(selector.X.Pos(), selector.X.End())
+}
+
+func isPlainPath(expr ast.Expr) bool {
+	switch expr := expr.(type) {
+	case *ast.Ident:
+		return true
+	case *ast.SelectorExpr:
+		return isPlainPath(expr.X)
+	}
+	return false
 }
 
 // returnsError reports whether a function with these results returns an error last.

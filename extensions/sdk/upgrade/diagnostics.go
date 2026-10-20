@@ -236,6 +236,9 @@ func credentialChanges() []Change {
 	return rule.Changes
 }
 
+// builtinArityPrefix starts the message the compiler gives for a builtin that takes one value and is passed a call with two results.
+const builtinArityPrefix = "invalid operation: too many arguments for "
+
 // getterInDiagnostic returns the method a single-value-context diagnostic
 // names: `assignment mismatch: 1 variable but ctx.GetSessionID returns 2
 // values` and `multiple-value ctx.IsIdle() (value of type (bool, error)) in
@@ -260,6 +263,14 @@ func getterInDiagnostic(message string) (string, bool) {
 			return "", false
 		}
 		expression = before
+	case strings.HasPrefix(message, builtinArityPrefix):
+		// `invalid operation: too many arguments for len(ctx.GetAllTools()) (expected 1, found 2)`: the call inside the builtin's parentheses.
+		before, _, found := strings.Cut(strings.TrimPrefix(message, builtinArityPrefix), " (expected ")
+		open := strings.Index(before, "(")
+		if !found || open < 0 || !strings.HasSuffix(before, ")") {
+			return "", false
+		}
+		expression = before[open+1 : len(before)-1]
 	default:
 		return "", false
 	}

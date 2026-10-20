@@ -120,3 +120,5 @@ PiG loads session history for an extension only when the extension reads it. A p
 ## Product boundary
 
 `plugin.json` is cross-tool marketplace metadata. It does not contain Pig runtime fields. A deployment resource can point at extension source or artifacts and calls the same Pig validation path. It does not define the local Pig runtime source contract.
+
+One `pig extension upgrade` run rewrites every changed API with a safe form, lists the rest with file, line and the form to write (`partly upgraded`, exit 1), and with `--dry-run` compiles the rewritten extension in a temporary directory before it says `would upgrade` (D109).

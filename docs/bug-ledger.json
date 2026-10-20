@@ -440,8 +440,7 @@
           "date": "2026-10-05"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-c1fedc2-2",
@@ -461,8 +460,7 @@
           "date": "2026-10-05"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-63b4fc8",
@@ -661,8 +659,7 @@
           "date": "2026-10-05"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-de91c76-2",
@@ -682,8 +679,7 @@
           "date": "2026-10-05"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-de85b0e",
@@ -1241,8 +1237,7 @@
           "date": "2026-10-06"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-f288d69-2",
@@ -1321,8 +1316,7 @@
           "date": "2026-10-06"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-0e360a0",
@@ -2718,8 +2712,7 @@
           "hash": "2c5db8b20a",
           "date": "2026-10-06"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-d90c2f4",
@@ -3787,8 +3780,7 @@
           "hash": "4fab2efaa0",
           "date": "2026-10-07"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-f34b545",
@@ -6112,8 +6104,7 @@
           "hash": "0ae4683246",
           "date": "2026-10-08"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-5732479",
@@ -9608,8 +9599,7 @@
           "hash": "5e36d8772b",
           "date": "2026-10-09"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-d983b74",
@@ -9628,8 +9618,7 @@
           "hash": "d983b74821",
           "date": "2026-10-09"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-2c1959c",
@@ -9766,8 +9755,7 @@
           "hash": "893ff9708b",
           "date": "2026-10-09"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-b06ad92",
@@ -13830,8 +13818,7 @@
           "hash": "7d0621f995",
           "date": "2026-10-09"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-5380e0a",
@@ -14675,8 +14662,7 @@
           "hash": "5b1d5b1382",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-6132277",
@@ -18554,8 +18540,7 @@
           "hash": "94f1e6f147",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-9d64980",
@@ -18573,8 +18558,7 @@
           "hash": "9d64980afc",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-022d99f",
@@ -18592,8 +18576,7 @@
           "hash": "022d99fb6d",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-74bc69b",
@@ -18634,8 +18617,7 @@
           "hash": "c416945cd5",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-86364b4",
@@ -18722,8 +18704,7 @@
           "hash": "8a9bb40f7b",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-86c411a",
@@ -18763,8 +18744,7 @@
           "hash": "1cc75198f6",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-866c7f9",
@@ -19510,8 +19490,7 @@
           "hash": "1390c9d6a0",
           "date": "2026-10-10"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-42e3d0e",
@@ -19698,8 +19677,7 @@
           "hash": "a5524c8b01",
           "date": "2026-10-11"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-155d0f3",
@@ -19756,8 +19734,7 @@
           "hash": "a5524c8b01",
           "date": "2026-10-11"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-6ce1db1",
@@ -19777,8 +19754,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-dc53412",
@@ -20026,8 +20002,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-ce42877",
@@ -20961,8 +20936,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-18daf7f",
@@ -21902,8 +21876,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-93319f4",
@@ -21946,8 +21919,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-fce99d3",
@@ -21967,8 +21939,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-578c1a3",
@@ -21988,8 +21959,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-32ce7ad",
@@ -22009,8 +21979,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-8894a13",
@@ -22374,8 +22343,7 @@
           "date": "2026-10-11"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-8ab5a89",
@@ -22825,8 +22793,7 @@
           "hash": "7a4a8e8749",
           "date": "2026-10-11"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-31d85ab",
@@ -22844,8 +22811,7 @@
           "hash": "31d85abb57",
           "date": "2026-10-11"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-0bbe365",
@@ -23065,8 +23031,7 @@
           "hash": "e24487ecef",
           "date": "2026-10-11"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-542b536",
@@ -23084,8 +23049,7 @@
           "hash": "542b5369f6",
           "date": "2026-10-11"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-064181f",
@@ -23381,8 +23345,7 @@
           "date": "2026-10-12"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-8b9e467",
@@ -23481,7 +23444,6 @@
         }
       ],
       "tests": [
-        "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails",
         "coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK",
@@ -23490,7 +23452,6 @@
         "coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK",
         "coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK",
         "extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild",
-        "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded",
         "extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit",
         "extensions/sdk/upgrade/rules_test.go::TestGetterSpreadIntoAVariadicCallIsRewritten",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite"
@@ -23519,7 +23480,6 @@
         }
       ],
       "tests": [
-        "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails",
         "coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK",
@@ -23528,7 +23488,6 @@
         "coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK",
         "coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK",
         "extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild",
-        "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded",
         "extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite"
       ]
@@ -23556,7 +23515,6 @@
         }
       ],
       "tests": [
-        "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails",
         "coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK",
@@ -23565,7 +23523,6 @@
         "coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK",
         "coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK",
         "extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild",
-        "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded",
         "extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite"
       ]
@@ -23589,11 +23546,9 @@
         }
       ],
       "tests": [
-        "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails",
         "extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild",
-        "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded",
         "extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite"
       ]
@@ -23655,7 +23610,6 @@
         }
       ],
       "tests": [
-        "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails",
         "coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK",
@@ -23665,7 +23619,6 @@
         "coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK",
         "extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild",
         "extensions/sdk/upgrade/rules_test.go::TestCompileCleanCurrentExtensionNeedsNoUpgrade",
-        "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded",
         "extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit",
         "extensions/sdk/upgrade/rules_test.go::TestGetterSpreadIntoAVariadicCallIsRewritten",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite",
@@ -24338,8 +24291,7 @@
           "date": "2026-10-12"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-dde6aa6-15",
@@ -24504,8 +24456,7 @@
           "hash": "85c98bed2b",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-1364791",
@@ -24874,8 +24825,7 @@
           "hash": "8c5a7a4e32",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-b02876b",
@@ -25212,8 +25162,7 @@
           "date": "2026-10-13"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-07151d0",
@@ -25440,8 +25389,7 @@
           "date": "2026-10-13"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-0b13d8b-2",
@@ -25461,8 +25409,7 @@
           "date": "2026-10-13"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-0b13d8b-3",
@@ -25482,8 +25429,7 @@
           "date": "2026-10-13"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-d7855fd",
@@ -25697,8 +25643,7 @@
           "date": "2026-10-13"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-644a9f2",
@@ -26772,8 +26717,7 @@
           "hash": "a23809539a",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-3ce6bcb",
@@ -26813,8 +26757,7 @@
           "hash": "1ce00b0a53",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-bc24321",
@@ -26875,8 +26818,7 @@
           "hash": "7e09ec03c8",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-f78b951",
@@ -26894,8 +26836,7 @@
           "hash": "f78b951554",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-a110f68",
@@ -26913,8 +26854,7 @@
           "hash": "a110f6800b",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-30d4a6d",
@@ -26932,8 +26872,7 @@
           "hash": "30d4a6d805",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-3ba74f2",
@@ -26951,8 +26890,7 @@
           "hash": "3ba74f2827",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-8d008eb",
@@ -26970,8 +26908,7 @@
           "hash": "8d008ebed6",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-1ca0e2f",
@@ -26989,8 +26926,7 @@
           "hash": "1ca0e2facc",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-a40a16d",
@@ -27008,8 +26944,7 @@
           "hash": "a40a16d205",
           "date": "2026-10-13"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-79f9a9e",
@@ -27095,8 +27030,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-2",
@@ -27115,8 +27049,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-3",
@@ -27135,8 +27068,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-4",
@@ -27155,8 +27087,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-5",
@@ -27175,8 +27106,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-6",
@@ -27195,8 +27125,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-7",
@@ -27215,8 +27144,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-8",
@@ -27235,8 +27163,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-9",
@@ -27255,8 +27182,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-10",
@@ -27275,8 +27201,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-11",
@@ -27318,8 +27243,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-13",
@@ -27338,8 +27262,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-14",
@@ -27358,8 +27281,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-15",
@@ -27378,8 +27300,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-16",
@@ -27398,8 +27319,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-17",
@@ -27418,8 +27338,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-18",
@@ -27438,8 +27357,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-19",
@@ -27458,8 +27376,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-20",
@@ -27478,8 +27395,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-21",
@@ -27498,8 +27414,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-22",
@@ -27518,8 +27433,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-23",
@@ -27538,8 +27452,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-24",
@@ -27558,8 +27471,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-25",
@@ -27579,8 +27491,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-26",
@@ -27599,8 +27510,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-27",
@@ -27619,8 +27529,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-28",
@@ -27640,8 +27549,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-29",
@@ -27661,8 +27569,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-30",
@@ -27681,8 +27588,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-31",
@@ -27701,8 +27607,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-32",
@@ -27721,8 +27626,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-33",
@@ -27741,8 +27645,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-34",
@@ -27762,8 +27665,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-35",
@@ -27783,8 +27685,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-36",
@@ -27803,8 +27704,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-37",
@@ -27823,8 +27723,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-38",
@@ -27843,8 +27742,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-39",
@@ -27864,8 +27762,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-40",
@@ -27884,8 +27781,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-41",
@@ -27904,8 +27800,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-42",
@@ -27925,8 +27820,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-43",
@@ -27945,8 +27839,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-44",
@@ -27965,8 +27858,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-45",
@@ -27985,8 +27877,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-46",
@@ -28005,8 +27896,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-47",
@@ -28025,8 +27915,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-48",
@@ -28046,8 +27935,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-49",
@@ -28066,8 +27954,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-50",
@@ -28087,8 +27974,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-51",
@@ -28107,8 +27993,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-52",
@@ -28127,8 +28012,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-53",
@@ -28147,8 +28031,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-54",
@@ -28167,8 +28050,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-55",
@@ -28187,8 +28069,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-56",
@@ -28207,8 +28088,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-57",
@@ -28227,8 +28107,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-58",
@@ -28247,8 +28126,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-59",
@@ -28268,8 +28146,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-60",
@@ -28288,8 +28165,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-61",
@@ -28308,8 +28184,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-62",
@@ -28328,8 +28203,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-63",
@@ -28348,8 +28222,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-65",
@@ -28368,8 +28241,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-66",
@@ -28388,8 +28260,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-67",
@@ -28409,8 +28280,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-ffeb469",
@@ -28458,8 +28328,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-69",
@@ -28478,8 +28347,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-70",
@@ -28499,8 +28367,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-71",
@@ -28519,8 +28386,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-72",
@@ -28539,8 +28405,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-73",
@@ -28560,8 +28425,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-928e15c-74",
@@ -28580,8 +28444,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-75",
@@ -28600,8 +28463,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-76",
@@ -28620,8 +28482,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-77",
@@ -28640,8 +28501,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-928e15c-78",
@@ -28660,8 +28520,7 @@
           "hash": "928e15cd57",
           "date": "2026-10-14"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-756cac8",
@@ -28731,8 +28590,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-663e84b-2",
@@ -28752,8 +28610,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-663e84b-3",
@@ -28773,8 +28630,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-663e84b-4",
@@ -28794,8 +28650,7 @@
           "date": "2026-10-14"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-db9a315",
@@ -30903,8 +30758,7 @@
           "date": "2026-10-18"
         }
       ],
-      "commitsFrom": "release note",
-      "tests": []
+      "commitsFrom": "release note"
     },
     {
       "id": "BF-c2cdd5b",
@@ -31056,8 +30910,7 @@
           "hash": "7fae4f5df2",
           "date": "2026-10-19"
         }
-      ],
-      "tests": []
+      ]
     },
     {
       "id": "BF-b341a82",
@@ -34068,7 +33921,6 @@
         "coding/cli/extension_upgrade_test.go::TestUpgraderBacksUpBeforeWritingAndRebuilds",
         "coding/cli/extension_upgrade_test.go::TestUpgraderKeepsEveryBackupOfSameNamedExtensions",
         "coding/cli/extension_upgrade_test.go::TestUpgraderLeavesAnExtensionItCannotRewrite",
-        "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderSkipsNonGoExtensions",
@@ -38336,7 +38188,6 @@
         "extensions/sdk/upgrade/rules_test.go::TestClassifyNamesTheRemovedTransformHeaders",
         "extensions/sdk/upgrade/rules_test.go::TestCompileCleanCurrentExtensionNeedsNoUpgrade",
         "extensions/sdk/upgrade/rules_test.go::TestConfigHomeGetterHoistsTheError",
-        "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded",
         "extensions/sdk/upgrade/rules_test.go::TestContextUsageKeepsNullableUses",
         "extensions/sdk/upgrade/rules_test.go::TestEveryRuleSymbolIsUnique",
         "extensions/sdk/upgrade/rules_test.go::TestGetterAssignmentToExistingVariable",
@@ -38344,7 +38195,6 @@
         "extensions/sdk/upgrade/rules_test.go::TestGetterHoistKeepsOrderAndReturnsTheError",
         "extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit",
         "extensions/sdk/upgrade/rules_test.go::TestGetterReturnsZeroValuesOfTheHandlersResults",
-        "extensions/sdk/upgrade/rules_test.go::TestGetterSkipsWhereMovingTheCallChangesBehavior",
         "extensions/sdk/upgrade/rules_test.go::TestGetterSpreadIntoAVariadicCallIsRewritten",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite",
         "extensions/sdk/upgrade/rules_test.go::TestManualChangesAreNamedNotRewritten",
@@ -45446,7 +45296,6 @@
         "coding/cli/extension_upgrade_test.go::TestUpgraderBacksUpBeforeWritingAndRebuilds",
         "coding/cli/extension_upgrade_test.go::TestUpgraderKeepsEveryBackupOfSameNamedExtensions",
         "coding/cli/extension_upgrade_test.go::TestUpgraderLeavesAnExtensionItCannotRewrite",
-        "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails",
         "coding/cli/extension_upgrade_test.go::TestUpgraderSkipsNonGoExtensions",
@@ -49667,7 +49516,6 @@
         "extensions/sdk/upgrade/rules_test.go::TestClassifyNamesTheRemovedTransformHeaders",
         "extensions/sdk/upgrade/rules_test.go::TestCompileCleanCurrentExtensionNeedsNoUpgrade",
         "extensions/sdk/upgrade/rules_test.go::TestConfigHomeGetterHoistsTheError",
-        "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded",
         "extensions/sdk/upgrade/rules_test.go::TestContextUsageKeepsNullableUses",
         "extensions/sdk/upgrade/rules_test.go::TestEveryRuleSymbolIsUnique",
         "extensions/sdk/upgrade/rules_test.go::TestGetterAssignmentToExistingVariable",
@@ -49675,7 +49523,6 @@
         "extensions/sdk/upgrade/rules_test.go::TestGetterHoistKeepsOrderAndReturnsTheError",
         "extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit",
         "extensions/sdk/upgrade/rules_test.go::TestGetterReturnsZeroValuesOfTheHandlersResults",
-        "extensions/sdk/upgrade/rules_test.go::TestGetterSkipsWhereMovingTheCallChangesBehavior",
         "extensions/sdk/upgrade/rules_test.go::TestGetterSpreadIntoAVariadicCallIsRewritten",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite",
         "extensions/sdk/upgrade/rules_test.go::TestManualChangesAreNamedNotRewritten",
@@ -64942,6 +64789,54 @@
         "tui/word_navigation_pi_test.go::TestFindWordBackwardMatchesPi",
         "tui/word_navigation_pi_test.go::TestFindWordForwardMatchesPi",
         "tui/word_navigation_pi_test.go::TestFindWordNavigationAtomicSegmentsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-96edeab",
+      "title": "`pig extension upgrade` finds and rewrites every changed API of an extension in one run",
+      "symptom": "`pig extension upgrade` finds and rewrites every changed API of an extension in one run.",
+      "rootCause": "A build that failed on a builtin that takes one value, such as len(ctx.GetAllTools()), was not classified as an SDK change, so the extension was not offered the upgrade and the rewriter left the use alone; a ConfigHome call in a function with no error result, or a getter that cannot move before its statement, was listed and given up on.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig extension upgrade` finds and rewrites every changed API of an extension in one run. Startup offers each Go extension the upgrade would touch, not only those whose first ten compile errors all name an SDK change: a `len(ctx.GetAllTools())` or `panic(ctx.GetSessionID())` (a builtin that takes one value) is now recognised as the getter's change, and a recorded failure with no classification is read again by type checking. A `Context.ConfigHome` in a function that cannot return the error is rewritten to report the error through the call's own `Context` (`ctx.Notify`) and return, never to discard it; a getter that cannot move before its statement (a `\u0026\u0026` operand, an `else if`, a loop condition, a call after another call) takes a generated helper in `pig_upgrade_getters.go` that returns the old getter's zero value on failure.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "96edeab595",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/upgrade/expression_position_test.go::TestBuiltinTakingAGetterCallIsClassifiedAndRewritten",
+        "extensions/sdk/upgrade/expression_position_test.go::TestConfigHomeInAFunctionWithoutAnErrorIsReportedAndReturned",
+        "coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch"
+      ]
+    },
+    {
+      "id": "BF-96edeab-2",
+      "title": "`pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and…",
+      "symptom": "`pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form.",
+      "rootCause": "One use with no mechanical form made the rebuild fail and the upgrade restored every file it had rewritten, so each attempt only reached the next changed API; a dry run planned without building, so it reported success for an extension that did not build.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form. It exits 1 and reports `partly upgraded` when uses are left. `--dry-run` compiles the rewritten extension in a temporary directory (the go command's overlay, with the staged SDK) and reports `would upgrade` only when it builds; a rewrite that would add a compile error of its own is not written. The load error of a drifted extension names the changed APIs and the exact command. The stale-copy warning also recognises an edited copy by its Go module path.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "96edeab595",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun",
+        "coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes",
+        "coding/cli/extension_upgrade_test.go::TestUpgraderKeepsTheSafeRewritesAndListsWhatItCannotChange"
       ]
     }
   ],

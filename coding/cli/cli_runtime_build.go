@@ -263,7 +263,8 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 			beforeExtensionStart,
 		)
 		trace.Mark("trust-preload-done")
-		build.PreTrustExtensionDiagnostics = extensionLoadDiagnostics(preTrustLoadErrs)
+		preTrustDrift := sdkDriftOf(ctx, newExtensionUpgrader(codingagent.ConfigRoot()), preTrustLoadErrs, preTrustConfigs, nil)
+		build.PreTrustExtensionDiagnostics = extensionLoadDiagnostics(withUpgradeHints(preTrustLoadErrs, preTrustDrift))
 		// resource-loader.ts loadProjectTrustExtensions: the inline extensions load in the pre-trust pass, so their project_trust handlers take part, and the final pass keeps them (loadFinalExtensionSet).
 		if extensionset.HasInline(b.extensionFactories) {
 			if startupExtensions.host == nil {
@@ -277,7 +278,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 			}
 			preTrustExts = append(preTrustExts, preTrustInline...)
 		}
-		build.SDKDrift = append(build.SDKDrift, sdkDriftOf(preTrustLoadErrs, preTrustConfigs)...)
+		build.SDKDrift = append(build.SDKDrift, preTrustDrift...)
 		var trustRunner *inproc.Runner
 		if len(preTrustExts) > 0 {
 			trustRunner = inproc.NewRunner(preTrustExts, cwd)
@@ -438,7 +439,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		// The pre-trust inline extensions registered against this host's runtime; the build keeps it when no file extension load adopted it.
 		build.Host, build.Bridge = startupExtensions.host, startupExtensions.bridge
 	}
-	for _, drift := range sdkDriftOf(extensionLoadErrs, finalExtConfigs) {
+	for _, drift := range sdkDriftOf(ctx, newExtensionUpgrader(codingagent.ConfigRoot()), extensionLoadErrs, finalExtConfigs, build.SDKDrift) {
 		if !slices.ContainsFunc(build.SDKDrift, func(known extensionDrift) bool { return known.Source == drift.Source }) {
 			build.SDKDrift = append(build.SDKDrift, drift)
 		}
@@ -520,7 +521,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	var flagDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	build.ExtensionFlagValues, flagDiagnostics = services.ApplyExtensionFlagValues(build.Extensions)
 	conflicts := codingagent.DetectExtensionConflicts(build.Extensions)
-	build.ExtensionDiagnostics = slices.Concat(sdkDiagnostics, build.PreTrustExtensionDiagnostics, virtualModelDiagnostics, flagDiagnostics, extensionLoadDiagnostics(extensionLoadErrs), extensionErrorDiagnostics(builtinErrs), extensionConflictDiagnostics(conflicts), staleCopyDiagnostics(codingagent.DetectToolConflicts(build.Extensions), finalExtConfigs), extensionWarningDiagnostics(mergeExtensionWarnings(packageWarnings, replacementWarnings)))
+	build.ExtensionDiagnostics = slices.Concat(sdkDiagnostics, build.PreTrustExtensionDiagnostics, virtualModelDiagnostics, flagDiagnostics, extensionLoadDiagnostics(withUpgradeHints(extensionLoadErrs, build.SDKDrift)), extensionErrorDiagnostics(builtinErrs), extensionConflictDiagnostics(conflicts), staleCopyDiagnostics(codingagent.DetectToolConflicts(build.Extensions), finalExtConfigs), extensionWarningDiagnostics(mergeExtensionWarnings(packageWarnings, replacementWarnings)))
 	trace.Mark("extensions-loaded")
 
 	build.Flags = flags
