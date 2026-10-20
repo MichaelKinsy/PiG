@@ -4788,14 +4788,8 @@ func (h *Host) attemptRestart(me *managedExt) {
 		me.cancel = nil
 	}
 
-	// Shutdown waits for transitionMu, so it cancels a start that waits on a process that never connects. The process outlives the start: its own context stays the background one.
-	startCtx, cancelStart := context.WithCancel(context.WithValue(context.Background(), runtimeParentKey{}, context.Background()))
-	defer cancelStart()
-	if h.recoveryContext != nil {
-		stop := context.AfterFunc(h.recoveryContext, cancelStart)
-		defer stop()
-	}
-	if _, err := h.startExt(startCtx, me, true); err != nil {
+	// Shutdown waits for transitionMu after it cancels the recovery context, so a start waiting on a process that never connects ends; the restarted process runs under the same context and ends with the Host.
+	if _, err := h.startExt(h.recoveryContext, me, true); err != nil {
 		// The relaunch itself failed: the fresh handleIncoming never started,
 		// so nothing else will retry unless we drive it here. Count it against
 		// the same circuit breaker and back off or give up.
