@@ -17,7 +17,7 @@ const defaultContainerBuilderName = "container"
 // defaultContainerImage is the digest-pinned Go image of the ci-go CI image
 // (automation/images/ci-go/Dockerfile GO_IMAGE). It is public, so the builder works without a
 // registry login.
-const defaultContainerImage = "golang:1.27.2-alpine3.24@sha256:85dc1069ac644ea3c527b177303a406eb3358192816cd7f9e5848eb658851673"
+const defaultContainerImage = "golang:1.27.3-alpine3.24@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd"
 
 // containerEngineEnv overrides the built-in container builder's engine choice.
 const containerEngineEnv = "PIG_CONTAINER_ENGINE"

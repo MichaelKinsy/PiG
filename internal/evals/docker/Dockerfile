@@ -1,7 +1,7 @@
 # Builds the two documentation-variant images from the repository (build context = repository root).
 # Both variants run the same binaries; the harness removes the PiG documentation from the without_docs run's home
 # (internal/evals/harness_run.go) and the without_docs prompt loses its documentation section.
-ARG GO_VERSION=1.27.2
+ARG GO_VERSION=1.27.3
 FROM golang:${GO_VERSION}-bookworm AS builder
 WORKDIR /src
 # Build against the repository mount; only the staged binaries persist.

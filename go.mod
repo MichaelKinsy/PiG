@@ -6,7 +6,7 @@ go 1.26.0
 retract v0.5.0
 
 // Equal to .go-version, the one Go pin. make compliance and TestGoVersionPolicy reject any other version.
-toolchain go1.27.2
+toolchain go1.27.3
 
 // Node, and so Pi, reports a Windows directory junction as a symbolic link that realpath resolves. Since Go 1.23, os.Lstat reports it as irregular and filepath.EvalSymlinks does not follow it; winsymlink=0 restores the Node classification. go.work repeats it for workspace builds.
 godebug winsymlink=0
