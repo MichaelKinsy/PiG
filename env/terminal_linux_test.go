@@ -6,6 +6,7 @@ package env
 // signal dispositions, as Rust's Command and the pre_exec hook set them.
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -132,14 +133,32 @@ func TestTerminalForegroundOfANameCutInsideACharacterHasNoName(t *testing.T) {
 		terminal.Write("echo READY\n")
 		output.waitFor(t, "READY")
 		terminal.Write("'" + program + "' 100\n")
-		var foreground *TerminalForeground
+		var job *TerminalForeground
 		eventually(t, "the job coming to the foreground", func() bool {
-			foreground, err = terminal.Foreground(background)
+			job, err = terminal.Foreground(background)
 			if err != nil {
 				t.Fatal(err)
 			}
-			return foreground != nil
+			return job != nil
 		})
+		// The shell's child takes the terminal (tcsetpgrp) before it execs the program, so for a moment the job's group
+		// still carries the shell's own comm and is named after it. Wait for the group leader to finish its exec: its
+		// comm becomes the program's name cut at 15 bytes, which the kernel reports the instant the exec is done.
+		wantComm := filepath.Base(program)[:15]
+		eventually(t, fmt.Sprintf("the foreground job %+v execing the program", job), func() bool {
+			comm, err := os.ReadFile("/proc/" + strconv.Itoa(job.Pid) + "/comm")
+			if err != nil {
+				t.Fatal(err)
+			}
+			return strings.TrimSuffix(string(comm), "\n") == wantComm
+		})
+		foreground, err := terminal.Foreground(background)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if foreground == nil || foreground.Pid != job.Pid {
+			t.Fatalf("foreground changed from %+v to %+v", job, foreground)
+		}
 		if foreground.Name != "" {
 			t.Fatalf("foreground name = %q, want none", foreground.Name)
 		}
