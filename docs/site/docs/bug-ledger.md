@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-916 bugs. 866 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
+917 bugs. 867 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -932,9 +932,10 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c2cdd5b](#bf-c2cdd5b) | An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
-| [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
 | [BF-7fae4f5](#bf-7fae4f5) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | Unreleased |
+| [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82-2](#bf-b341a82-2) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
+| [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13664,20 +13665,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete`, `durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete`, `durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime`
 - **Release note:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
 
-### BF-b341a82
-
-**`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again**
-
-- **Source:** PiG's own defect
-- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.
-- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `c019ea9155` (2026-10-06, #163), `e2db9318fa` (2026-10-06, #173), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `e63c61c338` (2026-10-12, #208), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11229 more in docs/bug-ledger.json
-- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
-
 ### BF-7fae4f5
 
 **`go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB**
@@ -13692,6 +13679,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** None recorded.
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.
 
+### BF-b341a82
+
+**`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again**
+
+- **Source:** PiG's own defect
+- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.
+- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `c019ea9155` (2026-10-06, #163), `e2db9318fa` (2026-10-06, #173), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `e63c61c338` (2026-10-12, #208), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
+- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11229 more in docs/bug-ledger.json
+- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
+
 ### BF-b341a82-2
 
 **Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
@@ -13705,6 +13706,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `2ab79ce358` (2026-10-06, #166), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `4610c9f4a1` (2026-10-08, #189), `50e81255de` (2026-10-08, #174), `af1fe1a8fe` (2026-10-08, #175), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
 - **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11148 more in docs/bug-ledger.json
 - **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
+
+### BF-ab1324d
+
+**A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.
+- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `6af0806f7a` (2026-10-19, #213), `ab1324df34` (2026-10-20)
+- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11100 more in docs/bug-ledger.json
+- **Release note:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.
 
 ## Divergences from Pi added in this release
 
