@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-	"time"
+	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -154,9 +154,17 @@ func useOracleTheme(t testing.TB, name string) {
 	tui.SetTheme(name)
 }
 
-// runLlamaOracleWithPig drives one scenario against Pig's view, taking each step's expected settlement from Pi's record only to know whether to wait for the
-// blocking flow to return; what settled and what the frames show are compared, not assumed.
-func runLlamaOracleWithPig(t testing.TB, scenario llamaOracleScenario, expectedSettled []any) llamaOracleResult {
+// runLlamaOracleWithPig drives one scenario against Pig's view in a synctest bubble. A step has settled when the flow goroutine has returned; after a key,
+// synctest.Wait returns when that goroutine has either returned or blocked on its list again, so what settled is read exactly, with no wait whose length a
+// loaded host could outrun. What settled and what the frames show are compared, not assumed.
+func runLlamaOracleWithPig(t *testing.T, scenario llamaOracleScenario) llamaOracleResult {
+	t.Helper()
+	var result llamaOracleResult
+	synctest.Test(t, func(t *testing.T) { result = runLlamaOracleScenario(t, scenario) })
+	return result
+}
+
+func runLlamaOracleScenario(t *testing.T, scenario llamaOracleScenario) llamaOracleResult {
 	t.Helper()
 	useOracleTheme(t, scenario.Theme)
 	previousBindings := tui.GetKeybindings()
@@ -183,19 +191,14 @@ func runLlamaOracleWithPig(t testing.TB, scenario llamaOracleScenario, expectedS
 	var progressStop <-chan struct{}
 	done := make(chan struct{})
 	op := scenario.Op
+	// The flow goroutine mounts its list before it blocks on the answer, so once it is blocked the list is there.
 	waitMounted := func() {
-		deadline := time.Now().Add(5 * time.Second)
-		for {
-			view.mu.Lock()
-			ready := view.inputHandler != nil
-			view.mu.Unlock()
-			if ready {
-				return
-			}
-			if time.Now().After(deadline) {
-				t.Fatalf("flow %s never mounted its list", op.Kind)
-			}
-			time.Sleep(time.Millisecond)
+		synctest.Wait()
+		view.mu.Lock()
+		ready := view.inputHandler != nil
+		view.mu.Unlock()
+		if !ready {
+			t.Fatalf("flow %s never mounted its list", op.Kind)
 		}
 	}
 	finish := func(value any) {
@@ -251,7 +254,7 @@ func runLlamaOracleWithPig(t testing.TB, scenario llamaOracleScenario, expectedS
 			view.UpdateProgress(toState(state))
 		}
 	}
-	settledNow := func(expected any) any {
+	settledNow := func() any {
 		if progressStop != nil {
 			select {
 			case <-progressStop:
@@ -263,52 +266,39 @@ func runLlamaOracleWithPig(t testing.TB, scenario llamaOracleScenario, expectedS
 		if op.Kind == "status" {
 			return nil
 		}
-		wait := 2 * time.Millisecond
-		if expected != nil {
-			wait = 5 * time.Second
-		} else if expectedSettled == nil {
-			wait = 10 * time.Millisecond // no Pi record to say whether this step settles: give the flow time to return
-		}
+		synctest.Wait()
 		select {
 		case <-done:
-		case <-time.After(wait):
+		default:
 			return nil
 		}
 		mu.Lock()
 		defer mu.Unlock()
 		return outcome
 	}
-	expectedAt := func(i int) any {
-		if i < len(expectedSettled) {
-			return expectedSettled[i]
-		}
-		return nil
-	}
-	record(settledNow(expectedAt(step)))
+	record(settledNow())
 	for _, key := range op.Keys {
 		view.HandleInput(key)
-		record(settledNow(expectedAt(step)))
+		record(settledNow())
 	}
 	switch op.Kind {
 	case "models", "select", "confirm", "connectionError":
 		// The flow goroutine waits for its list to settle; cancel a list the keys left open so it returns.
 		// Recording is done: restore the default bindings so escape cancels even when the scenario unbound or moved select.cancel.
 		tui.SetKeybindings(tui.NewKeybindingsManager(tui.TUIKeybindingDefinitionsFor(tui.HostKeybindingPlatform()), nil))
-		deadline := time.Now().Add(5 * time.Second)
-		for {
+		for range 8 {
 			select {
 			case <-done:
 				return result
 			default:
 			}
-			if time.Now().After(deadline) {
-				t.Fatalf("flow %s did not return after escape", op.Kind)
-			}
 			view.HandleInput("\x1b")
-			select {
-			case <-done:
-			case <-time.After(10 * time.Millisecond):
-			}
+			synctest.Wait()
+		}
+		select {
+		case <-done:
+		default:
+			t.Fatalf("flow %s did not return after escape", op.Kind)
 		}
 	}
 	return result
@@ -337,7 +327,7 @@ func TestLlamaViewMatchesPi(t *testing.T) {
 	}
 	failures := 0
 	for i, scenario := range scenarios {
-		got := runLlamaOracleWithPig(t, scenario, expected[i].Settled)
+		got := runLlamaOracleWithPig(t, scenario)
 		if reflect.DeepEqual(normalizeLlamaResult(got), normalizeLlamaResult(expected[i])) {
 			continue
 		}
@@ -392,7 +382,7 @@ func TestLlamaViewProbeDump(t *testing.T) {
 // TestLlamaViewParity prints Pig's frames and settlements, one JSON line per scenario, for the llama-view parity scenario.
 func TestLlamaViewParity(t *testing.T) {
 	for _, scenario := range llamaOracleScenarios() {
-		result := runLlamaOracleWithPig(t, scenario, nil)
+		result := runLlamaOracleWithPig(t, scenario)
 		var line bytes.Buffer
 		encoder := json.NewEncoder(&line)
 		encoder.SetEscapeHTML(false)
