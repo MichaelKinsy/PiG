@@ -18,9 +18,10 @@ import "sync"
 //     next await or its return before the next one starts. The reader settles a handler's slot when it reads the answer to the handler's dialog, and the handler's
 //     response is written only after the response of every handler that settled before it, or after that handler's next host call (the await its continuation reached).
 type toolStartOrder struct {
-	mu         sync.Mutex
-	tail       chan struct{}
-	dialogTail chan struct{}
+	mu   sync.Mutex
+	tail chan struct{}
+	// dialogQueue holds the requests whose dialog place has not passed, in arrival order. The first is the one whose first dialog may be written.
+	dialogQueue []*toolStart
 	// settle orders the responses of the handlers whose dialogs were answered.
 	settle settleGate
 	// parked, when set, runs each time a call starts to wait for an earlier one, so a test knows it is held without timing.
@@ -33,22 +34,26 @@ type toolStart struct {
 	done     chan struct{}
 	once     sync.Once
 
-	dialogPrevious <-chan struct{}
-	dialogDone     chan struct{}
-	dialogOnce     sync.Once
-	dialogOpened   sync.Once
-	slot           *settleSlot
-	parked         func()
+	order *toolStartOrder
+	// dialogReady is closed when every earlier request passed its dialog place; dialogPassed is guarded by order.mu.
+	dialogReady  chan struct{}
+	readyOnce    sync.Once
+	dialogPassed bool
+	dialogOpened sync.Once
+	slot         *settleSlot
+	parked       func()
 }
 
 // reserve takes the next place. The loop calls it in arrival order, before it starts the request's goroutine.
 func (o *toolStartOrder) reserve() *toolStart {
-	start := &toolStart{done: make(chan struct{}), dialogDone: make(chan struct{})}
+	start := &toolStart{done: make(chan struct{}), dialogReady: make(chan struct{}), order: o}
 	o.mu.Lock()
 	start.previous = o.tail
 	o.tail = start.done
-	start.dialogPrevious = o.dialogTail
-	o.dialogTail = start.dialogDone
+	o.dialogQueue = append(o.dialogQueue, start)
+	if len(o.dialogQueue) == 1 {
+		start.markReady()
+	}
 	start.parked = o.parked
 	o.mu.Unlock()
 	start.slot = o.settle.newSlot()
@@ -78,6 +83,8 @@ func (s *toolStart) release() {
 	s.slot.close()
 }
 
+func (s *toolStart) markReady() { s.readyOnce.Do(func() { close(s.dialogReady) }) }
+
 // beforeCall runs before the handler writes a host call. The call is an await of the handler's continuation: a handler the reader settled yields its place in
 // the response order. A handler's first dialog waits for the first dialogs of the earlier requests; onDialog reports whether the call is one.
 func (s *toolStart) beforeCall(dialog bool) {
@@ -90,14 +97,14 @@ func (s *toolStart) beforeCall(dialog bool) {
 	}
 	first := false
 	s.dialogOpened.Do(func() { first = true })
-	if first && s.dialogPrevious != nil {
+	if first {
 		select {
-		case <-s.dialogPrevious:
+		case <-s.dialogReady:
 		default:
 			if s.parked != nil {
 				s.parked()
 			}
-			<-s.dialogPrevious
+			<-s.dialogReady
 		}
 	}
 }
@@ -110,12 +117,25 @@ func (s *toolStart) afterCall(dialog bool) {
 	s.passDialog()
 }
 
-// passDialog hands the dialog place on after the earlier requests passed theirs, so the chain stays in request order. It is idempotent.
+// passDialog gives up the request's dialog place: the first request that still holds one may write its first dialog. It never waits, so a request that ends
+// while an earlier one still runs is not held by it. It is idempotent.
 func (s *toolStart) passDialog() {
-	if s.dialogPrevious != nil {
-		<-s.dialogPrevious
+	o := s.order
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if s.dialogPassed {
+		return
 	}
-	s.dialogOnce.Do(func() { close(s.dialogDone) })
+	s.dialogPassed = true
+	for i, held := range o.dialogQueue {
+		if held == s {
+			o.dialogQueue = append(o.dialogQueue[:i], o.dialogQueue[i+1:]...)
+			break
+		}
+	}
+	if len(o.dialogQueue) > 0 {
+		o.dialogQueue[0].markReady()
+	}
 }
 
 // respond writes the request's response after the response of every handler whose dialog answer was read before this handler's.
