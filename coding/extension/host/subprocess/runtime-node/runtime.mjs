@@ -28,8 +28,6 @@ import { classifierErrorResult, imageErrorResult } from "./shims/pi-dist/pi-ai/u
 import { backgroundAnsi, foregroundAnsi, parseColor, styleTextWithAnsi } from "./shims/pi-dist/pi-tui/colors.js";
 import { initTheme, setThemeInstance } from "./shims/pi-dist/pi-coding-agent/modes/interactive/theme/theme.js";
 import { createExtensionRuntime } from "./shims/pi-dist/pi-coding-agent/core/extensions/loader.js";
-import { findLatestResponse, isVirtualModel } from "./shims/pi-dist/pi-coding-agent/core/virtual-models.js";
-import { clampThinkingLevel } from "./shims/pi-dist/pi-ai/sdk-bundle/index.js";
 import { installCloneHooks, installTestCollect, Realm } from "./xref.mjs";
 import { SharedBus } from "./event-bus.mjs";
 import { deriveView, surfaceTheme, VIEW_THEME_TOKENS } from "./view-walk.mjs";
@@ -644,7 +642,8 @@ class RuntimeModelRuntime {
   // model-runtime.ts:759-762: a catalog chat model that is not virtual.
   getPhysicalModel(providerId, modelId) {
     const model = this.registry.find(providerId, modelId);
-    return model && !isVirtualModel(model) ? model : undefined;
+    // virtual-models.ts: a virtual catalog entry has API id "pi-virtual".
+    return model && model.api !== "pi-virtual" ? model : undefined;
   }
   getAvailableSnapshot() { return this.registry.getAvailable(); }
   // model-runtime.ts:489-505: a provider's availability is checked live.
@@ -688,6 +687,9 @@ class RuntimeModelRuntime {
     const virtual = this.registry.host.virtualModels.get(JSON.stringify([model.provider, model.id]));
     if (!virtual) throw new Error(`${name} is not registered by this extension; its route runs in the extension that registered it.`);
     const { failed, ...request } = options;
+    // The Pi modules load on the first routing, not at startup.
+    const { findLatestResponse } = await import("./shims/pi-dist/pi-coding-agent/core/virtual-models.js");
+    const { clampThinkingLevel } = await import("./shims/pi-dist/pi-ai/sdk-bundle/index.js");
     const latest = findLatestResponse(messages);
     const previousModel = latest && this.getPhysicalModel(latest.provider, latest.model);
     const failedModel = failed && this.getPhysicalModel(failed.provider, failed.model);
