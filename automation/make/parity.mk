@@ -481,8 +481,8 @@ interface-gaps: ## Decide NOT-A-GAP or GAP(reason) for every interface ID with f
 
 # The evidence tests of oracle-backed rows run Pi's code, so portmap-check installs the same oracle dependencies as test-fast; without them
 # every such row reads as COVERAGE failed.
-portmap-check: test-prereqs interface-deps parity-deps durable-interop-deps ## Derive the PORT_MAP ticks from the interface ledger; fail on a tick the ledger does not prove that the committed baseline does not list
-	@go run ./test/parity/cmd/portmapcheck
+portmap-check: test-prereqs interface-deps parity-deps durable-interop-deps ## Derive the PORT_MAP ticks from the interface ledger; fail on a tick the ledger does not prove that the committed baseline does not list (PORTMAP_SHARD=N/M checks one shard of the rows)
+	@go run ./test/parity/cmd/portmapcheck $(if $(PORTMAP_SHARD),-shard $(PORTMAP_SHARD))
 
 portmap-check-update: ## Rewrite the unproven-tick baseline after a reviewed shrink
 	@go run ./test/parity/cmd/portmapcheck -update-baseline

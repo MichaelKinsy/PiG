@@ -46,6 +46,7 @@ func mutantProblem(root string, res result, mutants []mutant) string {
 
 // killed replays one mutant: the old text must occur once, and the evidence tests must fail with a test failure (not a build error).
 func killed(root string, res result, mu mutant) bool {
+	mutantReplays.Add(1)
 	src, err := os.ReadFile(filepath.Join(root, mu.File))
 	if err != nil || strings.Count(string(src), mu.Old) != 1 {
 		return false
