@@ -176828,7 +176828,8 @@
       ],
       "evidence": [
         "test:coding/cli/rpc_closed_unions_test.go#TestRPCClosedUnionConstantsAreTheUpstreamLiterals",
-        "test:coding/cli/rpc_ui_set_widget_factory_test.go#TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory"
+        "test:coding/cli/rpc_ui_set_widget_factory_test.go#TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory",
+        "test:coding/cli/rpc_ui_settle_test.go#TestRPCUIResponsesSettleTheirDialogsInStdinOrder"
       ]
     },
     {
