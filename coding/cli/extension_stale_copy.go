@@ -106,7 +106,21 @@ func extensionSourceDir(path string, configs []subprocess.ExtConfig) string {
 	return ""
 }
 
-// staleCopyDiagnostics explains a tool conflict between two copies of one extension: it names both directories and the stale one to remove, the one whose newest source file is older. A conflict between different extensions is left as Pi reports it.
+// sameGoModule reports whether the extensions at two directories declare one Go module path.
+func sameGoModule(first, second string, configs []subprocess.ExtConfig) bool {
+	modulePath := func(dir string) string {
+		for _, config := range configs {
+			if config.ModulePath != "" && config.Source != "" && canonicalPath(config.Source) == canonicalPath(dir) {
+				return config.ModulePath
+			}
+		}
+		return ""
+	}
+	path := modulePath(first)
+	return path != "" && path == modulePath(second)
+}
+
+// staleCopyDiagnostics explains a tool conflict between two copies of one extension: it names both directories and the stale one to remove, the one whose newest source file is older. A copy is a directory that shares most of its files with the other or declares the same Go module. A conflict between different extensions is left as Pi reports it.
 func staleCopyDiagnostics(conflicts []codingagent.ToolConflict, configs []subprocess.ExtConfig) []codingagent.AgentSessionRuntimeDiagnostic {
 	var diagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	seen := map[string]bool{}
@@ -121,7 +135,8 @@ func staleCopyDiagnostics(conflicts []codingagent.ToolConflict, configs []subpro
 		}
 		seen[key] = true
 		firstTree, secondTree := readExtensionTree(first), readExtensionTree(second)
-		if !firstTree.isCopyOf(secondTree) {
+		// An edited copy shares few files with the install it came from, but a Go extension keeps its module path.
+		if !firstTree.isCopyOf(secondTree) && !sameGoModule(first, second, configs) {
 			continue
 		}
 		stale, current := second, first

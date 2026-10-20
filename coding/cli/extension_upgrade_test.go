@@ -59,13 +59,13 @@ func TestSDKDriftNamesOnlyTheExtensionWhoseFileFailed(t *testing.T) {
 		&subprocess.ExtensionLoadError{Name: "healthy", Path: healthy, Err: failure},
 		errors.New("embedded cell: unrelated"),
 	}
-	items := sdkDriftOf(errs, configs)
+	items := sdkDriftOf(t.Context(), nil, errs, configs, nil)
 	if len(items) != 1 || items[0].Name != "ask" || items[0].Source != ask {
 		t.Fatalf("items = %+v, want only ask", items)
 	}
 	// A failure with no drift is not drift.
 	plain := []error{&subprocess.ExtensionLoadError{Name: "ask", Path: ask, Err: &runtimecell.BuildFailure{Summary: "go build: x", Cause: "x"}}}
-	if items := sdkDriftOf(plain, configs); len(items) != 0 {
+	if items := sdkDriftOf(t.Context(), nil, plain, configs, nil); len(items) != 0 {
 		t.Fatalf("items = %+v", items)
 	}
 }
@@ -77,7 +77,7 @@ func TestSDKDriftFindsTheSameNamedCopyThatFailed(t *testing.T) {
 	configs := []subprocess.ExtConfig{{Name: "ask", Source: current}, {Name: "ask", Source: stale}}
 	failure := driftFailure(filepath.Join(stale, "extension.go"))
 	errs := []error{&subprocess.ExtensionLoadError{Name: "ask", Path: current, Err: failure}, &subprocess.ExtensionLoadError{Name: "ask", Path: stale, Err: failure}}
-	if items := sdkDriftOf(errs, configs); len(items) != 1 || items[0].Source != stale {
+	if items := sdkDriftOf(t.Context(), nil, errs, configs, nil); len(items) != 1 || items[0].Source != stale {
 		t.Fatalf("items = %+v, want only the stale copy", items)
 	}
 }
@@ -114,6 +114,9 @@ func fakeUpgrader(t *testing.T, status extensionUpgradeStatus, built bool) (*ext
 		upgraded = append(upgraded, config.Name)
 		path := filepath.Join(config.Source, "extension.go")
 		return &upgrade.Result{Files: []upgrade.FileChange{{Path: path, Before: []byte("before\n"), After: []byte("after\n"), Rewrites: []upgrade.Rewrite{{Rule: upgrade.RuleContextGetters, Symbol: "Context.GetSessionID", Line: 3}}}}}, nil
+	}
+	u.check = func(context.Context, subprocess.ExtConfig, *upgrade.Result) (rewriteCheck, error) {
+		return rewriteCheck{Built: true}, nil
 	}
 	u.rebuild = func(context.Context, subprocess.ExtConfig) error {
 		if !built {
@@ -416,8 +419,8 @@ func TestUpgraderLeavesAnExtensionItCannotRewrite(t *testing.T) {
 	}
 }
 
-// A Context.ConfigHome whose function cannot return the error is listed, not discarded. The other use is rewritten, the rebuild then fails on the listed one, and the upgrade restores the file instead of leaving it half rewritten.
-func TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite(t *testing.T) {
+// A real run applies every rewrite that has one safe form and lists the rest with file, line and the form to write. The extension then builds only once the listed uses are changed, so the report says so and exits non-zero; it does not restore the files it rewrote. (Before, one use with no safe form restored every file, and the next attempt met the next class of change.)
+func TestUpgraderKeepsTheSafeRewritesAndListsWhatItCannotChange(t *testing.T) {
 	configRoot := t.TempDir()
 	t.Setenv("PIG_HOME", configRoot)
 	root, _ := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk"))
@@ -439,8 +442,10 @@ func Extension() *sdk.Extension {
 		if err := save(ctx.Cwd(), ctx.ConfigHome()); err != nil {
 			return err
 		}
+		for i := 0; i < len(ctx.ConfigHome()); i++ {
+		}
 		ctx.Notify(agentDir(ctx), "info")
-		return nil
+		return ctx.SetEditorComponent(42)
 	})
 	return ext
 }
@@ -448,20 +453,62 @@ func Extension() *sdk.Extension {
 	writeStartupFixtureFile(t, filepath.Join(dir, "extension.go"), source)
 	writeStartupFixtureFile(t, filepath.Join(dir, "go.mod"), "module example.com/home\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.4.1\n")
 	configs := pathToExtConfigs(dir)
-	report := newExtensionUpgrader(configRoot).upgrade(t.Context(), configs[0], false)
+	upgrader := newExtensionUpgrader(configRoot)
+	loopLine := 0
+	for i, line := range strings.Split(source, "\n") {
+		if strings.Contains(line, "for i := 0") {
+			loopLine = i + 1
+		}
+	}
+	wantListed := []string{
+		fmt.Sprintf("extension.go:%d: edit by hand (Context.ConfigHome): the statement is not one pig moves a call out of", loopLine),
+		"write: configHome, err := ctx.ConfigHome(); handle err",
+		"still to change by hand: Context.SetEditorComponent: func(any) error -> func(EditorFactory) error",
+	}
+
+	preview := upgrader.upgrade(t.Context(), configs[0], true)
 	var out bytes.Buffer
+	printUpgradeReport(&out, preview, true)
+	if preview.Status != upgradePreviewPartial || preview.Ok() || preview.Backup != "" || readFile(t, filepath.Join(dir, "extension.go")) != source {
+		t.Fatalf("dry run:\n%s", out.String())
+	}
+	for _, want := range append([]string{"would partly upgrade", "build of the rewritten extension: fails only on the changes listed above"}, wantListed...) {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("dry run lacks %q:\n%s", want, out.String())
+		}
+	}
+
+	report := upgrader.upgrade(t.Context(), configs[0], false)
+	out.Reset()
 	printUpgradeReport(&out, report, true)
-	if report.Status != upgradeFailed || report.Ok() || report.Backup != "" || readFile(t, filepath.Join(dir, "extension.go")) != source {
+	if report.Status != upgradePartial || report.Ok() || report.Built || report.Backup == "" {
 		t.Fatalf("report:\n%s", out.String())
 	}
+	upgraded := readFile(t, filepath.Join(dir, "extension.go"))
 	for _, want := range []string{
-		"the original files are restored",
-		"+\t\tcwd2 := ctx.Cwd()",
-		"extension.go:9: edit by hand (Context.ConfigHome): the function does not return an error, so the error of Context.ConfigHome has nowhere to go",
+		"configHome, err := ctx.ConfigHome()",
+		"ctx.Notify(\"Context.ConfigHome failed: \"+err.Error(), \"error\")",
+		"cwd2 := ctx.Cwd()",
+		"len(ctx.ConfigHome())",
+		"ctx.SetEditorComponent(42)",
 	} {
+		if !strings.Contains(upgraded, want) {
+			t.Errorf("the extension lacks %q:\n%s", want, upgraded)
+		}
+	}
+	for _, want := range wantListed {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("report lacks %q:\n%s", want, out.String())
 		}
+	}
+	if line := upgradeSummaryLine(report); !strings.Contains(line, `partly upgraded extension "home"`) || strings.Contains(line, "\n") {
+		t.Errorf("summary = %q", line)
+	}
+
+	// What is left is a plain listing: a second run changes nothing and lists the same uses.
+	again := upgrader.upgrade(t.Context(), configs[0], false)
+	if again.Status != upgradeManual || readFile(t, filepath.Join(dir, "extension.go")) != upgraded {
+		t.Fatalf("second run = %+v", again)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -64,15 +65,14 @@ func upgradeSummaryLine(report extensionUpgradeReport) string {
 		return fmt.Sprintf("%sextension %q skipped: %s", prefix, report.Name, report.Note)
 	case report.Status == upgradePreview:
 		return fmt.Sprintf("%sextension %q would be upgraded", prefix, report.Name)
+	case report.Status == upgradePreviewPartial:
+		return fmt.Sprintf("%sextension %q would be partly upgraded: %d change(s) apply, %d use(s) need a manual edit; run %s --dry-run to list them", prefix, report.Name, rewriteCount(report.Result), manualUses(report.Result), extensionUpgradeCommand([]extensionDrift{{Source: report.Source}}))
+	case report.Status == upgradePartial:
+		return fmt.Sprintf("%spartly upgraded extension %q: %d change(s) applied (the original files are in %s), %d use(s) need a manual edit; run %s to list them", prefix, report.Name, rewriteCount(report.Result), report.Backup, manualUses(report.Result), extensionUpgradeCommand([]extensionDrift{{Source: report.Source}}))
 	case report.Ok() && report.Status == upgradeUpToDate:
 		return fmt.Sprintf("%sextension %q needs no upgrade", prefix, report.Name)
 	case report.Ok():
-		changes := 0
-		if report.Result != nil {
-			for _, file := range report.Result.Files {
-				changes += len(file.Rewrites)
-			}
-		}
+		changes := rewriteCount(report.Result)
 		return fmt.Sprintf("%supgraded extension %q for the current SDK (%d changes; the original files are in %s)", prefix, report.Name, changes, report.Backup)
 	}
 	note := report.Note
@@ -83,6 +83,29 @@ func upgradeSummaryLine(report extensionUpgradeReport) string {
 		note += " (the original files are in " + report.Backup + ")"
 	}
 	return fmt.Sprintf("%scould not upgrade extension %q: %s", prefix, report.Name, strings.TrimSpace(note))
+}
+
+// rewriteCount is the number of changes a plan applies.
+func rewriteCount(result *upgrade.Result) int {
+	changes := 0
+	if result != nil {
+		for _, file := range result.Files {
+			changes += len(file.Rewrites)
+		}
+	}
+	return changes
+}
+
+// manualUses is the number of uses a plan leaves for the author: the uses of the changes the compiler still rejects, or else the uses it listed.
+func manualUses(result *upgrade.Result) int {
+	if result == nil {
+		return 0
+	}
+	uses := 0
+	for _, drift := range result.Remaining {
+		uses += drift.Count
+	}
+	return max(uses, len(result.Skipped)) + len(result.Errors)
 }
 
 // startupUpgrade answers the drifted extensions of a starting process on its terminal.

@@ -22,7 +22,8 @@ const extensionUpgradeUsage = `Usage:
 Rewrite Go extensions written for an older SDK so they build against this one.
 Every file it changes is copied to the configuration root first, the diff is
 printed, and the extension is rebuilt. A change that has no safe mechanical
-form is listed for you to make.
+form is listed with its file, line and the form to write; every other change is
+applied. --dry-run builds the rewritten extension before it reports.
 
 With no argument, or with --all, it upgrades every Go extension that loads from
 your settings, user and trusted project directories, and packages.

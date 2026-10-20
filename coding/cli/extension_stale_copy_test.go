@@ -121,3 +121,25 @@ func TestStartupNamesTheStaleCopyOfADuplicatedExtension(t *testing.T) {
 		}
 	}
 }
+
+// An install edited after it was copied shares few files with the copy, so file similarity does not find it. Two Go extensions that declare one module path are
+// copies of one extension all the same: the warning names both install paths, as for an identical copy. Two with different module paths are different extensions.
+func TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath(t *testing.T) {
+	root := t.TempDir()
+	user, pkg, other := filepath.Join(root, "user", "ask"), filepath.Join(root, "package", "ask"), filepath.Join(root, "other", "ask")
+	writeCopy(t, user, map[string]string{"main.go": "package main\n// old\n", "go.mod": "module example.com/ask\n"}, time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC))
+	writeCopy(t, pkg, map[string]string{"extension.go": "package ask\n// new\n", "util.go": "package ask\n"}, time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC))
+	writeCopy(t, other, map[string]string{"main.go": "package main\n// unrelated\n"}, time.Now())
+	configs := []subprocess.ExtConfig{
+		{Name: "ask", Source: user, ModulePath: "example.com/ask"},
+		{Name: "ask", Source: pkg, ModulePath: "example.com/ask"},
+		{Name: "ask", Source: other, ModulePath: "example.com/other"},
+	}
+	got := staleCopyDiagnostics([]codingagent.ToolConflict{conflictBetween(user, pkg)}, configs)
+	if len(got) != 1 || !strings.Contains(got[0].Message, user) || !strings.Contains(got[0].Message, pkg) || !strings.Contains(got[0].Message, "Remove the stale copy, "+user+", and keep "+pkg) {
+		t.Fatalf("diagnostics = %+v", got)
+	}
+	if got := staleCopyDiagnostics([]codingagent.ToolConflict{conflictBetween(user, other)}, configs); len(got) != 0 {
+		t.Fatalf("different module paths are different extensions: %+v", got)
+	}
+}
