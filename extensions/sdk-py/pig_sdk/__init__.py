@@ -2026,12 +2026,84 @@ class _SurfaceRenderer:
                 pass
 
 
-class _ToolStart:
-    """One tool_call request's place in the order the handlers start. ``begin`` returns when every earlier request began its handler or ended without one."""
+_DIALOG_METHODS = frozenset({"ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"})
 
-    def __init__(self, previous: threading.Event | None) -> None:
+
+class _SettleGate:
+    """Orders actions by the order their slots settled: a slot settles when the reader reads the answer its handler waits for, and its action runs after every slot that settled before it finished. A slot that was never settled runs at once."""
+
+    def __init__(self) -> None:
+        self._cond = threading.Condition()
+        # The slots that settled and have not yet finished or yielded, in settle order.
+        self._settled: list[_SettleSlot] = []
+
+    def new_slot(self, parked: Callable[[], None] | None = None) -> "_SettleSlot":
+        return _SettleSlot(self, parked)
+
+
+class _SettleSlot:
+    def __init__(self, gate: _SettleGate, parked: Callable[[], None] | None = None) -> None:
+        self._gate = gate
+        self._settled = False
+        self._finished = False
+        self._parked = parked
+
+    def settle(self) -> None:
+        """Give the slot its place after every slot that settled before. The reader calls it before it hands the answer to the waiting handler. A slot that already holds a place keeps it."""
+        gate = self._gate
+        with gate._cond:
+            if self._settled or self._finished:
+                return
+            self._settled = True
+            gate._settled.append(self)
+
+    def yield_(self) -> None:
+        """Give the place up: the handler's continuation reached its next await, so the handlers that settled after it go on. The next answer settles the slot again."""
+        with self._gate._cond:
+            self._leave_locked()
+
+    def _leave_locked(self) -> None:
+        if not self._settled:
+            return
+        gate = self._gate
+        gate._settled.remove(self)
+        self._settled = False
+        gate._cond.notify_all()
+
+    def run(self, action: Callable[[], None]) -> None:
+        """Run ``action`` after every slot that settled before this one left its place. A slot that holds no place runs it at once. The slot closes when the action ends."""
+        gate = self._gate
+        with gate._cond:
+            while self._settled and not self._finished and gate._settled[0] is not self:
+                if self._parked is not None:
+                    self._parked()
+                gate._cond.wait()
+        try:
+            action()
+        finally:
+            self.close()
+
+    def close(self) -> None:
+        """End the slot: it stops holding up the slots behind it. Idempotent."""
+        with self._gate._cond:
+            self._leave_locked()
+            self._finished = True
+
+
+class _ToolStart:
+    """One tool_call request's place in the orders ``_ToolStartOrder`` keeps. ``begin`` returns when every earlier request began its handler or ended without one."""
+
+    def __init__(self, previous: threading.Event | None, order: "_ToolStartOrder") -> None:
         self._previous = previous
         self.done = threading.Event()
+        self._order = order
+        # Set when the request waits for its first dialog and every earlier request passed its place; made only when the request has to wait. It, _dialog_passed, _dialog_opened, _ended and _slot are guarded by the order's lock.
+        self._dialog_waiting: threading.Event | None = None
+        self._dialog_passed = False
+        self._dialog_opened = False
+        self._ended = False
+        # The request's place in the response order, made when the request opens a dialog: a handler that opens none is never gated.
+        self._slot: _SettleSlot | None = None
 
     def begin(self) -> None:
         if self._previous is not None:
@@ -2039,29 +2111,110 @@ class _ToolStart:
         self.done.set()
 
     def end(self) -> None:
-        """Hand the place on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
+        """Hand the places on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
         self.begin()
+        self._finish()
 
     def release(self) -> None:
-        """Hand the place on at once, for a request whose thread never started. The reader calls it, so it must not wait for the earlier requests. Idempotent."""
+        """Hand the places on at once, for a request whose thread never started. The reader calls it, so it must not wait for the earlier requests. Idempotent."""
         self.done.set()
+        self._finish()
+
+    def _finish(self) -> None:
+        self.pass_dialog()
+        order = self._order
+        with order._lock:
+            self._ended = True
+            slot = self._slot
+        if slot is not None:
+            slot.close()
+
+    def response_slot(self) -> "_SettleSlot | None":
+        """The request's place in the response order, made on first use. None once the request ended: a retained context's dialog must not leave a slot that nothing closes."""
+        order = self._order
+        with order._lock:
+            if self._ended:
+                return None
+            if self._slot is None:
+                self._slot = order._settle.new_slot(order.parked)
+            return self._slot
+
+    def before_call(self, dialog: bool) -> None:
+        """Run before the handler writes a host call. The call is an await of the handler's continuation: a handler the reader settled yields its place in the response order. A handler's first dialog waits for the first dialogs of the earlier requests; ``dialog`` says whether the call is one."""
+        slot = self._slot
+        if slot is not None:
+            slot.yield_()
+        if not dialog:
+            return
+        order = self._order
+        with order._lock:
+            if self._dialog_opened:
+                return
+            self._dialog_opened = True
+            queue = order._dialog_queue
+            if not queue or queue[0] is self or self._dialog_passed:
+                return
+            waiting = self._dialog_waiting = threading.Event()
+        parked = order.parked
+        if parked is not None:
+            parked()
+        waiting.wait()
+
+    def after_call(self, dialog: bool) -> None:
+        """Run once the host call's frame is written, or failed to be."""
+        if dialog:
+            self.pass_dialog()
+
+    def pass_dialog(self) -> None:
+        """Give up the request's dialog place: the first request that still holds one may write its first dialog. It never waits, so a request that ends while an earlier one still runs is not held by it. Idempotent."""
+        order = self._order
+        with order._lock:
+            if self._dialog_passed:
+                return
+            self._dialog_passed = True
+            order._dialog_queue.remove(self)
+            if order._dialog_queue:
+                head = order._dialog_queue[0]
+                if head._dialog_waiting is not None:
+                    head._dialog_waiting.set()
+                    head._dialog_waiting = None
+
+    def respond(self, send: Callable[[], None]) -> None:
+        """Write the request's response after the response of every handler whose dialog answer was read before this handler's."""
+        slot = self._slot
+        if slot is None:
+            send()
+        else:
+            slot.run(send)
 
 
 class _ToolStartOrder:
-    """Starts the handlers of tool_call requests in the order the requests arrive.
+    """Orders the calls of one tool batch the way Pi's single thread does.
 
-    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837). The host writes a batch's tool_call requests in source order, but each request runs on its own thread, and the scheduler is free to run a later thread first.
+    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837). The host writes a batch's tool_call requests in source order, but each request runs on its own thread, and the scheduler is free to run a later thread first. Three orders follow from Pi's one thread, and each is kept here (all per extension connection; only tool_call requests take part):
+
+    - Start: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without one.
+    - Dialog: the first dialog (select, confirm, input, editor, custom) a handler opens is written only after the first dialog of every earlier request was written or its request ended, so the dialogs of a batch open in the order the calls started. A handler that waits on something other than a host call before its first dialog holds the later calls' first dialogs, which Pi's single thread lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
+    - Continuation: when two dialogs are answered back to back, Pi runs the two handlers' continuations in the order of the answers, and each continuation runs to its next await or its return before the next one starts. The reader settles a handler's slot when it reads the answer to the handler's dialog, and the handler's response is written only after the response of every handler that settled before it, or after that handler's next host call (the await its continuation reached).
+
+    ``parked``, when set, runs each time a call starts to wait for an earlier one, so a test knows it is held without timing.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._tail: threading.Event | None = None
+        # The requests whose dialog place has not passed, in arrival order. The first is the one whose first dialog may be written.
+        self._dialog_queue: list[_ToolStart] = []
+        # Orders the responses of the handlers whose dialogs were answered.
+        self._settle = _SettleGate()
+        self.parked: Callable[[], None] | None = None
 
     def reserve(self) -> _ToolStart:
         """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
-            start = _ToolStart(self._tail)
+            start = _ToolStart(self._tail, self)
             self._tail = start.done
+            self._dialog_queue.append(start)
             return start
 
 
@@ -2348,12 +2501,14 @@ class Context:
     def _call(self, method: str, args: Any = None) -> dict[str, Any]:
         # An RPC UI effect is no suspension of the handler, as the Node runtime sends it (_RPC_SYNCHRONOUS_UI_EFFECTS).
         reports = bool(self.request_id) and not (method in _RPC_SYNCHRONOUS_UI_EFFECTS and self._rpc_mode())
-        if reports and method not in {"ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"}:
+        if reports and method not in _DIALOG_METHODS:
             self._report_request_state("blocked", "host_call")
         try:
+            # A tool handler's host calls take part in the batch order (_ToolStartOrder); other contexts pass nothing.
+            extra = {"start": self._tool_start} if self._tool_start is not None else {}
             if self._parent is not None:
-                return self.extension._call(method, args, self.request_id, self._parent)
-            return self.extension._call(method, args, self.request_id)
+                return self.extension._call(method, args, self.request_id, self._parent, **extra)
+            return self.extension._call(method, args, self.request_id, **extra)
         finally:
             if reports:
                 self._report_request_state("progress")
@@ -2973,7 +3128,7 @@ class Context:
         if component is None or isinstance(component, dict):
             raw_options = component if isinstance(component, dict) else options
             return self._call("ui.custom", raw_options or {}).get("result")
-        result = self.extension._run_remote_component(component, options or {}, self.request_id, self._parent)
+        result = self.extension._run_remote_component(component, options or {}, self.request_id, self._parent, start=self._tool_start)
         if self.request_id:
             self.extension._request_state(self.request_id, "progress")
         return result
@@ -3538,6 +3693,8 @@ class Extension:
         self._pending: dict[str, threading.Event] = {}
         self._pending_results: dict[str, dict[str, Any]] = {}
         self._pending_parents: dict[str, str] = {}
+        # A dialog call made by a tool handler maps to that handler's response slot; the reader settles the slot when it reads the answer.
+        self._pending_slots: dict[str, _SettleSlot] = {}
         self._cancelled_calls: set[str] = set()
         self._call_id = 0
         self._active: dict[str, tuple[threading.Event, str | None]] = {}
@@ -3799,10 +3956,10 @@ class Extension:
         ctx._report_request_state("blocked", "host_call")
         try:
             if options.signal is None:
-                call_id, event = self._begin_call("executeTool", payload, ctx.request_id, ctx._parent, event=_NestedCallEvent(nested))
+                call_id, event = self._begin_call("executeTool", payload, ctx.request_id, ctx._parent, event=_NestedCallEvent(nested), start=ctx._tool_start)
             else:
                 # An explicit signal replaces the calling tool's (runner.ts:980, `options.signal ?? signal`): the call is not tied to the calling request, so cancelling that request neither cancels it on the host nor ends this wait.
-                call_id, event = self._begin_call("executeTool", payload, event=_NestedCallEvent(nested))
+                call_id, event = self._begin_call("executeTool", payload, event=_NestedCallEvent(nested), start=ctx._tool_start)
             if options.signal is not None:
                 # After the call is sent: the host applies a cancel only after the call it names started.
                 unsubscribe = options.signal.subscribe(lambda: self._cancel_nested(execute_id))
@@ -4305,6 +4462,7 @@ class Extension:
         with self._state_lock:
             event = self._pending.pop(cid, None)
             self._pending_parents.pop(cid, None)
+            slot = self._pending_slots.pop(cid, None)
             if event:
                 self._pending_results[cid] = result
             if cid in self._mcp_calls:
@@ -4312,6 +4470,9 @@ class Extension:
                 servers = (result.get("result") or {}).get("servers")
                 if isinstance(servers, list):
                     self._mcp_servers = servers
+        # Pi resumes the handlers whose dialogs were answered in the order the answers arrived. This reader reads them in that order, which the threads that wait do not keep.
+        if slot is not None:
+            slot.settle()
         if event:
             event.set()
 
@@ -4723,7 +4884,11 @@ class Extension:
                     ctx._tool_start.begin()
                 result = handler(ctx, params)
                 payload = result if isinstance(result, dict) else {"content": str(result)}
-                self._respond(req_id, payload, None)
+                # A handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers.
+                if ctx._tool_start is not None:
+                    ctx._tool_start.respond(lambda: self._respond(req_id, payload, None))
+                else:
+                    self._respond(req_id, payload, None)
             elif method == "tool_prepare_arguments":
                 name = req.get("tool", "")
                 with self._tool_registration_lock:
@@ -4958,7 +5123,12 @@ class Extension:
             else:
                 self._respond(req_id, None, {"message": f"unknown method: {method}"})
         except Exception as exc:  # noqa: BLE001 - SDK boundary reports handler errors.
-            self._respond(req_id, None, {"message": str(exc)})
+            # A handler whose dialog was answered before another's responds after it, error or not (_ToolStartOrder).
+            error = {"message": str(exc)}
+            if ctx._tool_start is not None:
+                ctx._tool_start.respond(lambda: self._respond(req_id, None, error))
+            else:
+                self._respond(req_id, None, error)
         finally:
             if ctx._tool_start is not None:
                 ctx._tool_start.end()
@@ -5098,11 +5268,23 @@ class Extension:
             if not result.get("hasMore", False) and not page_entries:
                 return
 
-    def _call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None) -> dict[str, Any]:
-        call_id, event = self._begin_call(method, args, parent_request_id, parent)
+    def _call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None, start: _ToolStart | None = None) -> dict[str, Any]:
+        call_id, event = self._begin_call(method, args, parent_request_id, parent, start=start)
         return self._wait_call(call_id, event, method)
 
-    def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None, event: threading.Event | None = None) -> tuple[str, threading.Event]:
+    def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None, event: threading.Event | None = None, start: _ToolStart | None = None) -> tuple[str, threading.Event]:
+        # A tool handler's host call is an await of Pi's handler: it orders the handler among the calls of its batch (_ToolStartOrder).
+        dialog = method in _DIALOG_METHODS
+        if start is not None:
+            start.before_call(dialog)
+        try:
+            # The reader settles the handler's slot when it reads a dialog's answer, so only a dialog call carries the slot.
+            return self._write_call(method, args, parent_request_id, parent, event, start.response_slot() if start is not None and dialog else None)
+        finally:
+            if start is not None:
+                start.after_call(dialog)
+
+    def _write_call(self, method: str, args: Any, parent_request_id: str, parent: _RequestParent | None, event: threading.Event | None, slot: _SettleSlot | None) -> tuple[str, threading.Event]:
         event = event if event is not None else threading.Event()
         with self._write_lock:
             with self._state_lock:
@@ -5115,6 +5297,8 @@ class Extension:
                 self._call_id += 1
                 call_id = f"c{self._call_id}"
                 self._pending[call_id] = event
+                if slot is not None:
+                    self._pending_slots[call_id] = slot
                 if method in _MCP_REGISTRY_CALLS:
                     self._mcp_calls.add(call_id)
                 if parent_request_id:
@@ -5128,6 +5312,7 @@ class Extension:
                 with self._state_lock:
                     self._pending.pop(call_id, None)
                     self._pending_parents.pop(call_id, None)
+                    self._pending_slots.pop(call_id, None)
                     self._mcp_calls.discard(call_id)
                 raise
         return call_id, event
@@ -5138,6 +5323,7 @@ class Extension:
             result = self._pending_results.pop(call_id, {})
             self._pending.pop(call_id, None)
             self._pending_parents.pop(call_id, None)
+            self._pending_slots.pop(call_id, None)
             cancelled = call_id in self._cancelled_calls
             self._cancelled_calls.discard(call_id)
         if cancelled:
@@ -5239,7 +5425,7 @@ class Extension:
                     pass
                 return
 
-    def _run_remote_component(self, component: RemoteComponent, options: dict[str, Any], parent_request_id: str = "", parent: _RequestParent | None = None) -> Any:
+    def _run_remote_component(self, component: RemoteComponent, options: dict[str, Any], parent_request_id: str = "", parent: _RequestParent | None = None, start: _ToolStart | None = None) -> Any:
         args = dict(options)
         on_handle = args.pop("onHandle", None)
         with self._overlay_lock:
@@ -5253,7 +5439,7 @@ class Extension:
             self._overlays[key] = overlay
         args["key"] = key
         try:
-            call_id, event = self._begin_call("ui.custom", args, parent_request_id, parent)
+            call_id, event = self._begin_call("ui.custom", args, parent_request_id, parent, start=start)
         except Exception:
             with self._overlay_lock:
                 self._overlays.pop(key, None)
@@ -5446,6 +5632,7 @@ class Extension:
                 continue
             event = self._pending.pop(call_id, None)
             self._pending_parents.pop(call_id, None)
+            self._pending_slots.pop(call_id, None)
             self._pending_results.pop(call_id, None)
             self._cancelled_calls.add(call_id)
             if event is not None:
