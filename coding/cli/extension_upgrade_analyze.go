@@ -131,7 +131,7 @@ func classifyRewriteBuild(runErr error, output []byte, dir string, rewritten map
 		if len(upgrade.Classify([]upgrade.Diagnostic{diagnostic}, source)) > 0 || known[diagnostic.Message] {
 			continue
 		}
-		check.Unexpected = append(check.Unexpected, fmt.Sprintf("%s:%d: %s", diagnostic.File, diagnostic.Line, diagnostic.Message))
+		check.Unexpected = append(check.Unexpected, fmt.Sprintf("%s:%d: %s", diagnostic.File, diagnostic.Line, diagnostic.Message)) //perf:ok runs once per unexpected compile error after a failed upgrade rebuild
 	}
 	if len(diagnostics) == 0 {
 		tail := strings.TrimSpace(string(output))
