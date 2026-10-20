@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-918 bugs. 868 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
+920 bugs. 870 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -520,6 +520,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-1390c9d](#bf-1390c9d) | fix(ai): the Anthropic event reader matches the type member exactly | PiG's own defect | All platforms | Unreleased |
 | [BF-42e3d0e](#bf-42e3d0e) | fix(hljs): a class that negates only \r still reaches across lines; gate the streamed code block Linear | PiG's own defect | All platforms | Unreleased |
+| [BF-74f806c](#bf-74f806c) | fix(agent): end the tool flow at custom user messages after /tree navigation (#203) | PiG's own defect | All platforms | Unreleased |
 | [BF-34f7594](#bf-34f7594) | An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-2](#bf-34f7594-2) | Fixed the interactive bash block stripping escape sequences with the wrong rule… | PiG's own defect | All platforms | 0.5.0 |
@@ -789,6 +790,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-79f9a9e](#bf-79f9a9e) | fix(agent): convert a live partial with one clone and keep events at an unchanged publication (TU-T7 rest) | PiG's own defect | All platforms | Unreleased |
 | [BF-8c3f5a1](#bf-8c3f5a1) | fix(tui): a finished block's hidden thinking run keeps no streaming memos | PiG's own defect | All platforms | Unreleased |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
+| [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-2](#bf-928e15c-2) | A stored models catalog whose `contextWindow` or `maxTokens` is written as `128000.0` or `1.28E5` loads like… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-3](#bf-928e15c-3) | Provider HTTP error bodies are decoded like `response.text()`: ill-formed UTF-8 becomes one U+FFFD per… | PiG's own defect | All platforms | 0.5.0 |
@@ -935,8 +937,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-7fae4f5](#bf-7fae4f5) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
 | [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
-| [BF-b341a82-2](#bf-b341a82-2) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f35d0a0](#bf-f35d0a0) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | Unreleased |
+| [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -7938,6 +7940,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `42e3d0eb5b` (2026-10-10)
 - **Tests:** `tui/highlight_resume_scaling_norace_test.go::TestScalingStreamedCodeBlockHighlight`, `tui/internal/hljs/resume_test.go::TestPatternReach`
 
+### BF-74f806c
+
+**fix(agent): end the tool flow at custom user messages after /tree navigation (#203)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(agent): end the tool flow at custom user messages after /tree navigation (#203)
+- **Root cause:** Custom messages that become user messages (branch and compaction summaries) now end an open tool flow, and system messages that arrive while tool calls are pending are held until after the results, as Pi does. Fixes an Anthropic HTTP 400 for an orphaned tool_result after /tree navigation.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `74f806c799` (2026-10-10, #203)
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow`
+
 ### BF-34f7594
 
 **An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or…**
@@ -11667,6 +11682,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `57a1687bc4` (2026-10-13)
 - **Tests:** `agent/messages_projection_test.go::TestAssistantMessageProjectionEqualsObserve`, `ai/assistant_observation_projection_norace_test.go::TestObserveProjectionAllocatesNothing`, `ai/assistant_observation_projection_test.go::TestObserveProjectionEqualsObserve`, `ai/stream_builder_deferred_arguments_test.go::TestDeferredToolArgumentsReadAsTheEagerParse`, `internal/codingagent/reload_allocs_norace_test.go::TestInteractiveSessionReloadAllocatesPerRetainedMessageWithinBudget`
 
+### BF-e63c61c
+
+**fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e63c61c338` (2026-10-12, #208)
+- **Tests:** `internal/codingagent/interactive_model_tools_deadlock_test.go::TestInteractiveModelSelectionPumpsToolRegistration`
+
 ### BF-928e15c
 
 **A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no…**
@@ -13686,12 +13714,12 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 - **Source:** PiG's own defect
 - **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.
-- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
+- **Root cause:** The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `c019ea9155` (2026-10-06, #163), `e2db9318fa` (2026-10-06, #173), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `e63c61c338` (2026-10-12, #208), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11229 more in docs/bug-ledger.json
+- **Fix commits:** `b341a82e9d` (2026-10-19, #221)
+- **Tests:** None recorded.
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
 
 ### BF-ab1324d
@@ -13704,23 +13732,9 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `ab1324df34` (2026-10-20)
+- **Fix commits:** `94e6796e8d` (2026-10-20, #234), `ab1324df34` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts`, `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart`
 - **Release note:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.
-
-### BF-b341a82-2
-
-**Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
-- **Root cause:** Every other exit the user did not ask for now leaves a trace (D102, additive): an exit.log line in the agent directory for SIGHUP, SIGTERM, an external SIGINT, a closed terminal or input, an extension's shutdown() and a failed run; a crash record for a panic or fatal error in any goroutine (through a per-session crash-output marker the next start reconciles); and `pig diagnose` lists the recent unexpected exits. The background cache warm recovers a panic and reschedules as Pi's does, the emergency terminal exit stops extension processes, and a reconciled crash keeps its real time.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `4610c9f4a1` (2026-10-08, #189), `50e81255de` (2026-10-08, #174), `af1fe1a8fe` (2026-10-08, #175), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11148 more in docs/bug-ledger.json
-- **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
 ### BF-f35d0a0
 
@@ -13732,9 +13746,23 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `f35d0a0567` (2026-10-20)
+- **Fix commits:** `94e6796e8d` (2026-10-20, #234), `f35d0a0567` (2026-10-20)
 - **Tests:** `durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal`, `durable/harness/harness_generation_test.go::TestGeneration`, `durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm`
 - **Release note:** A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.
+
+### BF-0e3411c
+
+**Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0e3411c597` (2026-10-19, #224)
+- **Tests:** None recorded.
+- **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
 ## Divergences from Pi added in this release
 
