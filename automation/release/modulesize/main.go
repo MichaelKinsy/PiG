@@ -94,7 +94,7 @@ func readBudget(file string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var budget int64
 	seen := false
 	sc := bufio.NewScanner(f)
@@ -194,7 +194,7 @@ func proveInstall(root string, files []modzip.File) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(work)
+	defer func() { _ = os.RemoveAll(work) }()
 	escaped, err := module.EscapePath(modPath)
 	if err != nil {
 		return err
