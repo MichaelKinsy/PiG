@@ -282,6 +282,8 @@ type conn struct {
 	pending        map[string]chan *callResultMsg
 	pendingParents map[string]string
 	requestParents map[string]*requestParent
+	// pendingSlots maps a dialog call to the response slot of the tool handler that waits for it. The read loop settles the slot when it reads the answer.
+	pendingSlots map[string]*settleSlot
 
 	// incoming is where the read loop puts request/notify/shutdown messages.
 	incoming chan envelope
@@ -320,6 +322,7 @@ func newConn(nc net.Conn) *conn {
 		fused:          fused,
 		pending:        make(map[string]chan *callResultMsg),
 		pendingParents: make(map[string]string),
+		pendingSlots:   make(map[string]*settleSlot),
 		incoming:       make(chan envelope, 16),
 		done:           make(chan struct{}),
 		stopped:        make(chan struct{}),
@@ -379,11 +382,15 @@ func (c *conn) readLoop() {
 		if env.Type == msgCallResult {
 			c.pendingMu.Lock()
 			ch, ok := c.pending[env.ID]
+			slot := c.pendingSlots[env.ID]
 			if ok {
 				delete(c.pending, env.ID)
 				delete(c.pendingParents, env.ID)
+				delete(c.pendingSlots, env.ID)
 			}
 			c.pendingMu.Unlock()
+			// Pi resumes the handlers whose dialogs were answered in the order the answers arrived. This loop reads them in that order, which the goroutines that wait do not keep.
+			slot.settle()
 			if ok && ch != nil {
 				if env.CallResult != nil {
 					env.CallResult.notifySeq = c.notifications.Load()
@@ -492,14 +499,24 @@ func (c *conn) callFor(parentRequestID, method string, args any) (*callResultMsg
 // written. Streaming APIs use this to establish the host-side consumer before
 // sending ordered notify frames on the same connection.
 func (c *conn) beginCallFor(parentRequestID, method string, args any) (pendingCall, error) {
-	return c.beginCall(parentRequestID, nil, method, args)
+	return c.beginCall(parentRequestID, nil, method, args, nil)
 }
 
 func (c *conn) beginParentCall(parent *requestParent, method string, args any) (pendingCall, error) {
-	return c.beginCall("", parent, method, args)
+	return c.beginCall("", parent, method, args, nil)
 }
 
-func (c *conn) beginCall(parentRequestID string, parent *requestParent, method string, args any) (pendingCall, error) {
+// beginParentCallFor is beginParentCall for a call whose answer settles slot when the read loop reads it.
+func (c *conn) beginParentCallFor(parent *requestParent, method string, args any, slot *settleSlot) (pendingCall, error) {
+	return c.beginCall("", parent, method, args, slot)
+}
+
+// beginCallForSlot is beginCallFor for a call whose answer settles slot when the read loop reads it.
+func (c *conn) beginCallForSlot(parentRequestID, method string, args any, slot *settleSlot) (pendingCall, error) {
+	return c.beginCall(parentRequestID, nil, method, args, slot)
+}
+
+func (c *conn) beginCall(parentRequestID string, parent *requestParent, method string, args any, slot *settleSlot) (pendingCall, error) {
 	id := fmt.Sprintf("c%d", c.callID.Add(1))
 
 	argsJSON, err := json.MarshalJS(args)
@@ -534,6 +551,9 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	}
 	c.pending[id] = ch
 	c.pendingParents[id] = parentRequestID
+	if slot != nil {
+		c.pendingSlots[id] = slot
+	}
 	c.pendingMu.Unlock()
 
 	if err := c.sendLocked(envelope{
@@ -544,6 +564,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		c.pendingMu.Lock()
 		delete(c.pending, id)
 		delete(c.pendingParents, id)
+		delete(c.pendingSlots, id)
 		c.pendingMu.Unlock()
 		return pendingCall{}, err
 	}
@@ -555,6 +576,7 @@ func (c *conn) waitCall(call pendingCall) (*callResultMsg, error) {
 		c.pendingMu.Lock()
 		delete(c.pending, call.id)
 		delete(c.pendingParents, call.id)
+		delete(c.pendingSlots, call.id)
 		c.pendingMu.Unlock()
 	}()
 	ctx := call.ctx

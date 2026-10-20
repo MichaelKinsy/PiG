@@ -1363,7 +1363,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		// agent-loop.ts:619-647: the handlers of a batch start in source order.
 		ctx.start.begin()
 		result, err := handler(ctx, params)
-		_ = e.conn.respond(id, result, err)
+		// A handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers.
+		ctx.start.respond(func() { _ = e.conn.respond(id, result, err) })
 
 	case "tool_prepare_arguments":
 		// agent-loop.ts:707-716: prepareToolCall runs the hook on the model's arguments and validates what it returns, so the host asks for it before tool_call.
