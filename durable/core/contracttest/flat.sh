@@ -8,7 +8,7 @@ root=$(cd "$(dirname "$0")/../../.." && pwd)
 cd "$root"
 # The programs build through the tree's go.work with the pinned toolchain, as gate.sh and lib/instr.mjs do: a caller's GOWORK=off
 # builds bench against the published extensions/sdk, which lacks the workspace's API.
-export GOTOOLCHAIN=${GOTOOLCHAIN:-go1.27.2} GOWORK=
+export GOTOOLCHAIN=${GOTOOLCHAIN:-go1.27.3} GOWORK=
 work=$(mktemp -d "${TMPDIR:-/tmp}/dcore-flat.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 go build -buildvcs=false -o "$work/bench" ./durable/core/sqlhost/cmd/bench

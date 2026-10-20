@@ -181,7 +181,7 @@ go build -o "$PREFIX/bin/pig" ./cmd/pig
 pig --version
 ```
 
-Go 1.27.2 builds PiG; it is the release `go.mod` names on its `toolchain` line and the release every PiG build, test and image uses. The modules retain Go 1.26 as their language floor. If the Termux package is older than Go 1.27.2, `GOTOOLCHAIN=auto` asks for a `go1.27.2.android-arm64` toolchain that Go does not publish. Set `GOTOOLCHAIN=local` to build with the installed Go, which satisfies the 1.26 floor, or update the package.
+Go 1.27.3 builds PiG; it is the release `go.mod` names on its `toolchain` line and the release every PiG build, test and image uses. The modules retain Go 1.26 as their language floor. If the Termux package is older than Go 1.27.3, `GOTOOLCHAIN=auto` asks for a `go1.27.3.android-arm64` toolchain that Go does not publish. Set `GOTOOLCHAIN=local` to build with the installed Go, which satisfies the 1.26 floor, or update the package.
 
 ## Troubleshooting
 

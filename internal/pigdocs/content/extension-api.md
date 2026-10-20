@@ -298,7 +298,7 @@ so PiG versions sharing a config root never replace each other's SDK. PiG adds
 a temporary filesystem replacement during the build. The authored file contains
 no machine-specific path.
 
-Build PiG and Go extensions with Go 1.27.2. The generated module keeps Go 1.26
+Build PiG and Go extensions with Go 1.27.3. The generated module keeps Go 1.26
 as its language floor:
 
 ```go.mod
