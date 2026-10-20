@@ -1,17 +1,19 @@
 # `make durable-core-budget` red at the allocation-site check
 
-Branch `fix/durable-core-budget`, from staging `next` d9173cb277.
+Branch `fix/durable-core-budget-main`, from `main` 94e6796e8d (the same fix is on `fix/durable-core-budget`, from staging `next`
+d9173cb277; the `durable/core` Go sources and the budget files are identical on the two bases).
 
 ## Result
 
-`node allocs.mjs --check` fails with 10 packages over `durable/core/budget/allocs.json`. The `next` branch did not cause it. The
-check was already red on `main` (e84d2349ae, and the 0.5.0 release commit 6af0806f7a) with the same counts. The size check
-(`measure.mjs`) passes and is unrelated.
+`node allocs.mjs --check` fails with 10 packages over `durable/core/budget/allocs.json`. It is red on `main` (94e6796e8d; the
+same counts at e84d2349ae and at the 0.5.0 release commit 6af0806f7a) and on staging `next`, with identical counts: `next` did
+not cause it. The size check (`measure.mjs`) passes and is unrelated.
 
 `allocs.json` was written once, on 12 Oct (95e205c358, "measured on integrate-042 6449cd87c2"). It was correct for that tree.
 The Pi ports that reached the Durable core afterwards (nested tool calls, the scheduler rewrite, document retention, sleeping
-tasks, crash-loop guard, task paging, watch ops) merged with no re-measurement. Nothing runs the gate: no workflow, `.mk` file or
-script other than the `durable-core-budget` target calls `allocs.mjs`, so the drift went unseen from the first merge on.
+tasks, crash-loop guard, task paging, watch ops) merged with no re-measurement. Nothing ran the gate: no workflow, `.mk` file or
+script other than the `durable-core-budget` target called `allocs.mjs`, so the drift went unseen from the first merge on. This
+branch adds the gate to CI (below).
 
 The gate counts TinyGo's escape-analysis report for `cmd/corewasm` over the `PiG/durable/core` packages
 (`CORE_PRINT_ALLOCS=PiG/durable/core`). It depends only on the Go sources and the TinyGo pin (0.42.0). Linking the pinned Pi
@@ -99,6 +101,14 @@ an interface: one heap object per published record per commit. `jv.Append`'s `fl
 check; the values are record ids and `pub.Seq`, which are finite. The five call sites now call `jv.AppendNumber` directly:
 `.` goes 684 -> 679, and a commit with N published records allocates N+1 fewer objects.
 
+## CI
+
+`ci.yml` job `durable-cf-host` already installs the pinned TinyGo (`tinygo-install.sh`) and the locked npm tree, so it now runs
+`make durable-core-budget` as a last step. `test/ci-images/durable_core_budget_test.go` fails when that job has no `run:` step
+of the target, when the step comes before the TinyGo install, or when the Makefile recipe stops running `measure.mjs --check`
+and `allocs.mjs --check`; its checker has a negative control (missing step, misordered step, a comment naming the target).
+The job's result already feeds the `verify` aggregate (`DURABLE_CF_HOST`), so a red budget blocks the merge.
+
 ## Budget
 
 `allocs.json` is updated to the measured tip (`allocs.mjs --update` output, rewritten by hand with identical formatting):
@@ -123,10 +133,11 @@ only fall from here, and a package that rises is a new site to remove or justify
 
 ## Verification (imladris, `tern-ci:v2`, cores 96-151, nice 15)
 
-- `allocs.mjs` on the branch before the baseline update: the table above (tip `.` 679 after the fix).
-- `go test ./durable/core/` passes with the tx.go change (17 s).
-- `make durable-core-budget` with TinyGo on `PATH` (`TINYGO=$(sh durable/core/budget/tinygo-install.sh)`) at d8da8d2525 (baseline
-  commit; the doc commit changes no code): exit 0. `measure.mjs` passes (tinygo 1.01 MiB raw, host bundle 154.5 KiB), `allocs.mjs`
-  reports "2293 sites in 12 packages, equal to allocs.json", and `growheap.test.mjs`/`allocs.test.mjs` pass (16/16). Without TinyGo
-  on `PATH` the target fails at `build-wasm.sh: tinygo not found`; that is the environment, not the budget.
-- Not run: the rest of the repository's gates; no other file changed.
+- `allocs.mjs` on `next` before the baseline update: the table above (tip `.` 679 after the fix).
+- `go test ./durable/core/` passes with the tx.go change (17 s, on the `next` base; the file is identical on `main`).
+- On this branch (`main` 94e6796e8d + 4 commits), with TinyGo on the environment (`TINYGO=$(sh durable/core/budget/tinygo-install.sh)`):
+  `make durable-core-budget` exits 0: `measure.mjs` passes, `allocs.mjs` is equal to `allocs.json`, and `growheap.test.mjs` /
+  `allocs.test.mjs` pass (16/16). Without `TINYGO` the target fails at `build-wasm.sh: tinygo not found`; that is the environment,
+  which is why the CI step follows the TinyGo install.
+- `go vet ./test/ci-images/` is clean and the whole `go test ./test/ci-images/` passes (87 s), including the two new tests.
+- Not run: the rest of the repository's gates, and the new CI step itself on GitHub (it needs a pushed branch).
