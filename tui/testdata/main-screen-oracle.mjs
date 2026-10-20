@@ -4,6 +4,7 @@
 // clear-on-shrink or the hardware cursor, force a full render, then renders once. The log holds the terminal bytes each step wrote
 // (cursor visibility and movement calls are spelled as ProcessTerminal writes them) and the lines each component returned.
 import { pathToFileURL } from "node:url";
+import { runRequestedFrame } from "./frame-clock.mjs";
 const tui = await import(pathToFileURL(process.argv[2]).href);
 const { TuiMainScreen, truncateToWidth, CURSOR_MARKER, Container, setCapabilities, resetCapabilitiesCache } = tui;
 const { isImageLine } = await import(new URL("./terminal-image.js", pathToFileURL(process.argv[2])).href);
@@ -87,7 +88,6 @@ for (let i = 0; i < 500; i++) {
 	scenarios.push({ cols, rows, parts, nested, images, steps });
 }
 const mark = (s) => s;
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 for (const sc of scenarios) {
 	if (sc.images) setCapabilities({ images: sc.images, trueColor: true, hyperlinks: true }); else resetCapabilitiesCache();
 	let out = "";
@@ -144,8 +144,8 @@ for (const sc of scenarios) {
 		if (step.hardwareCursor !== undefined && !step.cursorFirst) {
 			ui.setShowHardwareCursor(step.hardwareCursor);
 		}
-		// Overlay and hardware-cursor changes request a frame, which Pi renders on the next tick after its 16 ms throttle; let it run before the step's own render (only when one is pending).
-		if (ui.renderRequested || ui.renderTimer) await sleep(30);
+		// Overlay and hardware-cursor changes request a frame, which Pi renders on the next tick after its 16 ms throttle; run it before the step's own render (only when one is pending).
+		await runRequestedFrame(ui);
 		let error = null;
 		try { ui.renderNow(!!step.force); } catch (e) { error = String(e && e.message).slice(0, 80); }
 		sc.log.push({ out, rendered: specs.map((s) => s.rendered), overlays: overlays.map((o) => o.spec.rendered), error });

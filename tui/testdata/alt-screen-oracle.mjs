@@ -4,6 +4,7 @@
 // hardware cursor, scroll the primary view, show or hide an overlay, force a full render, then renders once. The log holds the
 // bytes start() wrote and the bytes each step wrote, and the lines each component returned.
 import { pathToFileURL } from "node:url";
+import { runRequestedFrame } from "./frame-clock.mjs";
 const tui = await import(pathToFileURL(process.argv[2]).href);
 const { TuiAltScreen, Image, getCapabilities, truncateToWidth, CURSOR_MARKER, Container, setCapabilities, resetCapabilitiesCache, setCellDimensions } = tui;
 const { isImageLine } = await import(new URL("./terminal-image.js", pathToFileURL(process.argv[2])).href);
@@ -101,7 +102,6 @@ for (let i = 0; i < 500; i++) {
 	scenarios.push({ cols, rows, parts, nested, images, wez, tmux, layoutRoot: random() < 0.2, preserve: random() < 0.3, steps });
 }
 const mark = (s) => s;
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 for (const sc of scenarios) {
 	if (sc.wez) process.env.TERM_PROGRAM = "WezTerm"; else delete process.env.TERM_PROGRAM;
 	if (sc.tmux) process.env.TMUX = "1"; else delete process.env.TMUX;
@@ -143,7 +143,7 @@ for (const sc of scenarios) {
 	sc.log = [];
 	out = "";
 	ui.start();
-	await sleep(30); // start() requests a frame, drawn on the next tick
+	await runRequestedFrame(ui); // start() requests a frame, drawn on the next tick
 	sc.startOut = out;
 	sc.imagesAfterStart = getCapabilities().images ?? ""; // iTerm2 images are suppressed while the alternate screen is up
 	const overlays = [];
@@ -177,8 +177,8 @@ for (const sc of scenarios) {
 		if (step.scrollTop) ui.scrollToTop();
 		if (step.scrollBottom) ui.scrollToBottom();
 		if (!step.cursorFirst) setCursor();
-		// Overlay and hardware-cursor changes request a frame, which Pi renders on the next tick after its 16 ms throttle; let it run before the step's own render (only when one is pending).
-		if (ui.renderRequested || ui.renderTimer) await sleep(30);
+		// Overlay and hardware-cursor changes request a frame, which Pi renders on the next tick after its 16 ms throttle; run it before the step's own render (only when one is pending).
+		await runRequestedFrame(ui);
 		let error = null;
 		try { ui.renderNow(!!step.force); } catch (e) { error = String(e && e.message).slice(0, 80); }
 		sc.log.push({ fullRedraws: ui.fullRedraws, out, rendered: specs.map((s) => s.rendered), overlays: overlays.map((o) => o.spec.rendered), error });

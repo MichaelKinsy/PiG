@@ -4764,6 +4764,9 @@ func (h *Host) scheduleRestart(me *managedExt, delay time.Duration) {
 }
 
 func (h *Host) attemptRestart(me *managedExt) {
+	// A restart starts a process and admits this slot's generation to it, as Load and Reload do. Serialized with them, a /reload never claims or replaces a process whose restart is still registering: the replaced generation's failed start would kill the process the successor runs in.
+	h.transitionMu.Lock()
+	defer h.transitionMu.Unlock()
 	if h.shuttingDown.Load() || me.shuttingDown.Load() {
 		return
 	}
@@ -4785,7 +4788,8 @@ func (h *Host) attemptRestart(me *managedExt) {
 		me.cancel = nil
 	}
 
-	if _, err := h.startExt(context.Background(), me, true); err != nil {
+	// Shutdown waits for transitionMu after it cancels the recovery context, so a start waiting on a process that never connects ends; the restarted process runs under the same context and ends with the Host.
+	if _, err := h.startExt(h.recoveryContext, me, true); err != nil {
 		// The relaunch itself failed: the fresh handleIncoming never started,
 		// so nothing else will retry unless we drive it here. Count it against
 		// the same circuit breaker and back off or give up.

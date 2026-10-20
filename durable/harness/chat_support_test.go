@@ -84,6 +84,8 @@ type openChatOptions struct {
 	// env is one environment for every conversation; envFunc an Env function.
 	env     env.ExecutionEnv
 	envFunc func(ctx context.Context, target EnvTarget) (env.ExecutionEnv, error)
+	// setTimer is HarnessOptions.SetTimer.
+	setTimer durable.SetTimer
 }
 
 // openChat opens a Harness over storage and returns its root, configured with the faux model on first creation.
@@ -109,6 +111,7 @@ func openChat(t *testing.T, storage durable.Storage, setup *chatState, options .
 			return now()
 		},
 		OnReport: setup.Reports.add,
+		SetTimer: option.setTimer,
 	}
 	switch {
 	case option.envFunc != nil:

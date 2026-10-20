@@ -227,7 +227,7 @@ func newManualRenderTUI(out io.Writer, cols, rows int) *TuiMainScreen {
 // TestMainScreenFixtureIsCurrent reruns testdata/main-screen-oracle.mjs against the installed Pi and requires the committed fixture to be
 // byte-identical, so the frames Pig is compared with are the pinned version's, not a stale capture.
 func TestMainScreenFixtureIsCurrent(t *testing.T) {
-	t.Parallel() // the generator waits on Pi's render throttle, about 30 s of wall time
+	t.Parallel()
 	root, err := filepath.EvalSymlinks("../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent")
 	if err != nil {
 		t.Fatal(err)
