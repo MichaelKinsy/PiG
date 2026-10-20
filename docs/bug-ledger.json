@@ -2984,7 +2984,6 @@
           "pr": "170"
         }
       ],
-      "commitsFrom": "release note",
       "tests": [
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack",
@@ -31041,6 +31040,26 @@
       ]
     },
     {
+      "id": "BF-7fae4f5",
+      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB",
+      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB.",
+      "rootCause": "The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7fae4f5df2",
+          "date": "2026-10-19"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b341a82",
       "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
       "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
@@ -42400,24 +42419,27 @@
       ]
     },
     {
-      "id": "BF-7fae4f5",
-      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB",
-      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB.",
-      "rootCause": "The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.",
+      "id": "BF-ab1324d",
+      "title": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…",
+      "symptom": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.",
+      "rootCause": "A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.",
       "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
+      "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.",
+      "releaseNote": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "7fae4f5df2",
-          "date": "2026-10-19"
+          "hash": "ab1324df34",
+          "date": "2026-10-20"
         }
       ],
-      "tests": []
+      "tests": [
+        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts",
+        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart"
+      ]
     },
     {
       "id": "BF-b341a82-2",
@@ -53655,6 +53677,32 @@
         "tui/word_navigation_pi_test.go::TestFindWordBackwardMatchesPi",
         "tui/word_navigation_pi_test.go::TestFindWordForwardMatchesPi",
         "tui/word_navigation_pi_test.go::TestFindWordNavigationAtomicSegmentsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-f35d0a0",
+      "title": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation…",
+      "symptom": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout).",
+      "rootCause": "The Harness recomputes its wake (the timer for the earliest sleep, or the value it offers OnWake) in a goroutine that the first change queues, and later changes share it. Pi does this in a microtask (scheduler.ts #scheduleWake), which runs in the turn of the change and reads the clock of the change. Here the goroutine read the clock when it ran. When it ran after a sleep committed meanwhile had come due, the sleep was not ahead of it any more, although a reservation pass queued by the change had found it not yet due, dropped it from the candidates, and relied on that wake. No timer was armed, OnWake was told that work was active instead of the time to wake at, and nothing ran the task again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f35d0a0567",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal",
+        "durable/harness/harness_generation_test.go::TestGeneration",
+        "durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue",
+        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer",
+        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm"
       ]
     }
   ],

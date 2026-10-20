@@ -5853,12 +5853,6 @@ snippet = "parent := context.Background()"
 
 [[hit]]
 check = "ctxbackground"
-file = "coding/extension/host/subprocess/host.go"
-func = "Host.attemptRestart"
-snippet = "if _, err := h.startExt(context.Background(), me, true); err != nil {"
-
-[[hit]]
-check = "ctxbackground"
 file = "coding/extension/host/subprocess/host_extension_api.go"
 func = "nestedCalls.reserve"
 snippet = "signal, cancel := context.WithCancel(context.Background())"

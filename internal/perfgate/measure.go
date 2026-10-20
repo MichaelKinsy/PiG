@@ -4,6 +4,7 @@ package perfgate
 
 import (
 	"runtime"
+	"runtime/debug"
 	"testing"
 )
 
@@ -12,12 +13,15 @@ type Work struct {
 	Allocs, Bytes float64
 }
 
-// Measure runs fn once to warm caches, then once more under GOMAXPROCS=1 and returns the heap allocations of the second call. Like testing.AllocsPerRun, the count is process-wide, so the caller keeps other goroutines idle.
+// Measure runs fn once to warm caches, then once more under GOMAXPROCS=1 and returns the heap allocations of the second call: the steady-state cost of fn, with every sync.Pool it draws on already filled. Like testing.AllocsPerRun, the count is process-wide, so the caller keeps other goroutines idle.
+//
+// No collection starts during either call. A collection empties every sync.Pool: the first moves a pool's items to its victim cache and the next drops them. A collection that starts between the warm call's Put and the counted call's Get therefore makes the counted call allocate the buffer again (net/http's 32 KiB copy buffer, a 64 KiB body read buffer, a bufio buffer): tens of kilobytes that belong to when the collector happened to run and not to fn, which a ceiling set at the steady-state cost cannot absorb. The collector runs on heap growth, and it runs at any time under load or a small GOGC, so Measure collects once to start from the live heap and then turns the collector off until the counted call returns. The heap grows by what the two calls allocate and is collected afterwards.
 func Measure(fn func()) Work {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	defer debug.SetGCPercent(debug.SetGCPercent(-1))
+	runtime.GC()
 	fn()
 	var before, after runtime.MemStats
-	runtime.GC()
 	runtime.ReadMemStats(&before)
 	fn()
 	runtime.ReadMemStats(&after)
