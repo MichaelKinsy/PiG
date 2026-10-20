@@ -81,20 +81,22 @@ func runDialogBatch(t *testing.T, h *harness, tools []agent.AgentTool, round, ba
 		answers[title] = make(chan struct{})
 	}
 	opened := make(chan string, batch)
-	h.ui.setSelectHook(func(ctx context.Context, title string) (string, error) {
+	// Like RPC mode, the UI reports a dialog initiated once it is open, so the host applies the dialogs of different requests in the order their frames arrived.
+	h.bridge.SetUIContext(&openingDialogUI{UIContext: h.ui, open: func(ctx context.Context, title string) (string, error) {
 		mu.Lock()
 		answer := answers[title]
 		settles[title] = extension.DialogSettleFromContext(ctx)
 		mu.Unlock()
 		opened <- title
+		extension.CallInitiated(ctx)
 		select {
 		case <-answer:
 			return "a", nil
 		case <-ctx.Done():
 			return "", ctx.Err()
 		}
-	})
-	t.Cleanup(func() { h.ui.setSelectHook(nil) })
+	}})
+	t.Cleanup(func() { h.bridge.SetUIContext(h.ui) })
 
 	provider := ai.NewFauxProvider(ai.FauxConfig{})
 	provider.SetResponses([]ai.FauxResponseStep{
@@ -183,4 +185,16 @@ func runDialogBatch(t *testing.T, h *harness, tools []agent.AgentTool, round, ba
 			t.Fatalf("round %d: result %q is not a dialog answer", round, message.ToolResult.Text())
 		}
 	}
+}
+
+// openingDialogUI answers Select with open, which reports the dialog initiated as RPC mode's UI does once its request is written.
+type openingDialogUI struct {
+	extension.UIContext
+	open func(ctx context.Context, title string) (string, error)
+}
+
+func (*openingDialogUI) ReportsDialogInitiation() bool { return true }
+
+func (u *openingDialogUI) Select(ctx context.Context, title string, _ []string, _ extension.ExtensionUIDialogOptions) (string, error) {
+	return u.open(ctx, title)
 }

@@ -2403,29 +2403,14 @@ type recordingUI struct {
 	recordMu sync.Mutex
 	// calls holds the working, paste, editor-text and tools-expanded calls the host forwarded, in arrival order.
 	calls []string
-	// selectHook, when set, answers Select (setSelectHook).
-	selectHook func(ctx context.Context, title string) (string, error)
 }
 
 func newRecordingUI(notify, status *[]string) *recordingUI {
 	return &recordingUI{notify: notify, status: status}
 }
 
-func (u *recordingUI) Select(ctx context.Context, title string, _ []string, _ extension.ExtensionUIDialogOptions) (string, error) {
-	u.recordMu.Lock()
-	hook := u.selectHook
-	u.recordMu.Unlock()
-	if hook != nil {
-		return hook(ctx, title)
-	}
+func (u *recordingUI) Select(context.Context, string, []string, extension.ExtensionUIDialogOptions) (string, error) {
 	return "second", nil
-}
-
-// setSelectHook has Select call hook instead of answering "second". The hook runs on the goroutine of the host's dialog call.
-func (u *recordingUI) setSelectHook(hook func(ctx context.Context, title string) (string, error)) {
-	u.recordMu.Lock()
-	defer u.recordMu.Unlock()
-	u.selectHook = hook
 }
 
 func (u *recordingUI) Confirm(context.Context, string, string, extension.ExtensionUIDialogOptions) (bool, error) {
