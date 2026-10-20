@@ -86,3 +86,7 @@ reason = "Independent message clocks vary; retain event order, field presence an
 paths = ["/**/durationMs"]
 kind = "duration"
 reason = "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."
