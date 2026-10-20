@@ -43,7 +43,7 @@ func (c Context) beginHostCall(method string, args any) (pendingCall, error) {
 	defer c.start.afterCall(dialog)
 	var slot *settleSlot
 	if dialog && c.start != nil {
-		slot = c.start.slot
+		slot = c.start.responseSlot()
 	}
 	if c.parent == nil {
 		return connection.beginCallForSlot(c.requestID, method, args, slot)

@@ -1,6 +1,9 @@
 package sdk
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // toolStartOrder orders the calls of one tool batch the way Pi's single thread does.
 //
@@ -35,29 +38,25 @@ type toolStart struct {
 	once     sync.Once
 
 	order *toolStartOrder
-	// dialogReady is closed when every earlier request passed its dialog place; dialogPassed is guarded by order.mu.
-	dialogReady  chan struct{}
-	readyOnce    sync.Once
-	dialogPassed bool
-	dialogOpened sync.Once
-	slot         *settleSlot
-	parked       func()
+	// dialogWaiting is closed when the request waits for its first dialog and every earlier request passed its place; it is made only when the request has to wait,
+	// and with dialogPassed guarded by order.mu.
+	dialogWaiting chan struct{}
+	dialogPassed  bool
+	dialogOpened  atomic.Bool
+	// slot is the request's place in the response order, made when the request opens a dialog: a handler that opens none is never gated.
+	slot   atomic.Pointer[settleSlot]
+	parked func()
 }
 
 // reserve takes the next place. The loop calls it in arrival order, before it starts the request's goroutine.
 func (o *toolStartOrder) reserve() *toolStart {
-	start := &toolStart{done: make(chan struct{}), dialogReady: make(chan struct{}), order: o}
+	start := &toolStart{done: make(chan struct{}), order: o}
 	o.mu.Lock()
 	start.previous = o.tail
 	o.tail = start.done
 	o.dialogQueue = append(o.dialogQueue, start)
-	if len(o.dialogQueue) == 1 {
-		start.markReady()
-	}
 	start.parked = o.parked
 	o.mu.Unlock()
-	start.slot = o.settle.newSlot()
-	start.slot.parked = o.parked
 	return start
 }
 
@@ -80,10 +79,21 @@ func (s *toolStart) release() {
 	}
 	s.begin()
 	s.passDialog()
-	s.slot.close()
+	s.slot.Load().close()
 }
 
-func (s *toolStart) markReady() { s.readyOnce.Do(func() { close(s.dialogReady) }) }
+// responseSlot returns the request's place in the response order, made on first use.
+func (s *toolStart) responseSlot() *settleSlot {
+	if slot := s.slot.Load(); slot != nil {
+		return slot
+	}
+	slot := s.order.settle.newSlot()
+	slot.parked = s.parked
+	if s.slot.CompareAndSwap(nil, slot) {
+		return slot
+	}
+	return s.slot.Load()
+}
 
 // beforeCall runs before the handler writes a host call. The call is an await of the handler's continuation: a handler the reader settled yields its place in
 // the response order. A handler's first dialog waits for the first dialogs of the earlier requests; onDialog reports whether the call is one.
@@ -91,22 +101,26 @@ func (s *toolStart) beforeCall(dialog bool) {
 	if s == nil {
 		return
 	}
-	s.slot.yield()
+	s.slot.Load().yield()
 	if !dialog {
 		return
 	}
-	first := false
-	s.dialogOpened.Do(func() { first = true })
-	if first {
-		select {
-		case <-s.dialogReady:
-		default:
-			if s.parked != nil {
-				s.parked()
-			}
-			<-s.dialogReady
-		}
+	if !s.dialogOpened.CompareAndSwap(false, true) {
+		return
 	}
+	o := s.order
+	o.mu.Lock()
+	if len(o.dialogQueue) == 0 || o.dialogQueue[0] == s || s.dialogPassed {
+		o.mu.Unlock()
+		return
+	}
+	s.dialogWaiting = make(chan struct{})
+	waiting := s.dialogWaiting
+	o.mu.Unlock()
+	if s.parked != nil {
+		s.parked()
+	}
+	<-waiting
 }
 
 // afterCall runs once the host call's frame is written, or failed to be.
@@ -134,7 +148,10 @@ func (s *toolStart) passDialog() {
 		}
 	}
 	if len(o.dialogQueue) > 0 {
-		o.dialogQueue[0].markReady()
+		if head := o.dialogQueue[0]; head.dialogWaiting != nil {
+			close(head.dialogWaiting)
+			head.dialogWaiting = nil
+		}
 	}
 }
 
@@ -144,7 +161,7 @@ func (s *toolStart) respond(send func()) {
 		send()
 		return
 	}
-	s.slot.run(send)
+	s.slot.Load().run(send)
 }
 
 // isDialogMethod reports whether a host call opens a dialog the user answers.
@@ -231,8 +248,12 @@ func (s *settleSlot) leaveLocked() {
 	g.turn.Broadcast()
 }
 
-// run runs action after every slot that settled before this one left its place. A slot that holds no place runs it at once.
+// run runs action after every slot that settled before this one left its place. A slot that holds no place runs it at once, and so does no slot at all.
 func (s *settleSlot) run(action func()) {
+	if s == nil {
+		action()
+		return
+	}
 	g := s.gate
 	g.mu.Lock()
 	g.waitTurnLocked(s)

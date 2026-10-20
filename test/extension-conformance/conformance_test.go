@@ -1454,6 +1454,23 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"dialog_order": {
+				Definition: extension.ToolDefinition{
+					Name:        "dialog_order",
+					Description: "Open a select dialog titled by the call and report the answer",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"title":{"type":"string"}}}`),
+					Execute: func(_ context.Context, _ string, raw json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						var input struct {
+							Title string `json:"title"`
+						}
+						if err := json.Unmarshal(raw, &input); err != nil {
+							return extension.AgentToolResult{}, err
+						}
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "dialog:" + input.Title + "=a"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"throw_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "throw_probe",
@@ -2386,14 +2403,29 @@ type recordingUI struct {
 	recordMu sync.Mutex
 	// calls holds the working, paste, editor-text and tools-expanded calls the host forwarded, in arrival order.
 	calls []string
+	// selectHook, when set, answers Select (setSelectHook).
+	selectHook func(ctx context.Context, title string) (string, error)
 }
 
 func newRecordingUI(notify, status *[]string) *recordingUI {
 	return &recordingUI{notify: notify, status: status}
 }
 
-func (u *recordingUI) Select(context.Context, string, []string, extension.ExtensionUIDialogOptions) (string, error) {
+func (u *recordingUI) Select(ctx context.Context, title string, _ []string, _ extension.ExtensionUIDialogOptions) (string, error) {
+	u.recordMu.Lock()
+	hook := u.selectHook
+	u.recordMu.Unlock()
+	if hook != nil {
+		return hook(ctx, title)
+	}
 	return "second", nil
+}
+
+// setSelectHook has Select call hook instead of answering "second". The hook runs on the goroutine of the host's dialog call.
+func (u *recordingUI) setSelectHook(hook func(ctx context.Context, title string) (string, error)) {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	u.selectHook = hook
 }
 
 func (u *recordingUI) Confirm(context.Context, string, string, extension.ExtensionUIDialogOptions) (bool, error) {

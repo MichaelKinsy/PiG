@@ -107,9 +107,9 @@ func TestToolResponsesFollowTheOrderTheAnswersWereRead(t *testing.T) {
 	order.parked = hook
 	first, second, third := order.reserve(), order.reserve(), order.reserve()
 	// The reader reads the answers of second, third and first, in that order.
-	second.slot.settle()
-	third.slot.settle()
-	first.slot.settle()
+	second.responseSlot().settle()
+	third.responseSlot().settle()
+	first.responseSlot().settle()
 	var rec orderRecorder
 	var done sync.WaitGroup
 	respond := func(name string, start *toolStart) {
@@ -133,8 +133,8 @@ func TestToolResponsesFollowTheOrderTheAnswersWereRead(t *testing.T) {
 	hook2, parked2 := parkedCounter()
 	order2.parked = hook2
 	a, b := order2.reserve(), order2.reserve()
-	a.slot.settle()
-	b.slot.settle()
+	a.responseSlot().settle()
+	b.responseSlot().settle()
 	var rec2 orderRecorder
 	done.Go(func() { b.respond(func() { rec2.add("b") }) })
 	<-parked2
