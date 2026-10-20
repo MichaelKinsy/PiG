@@ -150,3 +150,23 @@ func TestToolResponsesFollowTheOrderTheAnswersWereRead(t *testing.T) {
 		t.Fatalf("responses %v, want c to respond without waiting", rec2.list())
 	}
 }
+
+// A dialog a retained Context opens after its request ended gets no response slot: a slot nothing closes would hold every handler that settles after it.
+func TestToolRetainedContextDialogAfterTheRequestEndedLeavesNoSlot(t *testing.T) {
+	var order toolStartOrder
+	ended, later := order.reserve(), order.reserve()
+	ended.release()
+	if slot := ended.responseSlot(); slot != nil {
+		t.Fatal("a request that ended made a response slot")
+	}
+	// Its first dialog does not wait for a place it passed, whatever the requests behind it do.
+	ended.beforeCall(true)
+	ended.afterCall(true)
+	later.responseSlot().settle()
+	done := make(chan struct{})
+	go func() {
+		later.respond(func() {})
+		close(done)
+	}()
+	<-done
+}

@@ -42,6 +42,7 @@ type toolStart struct {
 	// and with dialogPassed guarded by order.mu.
 	dialogWaiting chan struct{}
 	dialogPassed  bool
+	ended         bool
 	dialogOpened  atomic.Bool
 	// slot is the request's place in the response order, made when the request opens a dialog: a handler that opens none is never gated.
 	slot   atomic.Pointer[settleSlot]
@@ -79,20 +80,30 @@ func (s *toolStart) release() {
 	}
 	s.begin()
 	s.passDialog()
-	s.slot.Load().close()
+	o := s.order
+	o.mu.Lock()
+	s.ended = true
+	slot := s.slot.Load()
+	o.mu.Unlock()
+	slot.close()
 }
 
-// responseSlot returns the request's place in the response order, made on first use.
+// responseSlot returns the request's place in the response order, made on first use. A request that ended has none: a dialog a retained Context opens
+// after the handler returned must not leave a place that nothing closes.
 func (s *toolStart) responseSlot() *settleSlot {
+	o := s.order
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if s.ended {
+		return nil
+	}
 	if slot := s.slot.Load(); slot != nil {
 		return slot
 	}
-	slot := s.order.settle.newSlot()
+	slot := o.settle.newSlot()
 	slot.parked = s.parked
-	if s.slot.CompareAndSwap(nil, slot) {
-		return slot
-	}
-	return s.slot.Load()
+	s.slot.Store(slot)
+	return slot
 }
 
 // beforeCall runs before the handler writes a host call. The call is an await of the handler's continuation: a handler the reader settled yields its place in
