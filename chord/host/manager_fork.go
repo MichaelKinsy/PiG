@@ -25,6 +25,11 @@ type forkInstance struct {
 
 	mu        sync.Mutex
 	listeners []func(message ControlMessage)
+	// backlog holds the control messages that arrived before the first listener registered, in order. manager.ts registers its
+	// listener in the tick that spawns the child, and a channel message cannot run in that tick; here the channel's reader is
+	// its own goroutine, so a child that answers its init at once (a ready) can be heard before the manager goroutine has
+	// returned from Spawn. A message with no listener would be lost, and the manager would wait out its ready timeout.
+	backlog []ControlMessage
 }
 
 // newForkInstance is the end of manager.ts forkDriver's spawn: it routes the channel's messages to onMessage and the
@@ -44,6 +49,11 @@ func newForkInstance(options ForkDriverOptions, pid int, channel *nodeChannel, k
 		}
 		control, _ := controlMessageOf(object.Value("chord2control"))
 		instance.mu.Lock()
+		if len(instance.listeners) == 0 {
+			instance.backlog = append(instance.backlog, control)
+			instance.mu.Unlock()
+			return
+		}
 		listeners := append([]func(ControlMessage){}, instance.listeners...)
 		instance.mu.Unlock()
 		for _, listener := range listeners {
@@ -82,10 +92,20 @@ func (instance *forkInstance) Send(message ControlMessage) {
 
 func (instance *forkInstance) KillTree() { instance.killTree() }
 
+// OnControl registers listener. The first listener hears the messages received before it, in order, ahead of any later one: the
+// replay runs under the lock that a message arriving meanwhile waits on.
 func (instance *forkInstance) OnControl(listener func(message ControlMessage)) {
 	instance.mu.Lock()
 	defer instance.mu.Unlock()
+	first := len(instance.listeners) == 0
 	instance.listeners = append(instance.listeners, listener)
+	if first {
+		backlog := instance.backlog
+		instance.backlog = nil
+		for _, message := range backlog {
+			listener(message)
+		}
+	}
 }
 
 // forkEnvironment is manager.ts forkDriver's env: this process's, without a lock it inherited (e.g. as a child host
