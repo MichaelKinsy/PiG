@@ -21,18 +21,11 @@ func TestConformance_RPCModeDropsFrameWidgetsInEverySDK(t *testing.T) {
 	}
 	rpcRowMode = "rpc"
 	t.Cleanup(func() { rpcRowMode = "" })
-	cases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
-	for _, tc := range cases {
+	for _, tc := range componentKitSDKCells() {
+		// RPC mode has no host frontend that would draw a view.
+		tc.frontend = false
 		t.Run(tc.name, func(t *testing.T) {
-			h := tc.make(t)
-			t.Cleanup(func() {
-				if h.cleanup != nil {
-					h.cleanup()
-				}
-				if h.host != nil {
-					h.host.Shutdown("test done")
-				}
-			})
+			h := startKitCell(t, tc)
 			var mu sync.Mutex
 			var requests []string
 			h.bridge.SetWidgetRequestFunc(func(_ string, key string, lines []string, _ *extension.ExtensionWidgetOptions) {
@@ -41,9 +34,13 @@ func TestConformance_RPCModeDropsFrameWidgetsInEverySDK(t *testing.T) {
 				requests = append(requests, key+":"+strings.Join(lines, "|"))
 			})
 			h.host.NotifyWidth(60)
-			// The component widget first; a command error is not the contract here, only what reaches the host.
-			if cmd, ok := findCommand(h.runner, "kit-kinds"); ok {
-				_ = cmd.Handler(context.Background(), "")
+			// The component widget first.
+			cmd, ok := findCommand(h.runner, "kit-kinds")
+			if !ok {
+				t.Fatal("kit-kinds is not registered")
+			}
+			if err := cmd.Handler(context.Background(), ""); err != nil {
+				t.Fatalf("kit-kinds: %v", err)
 			}
 			stringWidget := func() bool {
 				mu.Lock()
