@@ -95,3 +95,27 @@ func TestStreamFnWithModelDescriptorOnly(t *testing.T) {
 		})
 	}
 }
+
+// agent.ts `this.streamFunction = runtimeOptions.streamFn ?? getDefaultStreamFn()`: the property summarization passes to compact is never the stock-stream nil.
+func TestAgentEffectiveStreamFunction(t *testing.T) {
+	stream := func(name string, called *string) StreamFn {
+		return func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			*called = name
+			return doneStream(textMessage("ok")), nil
+		}
+	}
+	var called string
+	a := mustNewAgent(AgentOptions{DefaultStreamFn: stream("default", &called)})
+	if a.StreamFunction() != nil {
+		t.Fatal("StreamFunction() is not nil for the default stream")
+	}
+	_, _ = a.EffectiveStreamFunction()(t.Context(), nil, ai.TranscriptContext{}, ai.StreamOptions{})
+	if called != "default" {
+		t.Fatalf("effective stream = %q, want the default", called)
+	}
+	a.SetStreamFunction(stream("override", &called))
+	_, _ = a.EffectiveStreamFunction()(t.Context(), nil, ai.TranscriptContext{}, ai.StreamOptions{})
+	if called != "override" {
+		t.Fatalf("effective stream = %q, want the override", called)
+	}
+}
