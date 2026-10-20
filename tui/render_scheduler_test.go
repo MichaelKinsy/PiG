@@ -2,6 +2,7 @@ package tui
 
 import (
 	"bytes"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -10,22 +11,12 @@ import (
 type countingRenderComponent struct {
 	mu      sync.Mutex
 	renders int
-	times   []time.Time
-	ch      chan time.Time
 }
 
 func (c *countingRenderComponent) Render(width int) []string {
-	now := time.Now()
 	c.mu.Lock()
 	c.renders++
-	c.times = append(c.times, now)
 	c.mu.Unlock()
-	if c.ch != nil {
-		select {
-		case c.ch <- now:
-		default:
-		}
-	}
 	return []string{"x"}
 }
 
@@ -35,17 +26,6 @@ func (c *countingRenderComponent) Count() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.renders
-}
-
-func waitForRender(t *testing.T, ch <-chan time.Time) time.Time {
-	t.Helper()
-	select {
-	case tm := <-ch:
-		return tm
-	case <-time.After(200 * time.Millisecond):
-		t.Fatal("timed out waiting for scheduled render")
-		return time.Time{}
-	}
 }
 
 type manualRenderTimer struct {
@@ -165,32 +145,94 @@ func TestTUIRequestRender_CoalescesPendingCalls(t *testing.T) {
 	}
 }
 
+// manualRenderClock is the throttle's time source and timer for the scheduler tests. It owns both halves of the throttle (the clock
+// scheduleRenderLocked reads and the timer it arms), so no test depends on how long a real goroutine happens to be descheduled.
+type manualRenderClock struct {
+	t      *testing.T
+	at     time.Time
+	delays []time.Duration
+	timer  *manualRenderTimer
+}
+
+func newManualRenderClock(t *testing.T, ui *TuiMainScreen) *manualRenderClock {
+	c := &manualRenderClock{t: t, at: time.Unix(1_000_000, 0)}
+	ui.now = func() time.Time { return c.at }
+	ui.afterFunc = func(d time.Duration, fn func()) stoppableTimer {
+		if c.timer != nil && !c.timer.stopped {
+			t.Fatal("a second throttle timer was armed while one was pending")
+		}
+		c.delays = append(c.delays, d)
+		c.timer = &manualRenderTimer{fn: fn}
+		return c.timer
+	}
+	return c
+}
+
+// fire runs the pending throttle timer's callback, as the runtime does when it comes due.
+func (c *manualRenderClock) fire() {
+	c.t.Helper()
+	if c.timer == nil || c.timer.stopped {
+		c.t.Fatal("no throttle timer is pending")
+	}
+	timer := c.timer
+	c.timer = nil
+	timer.fn()
+}
+
+// Pi tui.ts scheduleRender: delay = max(0, MIN_RENDER_INTERVAL_MS - (now - lastRenderAt)). A request made soon after a frame waits out the
+// rest of the interval, and a request made after the interval has already elapsed renders at once, however the time went by.
 func TestTUIRequestRender_RespectsMinInterval(t *testing.T) {
 	var out bytes.Buffer
 	ui := NewWithOutput(&out, 20, 5)
-	comp := &countingRenderComponent{ch: make(chan time.Time, 8)}
+	comp := &countingRenderComponent{}
 	ui.Add(comp)
+	clock := newManualRenderClock(t, ui)
 
-	firstReq := time.Now()
 	ui.requestRender(false)
-	firstRender := waitForRender(t, comp.ch)
-	if firstRender.Before(firstReq) {
-		t.Fatalf("first render timestamp %v before request %v", firstRender, firstReq)
+	if !slices.Equal(clock.delays, []time.Duration{0}) {
+		t.Fatalf("first request delays = %v, want [0]: nothing has rendered yet", clock.delays)
+	}
+	clock.fire()
+	if got := comp.Count(); got != 1 {
+		t.Fatalf("first render count = %d, want 1", got)
 	}
 
+	clock.at = clock.at.Add(5 * time.Millisecond)
 	ui.requestRender(false)
-	time.Sleep(5 * time.Millisecond)
+	if want := []time.Duration{0, minRenderInterval - 5*time.Millisecond}; !slices.Equal(clock.delays, want) {
+		t.Fatalf("second request delays = %v, want %v: the rest of the interval after the first frame", clock.delays, want)
+	}
 	if got := comp.Count(); got != 1 {
 		t.Fatalf("second render fired before min interval elapsed; count=%d want 1", got)
 	}
-	secondRender := waitForRender(t, comp.ch)
-	if delta := secondRender.Sub(firstRender); delta < minRenderInterval-4*time.Millisecond {
-		t.Fatalf("second render delta = %v, want at least %v", delta, minRenderInterval-4*time.Millisecond)
-	}
-
-	time.Sleep(30 * time.Millisecond)
+	clock.fire()
 	if got := comp.Count(); got != 2 {
-		t.Fatalf("unexpected extra scheduled renders: got %d want 2", got)
+		t.Fatalf("second render count = %d, want 2", got)
+	}
+	if clock.timer != nil {
+		t.Fatal("a render with nothing further requested armed another timer")
+	}
+}
+
+// The interval is measured from the last frame, not from the request: a request that arrives after the interval has gone by (the caller
+// was descheduled, the machine was loaded) renders at once. This is the interleaving that made the real-clock version of the test flaky.
+func TestTUIRequestRender_RendersAtOnceAfterMinInterval(t *testing.T) {
+	var out bytes.Buffer
+	ui := NewWithOutput(&out, 20, 5)
+	comp := &countingRenderComponent{}
+	ui.Add(comp)
+	clock := newManualRenderClock(t, ui)
+
+	ui.requestRender(false)
+	clock.fire()
+	clock.at = clock.at.Add(minRenderInterval)
+	ui.requestRender(false)
+	if want := []time.Duration{0, 0}; !slices.Equal(clock.delays, want) {
+		t.Fatalf("request after the interval delays = %v, want %v", clock.delays, want)
+	}
+	clock.fire()
+	if got := comp.Count(); got != 2 {
+		t.Fatalf("render count = %d, want 2", got)
 	}
 }
 
@@ -202,18 +244,21 @@ func TestTUIRequestRender_RespectsMinInterval(t *testing.T) {
 func TestTUIScheduledRender_RunsThroughDispatcher(t *testing.T) {
 	var out bytes.Buffer
 	ui := NewWithOutput(&out, 20, 5)
-	comp := &countingRenderComponent{ch: make(chan time.Time, 8)}
+	comp := &countingRenderComponent{}
 	ui.Add(comp)
-
-	dispatched := make(chan func(), 4)
-	ui.SetRenderDispatcher(func(render func()) { dispatched <- render })
-
-	ui.requestRender(false)
+	clock := newManualRenderClock(t, ui)
 
 	var render func()
-	select {
-	case render = <-dispatched:
-	case <-time.After(200 * time.Millisecond):
+	ui.SetRenderDispatcher(func(f func()) {
+		if render != nil {
+			t.Fatal("dispatcher was invoked twice for one scheduled render")
+		}
+		render = f
+	})
+
+	ui.requestRender(false)
+	clock.fire()
+	if render == nil {
 		t.Fatal("dispatcher was not invoked for the scheduled render")
 	}
 	if got := comp.Count(); got != 0 {
