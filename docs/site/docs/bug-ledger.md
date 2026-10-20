@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-926 bugs. 876 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 137 bugs have no recorded test.
+928 bugs. 878 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -520,6 +520,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-1390c9d](#bf-1390c9d) | fix(ai): the Anthropic event reader matches the type member exactly | PiG's own defect | All platforms | Unreleased |
 | [BF-42e3d0e](#bf-42e3d0e) | fix(hljs): a class that negates only \r still reaches across lines; gate the streamed code block Linear | PiG's own defect | All platforms | Unreleased |
+| [BF-74f806c](#bf-74f806c) | fix(agent): end the tool flow at custom user messages after /tree navigation (#203) | PiG's own defect | All platforms | Unreleased |
 | [BF-34f7594](#bf-34f7594) | An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-2](#bf-34f7594-2) | Fixed the interactive bash block stripping escape sequences with the wrong rule… | PiG's own defect | All platforms | 0.5.0 |
@@ -789,6 +790,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-79f9a9e](#bf-79f9a9e) | fix(agent): convert a live partial with one clone and keep events at an unchanged publication (TU-T7 rest) | PiG's own defect | All platforms | Unreleased |
 | [BF-8c3f5a1](#bf-8c3f5a1) | fix(tui): a finished block's hidden thinking run keeps no streaming memos | PiG's own defect | All platforms | Unreleased |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
+| [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-2](#bf-928e15c-2) | A stored models catalog whose `contextWindow` or `maxTokens` is written as `128000.0` or `1.28E5` loads like… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-3](#bf-928e15c-3) | Provider HTTP error bodies are decoded like `response.text()`: ill-formed UTF-8 becomes one U+FFFD per… | PiG's own defect | All platforms | 0.5.0 |
@@ -938,7 +940,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-2d13115-2](#bf-2d13115-2) | `pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
 | [BF-f35d0a0](#bf-f35d0a0) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | Unreleased |
-| [BF-b341a82-2](#bf-b341a82-2) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
+| [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6a360d](#bf-f6a360d) | A compaction, branch summary or bug-report summary request is now sent through the session's own stream… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1d1a4c](#bf-c1d1a4c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | Unreleased |
 | [BF-e6d1b69](#bf-e6d1b69) | Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends… | PiG's own defect | All platforms | Unreleased |
@@ -7946,6 +7948,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `42e3d0eb5b` (2026-10-10)
 - **Tests:** `tui/highlight_resume_scaling_norace_test.go::TestScalingStreamedCodeBlockHighlight`, `tui/internal/hljs/resume_test.go::TestPatternReach`
 
+### BF-74f806c
+
+**fix(agent): end the tool flow at custom user messages after /tree navigation (#203)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(agent): end the tool flow at custom user messages after /tree navigation (#203)
+- **Root cause:** Custom messages that become user messages (branch and compaction summaries) now end an open tool flow, and system messages that arrive while tool calls are pending are held until after the results, as Pi does. Fixes an Anthropic HTTP 400 for an orphaned tool_result after /tree navigation.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `74f806c799` (2026-10-10, #203)
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow`
+
 ### BF-34f7594
 
 **An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or…**
@@ -11675,6 +11690,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `57a1687bc4` (2026-10-13)
 - **Tests:** `agent/messages_projection_test.go::TestAssistantMessageProjectionEqualsObserve`, `ai/assistant_observation_projection_norace_test.go::TestObserveProjectionAllocatesNothing`, `ai/assistant_observation_projection_test.go::TestObserveProjectionEqualsObserve`, `ai/stream_builder_deferred_arguments_test.go::TestDeferredToolArgumentsReadAsTheEagerParse`, `internal/codingagent/reload_allocs_norace_test.go::TestInteractiveSessionReloadAllocatesPerRetainedMessageWithinBudget`
 
+### BF-e63c61c
+
+**fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209)
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e63c61c338` (2026-10-12, #208)
+- **Tests:** `internal/codingagent/interactive_model_tools_deadlock_test.go::TestInteractiveModelSelectionPumpsToolRegistration`
+
 ### BF-928e15c
 
 **A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no…**
@@ -13694,12 +13722,12 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 - **Source:** PiG's own defect
 - **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.
-- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
+- **Root cause:** The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `c019ea9155` (2026-10-06, #163), `e2db9318fa` (2026-10-06, #173), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `e63c61c338` (2026-10-12, #208), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11226 more in docs/bug-ledger.json
+- **Fix commits:** `b341a82e9d` (2026-10-19, #221)
+- **Tests:** None recorded.
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
 
 ### BF-2d13115
@@ -13712,8 +13740,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2e0f88f794` (2026-10-06, #160), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `9b63b2bc4e` (2026-10-07, #176), `c80500f022` (2026-10-08, #199), `2d13115ca8` (2026-10-19), `6af0806f7a` (2026-10-19, #213)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11127 more in docs/bug-ledger.json
+- **Fix commits:** `2d13115ca8` (2026-10-19)
+- **Tests:** `coding/piglet/lineage_cli_test.go::TestProvenanceResolvesAgainstTheNamedWorkspace`, `coding/piglet/lineage_cli_test.go::TestVerifyRechecksTheRecordedDigestsAgainstTheSource`, `coding/pigletbuild/strip_test.go::TestBakePigletKeepsStrip`, `coding/pigletbuild/verify_source_test.go::TestBuiltBinaryVerifiesAgainstItsUnchangedSource`, `coding/pigletbuild/with_settings_test.go::TestAC55BinaryBakePreservesPackageAliasesThroughResolution`, `coding/pigletbuild/with_settings_test.go::TestBakePigletInlinesAgentShapeAndStripsBuildOrigins`, `coding/pigletbuild/with_settings_test.go::TestBakePigletRejectsBareSkillName`
 - **Release note:** `pig piglet verify <binary> --source <name|path>` and `pig piglet lineage <binary> --source <name|path>` report `Provenance: matches` for a Binary built from that unchanged source. They compared the Piglet digest the Binary signs, which is the digest of its baked Piglet definition, with the extends graph digest, so every check reported `MISMATCH`. They now bake the source as the build does. A change to a file the build inlines, such as a system prompt file, is now a Piglet digest mismatch. The JSON `provenance` object's `effectiveDigest` field is renamed `pigletDigest`. Binaries built by 0.5.0 and 0.5.1 need no rebuild.
 
 ### BF-2d13115-2
@@ -13726,8 +13754,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `4fc8c2e65f` (2026-10-06, #169), `c019ea9155` (2026-10-06, #163), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `c80500f022` (2026-10-08, #199), `2d13115ca8` (2026-10-19), `6af0806f7a` (2026-10-19, #213)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11080 more in docs/bug-ledger.json
+- **Fix commits:** `2d13115ca8` (2026-10-19)
+- **Tests:** `coding/piglet/lineage_cli_test.go::TestProvenanceResolvesAgainstTheNamedWorkspace`, `coding/piglet/lineage_cli_test.go::TestVerifyRechecksTheRecordedDigestsAgainstTheSource`, `coding/pigletbuild/strip_test.go::TestBakePigletKeepsStrip`, `coding/pigletbuild/verify_source_test.go::TestBuiltBinaryVerifiesAgainstItsUnchangedSource`, `coding/pigletbuild/with_settings_test.go::TestAC55BinaryBakePreservesPackageAliasesThroughResolution`, `coding/pigletbuild/with_settings_test.go::TestBakePigletInlinesAgentShapeAndStripsBuildOrigins`, `coding/pigletbuild/with_settings_test.go::TestBakePigletRejectsBareSkillName`
 - **Release note:** `pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the provenance check too. A Piglet whose `agentEnv.devContainer` is a `workspace:` path is checked against the workspace its build used instead of failing to resolve from another directory.
 
 ### BF-ab1324d
@@ -13758,18 +13786,18 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal`, `durable/harness/harness_generation_test.go::TestGeneration`, `durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm`
 - **Release note:** A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.
 
-### BF-b341a82-2
+### BF-0e3411c
 
 **Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
 
 - **Source:** PiG's own defect
 - **Symptom:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
-- **Root cause:** Every other exit the user did not ask for now leaves a trace (D102, additive): an exit.log line in the agent directory for SIGHUP, SIGTERM, an external SIGINT, a closed terminal or input, an extension's shutdown() and a failed run; a crash record for a panic or fatal error in any goroutine (through a per-session crash-output marker the next start reconciles); and `pig diagnose` lists the recent unexpected exits. The background cache warm recovers a panic and reschedules as Pi's does, the emergency terminal exit stops extension processes, and a reconciled crash keeps its real time.
+- **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `4610c9f4a1` (2026-10-08, #189), `50e81255de` (2026-10-08, #174), `af1fe1a8fe` (2026-10-08, #175), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `6af0806f7a` (2026-10-19, #213), `b341a82e9d` (2026-10-19, #221)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11145 more in docs/bug-ledger.json
+- **Fix commits:** `0e3411c597` (2026-10-19, #224)
+- **Tests:** None recorded.
 - **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
 ### BF-f6a360d
@@ -13782,8 +13810,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `165cf5884d` (2026-10-07, #180), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `af1fe1a8fe` (2026-10-08, #175), `c80500f022` (2026-10-08, #199), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `6af0806f7a` (2026-10-19, #213), `f6a360d299` (2026-10-19)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11137 more in docs/bug-ledger.json
+- **Fix commits:** `f6a360d299` (2026-10-19)
+- **Tests:** `agent/stream_fn_descriptor_test.go::TestAgentEffectiveStreamFunction`, `coding/cli/rpc_compaction_provider_hooks_test.go::TestRPCCompactionEmitsOnlyProviderHeadersEvent`, `coding/session_branch_summary_upstream_test.go::TestBranchSummaryRequestAuth`, `coding/session_compaction_provider_hooks_test.go::TestAgentRequestEmitsAllProviderEvents`, `coding/session_compaction_provider_hooks_test.go::TestSummarizationRequestsEmitOnlyProviderHeaders`, `coding/session_compaction_suite_upstream_test.go::TestAgentSessionCompactionSuiteUpstream`, `internal/codingagent/compaction/compaction_summary_reasoning_test.go::TestProviderCompleterSendsSummaryThroughStreamFnWithoutAgentCallbacks`
 - **Release note:** A compaction, branch summary or bug-report summary request is now sent through the session's own stream function, as Pi sends it. Before, a session whose stream function was the stock one sent these requests straight to the model's provider, so the host never ran `before_provider_headers` for them. `/compact`, automatic and overflow-recovery compaction, `/tree` summaries and bug-report summaries now emit `before_provider_headers`, in every mode. They still do not emit `before_provider_request`, `after_provider_response` or `provider_stream_event`: Pi's summary requests carry none of the Agent's payload, response and stream-event callbacks, and neither do PiG's now (agent requests are unchanged and emit all four). `Agent.EffectiveStreamFunction` is new: the stream function a run sends through, with the default stream in place of the nil `StreamFunction` returns for it. Reported by a user.
 
 ### BF-c1d1a4c
@@ -13834,12 +13862,12 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 - **Source:** PiG's own defect
 - **Symptom:** `pig extension upgrade` finds and rewrites every changed API of an extension in one run.
-- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
+- **Root cause:** Startup type-checks each failed Go extension with the rewriter's table, so builtin shapes such as len(ctx.GetAllTools()) no longer hide an extension. One run rewrites every changed API it safely can (ConfigHome in a function with no error result reports through ctx.Notify; a getter that cannot move calls a generated helper), keeps those rewrites when uses remain and lists the rest with file, line and form, and --dry-run builds the rewritten tree before it reports. Tool conflicts between two installs stay Pi's error and exit.
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `f680b9591a` (2026-10-08, #197), `6af0806f7a` (2026-10-19, #213), `96edeab595` (2026-10-20)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11182 more in docs/bug-ledger.json
+- **Fix commits:** `96edeab595` (2026-10-20)
+- **Tests:** `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_completeness_test.go::TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeRestoreRemovesAFileItAdded`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeWritesNothingWhenTheRewriteWouldAddACompileError` and 13 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` finds and rewrites every changed API of an extension in one run. Startup offers each Go extension the upgrade would touch, not only those whose first ten compile errors all name an SDK change: a `len(ctx.GetAllTools())` or `panic(ctx.GetSessionID())` (a builtin that takes one value) is now recognised as the getter's change, and a recorded failure with no classification is read again by type checking. A `Context.ConfigHome` in a function that cannot return the error is rewritten to report the error through the call's own `Context` (`ctx.Notify`) and return, never to discard it; a getter that cannot move before its statement (a `&&` operand, an `else if`, a loop condition, a call after another call) takes a generated helper in `pig_upgrade_getters.go` that returns the old getter's zero value on failure.
 
 ### BF-96edeab-2
@@ -13848,12 +13876,12 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 - **Source:** PiG's own defect
 - **Symptom:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form.
-- **Root cause:** The bash tool on Windows puts the shell in a job object. When the shell exits, `processGroupMayHoldOutput` asks Windows whether the job still has processes (`QueryInformationJobObject`, `JobObjectBasicAccountingInformation`). If the answer is zero, `childwait.waitIdle` waits for the output pipe to reach EOF with no further bound, because an empty job means no process can still hold the pipe.
+- **Root cause:** Startup type-checks each failed Go extension with the rewriter's table, so builtin shapes such as len(ctx.GetAllTools()) no longer hide an extension. One run rewrites every changed API it safely can (ConfigHome in a function with no error result reports through ctx.Notify; a getter that cannot move calls a generated helper), keeps those rewrites when uses remain and lists the rest with file, line and form, and --dry-run builds the rewritten tree before it reports. Tool conflicts between two installs stay Pi's error and exit.
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `9b63b2bc4e` (2026-10-07, #176), `6af0806f7a` (2026-10-19, #213), `96edeab595` (2026-10-20)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11107 more in docs/bug-ledger.json
+- **Fix commits:** `96edeab595` (2026-10-20)
+- **Tests:** `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_completeness_test.go::TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeRestoreRemovesAFileItAdded`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeWritesNothingWhenTheRewriteWouldAddACompileError` and 13 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form. It exits 1 and reports `partly upgraded` when uses are left. `--dry-run` compiles the rewritten extension in a temporary directory (the go command's overlay, with the staged SDK) and reports `would upgrade` only when it builds; a rewrite that would add a compile error of its own is not written. The load error of a drifted extension names the changed APIs and the exact command. The stale-copy warning also recognises an edited copy by its Go module path.
 
 ## Divergences from Pi added in this release
