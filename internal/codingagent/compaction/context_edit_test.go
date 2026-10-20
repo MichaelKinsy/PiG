@@ -361,13 +361,13 @@ func TestTurnPrefixSummaryUsesMarkdownHeadingFraming(t *testing.T) {
 		return "prefix summary", nil, nil
 	})
 	prefix := []agent.AgentMessage{editUser("build the parser"), editAssistant("started on lexer.go", defaultEditUsage)}
-	result, err := CompactUsing(context.Background(), CompactionPreparation{
+	result, err := Compact(context.Background(), CompactionPreparation{
 		FirstKeptEntryID:   "keep",
 		TurnPrefixMessages: prefix,
 		IsSplitTurn:        true,
 		PreviousSummary:    "earlier checkpoint",
 		Settings:           CompactionSettings{ReserveTokens: 1000},
-	}, &ai.Model{}, "", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, "")
+	}, &ai.Model{}, "", nil, "", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

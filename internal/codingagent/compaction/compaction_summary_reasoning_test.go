@@ -165,7 +165,7 @@ func TestCompactSplitTurnPreservesPreviousSummaryWithoutHistoryRequest(t *testin
 		FileOps:            NewFileOps(),
 		Settings:           CompactionSettings{Enabled: true, ReserveTokens: 2000, KeepRecentTokens: 20},
 	}
-	result, err := CompactUsing(t.Context(), prep, createSummaryModel(false, 8192, nil), "", nil, "", "", recorder, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(t.Context(), prep, createSummaryModel(false, 8192, nil), "", nil, "", "", CompleterStreamFn(recorder), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestCompactSummariesSetNoMaxTokens(t *testing.T) {
 		FileOps:             NewFileOps(),
 		Settings:            CompactionSettings{Enabled: true, ReserveTokens: 500000, KeepRecentTokens: 20000},
 	}
-	result, err := CompactUsing(t.Context(), prep, createSummaryModel(false, 128000, nil), "", nil, "", "", recorder, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(t.Context(), prep, createSummaryModel(false, 128000, nil), "", nil, "", "", CompleterStreamFn(recorder), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
