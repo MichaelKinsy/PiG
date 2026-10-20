@@ -71,13 +71,15 @@ type rpcUIContext struct {
 	mu        sync.Mutex
 	pending   map[string]chan rpcUIResponse
 	published map[string]struct{}
-	closed    bool
+	// settle runs when a dialog's response is read from stdin (extension.WithDialogSettle), keyed like pending.
+	settle map[string]func()
+	closed bool
 	// pendingWaiters are closed when a dialog starts waiting for a response.
 	pendingWaiters []chan struct{}
 }
 
 func newRPCUIContext(output func(any)) *rpcUIContext {
-	return &rpcUIContext{output: output, pending: make(map[string]chan rpcUIResponse), published: make(map[string]struct{})}
+	return &rpcUIContext{output: output, pending: make(map[string]chan rpcUIResponse), published: make(map[string]struct{}), settle: make(map[string]func())}
 }
 
 func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts extension.ExtensionUIDialogOptions) (rpcUIResponse, error) {
@@ -99,6 +101,9 @@ func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts e
 		return rpcUIResponse{}, context.Canceled
 	}
 	u.pending[id] = responses
+	if settle := extension.DialogSettleFromContext(ctx); settle != nil {
+		u.settle[id] = settle
+	}
 	u.mu.Unlock()
 
 	u.output(request)
@@ -157,6 +162,7 @@ func (u *rpcUIContext) remove(id string, responses chan rpcUIResponse) {
 	if u.pending[id] == responses {
 		delete(u.pending, id)
 		delete(u.published, id)
+		delete(u.settle, id)
 	}
 }
 
@@ -167,13 +173,19 @@ func (u *rpcUIContext) HandleResponse(data []byte) bool {
 	}
 	u.mu.Lock()
 	responses, ok := u.pending[response.ID]
+	settle := u.settle[response.ID]
 	if ok {
 		delete(u.pending, response.ID)
 		delete(u.published, response.ID)
+		delete(u.settle, response.ID)
 	}
 	u.mu.Unlock()
 	if !ok {
 		return false
+	}
+	// Pi resolves the dialog on this stdin line: the answers' order is the order of the lines, which the goroutines waiting in the dialogs do not keep.
+	if settle != nil {
+		settle()
 	}
 	responses <- response
 	return true
@@ -204,6 +216,7 @@ func (u *rpcUIContext) Close() {
 	pending := u.pending
 	u.pending = make(map[string]chan rpcUIResponse)
 	clear(u.published)
+	clear(u.settle)
 	u.mu.Unlock()
 	for _, responses := range pending {
 		responses <- rpcUIResponse{Cancelled: true}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
@@ -318,6 +319,16 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		}
 	}()
 
+	// upstream: a dialog's promise resolves on the line that answers it, so dialogs answered back to back continue, and the extension
+	// receives their results, in the order of the answers. A UI mode that reads the answers records that order through the settle
+	// function (extension.WithDialogSettle); the replies of the connection's dialogs are sent in it.
+	var dialogSlot *agent.SettleSlot
+	if callID != "" && takesInteractiveFocus(call.Method) {
+		dialogSlot = conn.dialogOrder.NewSlot()
+		defer dialogSlot.Close()
+		callCtx = extension.WithDialogSettle(callCtx, dialogSlot.Settle)
+	}
+
 	var result *CallResultPayload
 	var err error
 	switch {
@@ -377,6 +388,15 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		// Every call is answered: an extension waits for its result, so a call no handler takes is an error, not silence.
 		err = fmt.Errorf("the host has no handler for %s", call.Method)
 	}
+	if dialogSlot != nil {
+		dialogSlot.Run(func() { h.replyToCall(me, conn, callID, call, callCtx, result, err) })
+		return
+	}
+	h.replyToCall(me, conn, callID, call, callCtx, result, err)
+}
+
+// replyToCall sends the result of a call its handler returned.
+func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *CallPayload, callCtx context.Context, result *CallResultPayload, err error) {
 	if (call.Method == "setModel" || call.Method == "appendEntry" || takesInteractiveFocus(call.Method)) && err == nil {
 		// Pi's model changes and dialogs expose current state before their Promise settles, including cancellation and dialog errors returned in the payload.
 		// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns, so the caller's subscribed session mirror receives it before the call result.

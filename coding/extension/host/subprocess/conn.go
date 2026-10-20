@@ -16,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 )
@@ -171,6 +172,10 @@ type Conn struct {
 	updates         map[string]func(json.RawMessage)
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
+	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
+	dialogOrder agent.SettleGate
+	// arrived runs on the read loop when the response of a request is read, before the response reaches its waiter.
+	arrived map[string]func()
 	// hostCalls counts, per request, the host calls the host applies for it.
 	hostCallCounts map[string]func(dialog bool, delta int)
 	// drainable holds, per request, the function that records that its runtime reported its event loop drained with the request unanswered, and whether the runtime's started state for the request has been read. drainCovered holds, per drain report the read loop passed to the host and the host has not handled, the drained functions of the requests the report covers.
@@ -279,6 +284,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
 		answered:           make(map[string]func()),
+		arrived:            make(map[string]func()),
 		hostCallCounts:     make(map[string]func(dialog bool, delta int)),
 		drainable:          make(map[string]*drainableRequest),
 		drainCovered:       make(map[*Envelope][]func()),
@@ -707,6 +713,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if fn := requestAnswered(ctx); fn != nil {
 		c.answered[env.ID] = fn
 	}
+	if fn := requestArrived(ctx); fn != nil {
+		c.arrived[env.ID] = fn
+	}
 	if fn := requestHostCalls(ctx); fn != nil {
 		c.hostCallCounts[env.ID] = fn
 	}
@@ -728,6 +737,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		c.pendingMu.Lock()
 		delete(c.pending, env.ID)
 		delete(c.answered, env.ID)
+		delete(c.arrived, env.ID)
 		delete(c.hostCallCounts, env.ID)
 		delete(c.drainable, env.ID)
 		c.pendingMu.Unlock()
@@ -1116,11 +1126,16 @@ func (c *Conn) readLoop(ctx context.Context) {
 				c.pendingMu.Lock()
 				ch, ok := c.pending[env.ID]
 				answered := c.answered[env.ID]
+				arrived := c.arrived[env.ID]
 				c.pendingMu.Unlock()
 				if !ok {
 					c.settleAbandoned(env.ID)
 				}
 				if ok {
+					// The read loop reads responses in the order the peer wrote them; the goroutines that wait for them wake in no order.
+					if arrived != nil {
+						arrived()
+					}
 					select {
 					case ch <- &env:
 					default:
@@ -1982,6 +1997,18 @@ func withRequestAnswered(ctx context.Context, fn func()) context.Context {
 
 func requestAnswered(ctx context.Context) func() {
 	fn, _ := ctx.Value(requestAnsweredKey{}).(func())
+	return fn
+}
+
+type requestArrivedKey struct{}
+
+// withRequestArrived has request run fn on the connection's read loop when the request's response is read, before the response reaches its waiter and before any later frame is read. Responses are read in the order the peer wrote them, which the goroutines that wait for them do not keep: fn records that order.
+func withRequestArrived(ctx context.Context, fn func()) context.Context {
+	return context.WithValue(ctx, requestArrivedKey{}, fn)
+}
+
+func requestArrived(ctx context.Context) func() {
+	fn, _ := ctx.Value(requestArrivedKey{}).(func())
 	return fn
 }
 
