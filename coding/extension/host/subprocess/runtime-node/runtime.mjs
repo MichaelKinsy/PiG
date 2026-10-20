@@ -1553,6 +1553,8 @@ class RuntimeUI {
       return;
     }
     if (typeof content === "function") {
+      // Pi's RPC mode ignores a component factory without calling it (rpc-mode.ts setWidget); print and JSON have no UI.
+      if (this.runtime.contextValues.mode !== "tui") return;
       this.runtime.setWidgetFactory(key, content, options);
       return;
     }
