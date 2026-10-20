@@ -504,11 +504,7 @@ func (c *conn) beginCallFor(parentRequestID, method string, args any) (pendingCa
 	return c.beginCall(parentRequestID, nil, method, args, nil)
 }
 
-func (c *conn) beginParentCall(parent *requestParent, method string, args any) (pendingCall, error) {
-	return c.beginCall("", parent, method, args, nil)
-}
-
-// beginParentCallFor is beginParentCall for a call whose answer settles slot when the read loop reads it.
+// beginParentCallFor sends a call scoped to its parent request; a call whose answer settles slot has the read loop settle it when it reads the answer.
 func (c *conn) beginParentCallFor(parent *requestParent, method string, args any, slot *settleSlot) (pendingCall, error) {
 	return c.beginCall("", parent, method, args, slot)
 }
