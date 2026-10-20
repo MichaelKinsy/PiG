@@ -293,6 +293,17 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.EffectiveStreamFunction",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "Agent.EffectiveStreamFunction",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() StreamFn"
+      },
+      "shapeHash": "sha256:dd5b7ebb2a2e13f75f2e1477d891c33bced26afdfb5930ac17b289807f57d96f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.ErrorMessage",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "Agent.ErrorMessage",

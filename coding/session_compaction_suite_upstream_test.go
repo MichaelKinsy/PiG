@@ -211,8 +211,9 @@ func TestAgentSessionCompactionSuiteUpstream(t *testing.T) {
 		}}}}
 		installCompactionModel(h.session, provider, 200000, 8192)
 		suiteCompactionSeed(t, h.session)
+		// Two resolutions: _getSummarizationRequestAuth, then the Agent's stream function (modelRuntime.streamSimple) for the request itself.
 		result, err := h.session.Compact(t.Context(), "")
-		if err != nil || !strings.Contains(result.Summary, "summary with bearer auth") || provider.calls != 1 || resolved != 1 {
+		if err != nil || !strings.Contains(result.Summary, "summary with bearer auth") || provider.calls != 1 || resolved != 2 {
 			t.Fatalf("result=%+v error=%v calls=%d auth=%d", result, err, provider.calls, resolved)
 		}
 		fmt.Printf("COMPACTION_BOUNDARY bearer requests=%d resolved=%d\n", provider.calls, resolved)

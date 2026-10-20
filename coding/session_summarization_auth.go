@@ -32,10 +32,7 @@ func (s *Session) runDefaultCompaction(ctx context.Context, prep compaction.Comp
 		return compaction.CompactionResult{}, err
 	}
 	retry, retryCallbacks := s.summarizationRetryOptions("compaction", reason)
-	if s.completer == nil && s.agent.StreamFunction() == nil {
-		// upstream compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, streamFn, env, retry, callbacks, sessionId): the provider's own stream.
-		return compaction.Compact(ctx, prep, request.model, request.apiKey, request.headers, customInstructions, request.thinkingLevel, request.streamFn, request.env, retry, retryCallbacks, "")
-	}
+	// upstream compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, this.agent.streamFunction, env, retry, callbacks, sessionId): the request.completer streams through the Agent's stream function.
 	return compaction.CompactUsing(ctx, prep, request.model, request.apiKey, request.headers, customInstructions, request.thinkingLevel, request.completer, request.streamFn, request.env, retry, retryCallbacks, "")
 }
 

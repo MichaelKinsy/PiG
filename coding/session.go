@@ -2273,12 +2273,12 @@ type NavigateTreeResult struct {
 // BranchSummaryEntry is the persisted branch_summary session entry.
 type BranchSummaryEntry = icodingagent.BranchSummaryEntry
 
-// resolveCompleter uses an injected completer or the Agent's current stream override, falling back to the model provider.
+// resolveCompleter uses an injected completer or the Agent's stream function (agent-session.ts passes this.agent.streamFunction to compact, generateBranchSummary and generateBugReportSummary).
 func (s *Session) resolveCompleter() compaction.SimpleCompleter {
 	if s.completer != nil {
 		return s.completer
 	}
-	return compaction.ProviderCompleter{StreamFn: s.agent.StreamFunction()}
+	return compaction.ProviderCompleter{StreamFn: s.agent.EffectiveStreamFunction()}
 }
 
 // AgentSessionEventListener is a Session event listener (agent-session.ts:240 `(event: AgentSessionEvent) => void`).

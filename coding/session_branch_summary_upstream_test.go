@@ -123,11 +123,21 @@ func TestBranchSummaryRequestAuth(t *testing.T) {
 					} else if _, err := h.session.SummarizeForBugReport(t.Context(), ""); err != nil {
 						t.Fatal(err)
 					}
-					if resolved != 1 || len(p.options) != 1 {
-						t.Fatalf("auth resolutions=%d stream calls=%d, want 1/1", resolved, len(p.options))
+					// _getSummarizationRequestAuth resolves once; the Agent's own stream function (sdk.ts streamFn -> modelRuntime.streamSimple) resolves the request's auth again, as it does for every agent request. A caller's override does not.
+					wantResolved := 2
+					if custom {
+						wantResolved = 1
+					}
+					if resolved != wantResolved || len(p.options) != 1 {
+						t.Fatalf("auth resolutions=%d stream calls=%d, want %d/1", resolved, len(p.options), wantResolved)
 					}
 					options := p.options[0]
-					if options.APIKey != wantAuth.APIKey || !reflect.DeepEqual(options.Headers, wantAuth.Headers) || options.CacheRetention != ai.CacheRetentionNone {
+					// Through the Agent's stream function the model runtime merges the auth's headers into the request again, so a header the auth deletes reaches the provider as a nil deletion marker (as it does for an agent request); a caller's override receives the headers the summary request carried.
+					wantHeaders := wantAuth.Headers
+					if !custom {
+						wantHeaders = resolvedAuth.Headers
+					}
+					if options.APIKey != wantAuth.APIKey || !reflect.DeepEqual(options.Headers, wantHeaders) || options.CacheRetention != ai.CacheRetentionNone {
 						t.Fatalf("request options = %+v", options)
 					}
 					if kind != "oauth" && options.Env["REQUEST_AUTH"] != "ambient" {
