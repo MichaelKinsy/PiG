@@ -92,9 +92,9 @@ func DecodeKittyPrintable(data string) (string, bool) {
 		if hasShiftedKey {
 			effectiveCodepoint = shiftedKey
 		} else if codepoint >= 'a' && codepoint <= 'z' {
-			// Shift+letter is layout-independent: uppercase the base when the
-			// terminal reports the base codepoint without a shifted alternate
-			// (e.g. \x1b[97;2u for Shift+a). Otherwise capital letters are lost.
+			// pig divergence (D185): Shift+letter with no shifted alternate (\x1b[97;2u)
+			// decodes as the uppercase letter; Pi keeps the base letter. Without it a
+			// terminal that omits the shifted key loses every capital letter.
 			effectiveCodepoint = codepoint - 32
 		}
 	}
