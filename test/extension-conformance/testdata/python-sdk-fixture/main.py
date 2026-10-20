@@ -780,6 +780,12 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": f"start#{number} n={params.get('n')}"}
 
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
+
+    def dialog_order(ctx, params):
+        selected, _ = ctx.select(str(params.get("title")), ["a", "b"])
+        return {"content": f"dialog:{params.get('title')}={selected}"}
+
+    ext.tool("dialog_order", "Open a select dialog titled by the call and report the answer", {"type": "object", "properties": {"title": {"type": "string"}}}, dialog_order)
     ext.tool("tool_error", "Return a thrown tool error", {"type": "object"}, tool_error)
     ext.tool("tool_is_error", "Return a structured tool error result", {"type": "object"}, tool_is_error)
     ext.tool(

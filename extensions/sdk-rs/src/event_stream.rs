@@ -134,6 +134,7 @@ mod tests {
             event: Some("message_update".into()),
             handler_id: 0,
             tool_call_id: None,
+            batch: None,
             args,
             terminal_input: None,
             stream: Some(EventStream { seq, base, ops, key: String::new(), evict: Vec::new() }),

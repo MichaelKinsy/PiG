@@ -1465,6 +1465,23 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"dialog_order": {
+				Definition: extension.ToolDefinition{
+					Name:        "dialog_order",
+					Description: "Open a select dialog titled by the call and report the answer",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"title":{"type":"string"}}}`),
+					Execute: func(_ context.Context, _ string, raw json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						var input struct {
+							Title string `json:"title"`
+						}
+						if err := json.Unmarshal(raw, &input); err != nil {
+							return extension.AgentToolResult{}, err
+						}
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "dialog:" + input.Title + "=a"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"throw_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "throw_probe",

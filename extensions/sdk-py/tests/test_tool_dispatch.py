@@ -6,10 +6,12 @@ import pig_sdk
 from test_request_lifetime import connected_extension
 
 
-def request(req_id, method, tool, args, tool_call_id=None):
+def request(req_id, method, tool, args, tool_call_id=None, batch=None):
     frame = {"method": method, "tool": tool, "args": args}
     if tool_call_id is not None:
         frame["tool_call_id"] = tool_call_id
+    if batch is not None:
+        frame["batch"] = batch
     return {"type": "request", "id": req_id, "request": frame}
 
 
@@ -50,7 +52,7 @@ def test_tool_call_does_not_prepare_the_arguments_again():
 
 
 def test_tool_call_handlers_start_in_arrival_order():
-    # agent-loop.ts:619-647 and 820-837: the calls of a parallel batch reach tool.execute in source order. The host writes them in source order, so handlers must start in the order the requests arrive.
+    # agent-loop.ts:619-647 and 820-837: the calls of a parallel batch reach tool.execute in source order. The host writes them in source order and names the batch on each, so handlers of one batch must start in the order the requests arrive.
     batch, rounds = 16, 24
     started = []
     lock = threading.Lock()
@@ -65,7 +67,7 @@ def test_tool_call_handlers_start_in_arrival_order():
     with connected_extension(ext) as (send, receive):
         for round_number in range(rounds):
             for n in range(batch):
-                send(request(f"r{round_number}-{n}", "tool_call", "probe", {"n": n}, "c"))
+                send(request(f"r{round_number}-{n}", "tool_call", "probe", {"n": n}, "c", batch=f"batch{round_number}"))
             for _ in range(batch):
                 assert receive("response")["response"]["error"] is None
             with lock:

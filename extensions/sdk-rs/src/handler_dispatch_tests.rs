@@ -98,6 +98,7 @@ impl Host {
                 event: event.map(Into::into),
                 handler_id,
                 tool_call_id: Some(format!("call-{id}")),
+                batch: None,
                 args: Some(json!({})),
             }),
             ..Default::default()
