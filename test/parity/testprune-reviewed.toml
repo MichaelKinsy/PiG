@@ -11,3 +11,15 @@ path = "internal/codingagent/compaction/over_window_review_test.go"
 commit = "ad3567de30"
 class = "NOBEHAVIOR"
 reason = "call-site rename only: CompactUsing -> Compact with CompleterStreamFn; expected values unchanged"
+
+[[entry]]
+path = "test/parity/runner/go_prebuild_test.go"
+commit = "538e10357f"
+class = "NOBEHAVIOR"
+reason = "PiG's own parity-runner tooling (prebuilding Go programs for scenario scripts); no Pi behavior, expectations follow the new prebuild helper's contract"
+
+[[entry]]
+path = "extensions/sdk/upgrade/rules_test.go"
+commit = "96edeab595"
+class = "NOBEHAVIOR"
+reason = "PiG-only pig extension upgrade rewriter (no Pi counterpart); expectations change because one run now rewrites every changed API and may add a helper file"
