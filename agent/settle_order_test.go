@@ -134,3 +134,38 @@ func TestParallelToolEndsFollowTheOrderTheToolsSettle(t *testing.T) {
 		t.Fatalf("tool result order = %v, want source order", results)
 	}
 }
+
+// The calls of one parallel batch share a batch identifier a runtime can use to order only that batch's calls; another batch has another, and a call another tool
+// makes inside its own (a different toolCallID) has none.
+func TestToolBatchFromContextNamesTheParallelBatch(t *testing.T) {
+	var mu sync.Mutex
+	batches := map[string]string{}
+	var nested string
+	tool := &scriptTool{name: "p", mode: ToolModeParallel, params: map[string]any{"type": "object"},
+		execute: func(ctx context.Context, id string, _ json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
+			mu.Lock()
+			batches[id] = ToolBatchFromContext(ctx, id)
+			nested = ToolBatchFromContext(ctx, "another-call")
+			mu.Unlock()
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: id}}}, nil
+		}}
+	run := func(ids ...string) {
+		t.Helper()
+		calls := make([]ai.ToolCall, len(ids))
+		for i, id := range ids {
+			calls[i] = toolCall(id, "p", nil)
+		}
+		a := mustNewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(calls...)}), Tools: []AgentTool{tool}})
+		waitSignal(t, sendAsync(t, a, "run"), "the run")
+	}
+	run("a-1", "a-2")
+	run("b-1", "b-2")
+	mu.Lock()
+	defer mu.Unlock()
+	if batches["a-1"] == "" || batches["a-1"] != batches["a-2"] || batches["b-1"] == "" || batches["b-1"] != batches["b-2"] || batches["a-1"] == batches["b-1"] {
+		t.Fatalf("batch identifiers = %v, want one per batch, shared by its calls", batches)
+	}
+	if nested != "" {
+		t.Fatalf("a call under another call's id has batch %q, want none", nested)
+	}
+}

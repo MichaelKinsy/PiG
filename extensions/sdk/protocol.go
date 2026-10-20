@@ -190,6 +190,8 @@ type requestMsg struct {
 	ToolCallID string          `json:"tool_call_id,omitempty"`
 	Args       json.RawMessage `json:"args,omitempty"`
 	Stream     *eventStreamMsg `json:"stream,omitempty"`
+	// Batch, on tool_call, names the parallel batch the call belongs to; absent for a call outside one, which takes part in no order (toolBatchOrders).
+	Batch string `json:"batch,omitempty"`
 
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any

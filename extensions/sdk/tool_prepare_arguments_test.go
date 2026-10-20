@@ -155,7 +155,7 @@ func TestToolCallHandlersStartInArrivalOrder(t *testing.T) {
 
 	for round := range batches {
 		for n := range batch {
-			host.writeEnvelope(t, envelope{Type: msgRequest, ID: fmt.Sprintf("r%d-%d", round, n), Request: &requestMsg{Method: "tool_call", Tool: "probe", ToolCallID: "c", Args: json.RawMessage(fmt.Sprintf(`{"n":%d}`, n))}})
+			host.writeEnvelope(t, envelope{Type: msgRequest, ID: fmt.Sprintf("r%d-%d", round, n), Request: &requestMsg{Method: "tool_call", Tool: "probe", ToolCallID: "c", Batch: fmt.Sprintf("round-%d", round), Args: json.RawMessage(fmt.Sprintf(`{"n":%d}`, n))}})
 		}
 		for range batch {
 			if resp := host.readEnvelope(t); resp.Type != msgResponse || resp.Response.Error != nil {
