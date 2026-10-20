@@ -26,6 +26,7 @@ fn provider_superseded_keeps_the_stream_the_host_still_calls() {
             event: None,
             handler_id: 0,
             tool_call_id: None,
+            batch: None,
             args: Some(json!({"model": {}, "context": {}, "options": {}})),
         }),
         ..Default::default()

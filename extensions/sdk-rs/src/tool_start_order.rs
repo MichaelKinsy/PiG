@@ -1,25 +1,27 @@
-//! Orders the calls of one tool batch the way Pi's single thread does.
+//! Orders the calls of one parallel tool batch the way Pi's single thread does.
 //!
 //! Pi starts every call of a parallel batch through `Promise.all(calls.map(...))` and each reaches `tool.execute` synchronously, so
 //! the handlers start in source order (`agent-loop.ts:619-647, 820-837`). The host writes a batch's `tool_call` requests in source
-//! order, but each request runs on its own thread, and the scheduler is free to run a later thread first. Three orders follow from
-//! Pi's one thread, and each is kept here:
+//! order and names the batch in each request's `batch` member, but each request runs on its own thread, and the scheduler is free to
+//! run a later thread first. Three orders follow from Pi's one thread, and each is kept here, per batch:
 //!
-//! - Start: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without
-//!   one. A handler is Rust code on a preemptible thread, so a thread that the operating system preempts between its hand-off and its
-//!   handler's first statement can still be overtaken, and no Rust construct closes that window.
+//! - Start: a request's handler is invoked only after the handler of every earlier request of its batch was invoked or its request
+//!   ended without one. A handler is Rust code on a preemptible thread, so a thread that the operating system preempts between its
+//!   hand-off and its handler's first statement can still be overtaken, and no Rust construct closes that window.
 //! - Dialog: the first dialog (`ui.select`, `ui.confirm`, `ui.input`, `ui.editor`, `ui.custom`) a handler opens is written only after
-//!   the first dialog of every earlier request was written or its request ended, so the dialogs of a batch open in the order the calls
-//!   started. A handler that waits on something else before its dialog holds the later calls' first dialogs, which Pi's single thread
-//!   lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
+//!   the first dialog of every earlier request of its batch was written or its request ended, so the dialogs of a batch open in the
+//!   order the calls started. A handler that waits on something else before its dialog holds the later calls' first dialogs of its
+//!   batch, which Pi's single thread lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
 //! - Continuation: when two dialogs are answered back to back, Pi runs the two handlers' continuations in the order of the answers,
 //!   and each continuation runs to its next await or its return before the next one starts. The reader settles a handler's slot when
-//!   it reads the answer to the handler's dialog, and the handler's response is written only after the response of every handler that
-//!   settled before it, or after that handler's next host call (the await its continuation reached).
+//!   it reads the answer to the handler's dialog, and the handler's response is written only after the response of every handler of
+//!   its batch that settled before it, or after that handler's next host call (the await its continuation reached).
 //!
 //! Only dialog answers settle a slot, and a handler that opens no dialog has no slot, so a batch without dialogs is never gated.
+//! A request without a batch id (a sequential batch, a nested call) takes part in no order, and the requests of two batches never
+//! gate each other. `ToolBatches` keeps one `ToolStartOrder` for each batch in flight and drops it when its last request ended.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 
@@ -80,7 +82,7 @@ impl Shared {
     fn park(&self) {}
 }
 
-/// The order of one connection's tool requests.
+/// The order of one parallel batch's tool requests.
 #[derive(Default)]
 pub(crate) struct ToolStartOrder {
     shared: Arc<Shared>,
@@ -92,8 +94,14 @@ impl ToolStartOrder {
         Self { shared: Arc::new(Shared { parked: Some(Arc::new(parked)), ..Default::default() }) }
     }
 
-    /// Take the next place. The read loop calls this in arrival order, before it starts the request's thread.
+    /// Take the next place in this order, held by no registry. The gate tests use it; the read loop goes through `ToolBatches`.
+    #[cfg(test)]
     pub(crate) fn reserve(&self) -> Arc<ToolStart> {
+        self.reserve_leased(None)
+    }
+
+    /// `reserve` for a request that holds a place in the batch registry until it ends.
+    fn reserve_leased(&self, lease: Option<Lease>) -> Arc<ToolStart> {
         let done = Arc::new(Latch::default());
         let mut places = self.shared.places.lock().unwrap();
         let previous = places.tail.replace(done.clone());
@@ -109,7 +117,60 @@ impl ToolStartOrder {
             dialog_opened: AtomicBool::new(false),
             ended: AtomicBool::new(false),
             slot: OnceLock::new(),
+            lease,
         })
+    }
+}
+
+/// One batch's order and the number of its requests that have not ended.
+#[derive(Default)]
+struct Batch {
+    order: ToolStartOrder,
+    live: usize,
+}
+
+type Registry = Mutex<HashMap<String, Batch>>;
+
+/// The orders of the parallel batches in flight on one connection, one for each batch id. A batch's order is dropped when its last
+/// request ended, so a request that arrives after every earlier request of its batch ended gets a fresh order.
+#[derive(Default)]
+pub(crate) struct ToolBatches {
+    batches: Arc<Registry>,
+}
+
+impl ToolBatches {
+    /// Takes the next place in the order of `batch`. The read loop calls this in arrival order, before it starts the request's thread.
+    /// A request with no batch id takes part in no order: it gets no place.
+    pub(crate) fn reserve(&self, batch: Option<&str>) -> Option<Arc<ToolStart>> {
+        let batch = batch.filter(|batch| !batch.is_empty())?;
+        let mut batches = self.batches.lock().unwrap();
+        let entry = batches.entry(batch.to_string()).or_default();
+        entry.live += 1;
+        Some(entry.order.reserve_leased(Some(Lease { batches: self.batches.clone(), batch: batch.to_string() })))
+    }
+
+    /// The number of batches that have a request that did not end.
+    #[cfg(test)]
+    fn in_flight(&self) -> usize {
+        self.batches.lock().unwrap().len()
+    }
+}
+
+/// A request's hold on its batch's order in the registry.
+struct Lease {
+    batches: Arc<Registry>,
+    batch: String,
+}
+
+impl Lease {
+    fn release(&self) {
+        let mut batches = self.batches.lock().unwrap();
+        if let Some(entry) = batches.get_mut(&self.batch) {
+            entry.live -= 1;
+            if entry.live == 0 {
+                batches.remove(&self.batch);
+            }
+        }
     }
 }
 
@@ -124,6 +185,8 @@ pub(crate) struct ToolStart {
     ended: AtomicBool,
     /// The request's place in the response order, made when the request opens a dialog: a handler that opens none is never gated.
     slot: OnceLock<Arc<SettleSlot>>,
+    /// The request's hold on its batch's order in the registry, released when the request ends.
+    lease: Option<Lease>,
 }
 
 impl ToolStart {
@@ -150,16 +213,20 @@ impl ToolStart {
         self.finish();
     }
 
-    /// Passes the dialog place on and closes the response slot, which stops it holding up the slots behind it.
+    /// Passes the dialog place on, closes the response slot, which stops it holding up the slots behind it, and lets go of the batch.
     fn finish(&self) {
         self.pass_dialog();
-        let slot = {
+        let (first, slot) = {
             let _places = self.order.places.lock().unwrap();
-            self.ended.store(true, Ordering::Release);
-            self.slot.get().cloned()
+            (!self.ended.swap(true, Ordering::AcqRel), self.slot.get().cloned())
         };
         if let Some(slot) = slot {
             slot.close();
+        }
+        if first {
+            if let Some(lease) = &self.lease {
+                lease.release();
+            }
         }
     }
 
@@ -624,5 +691,75 @@ mod tests {
         let rec = Recorder::default();
         later.respond(|| rec.add("later"));
         assert_eq!(rec.list(), ["later"]);
+    }
+
+    /// Runs `step` on a thread of its own and reports whether it returned, so a gate that wrongly held it fails a test instead of hanging it.
+    fn returns(step: impl FnOnce() + Send + 'static) -> bool {
+        let (done, finished) = mpsc::channel();
+        thread::spawn(move || {
+            step();
+            let _ = done.send(());
+        });
+        finished.recv_timeout(Duration::from_secs(5)).is_ok()
+    }
+
+    // The orders belong to one batch: a long request of batch A that opens no dialog and does not end holds neither the handlers' start nor the first
+    // dialogs of batch B, and a request of A still waits for the requests of its own batch ahead of it.
+    #[test]
+    fn the_requests_of_two_batches_do_not_gate_each_other() {
+        let batches = ToolBatches::default();
+        let long = batches.reserve(Some("A")).unwrap();
+        let (first, second) = (batches.reserve(Some("B")).unwrap(), batches.reserve(Some("B")).unwrap());
+        let later = batches.reserve(Some("A")).unwrap();
+        assert_eq!(batches.in_flight(), 2);
+        let (b_first, b_second) = (first.clone(), second.clone());
+        assert!(
+            returns(move || {
+                for start in [&b_first, &b_second] {
+                    start.begin();
+                    start.before_call(true);
+                    start.after_call(true);
+                }
+            }),
+            "a request of batch B waited for a request of batch A"
+        );
+        let began = begun(later);
+        held("a later request of batch A", &began);
+        long.begin();
+        began.recv_timeout(Duration::from_secs(5)).expect("the later request of batch A began");
+    }
+
+    // A request without a batch id (a sequential batch, a nested call) takes part in no order: it has no place to wait in or to hold.
+    #[test]
+    fn a_request_without_a_batch_id_takes_part_in_no_order() {
+        let batches = ToolBatches::default();
+        assert!(batches.reserve(None).is_none());
+        assert!(batches.reserve(Some("")).is_none());
+        assert_eq!(batches.in_flight(), 0);
+    }
+
+    // A batch's order is dropped when its last request ended, and a request that arrives after that gets a fresh one.
+    #[test]
+    fn a_batchs_order_is_dropped_when_its_last_request_ended() {
+        let batches = ToolBatches::default();
+        let (first, second) = (batches.reserve(Some("A")).unwrap(), batches.reserve(Some("A")).unwrap());
+        let other = batches.reserve(Some("B")).unwrap();
+        assert_eq!(batches.in_flight(), 2);
+        // A request that ends twice counts once.
+        first.end();
+        first.end();
+        assert_eq!(batches.in_flight(), 2);
+        second.release();
+        assert_eq!(batches.in_flight(), 1);
+        other.end();
+        assert_eq!(batches.in_flight(), 0);
+        let fresh = batches.reserve(Some("A")).unwrap();
+        assert_eq!(batches.in_flight(), 1);
+        assert!(returns({
+            let fresh = fresh.clone();
+            move || fresh.begin()
+        }));
+        fresh.end();
+        assert_eq!(batches.in_flight(), 0);
     }
 }
