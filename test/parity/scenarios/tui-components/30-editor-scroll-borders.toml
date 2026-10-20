@@ -13,6 +13,7 @@ pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["node", "./test/parity/testdata/editor-scroll-pig.mjs"]
 pi_args = ["node", "./test/parity/testdata/editor-scroll-pi.mjs"]
+pig_go_tests = ["./tui"]
 
 [cli]
 cwd = "../../../.."

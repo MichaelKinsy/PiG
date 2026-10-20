@@ -1,7 +1,7 @@
 // Pi 1.1.0 CustomEditor with an embedded WorkingStatusIndicator over the corpus the Go test TestEditorStatusBorderProbeDump prints: one JSON line of rows per probe.
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { spawnSync } from 'node:child_process';
-const dump = spawnSync('go', ['test', './tui', '-run', '^TestEditorStatusBorderProbeDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const dump = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestEditorStatusBorderProbeDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
 const line = dump.stdout?.split('\n').find(l => l.startsWith('editorstatus-probes:'));
 if (dump.status !== 0 || !line) {
  process.stderr.write(dump.stdout ?? '');

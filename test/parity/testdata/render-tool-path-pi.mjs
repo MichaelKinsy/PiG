@@ -1,7 +1,7 @@
 // Pi 1.1.0 renderToolPath over the corpus the Go test TestRenderToolPathProbeDump prints: one JSON line of the rendering per probe.
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { spawnSync } from 'node:child_process';
-const dump = spawnSync('go', ['test', './tui', '-run', '^TestRenderToolPathProbeDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
+const dump = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestRenderToolPathProbeDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
 const line = dump.stdout?.split('\n').find(l => l.startsWith('toolpath-probes:'));
 if (dump.status !== 0 || !line) {
  process.stderr.write(dump.stdout ?? '');

@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-const dump = spawnSync('go', ['test', './coding/extension/builtin/codemode', '-run', '^TestCodemodeDescriptionProbesDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const dump = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./coding/extension/builtin/codemode', '-run', '^TestCodemodeDescriptionProbesDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
 const line = dump.stdout?.split('\n').find(l => l.startsWith('codemode-description-probes:'));
 if (dump.status !== 0 || !line) {
  process.stderr.write(dump.stdout ?? '');

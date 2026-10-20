@@ -1,6 +1,6 @@
 // PiG's codemode declarations over the corpus of codemode/testdata/upstream-golden.json; the owning Go test emits one JSON line per case.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './codemode', '-run', '^TestCodemodeDeclarationsParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./codemode', '-run', '^TestCodemodeDeclarationsParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

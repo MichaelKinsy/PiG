@@ -1,6 +1,6 @@
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -9,11 +9,10 @@ assert.ok(side === "pig" || side === "pi");
 assert.ok(temp, "scenario-owned temporary root is required");
 const root = mkdtempSync(join(temp, "startup-metadata-"));
 try {
-  const binary = side === "pig" ? join(root, "pig") : process.execPath;
   const piRoot = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
   if (side === "pi") assert.equal(JSON.parse(readFileSync(join(piRoot, "package.json"), "utf8")).version, PI_PACKAGE_VERSION, "pinned Pi package");
-  const prefix = side === "pig" ? [] : [join(piRoot, "dist/cli.js")];
-  if (side === "pig") execFileSync("go", ["build", "-o", binary, "./cmd/pig"], { stdio: "pipe" });
+  const [program, prefix] = side === "pig" ? ["./test/parity/testdata/prebuilt-go-run.sh", ["./cmd/pig"]] : [process.execPath, [join(piRoot, "dist/cli.js")]];
+  const binary = side === "pig" ? resolve(program) : program;
   const records = path => readFileSync(path, "utf8").trim().split("\n").map(line => JSON.parse(line));
   const names = path => records(path).filter(entry => entry.type === "session_info").map(entry => entry.name);
   const outcomes = [];

@@ -1,6 +1,6 @@
 // Pig's DynamicBorder, ThemedText, IdleStatus and StatusIndicator over the corpus of tui/status_components_oracle_test.go; the owning Go test emits one JSON line of results per probe.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './tui', '-run', '^TestStatusComponentsParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestStatusComponentsParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

@@ -8,6 +8,8 @@ tags = ["fast", "hermetic"]
 driver = "cli-mode"
 
 [env]
+pig_go_programs = ["./test/parity/testdata/session-model-go"]
+pi_go_programs = ["./test/parity/testdata/session-model-go"]
 override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"

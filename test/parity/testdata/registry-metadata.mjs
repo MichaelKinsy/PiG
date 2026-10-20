@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().filter(key => value[key] !== undefined).map(key => [key, canonical(value[key])])) : value;
 
 if (process.argv[2] === "pig") {
-  console.log(JSON.stringify(canonical(JSON.parse(execFileSync("go", ["run", "./test/parity/testdata/registry-metadata-go"], { encoding: "utf8" })))));
+  console.log(JSON.stringify(canonical(JSON.parse(execFileSync("./test/parity/testdata/prebuilt-go-run.sh", ["./test/parity/testdata/registry-metadata-go"], { encoding: "utf8" })))));
 } else {
   const root = process.env.PI_PACKAGE_ROOT;
   const { ModelRuntime } = await import(root + "/dist/core/model-runtime.js");

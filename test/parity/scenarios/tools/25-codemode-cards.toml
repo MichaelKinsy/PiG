@@ -14,7 +14,9 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["node", "./test/parity/testdata/codemode-cards-pig.mjs"]
+pig_go_tests = ["./internal/codingagent"]
 pi_args = ["node", "./test/parity/testdata/codemode-cards-pi.mjs"]
+pi_go_tests = ["./internal/codingagent"]
 
 [cli]
 cwd = "../../../.."

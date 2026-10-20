@@ -18,7 +18,8 @@ import (
 )
 
 // A cli-mode scenario's pig side can be a Go probe: `go run ./PACKAGE ARGS` in its pig args, or a script that runs the
-// test binaries of the packages in [env] pig_go_tests through test/parity/testdata/prebuilt-go-test.sh. Building a
+// test binaries of the packages in [env] pig_go_tests through test/parity/testdata/prebuilt-go-test.sh (a Pi script lists
+// pi_go_tests; a script that runs a Go program lists pig_go_programs or pi_go_programs and uses prebuilt-go-run.sh). Building a
 // probe inside a timed run made the run's runtime and timeout cover the Go toolchain, and on a loaded host a cold
 // build cache alone outlasted a 60 s timeout. RunScenario therefore builds them first (goPrebuildCache.prepare) and
 // the timed runs start the binaries. One TestParity run builds each package once and removes the binaries at its end.
@@ -26,6 +27,10 @@ import (
 // goTestsEnv names the directory holding a scenario's pig_go_tests binaries, laid out as prebuilt-go-test.sh reads
 // them: <dir>/<package directory>/<its last element>.test.
 const goTestsEnv = "PIG_PARITY_GO_TESTS"
+
+// goProgramsEnv names the directory holding a scenario's pig_go_programs and pi_go_programs binaries, laid out as
+// prebuilt-go-run.sh reads them: <dir>/<package directory>/<its last element>.
+const goProgramsEnv = "PIG_PARITY_GO_PROGRAMS"
 
 // goPrebuilds holds the binaries built for TestParity's scenarios.
 var goPrebuilds goPrebuildCache
@@ -48,7 +53,7 @@ type goPrebuild struct {
 func (c *goPrebuildCache) prepare(sc *Scenario, logf func(format string, args ...any)) (*Scenario, error) {
 	prepared := *sc
 	runArgs, run := goRunArgs(&prepared)
-	if run < 0 && len(sc.Env.PigGoTests) == 0 {
+	if run < 0 && len(sc.Env.PigGoTests)+len(sc.Env.PiGoTests)+len(sc.Env.PigGoPrograms)+len(sc.Env.PiGoPrograms) == 0 {
 		return sc, nil
 	}
 	if sc.CLI.CWD == "" || strings.Contains(sc.CLI.CWD, "{{") {
@@ -71,16 +76,45 @@ func (c *goPrebuildCache) prepare(sc *Scenario, logf func(format string, args ..
 		}
 		*runArgs = slices.Concat(args[:run], []string{binary}, args[run+3:])
 	}
-	if len(sc.Env.PigGoTests) > 0 {
-		dir := filepath.Join(root, "test", goPrebuildKey(cwd))
-		for _, pkg := range sc.Env.PigGoTests {
+	testsDir := filepath.Join(root, "test", goPrebuildKey(cwd))
+	programsDir := filepath.Join(root, "programs", goPrebuildKey(cwd))
+	buildTests := func(pkgs []string) error {
+		for _, pkg := range pkgs {
 			rel := filepath.FromSlash(strings.TrimPrefix(pkg, "./"))
-			binary := filepath.Join(dir, rel, filepath.Base(rel)+".test"+exeSuffix())
+			binary := filepath.Join(testsDir, rel, filepath.Base(rel)+".test"+exeSuffix())
 			if err := c.build(binary, logf, cwd, "test", "-c", "-o", binary, pkg); err != nil {
-				return nil, err
+				return err
 			}
 		}
-		prepared.Env.Pig = append(slices.Clip(sc.Env.Pig), goTestsEnv+"="+dir)
+		return nil
+	}
+	buildPrograms := func(pkgs []string) error {
+		for _, pkg := range pkgs {
+			rel := filepath.FromSlash(strings.TrimPrefix(pkg, "./"))
+			binary := filepath.Join(programsDir, rel, filepath.Base(rel)+exeSuffix())
+			if err := c.build(binary, logf, cwd, "build", "-o", binary, pkg); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := buildTests(slices.Concat(sc.Env.PigGoTests, sc.Env.PiGoTests)); err != nil {
+		return nil, err
+	}
+	if err := buildPrograms(slices.Concat(sc.Env.PigGoPrograms, sc.Env.PiGoPrograms)); err != nil {
+		return nil, err
+	}
+	if len(sc.Env.PigGoTests) > 0 {
+		prepared.Env.Pig = append(slices.Clip(prepared.Env.Pig), goTestsEnv+"="+testsDir)
+	}
+	if len(sc.Env.PiGoTests) > 0 {
+		prepared.Env.Pi = append(slices.Clip(prepared.Env.Pi), goTestsEnv+"="+testsDir)
+	}
+	if len(sc.Env.PigGoPrograms) > 0 {
+		prepared.Env.Pig = append(slices.Clip(prepared.Env.Pig), goProgramsEnv+"="+programsDir)
+	}
+	if len(sc.Env.PiGoPrograms) > 0 {
+		prepared.Env.Pi = append(slices.Clip(prepared.Env.Pi), goProgramsEnv+"="+programsDir)
 	}
 	return &prepared, nil
 }
