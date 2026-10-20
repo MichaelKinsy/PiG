@@ -570,11 +570,28 @@ pub(crate) struct RequestParent {
     id: String,
     state: AtomicU8,
     finished: AtomicBool,
+    /// A `tool_call` request's place in the batch orders (`ToolStartOrder`), set once by the read loop. Its host calls are awaits of
+    /// the handler, so the ones carrying this request's id keep the place.
+    start: std::sync::OnceLock<Arc<crate::tool_start_order::ToolStart>>,
 }
 
 impl RequestParent {
     pub(crate) fn completed(&self) -> bool { self.state.load(Ordering::Acquire) == 1 }
     pub(crate) fn cancelled(&self) -> bool { self.state.load(Ordering::Acquire) == 2 }
+
+    /// Gives the request its place in the batch orders. The read loop calls it once, before the request's thread starts.
+    pub(crate) fn attach_start(&self, start: Arc<crate::tool_start_order::ToolStart>) {
+        let _ = self.start.set(start);
+    }
+
+    /// The request's place in the batch orders while the request is live: a call of a completed or cancelled request carries no request
+    /// id, or fails before it writes, so it takes no part in them.
+    pub(crate) fn tool_start(&self) -> Option<&crate::tool_start_order::ToolStart> {
+        if self.state.load(Ordering::Acquire) != 0 {
+            return None;
+        }
+        self.start.get().map(|start| &**start)
+    }
 }
 
 /// A thread-safe connection to the host over a Unix socket.
@@ -623,6 +640,8 @@ pub struct Connection {
 struct PendingCallSender {
     parent_request_id: Option<String>,
     sender: mpsc::Sender<CallResultMsg<Box<serde_json::value::RawValue>>>,
+    /// The response slot of the tool handler that waits for this dialog's answer. The reader settles it when it reads the answer.
+    slot: Option<Arc<crate::tool_start_order::SettleSlot>>,
 }
 
 impl Connection {
@@ -703,7 +722,7 @@ impl Connection {
     }
 
     pub(crate) fn arm_parent(&self, id: &str) -> Arc<RequestParent> {
-        let parent = Arc::new(RequestParent { id: id.to_owned(), state: AtomicU8::new(0), finished: AtomicBool::new(false) });
+        let parent = Arc::new(RequestParent { id: id.to_owned(), state: AtomicU8::new(0), finished: AtomicBool::new(false), start: std::sync::OnceLock::new() });
         self.request_parents.lock().unwrap().insert(id.to_owned(), parent.clone());
         parent
     }
@@ -880,6 +899,30 @@ impl Connection {
         method: &str,
         args: Option<A>,
     ) -> io::Result<PendingCall> {
+        // A tool handler's host call is an await of Pi's handler: it orders the handler among the calls of its batch (`ToolStartOrder`).
+        // The wait for the dialog place comes before any lock below, so a waiting handler holds nothing the earlier ones need.
+        let start = scope.and_then(RequestParent::tool_start);
+        let dialog = crate::tool_start_order::is_dialog_method(method);
+        if let Some(start) = start {
+            start.before_call(dialog);
+        }
+        let slot = start.filter(|_| dialog).and_then(crate::tool_start_order::ToolStart::response_slot);
+        let pending = self.write_call(scope, parent_request_id, method, args, slot);
+        if let Some(start) = start {
+            start.after_call(dialog);
+        }
+        pending
+    }
+
+    /// Writes a call frame and registers its answer. A `slot` is settled by the reader when it reads the answer.
+    fn write_call<A: Serialize>(
+        &self,
+        scope: Option<&RequestParent>,
+        parent_request_id: Option<&str>,
+        method: &str,
+        args: Option<A>,
+        slot: Option<Arc<crate::tool_start_order::SettleSlot>>,
+    ) -> io::Result<PendingCall> {
         let mut writer = self.writer.lock().unwrap();
         let mut pending_calls = self.pending_calls.lock().unwrap();
         if self.is_closed() || scope.is_some_and(RequestParent::cancelled) {
@@ -901,6 +944,7 @@ impl Connection {
             PendingCallSender {
                 parent_request_id: parent_request_id.map(str::to_string),
                 sender: tx,
+                slot,
             },
         );
         drop(pending_calls);
@@ -973,6 +1017,11 @@ impl Connection {
         let Some(pending) = self.pending_calls.lock().unwrap().remove(id) else {
             return false;
         };
+        // Pi resumes the handlers whose dialogs were answered in the order the answers arrived. This reader reads them in that order, which the
+        // threads that wait do not keep, so the answer settles its handler's response slot before the handler can see it.
+        if let Some(slot) = &pending.slot {
+            slot.settle();
+        }
         let reply = env.call_result.as_ref();
         let result = reply.and_then(|r| r.result.as_ref()).map(serde_json::value::to_raw_value).transpose();
         if let Ok(result) = result {
