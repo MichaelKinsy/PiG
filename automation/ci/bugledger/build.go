@@ -3,6 +3,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"os"
@@ -241,9 +243,9 @@ func build(root, since string) (*Ledger, error) {
 			used[e.ID]++
 		}
 	}
-	for i, e := range b.entries {
+	for _, e := range b.entries {
 		if !b.kept[e] {
-			e.ID = entryID(e, i, used)
+			e.ID = entryID(e, used)
 		}
 		slices.SortFunc(e.Commits, func(x, y Commit) int { return strings.Compare(x.Date+x.Hash, y.Date+y.Hash) })
 		if e.Tests == nil {
@@ -885,9 +887,10 @@ func (b *builder) linkCommit(target, hash string) error {
 	return fmt.Errorf("commit %s: %s has no ledger entry to join", hash[:10], target)
 }
 
-// entryID names an entry after the commit that first fixed it, so an ID survives merges and later entries. A divergence entry takes its divergence number. An entry with no commit yet is "BF-pending-<n>".
-func entryID(e *Entry, i int, used map[string]int) string {
-	id := fmt.Sprintf("BF-pending-%d", i+1)
+// entryID names an entry after the commit that first fixed it, so an ID survives merges and later entries. A divergence entry takes its divergence number. An entry with no commit yet is named "BF-" and seven hex digits of a hash of what makes it that bug. The name depends on the entry alone, not on its position among the others, so two branches that each add such an entry never choose the same ID; it looks like a commit hash so that the entry sorts among the others and not after them all (the ledger is listed by ID, and a common prefix would put every pending entry of every branch in the same place).
+func entryID(e *Entry, used map[string]int) string {
+	sum := sha256.Sum256([]byte(identity(*e)))
+	id := "BF-" + hex.EncodeToString(sum[:])[:7]
 	switch {
 	case e.Divergence != "" && e.Origin == "divergence":
 		id = "BF-" + e.Divergence

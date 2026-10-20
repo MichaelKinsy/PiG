@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -462,7 +464,8 @@ func TestASquashLandingKeepsTheCommittedLedger(t *testing.T) {
 		t.Fatal(err)
 	}
 	dev.write("automation/ci/bugledger/exempt.txt", followUp[:10]+" see "+dev.run("rev-parse", "HEAD~2")[:10]+"\n"+repair[:10]+" Repair of a merge: fallout\n")
-	if err := run(dev.root, "0.4.1", false, false); err != nil {
+	// A strict check compares with the ledger the history implies, which only a refresh writes.
+	if err := runWith(dev.root, "0.4.1", false, false, true); err != nil {
 		t.Fatal(err)
 	}
 	dev.commit("Add the ledger", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md", "automation/ci/bugledger/exempt.txt")
@@ -700,7 +703,7 @@ func TestAFixTitledSquashMergeJoinsTheEntriesItLands(t *testing.T) {
 			if len(l.Entries) != 2 {
 				t.Errorf("entries = %+v, want two", l.Entries)
 			}
-			if err := run(pub.root, "0.4.1", false, false); err != nil {
+			if err := runWith(pub.root, "0.4.1", false, false, true); err != nil {
 				t.Fatal(err)
 			}
 			pub.commit("Regenerate the ledger", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md")
@@ -955,5 +958,210 @@ func TestContributorsCountCoAuthoredByTrailers(t *testing.T) {
 	want := "## Contributors\n\nThanks to the contributors whose commits are in this release: Dávid Balatoni, Volker Mauel, Yu LI.\n\n"
 	if b.String() != want {
 		t.Fatalf("contributors =\n%q\nwant\n%q", b.String(), want)
+	}
+}
+
+// fixedGitDates makes every commit of a test repository reproducible: a commit hash is the ID of its entries, and a test about where an
+// entry lands among the others must not depend on the clock.
+func fixedGitDates(t *testing.T) {
+	t.Helper()
+	t.Setenv("GIT_AUTHOR_DATE", "2026-02-03T04:05:06Z")
+	t.Setenv("GIT_COMMITTER_DATE", "2026-02-03T04:05:06Z")
+}
+
+// addFix writes a changelog fragment for one fix, adds its entry to the ledger the way a contributor does (make bug-ledger), and commits.
+func addFix(t *testing.T, r testRepo, name, text string) {
+	t.Helper()
+	r.write("changelog.d/"+name+".md", "### Fixed\n\n- "+text+"\n")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	r.commit(name+": fix it", "changelog.d/"+name+".md", jsonPath, pagePath)
+}
+
+func ledgerIDs(t *testing.T, r testRepo) []string {
+	t.Helper()
+	l, _, err := readCommitted(r.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, e := range l.Entries {
+		ids = append(ids, e.ID)
+	}
+	return ids
+}
+
+// merge merges branch into the checked-out branch, failing the test on a conflict.
+func merge(t *testing.T, r testRepo, branch string) {
+	t.Helper()
+	cmd := exec.Command("git", "-C", r.root, "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", "merge", "-q", "--no-ff", "--no-edit", branch)
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		diff, _ := exec.Command("git", "-C", r.root, "diff").CombinedOutput()
+		if len(diff) > 3000 {
+			diff = diff[:3000]
+		}
+		t.Fatalf("merging %s: %v\n%s\n%s", branch, err, out, diff)
+	}
+}
+
+// Two pull requests that each add a fix change the committed ledger. They must merge without a conflict in either order, the merged ledger
+// must be the same either way, and the check must still pass on it, so no merge of main needs a regeneration.
+func TestTwoBranchesThatAddFixesMergeCleanlyInEitherOrder(t *testing.T) {
+	fixedGitDates(t)
+	r := newFixture(t)
+	for i := range 24 {
+		r.write("changelog.d/base"+strconv.Itoa(i)+".md", "### Fixed\n\n- Base bug number "+strconv.Itoa(i)+" no longer happens.\n")
+		r.write("base"+strconv.Itoa(i)+".go", "package x\n")
+		r.commit("base "+strconv.Itoa(i)+": fix it", "changelog.d/base"+strconv.Itoa(i)+".md", "base"+strconv.Itoa(i)+".go")
+	}
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	r.commit("Add the ledger", jsonPath, pagePath)
+	r.run("branch", "base")
+
+	const textA, textB = "The first new bug no longer happens.", "The second new bug no longer happens."
+	r.run("checkout", "-q", "-b", "a", "base")
+	addFix(t, r, "alpha", textA)
+	r.run("checkout", "-q", "-b", "b", "base")
+	addFix(t, r, "beta", textB)
+
+	merged := map[string][]byte{}
+	for _, order := range [][2]string{{"a", "b"}, {"b", "a"}} {
+		r.run("checkout", "-q", "-B", "merge-"+order[0]+order[1], order[0])
+		merge(t, r, order[1])
+		if err := run(r.root, "0.4.1", true, false); err != nil {
+			t.Fatalf("merging %s into %s: the check fails on the merged ledger: %v", order[1], order[0], err)
+		}
+		ids := ledgerIDs(t, r)
+		if !slices.IsSorted(ids) {
+			t.Fatalf("the ledger is not listed by ID: %v", ids)
+		}
+		l, data, err := readCommitted(r.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		notes := 0
+		var at []int
+		for i, e := range l.Entries {
+			if e.Note == textA || e.Note == textB {
+				notes++
+				at = append(at, i)
+			}
+		}
+		// The premise: the two entries land in different places. Two entries that sort into the same gap of the list do conflict, as any two
+		// insertions at one place do; the IDs here are fixed by the dates above, so this holds on every run.
+		if len(at) != 2 || at[1]-at[0] < 3 || at[1] == len(l.Entries)-1 {
+			t.Fatalf("the new entries sit at %v of %d; pick texts whose IDs sort apart", at, len(l.Entries))
+		}
+		if notes != 2 || len(l.Entries) != 26 {
+			t.Fatalf("merged ledger has %d entries, %d of the new ones, want 26 and 2", len(l.Entries), notes)
+		}
+		page, err := os.ReadFile(filepath.Join(r.root, pagePath))
+		if err != nil {
+			t.Fatal(err)
+		}
+		merged[order[0]+order[1]] = append(data, page...)
+	}
+	if !bytes.Equal(merged["ab"], merged["ba"]) {
+		t.Error("merging in the other order gives a different ledger")
+	}
+}
+
+// The gate is as strict as before: a branch that adds a fix and leaves the ledger as it was fails, whether or not main moved.
+func TestTheCheckStillFailsOnAStaleLedgerAfterAMerge(t *testing.T) {
+	fixedGitDates(t)
+	r := newFixture(t)
+	addFix(t, r, "alpha", "The first bug no longer happens.")
+	r.run("branch", "base")
+	r.run("checkout", "-q", "-b", "side", "base")
+	addFix(t, r, "beta", "The second bug no longer happens.")
+	r.run("checkout", "-q", "-b", "forgot", "base")
+	r.write("changelog.d/gamma.md", "### Fixed\n\n- The third bug no longer happens.\n")
+	r.commit("gamma: fix it", "changelog.d/gamma.md")
+	merge(t, r, "side")
+	err := run(r.root, "0.4.1", true, false)
+	if err == nil || !strings.Contains(err.Error(), "no ledger entry for") || !strings.Contains(err.Error(), "The third bug no longer happens") {
+		t.Fatalf("a fragment without a ledger entry must fail the check after a merge, got %v", err)
+	}
+	if strings.Contains(err.Error(), "The second bug") {
+		t.Errorf("the merged-in entry is in the ledger, but the check names it: %v", err)
+	}
+	// An entry edited out of the JSON while the page keeps it fails too.
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	l, _, err := readCommitted(r.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.Entries = l.Entries[1:]
+	data, err := marshalJSON(l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.write(jsonPath, string(data))
+	if err := run(r.root, "0.4.1", true, false); err == nil {
+		t.Fatal("a ledger from which an entry was dropped must fail the check")
+	}
+}
+
+// make bug-ledger changes only what the branch adds: a committed entry whose fix is recorded stays as it was even when the history would now
+// give it another commit list, and a refresh recomputes it.
+func TestRegenerationKeepsCommittedEntriesUntilARefresh(t *testing.T) {
+	fixedGitDates(t)
+	r := newFixture(t)
+	r.write("b.go", "package x\n")
+	r.commit("Fix a crash in b", "b.go")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	r.commit("Add the ledger", jsonPath, pagePath)
+	before, err := os.ReadFile(filepath.Join(r.root, jsonPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A follow-up commit joins the entry of the first, which gives it a second commit.
+	r.write("b.go", "package x\n\n// again\n")
+	followUp := r.commit("Fix the crash in b again\n\nBug-Ledger: see "+r.run("rev-parse", "HEAD~1")[:10], "b.go")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	if after, _ := os.ReadFile(filepath.Join(r.root, jsonPath)); !bytes.Equal(before, after) {
+		t.Fatal("make bug-ledger rewrote a committed entry that records its fix")
+	}
+	if err := runWith(r.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if after, _ := os.ReadFile(filepath.Join(r.root, jsonPath)); !strings.Contains(string(after), followUp[:10]) {
+		t.Fatal("a refresh must give the entry the follow-up commit")
+	}
+}
+
+var pendingID = regexp.MustCompile(`^BF-[0-9a-f]{7}$`)
+
+// An entry with no commit yet is named after its text, not after its place in the list, so a pending entry keeps its ID when another branch's
+// entry lands before it and two branches never pick the same pending ID. The ID looks like a commit hash, so pending entries do not all sort last.
+func TestPendingEntriesAreNamedAfterTheirText(t *testing.T) {
+	r := newFixture(t)
+	r.write("changelog.d/one.md", "### Fixed\n\n- The first bug no longer happens.\n")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	first := ledgerIDs(t, r)
+	r.write("changelog.d/two.md", "### Fixed\n\n- The second bug no longer happens.\n")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	both := ledgerIDs(t, r)
+	if len(first) != 1 || len(both) != 2 || !slices.Contains(both, first[0]) {
+		t.Fatalf("the first entry's ID changed when another was added: %v then %v", first, both)
+	}
+	for _, id := range both {
+		if !pendingID.MatchString(id) {
+			t.Errorf("pending ID %q is not named after the entry's text", id)
+		}
 	}
 }
