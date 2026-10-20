@@ -257,8 +257,8 @@ def test_dispatch_dialogs_open_in_call_order_and_responses_follow_the_answers():
 
     ext.tool("ask", "Open a dialog", {"type": "object"}, ask)
     with connected_extension(ext) as (send, receive):
-        send(request("r1", "tool_call", "ask", {"name": "a"}, "tc1"))
-        send(request("r2", "tool_call", "ask", {"name": "b"}, "tc2"))
+        send(request("r1", "tool_call", "ask", {"name": "a"}, "tc1", batch="batch"))
+        send(request("r2", "tool_call", "ask", {"name": "b"}, "tc2", batch="batch"))
         calls = [receive("call"), receive("call")]
         assert [call["call"]["method"] for call in calls] == ["ui.select", "ui.select"]
         assert [_frame_text(call) for call in calls] == ["a", "b"], "the dialogs did not open in call order"
@@ -268,3 +268,54 @@ def test_dispatch_dialogs_open_in_call_order_and_responses_follow_the_answers():
         responses = [receive("response"), receive("response")]
         assert [response["id"] for response in responses] == ["r2", "r1"], "responses did not follow the order of the answers"
         assert [response["response"]["error"] for response in responses] == [None, None]
+
+
+def test_orders_are_per_batch_and_dropped_when_the_batch_ended():
+    batches = pig_sdk._ToolBatches()
+    a1, a2 = batches.reserve("A"), batches.reserve("A")
+    b1 = batches.reserve("B")
+    assert a1._order is a2._order and a1._order is not b1._order
+    # B's first dialog does not wait for A's requests, which still run.
+    b1.before_call(True)
+    b1.after_call(True)
+    order = a1._order
+    a1.end()
+    assert batches._orders["A"] is order
+    a2.end()
+    assert "A" not in batches._orders
+    b1.end()
+    b1.end()  # idempotent: the count of live requests drops once
+    assert batches._orders == {}
+    # A request that arrives after every earlier one of its batch ended finds a fresh order.
+    assert batches.reserve("A")._order is not order
+
+
+def test_dispatch_batches_and_requests_without_a_batch_do_not_gate_each_other():
+    # A long request without a dialog in batch A must not hold the first dialog of batch B, or of a request outside any batch.
+    ext = pig_sdk.Extension("py-dialog-batches")
+    release_a = threading.Event()
+
+    def block(ctx, args):
+        assert release_a.wait(5), "the long request was never released"
+        return "long"
+
+    def ask(ctx, args):
+        selected, ok = ctx.select(args["name"], ["x"])
+        return f"{args['name']}:{selected}"
+
+    ext.tool("block", "A long request without a dialog", {"type": "object"}, block)
+    ext.tool("ask", "Open a dialog", {"type": "object"}, ask)
+    with connected_extension(ext) as (send, receive):
+        try:
+            send(request("a1", "tool_call", "block", {}, "tc1", batch="A"))
+            send(request("b1", "tool_call", "ask", {"name": "b"}, "tc2", batch="B"))
+            send(request("n1", "tool_call", "ask", {"name": "n"}, "tc3"))
+            calls = [receive("call"), receive("call")]
+            assert sorted(_frame_text(call) for call in calls) == ["b", "n"], "a dialog was held by another batch's long request"
+            for call in calls:
+                send({"type": "call_result", "id": call["id"], "call_result": {"result": {"ok": True, "selected": "x"}}})
+            answered = {receive("response")["id"] for _ in range(2)}
+            assert answered == {"b1", "n1"}
+        finally:
+            release_a.set()
+        assert receive("response")["id"] == "a1"

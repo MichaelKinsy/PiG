@@ -2124,10 +2124,13 @@ class _ToolStart:
         self.pass_dialog()
         order = self._order
         with order._lock:
+            first = not self._ended
             self._ended = True
             slot = self._slot
         if slot is not None:
             slot.close()
+        if first:
+            order._request_ended()
 
     def response_slot(self) -> "_SettleSlot | None":
         """The request's place in the response order, made on first use. None once the request ended: a retained context's dialog must not leave a slot that nothing closes."""
@@ -2191,7 +2194,7 @@ class _ToolStart:
 class _ToolStartOrder:
     """Orders the calls of one tool batch the way Pi's single thread does.
 
-    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837). The host writes a batch's tool_call requests in source order, but each request runs on its own thread, and the scheduler is free to run a later thread first. Three orders follow from Pi's one thread, and each is kept here (all per extension connection; only tool_call requests take part):
+    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837). The host writes a batch's tool_call requests in source order, but each request runs on its own thread, and the scheduler is free to run a later thread first. Three orders follow from Pi's one thread, and each is kept here, per batch (``_ToolBatches`` keeps one order per batch id the host names on the batch's tool_call requests; a request outside a batch takes part in none):
 
     - Start: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without one.
     - Dialog: the first dialog (select, confirm, input, editor, custom) a handler opens is written only after the first dialog of every earlier request was written or its request ended, so the dialogs of a batch open in the order the calls started. A handler that waits on something other than a host call before its first dialog holds the later calls' first dialogs, which Pi's single thread lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
@@ -2200,7 +2203,7 @@ class _ToolStartOrder:
     ``parked``, when set, runs each time a call starts to wait for an earlier one, so a test knows it is held without timing.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, batches: "_ToolBatches | None" = None, batch: str = "") -> None:
         self._lock = threading.Lock()
         self._tail: threading.Event | None = None
         # The requests whose dialog place has not passed, in arrival order. The first is the one whose first dialog may be written.
@@ -2208,6 +2211,10 @@ class _ToolStartOrder:
         # Orders the responses of the handlers whose dialogs were answered.
         self._settle = _SettleGate()
         self.parked: Callable[[], None] | None = None
+        # The registry that drops this order once its last request ended, and the batch id it keeps; the requests that have not ended count in _live.
+        self._batches = batches
+        self._batch = batch
+        self._live = 0
 
     def reserve(self) -> _ToolStart:
         """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
@@ -2215,7 +2222,38 @@ class _ToolStartOrder:
             start = _ToolStart(self._tail, self)
             self._tail = start.done
             self._dialog_queue.append(start)
+            self._live += 1
             return start
+
+    def _request_ended(self) -> None:
+        """A request ended: the order is dropped from its registry once no request is live."""
+        with self._lock:
+            self._live -= 1
+            empty = self._live == 0
+        if empty and self._batches is not None:
+            self._batches._drop(self._batch, self)
+
+
+class _ToolBatches:
+    """One ``_ToolStartOrder`` per parallel batch of tool_call requests, keyed by the host's batch id. The orders are scoped to a batch: a long request of one batch, or a request outside any batch, holds nothing of another. A batch's order is dropped when its last request ended, so a request that arrives after every earlier one of its batch ended finds a fresh order."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._orders: dict[str, _ToolStartOrder] = {}
+
+    def reserve(self, batch: str) -> _ToolStart:
+        """Take the next place in the batch's order. The reader calls this in arrival order, before it starts the request's thread."""
+        with self._lock:
+            order = self._orders.get(batch)
+            if order is None:
+                order = self._orders[batch] = _ToolStartOrder(self, batch)
+            return order.reserve()
+
+    def _drop(self, batch: str, order: _ToolStartOrder) -> None:
+        with self._lock:
+            with order._lock:
+                if order._live == 0 and self._orders.get(batch) is order:
+                    del self._orders[batch]
 
 
 @dataclass
@@ -3646,7 +3684,7 @@ class Extension:
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
-        self._tool_starts = _ToolStartOrder()
+        self._tool_batches = _ToolBatches()
         self._command_handlers: dict[str, CommandHandler] = {}
         self._with_sessions = _WithSessionRegistry()
         self._setups = _WithSessionRegistry()
@@ -4478,8 +4516,11 @@ class Extension:
 
     def _start_request(self, env: dict[str, Any]) -> None:
         ctx = self._arm_request(env)
-        if (env.get("request") or {}).get("method") == "tool_call":
-            ctx._tool_start = self._tool_starts.reserve()
+        req = env.get("request") or {}
+        batch = req.get("batch")
+        # Only the calls of one parallel batch (the host's `batch` member, the same on each of them) take part in the orders; any other tool_call is never gated.
+        if req.get("method") == "tool_call" and isinstance(batch, str) and batch:
+            ctx._tool_start = self._tool_batches.reserve(batch)
         self._request_state(env.get("id", ""), "started")
         worker = threading.Thread(
             target=self._handle_request_thread,
