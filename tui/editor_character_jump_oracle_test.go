@@ -35,7 +35,7 @@ func TestEditorCharacterJumpMatchesPi(t *testing.T) {
 			}
 		}
 	}
-	// Excluded: CSI-u shift+letter (\x1b[101;2u): PiG decodes the uppercase letter, Pi the lowercase one (handoffs/owner-signoff.md, Shift+letter uppercase fallback).
+	// Excluded: CSI-u shift+letter (\x1b[101;2u): PiG decodes the uppercase letter, Pi the lowercase one (D185).
 	// Repeated jumps, cancel by the hotkey (either), a control character, an escape sequence and a printable key that is not a character.
 	text := "one two three\nfour five six\nseven"
 	for _, script := range [][]string{
