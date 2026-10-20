@@ -581,8 +581,10 @@ func (s *TaskScheduler) Wake() Wake {
 	return s.wakeLocked()
 }
 
-func (s *TaskScheduler) wakeLocked() Wake {
-	now := s.options.Now()
+func (s *TaskScheduler) wakeLocked() Wake { return s.wakeAtLocked(s.options.Now()) }
+
+// wakeAtLocked is the wake as of now on the Harness clock: a sleep with an until after now is not yet due.
+func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
 	// process that dies before it lands must be woken again. A pass with nothing to do is not.
 	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWorkLocked()
@@ -3186,15 +3188,20 @@ func validateSleep(invocation *invocation, task durable.TaskId, until *float64) 
 
 // notDueLocked reports a sleep whose until the clock has not reached; an abort mark ends a sleep.
 func (s *TaskScheduler) notDueLocked(record anyTaskRecord) bool {
-	state := record.State
-	return state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > s.options.Now()
+	return notDueAt(record, s.options.Now())
 }
 
-// earliestSleepLocked is wakeLocked's At: the earliest until of a sleep not yet due.
-func (s *TaskScheduler) earliestSleepLocked() *float64 {
+// notDueAt is notDueLocked as of now on the Harness clock.
+func notDueAt(record anyTaskRecord, now float64) bool {
+	state := record.State
+	return state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > now
+}
+
+// earliestSleepLocked is wakeLocked's At as of now: the earliest until of a sleep not yet due then.
+func (s *TaskScheduler) earliestSleepLocked(now float64) *float64 {
 	var at *float64
 	s.sleeping.Range(func(id durable.TaskId) bool {
-		if record, live := s.live[id]; live && s.notDueLocked(record) && (at == nil || *record.State.Until < *at) {
+		if record, live := s.live[id]; live && notDueAt(record, now) && (at == nil || *record.State.Until < *at) {
 			until := *record.State.Until
 			at = &until
 		}
@@ -3221,22 +3228,24 @@ func (s *TaskScheduler) scheduleWakeLocked() {
 		return
 	}
 	s.wakeScheduled = true
-	// Upstream's microtask reads the wake right after the change, while a sleep just committed is still ahead; this goroutine
-	// can run after it came due, when the scan no longer sees it. The earliest sleep at the change is taken now, as the
-	// microtask sees it, so its timer is armed (and fires at once if due) instead of leaving the sleep for an unrelated pass.
+	// Upstream's microtask reads the wake in the turn of the change, so it reads the clock of the change, however many
+	// changes share it. This goroutine can run milliseconds later, after a sleep committed meanwhile came due; read at its
+	// own time it would leave out that sleep, while a reservation pass that the change queued, which runs before it and
+	// reads an earlier clock, found the sleep not yet due and dropped it from the candidates. No timer would then be armed
+	// for it and no pass would pick it up. The recomputation therefore reads the clock taken now, the earliest of the
+	// changes that share it, which no such pass reads before.
+	asOf := s.options.Now()
 	// With OnWake the whole value at the change is offered first, so a transient state is not lost either.
-	var first *float64
 	var firstWake *Wake
 	if s.options.OnWake != nil {
-		wake := s.wakeLocked()
+		wake := s.wakeAtLocked(asOf)
 		firstWake = &wake
-	} else if s.enabled {
-		first = s.earliestSleepLocked()
 	}
-	s.background.Go(func() { s.publishWake(first, firstWake) })
+	s.background.Go(func() { s.publishWake(asOf, firstWake) })
 }
 
-func (s *TaskScheduler) publishWake(first *float64, firstWake *Wake) {
+// publishWake recomputes the wake as of asOf, the clock of the change that scheduled it; see scheduleWakeLocked.
+func (s *TaskScheduler) publishWake(asOf float64, firstWake *Wake) {
 	// One recomputation at a time, in the order scheduled: a stale value must not follow a newer one.
 	s.wakeMu.Lock()
 	defer s.wakeMu.Unlock()
@@ -3256,16 +3265,13 @@ func (s *TaskScheduler) publishWake(first *float64, firstWake *Wake) {
 		// every live task: a scan per change over a large Session is quadratic.
 		var at *float64
 		if s.enabled {
-			at = s.earliestSleepLocked()
-			if first != nil && (at == nil || *first < *at) {
-				at = first
-			}
+			at = s.earliestSleepLocked(asOf)
 		}
 		s.armTimerLocked(at)
 		s.mu.Unlock()
 		return
 	}
-	wake := s.wakeLocked()
+	wake := s.wakeAtLocked(asOf)
 	s.mu.Unlock()
 	if firstWake != nil {
 		s.offerWake(*firstWake)
