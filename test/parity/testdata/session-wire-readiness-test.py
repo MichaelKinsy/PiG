@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic regression for the modal-shutdown probe's readiness barrier."""
+"""Deterministic regressions for the readiness barrier of the modal-shutdown probe and the busy session of the disconnect probe."""
 import contextlib
 import importlib.util
 from pathlib import Path
@@ -79,6 +79,56 @@ class ModalReadinessTest(unittest.TestCase):
             self.assertEqual(observed["writes"], [b"/scoped-models\r"])
             self.assertEqual(observed["command"][-1], "/wire-ready")
             self.assertEqual(observed["reads"], 3)
+
+
+class TerminalDisconnectBusyTest(unittest.TestCase):
+    def test_hangup_arrives_while_the_session_is_still_writing(self):
+        """An idle Pi exits 0 at EOF without writing; only a write after the hangup exits 129 (10-terminal-disconnect-exit)."""
+        seen = {}
+
+        class Process:
+            def poll(self):
+                return 129 if seen.get("closed") else None
+
+            def wait(self):
+                return 129
+
+        def setup(root, _url):
+            return root, {}, []
+
+        @contextlib.contextmanager
+        def child(command, **kwargs):
+            seen["env"] = kwargs["env"]
+            seen["extension"] = Path(command[command.index("-e") + 1]).read_text()
+            yield Process()
+
+        def close(_fd):
+            seen["closed"] = True
+
+        with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
+            replacements = {
+                "setup": setup,
+                "child": child,
+                "wait_command_ready": lambda *_args: bytearray(),
+                "pty.openpty": lambda: (101, 102),
+                "fcntl.ioctl": lambda *_args: None,
+                "os.close": close,
+                "emit": lambda _value: None,
+            }
+            for name, replacement in replacements.items():
+                stack.enter_context(mock.patch.object(WIRE, name, replacement) if "." not in name
+                                    else mock.patch("session_wire." + name, replacement))
+            WIRE.terminal_probe(["pig-fixture"], Path(directory), "disconnect")
+        self.assertEqual(seen["env"]["WIRE_BUSY"], "1")
+        self.assertIn("setInterval", seen["extension"])
+        self.assertIn("ctx.ui.setStatus", seen["extension"])
+        self.assertIn('on("session_shutdown", () => clearInterval(ticker))', seen["extension"])
+
+    def test_modal_probe_fixture_stays_idle(self):
+        env = {}
+        with tempfile.TemporaryDirectory() as directory:
+            WIRE.command_ready_fixture(Path(directory), env)
+        self.assertNotIn("WIRE_BUSY", env)
 
 
 if __name__ == "__main__":

@@ -168,12 +168,24 @@ def signal_probe(binary, root, mode):
         server.server_close()
 
 
-def command_ready_fixture(root, env):
+def command_ready_fixture(root, env, busy=False):
+    """The extension's /wire-ready command writes the readiness marker.
+
+    With busy, it first starts a status ticker, so the session is still working when the probe acts; session_shutdown
+    stops it, because a tick after a graceful shutdown touches a disposed context and Pi would exit 1. An idle Pi
+    that loses its terminal has nothing left in its event loop: Node ends the stdin handle at EOF, drops the
+    unreferenced SIGHUP listener and exits 0 without touching the terminal. Pi exits 129 only when something
+    writes after the hangup (interactive-mode.ts emergencyTerminalExit on the write's EIO), so without a
+    ticker the outcome depends on whether a throttled render happens to be pending at that moment."""
     ready = root / "ready"
     env["WIRE_READY"] = str(ready)
+    if busy:
+        env["WIRE_BUSY"] = "1"
     extension = root / "ready.mjs"
     extension.write_text('import {writeFileSync} from "node:fs"; export default function(pi) {'
-                         'pi.registerCommand("wire-ready", {handler: async () => {'
+                         'let ticker; pi.on("session_shutdown", () => clearInterval(ticker));'
+                         'pi.registerCommand("wire-ready", {handler: async (_args, ctx) => {'
+                         'if (process.env.WIRE_BUSY) { let tick = 0; ticker = setInterval(() => ctx.ui.setStatus("wire", String(++tick)), 5); }'
                          'writeFileSync(process.env.WIRE_READY,"ready");}});}')
     return ready, extension
 
@@ -190,7 +202,7 @@ def wait_command_ready(master, proc, ready):
 
 def terminal_probe(binary, root, action):
     cwd, env, args = setup(root, "http://127.0.0.1:1/v1")
-    ready, extension = command_ready_fixture(root, env)
+    ready, extension = command_ready_fixture(root, env, busy=True)
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 35, 100, 0, 0))
     try:
