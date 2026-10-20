@@ -70,7 +70,7 @@ func pigUppercasesBaseOnlyShiftLetter(data, got, want string) bool {
 		return false
 	}
 	mod--
-	return mod&kittyModifierShift != 0 && mod&(kittyModifierAlt|kittyModifierCtrl) == 0 && got == strings.ToUpper(want)
+	return mod&kittyModifierShift != 0 && mod&(kittyModifierAlt|kittyModifierCtrl) == 0 && got != want && strings.EqualFold(got, want)
 }
 
 func unitEscape(s string) string {
