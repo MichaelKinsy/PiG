@@ -31210,6 +31210,38 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-6b381a3",
+      "title": "The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit",
+      "symptom": "The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit.",
+      "rootCause": "Train #255 attributed the 0.5.0 squash (13,725 files, ~11,000 tests) to five release notes that had no fix marker, growing docs/bug-ledger.json from about 2.1 MB to 9.8 MB and the root module past its size budget.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit. A release note without a `\u003c!-- fix: \u003csha\u003e --\u003e` marker had its commits guessed from the history, and the only commit it found for five notes was the 0.5.0 squash, which grew `docs/bug-ledger.json` from about 2.1 MB to 9.8 MB and pushed the root module past its size budget. `make changelog-check` now fails a `### Fixed` bullet without a marker, a marker or fragment name that names a commit `HEAD` does not reach, and `make bug-ledger` refuses, naming the entry, to attribute the tests of a commit that touches more than 500 files.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6b381a37fb",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
+        "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
+        "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
+        "automation/ci/changelogfrag/history_test.go::TestAFragmentNamedAfterAPreRebaseCommitFails",
+        "automation/ci/changelogfrag/history_test.go::TestAMarkerNamingAnUnreachableCommitFails",
+        "automation/ci/changelogfrag/history_test.go::TestAShallowCloneFailsTheCheckInsteadOfGuessing",
+        "automation/ci/changelogfrag/history_test.go::TestEveryCommitOfAMarkerMustBeReachable",
+        "automation/ci/changelogfrag/history_test.go::TestEveryFixedBulletNeedsAFixMarker",
+        "automation/ci/changelogfrag/history_test.go::TestLegacyFragmentsAreExemptFromTheHistoryChecks",
+        "automation/ci/changelogfrag/history_test.go::TestNoFragmentsNeedNoHistory",
+        "automation/ci/changelogfrag/history_test.go::TestOnlyTheSectionsTheLedgerReadsNeedAMarker"
+      ]
     }
   ],
   "divergences": [
