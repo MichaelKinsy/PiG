@@ -116,7 +116,8 @@ type pigletVerifyOutput struct {
 // store without running it. It succeeds only when a signature verifies; an
 // unsigned binary has nothing to verify.
 func cmdVerify(args []string, stdout, stderr io.Writer) int {
-	jsonMode, path, source := false, "", ""
+	const usage = "Usage: pig piglet verify <piglet-binary> [--source <name|path>] [--workspace <dir>] [--json]"
+	jsonMode, path, source, workspace := false, "", "", ""
 	for i := 0; i < len(args); i++ {
 		switch arg := args[i]; {
 		case arg == "--json":
@@ -124,16 +125,22 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		case arg == "--source" && i+1 < len(args) && source == "":
 			i++
 			source = args[i]
+		case arg == "--workspace" && i+1 < len(args) && workspace == "":
+			i++
+			workspace = args[i]
 		case strings.HasPrefix(arg, "-") || path != "":
-			_, _ = fmt.Fprintln(stderr, "Usage: pig piglet verify <piglet-binary> [--source <name|path>] [--json]")
+			_, _ = fmt.Fprintln(stderr, usage)
 			return 2
 		default:
 			path = arg
 		}
 	}
 	if path == "" {
-		_, _ = fmt.Fprintln(stderr, "Usage: pig piglet verify <piglet-binary> [--source <name|path>] [--json]")
+		_, _ = fmt.Fprintln(stderr, usage)
 		return 2
+	}
+	if workspace == "" {
+		workspace, _ = os.Getwd()
 	}
 	output := pigletVerifyOutput{Path: path}
 	status, err := checkBinarySignature(path)
@@ -148,7 +155,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	}
 	output.Verified = err == nil && status.Signed
 	if source != "" && output.Manifest != nil && err == nil {
-		check, checkErr := CheckProvenance(*output.Manifest, source)
+		check, checkErr := CheckProvenance(*output.Manifest, source, workspace)
 		output.Provenance = check
 		if checkErr != nil {
 			output.Error = checkErr.Error()

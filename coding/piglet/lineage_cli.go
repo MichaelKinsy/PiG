@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
@@ -132,42 +133,48 @@ func Lineage(target, source, workspace string) (*LineageOutput, error) {
 			return nil, err
 		}
 		out.Chain = report.Chain
-		check, _ := CheckProvenance(m, source)
+		check, _ := CheckProvenance(m, source, workspace)
 		out.Provenance = check
 	}
 	return out, nil
 }
 
 // ProvenanceCheck compares the Piglet digests a Binary's signed manifest
-// records with those recomputed from a source Piglet.
+// records with those recomputed from a source Piglet. PigletDigest is the
+// digest of the Piglet definition the source bakes into a Binary.
 type ProvenanceCheck struct {
-	Source          string `json:"source"`
-	SourceDigest    string `json:"sourceDigest"`
-	EffectiveDigest string `json:"effectiveDigest"`
-	Matches         bool   `json:"matches"`
+	Source       string `json:"source"`
+	SourceDigest string `json:"sourceDigest"`
+	PigletDigest string `json:"pigletDigest"`
+	Matches      bool   `json:"matches"`
 	//portlint:allow emptydrop PiG-only format with no Pi counterpart (Pi has no Piglets or runtime slot)
 	Mismatches []string `json:"mismatches,omitempty"`
 }
 
-// CheckProvenance recomputes the source and effective digests of the Piglet
-// named by source and compares them with manifest. A mismatch returns the
-// check and an error naming each differing digest.
-func CheckProvenance(manifest signature.Manifest, source string) (*ProvenanceCheck, error) {
+// CheckProvenance recomputes the source digest of the Piglet named by source
+// and the digest of the Piglet definition it bakes into a Binary, as the build
+// does, and compares them with manifest. workspace anchors workspace: paths as
+// the build's --workspace did (the build defaults to its working directory).
+// A mismatch returns the check and an error naming each differing digest.
+func CheckProvenance(manifest signature.Manifest, source, workspace string) (*ProvenanceCheck, error) {
 	path, err := Resolve(source)
 	if err != nil {
 		return nil, err
 	}
-	workspace, _ := os.Getwd()
 	resolution, err := ResolveEffectiveWithOptions(path, ResolveOptions{Workspace: workspace})
 	if err != nil {
 		return nil, fmt.Errorf("resolve effective Piglet %s: %w", path, err)
 	}
-	check := &ProvenanceCheck{Source: path, SourceDigest: resolution.SourceDigest, EffectiveDigest: resolution.EffectiveDigest}
-	if manifest.SourceDigest != resolution.SourceDigest {
-		check.Mismatches = append(check.Mismatches, fmt.Sprintf("source digest: the Binary records %s, %s is %s", manifest.SourceDigest, path, resolution.SourceDigest))
+	baked, err := Bake(resolution.Piglet, filepath.Dir(path))
+	if err != nil {
+		return nil, fmt.Errorf("bake Piglet %s: %w", path, err)
 	}
-	if manifest.PigletDigest != resolution.EffectiveDigest {
-		check.Mismatches = append(check.Mismatches, fmt.Sprintf("Piglet digest: the Binary records %s, %s resolves to %s", manifest.PigletDigest, path, resolution.EffectiveDigest))
+	check := &ProvenanceCheck{Source: path, SourceDigest: resolution.SourceDigest, PigletDigest: digestPigletBytes(baked)}
+	if manifest.SourceDigest != check.SourceDigest {
+		check.Mismatches = append(check.Mismatches, fmt.Sprintf("source digest: the Binary records %s, %s is %s", manifest.SourceDigest, path, check.SourceDigest))
+	}
+	if manifest.PigletDigest != check.PigletDigest {
+		check.Mismatches = append(check.Mismatches, fmt.Sprintf("Piglet digest: the Binary records %s, %s resolves to %s", manifest.PigletDigest, path, check.PigletDigest))
 	}
 	check.Matches = len(check.Mismatches) == 0
 	if !check.Matches {

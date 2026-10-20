@@ -45,7 +45,7 @@ func TestBakePigletInlinesAgentShapeAndStripsBuildOrigins(t *testing.T) {
 		Discovery: &piglet.Discovery{Skills: []string{"workspace"}},
 	}
 
-	encoded, err := bakePiglet(source, dir)
+	encoded, err := piglet.Bake(source, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,9 +77,9 @@ func TestBakePigletInlinesAgentShapeAndStripsBuildOrigins(t *testing.T) {
 }
 
 func TestBakePigletRejectsBareSkillName(t *testing.T) {
-	_, err := bakePiglet(&piglet.Piglet{Name: "bad", Skills: []piglet.SkillEntry{{Name: "local-only"}}}, "")
+	_, err := piglet.Bake(&piglet.Piglet{Name: "bad", Skills: []piglet.SkillEntry{{Name: "local-only"}}}, "")
 	if err == nil {
-		t.Fatal("bakePiglet succeeded with bare skill name")
+		t.Fatal("piglet.Bake succeeded with bare skill name")
 	}
 }
 
@@ -148,7 +148,7 @@ func TestAC55BinaryBakePreservesPackageAliasesThroughResolution(t *testing.T) {
 		t.Fatalf("Package-backed resolution inputs = package:%+v extension:%+v skill:%+v", packageInput, extensionInput, skillInput)
 	}
 
-	encoded, err := bakePiglet(parsed, root)
+	encoded, err := piglet.Bake(parsed, root)
 	if err != nil {
 		t.Fatal(err)
 	}
