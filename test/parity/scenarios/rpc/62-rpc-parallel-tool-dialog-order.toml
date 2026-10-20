@@ -10,7 +10,7 @@
 # lost twice and the order of the ends was unspecified: about half of the runs ended "Second?" first although "First?" was
 # answered first.
 
-name = "61-rpc-parallel-tool-dialog-order"
+name = "62-rpc-parallel-tool-dialog-order"
 description = "RPC: two parallel extension tool calls that wait on dialogs end in the order their dialogs are answered."
 covers = [
   "packages/agent/src/agent-loop.ts",
