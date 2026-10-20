@@ -490,6 +490,13 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	if strings.Contains(lastText, "Run: extension UI dialogs") {
 		return "tool", "", []testFauxToolCall{{Name: "ui_dialog_probe", Args: map[string]any{}}}
 	}
+	// One assistant message with two calls of a tool that waits on a UI dialog.
+	if strings.Contains(lastText, "Run: two dialog tools") {
+		return "tool", "", []testFauxToolCall{
+			{Name: "dialog_pick", Args: map[string]any{"title": "First?"}},
+			{Name: "dialog_pick", Args: map[string]any{"title": "Second?"}},
+		}
+	}
 	if strings.Contains(lastText, "Run: extension render cards") {
 		return "tool", "", []testFauxToolCall{
 			{Name: "render_card", Args: map[string]any{"topic": "alpha"}},
@@ -694,6 +701,9 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 				}
 			}
 			return "error", "test-faux: extension UI result missing dialog marker", nil
+		}
+		if strings.Contains(currentUserText, "Run: two dialog tools") {
+			return "text", "two-dialog-tools-done", nil
 		}
 		if strings.Contains(currentUserText, "Run: bash failing exit") {
 			return "text", "failed-bash-done", nil
