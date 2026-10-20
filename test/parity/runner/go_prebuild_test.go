@@ -107,6 +107,9 @@ var prebuiltGoTestPackage = regexp.MustCompile(`(?:^|\s)(\./[A-Za-z0-9_./-]*[A-Z
 // subprocess call it: ("./test/parity/testdata/prebuilt-go-test.sh", ["./PACKAGE", ...]). Group 1 names the helper, group 2 is the list.
 var prebuiltHelperCall = regexp.MustCompile(`prebuilt-go-(test|run)\.sh['"]\s*,\s*\[([^\]]*)\]`)
 
+// prebuiltHelperList matches the same call written as one list, as Python's subprocess takes it: ["./test/parity/testdata/prebuilt-go-test.sh", "--binary", "./PACKAGE"].
+var prebuiltHelperList = regexp.MustCompile(`\[\s*['"][^'"]*prebuilt-go-(test|run)\.sh['"]\s*,([^\]]*)\]`)
+
 // quotedPackage matches a ./-relative package in a quoted string of a list.
 var quotedPackage = regexp.MustCompile(`['"](\./[A-Za-z0-9_./-]*[A-Za-z0-9_])['"]`)
 
@@ -181,7 +184,7 @@ func TestParityGoProbesAreBuiltBeforeTheTimedRun(t *testing.T) {
 					if goToolchainCommand.MatchString(line) || goToolchainSpawn.MatchString(line) {
 						t.Errorf("%s:%d: starts the Go toolchain inside the timed run; run Go tests through prebuilt-go-test.sh and Go programs through prebuilt-go-run.sh", script, i+1)
 					}
-					for _, match := range prebuiltHelperCall.FindAllStringSubmatch(line, -1) {
+					for _, match := range append(prebuiltHelperCall.FindAllStringSubmatch(line, -1), prebuiltHelperList.FindAllStringSubmatch(line, -1)...) {
 						target := tested
 						if match[1] == "run" {
 							target = programs
@@ -194,7 +197,7 @@ func TestParityGoProbesAreBuiltBeforeTheTimedRun(t *testing.T) {
 						}
 					}
 					_, operands, ok := strings.Cut(line, "prebuilt-go-test.sh")
-					if !ok || prebuiltHelperCall.MatchString(line) {
+					if !ok || prebuiltHelperCall.MatchString(line) || prebuiltHelperList.MatchString(line) {
 						continue
 					}
 					operands, _, _ = strings.Cut(quotedShellWord.ReplaceAllString(operands, "''"), "|")

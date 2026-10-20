@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 if (process.argv[2] === "pig") {
-  const output = execFileSync("go", ["test", "./internal/codingagent", "-run", "^TestSettingsManagerFirstHalfContract$", "-count=1", "-v"], { encoding: "utf8" });
+  const output = execFileSync("./test/parity/testdata/prebuilt-go-test.sh", ["./internal/codingagent", "-run", "^TestSettingsManagerFirstHalfContract$", "-count=1", "-v"], { encoding: "utf8" });
   const rows = output.split("\n").filter(line => line.startsWith("SETTINGS_CONTRACT "));
   assert.equal(rows.length, 1, "one complete settings snapshot");
   console.log(rows[0]);

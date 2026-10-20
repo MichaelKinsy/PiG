@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-const dump = spawnSync('go', ['test', './ai', '-run', '^TestLlamaCppRenderDocsDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const dump = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./ai', '-run', '^TestLlamaCppRenderDocsDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
 const line = dump.stdout?.split('\n').find(l => l.startsWith('llama-render-probes:'));
 if (dump.status !== 0 || !line) {
  process.stderr.write(dump.stdout ?? '');

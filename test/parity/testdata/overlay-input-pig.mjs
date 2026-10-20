@@ -1,7 +1,7 @@
 // Compare the real interactive driver's input boundary, including its renderer focus restoration.
 // The owning Go test exposes observations because handleKey is intentionally private, not a public test-only API.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './internal/codingagent', '-run', '^TestInteractiveOverlayInputParity$', '-v', '-count=1'], { encoding: 'utf8' });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./internal/codingagent', '-run', '^TestInteractiveOverlayInputParity$', '-v', '-count=1'], { encoding: 'utf8' });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

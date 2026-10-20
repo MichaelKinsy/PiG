@@ -13,6 +13,8 @@ pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["node", "./test/parity/testdata/status-components-pig.mjs"]
 pi_args = ["node", "./test/parity/testdata/status-components-pi.mjs"]
+pig_go_tests = ["./tui"]
+pi_go_tests = ["./tui"]
 
 [cli]
 cwd = "../../../.."
