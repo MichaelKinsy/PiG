@@ -474,8 +474,8 @@ func TestCheckCoEditsLedger(t *testing.T) {
 	}
 	other := good
 	other.Commit = base[:10]
-	if p := run(other); len(p) != 2 {
-		t.Fatalf("entry for another commit must not apply and must be stale: %v", p)
+	if p := run(other); len(p) != 1 || strings.Contains(p[0], "stale") {
+		t.Fatalf("entry for another commit must not apply and, outside the range, must not fail: %v", p)
 	}
 	other = good
 	other.Path = "pkg/b_test.go"
@@ -489,5 +489,70 @@ func TestCheckCoEditsLedger(t *testing.T) {
 	}
 	if p := run(good, reviewEntry{Path: "pkg/gone_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "r"}); len(p) != 1 || !strings.Contains(p[0], "stale") {
 		t.Fatalf("stale entry accepted: %v", p)
+	}
+}
+
+func TestLedgerSurvivesSquashMerge(t *testing.T) {
+	piNames := map[string]bool{"a.ts": true}
+	const src = "package pkg\n\nfunc A() string { return \"%s\" }\n"
+	const tst = "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\tif A() != \"%s\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n"
+	dir := t.TempDir()
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	write(t, dir, "pkg/a.go", fmt.Sprintf(src, "first"))
+	write(t, dir, "pkg/a_test.go", fmt.Sprintf(tst, "first"))
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "base")
+	base := gitIn(t, dir, "rev-parse", "HEAD")
+
+	gitIn(t, dir, "checkout", "-q", "-b", "feature")
+	write(t, dir, "pkg/a.go", fmt.Sprintf(src, "second"))
+	write(t, dir, "pkg/a_test.go", fmt.Sprintf(tst, "second"))
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "change")
+	tip := gitIn(t, dir, "rev-parse", "HEAD")
+	entry := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+
+	lint := func(rangeSpec string) (problems, prunable []string) {
+		t.Helper()
+		problems, err := checkCoEdits(dir, rangeSpec, time.Time{}, piNames, []reviewEntry{entry})
+		if err != nil {
+			t.Fatal(err)
+		}
+		prunable, err = prunableEntries(dir, rangeSpec, []reviewEntry{entry})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return problems, prunable
+	}
+
+	if p, pr := lint(base + "..HEAD"); len(p) != 0 || len(pr) != 0 {
+		t.Fatalf("branch with its reviewed entry: problems %v prunable %v", p, pr)
+	}
+
+	// Squash merge: a new commit on main carries the change; the reviewed SHA is no longer reachable.
+	gitIn(t, dir, "checkout", "-q", "main")
+	gitIn(t, dir, "merge", "-q", "--squash", "feature")
+	gitIn(t, dir, "commit", "-q", "-m", "change (#1)")
+	gitIn(t, dir, "branch", "-q", "-D", "feature")
+	squashed := gitIn(t, dir, "rev-parse", "HEAD")
+	gitIn(t, dir, "reflog", "expire", "--expire=now", "--all")
+	gitIn(t, dir, "gc", "-q", "--prune=now")
+
+	if p, pr := lint("HEAD..HEAD"); len(p) != 0 || len(pr) != 1 || !strings.Contains(pr[0], tip[:10]) || !strings.Contains(pr[0], "pkg/a_test.go") {
+		t.Fatalf("main after squash: problems %v prunable %v", p, pr)
+	}
+
+	gitIn(t, dir, "checkout", "-q", "-b", "later")
+	write(t, dir, "README.md", "later\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "unrelated")
+	if p, pr := lint(squashed + "..HEAD"); len(p) != 0 || len(pr) != 1 {
+		t.Fatalf("later PR after squash: problems %v prunable %v", p, pr)
+	}
+
+	// An entry whose commit is in range and matches no finding still fails.
+	entry = reviewEntry{Path: "README.md", Commit: gitIn(t, dir, "rev-parse", "HEAD")[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	if p, pr := lint(squashed + "..HEAD"); len(p) != 1 || !strings.Contains(p[0], "stale") || len(pr) != 0 {
+		t.Fatalf("in-range entry matching nothing: problems %v prunable %v", p, pr)
 	}
 }

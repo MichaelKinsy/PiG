@@ -264,12 +264,46 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 		problems = append(problems, fmt.Sprintf("%s %s: changes %d expected value(s) in %s together with %s; cite the Pi behavior that changed (a `Pi-Behavior-Change: <pi file.ts:line>` trailer, or a `name.ts:line` comment on a changed test line, naming a Pi file of %s), or leave the expectation alone",
 			shortSHA(e.Commit), e.Subject, e.ValueEdits, e.Path, strings.Join(e.Code, ", "), piInventories[0]))
 	}
+	inRange, err := commitsInRange(root, rangeSpec)
+	if err != nil {
+		return nil, err
+	}
 	for i, r := range ledger {
-		if !used[i] {
+		if !used[i] && (len(r.Commit) < 10 || entryInRange(r, inRange)) {
 			problems = append(problems, fmt.Sprintf("%s: stale ledger entry %s %s matches no finding", reviewedFile, shortSHA(r.Commit), r.Path))
 		}
 	}
 	return problems, nil
+}
+
+// commitsInRange returns the full SHA of every commit rangeSpec selects.
+func commitsInRange(root, rangeSpec string) ([]string, error) {
+	out, err := exec.Command("git", "-C", root, "rev-list", rangeSpec).Output()
+	if err != nil {
+		return nil, fmt.Errorf("git rev-list %s: %w", rangeSpec, err)
+	}
+	return strings.Fields(string(out)), nil
+}
+
+func entryInRange(r reviewEntry, inRange []string) bool {
+	return len(r.Commit) >= 10 && slices.ContainsFunc(inRange, func(c string) bool { return strings.HasPrefix(c, r.Commit) })
+}
+
+// prunableEntries lists the ledger entries whose commit is not in rangeSpec. A squash merge replaces the reviewed
+// commit with a new one, so on main and on every later branch such an entry can never match a finding again; it
+// does not fail the lint, a maintainer deletes it.
+func prunableEntries(root, rangeSpec string, ledger []reviewEntry) ([]string, error) {
+	inRange, err := commitsInRange(root, rangeSpec)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, r := range ledger {
+		if len(r.Commit) >= 10 && !entryInRange(r, inRange) {
+			out = append(out, fmt.Sprintf("%s %s", shortSHA(r.Commit), r.Path))
+		}
+	}
+	return out, nil
 }
 
 const reviewedFile = "test/parity/testprune-reviewed.toml"
@@ -365,9 +399,17 @@ func runLint(root string, args []string) error {
 		if _, err := toml.DecodeFile(filepath.Join(root, reviewedFile), &reviewed); err != nil {
 			return err
 		}
-		p, err := checkCoEdits(root, *base+".."+*head, from, piNames, reviewed.Entry)
+		rangeSpec := *base + ".." + *head
+		p, err := checkCoEdits(root, rangeSpec, from, piNames, reviewed.Entry)
 		if err != nil {
 			return err
+		}
+		prunable, err := prunableEntries(root, rangeSpec, reviewed.Entry)
+		if err != nil {
+			return err
+		}
+		for _, e := range prunable {
+			fmt.Fprintf(os.Stderr, "note: %s: prunable ledger entry %s: its commit is not in %s (squash-merged or rewritten); delete it\n", reviewedFile, e, rangeSpec)
 		}
 		problems = append(problems, p...)
 	}
