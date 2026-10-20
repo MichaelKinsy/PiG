@@ -1,0 +1,9 @@
+# Byte budget for the root module zip: the total uncompressed size of the files that
+# `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads, measured with Go's
+# module zip rules by automation/release/modulesize (`make module-size`, part of ci-drift).
+#
+# Go refuses a module zip above 524288000 bytes. The budget sits a few percent above the
+# measured size so ordinary growth fits; it only moves down. When a change exceeds it, move
+# the bulky data out of the root module (a data-only directory with its own go.mod is not
+# part of the parent module zip) or delete it. Never raise this number.
+185000000
