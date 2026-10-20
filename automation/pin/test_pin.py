@@ -716,8 +716,21 @@ class LedgerInstallTests(unittest.TestCase):
     async-contracts ledger (a changed source file's row pending) must replace the earlier pin's, which `pin.py sync` only
     re-versioned; under a PI_UPSTREAM_REF override the active ledgers stay the committed pin's."""
 
+    def source_tree_state(self):
+        """The bytes of every file the run could write in the source tree: the archive of per-pin ledgers and the active ledgers."""
+        state = {}
+        for base in (pinlib.ROOT / pin_tool.ARCHIVE, *(pinlib.ROOT / rel for rel in pin_tool.PIN_LEDGERS)):
+            for path in ([base] if base.is_file() else sorted(base.rglob("*"))):
+                state[path] = path.read_bytes() if path.is_file() else None
+        return state
+
     def run_ledgers(self, committed):
-        root = Path(tempfile.mkdtemp())
+        """Run `cmd_ledgers` against a throwaway root, so the fake test pin's ledgers land in a temporary directory and never in the source tree."""
+        before = self.source_tree_state()
+        self.addCleanup(lambda: self.assertEqual(self.source_tree_state(), before, "the run wrote into the source tree"))
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
         (root / ".upstream" / TAG.mirror_dir).mkdir(parents=True)
         for rel, field_name in pin_tool.VERSION_FIELDS.items():
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -734,7 +747,8 @@ class LedgerInstallTests(unittest.TestCase):
         pinlib.resolve = lambda ref, base=None: TAG
         pin_tool.subprocess.run = lambda *a, **k: Result()
         try:
-            pin_tool.cmd_ledgers(type("Args", (), {"previous": TAG.ref, "force": False})())
+            with contextlib.redirect_stdout(io.StringIO()):
+                pin_tool.cmd_ledgers(type("Args", (), {"previous": TAG.ref, "force": False})())
         finally:
             pin_tool.ROOT, pinlib.effective, pinlib.committed, pinlib.resolve, pin_tool.subprocess.run, pin_tool.carry_interface_ledgers = saved
         return root
@@ -744,6 +758,12 @@ class LedgerInstallTests(unittest.TestCase):
         self.assertIn('reviewed = "pending"', (root / "test/parity/async-contracts.toml").read_text())
         archived = root / pin_tool.ARCHIVE / ("v" + COMMIT.version) / "async-contracts.toml"
         self.assertEqual(archived.read_text(), (root / "test/parity/async-contracts.toml").read_text())
+
+    def test_the_fake_test_pin_leaves_the_source_tree_unchanged(self):
+        root = self.run_ledgers(COMMIT)
+        fake = pin_tool.ARCHIVE + "/v" + COMMIT.version
+        self.assertTrue((root / fake / "async-contracts.toml").is_file(), "the run did not write the fake pin's ledger under its temporary root")
+        self.assertFalse((pinlib.ROOT / fake).exists(), f"{fake} was written into the source tree")
 
     def test_an_override_leaves_the_committed_pins_ledgers_active(self):
         root = self.run_ledgers(TAG)
@@ -787,7 +807,8 @@ class CarryTests(unittest.TestCase):
         saved = (pin_tool.ROOT, pinlib.committed, pin_tool.subprocess.run)
         pin_tool.ROOT, pinlib.committed, pin_tool.subprocess.run = self.root, (lambda: committed), fake_run
         try:
-            pin_tool.carry_interface_ledgers(COMMIT, TAG, force)
+            with contextlib.redirect_stdout(io.StringIO()):
+                pin_tool.carry_interface_ledgers(COMMIT, TAG, force)
         finally:
             pin_tool.ROOT, pinlib.committed, pin_tool.subprocess.run = saved
         return reviewed
