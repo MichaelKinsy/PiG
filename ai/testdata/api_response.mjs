@@ -25,6 +25,24 @@ if (useServer) {
     pending.set(key, (pending.get(key) ?? 0) + 1);
   });
 }
+// A held-open response (probe.abortAfterMs) is aborted once the client has read everything the server wrote and is waiting for more, not after a wall-clock
+// delay: on a loaded host the abort timer can expire before the event loop has polled the socket, and the abort then lands before the client has read the prefix
+// (undici's headers and body chunks arrive in the poll phase; Pi parses a chunk in microtasks, so an abort queued with setImmediate runs after the parse).
+// held is the probe whose response is being read: remaining counts the body bytes not yet received, abort aborts its request.
+let held = null;
+function bodyRead() {
+  if (held && held.remaining <= 0 && !held.aborting) {
+    held.aborting = true;
+    setImmediate(held.abort);
+  }
+}
+if (useServer) {
+  subscribe("undici:request:headers", bodyRead);
+  subscribe("undici:request:bodyChunkReceived", ({ chunk }) => {
+    if (held) held.remaining -= chunk.length;
+    bodyRead();
+  });
+}
 for (const probe of JSON.parse(input)) {
   let server = null;
   let request = null;
@@ -81,7 +99,11 @@ for (const probe of JSON.parse(input)) {
   const events = [];
   let message;
   const abortController = new AbortController();
-  if (probe.abortAfterMs) setTimeout(() => abortController.abort(), probe.abortAfterMs);
+  if (probe.abortAfterMs) {
+    // The Google adapters reject a custom fetch, so their held-open body comes from the server above and is aborted when it has been read (held).
+    if (server) held = { remaining: Buffer.byteLength(probe.sse ?? ""), aborting: false, abort: () => abortController.abort() };
+    else setTimeout(() => abortController.abort(), probe.abortAfterMs);
+  }
   try {
     const stream = api.stream(model, context, { apiKey: probe.apiKey || "k", ...(server ? {} : { fetch: fetchFn }), ...(probe.abortAfterMs ? { signal: abortController.signal } : {}), ...(probe.options || {}), ...(probe.sessionId ? { sessionId: probe.sessionId } : {}), ...(probe.headers ? { headers: probe.headers } : {}) });
     for await (const event of stream) {
@@ -91,6 +113,7 @@ for (const probe of JSON.parse(input)) {
     message = await stream.result();
   } catch (error) { message = { thrown: String(error) }; }
   const { timestamp, durationMs, ...finalMessage } = message;
+  held = null;
   if (server) { server.closeAllConnections(); await new Promise((resolve) => server.close(resolve)); }
   results.push({ events, message: finalMessage, request, attempts });
 }
