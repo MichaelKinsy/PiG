@@ -934,8 +934,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
 | [BF-7fae4f5](#bf-7fae4f5) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
-| [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82-2](#bf-b341a82-2) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
+| [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab](#bf-96edeab) | `pig extension upgrade` finds and rewrites every changed API of an extension in one run | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab-2](#bf-96edeab-2) | `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and… | PiG's own defect | All platforms | Unreleased |
 
@@ -2045,7 +2045,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
-- **Fix commits:** `a4753ec61e` (2026-10-06, #170)
+- **Commit that wrote the release note (the fix commit is not identified):** `a4753ec61e` (2026-10-06, #170)
 - **Tests:** `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack`, `internal/codingagent/exit_record_test.go::TestBackgroundTaskPanicEndsTheSessionWithACrashRecord`, `internal/codingagent/exit_record_test.go::TestCacheWarmerDecisionPanicKeepsPisDecision`, `internal/codingagent/exit_record_test.go::TestCacheWarmerRefreshPanicOutsideTheCaughtRequestReachesTheUncaughtHandler`, `internal/codingagent/exit_record_test.go::TestCacheWarmerRefreshRequestPanicIsCaughtAndReschedules`, `internal/codingagent/exit_record_test.go::TestCleanEndLeavesNoMarker`, `internal/codingagent/exit_record_test.go::TestDeadTerminalExitLeavesALineWithTheReason` and 13 more in docs/bug-ledger.json
 - **Release note:** The prompt-cache refresh that fires minutes after a prompt now treats a panic in the extension decision or in the refresh request as Pi treats a thrown error there: it keeps Pi's decision or skips that refresh and keeps warming, instead of ending the session.
 
@@ -9849,7 +9849,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `63bb0b7eac` (2026-10-12), `974050757c` (2026-10-12), `d305b76bda` (2026-10-12)
-- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK` and 5 more in docs/bug-ledger.json
+- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 3 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call, such as `fmt.Println(ctx.ConfigHome())`. That call still compiles against the current SDK because the value and the error both become arguments, so the error was printed or passed on instead of handled and the upgrade reported nothing. It is now rewritten like the other uses: the function returns the error, or, for `ConfigHome` in a function that does not return an error, the line is listed for you to change.
 
 ### BF-9740507
@@ -9863,7 +9863,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `974050757c` (2026-10-12), `d305b76bda` (2026-10-12)
-- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK` and 4 more in docs/bug-ledger.json
+- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 2 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` now rewrites a `Context.ConfigHome()` call in an `if` or `switch` init statement and in a call with other arguments, such as `if err := c.save(ctx.ConfigHome()); err != nil` or `planDispatch(ctx.Cwd(), ctx.ConfigHome(), name)`. A `Cwd`, `Mode`, `HasUI`, `Width`, `Height` or `ToolCallID` call before the getter moves out with it, so the calls run in the same order as before.
 
 ### BF-9740507-2
@@ -9877,7 +9877,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `974050757c` (2026-10-12), `d305b76bda` (2026-10-12)
-- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK` and 4 more in docs/bug-ledger.json
+- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 2 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` no longer discards the error of `Context.ConfigHome` with `home, _ := ctx.ConfigHome()`. The old `ConfigHome` could not fail, and an empty configuration root would make its paths relative to the working directory. A function that returns an error now returns it. In a function that does not, the upgrade lists the line for you to change. It also lists a getter passed as a function value where the old signature is wanted, instead of reporting it as an unrelated compile error. Listed lines are line numbers in your source as it was before the upgrade.
 
 ### BF-9740507-3
@@ -9891,7 +9891,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `974050757c` (2026-10-12)
-- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild`, `extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded`, `extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit`, `extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite`
+- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild`, `extensions/sdk/upgrade/rules_test.go::TestGetterMovesOutOfASwitchInit`, `extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite`
 - **Release note:** `pig extension upgrade` is all or nothing. When writing a file or rebuilding the upgraded extension fails, it restores every file it changed and says so, instead of leaving the extension half rewritten.
 
 ### BF-d305b76
@@ -9919,7 +9919,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `63bb0b7eac` (2026-10-12), `974050757c` (2026-10-12), `d305b76bda` (2026-10-12), `f7c4b01ccc` (2026-10-12)
-- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresAnExtensionItCanOnlyPartlyRewrite`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK` and 8 more in docs/bug-ledger.json
+- **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 6 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` no longer changes, breaks or rejects a Go extension that already builds against the current SDK. A getter passed straight into a variadic call, such as `fmt.Println(ctx.GetActiveTools())`, is current code when the getter returned its error in the SDK the extension's `go.mod` requires, so it is left as it is. The upgrade now rewrites only `ConfigHome` calls of this kind, in extensions that require an SDK older than 0.5.0, and lists such a call rather than discard its error. A call whose parameter for the error has the type `error` stays. Rewriting one of these calls no longer also rewrites `ContextUsage.Tokens` and `Percent` uses that were already correct. A getter in a `select` case is listed instead of making the upgrade fail with `the rewrite does not parse`.
 
 ### BF-debe30e
@@ -13695,20 +13695,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11226 more in docs/bug-ledger.json
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
 
-### BF-ab1324d
-
-**A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.
-- **Root cause:** A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `ab1324df34` (2026-10-20)
-- **Tests:** `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts`, `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart`
-- **Release note:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.
-
 ### BF-b341a82-2
 
 **Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
@@ -13723,18 +13709,32 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11145 more in docs/bug-ledger.json
 - **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
+### BF-ab1324d
+
+**A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.
+- **Root cause:** A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ab1324df34` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts`, `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart`
+- **Release note:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.
+
 ### BF-96edeab
 
 **`pig extension upgrade` finds and rewrites every changed API of an extension in one run**
 
 - **Source:** PiG's own defect
 - **Symptom:** `pig extension upgrade` finds and rewrites every changed API of an extension in one run.
-- **Root cause:** TestTaskAbort's abort-again case let the caller join before the run phase started, so under load the caller's cancel raced the task settling and the waiter returned nil instead of the cancel cause. Pi's scheduler joins only a run invocation already on the line (scheduler.ts:274-296); the test now waits for the run phase first.
-- **User impact:** Crash, hang or runaway process
+- **Root cause:** A build that failed on a builtin that takes one value, such as len(ctx.GetAllTools()), was not classified as an SDK change, so the extension was not offered the upgrade and the rewriter left the use alone; a ConfigHome call in a function with no error result, or a getter that cannot move before its statement, was listed and given up on.
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2e0f88f794` (2026-10-06, #160), `4fc8c2e65f` (2026-10-06, #169), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `f680b9591a` (2026-10-08, #197), `6af0806f7a` (2026-10-19, #213), `96edeab595` (2026-10-20)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11182 more in docs/bug-ledger.json
+- **Fix commits:** `96edeab595` (2026-10-20)
+- **Tests:** `extensions/sdk/upgrade/expression_position_test.go::TestBuiltinTakingAGetterCallIsClassifiedAndRewritten`, `extensions/sdk/upgrade/expression_position_test.go::TestConfigHomeInAFunctionWithoutAnErrorIsReportedAndReturned`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`
 - **Release note:** `pig extension upgrade` finds and rewrites every changed API of an extension in one run. Startup offers each Go extension the upgrade would touch, not only those whose first ten compile errors all name an SDK change: a `len(ctx.GetAllTools())` or `panic(ctx.GetSessionID())` (a builtin that takes one value) is now recognised as the getter's change, and a recorded failure with no classification is read again by type checking. A `Context.ConfigHome` in a function that cannot return the error is rewritten to report the error through the call's own `Context` (`ctx.Notify`) and return, never to discard it; a getter that cannot move before its statement (a `&&` operand, an `else if`, a loop condition, a call after another call) takes a generated helper in `pig_upgrade_getters.go` that returns the old getter's zero value on failure.
 
 ### BF-96edeab-2
@@ -13743,12 +13743,12 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 - **Source:** PiG's own defect
 - **Symptom:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form.
-- **Root cause:** The bash tool on Windows puts the shell in a job object. When the shell exits, `processGroupMayHoldOutput` asks Windows whether the job still has processes (`QueryInformationJobObject`, `JobObjectBasicAccountingInformation`). If the answer is zero, `childwait.waitIdle` waits for the output pipe to reach EOF with no further bound, because an empty job means no process can still hold the pipe.
-- **User impact:** Crash, hang or runaway process
+- **Root cause:** One use with no mechanical form made the rebuild fail and the upgrade restored every file it had rewritten, so each attempt only reached the next changed API; a dry run planned without building, so it reported success for an extension that did not build.
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `9a95b36b11` (2026-10-06, #162), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `9b63b2bc4e` (2026-10-07, #176), `6af0806f7a` (2026-10-19, #213), `96edeab595` (2026-10-20)
-- **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`, `agent/agent_event_stream_test.go::TestAgentEventStream_EndResolvesTheResultAndStopsDelivery`, `agent/agent_event_stream_test.go::TestAgentEventStream_PushedAgentEndCompletesTheStream`, `agent/agent_events_quiet_test.go::TestMessageUpdateObserverAppearingMidStreamSeesEveryLaterUpdate`, `agent/agent_events_quiet_test.go::TestStreamingMessageAfterAnUnobservedUpdate`, `agent/agent_events_quiet_test.go::TestUnobservedMessageUpdatesAreNotDelivered`, `agent/agent_loop_pi_oracle_test.go::TestAgentLoopMatchesPi` and 11107 more in docs/bug-ledger.json
+- **Fix commits:** `96edeab595` (2026-10-20)
+- **Tests:** `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_test.go::TestUpgraderKeepsTheSafeRewritesAndListsWhatItCannotChange`
 - **Release note:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form. It exits 1 and reports `partly upgraded` when uses are left. `--dry-run` compiles the rewritten extension in a temporary directory (the go command's overlay, with the staged SDK) and reports `would upgrade` only when it builds; a rewrite that would add a compile error of its own is not written. The load error of a drifted extension names the changed APIs and the exact command. The stale-copy warning also recognises an edited copy by its Go module path.
 
 ## Divergences from Pi added in this release
