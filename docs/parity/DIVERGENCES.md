@@ -2460,6 +2460,29 @@ Evidence: `TestDecodeKittyPrintable_ShiftAndText` and `TestEditor_InsertsCapital
 Parity allowance: `TestDecodePrintableKeyMatchesPi` accepts an uppercase letter from PiG where Pi returns the lowercase letter, and only for a Kitty CSI-u sequence with the Shift modifier, no Alt or Ctrl, and no shifted-key field. `TestEditorCharacterJumpMatchesPi` leaves the CSI-u Shift+letter probe out for the same reason. Every other sequence stays byte-equal with Pi.
 
 Remove when: Pi decodes a base-only Shift+letter as the uppercase letter, or the owner reverses the decision; then the branch, the allowance and the D185 test cases go.
+
+SCRUTINIZED:approved
+
+## D186 A hung-up terminal under a session whose event loop holds nothing: Pi exits 0 or 129, PiG exits 129
+
+What: when the terminal's master closes under an interactive session, the kernel sends SIGHUP and ends the session's input. Pi's SIGHUP handler (`registerSignalHandlers`, `packages/coding-agent/src/modes/interactive/interactive-mode.ts:4402-4417`) runs a graceful shutdown whose terminal writes meet EIO and take `emergencyTerminalExit` (exit 129, `:4346-4352`). Node's signal watcher does not keep the event loop alive. A session with no other referenced handle (a plain directory, no extension timers or sockets, no git watcher) has an empty loop when its input ends, and Pi exits 0 before the handler runs unless a write is still pending. Measured on Pi 1402973a, idle plain-directory hangups taken after the status render settled: 16 of 20 exited 0 and 4 exited 129. In a git repository, whose footer watches `.git/HEAD` (`footer-data-provider.ts:316`), 20 of 20 exited 129. PiG always exits 129 (`exitIfDeadTerminal`) and writes the `exit.log` line `terminal gone: <error> (exit 129)` (D102).
+
+Why: Pi's 0 is a timing outcome of an empty Node event loop, not a decision, and it contradicts the purpose of `emergencyTerminalExit`. PiG has no such loop whose emptiness it could reproduce. Exiting 0 on a dead terminal would leave no `exit.log` trace, which D102 forbids. This follows the owner ruling (D146) that a confirmed Pi bug is fixed whether or not Pi has it.
+
+Scope: only a hung-up output terminal under a session that holds nothing open. A live SIGHUP (exit 0) and a render that meets EIO (exit 129) match Pi and are unchanged. A session with a handle (a git repository, a running turn, extension timers) matches Pi.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-20 (the exit code of a session that no user action ended is 129 and leaves a trace, rather than a code that depends on Node's event-loop state).
+
+Call-site markers: `internal/codingagent/interactive_input.go` (`exitIfDeadTerminal`).
+
+Evidence: `36-terminal-disconnect-idle-repo` (a git repository: 129 on both sides), `10-terminal-disconnect-exit` (a working session in a plain directory: 129 on both sides) and `TestHungUpTerminalEOFExits129`. The idle plain-directory outcome is not compared, because Pi's own result varies between runs.
+
+Parity allowance: none.
+
+Remove when: Pi exits 129 for a hung-up terminal regardless of event-loop state.
+
+SCRUTINIZED:approved
+
 ## D187 A native SDK holds a batch's first dialogs and responses in call and answer order, where Pi's single thread lets a call that awaits real work be overtaken
 
 What: the Go, Python and Rust extension SDKs keep, for the tool calls of one parallel batch, the orders Pi's one thread gives: the first dialog of each call opens in call order, and calls whose dialogs were answered back to back respond (and end) in the order of the answers. They hold a call to do it. A call's first dialog waits until every earlier call of the batch has written its first dialog or ended; a call whose dialog was answered holds the responses of the calls answered after it until it returns or makes its next host call. In Pi a call that awaits real work before its dialog (a `fetch`, a timer, a child process) yields the thread, so a later call's dialog opens first; and a continuation that awaits again yields at once. A native handler's blocking work (an HTTP request, a sleep, a wait on a channel) is invisible to the SDK, so the SDK holds the later calls until the earlier handler reaches a dialog, a host call or its return. The order of the dialogs and of the responses is never different from Pi's single-thread order; only the moment a later call's dialog opens or its response is written can be later.

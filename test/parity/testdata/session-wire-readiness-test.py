@@ -124,6 +124,48 @@ class TerminalDisconnectBusyTest(unittest.TestCase):
         self.assertIn("ctx.ui.setStatus", seen["extension"])
         self.assertIn('on("session_shutdown", () => clearInterval(ticker))', seen["extension"])
 
+    def test_repo_disconnect_hangs_up_an_idle_session_in_a_git_repository(self):
+        seen = {"git": []}
+
+        class Process:
+            def poll(self):
+                return 129 if seen.get("closed") else None
+
+            def wait(self):
+                return 129
+
+        @contextlib.contextmanager
+        def child(command, **kwargs):
+            seen["env"] = kwargs["env"]
+            seen["controlling_tty"] = "preexec_fn" in kwargs
+            yield Process()
+
+        def git(command, **kwargs):
+            seen["git"].append((command, kwargs["cwd"]))
+
+        def close(_fd):
+            seen["closed"] = True
+
+        with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
+            replacements = {
+                "setup": lambda root, _url: (root, {}, []),
+                "child": child,
+                "wait_command_ready": lambda *_args: bytearray(),
+                "pty.openpty": lambda: (101, 102),
+                "fcntl.ioctl": lambda *_args: None,
+                "os.close": close,
+                "emit": lambda value: seen.setdefault("emitted", []).append(value),
+            }
+            for name, replacement in replacements.items():
+                stack.enter_context(mock.patch.object(WIRE, name, replacement) if "." not in name
+                                    else mock.patch("session_wire." + name, replacement))
+            stack.enter_context(mock.patch("session_wire.subprocess.run", git))
+            WIRE.terminal_probe(["pig-fixture"], Path(directory), "disconnect-repo")
+        self.assertEqual(seen["git"], [(["git", "init", "-q"], Path(directory))])
+        self.assertNotIn("WIRE_BUSY", seen["env"])
+        self.assertTrue(seen["controlling_tty"])
+        self.assertEqual(seen["emitted"], [{"case": "disconnect-repo", "returncode": 129}])
+
     def test_modal_probe_fixture_stays_idle(self):
         env = {}
         with tempfile.TemporaryDirectory() as directory:
