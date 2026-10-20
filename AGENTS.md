@@ -322,7 +322,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
 | `rpc` | 70 | 70 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
-| `session` | 42 | 42 | 0 | 0 | 0 | 19 | not run |
+| `session` | 43 | 43 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 28 | 27 | 1 | 0 | 0 | 20 | not run |
 | `startup` | 19 | 18 | 1 | 0 | 0 | 10 | not run |
