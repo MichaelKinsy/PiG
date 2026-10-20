@@ -7625,6 +7625,117 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/62-rpc-tool-activation-trigger-turn-snippets.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "roots": [
+            "readme",
+            "docs",
+            "examples"
+          ],
+          "reason": "D2/D22: compare Pi's package README/docs/examples destinations with PiG's materialized README/docs and hosted examples root. Alias only those exact runtime destinations; retain filenames, URL/path suffixes, all surrounding wording and whitespace."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/preamble"
+          ],
+          "pig": "operating inside pig,",
+          "pi": "operating inside pi,",
+          "reason": "D2: only the host command identity differs in the preamble; retain the rest of the complete sentence."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "PiG documentation (",
+          "pi": "Pi documentation (",
+          "reason": "D2/D22: the documentation heading names the product; all usage conditions and topic wording remain compared."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "asks about pig itself,",
+          "pi": "asks about pi itself,",
+          "reason": "D2: this exact heading clause names the host command; no other words in the read-only condition are aliased."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "When reading pig docs or examples,",
+          "pi": "When reading pi docs or examples,",
+          "reason": "D2/D22: the path-resolution instruction names its product; retain its complete resolution rule and relative paths."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "pig packages (docs/packages.md)",
+          "pi": "pi packages (docs/packages.md)",
+          "reason": "D2: only the product name in the Package topic differs; the packages.md destination and every other topic remain literal."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "When working on pig topics,",
+          "pi": "When working on pi topics,",
+          "reason": "D2: this exact instruction prefix names the host product; retain its complete-read and cross-reference requirements."
+        },
+        {
+          "kind": "literal",
+          "paths": [
+            "/**/sections/docs"
+          ],
+          "pig": "Always read pig .md files",
+          "pi": "Always read pi .md files",
+          "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/selectors/01-config-empty.toml",
       "transforms": [
         {
