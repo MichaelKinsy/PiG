@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -423,10 +424,41 @@ func TestNodeCrashAfterRetainedReloadRecoversWithoutReplay(t *testing.T) {
 	}
 }
 
-// A strictly isolated extension that crashes after a retained reload restarts under its supervisor in a fresh process, and a later reload retains that one.
-func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
-	skipWithoutNodeExtensions(t)
-	t.Parallel()
+// startupGate stops an extension's next start at one startup checkpoint, so a test holds the start in a known phase without a sleep. A closed release lets the start through; the label is the host's startup-trace label.
+type startupGate struct {
+	mu      sync.Mutex
+	label   string
+	reached chan struct{}
+	release chan struct{}
+}
+
+func newStartupGate(h *Host) *startupGate {
+	gate := &startupGate{reached: make(chan struct{}), release: make(chan struct{})}
+	h.SetStartupTrace(func(got string) {
+		gate.mu.Lock()
+		hit := got == gate.label
+		if hit {
+			gate.label = ""
+		}
+		gate.mu.Unlock()
+		if hit {
+			close(gate.reached)
+			<-gate.release
+		}
+	})
+	return gate
+}
+
+// arm stops the next start that reaches label.
+func (g *startupGate) arm(label string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.label = label
+}
+
+// isolatedCrashFixture loads a strictly isolated Node extension, retains its process through one reload, and returns the host, its config and the generation that holds the process. Calling its probe tool with {crash: true} ends the process with status 23.
+func isolatedCrashFixture(t *testing.T) (*Host, ExtConfig, *managedExt, *startupGate) {
+	t.Helper()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	entry := filepath.Join(root, "isolated-crash.mjs")
@@ -442,6 +474,7 @@ func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
 	h := NewHost(t.TempDir())
 	t.Cleanup(func() { h.Shutdown("test done") })
 	recordCrashNotices(t, h)
+	gate := newStartupGate(h)
 	h.SetConfigLoader(func() ([]ExtConfig, error) { return []ExtConfig{config}, nil })
 	if _, errs := h.LoadAll(t.Context(), []ExtConfig{config}); len(errs) > 0 {
 		t.Fatal(errs)
@@ -456,10 +489,29 @@ func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
 	if pidOf(crashing) != first {
 		t.Fatalf("reload replaced the isolated process %d with %d", first, pidOf(crashing))
 	}
-	crashed := retainedShareOf(h, config.Name)
-	if _, err := crashing.ext.Tools["probe"].Definition.Execute(t.Context(), "crash", json.RawMessage(`{"crash":true}`), nil); err == nil {
+	return h, config, crashing, gate
+}
+
+// crashIsolatedProbe ends the extension's process through its probe tool.
+func crashIsolatedProbe(t *testing.T, me *managedExt) {
+	t.Helper()
+	if _, err := me.ext.Tools["probe"].Definition.Execute(t.Context(), "crash", json.RawMessage(`{"crash":true}`), nil); err == nil {
 		t.Fatal("interrupted callback succeeded")
 	}
+}
+
+// A strictly isolated extension that crashes after a retained reload restarts under its supervisor in a fresh process, and a later reload retains that one.
+func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
+	skipWithoutNodeExtensions(t)
+	t.Parallel()
+	h, config, crashing, gate := isolatedCrashFixture(t)
+	first := pidOf(crashing)
+	crashed := retainedShareOf(h, config.Name)
+	close(gate.release)
+	gate.arm("extension." + config.Name + ".handshake-done")
+	crashIsolatedProbe(t, crashing)
+	// The restart is observable once its register handshake has completed: a probe before that talks to a process the reload below could replace.
+	<-gate.reached
 	waitRecovered(t, h, []string{config.Name}, first)
 	// The supervisor's restart drops the dead process's reference; reap cannot end a process a state still holds.
 	if refs := crashed.refs.Load(); refs != 0 {
@@ -477,6 +529,39 @@ func TestNodeIsolatedCrashAfterRetainedReloadRestarts(t *testing.T) {
 	}
 	if got := retainedProbeOf(t, h, config.Name).Pid; got != restarted {
 		t.Fatalf("reload after the restart replaced the restarted process %d with %d", restarted, got)
+	}
+}
+
+// A /reload that arrives while the supervisor is still restarting a crashed isolated extension must not claim or replace the process the restart is starting: the replaced generation's start would end the process its successor runs in, and the successor's next call would fail with a reset connection. The reload runs after the restart completes and retains its process.
+func TestNodeIsolatedReloadWaitsForCrashRestart(t *testing.T) {
+	skipWithoutNodeExtensions(t)
+	t.Parallel()
+	h, config, crashing, gate := isolatedCrashFixture(t)
+	first := pidOf(crashing)
+	// The restart has spawned its process and is waiting to adopt the connection: the process exists and the slot's connection is still the dead one.
+	gate.arm("extension." + config.Name + ".spawn-done")
+	crashIsolatedProbe(t, crashing)
+	<-gate.reached
+	if pidOf(crashing) == first {
+		t.Fatalf("the restart has not replaced the crashed process %d", first)
+	}
+	restarted := pidOf(crashing)
+	// Crash recovery serializes with Load and Reload on the transition lock; a reload that could take it now would run against a half-started generation.
+	if h.transitionMu.TryLock() {
+		h.transitionMu.Unlock()
+		t.Fatal("a reload can run while the supervisor's restart is starting the process")
+	}
+	reloaded := make(chan error, 1)
+	go func() {
+		_, err := h.Reload(t.Context())
+		reloaded <- err
+	}()
+	close(gate.release)
+	if err := <-reloaded; err != nil {
+		t.Fatal(err)
+	}
+	if got := retainedProbeOf(t, h, config.Name).Pid; got != restarted {
+		t.Fatalf("reload during the restart replaced the restarted process %d with %d", restarted, got)
 	}
 }
 

@@ -271,7 +271,7 @@ func TestAltScreenFramesMatchPiOracle(t *testing.T) {
 // TestAltScreenFixtureIsCurrent reruns testdata/alt-screen-oracle.mjs against the installed Pi and requires the committed fixture to be
 // byte-identical, so the frames Pig is compared with are the pinned version's, not a stale capture.
 func TestAltScreenFixtureIsCurrent(t *testing.T) {
-	t.Parallel() // the generator waits on Pi's render throttle, about a minute of wall time
+	t.Parallel()
 	root, err := filepath.EvalSymlinks("../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent")
 	if err != nil {
 		t.Fatal(err)
