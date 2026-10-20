@@ -115,6 +115,9 @@ func TestParity(t *testing.T) {
 		groupSem[group] = make(chan struct{}, n)
 	}
 
+	if err := upstreamMirrorMissing(repoRoot); err != nil {
+		t.Fatal(err)
+	}
 	pig := ResolvePigBin(t)
 	pi := pinPiPackageDir(t, ResolveUpstreamPiBin(t))
 	freshness := requireFreshPig(t, repoRoot, pig, *flagAllowStale)
