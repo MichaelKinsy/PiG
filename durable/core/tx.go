@@ -398,7 +398,7 @@ const hostAnswerTicks = 3
 func (h *handler) publish(pub *session.Publication) {
 	var out abi.Chunks
 	item := append(make([]byte, 0, 128), `{"seq":`...)
-	out.Append(jv.Append(item, float64(pub.Seq)))
+	out.Append(jv.AppendNumber(item, float64(pub.Seq)))
 	for _, kind := range [...]session.WriteKind{session.WriteSubmission, session.WriteEntry, session.WriteTask} {
 		item = append(item[:0], `,"`...)
 		switch kind {
@@ -422,10 +422,10 @@ func (h *handler) publish(pub *session.Publication) {
 			first = false
 			switch kind {
 			case session.WriteEntry:
-				item = jv.Append(item, numOf(c.Record, "id"))
+				item = jv.AppendNumber(item, numOf(c.Record, "id"))
 			case session.WriteTask:
 				item = append(item, `{"id":`...)
-				item = jv.Append(item, numOf(c.Record, "id"))
+				item = jv.AppendNumber(item, numOf(c.Record, "id"))
 				item = append(item, `,"kind":`...)
 				item = jv.AppendString(item, strOf(c.Record, "kind"))
 				item = append(item, `,"status":`...)
@@ -433,9 +433,9 @@ func (h *handler) publish(pub *session.Publication) {
 				item = append(item, '}')
 			case session.WriteSubmission:
 				item = append(item, `{"id":`...)
-				item = jv.Append(item, numOf(c.Record, "id"))
+				item = jv.AppendNumber(item, numOf(c.Record, "id"))
 				item = append(item, `,"conversationId":`...)
-				item = jv.Append(item, numOf(c.Record, "conversationId"))
+				item = jv.AppendNumber(item, numOf(c.Record, "conversationId"))
 				if r, ok := c.Record.Get("requestId"); ok {
 					item = append(item, `,"requestId":`...)
 					item = jv.Append(item, r)
