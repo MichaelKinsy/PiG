@@ -234450,6 +234450,7 @@
         "call:env/terminal.go#RemoteTerminal.Foreground"
       ],
       "evidence": [
+        "test:env/terminal_linux_test.go#TestTerminalForegroundOfANameCutInsideACharacterHasNoName",
         "test:env/terminal_test.go#TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt"
       ]
     },
