@@ -13,6 +13,7 @@ pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["python3", "./test/parity/testdata/suspend-signal-order.py", "pig"]
 pig_go_tests = ["./internal/codingagent"]
+pi_go_tests = ["./internal/codingagent"]
 pi_args = ["python3", "./test/parity/testdata/suspend-signal-order.py", "pi"]
 [cli]
 cwd = "../../../.."

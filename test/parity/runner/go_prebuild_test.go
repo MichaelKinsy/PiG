@@ -162,6 +162,17 @@ func TestParityGoProbesAreBuiltBeforeTheTimedRun(t *testing.T) {
 				t.Errorf("%s: pig args %q: write `go run ./PACKAGE ARGS`, which the runner builds before the timed runs", sc.SourcePath, argv)
 			}
 			tested, programs := map[string]bool{}, map[string]bool{}
+			// A side may run a helper directly: pi_args = ["./test/parity/testdata/prebuilt-go-run.sh", "./PACKAGE", ARGS...].
+			for i, arg := range argv {
+				helper := filepath.Base(arg)
+				if (helper == "prebuilt-go-test.sh" || helper == "prebuilt-go-run.sh") && i+1 < len(argv) {
+					if helper == "prebuilt-go-run.sh" {
+						programs[argv[i+1]] = true
+					} else {
+						tested[argv[i+1]] = true
+					}
+				}
+			}
 			for _, arg := range append([]string{side.bin}, argv...) {
 				script := probeScript(sc, cwd, arg)
 				if script == "" {
