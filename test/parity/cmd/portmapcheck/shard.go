@@ -9,21 +9,26 @@ import (
 	"strings"
 )
 
+// maxShards bounds the shard count a -shard flag may name; CI plans three.
+const maxShards = 64
+
 // shardSpec selects one of total shards; total 0 means every row. index is zero-based.
 type shardSpec struct{ index, total int }
 
-// parseShard reads `N/M` (1 <= N <= M). The empty string is every row.
+// parseShard reads `N/M` (1 <= N <= M <= maxShards). The empty string is every row. A value that is not a decimal integer, overflows an int
+// or lies outside those bounds is an error, so the shard count that reaches partition is always in range.
 func parseShard(s string) (shardSpec, error) {
 	if s == "" {
 		return shardSpec{}, nil
 	}
 	n, m, ok := strings.Cut(s, "/")
-	i, err1 := strconv.Atoi(n)
-	total, err2 := strconv.Atoi(m)
-	if !ok || err1 != nil || err2 != nil || i < 1 || i > total {
-		return shardSpec{}, fmt.Errorf("-shard %q: want N/M with 1 <= N <= M", s)
+	// ParseUint takes digits only (no sign, no space) and, at 8 bits, refuses anything past 255, so both numbers are small before they are used.
+	i, err1 := strconv.ParseUint(n, 10, 8)
+	total, err2 := strconv.ParseUint(m, 10, 8)
+	if !ok || err1 != nil || err2 != nil || i < 1 || i > total || total > maxShards {
+		return shardSpec{}, fmt.Errorf("-shard %q: want N/M with 1 <= N <= M <= %d", s, maxShards)
 	}
-	return shardSpec{index: i - 1, total: total}, nil
+	return shardSpec{index: int(i) - 1, total: int(total)}, nil
 }
 
 // buildWeight and mutantWeight price what a row costs besides running its tests: one test binary per evidence package and one compile
@@ -65,6 +70,9 @@ func primaryDir(r result) string {
 // placement keeps the loads close. Rows with no evidence run (already unproven by the derivation) cost nothing and are placed by a hash
 // of their Pi path so that exactly one shard reports each.
 func partition(res []result, total int) []int {
+	if total < 1 || total > maxShards {
+		panic(fmt.Sprintf("partition: %d shards, want 1 to %d", total, maxShards)) // parseShard has already refused such a count
+	}
 	out := make([]int, len(res))
 	type group struct {
 		dir    string

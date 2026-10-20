@@ -716,15 +716,34 @@ func TestASkippedRowIsNotAProblem(t *testing.T) {
 }
 
 func TestParseShard(t *testing.T) {
-	for in, want := range map[string]shardSpec{"": {}, "1/1": {0, 1}, "2/4": {1, 4}, "4/4": {3, 4}} {
+	for in, want := range map[string]shardSpec{"": {}, "1/1": {0, 1}, "2/4": {1, 4}, "4/4": {3, 4}, "64/64": {63, 64}, "01/03": {0, 3}} {
 		if got, err := parseShard(in); err != nil || got != want {
 			t.Errorf("%q: %+v %v, want %+v", in, got, err, want)
 		}
 	}
-	for _, in := range []string{"0/4", "5/4", "1", "a/b", "1/0", "-1/4"} {
-		if _, err := parseShard(in); err == nil {
-			t.Errorf("%q must be rejected", in)
+	for _, in := range []string{
+		"0/4", "5/4", "1", "a/b", "1/0", "-1/4", "0/0", "1/-3", "-2/-1", // index or count out of range
+		"1/65", "65/65", "1/100", "1/4294967296", "1/4294967297", // above the bound, and past what a uint32 holds
+		"1/9223372036854775807", "9223372036854775807/9223372036854775807", "1/9223372036854775808", "1/99999999999999999999999", // up to and past an int
+		"1/", "/4", "/", " 1/4", "1/4 ", "1/ 4", "+1/4", "1.5/4", "1/4.0", "0x1/0x4", "1e1/4", "1//4", "1/4/4", // not a plain N/M
+	} {
+		if got, err := parseShard(in); err == nil {
+			t.Errorf("%q must be rejected, got %+v", in, got)
 		}
+	}
+}
+
+// TestPartitionRefusesAnOutOfRangeShardCount: partition is only reached with a count parseShard accepted, and refuses any other.
+func TestPartitionRefusesAnOutOfRangeShardCount(t *testing.T) {
+	for _, total := range []int{0, -1, maxShards + 1, 1 << 40} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("partition accepted %d shards", total)
+				}
+			}()
+			partition([]result{{Row: row{Pi: "x"}}}, total)
+		}()
 	}
 }
 
