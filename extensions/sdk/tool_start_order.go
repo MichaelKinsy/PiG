@@ -170,6 +170,7 @@ func (s *toolStart) beforeCall(dialog bool) {
 	if !s.dialogOpened.CompareAndSwap(false, true) {
 		return
 	}
+	// pig divergence (D187): the first dialog of a call waits for the first dialogs of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see; Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
 	o := s.order
 	o.mu.Lock()
 	if len(o.dialogQueue) == 0 || o.dialogQueue[0] == s || s.dialogPassed {
@@ -223,6 +224,7 @@ func (s *toolStart) respond(send func()) {
 		send()
 		return
 	}
+	// pig divergence (D187): the response waits for the handlers whose dialog answers were read earlier, until each returns or makes its next host call; Pi's continuations run to their next await, never to the end of blocking work.
 	s.slot.Load().run(send)
 }
 

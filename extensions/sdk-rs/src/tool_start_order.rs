@@ -255,6 +255,7 @@ impl ToolStart {
         if !dialog || self.dialog_opened.swap(true, Ordering::AcqRel) {
             return;
         }
+        // pig divergence (D187): the first dialog of a call waits for the first dialogs of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see; Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
         let waiting = {
             let mut places = self.order.places.lock().unwrap();
             // A request that is not queued passed its place already; the first one in the queue is the one whose turn it is.
@@ -292,6 +293,7 @@ impl ToolStart {
     /// Writes the request's response after the response of every handler whose dialog answer was read before this handler's.
     pub(crate) fn respond(&self, send: impl FnOnce()) {
         match self.slot.get() {
+            // pig divergence (D187): the response waits for the handlers whose dialog answers were read earlier, until each returns or makes its next host call; Pi's continuations run to their next await, never to the end of blocking work.
             Some(slot) => slot.run(send),
             None => send(),
         }

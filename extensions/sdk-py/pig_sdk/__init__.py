@@ -2150,6 +2150,7 @@ class _ToolStart:
         if not dialog:
             return
         order = self._order
+        # pig divergence (D187): the first dialog of a call waits for the first dialogs of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see; Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
         with order._lock:
             if self._dialog_opened:
                 return
@@ -2188,6 +2189,7 @@ class _ToolStart:
         if slot is None:
             send()
         else:
+            # pig divergence (D187): the response waits for the handlers whose dialog answers were read earlier, until each returns or makes its next host call; Pi's continuations run to their next await, never to the end of blocking work.
             slot.run(send)
 
 
