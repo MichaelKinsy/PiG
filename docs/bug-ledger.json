@@ -53703,6 +53703,59 @@
         "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
         "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived"
       ]
+    },
+    {
+      "id": "BF-7fbd629",
+      "title": "Two calls of a Go, Python or Rust extension tool in one assistant message that each open a dialog now behave…",
+      "symptom": "Two calls of a Go, Python or Rust extension tool in one assistant message that each open a dialog now behave as Pi's one thread makes them behave, as Node extensions already did: the dialogs open in call order (a port's second dialog could open first), and when the user answers them back to back the calls respond, and end, in the order of the answers.",
+      "rootCause": "Dialogs of a batch open in call order (arrival-ordered queue, passing never waits), and the tool_call responses of handlers whose dialogs were answered back to back follow the order the reader read the answers (settle gate, yield on the next host call, close on request end). Slot and wait event are made lazily, so a handler that opens no dialog is never gated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two calls of a Go, Python or Rust extension tool in one assistant message that each open a dialog now behave as Pi's one thread makes them behave, as Node extensions already did: the dialogs open in call order (a port's second dialog could open first), and when the user answers them back to back the calls respond, and end, in the order of the answers. The SDKs keep these orders for the calls of one parallel batch, which the host now names on each `tool_call` request (`batch`); calls of other batches, other sessions' calls and tools that open no dialog take no part and are never held. A handler that blocks on something other than a host call before its first dialog holds the first dialogs of the later calls of its batch.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0bb10c0c59",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "1f93c47342",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "631ca46e27",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "710ef28883",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "7fbd629d13",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "835390ada3",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "dc47fe5631",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "agent/settle_order_test.go::TestToolBatchFromContextNamesTheParallelBatch",
+        "extensions/sdk-py/tests/test_tool_dialog_order.py",
+        "extensions/sdk/tool_dialog_order_test.go::TestToolBatchOrdersAreIndependentAcrossBatches",
+        "extensions/sdk/tool_dialog_order_test.go::TestToolDialogOrderPassesAnEndedRequest",
+        "extensions/sdk/tool_dialog_order_test.go::TestToolDialogsOpenInCallOrder",
+        "extensions/sdk/tool_dialog_order_test.go::TestToolResponsesFollowTheOrderTheAnswersWereRead",
+        "extensions/sdk/tool_prepare_arguments_test.go::TestToolCallHandlersStartInArrivalOrder",
+        "test/extension-conformance/tool_dialog_order_test.go::TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs"
+      ]
     }
   ],
   "divergences": [
