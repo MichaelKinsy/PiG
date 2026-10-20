@@ -333,6 +333,9 @@ pub struct RequestMsg {
     pub handler_id: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    /// Names the parallel batch a `tool_call` belongs to: the same non-empty value on every call of one batch, absent for a sequential batch, a nested call and every other request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub batch: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<Value>,
     pub terminal_input: Option<TerminalInputArgs>,
@@ -382,6 +385,8 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     tool_call_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    batch: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     args: Option<Box<serde_json::value::RawValue>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     stream: Option<EventStream>,
@@ -397,7 +402,7 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
         } else {
             raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?
         };
-        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, args, terminal_input, stream: raw.stream, stream_error: None })
+        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, terminal_input, stream: raw.stream, stream_error: None })
     }
 }
 
@@ -407,7 +412,7 @@ impl From<RequestMsg> for RawRequestMsg {
             Some(args) => Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON")),
             None => req.args.map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
         };
-        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, args, stream: req.stream }
+        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, args, stream: req.stream }
     }
 }
 

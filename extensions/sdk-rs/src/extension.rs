@@ -1471,7 +1471,7 @@ impl Extension {
             Arc::new(Mutex::new(HashMap::new()));
         let request_threads = ext.provider_objects.workers.clone();
         let width_deliveries = Arc::new(WidthDeliveries::default());
-        let tool_starts = crate::tool_start_order::ToolStartOrder::default();
+        let tool_batches = crate::tool_start_order::ToolBatches::default();
         let stop_requests = |reason: &str| -> io::Result<()> {
             width_deliveries.stop();
             for cancel in active_requests.lock().unwrap().values() {
@@ -1531,8 +1531,8 @@ impl Extension {
                         let base = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                         let conn = conn.clone();
                         let ext = ext.clone();
-                        // agent-loop.ts:619-647: the handlers of a batch start in source order.
-                        let start = (req.method == "tool_call").then(|| tool_starts.reserve());
+                        // agent-loop.ts:619-647: the handlers of a parallel batch start in source order. A call that names no batch is in no order.
+                        let start = if req.method == "tool_call" { tool_batches.reserve(req.batch.as_deref()) } else { None };
                         let failed_start = start.clone();
                         // The request's host calls find its place in the orders through the parent they carry.
                         if let (Some(start), Some(parent)) = (&start, &base.request_parent) {
@@ -2974,6 +2974,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(
                         serde_json::json!({"message":{"text":"hi"},"options":{},"width":42}),
                     ),
@@ -3056,6 +3057,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3221,6 +3223,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3286,6 +3289,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(cred_args.clone()),
                 }),
                 ..Default::default()
@@ -3309,6 +3313,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(cred_args.clone()),
                 }),
                 ..Default::default()
@@ -3333,6 +3338,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(cred_args),
                 }),
                 ..Default::default()
@@ -3354,6 +3360,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3446,6 +3453,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3477,6 +3485,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3544,6 +3553,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3600,6 +3610,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3679,6 +3690,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3740,6 +3752,7 @@ mod tests {
                 event: None,
                 handler_id: 0,
                 tool_call_id: Some(format!("call-{id}")),
+                batch: None,
                 args,
             }),
             ..Default::default()
