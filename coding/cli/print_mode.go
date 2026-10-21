@@ -560,7 +560,7 @@ func sendPrintPrompt(ctx context.Context, sess *coding.Session, commands headles
 	if err != nil || handled {
 		return handled, err
 	}
-	// An absent startup selection becomes Pi's Agent DEFAULT_MODEL. Its unknown provider fails credential preflight, not the lower-level SendContent model guard; commands and handled input above do not need credentials.
+	// An absent startup selection becomes Pi's Agent DEFAULT_MODEL. Its unknown provider fails credential preflight, not the lower-level run-start model guard; commands and handled input above do not need credentials.
 	if model := sess.Model(); model == nil || model.Provider == nil && model.ProviderMeta.ProviderID == "unknown" {
 		return false, errors.New(codingagent.FormatNoAPIKeyFoundMessage("unknown"))
 	}
@@ -568,7 +568,8 @@ func sendPrintPrompt(ctx context.Context, sess *coding.Session, commands headles
 	if err := sess.ValidatePromptModelAuth(ctx); err != nil {
 		return false, err
 	}
-	_, err = sess.SendContent(ctx, coding.BuildUserContent(commands.expandPrompt(text), images))
+	// The command check above is the only one: AgentSession.prompt does not dispatch a command on text an input handler or template produced (agent-session.ts:2067-2074, 2138).
+	_, err = sess.SendContentWithPreflight(ctx, coding.BuildUserContent(commands.expandPrompt(text), images), nil)
 	return false, err
 }
 
