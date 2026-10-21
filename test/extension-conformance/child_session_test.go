@@ -245,7 +245,7 @@ def new_extension():
             execute=lambda c, params: params["x"].upper() + "!",
         )
         session = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(
-            model="sentinel/echo", tools=["sentinel_tool"], in_memory=True, settings={"compaction": {"enabled": False}},
+            model={"provider": "sentinel", "id": "echo"}, tools=["sentinel_tool"], in_memory=True, settings={"compaction": {"enabled": False}},
             resources=pig_sdk.ResourceOptions(no_extensions=True, no_skills=True, no_prompt_templates=True, no_themes=True, no_context_files=True, append_system_prompt=["Child appendix"]),
             custom_tools=[sentinel],
         ))
@@ -280,7 +280,7 @@ def new_extension():
         tool = pig_sdk.ToolDefinition(name="sentinel_tool", label="sentinel", description="waits for its abort",
                                       parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]}, execute=hang)
         session = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(
-            model="sentinel/echo", tools=["sentinel_tool"], in_memory=True, settings={"compaction": {"enabled": False}},
+            model={"provider": "sentinel", "id": "echo"}, tools=["sentinel_tool"], in_memory=True, settings={"compaction": {"enabled": False}},
             resources=pig_sdk.ResourceOptions(**quiet), custom_tools=[tool]))
         try:
             events = []
@@ -297,6 +297,12 @@ def new_extension():
             running.join(10)
             messages = session.messages()
             out.update({"toolSawAbort": saw["abort"], "idleAfterAbort": not session.state()["isStreaming"], "tail": events[-4:], "lastRole": messages[-1]["role"]})
+            session.dispose()
+            out["afterDispose"] = "resolved"
+            try:
+                session.prompt("after dispose")
+            except Exception as error:  # noqa: BLE001
+                out["afterDispose"] = str(error)
             return json.dumps(out)
         finally:
             session.dispose()
@@ -313,7 +319,7 @@ def new_extension():
         tool = pig_sdk.ToolDefinition(name="sentinel_tool", label="sentinel", description="waits for its abort",
                                       parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]}, execute=hang)
         session = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(
-            model="sentinel/echo", tools=["sentinel_tool"], in_memory=True, resources=pig_sdk.ResourceOptions(**quiet), custom_tools=[tool]))
+            model={"provider": "sentinel", "id": "echo"}, tools=["sentinel_tool"], in_memory=True, resources=pig_sdk.ResourceOptions(**quiet), custom_tools=[tool]))
         threading.Thread(target=lambda: session.prompt("tool:hang"), daemon=True).start()
         started.wait(10)
         return json.dumps({"held": True})
@@ -326,7 +332,7 @@ def new_extension():
             return {"first": lines[0], "docs": [line.strip().split("/")[-1] for line in lines if line.strip().endswith(".md")]}
 
         out = {}
-        for name, model in (("no-key", "nokey/locked"), ("no-model", None)):
+        for name, model in (("no-key", {"provider": "nokey", "id": "locked"}), ("no-model", None)):
             session = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(model=model, in_memory=True, settings={"compaction": {"enabled": False}}, resources=pig_sdk.ResourceOptions(**quiet)))
             prompt_error = ""
             try:
@@ -388,7 +394,7 @@ pub fn new_extension() -> Extension {
             |_ctx, params: Value| ToolResult::text(format!("{}!", params["x"].as_str().unwrap_or("").to_uppercase())),
         );
         let session = match ctx.create_agent_session(CreateAgentSessionOptions {
-            model: Some(json!("sentinel/echo")),
+            model: Some(json!({"provider": "sentinel", "id": "echo"})),
             tools: Some(vec!["sentinel_tool".to_string()]),
             in_memory: true,
             settings: Some(json!({"compaction": {"enabled": false}})),
@@ -458,7 +464,7 @@ pub fn new_extension() -> Extension {
             },
         );
         let session = match ctx.create_agent_session(CreateAgentSessionOptions {
-            model: Some(json!("sentinel/echo")), tools: Some(vec!["sentinel_tool".to_string()]), in_memory: true,
+            model: Some(json!({"provider": "sentinel", "id": "echo"})), tools: Some(vec!["sentinel_tool".to_string()]), in_memory: true,
             settings: Some(json!({"compaction": {"enabled": false}})),
             resources: Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, ..Default::default() }),
             custom_tools: vec![hang], ..Default::default()
@@ -488,7 +494,9 @@ pub fn new_extension() -> Extension {
             let state = session.state()?;
             let all = events.lock().unwrap().clone();
             let tail: Vec<String> = all[all.len().saturating_sub(4)..].to_vec();
-            Ok(json!({"concurrentPrompt": concurrent, "toolSawAbort": *saw_abort.lock().unwrap(), "idleAfterAbort": !state["isStreaming"].as_bool().unwrap_or(true), "tail": tail, "lastRole": messages.last().map(|m| m["role"].clone()).unwrap_or(Value::Null)}))
+            session.dispose();
+            let after_dispose = match session.prompt("after dispose") { Ok(()) => "resolved".to_string(), Err(error) => error.to_string() };
+            Ok(json!({"concurrentPrompt": concurrent, "toolSawAbort": *saw_abort.lock().unwrap(), "idleAfterAbort": !state["isStreaming"].as_bool().unwrap_or(true), "tail": tail, "lastRole": messages.last().map(|m| m["role"].clone()).unwrap_or(Value::Null), "afterDispose": after_dispose}))
         });
         session.dispose();
         match outcome { Ok(value) => ToolResult::text(value.to_string()), Err(error) => ToolResult::Error(error.to_string()) }
@@ -510,7 +518,7 @@ pub fn new_extension() -> Extension {
             },
         );
         let session = match ctx.create_agent_session(CreateAgentSessionOptions {
-            model: Some(json!("sentinel/echo")), tools: Some(vec!["sentinel_tool".to_string()]), in_memory: true,
+            model: Some(json!({"provider": "sentinel", "id": "echo"})), tools: Some(vec!["sentinel_tool".to_string()]), in_memory: true,
             resources: Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, ..Default::default() }),
             custom_tools: vec![hang], ..Default::default()
         }) {
@@ -531,7 +539,7 @@ pub fn new_extension() -> Extension {
             json!({"first": lines[0], "docs": docs})
         };
         let mut out = serde_json::Map::new();
-        for (name, model) in [("no-key", Some(json!("nokey/locked"))), ("no-model", None)] {
+        for (name, model) in [("no-key", Some(json!({"provider": "nokey", "id": "locked"}))), ("no-model", None)] {
             let session = match ctx.create_agent_session(CreateAgentSessionOptions {
                 model, in_memory: true, settings: Some(json!({"compaction": {"enabled": false}})),
                 resources: Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, ..Default::default() }),

@@ -56,7 +56,7 @@ type ChildSessionCreate struct {
 	Cwd string `json:"cwd,omitempty"`
 	// AgentDir is the global config directory. Absent is the host's.
 	AgentDir string `json:"agentDir,omitempty"`
-	// Model is a string (`provider/id`, or a fuzzy pattern matched against the models with configured auth, with an optional `:thinking` suffix) or an object whose provider and id name a model. Absent selects Pi's default (settings, then the first available model).
+	// Model is an object whose provider and id name a model, as Pi's option takes a Model. Absent selects Pi's default (settings, then the first available model).
 	Model json.RawMessage `json:"model,omitempty"`
 	// ThinkingLevel is the requested level, clamped to the model. Absent is Pi's default.
 	ThinkingLevel string `json:"thinkingLevel,omitempty"`

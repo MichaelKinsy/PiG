@@ -29,7 +29,7 @@ type CreateAgentSessionOptions struct {
 	Cwd string
 	// AgentDir is the global config directory. Empty is the host's.
 	AgentDir string
-	// Model is the model: a string (`provider/id`, or a pattern matched against the models with configured auth, with an optional `:thinking` suffix) or a model object, such as the one [ModelRegistry.Find] returns. Nil is Pi's default: the settings' default, else the first available model.
+	// Model is the model: a model object, such as the one [ModelRegistry.Find] returns; resolve a name or pattern through the registry first, as Pi's option takes a Model. Nil is Pi's default: the settings' default, else the first available model.
 	Model any
 	// ThinkingLevel is the requested level, clamped to the model. Empty is the settings' default.
 	ThinkingLevel string
@@ -548,7 +548,6 @@ func (s *AgentSession) Dispose() {
 	if !s.disposed.CompareAndSwap(false, true) {
 		return
 	}
-	s.ext.children.remove(s.id)
 	s.stop()
 	if _, err := s.call(callChildSessionDispose, sessionRef{s.id}); err != nil {
 		fmt.Fprintf(os.Stderr, "pig: dispose of child session %s failed: %v\n", s.id, err)

@@ -10,4 +10,4 @@
 
 ### Upgrading
 
-- Extensions written in Go, Python or Rust that fell back to a child `pig` process for `createAgentSession({customTools, settingsManager, modelRuntime})` can call the new API. A native-SDK session raises `Unknown or disposed child session` once disposed, where Pi's disposed `AgentSession` still runs a prompt; the `model` option also accepts `provider/id` or a pattern. No existing API changes.
+- Extensions written in Go, Python or Rust that fell back to a child `pig` process for `createAgentSession({customTools, settingsManager, modelRuntime})` can call the new API. `model` takes a model object, as Pi's option does: resolve a name through `ModelRegistry.Find` first. No existing API changes.

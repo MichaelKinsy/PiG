@@ -54,8 +54,7 @@ pub struct CreateAgentSessionOptions {
     pub cwd: Option<String>,
     /// Global config directory. `None` is the host's.
     pub agent_dir: Option<String>,
-    /// `provider/id`, a pattern matched against the models with configured auth (with an optional `:thinking` suffix), or a model object such as
-    /// `ctx.model_registry().find(..)` returns. `None` is Pi's default: the settings' default, else the first available model.
+    /// A model object such as `ctx.model_registry().find(..)` returns; resolve a name or pattern through the registry first, as Pi's option takes a Model. `None` is Pi's default: the settings' default, else the first available model.
     pub model: Option<Value>,
     /// The requested level, clamped to the model.
     pub thinking_level: Option<String>,
@@ -447,7 +446,6 @@ impl AgentSession {
         if self.shared.disposed.swap(true, Ordering::SeqCst) {
             return;
         }
-        self.conn.children.remove(&self.shared.id);
         self.shared.stop();
         if let Err(error) = self.call("childSession.dispose", json!({})) {
             eprintln!("pig: dispose of child session {} failed: {error}", self.shared.id);

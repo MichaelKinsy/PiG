@@ -35,8 +35,10 @@ type ChildSession interface {
 	Messages() (json.RawMessage, error)
 	// Subscribe is AgentSession.subscribe; event is one AgentSessionEvent in Pi's JSON shape, valid only during the call.
 	Subscribe(listener func(event json.RawMessage)) (unsubscribe func())
-	// Dispose is AgentSession.dispose after an abort: it ends the run, releases the session and everything it started, and never fails.
+	// Dispose is AgentSession.dispose: it disconnects the session from its agent and drops the listeners. As in Pi, the session still answers a prompt afterwards (the agent runs; no listener sees it). It never fails.
 	Dispose()
+	// Close ends the run and releases the session and everything it started. The host calls it when the connection closes, or when a session whose creation was abandoned never became live.
+	Close()
 }
 
 // ChildSessionRequest is a decoded CallChildSessionCreate: the wire arguments, and the definitions of CustomTools whose execute runs in the extension.
@@ -233,7 +235,7 @@ func (t *childSessionTable) closeConn(conn *Conn) {
 	}
 	t.mu.Unlock()
 	for _, entry := range entries {
-		entry.dispose()
+		entry.close()
 	}
 }
 
@@ -244,6 +246,12 @@ func (e *childSessionEntry) dispose() {
 	}
 	e.unsubscribe()
 	e.session.Dispose()
+}
+
+// close disposes the session if it was not, and releases it.
+func (e *childSessionEntry) close() {
+	e.dispose()
+	e.session.Close()
 }
 
 // handleChildSessionCall serves the childSession.* calls.
@@ -257,7 +265,7 @@ func (h *Host) handleChildSessionCall(ctx context.Context, conn *Conn, call *Cal
 	}
 	if call.Method == CallChildSessionDispose {
 		// Disposing a session that is gone is not an error: Pi's dispose is idempotent.
-		if entry := h.childSessions.remove(conn, ref.ID); entry != nil {
+		if entry := h.childSessions.lookup(conn, ref.ID); entry != nil {
 			entry.dispose()
 		}
 		return &CallResultPayload{}, nil
@@ -347,7 +355,7 @@ func (h *Host) createChildSession(ctx context.Context, conn *Conn, call *CallPay
 	entry := &childSessionEntry{conn: conn, session: session, prefix: append(append([]byte(`{"id":`), idJSON...), `,"seq":`...)}
 	entry.unsubscribe = session.Subscribe(entry.forward)
 	if !h.childSessions.publish(conn, create.ID, entry) {
-		entry.dispose()
+		entry.close()
 		return nil, errors.New(ChildSessionClosedWhileCreatingMessage)
 	}
 	result, err := json.Marshal(session.Info())

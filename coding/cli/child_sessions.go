@@ -99,14 +99,11 @@ func createChildSession(ctx context.Context, services *coding.AgentSessionServic
 		create.SessionManager = manager
 	}
 	if len(request.Model) != 0 {
-		model, level, err := resolveChildModel(ctx, runtime, request.Model)
+		model, err := resolveChildModel(runtime, request.Model)
 		if err != nil {
 			return nil, err
 		}
 		create.Model = model
-		if create.ThinkingLevel == "" {
-			create.ThinkingLevel = level
-		}
 	}
 	result, err := coding.CreateAgentSessionFromServices(create)
 	if err != nil {
@@ -165,36 +162,20 @@ func childResourceLoaderOptions(resources *subprocess.ChildSessionResources) *co
 	return options
 }
 
-// resolveChildModel resolves the `model` option: an object names a model by provider and id; a string is `provider/id`, else a pattern matched against the models with configured auth (the model scope's matching), with an optional `:thinking` suffix.
-func resolveChildModel(ctx context.Context, runtime *coding.ModelRuntime, raw json.RawMessage) (*ai.Model, ai.ModelThinkingLevel, error) {
-	var pattern string
-	if err := json.Unmarshal(raw, &pattern); err != nil {
-		var object struct {
-			Provider string `json:"provider"`
-			ID       string `json:"id"`
-		}
-		if err := json.Unmarshal(raw, &object); err != nil || object.Provider == "" || object.ID == "" {
-			return nil, "", errors.New("Invalid model option: want a pattern string or an object with provider and id")
-		}
-		model := runtime.GetModel(object.Provider, object.ID)
-		if model == nil {
-			return nil, "", fmt.Errorf("Model %s/%s not found", object.Provider, object.ID)
-		}
-		return model, "", nil
+// resolveChildModel resolves the `model` option as Pi's takes it: a model, which crosses the wire as the object naming it by provider and id. The caller resolves a name or pattern through the registry before it asks. A model the host's registry does not hold is an error where Pi would use the object as given, because a wire object carries no stream function.
+func resolveChildModel(runtime *coding.ModelRuntime, raw json.RawMessage) (*ai.Model, error) {
+	var object struct {
+		Provider string `json:"provider"`
+		ID       string `json:"id"`
 	}
-	if provider, id, ok := strings.Cut(pattern, "/"); ok {
-		if model := runtime.GetModel(provider, id); model != nil {
-			return model, "", nil
-		}
+	if err := json.Unmarshal(raw, &object); err != nil || object.Provider == "" || object.ID == "" {
+		return nil, errors.New("Invalid model option: want a model, an object with provider and id")
 	}
-	scope, err := coding.ResolveModelScopeWithDiagnostics(ctx, []string{pattern}, runtime)
-	if err != nil {
-		return nil, "", err
+	model := runtime.GetModel(object.Provider, object.ID)
+	if model == nil {
+		return nil, fmt.Errorf("Model %s/%s not found", object.Provider, object.ID)
 	}
-	if len(scope.ScopedModels) == 0 {
-		return nil, "", fmt.Errorf("Model %q not found", pattern)
-	}
-	return scope.ScopedModels[0].Model, scope.ScopedModels[0].ThinkingLevel, nil
+	return model, nil
 }
 
 func (c *childSession) Info() subprocess.ChildSessionInfo { return c.info }
@@ -320,8 +301,11 @@ func (c *childSession) Subscribe(listener func(event json.RawMessage)) func() {
 	})
 }
 
-// Dispose is AgentSession.dispose followed by the release of what the child's services started.
-func (c *childSession) Dispose() {
+// Dispose is AgentSession.dispose: the session is disconnected from its agent and a later prompt still runs it.
+func (c *childSession) Dispose() { c.session.Dispose() }
+
+// Close ends the run and releases the session and the services the child started.
+func (c *childSession) Close() {
 	c.disposed.Do(func() {
 		c.session.Dispose()
 		_ = c.session.Close()

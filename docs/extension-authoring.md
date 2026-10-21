@@ -492,7 +492,7 @@ Pi's `createAgentSession` builds an independent `AgentSession` an extension can 
 
 ```go
 session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
-	Model:       "provider/id",
+	Model:       model, // from ctx.ModelRegistry().Find(provider, id), as Pi takes a Model
 	Tools:       []string{"my_tool"},
 	InMemory:    true,
 	Settings:    map[string]any{"compaction": map[string]any{"enabled": false}},
@@ -508,7 +508,7 @@ The Promise contract is kept as blocking calls: creation returns once resources 
 
 The session belongs to the extension's connection: closing the connection aborts the run, cancels the tools' contexts and disposes the session, as Node's `independent-session-owner.mjs` does. `message_update` events travel as a keyframe followed by operations (`child_session_delta.go`) and the listener receives the full event Pi's `subscribe` delivers (`message` and `assistantMessageEvent.partial`), so a long output costs wire bytes linear in its length.
 
-Differences from Pi, each tested: the `model` option also takes `provider/id` or a fuzzy pattern; a native-SDK session raises `Unknown or disposed child session` once disposed, where Pi's disposed `AgentSession` still prompts; Pi's `sessionManager`, `settingsManager`, `resourceLoader` and `modelRuntime` objects are in-process handles and do not cross the wire (`settings` and `resources` select what they would). The expected observations (event order, the leading system message, error messages) come from running Pi's own `createAgentSession` (`test/extension-conformance/testdata/child-session-want.json`).
+Differences from Pi, each tested: a `model` the host's registry does not hold raises `Model <provider>/<id> not found` (Pi uses the object as given; a wire object carries no stream function), and Pi's `sessionManager`, `settingsManager`, `resourceLoader` and `modelRuntime` objects are in-process handles that do not cross the wire (`settings` and `resources` select what they would). `Dispose` is Pi's: the session is disconnected and its listeners dropped, a later prompt still runs the agent, and the host releases the session when the connection closes. The expected observations (event order, the leading system message, error messages) come from running Pi's own `createAgentSession` (`test/extension-conformance/testdata/child-session-want.json`).
 
 ## Adding a new extension API surface
 

@@ -101,7 +101,11 @@ export default function (pi) {
       try { await session.prompt("again"); } catch (e) { concurrentPrompt = e.message; }
       await session.abort();
       await running;
-      return { concurrentPrompt, toolSawAbort: sawAbort, idleAfterAbort: !session.isStreaming, tail: events.slice(-4), lastRole: session.messages.at(-1).role };
+      const result = { concurrentPrompt, toolSawAbort: sawAbort, idleAfterAbort: !session.isStreaming, tail: events.slice(-4), lastRole: session.messages.at(-1).role };
+      session.dispose();
+      result.afterDispose = "resolved";
+      try { await session.prompt("after dispose"); } catch (e) { result.afterDispose = e.message; }
+      return result;
     } finally { session.dispose(); }
   })) });
 

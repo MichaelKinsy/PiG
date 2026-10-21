@@ -34,7 +34,7 @@ func Extension() *sdk.Extension {
 				return ""
 			}
 			session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
-				Model: "sentinel/echo", Tools: []string{"sentinel_tool"}, InMemory: true,
+				Model: map[string]any{"provider": "sentinel", "id": "echo"}, Tools: []string{"sentinel_tool"}, InMemory: true,
 				Settings:  map[string]any{"compaction": map[string]any{"enabled": false}},
 				Resources: sdk.ResourceOptions{NoExtensions: true, NoSkills: true, NoPromptTemplates: true, NoThemes: true, NoContextFiles: true, AppendSystemPrompt: []string{"Child appendix"}},
 				CustomTools: []sdk.ToolDefinition{{

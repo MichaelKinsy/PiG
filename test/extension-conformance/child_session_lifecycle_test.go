@@ -102,8 +102,12 @@ func (r *recordedChild) Abort(ctx context.Context) error {
 }
 
 func (r *recordedChild) Dispose() {
-	r.disposed.Store(true)
 	r.ChildSession.Dispose()
+}
+
+func (r *recordedChild) Close() {
+	r.disposed.Store(true)
+	r.ChildSession.Close()
 }
 
 // TestChildAgentSessionEndsWithItsConnection: a session left running belongs to the extension's connection, so closing the connection ends its run (the tool's context is cancelled, the prompt returns) and disposes it, as Node's independent-session-owner.mjs does when the extension runtime closes.
@@ -141,11 +145,11 @@ func TestChildAgentSessionErrorPaths(t *testing.T) {
 	host, _ := newChildSessionHost(t)
 	got := runChildTool(t, loadChildFused(t, host), "child_failures", `{}`)
 	want := map[string]any{
-		"unknownModel":            `Model "nope/missing" not found`,
+		"unknownModel":            `Model nope/missing not found`,
 		"customToolWithoutSchema": `Tool "no_schema" registered by extension "child-session" must define an object parameter schema.`,
 		"steerIdle":               "resolved",
-		"promptAfterDispose":      subprocess.ChildSessionUnknownMessage,
-		"stateAfterDispose":       subprocess.ChildSessionUnknownMessage,
+		"promptAfterDispose":      "resolved",
+		"stateAfterDispose":       "resolved",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("failures = %v, want %v", got, want)

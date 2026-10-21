@@ -32,7 +32,7 @@ func hangTool(started chan<- struct{}, sawAbort *atomic.Bool, marker string) sdk
 
 func hangSession(ctx sdk.Context, custom sdk.ToolDefinition) (*sdk.AgentSession, error) {
 	return ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
-		Model: "sentinel/echo", Tools: []string{"sentinel_tool"}, InMemory: true,
+		Model: map[string]any{"provider": "sentinel", "id": "echo"}, Tools: []string{"sentinel_tool"}, InMemory: true,
 		Settings:    map[string]any{"compaction": map[string]any{"enabled": false}},
 		Resources:   sdk.ResourceOptions{NoExtensions: true, NoSkills: true, NoPromptTemplates: true, NoThemes: true, NoContextFiles: true},
 		CustomTools: []sdk.ToolDefinition{custom},
@@ -86,6 +86,11 @@ func registerLifecycle(e *sdk.Extension) {
 			mu.Lock()
 			tail := events[max(0, len(events)-4):]
 			mu.Unlock()
+			session.Dispose()
+			out["afterDispose"] = "resolved"
+			if err := session.Prompt(context.Background(), "after dispose"); err != nil {
+				out["afterDispose"] = err.Error()
+			}
 			out["toolSawAbort"], out["idleAfterAbort"], out["tail"], out["lastRole"] = sawAbort.Load(), !state.IsStreaming, tail, messages[len(messages)-1]["role"]
 			encoded, err := json.Marshal(out)
 			return string(encoded), err
@@ -128,7 +133,7 @@ func registerLifecycle(e *sdk.Extension) {
 			for _, attempt := range []struct {
 				name  string
 				model any
-			}{{"no-key", "nokey/locked"}, {"no-model", nil}} {
+			}{{"no-key", map[string]any{"provider": "nokey", "id": "locked"}}, {"no-model", nil}} {
 				session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
 					Model: attempt.model, InMemory: true, Settings: map[string]any{"compaction": map[string]any{"enabled": false}},
 					Resources: sdk.ResourceOptions{NoExtensions: true, NoSkills: true, NoPromptTemplates: true, NoThemes: true, NoContextFiles: true},
@@ -167,11 +172,11 @@ func registerLifecycle(e *sdk.Extension) {
 				return err.Error()
 			}
 			quiet := sdk.ResourceOptions{NoExtensions: true, NoSkills: true, NoPromptTemplates: true, NoThemes: true, NoContextFiles: true}
-			_, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{Model: "nope/missing", InMemory: true, Resources: quiet})
+			_, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{Model: map[string]any{"provider": "nope", "id": "missing"}, InMemory: true, Resources: quiet})
 			out["unknownModel"] = message(err)
-			_, err = ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{Model: "sentinel/echo", InMemory: true, Resources: quiet, CustomTools: []sdk.ToolDefinition{{Name: "no_schema", Execute: func(sdk.Context, map[string]any) (any, error) { return "", nil }}}})
+			_, err = ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{Model: map[string]any{"provider": "sentinel", "id": "echo"}, InMemory: true, Resources: quiet, CustomTools: []sdk.ToolDefinition{{Name: "no_schema", Execute: func(sdk.Context, map[string]any) (any, error) { return "", nil }}}})
 			out["customToolWithoutSchema"] = message(err)
-			session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{Model: "sentinel/echo", InMemory: true, Resources: quiet})
+			session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{Model: map[string]any{"provider": "sentinel", "id": "echo"}, InMemory: true, Resources: quiet})
 			if err != nil {
 				return nil, err
 			}

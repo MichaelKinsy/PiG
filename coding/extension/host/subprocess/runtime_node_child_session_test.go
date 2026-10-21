@@ -349,10 +349,8 @@ async function scene(m) {
 }
 const want = await scene(pi);
 console.log("PI-OBSERVED " + JSON.stringify(want));
-// Pi keeps a disposed session callable: prompt resolves and runs the agent. The native SDKs' sessions end with dispose (the host releases them), so their rows do not assert this member; the divergence is recorded in docs/extension-authoring.md.
-assert.equal(want.afterDispose, "resolved");
-const { afterDispose, ...observed } = want;
-assert.deepEqual(observed, golden["lifecycle"]);
+// Pi keeps a disposed session callable: prompt resolves and runs the agent, and the native SDKs' rows assert the same.
+assert.deepEqual(want, golden["lifecycle"]);
 assert.deepEqual(await scene(pig), want);
 `)
 }

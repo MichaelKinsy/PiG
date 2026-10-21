@@ -60,9 +60,8 @@ class CreateAgentSessionOptions:
     cwd: str | None = None
     #: Global config directory. ``None`` is the host's.
     agent_dir: str | None = None
-    #: ``provider/id``, or a pattern matched against the models with configured auth (with an optional ``:thinking`` suffix), or a model dict such as
-    #: ``ctx.model_registry.find(...)`` returns. ``None`` is Pi's default: the settings' default, else the first available model.
-    model: str | dict[str, Any] | None = None
+    #: A model dict such as ``ctx.model_registry.find(...)`` returns; resolve a name or pattern through the registry first, as Pi's option takes a Model. ``None`` is Pi's default: the settings' default, else the first available model.
+    model: dict[str, Any] | None = None
     #: The requested level, clamped to the model. ``None`` is the settings' default.
     thinking_level: str | None = None
     #: Allowlist of tool names or ``*`` patterns, or a list of only ``+name`` and ``-name`` entries. ``None`` is Pi's undefined; ``[]`` allows nothing.
@@ -248,7 +247,6 @@ class AgentSession:
             if self._disposed:
                 return
             self._disposed = True
-        self._extension._children.remove(self._id)
         self._stop()
         try:
             self._call("childSession.dispose", {})
