@@ -732,7 +732,7 @@ export default function (pi) {
     const creds = { explicit: read("anthropic", authPath), default: read("anthropic"), absentProvider: read("nobody", authPath), missingFile: read("anthropic", `${authPath}.missing`), notJSON: read("anthropic", `${authPath}.bad`) };
     ctx.ui.notify(`host_helpers:${JSON.stringify({ diffs, entries, images, creds })}:end`, "info");
   } });
-  // pi_ai_helpers_probe runs every call of the golden file (test/parity/sdk-vectors/pi-ai-helpers/golden.json, Pi's own answers at the pin) through the runtime's pi-ai and
+  // pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through the runtime's pi-ai and
   // reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
   pi.registerCommand("pi_ai_helpers_probe", { description: "Run the golden pi-ai helper calls", handler: async (args, ctx) => {
     const golden = JSON.parse(readFileSync(args, "utf8"));

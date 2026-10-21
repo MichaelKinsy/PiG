@@ -13,7 +13,7 @@ import (
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
-// registerPiAiHelpersFixture adds pi_ai_helpers_probe: it runs every call of the golden file (test/parity/sdk-vectors/pi-ai-helpers/golden.json, Pi's own answers at the pin)
+// registerPiAiHelpersFixture adds pi_ai_helpers_probe: it runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test)
 // through this SDK's pi-ai helpers and reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
 func registerPiAiHelpersFixture(ext *sdk.Extension) {
 	ext.Command("pi_ai_helpers_probe", "Run the golden pi-ai helper calls", func(ctx sdk.Context, args string) error {

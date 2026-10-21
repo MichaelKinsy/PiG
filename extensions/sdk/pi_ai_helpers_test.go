@@ -11,27 +11,11 @@ import (
 	"time"
 )
 
-// goldenCase is one call of test/parity/sdk-vectors/pi-ai-helpers/golden.json: what Pi's own pi-ai at the pin returned (JSON.stringify of it as Text; absent when it returned undefined).
+// goldenCase is one case of the pi-ai vectors (test/parity/sdk-vectors/pi-ai/<export>.json): what Pi's own pi-ai at the pin returned (JSON.stringify of it as Text; absent when it returned undefined).
 type goldenCase struct {
 	Fn   string            `json:"fn"`
 	Args []json.RawMessage `json:"args"`
 	Text *string           `json:"text"`
-}
-
-func loadGolden(t *testing.T) (cases []goldenCase, auth goldenAuth) {
-	t.Helper()
-	raw, err := os.ReadFile("../../test/parity/sdk-vectors/pi-ai-helpers/golden.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var file struct {
-		Cases []goldenCase `json:"cases"`
-		Auth  goldenAuth   `json:"auth"`
-	}
-	if err := json.Unmarshal(raw, &file); err != nil {
-		t.Fatal(err)
-	}
-	return file.Cases, file.Auth
 }
 
 type goldenAuth struct {
@@ -365,7 +349,7 @@ func jsonStringifyAny(t *testing.T, value any) string {
 	return string(encoded)
 }
 
-// goldenTiming is one scenario of the golden file's "timing" list: how the final message is delivered to a stream made by createAssistantMessageEventStream, what it carries,
+// goldenTiming is one case of the createAssistantMessageEventStream vectors: how the final message is delivered to a stream made by createAssistantMessageEventStream, what it carries,
 // and what Pi's stream left on it.
 type goldenTiming struct {
 	Kind       string   `json:"kind"`
@@ -379,20 +363,31 @@ type goldenTiming struct {
 // A stream made by CreateAssistantMessageEventStream times its final message as Pi's AssistantMessageEventStream does: durationMs is added unless the message has one or its
 // timestamp predates the stream, and a message that arrives after the stream is done is left alone.
 func TestAssistantMessageEventStreamTimesItsFinalMessage(t *testing.T) {
-	raw, err := os.ReadFile("../../test/parity/sdk-vectors/pi-ai-helpers/golden.json")
-	if err != nil {
-		t.Fatal(err)
+	var timing []goldenTiming
+	for _, v := range readVectors(t, "pi-ai", "createAssistantMessageEventStream") {
+		var scenario struct {
+			Kind      string   `json:"kind"`
+			Timestamp string   `json:"timestamp"`
+			Preset    *float64 `json:"preset"`
+		}
+		var answer struct {
+			Present    bool `json:"present"`
+			Kept       bool `json:"kept"`
+			LaterTimed bool `json:"laterTimed"`
+		}
+		if err := json.Unmarshal(v.Args[0], &scenario); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(v.Result, &answer); err != nil {
+			t.Fatal(err)
+		}
+		c := goldenTiming{Kind: scenario.Kind, Timestamp: scenario.Timestamp, Preset: scenario.Preset, Present: answer.Present, LaterTimed: answer.LaterTimed}
+		if answer.Kept {
+			c.Value = scenario.Preset
+		}
+		timing = append(timing, c)
 	}
-	var file struct {
-		Timing []goldenTiming `json:"timing"`
-	}
-	if err := json.Unmarshal(raw, &file); err != nil {
-		t.Fatal(err)
-	}
-	if len(file.Timing) == 0 {
-		t.Fatal("the golden file has no timing scenarios")
-	}
-	for _, c := range file.Timing {
+	for _, c := range timing {
 		stream := CreateAssistantMessageEventStream()
 		message := func() map[string]any {
 			m := map[string]any{"role": "assistant", "content": []any{}, "stopReason": "stop"}

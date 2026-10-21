@@ -15,7 +15,7 @@ import (
 
 // TestConformance_HostHelpersAgreeAcrossSDKs: Pi exports generateDiffString, generateUnifiedPatch, sessionEntryToContextMessages, convertToPng, resizeImage,
 // readStoredCredential and copyToClipboard (coding-agent index.ts). Every SDK answers the first six as Pi's own code does at the pin, for the golden file's inputs
-// (test/parity/sdk-vectors/pi-ai-helpers/golden.json, written by probe.mjs): the diffs and patches byte for byte, the messages an entry contributes, the MIME type and
+// (test/parity/sdk-vectors/pi-ai/*.json and pi-coding-agent/*.json): the diffs and patches byte for byte, the messages an entry contributes, the MIME type and
 // dimensions of a converted or resized image (Pi's Photon and the host's encoder do not produce the same bytes), and the credential an auth.json holds in the key order
 // of the file. copyToClipboard reaches the host's copy function with the exact text in the Go, Rust and Python SDKs; the Node runtime runs Pi's own copy code in its own
 // process, which writes the system clipboard and never reaches the host, so the row does not call it there.
@@ -39,10 +39,7 @@ func TestConformance_HostHelpersAgreeAcrossSDKs(t *testing.T) {
 	})
 	t.Cleanup(func() { subprocess.SetClipboardCopier(nil) })
 
-	golden, err := filepath.Abs(filepath.Join("..", "parity", "sdk-vectors", "pi-ai-helpers", "golden.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	golden := piVectorsFile(t)
 	content, err := os.ReadFile(golden)
 	if err != nil {
 		t.Fatal(err)

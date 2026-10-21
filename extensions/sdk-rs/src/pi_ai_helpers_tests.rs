@@ -1,14 +1,64 @@
-//! Every pure pi-ai helper returns what Pi's own pi-ai returned at the pin for each call recorded in `test/parity/sdk-vectors/pi-ai-helpers/golden.json` (written by `probe.mjs`).
+//! Every pure pi-ai helper returns what Pi's own pi-ai returned at the pin for each case of `test/parity/sdk-vectors/pi-ai/*.json` (written by `automation/gen/generate-sdk-vectors.mjs`).
 
 use crate::pi_ai_helpers::*;
 use crate::provider::{APIKeyAuthInput, AuthContext, AuthInteraction, ProviderSignal};
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-const GOLDEN: &str = include_str!("../../../test/parity/sdk-vectors/pi-ai-helpers/golden.json");
+const VECTORS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test/parity/sdk-vectors");
 
+fn is_undefined(value: &Value) -> bool {
+    value == &json!({"$": "undefined"})
+}
+
+fn read_vectors(module: &str, export: &str) -> Vec<Value> {
+    let path = format!("{VECTORS}/{module}/{export}.json");
+    let file: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))).unwrap();
+    let cases = file["cases"].as_array().unwrap().clone();
+    assert!(!cases.is_empty(), "{path} has no cases");
+    cases
+}
+
+/// The pi-ai vectors as the tests below consume them: an argument or answer that is undefined has no value.
 fn golden() -> Value {
-    serde_json::from_str(GOLDEN).unwrap()
+    let mut cases = Vec::new();
+    let mut exports: Vec<String> = std::fs::read_dir(format!("{VECTORS}/pi-ai")).unwrap().map(|entry| entry.unwrap().path()).filter(|path| path.extension().is_some_and(|ext| ext == "json")).map(|path| path.file_stem().unwrap().to_string_lossy().into_owned()).collect();
+    exports.sort();
+    for export in exports.iter().filter(|export| !matches!(export.as_str(), "envApiKeyAuth" | "createAssistantMessageEventStream")) {
+        for case in read_vectors("pi-ai", export) {
+            let args: Vec<Value> = case["args"].as_array().unwrap().iter().map(|arg| if is_undefined(arg) { Value::Null } else { arg.clone() }).collect();
+            let mut entry = json!({ "fn": export, "args": args });
+            if !is_undefined(&case["result"]) {
+                entry["result"] = case["result"].clone();
+            }
+            cases.push(entry);
+        }
+    }
+    let (mut auth_cases, mut login) = (Vec::new(), Value::Null);
+    for case in read_vectors("pi-ai", "envApiKeyAuth") {
+        let args = case["args"].as_array().unwrap();
+        if args[2] == json!("$login") {
+            login = json!({ "prompts": case["result"]["prompts"], "result": case["result"]["result"] });
+            continue;
+        }
+        let mut entry = json!({ "name": args[0], "envVars": args[1], "env": args[3], "seen": case["result"]["seen"] });
+        if !is_undefined(&args[2]) {
+            entry["credential"] = args[2].clone();
+        }
+        if !case["result"]["result"].is_null() {
+            entry["result"] = case["result"]["result"].clone();
+        }
+        auth_cases.push(entry);
+    }
+    let timing: Vec<Value> = read_vectors("pi-ai", "createAssistantMessageEventStream")
+        .into_iter()
+        .map(|case| {
+            let (scenario, answer) = (&case["args"][0], &case["result"]);
+            let kept = if answer["kept"] == json!(true) { scenario["preset"].clone() } else { Value::Null };
+            json!({ "kind": scenario["kind"], "timestamp": scenario["timestamp"], "preset": scenario["preset"], "present": answer["present"], "value": kept, "laterTimed": answer["laterTimed"] })
+        })
+        .collect();
+    json!({ "cases": cases, "auth": { "cases": auth_cases, "login": login }, "timing": timing })
 }
 
 /// Same value, with the keys of every object in the order `Object.keys` gives them (which is what `JSON.stringify` writes) and a NaN or infinity as the null `JSON.stringify` makes of it.
@@ -94,10 +144,6 @@ fn every_helper_matches_the_pinned_package() {
     for case in golden["cases"].as_array().unwrap() {
         let fn_name = case["fn"].as_str().unwrap();
         counted.insert(fn_name.to_string());
-        if fn_name == "DEFAULT_MAX_AGENT_RETRY_DELAY_MS" {
-            assert_eq!(DEFAULT_MAX_AGENT_RETRY_DELAY_MS, case["result"].as_f64().unwrap());
-            continue;
-        }
         let got = run(fn_name, case["args"].as_array().unwrap());
         let outcome = match (&got, case.get("result")) {
             (None, None) => Ok(()),
@@ -234,4 +280,26 @@ fn a_stream_the_sdk_makes_for_a_host_operation_is_not_timed() {
     let stream = crate::ModelEventStream::new();
     stream.push(json!({ "type": "done", "reason": "stop", "message": { "role": "assistant", "timestamp": 1u64 << 50 } }));
     assert!(stream.next().unwrap()["message"].get("durationMs").is_none());
+}
+
+#[test]
+fn the_default_retry_delay_cap_is_pis() {
+    assert_eq!(DEFAULT_MAX_AGENT_RETRY_DELAY_MS, 60_000.0);
+}
+
+/// `read_stored_credential` reads the credential an auth.json holds, in the key order of the file, as Pi's does (vectors: `pi-coding-agent/readStoredCredential.json`).
+#[test]
+fn read_stored_credential_matches_the_pinned_package() {
+    let dir = std::env::temp_dir().join(format!("pig-sdk-vectors-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    for (i, case) in read_vectors("pi-coding-agent", "readStoredCredential").iter().enumerate() {
+        let args = case["args"].as_array().unwrap();
+        let path = dir.join(format!("auth-{i}.json"));
+        if !is_undefined(&args[1]) {
+            std::fs::write(&path, args[1].as_str().unwrap()).unwrap();
+        }
+        let got = crate::read_stored_credential(args[0].as_str().unwrap(), path.to_str()).unwrap().unwrap_or(Value::Null);
+        same(&got, &case["result"], case["name"].as_str().unwrap()).unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -1,0 +1,362 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "getSupportedThinkingLevels",
+ "cases": [
+  {
+   "name": "case 0001",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false
+    }
+   ],
+   "result": [
+    "off"
+   ]
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high"
+   ]
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {}
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high"
+   ]
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "xhigh": "x"
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh"
+   ]
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "max": "m"
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "max"
+   ]
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "xhigh": "x",
+      "max": "m"
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max"
+   ]
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "xhigh": "x",
+      "minimal": null
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "low",
+    "medium",
+    "high",
+    "xhigh"
+   ]
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "off": null
+     }
+    }
+   ],
+   "result": [
+    "minimal",
+    "low",
+    "medium",
+    "high"
+   ]
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "off": null,
+      "minimal": null,
+      "low": null
+     }
+    }
+   ],
+   "result": [
+    "medium",
+    "high"
+   ]
+  },
+  {
+   "name": "case 0010",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "off": null,
+      "minimal": null,
+      "low": null,
+      "medium": null,
+      "high": null
+     }
+    }
+   ],
+   "result": []
+  },
+  {
+   "name": "case 0011",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "off": null,
+      "minimal": null,
+      "low": null,
+      "medium": null,
+      "high": null,
+      "xhigh": "x",
+      "max": "m"
+     }
+    }
+   ],
+   "result": [
+    "xhigh",
+    "max"
+   ]
+  },
+  {
+   "name": "case 0012",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "high": null,
+      "xhigh": "x"
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "xhigh"
+   ]
+  },
+  {
+   "name": "case 0013",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "medium": "m",
+      "high": "h"
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high"
+   ]
+  },
+  {
+   "name": "case 0014",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "xhigh": null,
+      "max": null
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high"
+   ]
+  },
+  {
+   "name": "case 0015",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "off": "o",
+      "max": "m",
+      "xhigh": null
+     }
+    }
+   ],
+   "result": [
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "max"
+   ]
+  },
+  {
+   "name": "case 0016",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "off": null,
+      "low": null,
+      "medium": null,
+      "high": null,
+      "xhigh": null
+     }
+    }
+   ],
+   "result": [
+    "minimal"
+   ]
+  },
+  {
+   "name": "case 0017",
+   "args": [
+    {
+     "id": "m",
+     "provider": "p",
+     "api": "x",
+     "reasoning": false,
+     "thinkingLevelMap": {
+      "minimal": null,
+      "low": null,
+      "medium": null
+     }
+    }
+   ],
+   "result": [
+    "off"
+   ]
+  }
+ ]
+}

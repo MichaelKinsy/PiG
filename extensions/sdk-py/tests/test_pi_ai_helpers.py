@@ -1,4 +1,4 @@
-"""Every pure pi-ai helper returns what Pi's own pi-ai returned at the pin for each call recorded in test/parity/sdk-vectors/pi-ai-helpers/golden.json (written by probe.mjs)."""
+"""Every pure pi-ai helper returns what Pi's own pi-ai returned at the pin for each case of test/parity/sdk-vectors/pi-ai/*.json (written by automation/gen/generate-sdk-vectors.mjs)."""
 import json
 import math
 from pathlib import Path
@@ -10,7 +10,52 @@ from pig_sdk import pi_ai_helpers as helpers
 from pig_sdk.provider import APIKeyAuthInput, AuthContext, AuthInteraction, ProviderSignal
 from pig_sdk.serialize_conversation import _json_stringify
 
-GOLDEN = json.loads((Path(__file__).resolve().parents[3] / "test" / "parity" / "sdk-vectors" / "pi-ai-helpers" / "golden.json").read_text(encoding="utf-8"))
+VECTORS = Path(__file__).resolve().parents[3] / "test" / "parity" / "sdk-vectors"
+
+
+def _is_undefined(value):
+    return isinstance(value, dict) and value == {"$": "undefined"}
+
+
+def _read_vectors(module, export):
+    """The cases of test/parity/sdk-vectors/<module>/<export>.json: what Pi's own function returned at the pin."""
+    cases = json.loads((VECTORS / module / (export + ".json")).read_text(encoding="utf-8"))["cases"]
+    assert cases, export
+    return cases
+
+
+def _load_golden():
+    """The pi-ai vectors as the tests below consume them: an argument or answer that is undefined has no value."""
+    cases = []
+    for path in sorted((VECTORS / "pi-ai").glob("*.json")):
+        export = path.stem
+        if export in ("envApiKeyAuth", "createAssistantMessageEventStream"):
+            continue
+        for case in _read_vectors("pi-ai", export):
+            entry = {"fn": export, "args": [None if _is_undefined(arg) else arg for arg in case["args"]]}
+            if not _is_undefined(case["result"]):
+                entry["result"], entry["text"] = case["result"], _json_stringify(case["result"])
+            cases.append(entry)
+    auth_cases, login = [], None
+    for case in _read_vectors("pi-ai", "envApiKeyAuth"):
+        name, env_vars, credential, env = case["args"]
+        if credential == "$login":
+            login = {"prompts": case["result"]["prompts"], "result": case["result"]["result"]}
+            continue
+        entry = {"name": name, "envVars": env_vars, "env": env, "seen": case["result"]["seen"]}
+        if not _is_undefined(credential):
+            entry["credential"] = credential
+        if case["result"]["result"] is not None:
+            entry["result"] = case["result"]["result"]
+        auth_cases.append(entry)
+    timing = []
+    for case in _read_vectors("pi-ai", "createAssistantMessageEventStream"):
+        scenario, answer = case["args"][0], case["result"]
+        timing.append({**scenario, "present": answer["present"], "value": scenario["preset"] if answer["kept"] else None, "laterTimed": answer["laterTimed"]})
+    return {"cases": cases, "auth": {"cases": auth_cases, "login": login}, "timing": timing}
+
+
+GOLDEN = _load_golden()
 
 CALLS = {
     "StringEnum": helpers.string_enum,
@@ -43,6 +88,10 @@ CALLS = {
 }
 
 
+def test_the_default_retry_delay_cap_is_pis():
+    assert helpers.DEFAULT_MAX_AGENT_RETRY_DELAY_MS == 60_000
+
+
 def test_the_golden_file_covers_every_helper():
     called = {case["fn"] for case in GOLDEN["cases"]}
     assert set(CALLS) <= called
@@ -51,9 +100,6 @@ def test_the_golden_file_covers_every_helper():
 def test_every_helper_matches_the_pinned_package():
     failures = []
     for case in GOLDEN["cases"]:
-        if case["fn"] == "DEFAULT_MAX_AGENT_RETRY_DELAY_MS":
-            assert helpers.DEFAULT_MAX_AGENT_RETRY_DELAY_MS == case["result"]
-            continue
         got = CALLS[case["fn"]](*json.loads(json.dumps(case["args"])))
         if case["fn"] == "calculateCost":
             got = {key: (None if math.isnan(value) else value) for key, value in got.items()}
@@ -83,7 +129,7 @@ def test_env_api_key_auth_matches_the_pinned_package():
         got = None
         if result is not None:
             got = {"auth": result.auth, **({"env": result.env} if result.env is not None else {}), "source": result.source}
-        want = json.loads(case["text"]) if "text" in case else None
+        want = case.get("result")
         assert got == want, case
         assert seen == case["seen"], case
     prompts = []
@@ -149,3 +195,13 @@ def test_a_stream_the_sdk_makes_for_a_host_operation_is_not_timed():
     message = {"role": "assistant", "content": [], "stopReason": "stop", "timestamp": 2**50}
     stream.push({"type": "done", "reason": "stop", "message": message})
     assert "durationMs" not in message
+
+
+def test_read_stored_credential_matches_the_pinned_package(tmp_path):
+    for case in _read_vectors("pi-coding-agent", "readStoredCredential"):
+        provider, text = case["args"]
+        path = tmp_path / (case["name"].replace(" ", "-") + ".json")
+        if not _is_undefined(text):
+            path.write_text(text, encoding="utf-8")
+        got = pig_sdk.read_stored_credential(provider, str(path))
+        assert _json_stringify(got) == _json_stringify(case["result"]), case["name"]
