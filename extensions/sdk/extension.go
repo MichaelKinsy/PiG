@@ -147,8 +147,8 @@ type Extension struct {
 	footerSubs       footerSubscribers
 	toolFuncs        map[string]ToolFunc
 	toolPrepareFuncs map[string]ToolPrepareArgumentsFunc
-	// toolStarts keeps the handlers of a parallel tool batch starting in the order their tool_call requests arrive (agent-loop.ts:619-647, 820-837). A handler is Go code on a preemptible thread, so the order is the order the handlers are invoked: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without one. A thread that the operating system preempts between its hand-off and its handler's first statement can still be overtaken, and no Go construct closes that window.
-	toolStarts         jsloop.Lane
+	// requestStarts keeps the handlers of the requests that run extension code (startsInArrivalOrder) starting in the order the requests arrive: the tool_call requests of a parallel batch (agent-loop.ts:619-647, 820-837) and the event requests of concurrent emits, such as the tool_result hooks of that batch (runner.ts:1096-1125). A handler is Go code on a preemptible thread, so the order is the order the handlers are invoked: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without one. A thread that the operating system preempts between its hand-off and its handler's first statement can still be overtaken, and no Go construct closes that window.
+	requestStarts      jsloop.Lane
 	commandFuncs       map[string]CommandFunc
 	eventFuncs         map[int]EventFunc
 	shortcutFuncs      map[string]ShortcutFunc
@@ -1188,8 +1188,8 @@ func (e *Extension) loop() error {
 				e.applyEventStream(env.Request)
 			}
 			ctx, finish := e.armRequest(env.ID)
-			if env.Request != nil && env.Request.Method == "tool_call" {
-				ctx.start = e.toolStarts.Reserve()
+			if startsInArrivalOrder(env.Request) {
+				ctx.start = e.requestStarts.Reserve()
 			}
 			e.requestWG.Go(func() {
 				defer finish()
@@ -1209,6 +1209,18 @@ func (e *Extension) loop() error {
 		}
 	}
 	return e.stopRequests()
+}
+
+// startsInArrivalOrder reports whether a request runs extension code whose start Pi orders by call order: a tool_call, an event or a command. Pi runs the handlers of concurrent emits and of a `Promise.all` batch on one thread, so the one that was asked first starts first (runner.ts:1096-1125, agent-loop.ts:619-647). Other requests (renders, provider streams, completions) hold no place, so a long one never holds a handler back.
+func startsInArrivalOrder(req *requestMsg) bool {
+	if req == nil {
+		return false
+	}
+	switch req.Method {
+	case "tool_call", "event", "command":
+		return true
+	}
+	return false
 }
 
 func (e *Extension) stopRequests() error {
@@ -1404,6 +1416,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		if len(req.Args) > 0 {
 			_ = json.Unmarshal(req.Args, &args)
 		}
+		// runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
+		ctx.start.Pass()
 		err := handler(ctx, args)
 		_ = e.conn.respond(id, nil, err)
 
@@ -1455,6 +1469,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			data["systemPrompt"] = ctx.systemPrompt
 		}
 		snapshot := snapshotContextMessages(req.Event, data)
+		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
+		ctx.start.Pass()
 		result, err := handler(ctx, data)
 		if req.Event == "user_bash" && err == nil {
 			result, err = e.userBashEventResult(result)

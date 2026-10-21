@@ -245,7 +245,7 @@ type Context struct {
 	requestID  string
 	parent     *requestParent
 	ctx        context.Context
-	start      *jsloop.Place // set for a tool_call request: its place in the order the handlers start
+	start      *jsloop.Place // set for a tool_call, event or command request (startsInArrivalOrder): its place in the order the handlers start
 	// systemPrompt is set for a before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
 	systemPrompt *SystemPrompt
 	// replacement is set for a withSession context: the replacement Session's locally answered values.

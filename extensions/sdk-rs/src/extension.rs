@@ -1471,7 +1471,7 @@ impl Extension {
             Arc::new(Mutex::new(HashMap::new()));
         let request_threads = ext.provider_objects.workers.clone();
         let width_deliveries = Arc::new(WidthDeliveries::default());
-        let tool_starts = crate::tool_start_order::ToolStartOrder::default();
+        let request_starts = crate::request_start_order::RequestStartOrder::default();
         let stop_requests = |reason: &str| -> io::Result<()> {
             width_deliveries.stop();
             for cancel in active_requests.lock().unwrap().values() {
@@ -1531,8 +1531,8 @@ impl Extension {
                         let base = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                         let conn = conn.clone();
                         let ext = ext.clone();
-                        // agent-loop.ts:619-647: the handlers of a batch start in source order.
-                        let start = (req.method == "tool_call").then(|| tool_starts.reserve());
+                        // agent-loop.ts:619-647, runner.ts:1096-1125: the handlers of a batch and of concurrent emits start in arrival order.
+                        let start = crate::request_start_order::starts_in_arrival_order(&req.method).then(|| request_starts.reserve());
                         let failed_start = start.clone();
                         request_threads.start();
                         let threads = request_threads.clone();
@@ -1999,7 +1999,7 @@ impl Extension {
         id: &str,
         req: &mut RequestMsg,
         cancel: RequestCancel,
-        start: Option<&crate::tool_start_order::ToolStart>,
+        start: Option<&crate::request_start_order::RequestStart>,
     ) {
         match req.method.as_str() {
             "autocomplete.sync" | "autocomplete.suggest" => {
@@ -2350,6 +2350,9 @@ impl Extension {
                 if let Some(handler) = late.as_deref().or_else(|| self.command_fns.get(cmd_name)) {
                     let args_str = req.args.as_ref().and_then(|v| v.as_str()).unwrap_or("");
                     let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                    if let Some(start) = start {
+                        start.begin();
+                    }
                     match handler(&ctx, args_str) {
                         CommandResult::Ok => {
                             let _ = conn.respond(id, None, None);
@@ -2409,6 +2412,9 @@ impl Extension {
                     let mut ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                     if req.event.as_deref() == Some("before_agent_start") {
                         ctx.system_prompt = Some(Arc::new(crate::context::SystemPromptState::new(&data)));
+                    }
+                    if let Some(start) = start {
+                        start.begin();
                     }
                     match catch_unwind(AssertUnwindSafe(|| handler(&ctx, &mut data))) {
                         Ok(result) => result,

@@ -75,7 +75,7 @@ def test_tool_call_handlers_start_in_arrival_order():
 
 def test_a_tool_call_that_ends_without_its_handler_keeps_the_earlier_ones_ahead():
     # agent-loop.ts:619-647: handlers start in source order. A request that ends before its handler hands its place on only after the requests ahead of it began, so a later handler cannot overtake an earlier one.
-    order = pig_sdk._ToolStartOrder()
+    order = pig_sdk._RequestStartOrder()
     ahead, skipped, after = order.reserve(), order.reserve(), order.reserve()
     skipped_ended = threading.Event()
     after_began = threading.Event()
