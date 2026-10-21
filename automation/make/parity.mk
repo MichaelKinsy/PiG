@@ -171,9 +171,13 @@ porter-smoke: ## Verify the Porter Piglet in TUI and headless modes
 custom-factory-ledger: ## Regenerate the internal pinned custom-factory draft
 	@go run ./test/parity/cmd/customfactoryledger
 
-sdk-surface-drift: ## Regenerate the extension SDK surface matrix; fail on drift or an unexcepted missing cell
+sdk-surface-drift: ## Regenerate the extension SDK surface matrix and export ledger; fail on drift, an unexcepted missing cell, or an unlisted, unclassified or unreached export
 	@go run ./test/parity/cmd/sdksurface -check
 	@echo "sdk-surface-drift: clean"
+
+sdk-exports-release: ## Release gate for the SDK export ledger: also fail on a gap on an export that many extensions import
+	@go run ./test/parity/cmd/sdksurface -check -release
+	@echo "sdk-exports-release: clean"
 
 sdk-apidiff: ## Fail on an incompatible extension SDK change since the pinned release that lacks an upgrade rule or a release note
 	@go run ./automation/ci/sdkapidiff
@@ -510,7 +514,8 @@ ledger-equivalence: ## Prove on lane branches that the cached derivation equals 
 	@test -n "$(BRANCHES)" || { echo "ledger-equivalence: set BRANCHES to lane branch refs" >&2; exit 2; }
 	@LEDGER_EQUIV_BRANCHES="$(BRANCHES)" go test ./test/parity/interface-closure/autobind -run TestCacheEquivalenceOnLaneBranches -v -timeout 120m
 
-interface-mapping-strict: ## Require every semantic interface mapping to be fully closed
+interface-mapping-strict: ## Require every semantic interface mapping to be fully closed, and no Node-only gap on a high-use export
+	@$(MAKE) -s sdk-exports-release
 	@go run ./test/parity/cmd/interfaceinventory \
 		-inventory test/parity/interfaces/upstream-v$(UPSTREAM_VERSION).json \
 		-observable test/parity/interfaces/cli-v$(UPSTREAM_VERSION).json \
@@ -687,5 +692,5 @@ parity-new: ## Scaffold a new parity scenario (optionally under FAMILY=...)
 	@echo "wrote test/parity/scenarios/$(if $(FAMILY),$(FAMILY)/,)$(NAME).toml"
 
 .PHONY: go-stubs go-stub-fields behavior-input-inventory interface-go interface-recommendations-generate test-inventory-generate
-.PHONY: sdk-apidiff interface-gaps interface-gaps-update ledger-check ledger-update ledger-frontier ledger-equivalence async-contracts behavior-contracts sdk-surface-drift behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta
+.PHONY: sdk-exports-release sdk-apidiff interface-gaps interface-gaps-update ledger-check ledger-update ledger-frontier ledger-equivalence async-contracts behavior-contracts sdk-surface-drift behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta
 .PHONY: parity-live-owner
