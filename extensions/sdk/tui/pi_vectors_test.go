@@ -78,7 +78,7 @@ func piNear(got, want any) bool {
 			}
 		}
 		for k, x := range w {
-			if !(k == "h" && neutral) && !piNear(g[k], x) {
+			if (k != "h" || !neutral) && !piNear(g[k], x) {
 				return false
 			}
 		}
@@ -234,7 +234,7 @@ func TestPiVectors(t *testing.T) {
 					fails++
 					t.Errorf("%s %s: error %v, Pi throws %q", export, c.Name, err, *c.Throws)
 				}
-			case err != nil || !piNear(got, c.Result) && !(isUndefined(c.Result) && isUndefined(got)):
+			case err != nil || !piNear(got, c.Result) && (!isUndefined(c.Result) || !isUndefined(got)):
 				fails++
 				t.Errorf("%s %s(%v) = %v (err %v), Pi %v", export, c.Name, c.Args, got, err, c.Result)
 			}

@@ -52,8 +52,6 @@ func installPalette(t *testing.T, raw json.RawMessage) UITheme {
 	return theme
 }
 
-func sameJSON(a, b any) bool { return reflect.DeepEqual(a, b) }
-
 func stylesOf(theme MarkdownTheme) map[string]func(string) string {
 	return map[string]func(string) string{
 		"heading": theme.Heading, "link": theme.Link, "linkUrl": theme.LinkUrl, "code": theme.Code, "codeBlock": theme.CodeBlock,

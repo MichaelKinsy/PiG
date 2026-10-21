@@ -96,7 +96,9 @@ func TestTextVectorsMatchPi(t *testing.T) {
 func setKeyEnv(t *testing.T, env map[string]any) {
 	for _, k := range []string{"WT_SESSION", "SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"} {
 		t.Setenv(k, "")
-		os.Unsetenv(k)
+		if err := os.Unsetenv(k); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for k, val := range env {
 		t.Setenv(k, val.(string))

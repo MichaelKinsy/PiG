@@ -25,6 +25,14 @@ var replicatedReadyOnly = map[string]string{
 	"mode":   "fixed for the connection: the ready payload's run mode",
 	"width":  "width_change notifies",
 	"height": "height_change notifies",
+	// Fields the OnLoaded and subscription machinery keep beside the replicated state: no snapshot carries them.
+	"sourceInfo":      "the loader's provenance, stamped once in the ready payload and fixed for the connection",
+	"sourceInfoKnown": "set with sourceInfo from the ready payload",
+	"loadedMu":        "guards the OnLoaded handlers, which are not host state",
+	"loadedFuncs":     "the OnLoaded handlers registered before Run, not host state",
+	"loadedDone":      "closes when the OnLoaded handlers returned, not host state",
+	"themeFeed":       "delivers a theme change to the OnThemeChange handlers; the theme itself is assigned by setUITheme",
+	"expandedFeed":    "delivers a tool-expansion change to the OnToolsExpandedChange handlers; the state itself is assigned by setToolsExpanded",
 }
 
 func readRepoFile(t *testing.T, rel string) string {
@@ -111,7 +119,7 @@ func TestGoSDKReplicatedFieldsAreAssignedFromStateUpdates(t *testing.T) {
 		t.Fatalf("found only %v after Extension.mu: the struct layout changed, update this test", guarded)
 	}
 	// The functions that apply a state snapshot: handleNotifyAt (state_update and the ready state, which runs through it) and what it calls.
-	stateFuncs := map[string]bool{"handleNotifyAt": true, "applyReplicatedState": true, "applyFooterData": true}
+	stateFuncs := map[string]bool{"handleNotifyAt": true, "applyReplicatedState": true, "applyFooterData": true, "setUITheme": true, "setToolsExpanded": true}
 	assigned := map[string]bool{}
 	for _, file := range pkg.Files {
 		for _, decl := range file.Decls {
@@ -194,6 +202,10 @@ func TestRustSDKReplicatedStateIsAppliedFromStateUpdates(t *testing.T) {
 			t.Fatalf("%s has no fields", tc.structName)
 		}
 		apply := funcBody(t, src, regexp.MustCompile(`^\s+pub\(crate\) fn apply_state\(`))
+		// UiState installs a palette in set_palette, which apply_state calls so that a changed palette is delivered to the theme subscribers.
+		if tc.structName == "UiState" {
+			apply += "\n" + funcBody(t, src, regexp.MustCompile(`^\s+fn set_palette\(`))
+		}
 		if !strings.Contains(src, "impl "+tc.impl+" {") {
 			t.Fatalf("no impl %s", tc.impl)
 		}

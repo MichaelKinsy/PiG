@@ -181,7 +181,7 @@ func (b EventBus) Emit(channel string, data any) error {
 		conn := b.ext.busConn()
 		if conn == nil {
 			if conn, err = b.ext.factoryBusConn(); err != nil {
-				return fmt.Errorf("%w (%v)", errBusNotConnected, err)
+				return fmt.Errorf("%w (%w)", errBusNotConnected, err)
 			}
 		}
 		result, err = conn.call(callEventsEmit, json.RawMessage(args))

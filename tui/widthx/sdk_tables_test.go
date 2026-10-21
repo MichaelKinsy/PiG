@@ -24,7 +24,7 @@ func sdkPythonTables() string {
 		fmt.Fprintf(&b, "    (0x%x, 0x%x, 0x%x),\n", propRanges[i], propRanges[i+1], propRanges[i+2])
 	}
 	b.WriteString(")\n\n# Multi-code-point RGI emoji sequences.\nRGI_SEQUENCES = frozenset((\n")
-	for _, s := range rgiSequences {
+	for _, s := range &rgiSequences {
 		fmt.Fprintf(&b, "    %s,\n", pyString(s))
 	}
 	b.WriteString("))\n")

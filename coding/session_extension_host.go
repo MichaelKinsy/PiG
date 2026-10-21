@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/tui"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -15,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // ExtensionHostSessionActions is the Session-owned messages, names, and context actions in every mode. The current getter supplies the live Session, or nil while it is being created. stage, when non-nil, returns the stage of a run an extension sends at that moment, or nil to start it as the Session does.
