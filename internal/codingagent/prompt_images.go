@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 )
 
-// NormalizePromptContent applies the selected model's profile once, before new
+// NormalizePromptContent applies the given model's profile once, before new
 // images enter history. Prompt failures become text hints, unlike tool results.
 func NormalizePromptContent(content []ai.UserContentBlock, autoResize bool, model *ai.Model, processImage imageprocessing.ProcessImageFunc) []ai.UserContentBlock {
 	var options *ai.ModelImageResizeOptions

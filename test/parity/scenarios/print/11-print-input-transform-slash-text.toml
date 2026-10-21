@@ -1,0 +1,37 @@
+# Behavior family: print
+# Scenario: text an input handler produces is sent to the model even when it reads as an extension command.
+#
+# Upstream evidence (Pi 1402973a): AgentSession.prompt checks for an extension command on the raw text only
+# (agent-session.ts:2067-2074), then runs input handlers and expands templates (2083-2100) and starts the run (2138)
+# without a second command check. The handler rewrites `ship` to `/deploy What is 20+22?`, so the model answers 42 and the
+# deploy command never runs. pig ran the command a second time and sent nothing to the model.
+
+name = "11-print-input-transform-slash-text"
+description = "print mode sends input-handler output that reads as a command to the model without running the command"
+
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "ship"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-input-transform-command.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "../testdata/extension-input-transform-command.mjs",
+]
+
+[assert]
+exit_code = 0
+runs = 1
+output_equal = true
+both_contain = ["42"]
+both_not_contain = ["deploy-command-ran", "unhandled request"]

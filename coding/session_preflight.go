@@ -4,6 +4,7 @@ package coding
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -18,6 +19,8 @@ type PreparedPrompt struct {
 	content      []ai.UserContentBlock
 	messages     []extension.CustomMessageRef
 	systemPrompt *string
+	// nextTurn holds the pending nextTurn messages the preparation took for the run. A nextTurn message queued after that waits for the next run.
+	nextTurn []agent.AgentMessage
 	// run is the run's resolved before_agent_start result. Its options build the run's prompt (agent-session.ts:1747-1748); SelectedTools is an explicit loadout edit, and nil keeps the live active tools.
 	run icodingagent.BeforeAgentStartRun
 }
@@ -85,9 +88,21 @@ func (s *Session) prepareRun(ctx context.Context, trigger extension.BeforeAgentS
 	return p, nil
 }
 
-// NormalizeImages applies the current model's image profile after before_agent_start has completed.
+// NormalizeImages applies the image profile of the limits model (the physical model of the latest virtual-selection response, else the selected model) after before_agent_start has completed (agent-session.ts:2037). It is the last step of the preparation, so it also takes the pending nextTurn messages for the run, as _prepareRun does after it normalizes the images (agent-session.ts:1914-1925). The held messages are flushed after that (:1852-1853), so a nextTurn message queued while they are emitted, such as one a Session listener sends, waits for the next run.
 func (p *PreparedPrompt) NormalizeImages() {
-	p.content = icodingagent.NormalizePromptContent(p.content, p.session.SettingsManager().GetImageAutoResize(), p.session.agent.Model(), p.session.processImage)
+	p.content = icodingagent.NormalizePromptContent(p.content, p.session.SettingsManager().GetImageAutoResize(), p.session.limitsModel(), p.session.processImage)
+	p.takeNextTurn()
+}
+
+// takeNextTurn takes the pending nextTurn messages for the run whose preparation ends (agent-session.ts:1924-1925).
+func (p *PreparedPrompt) takeNextTurn() {
+	p.nextTurn = p.session.agent.TakePendingNextTurn()
+}
+
+// startingMessages is the starting batch of a user prompt's run: the user message, then the nextTurn messages the preparation took (agent-session.ts:1909-1925). The Agent's prepare-prompt hook appends the handlers' messages and the system patch.
+func (p *PreparedPrompt) startingMessages() []agent.AgentMessage {
+	user := agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: append(ai.UserContentBlocks(nil), p.content...), Timestamp: time.Now().UnixMilli()}}
+	return append([]agent.AgentMessage{user}, p.nextTurn...)
 }
 
 // PreparedPromptRun owns an admitted Session prompt across its first event and the remainder of execution.
@@ -136,7 +151,7 @@ func (s *Session) BeginPreparedPrompt(ctx context.Context, start *RunStart, p *P
 	runCtx, cancel := context.WithCancel(ctx)
 	s.pendingBashMu.Lock()
 	s.runState.active.Store(true)
-	run, err := s.agent.BeginSendContent(runCtx, p.content)
+	run, err := s.agent.BeginSendMessages(runCtx, p.startingMessages())
 	if err != nil {
 		s.pendingBashMu.Unlock()
 		cancel()
@@ -202,12 +217,13 @@ func (s *Session) runPreparedPrompt(ctx context.Context, p *PreparedPrompt, run 
 		return run()
 	}()
 	messages, err = s.runPostAgentRuns(ctx, messages, err)
+	// The run's prompt options end before the held bash and custom messages flush, so their handlers read the base prompt (agent-session.ts:1874-1881).
+	s.finishRunPrompt(p)
 	if flushErr := s.flushPendingBashLocked(); flushErr != nil {
 		err = errors.Join(err, flushErr)
 	} else {
 		err = errors.Join(err, s.flushPendingCustomMessages())
 	}
-	s.finishRunPrompt(p)
 	// agent_settled handlers run without the Session lock: Pi awaits them while the Session stays usable, so a handler that awaits ctx.compact()
 	// or another Session operation must not wait on a lock held for the very dispatch that awaits it.
 	s.mu.Unlock()

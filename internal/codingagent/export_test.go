@@ -10,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -88,6 +89,20 @@ func (h *TestHarness) RebindToReplacement(ctx context.Context, session Interacti
 		h.m.opts.ReplacementResources = func(InteractiveSessionHandle) InteractiveReplacement { return replacement }
 	})
 	return h.m.rebindFromRuntime(ctx, session)
+}
+
+// ReplaceExtensionRunner swaps in a runner over exts as /reload does and returns the errors that reload reports.
+func (h *TestHarness) ReplaceExtensionRunner(exts []extension.Extension) []error {
+	var errs []error
+	h.Do(func() { errs = h.m.replaceExtensionRunner(exts) })
+	return errs
+}
+
+// Runner is the in-process runner the mode currently binds.
+func (h *TestHarness) Runner() *inproc.Runner {
+	var runner *inproc.Runner
+	h.Do(func() { runner = h.m.newRunner })
+	return runner
 }
 
 // Do runs fn on the owner loop and waits for it.

@@ -1,0 +1,55 @@
+# Behavior family: extensions-runtime
+# Surface: pi.sendMessage while a run streams, in interactive mode.
+#
+# Upstream (Pi 1.3.0+1402973a agent-session.ts:2323-2359 sendCustomMessage): while the agent streams, a message with triggerTurn other than
+# false is steered, or queued as a follow-up when deliverAs is "followUp"; with triggerTurn false it is held until the turn's tool results are
+# complete and appended without a model call. testdata/ext/send-message-routing.mjs sends one message of each kind from the read tool's tool_result
+# handler. Pi shows the held message first (it is appended at turn_end), then the steered one before the next model call, then the follow-up after
+# the model's answer. PiG queued all three as follow-ups, so every message came after the answer and the held message cost another model call.
+#
+# Upstream evidence (Pi 1.3.0+1402973a, parity harness, 2026-10-21, 100x50 tmux, test-faux/faux-1; pig with the pre-fix routing failed 3 of 3 runs):
+#   pi --no-extensions -e ../../testdata/test-faux-provider.ts -e testdata/ext/send-message-routing.mjs --model test-faux/faux-1
+#   keys: "Run: read parity-read-target.txt" Enter; wait: "[route-follow-up]"
+#   crop: start="Run: read parity-read-target.txt" end=regex `\[route-follow-up\][\s\S]*?42`
+#   raw cropped upstream block, in order: the read card, `[route-quiet]` / `route-quiet-body` (held, appended at turn_end), `[route-default]` /
+#   `What is 20+22?` then the answer `42` (steered), then `[route-follow-up]` / `What is 20+22?` then `42` (follow-up).
+#   Pre-fix PiG showed `done` straight after the read card and no `[route-quiet]` before the follow-up.
+
+name = "87-interactive-send-message-routing"
+description = "A message an extension sends while a run streams is steered, queued as a follow-up, or held until the turn ends, as Pi routes it"
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/send-message-routing.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/send-message-routing.mjs"]
+
+[tmux]
+width = 100
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/send-message-routing-cwd"
+capture_start = "Run: read parity-read-target.txt"
+capture_end_regex = '\[route-follow-up\][\s\S]*?42'
+
+[[tmux.steps]]
+keys = ["Run: read parity-read-target.txt", "Enter"]
+wait_contains = ["[route-follow-up]"]
+settle_seconds = 3
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["[route-default]", "[route-follow-up]", "[route-quiet]", "route-quiet-body"]
+both_not_contain = ["panic:", "goroutine ", "unhandled request"]
+output_equal = true
+runs = 3
