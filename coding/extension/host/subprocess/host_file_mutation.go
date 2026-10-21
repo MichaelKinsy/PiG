@@ -15,50 +15,81 @@ import (
 // extension share. An extension process of another SDK, or a Node process of its own, has no access to the host's map, so each SDK asks the host's queue for its
 // turn instead (CallFileMutationEnter, CallFileMutationExit) and keeps no queue of its own.
 
-// connFileMutations are the tickets one connection holds. A ticket belongs to the connection that was admitted: when the connection closes (the extension exited,
-// was replaced, or the host shut down) every ticket it still holds is released, so a crashed extension cannot keep a file blocked.
-type connFileMutations struct {
-	mu     sync.Mutex
-	next   uint64
-	closed bool
-	held   map[string]*tools.MutationTicket
+// fileMutationTurns are the tickets the connections of one extension process hold, and have not exited. A ticket belongs to the process, not to the connection that
+// was admitted: a packed Go, Rust or Python cell runs several extensions in one process, and an SDK helper that has no Context (the free function
+// withFileMutationQueue) takes the turn on whichever of the process's connections is first running and gives it back on whichever is running then, so a member
+// that is replaced or stops while another member's task holds a turn must not release it. The tickets are released when the last connection of the process has
+// closed (the process exited, or every extension in it was replaced or shut down), so a crashed extension cannot keep a file blocked. An isolated extension,
+// and a Node runtime (whose bridge asks over its own connection), has a registry of its own: its one connection is the process.
+type fileMutationTurns struct {
+	mu   sync.Mutex
+	next uint64
+	// live counts the connections that take their turns here and have not left; it is one for a registry of a connection's own.
+	live int
+	held map[string]*tools.MutationTicket
 }
 
-// admit records a ticket the extension was admitted to and returns its id; false when the connection already closed, in which case the caller releases the ticket.
-func (c *connFileMutations) admit(ticket *tools.MutationTicket) (string, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.closed {
+// join counts c among the connections that take their turns here.
+func (t *fileMutationTurns) join() {
+	t.mu.Lock()
+	t.live++
+	t.mu.Unlock()
+}
+
+// admit records a ticket the extension was admitted to and returns its id; false when c already left, in which case the caller releases the ticket.
+func (t *fileMutationTurns) admit(c *Conn, ticket *tools.MutationTicket) (string, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if c.turnsLeft {
 		return "", false
 	}
-	if c.held == nil {
-		c.held = make(map[string]*tools.MutationTicket)
+	if t.held == nil {
+		t.held = make(map[string]*tools.MutationTicket)
 	}
-	c.next++
-	id := fmt.Sprintf("fm-%d", c.next)
-	c.held[id] = ticket
+	t.next++
+	id := fmt.Sprintf("fm-%d", t.next)
+	t.held[id] = ticket
 	return id, true
 }
 
 // take removes and returns the ticket id names.
-func (c *connFileMutations) take(id string) (*tools.MutationTicket, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	ticket, ok := c.held[id]
-	delete(c.held, id)
+func (t *fileMutationTurns) take(id string) (*tools.MutationTicket, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	ticket, ok := t.held[id]
+	delete(t.held, id)
 	return ticket, ok
 }
 
-// releaseAll releases every held ticket and refuses later admissions.
-func (c *connFileMutations) releaseAll() {
-	c.mu.Lock()
-	c.closed = true
-	held := c.held
-	c.held = nil
-	c.mu.Unlock()
+// leave ends c's part in the registry and refuses its later admissions. With the last connection gone it releases every held ticket.
+func (t *fileMutationTurns) leave(c *Conn) {
+	t.mu.Lock()
+	c.turnsLeft = true
+	t.live--
+	if t.live > 0 {
+		t.mu.Unlock()
+		return
+	}
+	held := t.held
+	t.held = nil
+	t.mu.Unlock()
 	for _, ticket := range held {
 		ticket.Release()
 	}
+}
+
+// turns is the registry c takes its turns in: its process's when the Host shared one (shareFileMutations), else c's own.
+func (c *Conn) turns() *fileMutationTurns {
+	if c.sharedTurns != nil {
+		return c.sharedTurns
+	}
+	return &c.fileMutations
+}
+
+// shareFileMutations makes c take its turns in turns, the registry of the process c runs in. The Host calls it before the connection starts.
+func (c *Conn) shareFileMutations(turns *fileMutationTurns) {
+	turns.join()
+	c.sharedTurns = turns
 }
 
 // handleFileMutationEnter serves CallFileMutationEnter: it takes the path's next place in the host's queue before the call lane advances (extension.CallInitiated),
@@ -77,14 +108,15 @@ func (h *Host) handleFileMutationEnter(ctx context.Context, conn *Conn, call *Ca
 	if err := ticket.WaitContext(ctx); err != nil {
 		return nil, err
 	}
-	id, ok := conn.fileMutations.admit(ticket)
+	turns := conn.turns()
+	id, ok := turns.admit(conn, ticket)
 	if !ok {
 		ticket.Release()
 		return nil, errors.New("extension connection closed")
 	}
 	result, err := json.Marshal(FileMutationEnterResult{Ticket: id})
 	if err != nil {
-		if released, held := conn.fileMutations.take(id); held {
+		if released, held := turns.take(id); held {
 			released.Release()
 		}
 		return nil, err
@@ -98,9 +130,9 @@ func (h *Host) handleFileMutationExit(conn *Conn, call *CallPayload) (*CallResul
 	if err := json.Unmarshal(call.Args, &args); err != nil {
 		return nil, fmt.Errorf("decode %s: %w", call.Method, err)
 	}
-	ticket, ok := conn.fileMutations.take(args.Ticket)
+	ticket, ok := conn.turns().take(args.Ticket)
 	if !ok {
-		return nil, fmt.Errorf("file mutation ticket %q is not held by this connection", args.Ticket)
+		return nil, fmt.Errorf("file mutation ticket %q is not held: it was released, or belongs to another extension process", args.Ticket)
 	}
 	ticket.Release()
 	return &CallResultPayload{Result: json.RawMessage(`{}`)}, nil

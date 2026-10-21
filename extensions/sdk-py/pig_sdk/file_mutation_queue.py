@@ -24,8 +24,8 @@ def with_file_mutation_queue(file_path: str, fn: Callable[[], T]) -> T:
     raises the host's ``HostCallError`` without running ``fn``.
 
     The queue is the host's: it serializes this extension's mutations with the host's built-in edit and write tools and with every other extension
-    process, as Pi's one queue does. The turn is held by the extension's connection: if the connection closes while ``fn`` runs, the host releases the
-    file. Like the other host helpers it may be called before ``run``; with no connection to the host (``PIG_EXT_SOCKET`` unset) it raises
+    process, as Pi's one queue does. The turn is held by the extension's process: a packed cell's members share it, so one member stopping while another's
+    ``fn`` runs does not release the file, and the host releases it when the process's last connection closes. Like the other host helpers it may be called before ``run``; with no connection to the host (``PIG_EXT_SOCKET`` unset) it raises
     ``RuntimeError`` without running ``fn``.
     """
     # Pi resolves the path against the process's working directory; the host resolves nothing relative, so the SDK sends it absolute.
@@ -39,5 +39,10 @@ def with_file_mutation_queue(file_path: str, fn: Callable[[], T]) -> T:
         try:
             host_helpers._helper_call(_CALL_FILE_MUTATION_EXIT, {"ticket": ticket})
         except (RuntimeError, OSError, EOFError):
-            # The host also releases the turn when the connection closes, so a failed exit leaves nothing held.
-            pass
+            # The turn belongs to the process, not to the connection the exit rode: when that connection is stopping (its extension was replaced or stopped while
+            # this task ran), another running extension's connection gives the turn back.
+            try:
+                host_helpers._call_each_running(_CALL_FILE_MUTATION_EXIT, {"ticket": ticket})
+            except (RuntimeError, OSError, EOFError):
+                # With no connection of the process left the host has released the turn already (it does when the last connection closes).
+                pass

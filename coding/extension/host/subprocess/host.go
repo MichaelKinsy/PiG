@@ -2545,6 +2545,16 @@ func (me *managedExt) reap() {
 	me.stderrLog.remove()
 }
 
+// processFileMutations is the file mutation queue registry the connections of me's process share: the process of a packed Go, Rust or Python cell, which several
+// extensions run in and whose helpers take and give back a turn over whichever extension's connection is running. Nil for an extension that has its process, or
+// whose runtime (Node) asks over its own connection, so its tickets stay with that connection.
+func (me *managedExt) processFileMutations() *fileMutationTurns {
+	if me.packedProcess == nil || me.packedProcess.share == nil || me.packedProcess.share.node {
+		return nil
+	}
+	return &me.packedProcess.share.turns
+}
+
 // releaseShare gives back the reference me holds on its process, once per process. The process ends with its last reference.
 func (me *managedExt) releaseShare() {
 	if me.share != nil && me.shareReleased.CompareAndSwap(false, true) {

@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 
 use serde_json::{Value, json};
 
-use crate::host_helpers::helper_call;
+use crate::host_helpers::{helper_call, helper_call_each_running};
 
 const CALL_FILE_MUTATION_ENTER: &str = "fileMutation.enter";
 const CALL_FILE_MUTATION_EXIT: &str = "fileMutation.exit";
@@ -39,11 +39,22 @@ fn resolve(path: &Path) -> io::Result<PathBuf> {
 /// resolved for a reason other than a missing file or directory returns that error without running `f`.
 ///
 /// The queue is the host's: it serializes this extension's mutations with the host's built-in edit and write tools
-/// and with every other extension process, as Pi's one queue does. The turn is held by the extension's connection:
-/// if the connection closes while `f` runs, the host releases the file. Like the other host helpers it may be called
+/// and with every other extension process, as Pi's one queue does. The turn is held by the extension's process: a packed cell's
+/// members share it, so one member stopping while another's `f` runs does not release the file, and the host releases it when the
+/// process's last connection closes. Like the other host helpers it may be called
 /// before `run`; with no connection to the host (`PIG_EXT_SOCKET` unset) it returns an error without running `f`.
 pub fn with_file_mutation_queue<T>(file_path: impl AsRef<Path>, f: impl FnOnce() -> T) -> io::Result<T> {
-    run_queued(&helper_call, file_path.as_ref(), f)
+    run_queued(&queue_call, file_path.as_ref(), f)
+}
+
+/// A queue call over the running extension's connection. The turn belongs to the host's process registry, not to the connection it was taken on: an exit whose
+/// connection is stopping (its extension was replaced or stopped while the task ran) is given to another running extension's connection. With no connection of the
+/// process left the host has released the turn already (it does when the last connection closes).
+fn queue_call(method: &str, args: Value) -> io::Result<Option<Value>> {
+    match helper_call(method, args.clone()) {
+        Err(_) if method == CALL_FILE_MUTATION_EXIT => helper_call_each_running(method, args),
+        reply => reply,
+    }
 }
 
 /// The host call a queue turn is made with: the method and its args, answered with the call's result.
