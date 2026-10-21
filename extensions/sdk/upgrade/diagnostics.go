@@ -156,6 +156,9 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		if _, isGetter := getterByName(name); isGetter && importsSDK(diagnostic, source, files) {
 			return RuleContextGetters, "Context." + name, true
 		}
+		if name == "Find" && importsSDK(diagnostic, source, files) {
+			return RuleModelRegistryFind, "ModelRegistry.Find", true
+		}
 		return "", "", false
 	}
 	if isArityDiagnostic(message) {

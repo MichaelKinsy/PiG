@@ -4954,7 +4954,14 @@ export class Runtime {
   adoptHostLeafEntry(match) {
     const sessionManager = this.contextValues.sessionManager;
     if (!(sessionManager instanceof RuntimeSessionManager) || !this.conn) return undefined;
-    const entry = this.conn.callSync("sessionRead", { method: "getLeafEntry" }, this.activeRequest()?.id ?? "");
+    let entry;
+    try {
+      entry = this.conn.callSync("sessionRead", { method: "getLeafEntry" }, this.activeRequest()?.id ?? "");
+    } catch (err) {
+      // The write already succeeded and the adoption is only a cache of it: a host that answers no leaf (reads not bound) leaves the entry to the log synchronization, while a cancellation is still the caller's.
+      if (isHostCancellation(err)) throw err;
+      return undefined;
+    }
     if (!entry || typeof entry !== "object" || !match(entry) || sessionManager.getEntry(entry.id)) return undefined;
     this.pendingEntries.push(entry);
     return entry;
