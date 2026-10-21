@@ -22,8 +22,12 @@ import (
 // resumes, so the calls' tool_execution_end events follow the answers and the tool results keep source order. One thread gives Pi both orders; a Go, Python or
 // Rust SDK runs every request on a thread of its own, so each SDK keeps them itself, and Node needs nothing. The row fails if any SDK, isolated or packed,
 // differs: the batch is repeated, the answers come in forward, reverse and rotated order, and the answers are released back to back as RPC mode reads them.
+//
+// The last rounds make the first call await an exec before its dialog and hold the exec until the other five dialogs are open. Pi's handler that awaits an exec has
+// yielded the thread, so the later calls' dialogs open first and the first call's own dialog opens after its exec returns; an SDK that holds the dialog place across
+// a host call that is not a dialog opens none of the later dialogs until the exec returns, and the row fails.
 func TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs(t *testing.T) {
-	const batch, rounds = 6, 9
+	const batch, rounds, execRounds = 6, 9, 3
 	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
@@ -39,8 +43,8 @@ func TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs(t *test
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			for round := range rounds {
-				runDialogBatch(t, h, tools, round, batch)
+			for round := range rounds + execRounds {
+				runDialogBatch(t, h, tools, round, batch, round >= rounds)
 			}
 		})
 	}
@@ -62,7 +66,9 @@ func answerOrder(round, batch int) []int {
 	return order
 }
 
-func runDialogBatch(t *testing.T, h *harness, tools []agent.AgentTool, round, batch int) {
+// runDialogBatch runs one batch of batch dialog_order calls. With execFirst the first call awaits an exec, held by the host until every later call's dialog is open,
+// before its own dialog, so the dialogs open as T1 .. T(batch-1) then T0; otherwise they open in call order.
+func runDialogBatch(t *testing.T, h *harness, tools []agent.AgentTool, round, batch int, execFirst bool) {
 	t.Helper()
 	wait := testbudget.Wait(t)
 	titles := make([]string, batch)
@@ -70,7 +76,28 @@ func runDialogBatch(t *testing.T, h *harness, tools []agent.AgentTool, round, ba
 	calls := make([]ai.FauxContentBlock, batch)
 	for i := range batch {
 		titles[i], ids[i] = fmt.Sprintf("T%d", i), fmt.Sprintf("dialog-%d-%d", round, i)
-		calls[i] = ai.FauxToolCall("dialog_order", map[string]any{"title": titles[i]}, &ai.FauxToolCallOptions{ID: ids[i]})
+		args := map[string]any{"title": titles[i]}
+		if execFirst && i == 0 {
+			args["exec"] = true
+		}
+		calls[i] = ai.FauxToolCall("dialog_order", args, &ai.FauxToolCallOptions{ID: ids[i]})
+	}
+	wantOpening := titles
+	releaseExec := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releaseExec) }) }
+	t.Cleanup(release)
+	if execFirst {
+		wantOpening = append(append([]string(nil), titles[1:]...), titles[0])
+		h.bridge.SetHostAction("exec", func(ctx context.Context, _ string, _ []string, _ *extension.ExecOptions) (extension.ExecResult, error) {
+			extension.CallInitiated(ctx)
+			select {
+			case <-releaseExec:
+				return extension.ExecResult{}, nil
+			case <-ctx.Done():
+				return extension.ExecResult{}, ctx.Err()
+			}
+		})
 	}
 
 	// The UI is the RPC mode's: a dialog waits for its answer, and the answer is read, which settles the call, before the dialog is released.
@@ -129,17 +156,21 @@ func runDialogBatch(t *testing.T, h *harness, tools []agent.AgentTool, round, ba
 	var opening []string
 	timeout := time.After(wait)
 	for range batch {
+		// The exec of the first call is released once every other dialog is open: a call that awaits an exec has yielded the thread, so the later calls do not wait for it.
+		if execFirst && len(opening) == batch-1 {
+			release()
+		}
 		select {
 		case title := <-opened:
 			opening = append(opening, title)
 		case <-timeout:
-			t.Fatalf("round %d: only %v of the dialogs opened", round, opening)
+			t.Fatalf("round %d: only %v of the dialogs opened (exec first: %v), want %v", round, opening, execFirst, wantOpening)
 		case result := <-sendDone:
 			t.Fatalf("round %d: the batch ended with only %v opened: %v", round, opening, result.err)
 		}
 	}
-	if !reflect.DeepEqual(opening, titles) {
-		t.Fatalf("round %d: the dialogs opened in order %v, want the order the calls started %v", round, opening, titles)
+	if !reflect.DeepEqual(opening, wantOpening) {
+		t.Fatalf("round %d: the dialogs opened in order %v (exec first: %v), want %v", round, opening, execFirst, wantOpening)
 	}
 
 	// The answers are read one after the other, as the lines of a single stdin chunk are.
