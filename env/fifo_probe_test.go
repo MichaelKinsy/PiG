@@ -102,6 +102,24 @@ func probeReadFIFOWithin(fifo string, exited <-chan struct{}, tr *probeTrace, in
 
 func TestProbeReadFIFO(t *testing.T) {
 	workers, rounds := 8, 1500
+	if os.Getenv("PROBE_SIGNALS") != "" {
+		// Signals interrupt a thread asleep in a FIFO open (msleep with PCATCH), which makes fifo_open take its
+		// error path; the storm shows whether that path loses or mis-pairs what the round depends on.
+		gap, _ := time.ParseDuration(os.Getenv("PROBE_SIGNALS"))
+		stop := make(chan struct{})
+		defer close(stop)
+		go func() {
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				_ = syscall.Kill(os.Getpid(), syscall.SIGWINCH)
+				time.Sleep(gap)
+			}
+		}()
+	}
 	var wg sync.WaitGroup
 	failures := make(chan string, workers*4)
 	for range workers {

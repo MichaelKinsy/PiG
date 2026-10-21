@@ -4,6 +4,9 @@ on:
     branches: [scratch/fifo-macos-probe]
 permissions:
   contents: read
+concurrency:
+  group: fifo-probe-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   probe:
     runs-on: macos-15
@@ -12,11 +15,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {id: a, burners: 0}
-          - {id: b, burners: 0}
-          - {id: c, burners: 2}
-          - {id: d, burners: 4}
-          - {id: e, burners: 8}
+          - {id: a, burners: 0, signals: ''}
+          - {id: b, burners: 0, signals: 200us}
+          - {id: c, burners: 2, signals: 200us}
+          - {id: d, burners: 0, signals: 1ms}
+          - {id: e, burners: 4, signals: ''}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -27,13 +30,15 @@ jobs:
           cache: false
       - name: probe
         shell: bash
+        env:
+          PROBE_SIGNALS: ${{ matrix.signals }}
         run: |
           sw_vers; sysctl -n hw.ncpu; uname -a
           go test -c -o /tmp/env.test ./env
           cd env
           for i in $(seq 1 ${{ matrix.burners }}); do (while :; do :; done) & done
           fails=0; runs=0
-          end=$((SECONDS + 1500))
+          end=$((SECONDS + 1200))
           while [ $SECONDS -lt $end ]; do
             runs=$((runs+1))
             if ! /tmp/env.test -test.run '^TestProbeReadFIFO$' -test.v > /tmp/out.$runs 2>&1; then
@@ -42,4 +47,4 @@ jobs:
               grep -h 'rounds=' /tmp/out.$runs
             fi
           done
-          echo "SUMMARY burners=${{ matrix.burners }} runs=$runs fails=$fails"
+          echo "SUMMARY burners=${{ matrix.burners }} signals=${{ matrix.signals }} runs=$runs fails=$fails"
