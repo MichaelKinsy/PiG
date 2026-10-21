@@ -310,7 +310,6 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 
 	// Pi's subscriber converts, serializes and writes before Session persistence (print-mode.ts:108-111). Listeners are the only sinks: nothing reads Events, so the Session discards them, acknowledges delivery barriers itself, and executes each event on its producer's goroutine instead of handing it to an Events consumer. A conversion or serialization failure fails the run, as upstream's throwing toJsonEvent rejects prompt(). One subscription runs per Session.
 	subscribe := func(session *coding.Session) {
-		session.DiscardEvents()
 		if opts.Mode == "json" {
 			unsubscribe := session.Subscribe(func(event agent.AgentEvent) {
 				convertMu.Lock()
@@ -374,9 +373,16 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		detachModelRegistry = wireSubprocessModelRegistry(bridge, session, services)
 		stopRunSignal = watchSessionRunSignal(bridge, session)
 		bindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
+		// writing is set once session_start is dispatched; a reload binds the same Session, whose writer stays subscribed.
+		var writing atomic.Bool
+		writing.Store(reloading)
 		var emitEntryAppended func(RPCEntryAppendedEvent)
 		if opts.Mode == "json" {
-			emitEntryAppended = func(event RPCEntryAppendedEvent) { writeJSONLine(jsonOut, event) }
+			emitEntryAppended = func(event RPCEntryAppendedEvent) {
+				if writing.Load() {
+					writeJSONLine(jsonOut, event)
+				}
+			}
 		}
 		bindSessionAppendEntry(bridge, current, emitEntryAppended)
 		runner := session.ExtensionRunner()
@@ -422,7 +428,8 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if !reloading {
 			// The system prompt names the docs bundle, and a tool call is how the model reads it.
 			session.Agent().AddBeforeToolCallHook(writeDocsBundleBeforeToolCall)
-			subscribe(session)
+			// Nothing reads Events; the JSON writer subscribes after session_start below.
+			session.DiscardEvents()
 		}
 		// Drive the extension session lifecycle so extensions that initialize on
 		// session_start (and clean up on session_shutdown) run in print mode too,
@@ -430,6 +437,11 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if err := session.EmitSessionStartTransition(event.Reason, event.PreviousSessionFile); err != nil {
 			return err
 		}
+		// print-mode.ts:76-108 subscribes the writer after `await session.bindExtensions()`, so what a session_start handler emitted (events, entry_appended) is not written. A reload keeps the writer subscribed.
+		if !reloading {
+			subscribe(session)
+		}
+		writing.Store(true)
 		commands.promptTemplates = session.PromptTemplates()
 		commands.skills = session.ResourceLoader().GetSkills().Skills
 		publishedCommands.Store(new(commands))
