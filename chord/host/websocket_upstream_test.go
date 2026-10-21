@@ -158,8 +158,20 @@ func (s *wsSocket) ended() {
 
 // dialWebSocket is `new WebSocket(url)`: connecting at once, open (or close) later.
 func dialWebSocket(url string) *wsSocket {
-	socket := &wsSocket{state: wsConnecting}
+	socket, start := dialWebSocketLater(url)
+	start()
+	return socket
+}
+
+// dialWebSocketLater is `new WebSocket(url)` whose connection starts when start is called. A browser's socket events
+// (open, message, close) come after the code that created the socket has run, so a test that acts on the host built
+// over it before any of them (it takes a hold) can rely on that; a real connection that starts at once can open and
+// close before the creating goroutine's next statement.
+func dialWebSocketLater(url string) (socket *wsSocket, start func()) {
+	socket = &wsSocket{state: wsConnecting}
+	begin := make(chan struct{})
 	go func() {
+		<-begin
 		conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 		if err != nil {
 			socket.ended()
@@ -171,7 +183,7 @@ func dialWebSocket(url string) *wsSocket {
 		socket.emit("open", WebSocketMessage{})
 		socket.read()
 	}()
-	return socket
+	return socket, sync.OnceFunc(func() { close(begin) })
 }
 
 // wsServer is `ws`'s WebSocketServer on 127.0.0.1: each upgraded connection is emitted as "connection" with its
@@ -272,13 +284,14 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 			return nil, false, nil
 		},
 	})
-	open := func(token string) *HostImpl {
+	open := func(token string) (*HostImpl, func()) {
+		socket, start := dialWebSocketLater(wss.url("token=" + token))
 		return CreateHost(HostOptions{Self: kindHost(),
 			Name:     "browser",
 			Kind:     KindClient,
-			Upstream: &UpstreamOptions{Link: NewWebSocketLink(dialWebSocket(wss.url("token="+token)), WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}},
+			Upstream: &UpstreamOptions{Link: NewWebSocketLink(socket, WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}},
 			OnError:  func(error) {},
-		})
+		}), start
 	}
 	getBoard := func(host *HostImpl) Ref {
 		ref, err := host.Hold(wsBoard, map[string]any{}, nil)
@@ -288,8 +301,9 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 		return ref
 	}
 
-	browser := open("ok")
+	browser, startBrowser := open("ok")
 	board := getBoard(browser)
+	startBrowser()
 	notes := board.Member("notes").(Readable[any])
 	var seenMu sync.Mutex
 	var seen []any
@@ -314,10 +328,13 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 		t.Fatal(err)
 	}
 
-	// WebSocket peers are always clients: one announcing itself as a host is cut off.
+	// WebSocket peers are always clients: one announcing itself as a host is cut off. In a browser the socket connects
+	// after the code that made it has run, so its hold is taken before it can open or be cut off; the connection here
+	// starts once the hold is taken.
+	impostorSocket, startImpostor := dialWebSocketLater(wss.url("token=ok"))
 	impostor := CreateHost(HostOptions{Self: kindHost(),
 		Name:     "session:S1",
-		Upstream: &UpstreamOptions{Link: NewWebSocketLink(dialWebSocket(wss.url("token=ok")), WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}},
+		Upstream: &UpstreamOptions{Link: NewWebSocketLink(impostorSocket, WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}},
 		OnError:  func(error) {},
 	})
 	signal, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
@@ -327,6 +344,7 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 		if err != nil {
 			return nil, err
 		}
+		startImpostor()
 		return callMember(ref, "add", "x", ctx)
 	}, RootOptions{Signal: signal})
 	if !IsChordError(err, CodeAborted) {
@@ -336,8 +354,9 @@ func TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthe
 		t.Fatal(err)
 	}
 
-	refused := open("bad")
+	refused, start := open("bad")
 	denied := getBoard(refused)
+	start()
 	// The server closes unauthenticated sockets; calls wait for a reconnect until their ctx gives up.
 	signal, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -448,5 +467,39 @@ func TestWebSocketLinksPackedPayloadsLargeSnapshotsAndResultsReachTheClientAsBin
 			}
 			break
 		}
+	}
+}
+
+// host.ts hold: a host with no upstream, no child of that name and no route has no way to the host it asks for. A client
+// whose socket the server refused before the client took its hold is in that state, so its call is unavailable at once
+// ("no route to server") instead of waiting for a reconnect. A browser's socket closes after the code that made it, so
+// Pi's test takes its hold first; TestWebSocketLinksServesABrowserStyleClientOverARealSocketStampedByTheAuthenticator
+// starts its connections after the holds.
+func TestWebSocketLinksAHoldTakenAfterTheServerRefusedTheSocketHasNoRoute(t *testing.T) {
+	server := CreateHost(HostOptions{Self: kindHost(), Name: "server", OnError: func(error) {}})
+	t.Cleanup(func() { _ = server.Close() })
+	wss := startWebSocketServer(t)
+	AcceptWebSockets[*http.Request](wss, server, WebSocketAcceptOptions[*http.Request]{
+		Principal: func(*http.Request) (Principal, bool, error) { return nil, false, nil },
+	})
+	refused := CreateHost(HostOptions{Self: kindHost(),
+		Name:     "browser",
+		Kind:     KindClient,
+		Upstream: &UpstreamOptions{Link: NewWebSocketLink(dialWebSocket(wss.url("")), WebSocketLinkOptions{}), ConnectOptions: ConnectOptions{Principal: kindServer()}},
+		OnError:  func(error) {},
+	})
+	t.Cleanup(func() { _ = refused.Close() })
+	waitFor(t, "the refused client's upstream to close", func() bool {
+		var gone bool
+		refused.run(func() { gone = refused.upstream == nil })
+		return gone
+	})
+	denied, err := refused.Hold(wsBoard, map[string]any{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = refused.Root(func(ctx Ctx) (any, error) { return callMember(denied, "add", "x", ctx) }, RootOptions{})
+	if !IsChordError(err, CodeUnavailable) || !strings.Contains(err.Error(), "no route to server") {
+		t.Fatalf("call = %v, want unavailable: no route to server", err)
 	}
 }
