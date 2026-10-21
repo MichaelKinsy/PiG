@@ -103,6 +103,15 @@ export default function (pi) {
     registry.unregisterVirtualModel("router", "late");
     return reply({ first: true, refused });
   });
+  tool("virtual_visible", async (_id, _params, _signal, _update, ctx) => {
+    const registry = ctx.modelRegistry;
+    registry.registerVirtualModel({ provider: "router", id: "seen", name: "Seen", contextWindow: 1000, route });
+    const listed = () => registry.getAll().some((model) => model.provider === "router" && model.id === "seen");
+    const registered = registry.find("router", "seen") !== undefined;
+    const isListed = listed();
+    registry.unregisterVirtualModel("router", "seen");
+    return reply({ registered, listed: isListed, gone: registry.find("router", "seen") === undefined, unlisted: !listed() });
+  });
   // late_provider: a provider registered after the factory finished, with the whole config (Pi: types.ts:1875-1903, loader.ts:449-457, runner.ts:517-523).
   tool("late_provider", async (_id, params, _signal, _update, ctx) => {
     const registry = ctx.modelRegistry;

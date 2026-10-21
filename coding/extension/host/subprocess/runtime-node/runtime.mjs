@@ -253,6 +253,9 @@ function piSession() {
 function piProviderComposer() {
   return requireModule("./shims/pi-dist/pi-coding-agent/core/provider-composer.js");
 }
+function piVirtualModels() {
+  return requireModule("./shims/pi-dist/pi-coding-agent/core/virtual-models.js");
+}
 let piBuiltinProviderMap;
 function piBuiltinProvider(id) {
   piBuiltinProviderMap ??= new Map(requireModule("./shims/pi-dist/pi-ai/sdk-bundle/providers.js").builtinProviders().map((provider) => [provider.id, provider]));
@@ -1953,6 +1956,8 @@ export class Runtime {
     this.hostCatalog = emptyCatalog;
     this.hostRegistry = this.registryState;
     this.registryHolds = new Map();
+    // The virtual-model registrations and removals this process made that the Host's snapshot does not show yet, by provider and id (holdVirtualWrite).
+    this.virtualWrites = new Map();
     this.nextModelStreamId = 1;
     this.footerFactory = undefined;
     this.headerFactory = undefined;
@@ -2313,6 +2318,7 @@ export class Runtime {
       else this.virtualModels.set(key, previous);
       throw error;
     }
+    this.holdVirtualWrite(declaration.provider, declaration.id, declaration);
   }
 
   // loader.ts:492-495.
@@ -2323,6 +2329,7 @@ export class Runtime {
       this.virtualModelUnregistrations.push({ provider, id });
     } else {
       this.callSync("unregisterVirtualModel", { provider, id });
+      this.holdVirtualWrite(provider, id, undefined);
     }
     this.virtualModels.delete(key);
   }
@@ -3762,7 +3769,8 @@ export class Runtime {
       error: typeof state.error === "string" && state.error !== "" ? state.error : undefined,
     };
     this.registryState = this.hostRegistry;
-    for (const name of this.registryHolds.keys()) this.overlayProvider(name);
+    for (const [key, write] of this.virtualWrites) if (this.hostShowsVirtualWrite(write)) this.virtualWrites.delete(key);
+    for (const name of this.overlayNames()) this.overlayProvider(name);
   }
 
   // Pi's registerProvider and unregisterProvider recompose the provider and rewrite the model snapshot before they return, so the next read of ctx.modelRegistry holds the write (model-runtime.ts:928-957, model-registry.ts:64-74). The Host's registry reaches this process later, and a publication that predates the write would undo it, so the view keeps the write over the snapshot until the Host answers it. The Host publishes the registry with the write, ahead of its answer on the connection's one ordered stream: by the answer the snapshot holds the write, and it stands alone again. Every member of a packed process holds the write, as every extension holds one registry. answered is the Host call's settled operation, or undefined when no call was made, which no answer ends.
@@ -3788,7 +3796,52 @@ export class Runtime {
     this.setCatalog(this.hostCatalog);
     this.registryProviders.clear();
     this.registryState = this.hostRegistry;
-    for (const other of this.registryHolds.keys()) this.overlayProvider(other);
+    for (const other of this.overlayNames()) this.overlayProvider(other);
+  }
+
+  // holdVirtualWrite records a virtual-model registration (model) or removal (undefined) this process made, and rewrites the provider's view from it. Pi's registerVirtualModel and unregisterVirtualModel update the model snapshot before they return (model-runtime.ts:964-992). The Host registers the model before it answers, but publishes the registry later, from its refresh, so the write stays on the view until a Host snapshot shows it (hostShowsVirtualWrite): a publication that predates the write cannot undo it. Every member of a packed process holds the write, as every extension holds one registry.
+  holdVirtualWrite(provider, id, model) {
+    const written = model === undefined ? undefined : normalizeModel(piVirtualModels().createVirtualModel(model));
+    for (const runtime of new Set([this, ...liveRuntimes])) {
+      runtime.virtualWrites.set(modelRegistryKey(provider, id), { provider, id, model: written });
+      runtime.overlayProvider(provider);
+    }
+  }
+
+  // hostShowsVirtualWrite is whether the Host's snapshot already holds the write: the registered definition, or the model gone.
+  hostShowsVirtualWrite(write) {
+    const shown = this.hostCatalog.get(modelRegistryKey(write.provider, write.id));
+    const virtual = shown?.api === VIRTUAL_MODEL_API;
+    if (write.model === undefined) return !virtual;
+    return virtual && shown.name === write.model.name && shown.contextWindow === write.model.contextWindow && shown.maxTokens === write.model.maxTokens;
+  }
+
+  virtualModelsOf(name) {
+    let virtual = [...this.hostCatalog.values()].filter((model) => model.provider === name && model.api === VIRTUAL_MODEL_API);
+    for (const write of this.virtualWrites.values()) {
+      if (write.provider !== name) continue;
+      const at = virtual.findIndex((model) => model.id === write.id);
+      if (write.model === undefined) virtual = virtual.filter((model) => model.id !== write.id);
+      else if (at >= 0) virtual[at] = write.model;
+      else virtual.push(write.model);
+    }
+    return virtual;
+  }
+
+  // overlayNames are the providers whose view this process rewrites: the ones it registered, the ones it registered virtual models of, and the keyless virtual providers.
+  overlayNames() {
+    const names = new Set(this.registryHolds.keys());
+    for (const write of this.virtualWrites.values()) names.add(write.provider);
+    for (const model of this.hostCatalog.values()) {
+      if (model.api === VIRTUAL_MODEL_API && this.keylessVirtualProvider(model.provider)) names.add(model.provider);
+    }
+    return names;
+  }
+
+  // keylessVirtualProvider is whether name is a provider of only virtual models that the Host's state does not report configured. withVirtualModels lists such a provider keyless (virtual-models.ts:187-199), so Pi has it configured and available as soon as a virtual model is registered (model-runtime.ts:974-982), and keeps it so. The Host's provider state lists only the providers a registration, a models.json entry or a credential defines, so it has none for this one.
+  keylessVirtualProvider(name) {
+    const state = this.hostRegistry.providers?.[name];
+    return state?.configured !== true && state?.modelsConfig === undefined && piBuiltinProvider(name) === undefined && !(this.hostRegistry.registered ?? []).some((entry) => entry.name === name) && this.nativeProviderObjects.get(name) === undefined && this.nativeProviders.get(name) === undefined;
   }
 
   // overlayProvider rewrites one provider of the view from this process's own registration of it, as Pi's recompose and snapshot update do (model-runtime.ts:298-340, 910-957): its models, whether it is configured and what its auth status reports, and for a provider with no registration left, the registration layer the snapshot still lists.
@@ -3815,7 +3868,8 @@ export class Runtime {
     const typed = [];
     for (const model of listed) ((model.type ?? "chat") === "chat" ? chat : typed).push(model);
     // withVirtualModels (virtual-models.ts:201-234): the provider's virtual models stay, and hide a physical chat model of the same id.
-    const virtual = [...this.catalog.values()].filter((model) => model.provider === name && model.api === VIRTUAL_MODEL_API);
+    // The Host's virtual models of the provider, with the registrations and removals this process made that the Host's snapshot does not show yet.
+    const virtual = this.virtualModelsOf(name);
     const hidden = new Set(virtual.map((model) => model.id));
     const physical = chat.filter((model) => !hidden.has(model.id)).map(normalizeModel).filter(Boolean);
     this.setCatalog(replaceProviderEntries(this.catalog, name, [...physical, ...virtual]));
@@ -3846,6 +3900,22 @@ export class Runtime {
         }
         providers[name] = { ...rest, composed: rest.modelsConfig !== undefined, authStatus };
       }
+    }
+    // A provider of only virtual models needs no credentials: withVirtualModels lists it keyless (virtual-models.ts:187-199), and registerVirtualModel marks it configured at once, before its refresh lands (model-runtime.ts:974-982).
+    if (provider === undefined && virtual.length > 0) {
+      const state = providers[name];
+      providers[name] = { ...state, configured: true, usingOAuth: state?.usingOAuth === true, authStatus: state?.authStatus?.configured === true ? state.authStatus : { configured: true, source: "environment", label: "virtual" } };
+    }
+    // Availability follows the provider's auth (virtual-models.ts withVirtualModels): a virtual model this process registered is available when its provider is configured, and one it removed is not.
+    const available = providers[name]?.availableModelIds;
+    if (Array.isArray(available)) {
+      const ids = new Set(available);
+      for (const write of this.virtualWrites.values()) {
+        if (write.provider !== name) continue;
+        if (write.model === undefined) ids.delete(write.id);
+        else if (providers[name].configured === true) ids.add(write.id);
+      }
+      providers[name] = { ...providers[name], availableModelIds: [...ids] };
     }
     this.registryProviders.delete(name);
     this.registryState = {

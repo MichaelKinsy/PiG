@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -60,6 +61,8 @@ func newNodeSyncRig(t *testing.T, isolation string, actions *subprocess.HostCall
 	h, loaded := loadNodeFixturesWith(t, isolation, bridge, fixtures, func(h *subprocess.Host) {
 		h.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
 		h.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
+		// The binary binds the virtual models its extensions register to the registry once they loaded (flushExtensionHostVirtualModels); a later registration applies at once.
+		h.Runtime().BindProviderActions(extension.ProviderActions{RegisterVirtualModel: services.Registry().RegisterVirtualModel, UnregisterVirtualModel: services.Registry().UnregisterVirtualModel}, nil)
 	})
 	rig := &nodeAPIRig{t: t, host: h, bridge: bridge, ui: ui, exts: map[string]extension.Extension{}}
 	for _, ext := range loaded {
@@ -139,6 +142,13 @@ export default function (pi) {
     mr.unregisterProvider("anthropic");
     line(ctx, "builtin-restored", summary());
   } });
+  // Re-registration merges over the earlier one (model-runtime.ts:934-940): the second registration's models replace the first's in the same turn.
+  pi.registerCommand("replace", { handler: async (_args, ctx) => {
+    const mr = ctx.modelRegistry;
+    mr.registerProvider("sync-z", config("http://z.invalid/v1"));
+    mr.registerProvider("sync-z", { ...config("http://z.invalid/v2"), models: [{ ...model, id: "m2" }] });
+    line(ctx, "replace", [mr.find("sync-z", "m") !== undefined, mr.find("sync-z", "m2") !== undefined, mr.find("sync-z", "m2")?.baseUrl]);
+  } });
   // Many registrations in a row while the host publishes the catalog from another thread: no publication may undo a write the extension already made.
   pi.registerCommand("churn", { handler: async (args, ctx) => {
     const mr = ctx.modelRegistry;
@@ -217,6 +227,18 @@ func TestNodeRegistryBuiltinOverlayRegistrationIsVisibleInTheSameTick(t *testing
 	})
 }
 
+// model-runtime.ts:934-940: a second registration of a provider merges over the first and replaces its models, in the turn that registers it. The second registration is complete on its own, as Pi's
+// validation requires (a models list needs a baseUrl and an api): Pi 1.3.0 prints [false,true,"http://z.invalid/v2"], the first registration's model gone and the second's there with the new baseUrl.
+func TestNodeRegistryReRegistrationIsVisibleInTheSameTick(t *testing.T) {
+	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
+		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-registry", nodeSyncRegistryFixture})
+		rig.command("nodesync-registry", "replace", "")
+		if got, want := rig.reported("replace"), `[false,true,"http://z.invalid/v2"]`; got != want {
+			t.Errorf("replace = %s, want %s", got, want)
+		}
+	})
+}
+
 // The registry publishes its catalog from the host's goroutines (another extension's registration, a refresh, a login), so a publication can be in
 // flight while the extension writes. Every read of every write must still see that write.
 func TestNodeRegistryWritesSurviveConcurrentPublications(t *testing.T) {
@@ -253,6 +275,7 @@ const nativeProvider = {
   auth: { apiKey: { name: "API key", check: async () => ({ type: "api_key", source: "native" }), resolve: async () => ({ auth: { apiKey: "key" } }) } },
   stream() { throw new Error("unused"); }, streamSimple() { throw new Error("unused"); },
 };
+const definition = { provider: "sync-v", id: "v1", name: "V One", contextWindow: 1000, maxTokens: 100, input: ["text"], route: () => { throw new Error("unused"); } };
 export default function (pi) {
   pi.registerCommand("native", { handler: async (_args, ctx) => {
     const mr = ctx.modelRegistry;
@@ -264,6 +287,37 @@ export default function (pi) {
     await sleep(300);
     line(ctx, "native-settled", reads(mr, "native-sync", "nm"));
   } });
+  pi.registerCommand("virtual", { handler: async (_args, ctx) => {
+    const mr = ctx.modelRegistry;
+    line(ctx, "virtual-before", reads(mr, "sync-v", "v1"));
+    pi.registerVirtualModel(definition);
+    line(ctx, "virtual-registered", reads(mr, "sync-v", "v1"));
+    pi.unregisterVirtualModel("sync-v", "v1");
+    line(ctx, "virtual-unregistered", reads(mr, "sync-v", "v1"));
+  } });
+  pi.registerCommand("virtual-settle", { handler: async (_args, ctx) => {
+    const mr = ctx.modelRegistry;
+    pi.registerVirtualModel({ ...definition, provider: "sync-w" });
+    await sleep(300);
+    line(ctx, "virtual-settle-registered", reads(mr, "sync-w", "v1"));
+    pi.unregisterVirtualModel("sync-w", "v1");
+    await sleep(300);
+    line(ctx, "virtual-settle-unregistered", reads(mr, "sync-w", "v1"));
+  } });
+  pi.registerCommand("virtual-churn", { handler: async (args, ctx) => {
+    const mr = ctx.modelRegistry;
+    const wrong = [];
+    for (let i = 0; i < Number(args); i++) {
+      const provider = "churn-v-" + (i % 3);
+      pi.registerVirtualModel({ ...definition, provider });
+      if (mr.find(provider, "v1") === undefined) wrong.push("registered " + i);
+      pi.unregisterVirtualModel(provider, "v1");
+      if (mr.find(provider, "v1") !== undefined) wrong.push("unregistered " + i);
+      if (i % 10 === 0) await sleep(1);
+    }
+    line(ctx, "virtual-churn", wrong);
+  } });
+  pi.registerCommand("virtual-keep", { handler: async (_args, ctx) => pi.registerVirtualModel({ ...definition, provider: "sync-k" }) });
 }
 `
 
@@ -284,6 +338,97 @@ func TestNodeRegistryNativeProviderRegistrationIsVisibleInTheSameTick(t *testing
 				t.Errorf("%s = %s, want the models gone", tag, got)
 			}
 		}
+	})
+}
+
+// model-runtime.ts:964-992: a virtual model is visible in the turn that registers it, and a provider of only virtual models needs no credentials, so it is configured and
+// available at once. Pi 1.3.0 prints, for the registration in a handler:
+//
+//	before        [false,false,false,false,{"configured":false},false]
+//	registered    [true,true,true,true,{"configured":true,"source":"environment","label":"virtual"},false]
+//	unregistered  [false,false,false,true,{"configured":true,"source":"environment","label":"virtual"},false]   (hasConfiguredAuth and the status are Pi's provisional marks, which its async availability refresh clears)
+//
+// The registrations reach the host as the production binary binds them (flushExtensionHostVirtualModels), so the host registry holds them when the call returns.
+func TestNodeRegistryVirtualModelRegistrationIsVisibleInTheSameTick(t *testing.T) {
+	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
+		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-native", nodeSyncNativeFixture})
+		rig.command("nodesync-native", "virtual", "")
+		if got := rig.reported("virtual-before"); got != `[false,false,false,false,{"configured":false},false]` {
+			t.Errorf("virtual-before = %s", got)
+		}
+		if got, want := rig.reported("virtual-registered"), `[true,true,true,true,{"configured":true,"source":"environment","label":"virtual"},false]`; got != want {
+			t.Errorf("virtual-registered = %s, want %s", got, want)
+		}
+		if got := rig.reported("virtual-unregistered"); !strings.HasPrefix(got, "[false,false,false,") {
+			t.Errorf("virtual-unregistered = %s, want find, getAll and getAvailable to report the model gone", got)
+		}
+	})
+}
+
+// The host's later publications keep what the write made: the registered virtual model is still there after the handler yielded, and the unregistered one stays gone.
+func TestNodeRegistryVirtualModelSurvivesLaterPublications(t *testing.T) {
+	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
+		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-native", nodeSyncNativeFixture})
+		rig.command("nodesync-native", "virtual-settle", "")
+		if got, want := rig.reported("virtual-settle-registered"), `[true,true,true,true,{"configured":true,"source":"environment","label":"virtual"},false]`; got != want {
+			t.Errorf("virtual-settle-registered = %s, want %s", got, want)
+		}
+		if got := rig.reported("virtual-settle-unregistered"); !strings.HasPrefix(got, "[false,false,false,") {
+			t.Errorf("virtual-settle-unregistered = %s, want the model gone", got)
+		}
+	})
+}
+
+// A publication can be in flight while the extension registers or removes a virtual model, and the host's own refresh publishes after each call. Every read of every write must still see that write.
+func TestNodeRegistryVirtualWritesSurviveConcurrentPublications(t *testing.T) {
+	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
+		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-native", nodeSyncNativeFixture})
+		stop := make(chan struct{})
+		var published sync.WaitGroup
+		published.Add(1)
+		go func() {
+			defer published.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					rig.bridge.PublishModelCatalog()
+					time.Sleep(time.Millisecond)
+				}
+			}
+		}()
+		t.Cleanup(func() { close(stop); published.Wait() })
+		rig.command("nodesync-native", "virtual-churn", "60")
+		if got := rig.reported("virtual-churn"); got != "[]" {
+			t.Errorf("virtual-churn = %s, want every read to see its write", got)
+		}
+	})
+}
+
+const nodeSyncReaderFixture = nodeSyncReads + `
+export default function (pi) {
+  pi.registerCommand("read-virtual", { handler: async (args, ctx) => line(ctx, "read-virtual-" + args, reads(ctx.modelRegistry, "sync-k", "v1")) });
+}
+`
+
+// The model registry is the session's, shared by every extension (Pi's one ModelRuntime). A virtual model one Node extension registers reaches another extension's
+// ctx.modelRegistry once the host publishes it: the registry's change listener does not see virtual models, so the host publishes the catalog when it serves the call.
+// The reader asks again until it sees the model, and fails when the host never publishes it.
+func TestNodeRegistryVirtualModelReachesAnotherExtension(t *testing.T) {
+	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
+		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-native", nodeSyncNativeFixture}, nodeAPIFixture{"nodesync-reader", nodeSyncReaderFixture})
+		rig.command("nodesync-native", "virtual-keep", "")
+		got := ""
+		for poll := range 100 {
+			tag := "read-virtual-" + strconv.Itoa(poll)
+			rig.command("nodesync-reader", "read-virtual", strconv.Itoa(poll))
+			if got = rig.reported(tag); strings.HasPrefix(got, "[true,true,true,true,") {
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		t.Errorf("the reader never saw the virtual model: last read = %s", got)
 	})
 }
 
@@ -341,8 +486,9 @@ export default function (pi) {
   });
   pi.registerCommand("abort", { handler: async (_args, ctx) => {
     const held = ctx.signal;
+    const before = held === undefined ? "none" : held.aborted;
     ctx.abort();
-    line(ctx, "abort-command", [held === undefined ? "none" : held.aborted, ctx.signal === undefined ? "none" : ctx.signal.aborted]);
+    line(ctx, "abort-command", [before, held === undefined ? "none" : held.aborted, ctx.signal === undefined ? "none" : ctx.signal.aborted]);
   } });
   // A guard of the shape the audit names: abort, then check the signal without yielding.
   pi.registerCommand("guard", { handler: async (_args, ctx) => {
@@ -374,12 +520,12 @@ func TestNodeContextAbortAbortsTheRunSignalInTheSameTick(t *testing.T) {
 			t.Errorf("abort-tool = %s, want %s", got, want)
 		}
 
-		// The next run is a new signal: the abort of the earlier run does not reach it.
+		// The next run is a new signal: the abort of the earlier run does not reach it, so the signal the command holds before it aborts is live, and the same object is aborted after.
 		landed()
 		run.end(changed)
 		run.begin(t, changed)
 		rig.command("nodesync-abort", "abort", "")
-		if got, want := rig.reported("abort-command"), `[false,true]`; got != want {
+		if got, want := rig.reported("abort-command"), `[false,true,true]`; got != want {
 			t.Errorf("abort-command = %s, want %s", got, want)
 		}
 		landed()
@@ -397,7 +543,7 @@ func TestNodeContextAbortAbortsTheRunSignalInTheSameTick(t *testing.T) {
 		waitFor(t, func() bool {
 			lines := 0
 			for _, line := range rig.notifications() {
-				if line == `abort-command|["none","none"]` {
+				if line == `abort-command|["none","none","none"]` {
 					lines++
 				}
 			}
