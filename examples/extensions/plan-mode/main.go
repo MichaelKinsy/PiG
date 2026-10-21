@@ -286,7 +286,7 @@ func (p *planMode) onAgentEnd(ctx sdk.Context, data map[string]any) (any, error)
 	}
 
 	planMessage := p.planTodoListMessage()
-	choice, ok, err := ctx.Select("Plan mode - what next?", []string{
+	picked, ok, err := ctx.Select("Plan mode - what next?", []string{
 		"Execute the plan (track progress)",
 		"Stay in plan mode",
 		"Refine the plan",
@@ -294,6 +294,7 @@ func (p *planMode) onAgentEnd(ctx sdk.Context, data map[string]any) (any, error)
 	if err != nil || !ok {
 		return nil, err
 	}
+	choice, _ := picked.(string) // a client that answers a non-string matches no option
 	if strings.HasPrefix(choice, "Execute") {
 		first := p.todos[0]
 		p.enabled = false
@@ -328,7 +329,8 @@ After completing a step, include a [DONE:n] tag in your response.`, strings.Join
 		})
 	}
 	if choice == "Refine the plan" {
-		refinement, accepted, err := ctx.Editor("Refine the plan:", "")
+		edited, accepted, err := ctx.Editor("Refine the plan:", "")
+		refinement, _ := edited.(string)
 		refinement = jsTrim(refinement)
 		if err != nil || !accepted || refinement == "" {
 			return nil, err
@@ -435,7 +437,7 @@ func (p *planMode) updateStatus(ctx sdk.Context) error {
 	case p.enabled:
 		ctx.SetStatus("plan-mode", "⏸ plan")
 	default:
-		ctx.SetStatus("plan-mode", "")
+		ctx.ClearStatus("plan-mode")
 	}
 
 	if p.executing && len(p.todos) > 0 {

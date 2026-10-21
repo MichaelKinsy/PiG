@@ -269,6 +269,18 @@ def _answer_loading_request(sock: Any, owner: Any, env: dict) -> None:
     _send_frame(sock, {"type": "response", "id": env.get("id"), "response": {"result": None, "error": error}})
 
 
+def _call_each_running(method: str, args: Any) -> Any:
+    """The result of a host call over the first running extension's connection that answers; the last failure when none does, ``RuntimeError`` when none runs. It
+    never dials: it is for a call that must reach the host after the connection it started on has gone."""
+    failure: Exception = RuntimeError("no extension is running")
+    for running in list(_State.running):
+        try:
+            return running._call(method, args).get("result") or {}
+        except (RuntimeError, OSError, EOFError) as error:
+            failure = error
+    raise failure
+
+
 def _running_for(path: str) -> Any:
     """The running extension a helper uses. A runner that names a socket (PIG_EXT_SOCKET, set to the member's own while its factory runs) means the extension
     that socket belongs to, so a helper called by one member's factory never rides another member's connection, which the host serves only after it has

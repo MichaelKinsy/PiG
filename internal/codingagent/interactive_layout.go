@@ -230,6 +230,14 @@ func (c *idleHeapCollector) collect() {
 	c.collects.Add(1)
 }
 
+// releaseStartupHeap returns the heap the start left free to the OS, once: the first frame and the startup loads (settings, the model catalog,
+// the resource listings, the grammars) allocate several times what they keep, and the runtime's background scavenger releases the rest
+// slowly. It runs on a background task after the first frame, never on the owner loop, which keeps handling input while the collection runs.
+// pig additive (D172): the same heap return as the idle collection, once at start.
+func releaseStartupHeap() {
+	debug.FreeOSMemory()
+}
+
 func (m *InteractiveMode) tickStatusIndicators(now time.Time) {
 	if m.isIdle && m.activeStatusIndicator == nil {
 		return

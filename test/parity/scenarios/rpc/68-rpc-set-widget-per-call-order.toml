@@ -1,0 +1,40 @@
+# Pi 1402973a rpc-mode.ts:195-206: every setWidget for undefined or a string array writes one request, in call order, before the command's response.
+# The Node extension is the oracle for the sequence that the Go, Python and Rust SDK runs of coding/cli TestRPCWidgetsAreWrittenPerCallInEverySDK must write.
+# This scenario passes before and after the fix (Node always sent each call); the red guard is the SDK test.
+name = "68-rpc-set-widget-per-call-order"
+description = "RPC writes one setWidget request per call, with repeats and a set after a clear, in call order before the response"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+# Wait for the response before stdin closes, whatever the start-up time.
+[[rpc.steps]]
+line = '{"id":"w","type":"prompt","message":"/widget-order"}'
+wait_contains = ['"id":"w","type":"response"']
+wait_timeout_seconds = 20
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/widget-order.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/widget-order.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ['"widgetLines":["w-one"]', '"widgetLines":["w-two"]', '"message":"w-n2"', '"id":"w","type":"response","command":"prompt","success":true']
+both_not_contain = ['"success":false', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."

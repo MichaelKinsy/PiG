@@ -187,6 +187,36 @@ def test_shortcut_renderer_widget_and_declarations() -> None:
         t.join(timeout=2)
 
 
+def test_set_widget_string_list_is_a_host_call_in_rpc_mode() -> None:
+    """Pi's RPC mode writes one request per setWidget call, in call order and before the handler's response (rpc-mode.ts): a string list is a
+    ui.setWidget call there, not an unanswered widget_push frame."""
+    tmp = tempfile.mkdtemp()
+    sock_path = os.path.join(tmp, "ext.sock")
+    listener = _start_fake_host(sock_path)
+    ext = pig_sdk.Extension("py-rpc-widget")
+    ext.command("widget", "set a widget", lambda ctx, _args: ctx.set_widget("status", ["w-one"]))
+    thread = threading.Thread(target=ext.run_with_socket, args=(sock_path,), daemon=True)
+    thread.start()
+    conn, _ = listener.accept()
+    conn.settimeout(10)
+    try:
+        assert _read_frame(conn)["type"] == "register"
+        _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80, "mode": "rpc"}})
+        _write_frame(conn, {"type": "request", "id": "r1", "request": {"method": "command", "tool": "widget"}})
+        env = _read_frame(conn)
+        assert env["type"] == "call", env
+        assert env["call"]["method"] == "ui.setWidget"
+        assert env["call"]["args"]["key"] == "status"
+        assert env["call"]["args"]["content"] == ["w-one"]
+        _write_frame(conn, {"type": "call_result", "id": env["id"], "call_result": {}})
+        assert _read_frame(conn)["type"] == "response"
+    finally:
+        _write_frame(conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
+        conn.close()
+        listener.close()
+        thread.join(timeout=2)
+
+
 def test_host_call_roundtrip() -> None:
     tmp = tempfile.mkdtemp()
     sock_path = os.path.join(tmp, "ext.sock")

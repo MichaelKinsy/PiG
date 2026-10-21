@@ -203,6 +203,10 @@ func (c Context) setSurfaceRenderer(method string, render func(width int) []stri
 	if render == nil {
 		return c.setSurface(method, nil)
 	}
+	// upstream: rpc-mode.ts setFooter/setHeader ignore the factory and runner.ts noOpUIContext does too, so Pi calls a footer or header factory only in the TUI.
+	if !c.HasUI() || c.Mode() == "rpc" {
+		return nil
+	}
 	next := &surfaceRenderer{method: method, render: render}
 	c.ext.replaceSurface(method, next)
 	return next.push(c)
@@ -214,7 +218,9 @@ func (c Context) setSurfaceRenderer(method string, render func(width int) []stri
 // again after every width change, and sends each set of rows with the width it
 // was rendered for, so the host never paints rows laid out for another width.
 // A nil render restores the built-in footer. A panic in render is reported to
-// the user as "footer render failed: ..." and leaves the previous rows.
+// the user as "footer render failed: ..." and leaves the previous rows. With no
+// UI, or in RPC mode, render is ignored and never called, as Pi's no-op and RPC
+// UIs ignore the factory (rpc-mode.ts setFooter, runner.ts noOpUIContext).
 func (c Context) SetFooterRenderer(render func(width int) []string) error {
 	return c.setSurfaceRenderer(footerMethod, render)
 }

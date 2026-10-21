@@ -56,18 +56,24 @@ func syntheticRuntime(extra map[string]string) map[string]string {
 }
 
 // The command packages exactly the runtime sources (top-level *.mjs, harness/ without dot or underscore names, shims/)
-// and the generated host peers into a noderuntimepack archive, and writes the hash of the entry names and bytes as the generated Go constant; the same input gives
+// without the files nothing reads at runtime (noderuntimepack.UnreadAtRuntime), and the generated host peers into a noderuntimepack archive, and writes the hash of the entry names and bytes as the generated Go constant; the same input gives
 // byte-identical outputs, and a changed source changes the hash.
 func TestMainPackagesRuntimeReproducibly(t *testing.T) {
 	root := t.TempDir()
 	writeTree(t, root, syntheticRuntime(map[string]string{
-		"main.mjs":            "main",
-		"notes.txt":           "ignored: not .mjs",
-		"nested/other.mjs":    "ignored: not top level",
-		"harness/run.mjs":     "run",
-		"harness/_private.js": "ignored: underscore",
-		"harness/.hidden.mjs": "ignored: dot",
-		"shims/a/b.js":        "shim",
+		"main.mjs":                   "main",
+		"notes.txt":                  "ignored: not .mjs",
+		"nested/other.mjs":           "ignored: not top level",
+		"harness/run.mjs":            "run",
+		"harness/_private.js":        "ignored: underscore",
+		"harness/.hidden.mjs":        "ignored: dot",
+		"shims/a/b.js":               "shim",
+		"shims/a/b.js.map":           "ignored: source map",
+		"shims/a/b.d.ts":             "ignored: declarations",
+		"shims/vendor-manifest.json": "ignored: provenance record",
+		"shims/pi-dist/pi-coding-agent/docs/images/shot.png":                   "ignored: docs screenshot",
+		"shims/pi-dist/pi-coding-agent/docs/usage.md":                          "docs",
+		"shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png": "ignored: announcement image",
 	}))
 	out := t.TempDir()
 	archive, metadata := filepath.Join(out, "runtime.pack"), filepath.Join(out, "digest.go")
@@ -100,7 +106,7 @@ func TestMainPackagesRuntimeReproducibly(t *testing.T) {
 		}
 		sources = append(sources, name)
 	}
-	wantSources := []string{"runtime-node/harness/package.json", "runtime-node/harness/run.mjs", "runtime-node/main.mjs", "runtime-node/shims/a/b.js"}
+	wantSources := []string{"runtime-node/harness/package.json", "runtime-node/harness/run.mjs", "runtime-node/main.mjs", "runtime-node/shims/a/b.js", "runtime-node/shims/pi-dist/pi-coding-agent/docs/usage.md"}
 	for target := range peerTargets() {
 		wantSources = append(wantSources, "runtime-node/"+target)
 	}

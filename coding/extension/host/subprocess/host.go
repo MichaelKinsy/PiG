@@ -86,6 +86,9 @@ type ExtConfig struct {
 
 	selectedPath string
 	resolveErr   error
+	// sourceCheck is set when this package derived ContentHash from the source files: it reports an error once they no longer hash
+	// to it. A cell build runs it before it publishes (see fillContentHash).
+	sourceCheck func() error
 	// identity is the extension identity when Name is a host key made unique
 	// for a second copy of the same extension from another path.
 	identity string
@@ -477,7 +480,7 @@ type Host struct {
 	runtimeDrainHandler func()
 	// runtimeDrains holds, per Node process and report, the connections that reported it. Guarded by h.mu.
 	runtimeDrains map[runtimeDrainKey]*runtimeDrainReports
-	// drainTasks joins the goroutines that finish a drain after a connection closed; drainTasksClosed stops new ones once Shutdown waits. Guarded by drainTasksMu.
+	// drainTasks joins the goroutines that finish a drain after a connection closed and the crash-restart backoffs; drainTasksClosed stops new ones once Shutdown waits. Guarded by drainTasksMu.
 	drainTasksMu     sync.Mutex
 	drainTasks       sync.WaitGroup
 	drainTasksClosed bool
@@ -506,6 +509,8 @@ type Host struct {
 	commandWindowHandler  func(suspended int)
 	tailFlights           map[*tailFlight]struct{}
 	settleTailHandler     func(suspended int)
+	// backgroundGate is the embedder's hold on calls no request started (SetBackgroundCallGate).
+	backgroundGate atomic.Pointer[func() <-chan struct{}]
 
 	// widthFunc and heightFunc return the current terminal dimensions. Set by
 	// the wiring layer (interactive mode) so the host can pass real geometry
@@ -1495,14 +1500,7 @@ func (h *Host) startPlannedCells(ctx context.Context, cellConfigs []ExtConfig) (
 			continue
 		}
 		h.markExtension(cellConfigs[i].Name, "discover-start")
-		if cellConfigs[i].Source != "" && cellConfigs[i].ContentHash == "" {
-			bt, err := detectBuildType(cellConfigs[i].Source)
-			if err == nil {
-				if hash, err := hashSourceDir(cellConfigs[i].Source, bt); err == nil {
-					cellConfigs[i].ContentHash = hash
-				}
-			}
-		}
+		fillContentHash(&cellConfigs[i])
 		h.markExtension(cellConfigs[i].Name, "discover-done")
 	}
 	var errs []error
@@ -1973,7 +1971,7 @@ func (h *Host) runtimeCommandsDrained(conn *Conn, lanes *callLanes, report *Enve
 	return report.Notify.Method == notifyRuntimeCommandsDrained
 }
 
-// goDrainTask runs fn as a task Shutdown joins. Once Shutdown waits, nothing is left to act on a drain, so fn does not run.
+// goDrainTask runs fn as a task Shutdown joins: a drain finish or a crash-restart backoff. Once Shutdown waits, nothing is left to act on either, so fn does not run.
 func (h *Host) goDrainTask(fn func()) {
 	h.drainTasksMu.Lock()
 	defer h.drainTasksMu.Unlock()
@@ -2373,6 +2371,15 @@ func (h *Host) SetSettleTailHandler(fn func(suspended int)) {
 	h.commandFlightMu.Unlock()
 }
 
+// SetBackgroundCallGate installs the embedder's hold on the UI calls that no request started. Pi runs a timer or I/O callback only when its event loop turns, so a toast an extension deferred with setTimeout(0) while the host runs one chain of awaited handlers (a replacement's session_start, then its command's response) reaches the output after the chain's end, whereas this runtime's timer fires while the host's next dispatch crosses the process boundary. gate returns nil when such a call may run now, or a channel that closes when it may. The gate runs on host goroutines and must not block.
+func (h *Host) SetBackgroundCallGate(gate func() <-chan struct{}) {
+	if gate == nil {
+		h.backgroundGate.Store(nil)
+		return
+	}
+	h.backgroundGate.Store(&gate)
+}
+
 // SetCommandWindowHandler installs the process-owner callback that receives how many in-flight extension commands Pi's process would have left unanswered when it reads stdin's end: those that count suspended, and those of a runtime with no microtask continuation that are still running (FlushCommands applies the same rule to the flights themselves later). A Node command is not counted until its runtime reports its window closed, which it does only after runtime_input_end. The callback runs on host goroutines, must not block, and must not resume or cancel the command.
 func (h *Host) SetCommandWindowHandler(fn func(suspended int)) {
 	h.commandFlightMu.Lock()
@@ -2607,6 +2614,16 @@ func (me *managedExt) reap() {
 	me.stderrLog.remove()
 }
 
+// processFileMutations is the file mutation queue registry the connections of me's process share: the process of a packed Go, Rust or Python cell, which several
+// extensions run in and whose helpers take and give back a turn over whichever extension's connection is running. Nil for an extension that has its process, or
+// whose runtime (Node) asks over its own connection, so its tickets stay with that connection.
+func (me *managedExt) processFileMutations() *fileMutationTurns {
+	if me.packedProcess == nil || me.packedProcess.share == nil || me.packedProcess.share.node {
+		return nil
+	}
+	return &me.packedProcess.share.turns
+}
+
 // releaseShare gives back the reference me holds on its process, once per process. The process ends with its last reference.
 func (me *managedExt) releaseShare() {
 	if me.share != nil && me.shareReleased.CompareAndSwap(false, true) {
@@ -2809,14 +2826,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 
 	// Populate ContentHash for source-based extensions (see LoadAll).
 	for i := range cfgs {
-		if cfgs[i].Source != "" && cfgs[i].ContentHash == "" {
-			bt, err := detectBuildType(cfgs[i].Source)
-			if err == nil {
-				if hash, err := hashSourceDir(cfgs[i].Source, bt); err == nil {
-					cfgs[i].ContentHash = hash
-				}
-			}
-		}
+		fillContentHash(&cfgs[i])
 	}
 
 	loadOrder := append(slices.Clone(cfgs[:loaderConfigs]), embeddedLoadOrder(allEmbedded, cfgs[loaderConfigs:])...)
@@ -4860,13 +4870,19 @@ func (h *Host) handleUnresponsiveExtension(me *managedExt, failure *ExtensionUnr
 // restarting in place (same managedExt, fresh connection) restores the
 // extension's capabilities without re-registering anything with the agent.
 // Packed cells are excluded upstream of this call: they are quarantined.
+//
+// The wait is a task Shutdown joins: Shutdown cancels the recovery context first, which ends the wait, so no backoff
+// goroutine outlives the Host. A restart scheduled once Shutdown waits does not run.
 func (h *Host) scheduleRestart(me *managedExt, delay time.Duration) {
-	go func() {
+	h.goDrainTask(func() {
 		timer := time.NewTimer(delay)
 		defer timer.Stop()
-		<-timer.C
-		h.attemptRestart(me)
-	}()
+		select {
+		case <-timer.C:
+			h.attemptRestart(me)
+		case <-h.recoveryContext.Done():
+		}
+	})
 }
 
 func (h *Host) attemptRestart(me *managedExt) {

@@ -1,0 +1,34 @@
+# Pi 1402973a rpc-mode.ts createExtensionUIContext:211-216,228-231,242-244,277-284,298-301: RPC mode ignores the setFooter/setHeader/setEditorComponent factories (never called), custom() resolves undefined without running its factory, onTerminalInput returns a no-op, getEditorComponent answers undefined, and setTheme answers { success: false, error: "Theme switching not supported in RPC mode" } for a Theme object without throwing.
+# PiG's Node runtime ran the footer and header factories and their render under RPC, answered getEditorComponent with the installed factory, and sent the Theme object to a host that decodes a string.
+name = "78-rpc-ui-closures-not-run"
+description = "RPC mode never runs footer, header, editor or custom UI closures and answers the theme and editor getters as Pi does"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/extensions/types.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"u","type":"prompt","message":"/ui-closures"}']
+timeout_seconds = 15
+settle_seconds = 2
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/ui-closures.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/ui-closures.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ['\"ran\":[]', '\"custom\":\"undefined\"', '\"editorComponent\":\"undefined\"', '\"onTerminalInput\":\"function\"', 'Theme switching not supported in RPC mode', '"id":"u","type":"response","command":"prompt","success":true']
+both_not_contain = ['FOOTER-FRAME', 'HEADER-FRAME', 'EDITOR-FRAME', 'CUSTOM-FRAME', 'render failed', 'parse setTheme args', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."

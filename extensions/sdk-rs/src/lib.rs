@@ -74,6 +74,7 @@ mod event_bus;
 #[cfg(all(test, unix))]
 mod event_bus_tests;
 pub use event_bus::{EventBus, EventBusHandler, Subscription};
+mod before_agent_start;
 mod events;
 mod extension_api;
 mod footer_data;
@@ -183,6 +184,7 @@ pub use context::{
     SourceInfo, UsageInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, ToolInfoReachesTools, ViewComponent, message_role,
     message_text, is_tool_call_event_type, is_bash_tool_result, is_powershell_tool_result, is_read_tool_result, is_edit_tool_result, is_write_tool_result, is_grep_tool_result, is_find_tool_result, is_ls_tool_result,
 };
+pub use before_agent_start::BeforeAgentStartEvent;
 pub use events::*;
 mod child_session;
 pub use child_session::{AgentSession, CreateAgentSessionOptions, PromptOptions, ResourceOptions, SessionSubscription};

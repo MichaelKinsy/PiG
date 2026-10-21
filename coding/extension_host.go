@@ -14,6 +14,8 @@ type ExtensionHost interface {
 	SetRuntimeDrainHandler(fn func())
 	// SetSettleTailHandler installs the handler that receives the count of extension calls that keep a settle tail open.
 	SetSettleTailHandler(fn func(suspended int))
+	// SetBackgroundCallGate installs the hold on the UI calls that no request started: a call waits while the gate returns a channel and runs when it closes.
+	SetBackgroundCallGate(gate func() <-chan struct{})
 	// SetCommandSuspendHandler installs the handler that receives the count of in-flight extension commands that are suspended.
 	SetCommandSuspendHandler(fn func(suspended int))
 	// SetCommandWindowHandler installs the handler that receives the count of in-flight extension commands still inside their own window.

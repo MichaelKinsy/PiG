@@ -1,7 +1,7 @@
 import { mkdir as fsMkdir, writeFile as fsWriteFile } from "fs/promises";
 import { dirname } from "path";
 import { Type } from "../../../../typebox.mjs";
-import { withFileMutationQueue } from "./file-mutation-queue.js";
+import { withFileMutationQueue } from "../../../../file-mutation-queue-bridge.mjs";
 import { resolveToCwd } from "./path-utils.js";
 import { writeRenderers } from "./renderers/write.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";

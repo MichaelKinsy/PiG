@@ -427,7 +427,7 @@ func main() {
 			return errors.Join(selectErr, inputErr, editorErr, confirmErr)
 		}
 		ctx.Notify(fmt.Sprintf("select=%s input=%s editor=%s confirm=%t",
-			selected, input, edited, confirmed), "info")
+			dialogText(selected), dialogText(input), dialogText(edited), confirmed == true), "info")
 		return nil
 	})
 
@@ -831,4 +831,10 @@ func firstPartialText(partial map[string]any) any {
 	}
 	block, _ := blocks[0].(map[string]any)
 	return block["text"]
+}
+
+// dialogText is a dialog's string answer: a select, input or editor result is whatever JSON the client sent, and undefined is nil.
+func dialogText(value any) string {
+	text, _ := value.(string)
+	return text
 }

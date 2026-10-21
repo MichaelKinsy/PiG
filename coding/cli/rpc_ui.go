@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"math"
+	"strconv"
 	"sync"
 	"time"
 
@@ -13,21 +15,56 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
+// rpcUIResponse is an extension_ui_response as Pi reads it: `value` and `confirmed` are whatever JSON the client sent (rpc-mode.ts:137-150 `"value" in r ? r.value : undefined`,
+// `"confirmed" in r ? r.confirmed : false`), so they stay raw; an absent member is nil. `cancelled` is read by JavaScript truthiness (`"cancelled" in r && r.cancelled`).
 type rpcUIResponse struct {
-	Type      string  `json:"type"`
-	ID        string  `json:"id"`
-	Value     *string `json:"value,omitempty"`
-	Confirmed bool    `json:"confirmed,omitempty"`
-	Cancelled bool    `json:"cancelled,omitempty"`
+	Type      string          `json:"type"`
+	ID        string          `json:"id"`
+	Value     json.RawMessage `json:"value,omitempty"`
+	Confirmed json.RawMessage `json:"confirmed,omitempty"`
+	Cancelled json.RawMessage `json:"cancelled,omitempty"`
+}
+
+// rpcCancelled reports JavaScript truthiness of the `cancelled` member: absent, null, false, 0 and "" are falsy; every other JSON value, [] and {} included, is truthy.
+func (r rpcUIResponse) cancelled() bool {
+	raw := bytes.TrimSpace(r.Cancelled)
+	if len(raw) == 0 {
+		return false
+	}
+	switch raw[0] {
+	case 'n', 'f':
+		return false
+	case '"':
+		return string(raw) != `""`
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		number, _ := strconv.ParseFloat(string(raw), 64)
+		return number != 0
+	}
+	return true
 }
 
 // dialogValue reads the value of a select, input or editor response. rpc-mode.ts:138-150 and 254-266 resolve `"value" in r ? r.value : undefined`:
 // a response without a value resolves undefined, which these dialogs report as context.Canceled, the same as a cancelled or timed-out dialog.
-func (r rpcUIResponse) dialogValue() (string, error) {
+// A present value is returned as the client's JSON, `null` and non-strings included.
+func (r rpcUIResponse) dialogValue() (json.RawMessage, error) {
 	if r.Value == nil {
+		return nil, context.Canceled
+	}
+	return r.Value, nil
+}
+
+// stringValue is dialogValue for the string-typed [extension.UIContext] methods. A value that is not a JSON string cannot be returned as a Go string;
+// the dialog reports cancelled (undefined), and the SDK wire carries the value through the [extension.DialogValueUIContext] methods instead.
+func (r rpcUIResponse) stringValue() (string, error) {
+	raw, err := r.dialogValue()
+	if err != nil {
+		return "", err
+	}
+	var text string
+	if json.Unmarshal(raw, &text) != nil {
 		return "", context.Canceled
 	}
-	return *r.Value, nil
+	return text, nil
 }
 
 // RPCUIMethod is the "method" member of an RpcExtensionUIRequest: the closed union in rpc-types.ts RpcExtensionUIRequest.
@@ -46,23 +83,25 @@ const (
 	RPCUIMethodSetEditorText RPCUIMethod = "set_editor_text"
 )
 
+// rpcUIRequest is the RpcExtensionUIRequest Pi writes (rpc-types.ts). Pi serialises a literal with JSON.stringify, which writes an empty string, an empty array
+// and 0 and omits only `undefined`, so a member that Pi can write empty is a pointer here: nil is `undefined` and omitted, anything else is written.
 type rpcUIRequest struct {
 	Type            string      `json:"type"`
 	ID              string      `json:"id"`
 	Method          RPCUIMethod `json:"method"`
-	Title           string      `json:"title,omitempty"`
-	Options         []string    `json:"options,omitempty"`
-	Message         string      `json:"message,omitempty"`
+	Title           *string     `json:"title,omitempty"`
+	Options         *[]string   `json:"options,omitempty"`
+	Message         *string     `json:"message,omitempty"`
 	Placeholder     *string     `json:"placeholder,omitempty"`
 	Prefill         *string     `json:"prefill,omitempty"`
 	Timeout         *float64    `json:"timeout,omitempty"`
 	NotifyType      string      `json:"notifyType,omitempty"`
-	StatusKey       string      `json:"statusKey,omitempty"`
+	StatusKey       *string     `json:"statusKey,omitempty"`
 	StatusText      *string     `json:"statusText,omitempty"`
-	WidgetKey       string      `json:"widgetKey,omitempty"`
+	WidgetKey       *string     `json:"widgetKey,omitempty"`
 	WidgetLines     *[]string   `json:"widgetLines,omitempty"`
 	WidgetPlacement string      `json:"widgetPlacement,omitempty"`
-	Text            string      `json:"text,omitempty"`
+	Text            *string     `json:"text,omitempty"`
 }
 
 type rpcUIContext struct {
@@ -132,7 +171,7 @@ func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts e
 	defer u.remove(id, responses)
 	select {
 	case response := <-responses:
-		if response.Cancelled {
+		if response.cancelled() {
 			return response, context.Canceled
 		}
 		return response, nil
@@ -219,42 +258,110 @@ func (u *rpcUIContext) Close() {
 	clear(u.settle)
 	u.mu.Unlock()
 	for _, responses := range pending {
-		responses <- rpcUIResponse{Cancelled: true}
+		responses <- rpcUIResponse{Cancelled: json.RawMessage("true")}
 	}
+}
+
+func selectRequest(title string, options []string) rpcUIRequest {
+	request := rpcUIRequest{Method: RPCUIMethodSelect, Title: &title}
+	// A nil options is `undefined` (omitted); an empty list is written as [].
+	if options != nil {
+		request.Options = &options
+	}
+	return request
+}
+
+func confirmRequest(title, message string) rpcUIRequest {
+	return rpcUIRequest{Method: RPCUIMethodConfirm, Title: &title, Message: &message}
+}
+
+func inputRequest(title string, placeholder *string) rpcUIRequest {
+	return rpcUIRequest{Method: RPCUIMethodInput, Title: &title, Placeholder: placeholder}
+}
+
+func editorRequest(title string, prefill *string) rpcUIRequest {
+	return rpcUIRequest{Method: RPCUIMethodEditor, Title: &title, Prefill: prefill}
 }
 
 func (u *rpcUIContext) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
-	response, err := u.request(ctx, rpcUIRequest{Method: RPCUIMethodSelect, Title: title, Options: options}, opts)
-	if err != nil {
-		return "", err
-	}
-	return response.dialogValue()
+	return u.stringDialog(ctx, selectRequest(title, options), opts)
 }
 
 func (u *rpcUIContext) Confirm(ctx context.Context, title, message string, opts extension.ExtensionUIDialogOptions) (bool, error) {
-	response, err := u.request(ctx, rpcUIRequest{Method: RPCUIMethodConfirm, Title: title, Message: message}, opts)
+	response, err := u.request(ctx, confirmRequest(title, message), opts)
 	if err != nil {
 		return false, err
 	}
-	return response.Confirmed, nil
+	return response.confirmedBool(), nil
 }
 
+// Input writes the placeholder as given, the empty string included; [rpcUIContext.InputWithoutPlaceholder] is Pi's undefined placeholder.
 func (u *rpcUIContext) Input(ctx context.Context, title, placeholder string, opts extension.ExtensionUIDialogOptions) (string, error) {
-	request := rpcUIRequest{Method: RPCUIMethodInput, Title: title, Placeholder: &placeholder}
+	return u.stringDialog(ctx, inputRequest(title, &placeholder), opts)
+}
+
+// InputWithoutPlaceholder opens an input dialog whose request has no placeholder member ([extension.PlaceholderOmitter]).
+func (u *rpcUIContext) InputWithoutPlaceholder(ctx context.Context, title string, opts extension.ExtensionUIDialogOptions) (string, error) {
+	return u.stringDialog(ctx, inputRequest(title, nil), opts)
+}
+
+func (u *rpcUIContext) stringDialog(ctx context.Context, request rpcUIRequest, opts extension.ExtensionUIDialogOptions) (string, error) {
 	response, err := u.request(ctx, request, opts)
 	if err != nil {
 		return "", err
 	}
+	return response.stringValue()
+}
+
+// Editor writes the prefill as given, the empty string included; [rpcUIContext.EditorWithoutPrefill] is Pi's undefined prefill.
+func (u *rpcUIContext) Editor(ctx context.Context, title, prefill string) (string, error) {
+	return u.stringDialog(ctx, editorRequest(title, &prefill), extension.ExtensionUIDialogOptions{})
+}
+
+// EditorWithoutPrefill opens an editor dialog whose request has no prefill member ([extension.PrefillOmitter]).
+func (u *rpcUIContext) EditorWithoutPrefill(ctx context.Context, title string) (string, error) {
+	return u.stringDialog(ctx, editorRequest(title, nil), extension.ExtensionUIDialogOptions{})
+}
+
+// confirmedBool is the string-typed Confirm result: true only for the JSON value `true`, as a Go bool cannot hold another client value.
+func (r rpcUIResponse) confirmedBool() bool { return string(bytes.TrimSpace(r.Confirmed)) == "true" }
+
+// confirmedValue is the `"confirmed" in r ? r.confirmed : false` of rpc-mode.ts:138-150.
+func (r rpcUIResponse) confirmedValue() json.RawMessage {
+	if r.Confirmed == nil {
+		return json.RawMessage("false")
+	}
+	return r.Confirmed
+}
+
+func (u *rpcUIContext) valueDialog(ctx context.Context, request rpcUIRequest, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+	response, err := u.request(ctx, request, opts)
+	if err != nil {
+		return nil, err
+	}
 	return response.dialogValue()
 }
 
-func (u *rpcUIContext) Editor(ctx context.Context, title, prefill string) (string, error) {
-	request := rpcUIRequest{Method: RPCUIMethodEditor, Title: title, Prefill: &prefill}
-	response, err := u.request(ctx, request, extension.ExtensionUIDialogOptions{})
+// SelectValue, ConfirmValue, InputValue and EditorValue are [extension.DialogValueUIContext]: the dialog resolves with the JSON the client sent, as Pi's does.
+// A nil placeholder or prefill is Pi's undefined: the request has no such member.
+func (u *rpcUIContext) SelectValue(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+	return u.valueDialog(ctx, selectRequest(title, options), opts)
+}
+
+func (u *rpcUIContext) ConfirmValue(ctx context.Context, title, message string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+	response, err := u.request(ctx, confirmRequest(title, message), opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return response.dialogValue()
+	return response.confirmedValue(), nil
+}
+
+func (u *rpcUIContext) InputValue(ctx context.Context, title string, placeholder *string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+	return u.valueDialog(ctx, inputRequest(title, placeholder), opts)
+}
+
+func (u *rpcUIContext) EditorValue(ctx context.Context, title string, prefill *string) (json.RawMessage, error) {
+	return u.valueDialog(ctx, editorRequest(title, prefill), extension.ExtensionUIDialogOptions{})
 }
 
 func (u *rpcUIContext) emit(request rpcUIRequest) {
@@ -264,7 +371,7 @@ func (u *rpcUIContext) emit(request rpcUIRequest) {
 }
 
 func (u *rpcUIContext) Notify(message, kind string) {
-	request := rpcUIRequest{Method: RPCUIMethodNotify, Message: message, NotifyType: kind}
+	request := rpcUIRequest{Method: RPCUIMethodNotify, Message: &message, NotifyType: kind}
 	u.emit(request)
 }
 
@@ -274,12 +381,15 @@ func (*rpcUIContext) OnRemoteTerminalInput(string, extension.RemoteTerminalInput
 	return func() {}
 }
 
+// SetStatus writes the text as given, the empty string included: rpc-mode.ts setStatus writes `statusText: text`, and only `undefined` omits it
+// ([rpcUIContext.ClearStatus]).
 func (u *rpcUIContext) SetStatus(key, text string) {
-	request := rpcUIRequest{Method: RPCUIMethodSetStatus, StatusKey: key}
-	if text != "" {
-		request.StatusText = &text
-	}
-	u.emit(request)
+	u.emit(rpcUIRequest{Method: RPCUIMethodSetStatus, StatusKey: &key, StatusText: &text})
+}
+
+// ClearStatus is setStatus(key, undefined): the request has no statusText ([extension.StatusClearer]).
+func (u *rpcUIContext) ClearStatus(key string) {
+	u.emit(rpcUIRequest{Method: RPCUIMethodSetStatus, StatusKey: &key})
 }
 
 func (*rpcUIContext) SetWorkingMessage(string)                              {}
@@ -296,7 +406,7 @@ func (u *rpcUIContext) SetWidgetFactory(key string, factory extension.WidgetFact
 }
 
 func (u *rpcUIContext) SetWidget(key string, lines []string, opts *extension.ExtensionWidgetOptions) {
-	request := rpcUIRequest{Method: RPCUIMethodSetWidget, WidgetKey: key}
+	request := rpcUIRequest{Method: RPCUIMethodSetWidget, WidgetKey: &key}
 	if lines != nil {
 		request.WidgetLines = &lines
 	}
@@ -316,7 +426,7 @@ func (*rpcUIContext) SetHeader(extension.HeaderFactory)        {}
 func (*rpcUIContext) SetLogin(extension.LoginDefinition) error { return nil }
 
 func (u *rpcUIContext) SetTitle(title string) {
-	u.emit(rpcUIRequest{Method: RPCUIMethodSetTitle, Title: title})
+	u.emit(rpcUIRequest{Method: RPCUIMethodSetTitle, Title: &title})
 }
 
 func (*rpcUIContext) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
@@ -326,7 +436,7 @@ func (*rpcUIContext) Custom(context.Context, extension.CustomFactory, *extension
 func (u *rpcUIContext) PasteToEditor(text string) { u.SetEditorText(text) }
 
 func (u *rpcUIContext) SetEditorText(text string) {
-	u.emit(rpcUIRequest{Method: RPCUIMethodSetEditorText, Text: text})
+	u.emit(rpcUIRequest{Method: RPCUIMethodSetEditorText, Text: &text})
 }
 
 func (*rpcUIContext) GetEditorText() string                                               { return "" }

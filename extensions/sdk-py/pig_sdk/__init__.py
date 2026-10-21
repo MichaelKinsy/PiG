@@ -2786,7 +2786,12 @@ class Context:
         self._call("ui.notify", {"message": message, "level": level})
 
     def set_status(self, key: str, text: str) -> None:
+        """An empty text is a text, as in Pi (RPC mode writes it); :meth:`clear_status` removes the entry, as Pi's ``setStatus(key, undefined)`` does."""
         self._call("ui.setStatus", {"key": key, "text": text})
+
+    def clear_status(self, key: str) -> None:
+        """Remove the status entry for ``key``: Pi's ``setStatus(key, undefined)``."""
+        self._call("ui.setStatus", {"key": key})
 
     def set_working_message(self, message: str | None = None) -> None:
         """Set the working label. ``None`` (or no argument) restores the default label, as Pi's ``setWorkingMessage()`` does; an empty string is a
@@ -2818,28 +2823,46 @@ class Context:
             args["opts"] = {"timeout": timeout}
         return args
 
-    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[str, bool]:
+    # select, input and editor return Pi's result: the JSON value the user's
+    # client answered with (a str for every client that follows Pi's protocol,
+    # and in RPC mode whatever JSON the client sent: number, bool, None, dict or
+    # list) and whether Pi's result was defined. ok is False for undefined
+    # (cancelled, timed out, an answer without a value), with None as the
+    # value; a JSON null answer is (None, True). confirm returns the client's
+    # ``confirmed`` the same way, False when cancelled or unanswered.
+
+    @staticmethod
+    def _dialog_value(result: dict[str, Any], member: str) -> tuple[Any, bool]:
+        if result.get("ok") is not True:
+            return None, False
+        return result.get(member), True
+
+    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[Any, bool]:
         self._block_for_user()
         args = self._dialog_args({"title": title, "options": options}, timeout)
-        result = self._call("ui.select", args).get("result") or {}
-        return str(result.get("selected") or ""), bool(result.get("ok"))
+        return self._dialog_value(self._call("ui.select", args).get("result") or {}, "selected")
 
-    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> bool:
+    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> Any:
         self._block_for_user()
         args = self._dialog_args({"title": title, "message": message}, timeout)
         result = self._call("ui.confirm", args).get("result") or {}
-        return bool(result.get("confirmed"))
+        return result.get("confirmed", False)
 
-    def input(self, title: str, placeholder: str = "", *, timeout: float | None = None) -> tuple[str, bool]:
+    def input(self, title: str, placeholder: str | None = None, *, timeout: float | None = None) -> tuple[Any, bool]:
+        """``placeholder=None`` is Pi's omitted placeholder (RPC mode writes no placeholder member); an empty string is a placeholder (``placeholder: ""``)."""
         self._block_for_user()
-        args = self._dialog_args({"title": title, "placeholder": placeholder}, timeout)
-        result = self._call("ui.input", args).get("result") or {}
-        return str(result.get("text") or ""), bool(result.get("ok"))
+        args: dict[str, Any] = {"title": title}
+        if placeholder is not None:
+            args["placeholder"] = placeholder
+        return self._dialog_value(self._call("ui.input", self._dialog_args(args, timeout)).get("result") or {}, "text")
 
-    def editor(self, title: str, prefill: str = "") -> tuple[str, bool]:
+    def editor(self, title: str, prefill: str | None = None) -> tuple[Any, bool]:
+        """``prefill=None`` is Pi's omitted prefill (RPC mode writes no prefill member); an empty string is a prefill (``prefill: ""``)."""
         self._block_for_user()
-        result = self._call("ui.editor", {"title": title, "prefill": prefill}).get("result") or {}
-        return str(result.get("text") or ""), bool(result.get("ok"))
+        args: dict[str, Any] = {"title": title}
+        if prefill is not None:
+            args["prefill"] = prefill
+        return self._dialog_value(self._call("ui.editor", args).get("result") or {}, "text")
 
     # Message injection ------------------------------------------------------
 
@@ -3193,7 +3216,10 @@ class Context:
         A string list with no options goes out as a ``widget_push`` frame
         without a width, which the host applies in arrival order and never
         answers: Pi's setWidget returns nothing, so it may be called from an
-        :meth:`on_width_change` handler. Every other shape waits for the host.
+        :meth:`on_width_change` handler. In RPC mode, where the width never
+        changes and Pi writes one request per call, in call order and before
+        the handler's response, the list waits for the host like every other
+        shape. Every other shape waits for the host.
 
         A :class:`kit.View` (D107) is rendered by the host at the widget's
         width, the subprocess form of Pi's ``setWidget(key, factory)`` for a
@@ -3207,7 +3233,7 @@ class Context:
         with self.extension._views.widgets_lock:
             self.extension._views.widgets.pop(key, None)
         self.extension._replace_surface_id(f"ui.setWidget:{key}", None)
-        if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None:
+        if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None and not self._rpc_mode():
             self.extension._push_widget(key, content)
             return
         self._call("ui.setWidget", {"key": key, "content": content, "options": options or {}})
@@ -3326,6 +3352,9 @@ class Context:
         if render is None:
             self._set_surface(method, None)
             return
+        # upstream: rpc-mode.ts setFooter/setHeader ignore the factory and runner.ts noOpUIContext does too: Pi calls a footer or header factory only in the TUI.
+        if not self.has_ui() or self.mode == "rpc":
+            return
         if not callable(render):
             raise TypeError("a surface renderer must be callable")
         surface = _SurfaceRenderer(method, render)
@@ -3372,9 +3401,17 @@ class Context:
         order with the input.
 
         Passing the legacy options-only shape retains the host's explicit
-        unsupported response because it has no serializable component.
+        unsupported response because it has no serializable component. With no UI, or in
+        RPC mode, nothing runs and the result is None, as Pi's no-op and RPC UIs resolve undefined.
         """
         if not self.has_ui():
+            return None
+        if self.mode == "rpc":
+            # upstream: rpc-mode.ts custom() resolves undefined and never runs the component. The host call keeps the dialog scope, as the Node runtime's does.
+            with self.extension._overlay_lock:
+                self.extension._overlay_seq += 1
+                key = f"custom-{self.extension._overlay_seq}"
+            self._call("ui.custom", {"key": key})
             return None
         self._block_for_user()
         if component is None or isinstance(component, dict):

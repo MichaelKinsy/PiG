@@ -109661,9 +109661,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:durable/storage/sqlite/sqlite_storage_test.go#TestPicoSqliteStorage",
-        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
       ]
     },
     {
@@ -109683,9 +109683,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109706,9 +109706,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124226,7 +124226,7 @@
       "evidence": [
         "test:coding/session_prompt_abort_starting_upstream_test.go#TestUpstreamSessionPromptAbortWhileBeforeAgentStartRuns",
         "test:coding/session_prompt_custom_run_upstream_test.go#TestUpstreamSessionPromptRunsStartedByACustomMessage",
-        "test:coding/session_compaction_suite_active_test.go#TestAgentSessionCompactionSuiteAbortUpstream"
+        "test:test/extension-conformance/replicated_state_rw_test.go#TestReplicatedStateIsIdleAfterAMessageThatStartsARun"
       ]
     },
     {
@@ -124670,7 +124670,8 @@
       ],
       "evidence": [
         "test:coding/virtual_models_upstream_test.go#TestVirtualSessionFallsBackToThePhysicalModelWhenTheVirtualModelIsNotRegistered",
-        "test:coding/virtual_models_upstream_test.go#TestVirtualSessionRestoresTheVirtualSelectionInsteadOfThePhysicalModelThatAnswered"
+        "test:coding/virtual_models_upstream_test.go#TestVirtualSessionRestoresTheVirtualSelectionInsteadOfThePhysicalModelThatAnswered",
+        "test:coding/session_images_routed_test.go#TestPromptImagesUseTheRoutedModelsProfile"
       ]
     },
     {
@@ -130119,7 +130120,7 @@
       "evidence": [
         "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesTheFirstRequestOfAPromptAsAUserTurnWhenExtensionMessagesFollowThePrompt",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs"
       ]
     },
     {
@@ -132320,8 +132321,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/before_agent_start_trigger_test.go#TestBeforeAgentStartTriggerAcrossSDKs",
-        "test:test/extension-conformance/prompt_chain_test.go#TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs",
-        "test:test/extension-conformance/prompt_options_test.go#TestPromptOptionEditsAcrossSDKs"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/prompt_chain_test.go#TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs"
       ]
     },
     {
@@ -146637,7 +146638,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_reference_session_actions_test.go#TestConformanceAPISessionActions",
-        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs"
+        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs",
+        "test:internal/codingagent/interactive_forced_prompt_test.go#TestInteractiveForcedSystemPromptRequestsHaveTheSessionsShape"
       ]
     },
     {
@@ -146658,7 +146660,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_reference_session_actions_test.go#TestConformanceAPISessionActions",
-        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs"
+        "test:test/extension-conformance/dynamic_tools_test.go#TestDynamicToolRegistrationAcrossSDKs",
+        "test:internal/codingagent/interactive_forced_prompt_test.go#TestInteractiveForcedSystemPromptRequestsHaveTheSessionsShape"
       ]
     },
     {
@@ -147182,8 +147185,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -147204,8 +147207,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -148345,8 +148348,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -148367,8 +148370,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -154438,8 +154441,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -154460,8 +154463,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -155701,12 +155704,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
+        "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.ClearStatus"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -155723,12 +155726,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
+        "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.ClearStatus"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -156054,7 +156057,8 @@
         "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
       ],
       "evidence": [
-        "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults"
+        "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
+        "test:internal/codingagent/ext_ui_noop_theme_test.go#TestNoopUIContextThemeIsTheActiveTheme"
       ]
     },
     {
@@ -156122,7 +156126,7 @@
       "evidence": [
         "test:coding/cli/rpc_ui_test.go#TestRPCUICancelAndTimeout",
         "test:coding/cli/rpc_ui_test.go#TestRPCUIDialogTimeoutIsAJavaScriptNumber",
-        "test:internal/codingagent/extension_dialog_timeout_test.go#TestExtensionDialogAnsweredBeforeTimeoutStopsCountdown"
+        "test:coding/cli/rpc_ui_wire_test.go#TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes"
       ]
     },
     {
@@ -176834,7 +176838,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_ui.go#rpcUIContext.Confirm"
+        "call:coding/cli/rpc_ui.go#confirmRequest"
       ],
       "evidence": [
         "test:coding/cli/rpc_closed_unions_test.go#TestRPCClosedUnionConstantsAreTheUpstreamLiterals",
@@ -200017,16 +200021,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
+        "call:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
       ],
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
-        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestWithFileMutationQueueReturnsTheResultAndReleasesOnFailure",
-        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueReturnsResultsAndReleasesOnFailure"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
+        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -200040,16 +200044,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
+        "call:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
       ],
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
-        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestWithFileMutationQueueReturnsTheResultAndReleasesOnFailure",
-        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueReturnsResultsAndReleasesOnFailure"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
+        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -225048,7 +225052,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -225069,7 +225075,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -225083,13 +225091,14 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion"
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
       ],
       "evidence": [
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -225110,7 +225119,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ]
     },
     {
