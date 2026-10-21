@@ -157,6 +157,7 @@ func extractedBinaryPath(dest, binary string) string {
 
 // renameFile publishes a written temp file; a test replaces it to make the rename fail.
 var renameFile = func(oldpath, newpath string) error {
+	//portlint:allow ctxbackground extraction runs in Register at startup, before any session or context exists; the retry is bounded by fsretry.RenameBudget
 	return fsretry.Rename(context.Background(), oldpath, newpath, nil)
 }
 
@@ -181,7 +182,7 @@ func holdsExactly(path string, data []byte, mode os.FileMode) bool {
 		return false
 	}
 	defer func() { _ = file.Close() }()
-	info, err := file.Stat()
+	info, err := file.Stat() //perf:ok once per embedded cell binary at startup
 	if err != nil || !info.Mode().IsRegular() || info.Size() != int64(len(data)) {
 		return false
 	}
