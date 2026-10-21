@@ -2698,6 +2698,8 @@ func Extension() *sdk.Extension {
 	})
 
 	registerStatePushProbe(ext)
+	registerSignalAbort(ext)
+
 	return ext
 }
 
@@ -3033,4 +3035,24 @@ func nonNilMaps(values []map[string]any) []map[string]any {
 		return []map[string]any{}
 	}
 	return values
+}
+
+// registerSignalAbort contributes the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a
+// handler that holds the signal and reads it again right after the abort sees it aborted, in the same turn.
+func registerSignalAbort(ext *sdk.Extension) {
+	state := func(signal interface{ Err() error }) string {
+		switch {
+		case signal == nil:
+			return "none"
+		case signal.Err() != nil:
+			return "aborted"
+		}
+		return "live"
+	}
+	ext.Command("signal-abort", "Abort the run and report ctx.signal", func(ctx sdk.Context, _ string) error {
+		held := ctx.Signal()
+		ctx.Abort()
+		ctx.Notify("abort:"+state(held)+":"+state(ctx.Signal()), "info")
+		return nil
+	})
 }

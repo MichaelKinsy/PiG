@@ -2837,6 +2837,7 @@ fn main() {
     register_conformance_oauth_object(&mut ext);
     register_conformance_oauth_large(&mut ext);
     register_state_push_probe(&mut ext);
+    register_signal_abort(&mut ext);
     ext.run().unwrap();
 }
 
@@ -3145,4 +3146,25 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
             other => Err(format!("exec failed: {other}")),
         }),
     }
+}
+
+/// Contributes the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a handler that holds
+/// the signal and reads it again right after the abort sees it aborted, in the same turn.
+fn register_signal_abort(ext: &mut Extension) {
+    ext.command("signal-abort", "Abort the run and report ctx.signal", |ctx, _args| {
+        let state = |cancelled: Option<bool>| match cancelled {
+            None => "none",
+            Some(true) => "aborted",
+            Some(false) => "live",
+        };
+        let held = ctx.signal();
+        ctx.abort();
+        let report = format!(
+            "abort:{}:{}",
+            state(held.map(|signal| signal.is_cancelled())),
+            state(ctx.signal().map(|signal| signal.is_cancelled()))
+        );
+        ctx.notify(&report, "info");
+        CommandResult::Ok
+    });
 }

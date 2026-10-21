@@ -1857,6 +1857,7 @@ def new_extension() -> pig_sdk.Extension:
     _register_conformance_oauth_object(ext)
     _register_conformance_oauth_large(ext)
     _register_state_push_probe(ext)
+    _register_signal_abort(ext)
     return ext
 
 
@@ -1998,6 +1999,22 @@ def _register_state_push_probe(ext: pig_sdk.Extension) -> None:
         threading.Thread(target=watch, daemon=True).start()
 
     ext.command("state-push-probe", "Read one replicated accessor from a thread between requests", probe)
+
+
+def _register_signal_abort(ext: pig_sdk.Extension) -> None:
+    """Contribute the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the
+    run's signal before it returns (agent.ts:340-342), so a handler that holds the signal and
+    reads it again right after the abort sees it aborted, in the same turn."""
+
+    def state(signal: object) -> str:
+        return "none" if signal is None else "aborted" if signal.is_set() else "live"
+
+    def signal_abort(ctx: pig_sdk.Context, args: str) -> None:
+        held = ctx.signal
+        ctx.abort()
+        ctx.notify("abort:" + state(held) + ":" + state(ctx.signal), "info")
+
+    ext.command("signal-abort", "Abort the run and report ctx.signal", signal_abort)
 
 
 if __name__ == "__main__":

@@ -2145,9 +2145,13 @@ func (c Context) IsIdle() (bool, error) {
 	return hostRequired[bool](c, "isIdle", nil, "idle")
 }
 
-// Abort cancels the current agent operation.
+// Abort cancels the current agent operation. The run's signal is aborted when it returns: Signal reads the aborted run.
 func (c Context) Abort() {
-	_, _ = c.callHost("abort", nil)
+	result, _ := c.callHost("abort", nil)
+	// upstream: agent.ts:340-342 aborts the active run's controller before abort() returns. The host sends the run_signal frame before the call result, and the main loop applies notifies after the read loop routed the result here, so wait for those notifies: the caller's next read of Signal sees the abort.
+	if result != nil && c.ext != nil && c.hostConnection() == c.ext.conn {
+		c.ext.waitNotifications(result.notifySeq, nil)
+	}
 }
 
 // HasPendingMessages returns whether there are queued messages waiting.

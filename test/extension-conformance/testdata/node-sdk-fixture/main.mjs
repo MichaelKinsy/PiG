@@ -1371,6 +1371,7 @@ export default function (pi) {
       renameSync(`${report}.tmp`, report);
     }, 2);
   } });
+  registerSignalAbort(pi);
 }
 
 // The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension).
@@ -1401,4 +1402,17 @@ function conformanceBashOperations() {
       }
     },
   };
+}
+
+// The signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a handler that holds the signal and reads it again right after the abort sees it aborted, in the same turn.
+function registerSignalAbort(pi) {
+  const state = (signal) => (signal === undefined ? "none" : signal.aborted ? "aborted" : "live");
+  pi.registerCommand("signal-abort", {
+    description: "Abort the run and report ctx.signal",
+    handler: (_args, ctx) => {
+      const held = ctx.signal;
+      ctx.abort();
+      ctx.ui.notify(`abort:${state(held)}:${state(ctx.signal)}`, "info");
+    },
+  });
 }

@@ -414,6 +414,10 @@ func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *Call
 		// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns, so the caller's subscribed session mirror receives it before the call result.
 		err = h.pushStateTo(callCtx, me, conn)
 	}
+	if call.Method == "abort" && err == nil {
+		// upstream: agent.ts:340-342 aborts the active run's controller before abort() returns, so a handler that holds ctx.signal sees it aborted once its abort call returns. The run's cancellation also starts the watcher that forwards the abort (runSignals.frame), and that frame can reach the connection after this reply; the frame sent here precedes it on the connection's one ordered stream, and the watcher's frame then finds the state sent.
+		_ = h.syncRunSignal(conn)
+	}
 	if callID == "" {
 		return
 	}
