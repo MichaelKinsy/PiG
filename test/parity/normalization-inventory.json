@@ -37,7 +37,7 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "5927b605bdbb4825745dc1a3e7e6fd2e6c17ad4eff651a10eeca02a5b65057ba",
+      "sha256": "fde6cb1d87a77f6e1ba4ff432e29e18fdc20482e3a9f434285fe9b93ab30599e",
       "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
     },
     {
