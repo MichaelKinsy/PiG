@@ -64786,6 +64786,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#LoadExtensionsResult.UIBridge",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "LoadExtensionsResult.UIBridge",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge"
+      },
+      "shapeHash": "sha256:0898f07a7d1aa1aece73e01a856804a278c20e1c45d218d62c60c6bc64663219"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelCycleResult",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelCycleResult",
@@ -81405,6 +81416,17 @@
         "type": "func() func() *github.com/MichaelKinsy/PiG/internal/codingagent.BinaryUpdate"
       },
       "shapeHash": "sha256:ca3b2996f81cc295709b0883fd9faaf1379224c9393ccb078e6dd058384f0162"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#bindChildExtensionHost",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "bindChildExtensionHost",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(bridge *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge, session *github.com/MichaelKinsy/PiG/coding.Session) func()"
+      },
+      "shapeHash": "sha256:17203e291e3d5855013477effff798ee623d4aadc7c286ceb1814806e181a90d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#bindProviderRegistry",
