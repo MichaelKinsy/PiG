@@ -90,6 +90,26 @@ pub fn new_extension() -> Extension {
         ctx.notify(&format!("robust note {notes}: {args}"), "info");
         CommandResult::Ok
     });
+    ext.command("robust-widgets", "Set, repeat, clear and reset a widget around notifications", |ctx, _args| {
+        let steps = [
+            ctx.set_widget("robust-w", vec!["w-one".to_string()]),
+            {
+                ctx.notify("w-n1", "info");
+                Ok(())
+            },
+            ctx.set_widget("robust-w", vec!["w-one".to_string()]),
+            ctx.set_widget_value("robust-w", Value::Null, None),
+            ctx.set_widget("robust-w", vec!["w-two".to_string()]),
+            {
+                ctx.notify("w-n2", "info");
+                Ok(())
+            },
+        ];
+        match steps.into_iter().find_map(Result::err) {
+            Some(err) => CommandResult::Error(err.to_string()),
+            None => CommandResult::Ok,
+        }
+    });
     ext.command("robust-pick", "Pick an item in an overlay", |ctx, _args| {
         let choice = match ctx.custom_component(Picker { items: vec!["alpha", "beta", "gamma"], selected: 0 }, json!({"overlay": true})) {
             Ok(choice) => choice,
