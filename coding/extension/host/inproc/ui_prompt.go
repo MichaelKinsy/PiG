@@ -250,3 +250,34 @@ func (c *uiPromptContext) ClearHiddenThinkingLabel() {
 	}
 	c.SetHiddenThinkingLabel("")
 }
+
+// ClearStatus is Pi's setStatus(key, undefined) through the bound UI's own [extension.StatusClearer], or the empty text for a bound UI without one.
+func (c *uiPromptContext) ClearStatus(key string) {
+	if clearer, ok := c.UIContext.(extension.StatusClearer); ok {
+		clearer.ClearStatus(key)
+		return
+	}
+	c.SetStatus(key, "")
+}
+
+// InputWithoutPlaceholder opens the input dialog without a placeholder through the bound UI's own [extension.PlaceholderOmitter], or with an empty
+// placeholder for a bound UI without one. Like Input it is a ui_prompt scope.
+func (c *uiPromptContext) InputWithoutPlaceholder(ctx context.Context, title string, opts extension.ExtensionUIDialogOptions) (string, error) {
+	omitter, ok := c.UIContext.(extension.PlaceholderOmitter)
+	if !ok {
+		return c.Input(ctx, title, "", opts)
+	}
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindInput, title)()
+	return omitter.InputWithoutPlaceholder(ctx, title, opts)
+}
+
+// EditorWithoutPrefill opens the editor dialog without a prefill through the bound UI's own [extension.PrefillOmitter], or with an empty prefill for a
+// bound UI without one. Like Editor it is a ui_prompt scope.
+func (c *uiPromptContext) EditorWithoutPrefill(ctx context.Context, title string) (string, error) {
+	omitter, ok := c.UIContext.(extension.PrefillOmitter)
+	if !ok {
+		return c.Editor(ctx, title, "")
+	}
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindEditor, title)()
+	return omitter.EditorWithoutPrefill(ctx, title)
+}
