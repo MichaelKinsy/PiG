@@ -17,6 +17,8 @@ pub struct Theme {
     pub name: String,
     /// The file the theme was loaded from, `None` for a built-in theme.
     pub source_path: Option<String>,
+    /// Upstream `Theme.sourceInfo`: where the resource loader found the theme, `None` for a theme it did not load.
+    pub source_info: Option<crate::context::SourceInfo>,
     foregrounds: HashMap<String, String>,
     backgrounds: HashMap<String, String>,
     modifiers: bool,
@@ -80,6 +82,7 @@ impl Default for Theme {
         Self {
             name: String::new(),
             source_path: None,
+            source_info: None,
             foregrounds: HashMap::new(),
             backgrounds: HashMap::new(),
             modifiers: true,
@@ -145,6 +148,7 @@ impl Theme {
                 .and_then(Value::as_str)
                 .filter(|path| !path.is_empty())
                 .map(str::to_string),
+            source_info: palette.get("sourceInfo").and_then(|info| serde_json::from_value(info.clone()).ok()),
             foregrounds: string_map(palette.get("foregrounds")),
             backgrounds: string_map(palette.get("backgrounds")),
             modifiers: palette.get("modifiers") != Some(&Value::Bool(false)),
@@ -382,6 +386,7 @@ impl UiState {
             None => &Value::Null,
         };
         self.theme = Theme::from_palette(palette);
+        crate::tui::set_host_theme(palette);
     }
 }
 

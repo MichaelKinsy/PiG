@@ -12,6 +12,77 @@ use std::sync::atomic::{AtomicI64, Ordering};
 
 static CANCELLED: AtomicI64 = AtomicI64::new(0);
 
+fn strings_of(value: &Value) -> Vec<String> {
+    value.as_array().map(|items| items.iter().map(|item| item.as_str().unwrap_or_default().to_string()).collect()).unwrap_or_default()
+}
+
+fn apply_all(style: &pig_sdk::StyleFn, samples: &[String]) -> Value {
+    json!(samples.iter().map(|sample| style(sample)).collect::<Vec<_>>())
+}
+
+fn apply_pairs(style: &pig_sdk::SelectedStyleFn, samples: &[String]) -> Value {
+    json!(samples.iter().map(|sample| [style(sample, false), style(sample, true)]).collect::<Vec<_>>())
+}
+
+/// pi-coding-agent's theme helpers and key hints over the host's theme and keybindings (tui_theme_probe): the styles of each on the samples the test passes, and
+/// the lines highlightCode gets from the host.
+fn tui_theme_probe(args: &Value) -> ToolResult {
+    let samples = strings_of(&args["samples"]);
+    let result = match args["op"].as_str().unwrap_or_default() {
+        "markdown" => {
+            let theme = pig_sdk::get_markdown_theme();
+            let styles = json!({
+                "heading": apply_all(&theme.heading, &samples), "link": apply_all(&theme.link, &samples), "linkUrl": apply_all(&theme.link_url, &samples),
+                "code": apply_all(&theme.code, &samples), "codeBlock": apply_all(&theme.code_block, &samples), "codeBlockBorder": apply_all(&theme.code_block_border, &samples),
+                "quote": apply_all(&theme.quote, &samples), "quoteBorder": apply_all(&theme.quote_border, &samples), "hr": apply_all(&theme.hr, &samples),
+                "listBullet": apply_all(&theme.list_bullet, &samples), "bold": apply_all(&theme.bold, &samples), "italic": apply_all(&theme.italic, &samples),
+                "underline": apply_all(&theme.underline, &samples), "strikethrough": apply_all(&theme.strikethrough, &samples),
+            });
+            let highlight: Vec<Value> = args["highlight"].as_array().map(|pairs| pairs.iter().map(|pair| {
+                let code = pair[0].as_str().unwrap_or_default();
+                json!((theme.highlight_code)(code, pair[1].as_str()))
+            }).collect()).unwrap_or_default();
+            json!({"styles": styles, "highlight": highlight})
+        }
+        "select" => {
+            let theme = pig_sdk::get_select_list_theme();
+            json!({"styles": {
+                "selectedPrefix": apply_all(&theme.selected_prefix, &samples), "selectedText": apply_all(&theme.selected_text, &samples),
+                "description": apply_all(&theme.description, &samples), "scrollInfo": apply_all(&theme.scroll_info, &samples), "noMatch": apply_all(&theme.no_match, &samples),
+            }})
+        }
+        "settings" => {
+            let theme = pig_sdk::get_settings_list_theme();
+            json!({"styles": {
+                "label": apply_pairs(&theme.label, &samples), "value": apply_pairs(&theme.value, &samples), "description": apply_all(&theme.description, &samples),
+                "cursor": theme.cursor, "hint": apply_all(&theme.hint, &samples),
+            }})
+        }
+        "highlight" => {
+            if let Some(name) = args["theme"].as_str().filter(|name| !name.is_empty()) {
+                if let Err(error) = pig_sdk::init_theme(Some(name)) {
+                    return ToolResult::Error(error.to_string());
+                }
+            }
+            json!({"lines": pig_sdk::highlight_code(args["code"].as_str().unwrap_or_default(), args["lang"].as_str())})
+        }
+        "init_theme" => {
+            if let Err(error) = pig_sdk::init_theme(args["theme"].as_str()) {
+                return ToolResult::Error(error.to_string());
+            }
+            let theme = pig_sdk::get_markdown_theme();
+            json!({"bold": apply_all(&theme.bold, &samples), "heading": apply_all(&theme.heading, &samples)})
+        }
+        "key_hint" => {
+            let id = args["id"].as_str().unwrap_or_default();
+            json!({"keyHint": pig_sdk::key_hint(id, args["description"].as_str().unwrap_or_default()), "keyText": pig_sdk::key_text(id)})
+        }
+        "raw_key_hint" => json!({"rawKeyHint": pig_sdk::raw_key_hint(args["key"].as_str().unwrap_or_default(), args["description"].as_str().unwrap_or_default())}),
+        other => return ToolResult::Error(format!("unknown op {other}")),
+    };
+    ToolResult::text(result.to_string())
+}
+
 fn image_impl(model: Arc<Value>, request: Value, options: pig_sdk::ProviderOperationOptions) -> Result<Value, String> {
     let prompt = request["input"][0]["text"].as_str().unwrap_or_default();
     if prompt == "fail" {
@@ -218,6 +289,7 @@ pub fn new_extension() -> Extension {
         let appearance = theme.appearance().map(|value| match value { ThemeAppearance::Light => "light", ThemeAppearance::Dark => "dark" });
         ToolResult::text(json!({"appearance": appearance, "colors": tokens, "styles": styles, "fgs": fgs, "queries": theme_queries(&theme, &args)}).to_string())
     });
+    ext.tool("tui_theme_probe", "Runs pi-coding-agent's theme and key hint helpers.", empty_schema(), |_, args| tui_theme_probe(&args));
     ext.tool("late_provider", "Registers a provider with operations after the factory finished.", empty_schema(), |ctx, args| {
         let registry = ctx.model_registry();
         let cost = json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0});

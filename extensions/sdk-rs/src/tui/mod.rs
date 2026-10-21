@@ -18,7 +18,8 @@ mod text;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use host::apply_host_state;
+pub(crate) use host::{apply_host_state, install_theme, installed_theme_palette, set_host_theme};
+pub use host::current_host_theme;
 pub use colors::*;
 pub use fuzzy::{FuzzyMatch, fuzzy_filter, fuzzy_match};
 pub use keybindings::{KeybindingConflict, KeybindingDefinition, KeybindingsManager, get_keybindings, set_keybindings, tui_keybindings};

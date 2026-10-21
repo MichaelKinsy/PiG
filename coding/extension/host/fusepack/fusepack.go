@@ -64,7 +64,9 @@ func HostHelpers() *sdk.HostHelpers {
 			frontmatter, body, err := subprocess.ParseFrontmatterJSON(content)
 			return sdk.ParsedFrontmatter{Frontmatter: frontmatter, Body: body}, err
 		},
-		ParseDate: subprocess.ParseDateMs,
+		ParseDate:     subprocess.ParseDateMs,
+		HighlightCode: subprocess.HighlightCodeLines,
+		LoadTheme:     subprocess.LoadThemeJSON,
 	}
 }
 
