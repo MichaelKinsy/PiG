@@ -135,6 +135,19 @@ type ExecuteToolCancel struct {
 	ExecuteID string `json:"executeId"`
 }
 
+// CallUICancelDialog (ext→host) dismisses the ui.select, ui.confirm or ui.input call that carried the same dialogId: the extension's options.signal aborted
+// (rpc-mode.ts createDialogPromise). The dialog answers as a cancelled one, which the extension ignores because its own promise settled with the default
+// when the signal aborted.
+const CallUICancelDialog = "ui.cancelDialog"
+
+// UICancelDialog is the CallUICancelDialog argument.
+type UICancelDialog struct {
+	DialogID string `json:"dialogId"`
+}
+
+// dialogSignalKey names the dialog dialogID in the nested-call table, apart from the execute ids of nested tool calls.
+func dialogSignalKey(dialogID string) string { return "dialog:" + dialogID }
+
 // RequestExecuteToolUpdate (host→ext) delivers one partial result of a nested call, in order and before the call's result, and the host waits for the answer. Args is an ExecuteToolUpdate. An error response is the callback's throw: the update raises no `tool_execution_update` event, the later updates are still sent, and the call rejects with the first error once the tool returned (nested-tool-calls.ts:219-231, agent-loop.ts:820-849). The request is not cancelled with the nested call: Pi's callback has no cancellation.
 const RequestExecuteToolUpdate = "execute_tool_update"
 
