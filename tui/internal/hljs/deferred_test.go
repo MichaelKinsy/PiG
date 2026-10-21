@@ -215,10 +215,7 @@ func TestDeferredAutoDetectMatchesEagerLoad(t *testing.T) {
 		t.Fatal("auto-detection among a few languages decoded most of the full set")
 	}
 	checked := 0
-	for i, c := range corpus {
-		if i%10 != 3 {
-			continue
-		}
+	for _, c := range corpus {
 		got, err := lazy.HighlightAuto(c.Code, nil)
 		want, wantErr := reference.HighlightAuto(c.Code, nil)
 		if got != want || (err == nil) != (wantErr == nil) {
@@ -226,8 +223,8 @@ func TestDeferredAutoDetectMatchesEagerLoad(t *testing.T) {
 		}
 		checked++
 	}
-	if checked < 50 {
-		t.Fatalf("%d auto-detections checked: the check proves nothing", checked)
+	if checked != len(corpus) || checked < 650 {
+		t.Fatalf("%d of %d corpus samples auto-detected: the check proves nothing", checked, len(corpus))
 	}
 	if lazy.deferred != nil {
 		t.Fatal("auto-detection over every language left languages undecoded")
