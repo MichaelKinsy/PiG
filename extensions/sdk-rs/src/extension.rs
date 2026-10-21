@@ -3912,3 +3912,7 @@ mod handler_dispatch_tests;
 #[cfg(all(test, unix))]
 #[path = "provider_superseded_tests.rs"]
 mod provider_superseded_tests;
+
+#[cfg(all(test, unix))]
+#[path = "request_start_wire_tests.rs"]
+mod request_start_wire_tests;

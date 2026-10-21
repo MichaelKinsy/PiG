@@ -26,9 +26,37 @@ impl Latch {
 
     fn wait(&self) {
         let mut done = self.done.lock().unwrap();
+        #[cfg(test)]
+        if !*done {
+            parked::note();
+        }
         while !*done {
             done = self.changed.wait(done).unwrap();
         }
+    }
+}
+
+/// The names of the threads that parked behind an earlier request's place, so a wire test can wait for a request's thread to take its place instead of
+/// sleeping. Request threads are named `pig-request-<id>`, and a test uses ids no other test uses.
+#[cfg(test)]
+pub(crate) mod parked {
+    use std::collections::HashSet;
+    use std::sync::{Mutex, OnceLock, PoisonError};
+
+    fn names() -> &'static Mutex<HashSet<String>> {
+        static NAMES: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+        NAMES.get_or_init(Default::default)
+    }
+
+    pub(super) fn note() {
+        if let Some(name) = std::thread::current().name() {
+            names().lock().unwrap_or_else(PoisonError::into_inner).insert(name.to_string());
+        }
+    }
+
+    /// Whether the thread called `thread_name` parked behind an earlier place.
+    pub(crate) fn contains(thread_name: &str) -> bool {
+        names().lock().unwrap_or_else(PoisonError::into_inner).contains(thread_name)
     }
 }
 
