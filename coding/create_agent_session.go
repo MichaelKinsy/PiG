@@ -141,7 +141,12 @@ func createAgentSessionOver(options CreateAgentSessionFromServicesOptions, resou
 	if options.SessionStartEvent != nil {
 		session.sessionStartEvent = *options.SessionStartEvent
 	}
-	return CreateAgentSessionResult{Session: session, ExtensionsResult: session.resourceLoader.Load().loader.GetExtensions(), ModelFallbackMessage: fallback}, nil
+	extensions := session.resourceLoader.Load().loader.GetExtensions()
+	// upstream: agent-session.ts _bindExtensionCore binds the Session to its extensions in every mode; the extensions this loader started run headless.
+	if bridge := extensions.UIBridge(); bridge != nil {
+		session.bindLoaderExtensionHost(bridge)
+	}
+	return CreateAgentSessionResult{Session: session, ExtensionsResult: extensions, ModelFallbackMessage: fallback}, nil
 }
 
 // sdkToolSelection is the tool state sdk.ts:259-276 derives from the tool options.

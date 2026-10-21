@@ -410,7 +410,7 @@ func (h *rpcHost) bindExtensionActions(session *coding.Session, st *rpcModeSessi
 	// hasPendingMessages, waitForIdle) for in-process and subprocess
 	// extensions, as upstream rpc-mode binds the session in bindExtensions.
 	if runner != nil || bridge != nil {
-		bindSessionExtensionActions(runner, bridge, current,
+		coding.BindSessionExtensionActions(runner, bridge, current,
 			extension.ContextActions{
 				GetAllTools: func() []extension.ToolInfo {
 					return current().GetAllTools()
@@ -442,7 +442,7 @@ func (h *rpcHost) bindExtensionActions(session *coding.Session, st *rpcModeSessi
 	}
 	var detach func()
 	if bridge != nil {
-		detachModelRegistry, stopRunSignal := wireSubprocessModelRegistry(bridge, session, services), watchSessionRunSignal(bridge, session)
+		detachModelRegistry, stopRunSignal := coding.BindSessionModelOperations(bridge, session, services), coding.WatchSessionRunSignal(bridge, session)
 		detach = func() {
 			stopRunSignal()
 			detachModelRegistry()
@@ -460,8 +460,8 @@ func (h *rpcHost) bindExtensionActions(session *coding.Session, st *rpcModeSessi
 			catalog := st.published.Load()
 			return commandsVersion.Version(catalog, catalog.slashCatalog().Runner)
 		})
-		bindSessionReadActions(bridge, current, services.CWD(), sessionDir)
-		// getActiveTools and setActiveTools come from bindSessionExtensionActions
+		coding.BindSessionReadActions(bridge, current, services.CWD(), sessionDir)
+		// getActiveTools and setActiveTools come from coding.BindSessionExtensionActions
 		// (upstream getActiveToolNames and setActiveToolsByName).
 		codingagent.BindAppendEntryAction(bridge, func() (*codingagent.Session, error) { return current().Inner(), nil },
 			func(entry codingagent.CustomEntry, direct *subprocess.DirectEntryAppend) error {

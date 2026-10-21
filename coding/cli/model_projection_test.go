@@ -84,7 +84,7 @@ func TestHeadlessModelCatalogUsesCompleteProjection(t *testing.T) {
 	}
 	bridge := subprocess.NewUIBridge(func() {})
 	session := newModelRegistryTestSession(t, services)
-	detach := wireSubprocessModelRegistry(bridge, session, services)
+	detach := coding.BindSessionModelOperations(bridge, session, services)
 	defer detach()
 	var got map[string]any
 	for _, object := range bridge.ModelCatalog() {

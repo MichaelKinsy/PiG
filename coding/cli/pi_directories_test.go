@@ -54,12 +54,12 @@ func TestHeadlessExtensionGetsConfiguredSystemPrompt(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	_, actions := sessionExtensionActions(func() *coding.Session { return session }, nil)
+	_, actions := coding.ExtensionHostSessionActions(func() *coding.Session { return session }, nil)
 	if actions.GetSystemPrompt == nil || !strings.Contains(actions.GetSystemPrompt(), "SHARED-SYSTEM-INSTRUCTIONS") {
 		t.Fatal("in-process headless context lost the configured prompt")
 	}
 	bridge := subprocess.NewUIBridge(func() {})
-	bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 	result, err := bridge.HandleCall("probe", &subprocess.CallPayload{Method: "getSystemPrompt", Args: json.RawMessage(`{}`)})
 	if err != nil || result == nil || result.Error != nil || !strings.Contains(string(result.Result), "SHARED-SYSTEM-INSTRUCTIONS") {
 		t.Fatalf("subprocess prompt: %+v, %v", result, err)

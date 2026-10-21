@@ -12,7 +12,7 @@ import (
 )
 
 // Pi: packages/coding-agent/src/core/agent-session.ts:3361-3384 (_bindExtensionCore getCommands) binds the commands every extension reads through runtime.getCommands (runner.ts:433, types.ts:2170): the runner's extension commands under their invocation names, then the prompt templates, then the skills (named `skill:<name>`) of the Session's resource loader, each with the sourceInfo the resource carries.
-// Both bindings that reach the runtime list them: the Session's own (NewSession with a runner) and the one bindSessionExtensionActions rebinds in every mode; before a Session exists the latter lists nothing.
+// Both bindings that reach the runtime list them: the Session's own (NewSession with a runner) and the one coding.BindSessionExtensionActions rebinds in every mode; before a Session exists the latter lists nothing.
 func TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	t.Setenv("PIG_CODING_AGENT_DIR", t.TempDir())
@@ -37,7 +37,7 @@ func TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands(
 	var live *coding.Session
 	current := func() *coding.Session { return live }
 	earlyRuntime := extension.CreateExtensionRuntime()
-	bindSessionExtensionActions(inproc.NewRunner([]extension.Extension{ext}, cwd, earlyRuntime), nil, current, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(inproc.NewRunner([]extension.Extension{ext}, cwd, earlyRuntime), nil, current, extension.ContextActions{}, nil)
 	if got := earlyRuntime.GetCommands(); got == nil || len(got) != 0 {
 		t.Fatalf("GetCommands before the Session exists = %#v, want an empty list", got)
 	}
@@ -68,7 +68,7 @@ func TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands(
 	if got := runtime.GetCommands(); !slices.Equal(got, want) {
 		t.Fatalf("GetCommands bound by the Session = %+v, want %+v", got, want)
 	}
-	bindSessionExtensionActions(runner, nil, current, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(runner, nil, current, extension.ContextActions{}, nil)
 	if got := runtime.GetCommands(); !slices.Equal(got, want) {
 		t.Fatalf("GetCommands bound by the mode = %+v, want %+v", got, want)
 	}

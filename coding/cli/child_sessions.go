@@ -41,9 +41,7 @@ type childSession struct {
 	// services are the child's own: the session's settings, resource loader and extension host, over the parent's model runtime. Dispose closes them.
 	services *coding.AgentSessionServices
 	info     subprocess.ChildSessionInfo
-	// unbindHost releases what binds the session to its extensions' host; nil when the session loaded none.
-	unbindHost func()
-	disposed   sync.Once
+	disposed sync.Once
 }
 
 // newChildSession is sdk.ts createAgentSession over the parent's model runtime.
@@ -154,8 +152,6 @@ func createChildSession(ctx context.Context, services *coding.AgentSessionServic
 	// The wire's listeners are the only sinks: nothing reads Events.
 	session.DiscardEvents()
 	child := &childSession{session: session}
-	// Pi's AgentSession binds its state to the extensions its resource loader loaded; they run headless.
-	child.unbindHost = bindChildExtensionHost(result.ExtensionsResult.UIBridge(), session)
 	child.info = child.snapshotInfo()
 	child.info.ModelFallbackMessage = result.ModelFallbackMessage
 	for _, loadErr := range result.ExtensionsResult.Errors {
@@ -350,9 +346,6 @@ func (c *childSession) Dispose() { c.session.Dispose() }
 // Close ends the run and releases the session and the services the child started.
 func (c *childSession) Close() {
 	c.disposed.Do(func() {
-		if c.unbindHost != nil {
-			c.unbindHost()
-		}
 		c.session.Dispose()
 		_ = c.session.Close()
 		if c.services != nil {

@@ -56,7 +56,7 @@ func buildGoSDKFixture(t *testing.T, name string) string {
 }
 
 // TestSharedSubprocessExecAcrossModes proves an extension's pi.exec call
-// succeeds in every mode that binds bindSessionExtensionActions (print, JSON,
+// succeeds in every mode that binds coding.BindSessionExtensionActions (print, JSON,
 // RPC), matching upstream, where core/extensions/loader.ts binds
 // ExtensionContext.exec identically regardless of mode (createExtensionContext
 // is not mode-conditional). Before this fix, only interactive mode registered
@@ -135,9 +135,9 @@ func TestSharedSubprocessExecAcrossModes(t *testing.T) {
 				defer host.Shutdown("test done")
 
 				// This is the shared, mode-independent wiring under test: print,
-				// JSON, and RPC mode all call bindSessionExtensionActions to bind
+				// JSON, and RPC mode all call coding.BindSessionExtensionActions to bind
 				// the session-backed subprocess host actions, including exec.
-				bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{
+				coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{
 					ModelRegistry:    services.Registry(),
 					IsProjectTrusted: services.SettingsManager().IsProjectTrusted,
 				}, nil)

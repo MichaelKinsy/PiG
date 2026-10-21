@@ -371,9 +371,9 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if stopRunSignal != nil {
 			stopRunSignal()
 		}
-		detachModelRegistry = wireSubprocessModelRegistry(bridge, session, services)
-		stopRunSignal = watchSessionRunSignal(bridge, session)
-		bindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
+		detachModelRegistry = coding.BindSessionModelOperations(bridge, session, services)
+		stopRunSignal = coding.WatchSessionRunSignal(bridge, session)
+		coding.BindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
 		var emitEntryAppended func(RPCEntryAppendedEvent)
 		if opts.Mode == "json" {
 			emitEntryAppended = func(event RPCEntryAppendedEvent) { writeJSONLine(jsonOut, event) }
@@ -389,7 +389,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			runner.BindCommandActions(rt.ExtensionCommandActions(session))
 		}
 		flagValues := services.ExtensionFlagValues()
-		bindSessionExtensionActions(runner, bridge, current, extension.ContextActions{
+		coding.BindSessionExtensionActions(runner, bridge, current, extension.ContextActions{
 			ModelRegistry: services.Registry(),
 			// upstream: agent-session.ts:3440 isProjectTrusted reads the Session's settings manager.
 			IsProjectTrusted: services.SettingsManager().IsProjectTrusted,
