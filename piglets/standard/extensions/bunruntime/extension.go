@@ -48,7 +48,7 @@ func run(ctx sdk.Context, args string) error {
 func runAction(ctx context.Context, action, root, platform string, in installer) (string, error) {
 	switch action {
 	case "", "status":
-		executable, err := verifyInstalled(ctx, root, platform, pinnedAssets(in))
+		executable, err := verifyInstalledLocked(ctx, root, platform, pinnedAssets(in))
 		if err != nil {
 			return fmt.Sprintf("Bun runtime: not usable (%v). Run /bun-runtime install.", err), nil
 		}
@@ -60,13 +60,13 @@ func runAction(ctx context.Context, action, root, platform string, in installer)
 		}
 		return fmt.Sprintf("Installed Bun %s at %s after verifying its signature and digests. %s", bunVersion, executable, selectHint), nil
 	case "verify":
-		executable, err := verifyInstalled(ctx, root, platform, pinnedAssets(in))
+		executable, err := verifyInstalledLocked(ctx, root, platform, pinnedAssets(in))
 		if err != nil {
 			return "", fmt.Errorf("Bun runtime verify failed: %w", err)
 		}
 		return fmt.Sprintf("Bun %s at %s matches its pinned digest and runs.", bunVersion, executable), nil
 	case "remove":
-		removed, err := remove(root)
+		removed, err := remove(ctx, root)
 		if err != nil {
 			return "", fmt.Errorf("Bun runtime remove failed: %w", err)
 		}
