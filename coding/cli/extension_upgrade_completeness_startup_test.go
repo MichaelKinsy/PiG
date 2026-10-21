@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && !pig_strip_extension_sdk_go
 
 package cli
 
