@@ -477,7 +477,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			select {
 			case <-rpcUI.PendingRequest():
 				return
-			case <-responses.idle():
+			case <-responses.Idle():
 			}
 			if commandJoin := host.commandJoin.Load(); commandJoin != nil {
 				// pig additive (D19): the host applies Pi's stdin-end window to runtimes that report none; a Node runtime reports each command's own window.
@@ -580,7 +580,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			return
 		}
 		if result == nil {
-			turn.after(func() { writeRPC(rpcSuccessNull(id, "cycle_model")) })
+			turn.Microtask(func() { writeRPC(rpcSuccessNull(id, "cycle_model")) })
 			return
 		}
 		if err := currentSession.FlushEvents(ctx); err != nil {
@@ -593,9 +593,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}))
 		}
 		if complete == nil {
-			turn.after(publish)
+			turn.Microtask(publish)
 		} else {
-			commandWG.Go(func() { complete(); turn.after(publish) })
+			commandWG.Go(func() { complete(); turn.Microtask(publish) })
 		}
 	}
 
@@ -611,9 +611,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		currentTurn := inputTurn
 		if currentTurn != nil {
 			inputTurn = nil
-			currentTurn.end()
+			currentTurn.End()
 			defer func() {
-				currentTurn.begin()
+				currentTurn.Begin()
 				inputTurn = currentTurn
 			}()
 		}
@@ -697,7 +697,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		})
 		startedReplacements = append(startedReplacements, pending)
 		replacementMu.Unlock()
-		batchDrained := turn.idle()
+		batchDrained := turn.Idle()
 		replacementWG.Add(1)
 		previous := replacementResolved
 		awaitPrechecks := func() {
@@ -867,7 +867,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 commandLoop:
 	for {
 		if len(inputBatch) == 0 && inputTurn != nil {
-			inputTurn.end()
+			inputTurn.End()
 			inputTurn = nil
 		}
 		// Upstream checks for ctx.shutdown() once after each handled command.
@@ -891,7 +891,7 @@ commandLoop:
 			}
 			// Pi reads a stdin chunk in an iteration of its own, after any microtask tail that agent_end started.
 			host.settle.wait(ctx, rpcUI.PendingRequest, shutdown.Started())
-			responses.begin()
+			responses.Begin()
 			inputTurn = responses
 		}
 		line := inputBatch[0]
@@ -1065,7 +1065,7 @@ commandLoop:
 					close(applied)
 					return
 				}
-				commandWG.Go(func() { complete(); close(applied); turn.after(publish) })
+				commandWG.Go(func() { complete(); close(applied); turn.Microtask(publish) })
 			})
 
 		case RPCCommandCycleModel:
@@ -1081,7 +1081,7 @@ commandLoop:
 			commandID := env.ID
 			customInstructions := cmd.CustomInstructions
 			currentSession := sess()
-			batchDispatched := turn.idle()
+			batchDispatched := turn.Idle()
 			// Pi's compact() awaits abort() before it creates its abort controller, so a compact of the same batch aborts nothing of an earlier one. Compactions chain: each starts after the previous one settled.
 			commandWG.Add(1)
 			previous := compactResolved
@@ -1472,7 +1472,7 @@ commandLoop:
 	}
 
 	if inputTurn != nil {
-		inputTurn.end()
+		inputTurn.End()
 		inputTurn = nil
 	}
 
@@ -1497,8 +1497,8 @@ commandLoop:
 	cancel()
 	rpcUI.Close()
 	host.tasks.CloseAndWait()
-	responses.begin()
-	responses.end()
+	responses.Begin()
+	responses.End()
 	settleSessionWork()
 
 	// Runtime.Close closes the current Session, which closes its events channel, and retires its host.

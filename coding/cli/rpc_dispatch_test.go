@@ -15,30 +15,28 @@ func TestRPCResponseTurnDefersAlreadyFulfilledAwait(t *testing.T) {
 	var got []any
 	write := func(response any) { got = append(got, response) }
 	turn := &rpcResponseTurn{write: write}
-	turn.begin()
+	turn.Begin()
 	turn.complete("cycle") // The async operation has already completed, not merely been started.
 	if len(got) != 0 {
 		t.Fatalf("awaited response escaped the input turn: %v", got)
 	}
 	write("abort-retry")
-	turn.end()
+	turn.End()
 	turn.complete("later")
 	if want := []any{"abort-retry", "cycle", "later"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("responses=%v want=%v", got, want)
 	}
 }
 
-// Node delivers each I/O completion from its own event-loop task and drains the microtask queue between tasks, so the microtasks a resumed await queues run before the next completion resumes. rpcAwaitWork queues its results as tasks (rpcResponseTurn.enqueueTasks); two results already queued must not run in one batch.
+// Node delivers each I/O completion from its own event-loop task and drains the microtask queue between tasks, so the microtasks a resumed await queues run before the next completion resumes. rpcAwaitWork queues its results as tasks (jsloop.Loop.Macrotask); two results already queued must not run in one batch.
 // mutation-checked: draining every queued task at once answers [a1 b a2].
 func TestRPCResponseTurnRunsEachTaskAfterThePreviousTasksMicrotasks(t *testing.T) {
 	var got []any
 	turn := &rpcResponseTurn{write: func(v any) { got = append(got, v) }}
-	turn.begin()
-	turn.enqueueTasks([]func(){
-		func() { turn.write("a1"); turn.complete("a2") },
-		func() { turn.write("b") },
-	})
-	turn.end()
+	turn.Begin()
+	turn.Macrotask(func() { turn.write("a1"); turn.complete("a2") })
+	turn.Macrotask(func() { turn.write("b") })
+	turn.End()
 	if want := []any{"a1", "a2", "b"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("responses=%v want=%v", got, want)
 	}
@@ -48,10 +46,10 @@ func TestRPCResponseTurnEvaluatesContinuationAfterAdmission(t *testing.T) {
 	value := 1
 	var got []any
 	turn := &rpcResponseTurn{write: func(v any) { got = append(got, v) }}
-	turn.begin()
-	turn.after(func() { turn.complete(value) })
+	turn.Begin()
+	turn.Microtask(func() { turn.complete(value) })
 	value = 2
-	turn.end()
+	turn.End()
 	if !reflect.DeepEqual(got, []any{2}) {
 		t.Fatalf("continuation observed pre-await state: %v", got)
 	}
@@ -60,9 +58,9 @@ func TestRPCResponseTurnEvaluatesContinuationAfterAdmission(t *testing.T) {
 func TestRPCResponseTurnProtectsLaterInputAndDoesNotStrandCompletions(t *testing.T) {
 	var got []any
 	executor := &rpcResponseTurn{write: func(v any) { got = append(got, v) }}
-	executor.begin()
-	executor.end()
-	executor.begin()
+	executor.Begin()
+	executor.End()
+	executor.Begin()
 	var work sync.WaitGroup
 	for i := range 100 {
 		work.Go(func() { executor.complete(i) })
@@ -71,7 +69,7 @@ func TestRPCResponseTurnProtectsLaterInputAndDoesNotStrandCompletions(t *testing
 	if len(got) != 0 {
 		t.Fatalf("completion ran inside later input callback: %v", got)
 	}
-	executor.end()
+	executor.End()
 	if len(got) != 100 {
 		t.Fatalf("lost completed operations: %d", len(got))
 	}
@@ -79,12 +77,12 @@ func TestRPCResponseTurnProtectsLaterInputAndDoesNotStrandCompletions(t *testing
 		work.Go(func() { executor.complete(i) })
 	}
 	for range 100 {
-		executor.begin()
-		executor.end()
+		executor.Begin()
+		executor.End()
 	}
 	work.Wait()
-	executor.begin()
-	executor.end()
+	executor.Begin()
+	executor.End()
 	if len(got) != 200 {
 		t.Fatalf("stranded completion at idle handoff: %d", len(got))
 	}
@@ -178,10 +176,10 @@ func BenchmarkRPCResponseTurn(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		turn := &rpcResponseTurn{write: write}
-		turn.begin()
+		turn.Begin()
 		turn.complete(rpcSuccessNull(rpcStringID("cycle"), "cycle_model"))
 		write(rpcSuccess(rpcStringID("abort-retry"), "abort_retry", nil))
-		turn.end()
+		turn.End()
 	}
 }
 
@@ -248,11 +246,11 @@ func TestRPCResponseTurnRunsTasksAfterQueuedMicrotasks(t *testing.T) {
 	var got []any
 	turn := &rpcResponseTurn{}
 	turn.write = func(v any) { got = append(got, v) }
-	turn.begin()
-	turn.enqueueTasks([]func(){func() { turn.write("set") }})
+	turn.Begin()
+	turn.Macrotask(func() { turn.write("set") })
 	turn.complete("cycle")
-	turn.end()
-	turn.enqueueTasks([]func(){func() { turn.write("idle") }})
+	turn.End()
+	turn.Macrotask(func() { turn.write("idle") })
 	if want := []any{"cycle", "set", "idle"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("responses=%v want=%v", got, want)
 	}

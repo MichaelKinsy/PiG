@@ -70,12 +70,12 @@ func TestRPCPromptCompactionCheckWaitsForABusySession(t *testing.T) {
 	admission := &rpcAdmission{ctx: t.Context(), turn: turn, session: session}
 	resolved := make(chan error, 1)
 	var released, resolvedEarly atomic.Bool
-	turn.begin()
+	turn.Begin()
 	admission.promptCompactionCheck().then(func(_ struct{}, err error) {
 		resolvedEarly.Store(!released.Load())
 		resolved <- err
 	})
-	turn.end()
+	turn.End()
 	select {
 	case err := <-resolved:
 		close(releaseSummary)

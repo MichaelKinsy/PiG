@@ -253,7 +253,7 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 	h.detachModelRegistry, h.unsubscribeName = detach, unsubscribeName
 	h.mu.Unlock()
 
-	session.SetRetryContinuationScheduler(h.responses.after)
+	session.SetRetryContinuationScheduler(h.responses.Microtask)
 	// The forwarder subscribes before session_start so no event of the Session is missed.
 	h.forward(session)
 	return h.announce(ctx, session, st, event)

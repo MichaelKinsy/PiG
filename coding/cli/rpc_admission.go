@@ -43,7 +43,7 @@ func (p *rpcPromise[T]) then(fn func(T, error)) {
 	}
 	value, err := p.value, p.err
 	p.mu.Unlock()
-	p.turn.after(func() { fn(value, err) })
+	p.turn.Microtask(func() { fn(value, err) })
 }
 func (p *rpcPromise[T]) resolve(value T, err error) {
 	p.mu.Lock()
@@ -55,7 +55,7 @@ func (p *rpcPromise[T]) resolve(value T, err error) {
 	for i, fn := range waiting {
 		callbacks[i] = func() { fn(value, err) }
 	}
-	p.turn.enqueue(callbacks)
+	p.turn.Microtasks(callbacks...)
 }
 
 type rpcInputResult struct {
@@ -100,10 +100,10 @@ func rpcAwaitWork[T any](a *rpcAdmission, slow bool, work func() (T, error)) *rp
 		return rpcResolved(a.turn, value, err)
 	}
 	p := &rpcPromise[T]{turn: a.turn}
-	// The work ran outside the executor, so its result settles the promise from an event-loop task of its own, after the microtasks already queued (rpcResponseTurn.enqueueTasks).
+	// The work ran outside the executor, so its result settles the promise from an event-loop task of its own, after the microtasks already queued (jsloop.Loop.Macrotask).
 	if !a.taskGroup().Go(func() {
 		value, err := work()
-		a.turn.enqueueTasks([]func(){func() { p.resolve(value, err) }})
+		a.turn.Macrotask(func() { p.resolve(value, err) })
 	}) {
 		var zero T
 		p.resolve(zero, context.Canceled)
@@ -132,16 +132,16 @@ func rpcAwaitInOrder[T any](a *rpcAdmission, previous <-chan struct{}, work func
 		value, err := work()
 		if early, ok := errors.AsType[rpcEarlyError](err); ok {
 			var zero T
-			a.turn.enqueueTasks([]func(){func() { p.resolve(zero, early.err) }})
+			a.turn.Macrotask(func() { p.resolve(zero, early.err) })
 			await()
 			close(resolved)
 			return
 		}
 		await()
-		a.turn.enqueueTasks([]func(){func() {
+		a.turn.Macrotask(func() {
 			p.resolve(value, err)
 			close(resolved)
-		}})
+		})
 	}) {
 		var zero T
 		p.resolve(zero, context.Canceled)
@@ -254,7 +254,7 @@ func (a *rpcAdmission) command(id rpcRequestID, name, args string) {
 		a.commandDone()
 	}
 	pending.then(func(_ struct{}, _ error) {
-		a.turn.after(func() {
+		a.turn.Microtask(func() {
 			// The answer releases a run the handler sent; it is deferred first, so it follows the response.
 			defer a.commandRuns.answered(flight, a)
 			if a.commandsInFlight != nil {
@@ -372,10 +372,10 @@ const extensionRunStageHops = 2
 func (a *rpcAdmission) extensionRunStage() *coding.ExtensionRunStage {
 	return &coding.ExtensionRunStage{
 		Prepare: func(ctx context.Context, prepare func(context.Context)) {
-			a.turn.after(func() { a.awaitPreparation(ctx, prepare) })
+			a.turn.Microtask(func() { a.awaitPreparation(ctx, prepare) })
 		},
 		Start: func(start func()) {
-			a.commandRuns.whenNoneRuns(func() { a.turn.afterHops(extensionRunStageHops, start) })
+			a.commandRuns.whenNoneRuns(func() { a.turn.Hops(extensionRunStageHops, start) })
 		},
 	}
 }
@@ -400,14 +400,14 @@ func (a *rpcAdmission) awaitPreparation(ctx context.Context, prepare func(contex
 func (a *rpcAdmission) prompt(id rpcRequestID, cmd RPCPromptCommand) {
 	if strings.HasPrefix(cmd.Message, "/") {
 		// An unresolved slash command still awaits _tryExecuteExtensionCommand(false).
-		a.turn.after(func() { a.promptInput(id, cmd) })
+		a.turn.Microtask(func() { a.promptInput(id, cmd) })
 		return
 	}
 	a.promptInput(id, cmd)
 }
 
 func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
-	fail := func(err error) { a.turn.after(func() { a.write(rpcError(id, "prompt", err.Error())) }) }
+	fail := func(err error) { a.turn.Microtask(func() { a.write(rpcError(id, "prompt", err.Error())) }) }
 	if a.session.IsCompacting() {
 		fail(fmt.Errorf("Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry."))
 		return
@@ -439,7 +439,7 @@ func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 				fail(err)
 				return
 			}
-			a.turn.after(func() { a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionQueued)) })
+			a.turn.Microtask(func() { a.write(rpcDispositionSuccess(id, "prompt", coding.DispositionQueued)) })
 			return
 		}
 		if err := a.validateModel(); err != nil {
@@ -525,7 +525,7 @@ func (a *rpcAdmission) beforeAgentStart(id rpcRequestID, start *coding.RunStart,
 		// upstream: packages/coding-agent/src/core/agent-session.ts:_startRun awaits _prepareRun, an async function that
 		// returns the starting messages, so the run starts (and "started" is written) one microtask after the
 		// preparation settles; Pi 1.1.0 prepared inline in prompt().
-		a.turn.afterHops(a.beforeAgentStartHandlerHops()+1, func() {
+		a.turn.Hops(a.beforeAgentStartHandlerHops()+1, func() {
 			a.startPreparedPrompt(id, start, prepared, err, hasImages, fail)
 		})
 	})
@@ -574,8 +574,8 @@ func (a *rpcAdmission) startPreparedPrompt(id rpcRequestID, start *coding.RunSta
 			return
 		} // Acceptance is authoritative; subsequent failures belong to the run.
 		// _handleAgentEvent awaits _emitExtensionEvent, which awaits runner.emit. Dispatch the real first event at that boundary, then resume the loop separately.
-		a.turn.after(func() {
-			a.turn.after(func() {
+		a.turn.Microtask(func() {
+			a.turn.Microtask(func() {
 				start := func() (struct{}, error) {
 					err := run.Start()
 					if flushErr := a.session.FlushEvents(a.ctx); err == nil {
