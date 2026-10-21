@@ -85,7 +85,7 @@ Representative current paths:
 <cacheRoot>/cells/go/<hash>/runner[.exe]    packed Go
 <cacheRoot>/cells/rust/<hash>/runner[.exe]  packed Rust project/artifact
 <cacheRoot>/cells/python/<hash>/runner.py   packed Python
-<cacheRoot>/toolchains/<probe>.json         compiler/runtime version probe
+<cacheRoot>/toolchains/<probe>-<fingerprint>.json  compiler/runtime version probe
 <cacheRoot>/cells/node/<hash>/runner        packed Node (runtime copy + manifest.json, no compiled artifact)
 ```
 
@@ -95,7 +95,7 @@ Node extensions use Jiti's persistent transform cache under `<config-root>/cache
 
 Node also requests a source-validated native bytecode cache under `<config-root>/cache/node-compile` when an extension imports a virtual SDK library (D20). Cache activation follows the first Jiti transform, so cold startup does not serialize Babel's unused compiler bytecode. The runtime flushes compiled artifacts when it processes the host's ready message. Node checks source bytes and VM compatibility before reuse; it never caches evaluated factories. Existing Node cache configuration remains authoritative, and `NODE_DISABLE_COMPILE_CACHE=1` disables this cache independently of Jiti. Both compiler caches are disposable and are outside the cell-pruning commands.
 
-Toolchain version records are keyed by the resolved executable's file identity and selector state such as Go, rustup, and Python version files. An unchanged warm lookup does not spawn the tool. Replacing the executable or selector state re-probes it, and a failed compiled build invalidates the relevant record before the next attempt.
+Toolchain version records are keyed by the resolved executable's file identity and selector state such as Go, rustup, and Python version files. An unchanged warm lookup does not spawn the tool. Replacing the executable or selector state re-probes it, and a failed compiled build invalidates the relevant record before the next attempt. Each fingerprint has its own record and lock, so two projects whose selectors differ do not replace each other's record or wait for each other's probe, and a command keeps its eight newest records. A probe is bounded (2 minutes, after which the version is an error), and a start that finds a peer probing the same record waits for it at most 5 minutes before it probes for itself.
 
 ## Piglet component build
 
