@@ -474,7 +474,7 @@ type Host struct {
 	runtimeDrainHandler func()
 	// runtimeDrains holds, per Node process and report, the connections that reported it. Guarded by h.mu.
 	runtimeDrains map[runtimeDrainKey]*runtimeDrainReports
-	// drainTasks joins the goroutines that finish a drain after a connection closed; drainTasksClosed stops new ones once Shutdown waits. Guarded by drainTasksMu.
+	// drainTasks joins the goroutines that finish a drain after a connection closed and the crash-restart backoffs; drainTasksClosed stops new ones once Shutdown waits. Guarded by drainTasksMu.
 	drainTasksMu     sync.Mutex
 	drainTasks       sync.WaitGroup
 	drainTasksClosed bool
@@ -1916,7 +1916,7 @@ func (h *Host) runtimeCommandsDrained(conn *Conn, lanes *callLanes, report *Enve
 	return report.Notify.Method == notifyRuntimeCommandsDrained
 }
 
-// goDrainTask runs fn as a task Shutdown joins. Once Shutdown waits, nothing is left to act on a drain, so fn does not run.
+// goDrainTask runs fn as a task Shutdown joins: a drain finish or a crash-restart backoff. Once Shutdown waits, nothing is left to act on either, so fn does not run.
 func (h *Host) goDrainTask(fn func()) {
 	h.drainTasksMu.Lock()
 	defer h.drainTasksMu.Unlock()
@@ -4759,13 +4759,19 @@ func (h *Host) handleUnresponsiveExtension(me *managedExt, failure *ExtensionUnr
 // restarting in place (same managedExt, fresh connection) restores the
 // extension's capabilities without re-registering anything with the agent.
 // Packed cells are excluded upstream of this call: they are quarantined.
+//
+// The wait is a task Shutdown joins: Shutdown cancels the recovery context first, which ends the wait, so no backoff
+// goroutine outlives the Host. A restart scheduled once Shutdown waits does not run.
 func (h *Host) scheduleRestart(me *managedExt, delay time.Duration) {
-	go func() {
+	h.goDrainTask(func() {
 		timer := time.NewTimer(delay)
 		defer timer.Stop()
-		<-timer.C
-		h.attemptRestart(me)
-	}()
+		select {
+		case <-timer.C:
+			h.attemptRestart(me)
+		case <-h.recoveryContext.Done():
+		}
+	})
 }
 
 func (h *Host) attemptRestart(me *managedExt) {
