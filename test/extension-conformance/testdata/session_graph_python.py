@@ -375,7 +375,7 @@ def skill_report(result):
         ),
         key=lambda skill: skill["name"],
     )
-    return {"skills": skills, "diagnostics": len(result["diagnostics"])}
+    return {"skills": skills, "diagnostics": [f'{d["type"]}: {d["message"]}' for d in result["diagnostics"]]}
 
 
 def prompt_report(result):
@@ -389,7 +389,7 @@ def prompt_report(result):
         ),
         key=lambda prompt: prompt["name"],
     )
-    return {"prompts": prompts, "diagnostics": len(result["diagnostics"])}
+    return {"prompts": prompts, "diagnostics": [f'{d["type"]}: {d["message"]}' for d in result["diagnostics"]]}
 
 
 def resource_report(loader):

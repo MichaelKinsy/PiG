@@ -359,7 +359,7 @@ const skillReport = (result) => ({
       scope: skill.sourceInfo.scope, origin: skill.sourceInfo.origin, source: skill.sourceInfo.source,
     }))
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
-  diagnostics: result.diagnostics.length,
+  diagnostics: result.diagnostics.map((diagnostic) => `${diagnostic.type}: ${diagnostic.message}`),
 });
 
 const promptReport = (result) => ({
@@ -368,7 +368,7 @@ const promptReport = (result) => ({
       name: prompt.name, description: prompt.description, argumentHint: prompt.argumentHint ?? "", content: prompt.content, file: basename(prompt.filePath), scope: prompt.sourceInfo.scope,
     }))
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
-  diagnostics: result.diagnostics.length,
+  diagnostics: result.diagnostics.map((diagnostic) => `${diagnostic.type}: ${diagnostic.message}`),
 });
 
 const resourceReport = (loader) => {

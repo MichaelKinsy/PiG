@@ -9,6 +9,14 @@ import (
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
+func diagnosticTexts(list []sdk.ResourceDiagnostic) []string {
+	out := []string{}
+	for _, diagnostic := range list {
+		out = append(out, diagnostic.Type+": "+diagnostic.Message)
+	}
+	return out
+}
+
 func skillReport(result sdk.SkillsResult) map[string]any {
 	skills := []map[string]any{}
 	for _, skill := range result.Skills {
@@ -18,7 +26,7 @@ func skillReport(result sdk.SkillsResult) map[string]any {
 		})
 	}
 	sort.Slice(skills, func(i, j int) bool { return skills[i]["name"].(string) < skills[j]["name"].(string) })
-	return map[string]any{"skills": skills, "diagnostics": len(result.Diagnostics)}
+	return map[string]any{"skills": skills, "diagnostics": diagnosticTexts(result.Diagnostics)}
 }
 
 func promptReport(result sdk.PromptsResult) map[string]any {
@@ -29,7 +37,7 @@ func promptReport(result sdk.PromptsResult) map[string]any {
 		})
 	}
 	sort.Slice(prompts, func(i, j int) bool { return prompts[i]["name"].(string) < prompts[j]["name"].(string) })
-	return map[string]any{"prompts": prompts, "diagnostics": len(result.Diagnostics)}
+	return map[string]any{"prompts": prompts, "diagnostics": diagnosticTexts(result.Diagnostics)}
 }
 
 func resourceReport(loader *sdk.DefaultResourceLoader) map[string]any {

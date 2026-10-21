@@ -409,13 +409,17 @@ fn base_name(value: &Value) -> String {
     Path::new(text(value)).file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default()
 }
 
+fn diagnostic_texts(list: &Value) -> Vec<String> {
+    list.as_array().map(|list| list.iter().map(|d| format!("{}: {}", text(&d["type"]), text(&d["message"]))).collect()).unwrap_or_default()
+}
+
 fn skill_report(result: &Value) -> Value {
     let mut skills: Vec<Value> = result["skills"].as_array().map(|list| list.iter().map(|skill| json!({
         "name": skill["name"], "description": skill["description"], "disable": skill["disableModelInvocation"].as_bool().unwrap_or(false), "file": base_name(&skill["filePath"]),
         "baseDir": base_name(&skill["baseDir"]), "scope": skill["sourceInfo"]["scope"], "origin": skill["sourceInfo"]["origin"], "source": skill["sourceInfo"]["source"],
     })).collect()).unwrap_or_default();
     skills.sort_by(|a, b| text(&a["name"]).cmp(text(&b["name"])));
-    json!({"skills": skills, "diagnostics": result["diagnostics"].as_array().map_or(0, Vec::len)})
+    json!({"skills": skills, "diagnostics": diagnostic_texts(&result["diagnostics"])})
 }
 
 fn prompt_report(result: &Value) -> Value {
@@ -424,7 +428,7 @@ fn prompt_report(result: &Value) -> Value {
         "file": base_name(&prompt["filePath"]), "scope": prompt["sourceInfo"]["scope"],
     })).collect()).unwrap_or_default();
     prompts.sort_by(|a, b| text(&a["name"]).cmp(text(&b["name"])));
-    json!({"prompts": prompts, "diagnostics": result["diagnostics"].as_array().map_or(0, Vec::len)})
+    json!({"prompts": prompts, "diagnostics": diagnostic_texts(&result["diagnostics"])})
 }
 
 fn resource_report(loader: &DefaultResourceLoader) -> io::Result<Value> {
