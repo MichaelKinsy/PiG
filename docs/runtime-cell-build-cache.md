@@ -144,6 +144,8 @@ Pig classifies each entry in this order:
 
 The first three classes are hard roots. Age and size pressure cannot delete a hard root. Process use holds a shared advisory lock. Garbage collection must acquire the exclusive lock before it renames an entry to a same-filesystem tombstone and removes it. Lock files remain in place. Process termination releases the operating-system lock.
 
+A cache hit holds no lease until the extension process starts, so it also takes the shared lock while it checks the entry and records its use, and the collector reads the entry's `ready.json` and `usage.json` again under its exclusive lock. An entry whose record changed since the classification is skipped and counted: a peer reused it. A hit that finds the lock held by a collector is not a hit, and the entry is built again. A lease for a cache artifact whose entry is gone fails with `cache_lease_failed` ("no longer exists"); an artifact outside the cache has no lease and no error.
+
 Automatic pruning removes obsolete SDK fingerprints, entries older than 30 days since successful use, and incomplete entries after the crash-safety grace. Automatic pruning applies no size limit. It runs after successful extension resolution at most once per day and outside the TUI input and render loops.
 
 Use these commands for inspection and explicit pressure:

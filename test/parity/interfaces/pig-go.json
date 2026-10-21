@@ -111382,6 +111382,17 @@
       "shapeHash": "sha256:af2321eefb21e784d72aadaa03cd0e2358c0867d7e8bf51bd00e536c0a6336b6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#cacheEntryRemoved",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "cacheEntryRemoved",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(entryDir string, artifactPath string) bool"
+      },
+      "shapeHash": "sha256:495821d5c200631e23870e19a3769aab346f5db2f4fd1bb6485d6566326d8ce4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#cacheLockPath",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "cacheLockPath",
@@ -111897,6 +111908,28 @@
         "type": "func(entryDir string, inputDigest string) bool"
       },
       "shapeHash": "sha256:94ed82346232931d3f523c94697d5d13c113704d8314e080cb08f430ee5988fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#entryUse",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "entryUse",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "entryUse"
+      },
+      "shapeHash": "sha256:4e131234bc658aaf727cf453c4e781ebe91412ae12c39a0aa29c6ef6fc097f25"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#errCacheEntryRemoved",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "errCacheEntryRemoved",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(artifactPath string) error"
+      },
+      "shapeHash": "sha256:996ddf571645c7a9e4d3e91d4c47875085ff824fe570695f5ef06513b271d8a2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#exeNameForRuntime",
@@ -112493,6 +112526,17 @@
       "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lockUsageShared",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lockUsageShared",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(entryDir string) (*github.com/gofrs/flock.Flock, error)"
+      },
+      "shapeHash": "sha256:7dfc3fb203e1271ae493ae86e94a1444902d098fedd706b05b3fa84de9fd6d39"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#markBrokenToolchain",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "markBrokenToolchain",
@@ -112568,6 +112612,17 @@
         "type": "func(cwd string, names []string) []string"
       },
       "shapeHash": "sha256:111a4680467bfc62ed8b1dea0cdf42745307d62f968cc53ea6726c97078428e6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#newUsageLock",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "newUsageLock",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(entryDir string) (*github.com/gofrs/flock.Flock, error)"
+      },
+      "shapeHash": "sha256:7dfc3fb203e1271ae493ae86e94a1444902d098fedd706b05b3fa84de9fd6d39"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#nonEnv",
@@ -112832,6 +112887,17 @@
         "type": "func(finalDir string) (cellFailureMeta, bool)"
       },
       "shapeHash": "sha256:258934e8a6ad5f91f7fa7eeec48317f59d882c12708472c986c29583e1314bb6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readEntryUse",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "readEntryUse",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) entryUse"
+      },
+      "shapeHash": "sha256:b20b00fbcc76c11f85e62c64ec6bd994cf34066515cb59a723a2a5b4d32b4338"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readReadyMetadata",
@@ -113855,6 +113921,17 @@
         "type": "func(directory string)"
       },
       "shapeHash": "sha256:53ec67474c2b9260b32bdb4335c1e090946becdb2a8a9bd6ceb6f6e66af7716d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#tryLockUsageShared",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "tryLockUsageShared",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(entryDir string) (*github.com/gofrs/flock.Flock, bool)"
+      },
+      "shapeHash": "sha256:c73a571895ca51d4b7ecbcb4ce602e4882740bcd9ced7dbcb5f57c740b5884c5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#usageFile",
@@ -132852,6 +132929,17 @@
         "type": "func(cell CellSpec) string"
       },
       "shapeHash": "sha256:690e5da98cb4d4c960a95256a0ccc529c6297f0d8db4adaae36e500af172740a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#recordSDKFingerprint",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "recordSDKFingerprint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(entryDir string, fp string)"
+      },
+      "shapeHash": "sha256:a2d779ff3c67737aa41b15dab610ec2c72058611fbba06f432677038faeb8521"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#recoveryLifetimeKey",
