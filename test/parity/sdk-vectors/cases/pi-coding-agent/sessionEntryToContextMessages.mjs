@@ -28,3 +28,7 @@ export const cases = [
   { name: "entry 26", args: [{"type": "custom", "id": "e1", "parentId": null, "timestamp": "2026-01-02T03:04:05.678Z", "customType": "c", "data": {"x": 1}}] },
   { name: "entry 27", args: [{"type": "session_info", "id": "e1", "parentId": null, "timestamp": "2026-01-02T03:04:05.678Z", "name": "n"}] },
 ];
+
+// A property Pi leaves undefined is no member of the answer (JSON.stringify drops it), so the vector records the JSON the answer has.
+const json = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
+export const call = async (fn, ...args) => json(await fn(...args));

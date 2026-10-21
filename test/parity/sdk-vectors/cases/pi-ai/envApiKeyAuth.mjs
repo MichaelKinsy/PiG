@@ -20,9 +20,12 @@ export const call = async (fn, name, envVars, credential, env) => {
   if (credential === "$login") {
     const prompts = [];
     const result = await auth.login({ signal, prompt: async (request) => { prompts.push(request); return "typed-key"; } });
-    return { prompts, result, hasCheck: auth.check !== undefined };
+    return json({ prompts, result, hasCheck: auth.check !== undefined });
   }
   const seen = [];
   const result = await auth.resolve({ ctx: { env: async (variable) => { seen.push(variable); return env[variable]; } }, credential, signal });
-  return { result: result ?? null, seen };
+  return json({ result: result ?? null, seen });
 };
+
+// A property Pi leaves undefined is no member of the answer (JSON.stringify drops it), so the vector records the JSON the answer has.
+const json = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
