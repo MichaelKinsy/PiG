@@ -76,7 +76,7 @@ impl Host {
     fn ready(&self) {
         while self.next().msg_type != "register" {}
         self.conn
-            .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"session_name": "", "cwd": "/tmp", "mode": "print", "width": 80, "model": ""})).unwrap()), ..Default::default() })
+            .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80})).unwrap()), ..Default::default() })
             .unwrap();
     }
 
@@ -223,7 +223,7 @@ fn dispatch_during_load_is_served_after_ready() {
     while host.next().msg_type != "register" {}
     host.request("d1", "events.dispatch", None, Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": "early"})));
     host.conn
-        .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"session_name": "", "cwd": "/tmp", "mode": "print", "width": 80, "model": ""})).unwrap()), ..Default::default() })
+        .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80})).unwrap()), ..Default::default() })
         .unwrap();
     let (id, error) = host.response();
     assert_eq!((id.as_str(), error), ("d1", None));

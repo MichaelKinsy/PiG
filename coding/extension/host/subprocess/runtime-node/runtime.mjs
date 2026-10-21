@@ -1384,7 +1384,7 @@ class RuntimeContext {
       signal: guarded(() => runtime.runSignal?.controller.signal),
     });
     this.theme = runtime.ui.theme;
-    values.model = normalizeModel(runtime.state.model) ?? (runtime.ready.model ? normalizeModel({ id: runtime.ready.model }) : undefined);
+    values.model = normalizeModel(runtime.state.model);
   }
 
   // Live terminal geometry. Getters rather than snapshots so a resize is
@@ -2737,7 +2737,6 @@ export class Runtime {
           this.replaceModels(this.ready.models);
           this.contextValues.cwd = this.ready.cwd || this.contextValues.cwd;
           this.contextValues.mode = this.ready.mode || this.contextValues.mode;
-          this.contextValues.model = this.ready.model ? { id: this.ready.model } : this.contextValues.model;
           if (env.ready?.state) {
             // StatePayload is whole here, so an absent frontend is false.
             this.setFrontend(env.ready.state.frontend === true);
@@ -4824,7 +4823,7 @@ export class Runtime {
   createReplacedSessionContext(ready, requestId) {
     const runtime = Object.create(this);
     runtime.extensionRuntime = { assertActive() {} };
-    runtime.ready = { ...this.ready, cwd: ready.cwd || this.ready.cwd, mode: ready.mode || this.ready.mode, model: ready.model };
+    runtime.ready = { ...this.ready, cwd: ready.cwd || this.ready.cwd, mode: ready.mode || this.ready.mode };
     const snapshot = ready.state ?? {};
     const session = snapshot.session ?? {};
     runtime.state = {

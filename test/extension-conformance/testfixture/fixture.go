@@ -383,6 +383,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify(string(data), "info")
 		return nil
 	})
+	ext.Command("replicated-accessors", "Read the replicated accessors after each write", replicatedAccessorsProbe)
 	ext.Command("active_tools_set", "Set the active tools to the comma-separated names", func(ctx sdk.Context, args string) error {
 		ctx.SetActiveTools(strings.Split(strings.TrimSpace(args), ","))
 		return nil

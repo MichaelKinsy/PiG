@@ -728,6 +728,28 @@ fn main() {
         ctx.notify(&json!([level, ok]).to_string(), "info");
         CommandResult::Ok
     });
+    ext.command("replicated-accessors", "Read the replicated accessors after each write", |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let last_type = || -> std::io::Result<String> { Ok(ctx.get_entries()?.last().and_then(|entry| entry["type"].as_str().map(str::to_string)).unwrap_or_default()) };
+            let mut out = serde_json::Map::new();
+            out.insert("name0".into(), json!(ctx.session_name()));
+            out.insert("model0".into(), json!(ctx.model()));
+            out.insert("provider0".into(), json!(ctx.model_provider()));
+            ctx.set_session_name("renamed")?;
+            out.insert("name1".into(), json!(ctx.session_name()));
+            ctx.set_label("one", "lab")?;
+            out.insert("entryAfterLabel".into(), json!(last_type()?));
+            ctx.send_message("probe", "hi", true, None, None)?;
+            out.insert("entryAfterMessage".into(), json!(last_type()?));
+            ctx.set_model("prov-after/id-after");
+            out.insert("model1".into(), json!(ctx.model()));
+            out.insert("provider1".into(), json!(ctx.model_provider()));
+            out.insert("qualified1".into(), json!(ctx.model_qualified()));
+            ctx.notify(&serde_json::Value::Object(out).to_string(), "info");
+            Ok(())
+        };
+        match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
     ext.command("active_tools_set", "Set the active tools to the comma-separated names", |ctx, args| {
         let names: Vec<&str> = args.trim().split(',').collect();
         ctx.set_active_tools(&names);

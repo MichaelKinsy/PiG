@@ -588,6 +588,18 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("skills_probe", "Run a session or skill helper on a JSON case and report the result", skills_probe)
     ext.command("exec-reject-probe", "Report exec outcomes", exec_reject_probe)
     ext.command("thinking-model", "Read the thinking level and switch the model", lambda ctx, _args: (ctx.set_thinking_level("high"), ctx.notify(json.dumps([ctx.get_thinking_level(), ctx.set_model("probe/model")[0]], separators=(",", ":")), "info"))[-1])
+    def replicated_accessors(ctx, _args):
+        out = {"name0": ctx.session_name, "model0": ctx.model, "provider0": ctx.model_provider}
+        ctx.set_session_name("renamed")
+        out["name1"] = ctx.session_name
+        ctx.set_label("one", "lab")
+        out["entryAfterLabel"] = ctx.get_entries()[-1]["type"]
+        ctx.send_message("probe", "hi", True)
+        out["entryAfterMessage"] = ctx.get_entries()[-1]["type"]
+        ctx.set_model("prov-after/id-after")
+        out["model1"], out["provider1"], out["qualified1"] = ctx.model, ctx.model_provider, ctx.model_qualified
+        ctx.notify(json.dumps(out), "info")
+    ext.command("replicated-accessors", "Read the replicated accessors after each write", replicated_accessors)
     ext.command("active_tools_set", "Set the active tools to the comma-separated names", lambda ctx, args: ctx.set_active_tools(args.strip().split(",")))
     def session_actions_unbound(ctx, _args):
         parts = []
