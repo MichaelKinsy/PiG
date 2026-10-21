@@ -2000,6 +2000,7 @@ func Extension() *sdk.Extension {
 		"frontmatter": helperReport(factoryCall, "frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"),
 		"error":       helperReport(factoryCall, "frontmatter", "---\na: [\n---\nx"),
 		"date":        helperReport(factoryCall, "date", "2020-01-02T03:04:05.678Z"),
+		"strip":       helperReport(factoryCall, "strip", "---\nz: 1\n---\nbody text\n"),
 	}
 	ext.Command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", func(ctx sdk.Context, args string) error {
 		var c struct {
@@ -2167,6 +2168,8 @@ func Extension() *sdk.Extension {
 			result = map[string]any{"text": text, "wasTruncated": was}
 		case "size":
 			result = map[string]any{"text": sdk.FormatSize(c.Bytes)}
+		case "limits":
+			result = map[string]any{"maxLines": sdk.DefaultMaxLines, "maxBytes": sdk.DefaultMaxBytes}
 		default:
 			return fmt.Errorf("unknown truncation helper %q", c.Fn)
 		}
@@ -2850,8 +2853,44 @@ func (e *conformanceEditor) HandleInput(data string) error {
 			return err
 		}
 		return e.Editor.SetText("raw:lines=" + strings.Join(lines, "|"))
+	case "K":
+		// The default editor's queries and setters (TestEditorComponentGoBaseQueriesReachTheHost): the answers come back as text.
+		cursor, err := e.GetCursor()
+		if err != nil {
+			return err
+		}
+		expanded, err := e.GetExpandedText()
+		if err != nil {
+			return err
+		}
+		showing, err := e.IsShowingAutocomplete()
+		if err != nil {
+			return err
+		}
+		if err := e.SetPaddingX(3); err != nil {
+			return err
+		}
+		if err := e.SetAutocompleteMaxVisible(7); err != nil {
+			return err
+		}
+		return e.Editor.SetText(fmt.Sprintf("raw:cursor=%d,%d|expanded=%s|autocomplete=%t", cursor.Line, cursor.Col, expanded, showing))
 	}
 	return e.Editor.HandleInput(data)
+}
+
+// InsertTextAtCursor wraps the host's text in angle brackets and AddToHistory prefixes it, unless it starts with "raw:" (TestEditorComponentOverridesReachSuper).
+func (e *conformanceEditor) InsertTextAtCursor(text string) error {
+	if strings.HasPrefix(text, "raw:") {
+		return e.Editor.InsertTextAtCursor(text)
+	}
+	return e.Editor.InsertTextAtCursor("<" + text + ">")
+}
+
+func (e *conformanceEditor) AddToHistory(text string) error {
+	if strings.HasPrefix(text, "raw:") {
+		return e.Editor.AddToHistory(text)
+	}
+	return e.Editor.AddToHistory("history:" + text)
 }
 
 func (e *conformanceEditor) SetText(text string) error {

@@ -134,6 +134,7 @@ type matrix struct {
 	rows       []matrixRow
 	exceptions []exceptionSpec
 	unused     []string // map keys naming no surface
+	syms       *sdkSymbols
 }
 
 // sdkSymbols holds every runtime's detected symbols and the host's decoding
@@ -198,6 +199,9 @@ func loadSymbols(root string, probe *probeResult) (*sdkSymbols, error) {
 		return nil, fmt.Errorf("python sdk: %w", err)
 	}
 	if err := addKitSymbols(root, goSDK.symbols, rs, py); err != nil {
+		return nil, err
+	}
+	if err := addSubpackageSymbols(root, goSDK.symbols, rs, py); err != nil {
 		return nil, err
 	}
 	// The Node runtime's objects come from the runtime probe; the properties
@@ -278,7 +282,7 @@ func buildMatrix(root string) (*matrix, error) {
 		}
 		specs[s.Key] = s
 	}
-	m := &matrix{exceptions: ef.Exceptions}
+	m := &matrix{exceptions: ef.Exceptions, syms: syms}
 	known := map[string]bool{}
 	for _, r := range surface {
 		if known[r.Key] {
