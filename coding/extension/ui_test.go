@@ -153,9 +153,21 @@ func TestNoopUIContext_AllMethodsReturnUpstreamDefaults(t *testing.T) {
 			t.Errorf("GetEditorText = %q, want \"\"", got)
 		}
 	})
-	t.Run("Theme_returnsNil", func(t *testing.T) {
+	t.Run("Theme_returnsNilUntilAThemeIsRegistered", func(t *testing.T) {
 		if got := ui.Theme(); got != nil {
 			t.Errorf("Theme = %v, want nil", got)
+		}
+	})
+	t.Run("Theme_answersTheRegisteredProvider", func(t *testing.T) {
+		want := extension.Theme("registered theme")
+		extension.SetNoopUITheme(func() extension.Theme { return want })
+		t.Cleanup(func() { extension.SetNoopUITheme(nil) })
+		if got := ui.Theme(); got != want {
+			t.Errorf("Theme = %v, want the registered provider's %v", got, want)
+		}
+		extension.SetNoopUITheme(nil)
+		if got := ui.Theme(); got != nil {
+			t.Errorf("Theme = %v after unregistering, want nil", got)
 		}
 	})
 	t.Run("GetAllThemes_returnsNil", func(t *testing.T) {
