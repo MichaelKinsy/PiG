@@ -86996,6 +86996,17 @@
       "shapeHash": "sha256:453168dd0bc46c56ec76bb28952a2a83a389b1720bc9cc121864febd1bd25357"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#releaseDocsLeases",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "releaseDocsLeases",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#reloadResourceSnapshotProvider",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "reloadResourceSnapshotProvider",
