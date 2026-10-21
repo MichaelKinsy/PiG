@@ -31999,6 +31999,29 @@
         "chord/host/manager_upstream_test.go::TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns",
         "chord/host/manager_upstream_test.go::TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo"
       ]
+    },
+    {
+      "id": "BF-f102eb9",
+      "title": "Fixed a chord link closed with a reason reporting \"peer closed\" to its close handlers instead when the peer…",
+      "symptom": "Fixed a chord link closed with a reason reporting \"peer closed\" to its close handlers instead when the peer answered the goodbye before the closing side had marked the link closed; the link now ends first, with the reason it was closed with, as upstream's does.",
+      "rootCause": "baseLink.Close queued the bye (transmit) and only then marked the link closed (ended). A transport that delivers the bye from its own goroutine, as the in-memory link's pump does, can have the peer end and answer (\"peer closed\") before Close reaches ended; the link then ended with \"peer closed\" and its close handlers heard that instead of Close's reason (TestLinkOnCloseCallsAReRegisteredHandlerOnce: `close handlers saw \"peer closed,other peer closed\", want \"done,other done\"`, once in about 1300 package iterations). link.ts close() sends the bye and ends the link in one synchronous block, so the answer cannot come first there.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed a chord link closed with a reason reporting \"peer closed\" to its close handlers instead when the peer answered the goodbye before the closing side had marked the link closed; the link now ends first, with the reason it was closed with, as upstream's does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f102eb98d5",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "chord/host/link_test.go::TestLinkCloseReportsItsOwnReasonWhenThePeerAnswersTheByeAtOnce",
+        "chord/host/order_test.go::TestLinkOnCloseCallsAReRegisteredHandlerOnce"
+      ]
     }
   ],
   "divergences": [

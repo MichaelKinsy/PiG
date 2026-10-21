@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-949 bugs. 899 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+950 bugs. 900 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -968,6 +968,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-be21e9a](#bf-be21e9a) | Fixed the chord host keeping a disposed object reachable until its ready timeout (a minute by default) had… | PiG's own defect | All platforms | Unreleased |
 | [BF-735c36c](#bf-735c36c) | Fixed a chord host root failing with `superseded: code version N is not retained` although it was started in… | PiG's own defect | All platforms | Unreleased |
 | [BF-ea96559](#bf-ea96559) | Fixed the chord host manager letting other code read it as stopped, or start the child again, before the… | PiG's own defect | All platforms | Unreleased |
+| [BF-f102eb9](#bf-f102eb9) | Fixed a chord link closed with a reason reporting "peer closed" to its close handlers instead when the peer… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14197,6 +14198,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `ea96559132` (2026-10-21)
 - **Tests:** `chord/host/manager_upstream_test.go::TestHostManagerOnExitMayStartTheChildAgain`, `chord/host/manager_upstream_test.go::TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns`, `chord/host/manager_upstream_test.go::TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo`
 - **Release note:** Fixed the chord host manager letting other code read it as stopped, or start the child again, before the `onExit` callback for the child that just exited had run: upstream sets the status and calls `onExit` in one step, so the manager now keeps other goroutines waiting until `onExit` returns, while `onExit` itself sees it stopped and may start the child again.
+
+### BF-f102eb9
+
+**Fixed a chord link closed with a reason reporting "peer closed" to its close handlers instead when the peer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed a chord link closed with a reason reporting "peer closed" to its close handlers instead when the peer answered the goodbye before the closing side had marked the link closed; the link now ends first, with the reason it was closed with, as upstream's does.
+- **Root cause:** baseLink.Close queued the bye (transmit) and only then marked the link closed (ended). A transport that delivers the bye from its own goroutine, as the in-memory link's pump does, can have the peer end and answer ("peer closed") before Close reaches ended; the link then ended with "peer closed" and its close handlers heard that instead of Close's reason (TestLinkOnCloseCallsAReRegisteredHandlerOnce: `close handlers saw "peer closed,other peer closed", want "done,other done"`, once in about 1300 package iterations). link.ts close() sends the bye and ends the link in one synchronous block, so the answer cannot come first there.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f102eb98d5` (2026-10-21)
+- **Tests:** `chord/host/link_test.go::TestLinkCloseReportsItsOwnReasonWhenThePeerAnswersTheByeAtOnce`, `chord/host/order_test.go::TestLinkOnCloseCallsAReRegisteredHandlerOnce`
+- **Release note:** Fixed a chord link closed with a reason reporting "peer closed" to its close handlers instead when the peer answered the goodbye before the closing side had marked the link closed; the link now ends first, with the reason it was closed with, as upstream's does.
 
 ## Divergences from Pi added in this release
 
