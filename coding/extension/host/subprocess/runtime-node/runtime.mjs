@@ -2015,8 +2015,9 @@ export class Runtime {
       sendMessage: action((message, options = {}) => {
         this.reportCommandYield();
         if (options?.deliverAs === "nextTurn") return this.fireAndForget("sendMessage", { message, options });
-        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session, unless the Session holds the message back: one sent while the agent_settled handlers run waits for them (agent-session.ts:2344-2349) and the session stays idle. The Host knows which, so the answer is its own.
+        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session, unless the Session holds the message back: one sent while the agent_settled handlers run waits for them (agent-session.ts:2344-2349) and the session stays idle. In such a handler the answer is the Host's. Elsewhere the run is in progress, and asking would race a run that has already ended.
         if (options?.triggerTurn) {
+          const idle = this.state.isIdle;
           try { this.writeSync("sendMessage", { message, options }); }
           catch (err) {
             if (!isHostCancellation(err)) {
@@ -2024,7 +2025,8 @@ export class Runtime {
             }
             return;
           }
-          this.state.isIdle = this.callSync("isIdle")?.idle === true;
+          if (this.activeRequest()?.event === "agent_settled") this.state.isIdle = this.callSync("isIdle")?.idle === true;
+          else if (idle) this.state.isIdle = false;
           return;
         }
         try { this.writeSync("sendMessage", { message, options }); }
@@ -2702,7 +2704,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command" };
+    const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain();
