@@ -611,6 +611,27 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("commands-probe", "Read the host's slash commands", lambda ctx, _args: ctx.notify(json.dumps([[c["name"], c["source"], c.get("description", "")] for c in ctx.get_commands() if c["name"] == "conformance-listed"], separators=(",", ":")), "info"))
     ext.command("session-identity", "Read context identity accessors", lambda ctx, _args: ctx.notify(json.dumps([ctx.get_session_id(), ctx.get_session_file(), ctx.get_leaf_id(), ctx.get_session_name()]), "info"))
     ext.command("registry-session", "Read registry and session facades", registry_session)
+
+    def registry_edges(ctx, _args):
+        r = ctx.model_registry
+        models = [*r.get_all(), {}]
+        ctx.notify(json.dumps({
+            "available": r.get_available(),
+            "hasAuth": [r.has_configured_auth(model) for model in models],
+            "oauth": [r.is_using_oauth(model) for model in models],
+            "found": r.find("registry-probe", "a"), "foundOff": r.find("registry-off", "d"),
+            "missing": r.find("registry-probe", "zzz"), "mismatch": r.find("registry-probe", "c"),
+        }), "info")
+    ext.command("registry-edges", "Read the registry answers that depend on the provider state", registry_edges)
+
+    def registry_unbound_reads(ctx, _args):
+        def report(read):
+            try:
+                return "ok:" + json.dumps(read())
+            except Exception as error:  # noqa: BLE001 - the row reports every failure
+                return f"error:{error}"
+        ctx.notify(json.dumps({"find": report(lambda: ctx.model_registry.find("registry-probe", "a")), "entries": report(ctx.session_manager.get_entries)}), "info")
+    ext.command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", registry_unbound_reads)
     ext.message_renderer(
         "conformance-message",
         lambda _ctx, message, options, width: [json.dumps(options)] if message.get("content") == "padding-options" else [
@@ -709,6 +730,7 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.tool_renderers("render_probe", render_call=render_probe_call, render_result=render_probe_result, render_shell="self")
     abort_observed = [False]
+    abort_reason = [None]
 
     def update_tool(ctx, _params):
         ctx.on_update({"content": [{"type": "text", "text": "step 1"}]})
@@ -727,6 +749,7 @@ def new_extension() -> pig_sdk.Extension:
         ctx.on_update({"content": [{"type": "text", "text": "waiting"}]})
         while not ctx.is_cancelled():
             time.sleep(0.01)
+        abort_reason[0] = ctx.cancellation_reason()
         abort_observed[0] = True
         return {"content": "aborted"}
 
@@ -749,6 +772,7 @@ def new_extension() -> pig_sdk.Extension:
         "Report whether abort_tool saw its abort signal",
         lambda ctx, args: ctx.notify("abort:" + ("true" if abort_observed[0] else "false"), "info"),
     )
+    ext.command("abort_reason", "Report the cancellation reason abort_tool saw", lambda ctx, args: ctx.notify("reason:" + (abort_reason[0] or ""), "info"))
     ext.tool(
         "rich_tool",
         "Return text, image, and terminate",

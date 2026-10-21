@@ -1270,19 +1270,10 @@ impl ModelRegistry {
         Ok(serde_json::json!({"aborted":result["aborted"],"errors":result["errors"]}))
     }
 
-    pub fn find(&self, provider_id: &str, model_id: &str) -> Option<serde_json::Value> {
-        let parent = (!self.request_id.is_empty()).then_some(self.request_id.as_str());
-        let result = self
-            .conn
-            .call_for_scope(
-                self.request_parent.as_deref(),
-                parent,
-                "getModel",
-                Some(serde_json::json!({"provider":provider_id,"modelId":model_id})),
-            )
-            .ok()?;
-        let model = call_result_value(result).ok()?;
-        (!model.is_null()).then_some(model)
+    /// Resolves a model by exact provider and model ID through the host registry. `Ok(None)` means no model matches, as Pi's `find` returns undefined (model-registry.ts:72); a host or transport failure is the `Err`, never a model that is absent.
+    pub fn find(&self, provider_id: &str, model_id: &str) -> io::Result<Option<serde_json::Value>> {
+        let model = self.call("getModel", serde_json::json!({"provider":provider_id,"modelId":model_id}))?;
+        Ok((!model.is_null()).then_some(model))
     }
 
     pub fn get_api_key_and_headers(

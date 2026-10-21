@@ -76,6 +76,15 @@ export default function (pi) {
     out.refresh={aborted:refresh.aborted,errors:Object.fromEntries([...refresh.errors].map(([key,error])=>[key,error.message]))};
     ctx.ui.notify(JSON.stringify(out),"info");
   }});
+  pi.registerCommand("registry-edges", { description: "Read the registry answers that depend on the provider state", handler: async (_args, ctx) => {
+    const r = ctx.modelRegistry;
+    const models = [...r.getAll(), {}];
+    ctx.ui.notify(JSON.stringify({
+      available: r.getAvailable(), hasAuth: models.map((model) => r.hasConfiguredAuth(model)), oauth: models.map((model) => r.isUsingOAuth(model)),
+      found: r.find("registry-probe", "a") ?? null, foundOff: r.find("registry-off", "d") ?? null,
+      missing: r.find("registry-probe", "zzz") ?? null, mismatch: r.find("registry-probe", "c") ?? null,
+    }), "info");
+  }});
   // The session reads of Pi's Pi-order probe (session_read_order_test.go): the answers are written as JSON.stringify writes them.
   pi.registerCommand("session-order", { description: "Read the session as Pi returns it", handler: async (_args, ctx) => {
     const s = ctx.sessionManager;

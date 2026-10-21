@@ -240,7 +240,7 @@ type Extension struct {
 	uiTheme UITheme
 
 	requestsMu sync.Mutex
-	requests   map[string]context.CancelFunc
+	requests   map[string]context.CancelCauseFunc
 	requestWG  sync.WaitGroup
 	runCtx     context.Context
 	runCancel  context.CancelFunc
@@ -665,7 +665,7 @@ func New(name string) *Extension {
 		messageViewRendererFuncs: make(map[string]MessageViewRendererFunc),
 		entryViewRendererFuncs:   make(map[string]EntryViewRendererFunc),
 		flagDefaults:             make(map[string]any),
-		requests:                 make(map[string]context.CancelFunc),
+		requests:                 make(map[string]context.CancelCauseFunc),
 		modelStreams:             make(map[string]*ModelEventStream),
 		modelStreamCallbacks:     make(map[string]*modelStreamCallbacks),
 		overlays:                 make(map[string]*remoteOverlay),
@@ -1241,7 +1241,7 @@ func (e *Extension) armRequest(id string) (Context, func()) {
 	if requestRoot == nil {
 		requestRoot = context.Background()
 	}
-	reqCtx, cancel := context.WithCancel(requestRoot)
+	reqCtx, cancel := context.WithCancelCause(requestRoot)
 	parent := e.conn.armParent(id, requestRoot, reqCtx)
 	e.requestsMu.Lock()
 	e.requests[id] = cancel
@@ -1250,7 +1250,7 @@ func (e *Extension) armRequest(id string) (Context, func()) {
 		e.requestsMu.Lock()
 		delete(e.requests, id)
 		e.requestsMu.Unlock()
-		cancel()
+		cancel(nil)
 	}
 }
 
@@ -1922,20 +1922,24 @@ func (e *Extension) cancelRequest(env envelope) {
 		e.conn.cancelParentCalls(id)
 	}
 	if cancel != nil {
-		cancel()
+		var cause error
+		if env.Cancel != nil && env.Cancel.Reason != "" {
+			cause = cancelReason(env.Cancel.Reason)
+		}
+		cancel(cause)
 	}
 }
 
 func (e *Extension) cancelAllRequests() {
 	e.requestsMu.Lock()
-	cancels := make([]context.CancelFunc, 0, len(e.requests))
+	cancels := make([]context.CancelCauseFunc, 0, len(e.requests))
 	for _, cancel := range e.requests {
 		cancels = append(cancels, cancel)
 	}
-	e.requests = make(map[string]context.CancelFunc)
+	e.requests = make(map[string]context.CancelCauseFunc)
 	e.requestsMu.Unlock()
 	for _, cancel := range cancels {
-		cancel()
+		cancel(nil)
 	}
 }
 
