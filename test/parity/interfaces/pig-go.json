@@ -164534,6 +164534,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentToolResult.UnmarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "AgentToolResult.UnmarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ArgumentCompletionsFunc",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "ArgumentCompletionsFunc",
@@ -176467,6 +176478,17 @@
         "type": "func(raw encoding/json.RawMessage, present bool) (int64, oauthExpiry)"
       },
       "shapeHash": "sha256:700985ccf007ed46004bde16cec3f7df16e44b8d0368f5ec70f049540801966b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#decodeOrderedRaw",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "decodeOrderedRaw",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (any, error)"
+      },
+      "shapeHash": "sha256:ae5330cef0b1487681fb3cb25f2dcb5d0c63eca98d7492a88b8915d872f32b83"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#decodeOrderedValue",
