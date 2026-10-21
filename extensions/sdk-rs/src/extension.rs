@@ -597,6 +597,9 @@ impl Context {
             model_stream_seq: self.model_stream_seq.clone(),
             shared_ui: self.shared_ui.clone(),
             bus: self.bus.clone(),
+            host_subs: self.host_subs.clone(),
+            tool_call_index: None,
+            tool_input: None,
             surfaces: self.surfaces.clone(),
             replacement: self.replacement,
             system_prompt: None,
@@ -636,6 +639,7 @@ pub struct Extension {
     virtual_models: Vec<Arc<crate::VirtualModel>>,
     virtual_model_unregistrations: Vec<crate::protocol::VirtualModelRef>,
     bus: Arc<crate::event_bus::BusRegistry>,
+    loaded_fns: Vec<crate::host_subscriptions::LoadedHandler>,
 }
 
 impl Extension {
@@ -669,7 +673,13 @@ impl Extension {
             virtual_models: Vec::new(),
             virtual_model_unregistrations: Vec::new(),
             bus: Arc::new(crate::event_bus::BusRegistry::default()),
+            loaded_fns: Vec::new(),
         }
+    }
+
+    /// Runs `handler` once the extension is registered with the host and has received its state, before it serves any request (`session_start` included) and after the emits its factory made were delivered. It is the place for work a factory cannot do: a [`Context`] exists, so the handler can read session state, call the host and emit on [`Context::events`]. Handlers run in registration order, one at a time, on a thread of their own so a host call in one is answered; the host's requests wait behind them, so a handler must not wait for one (an emit on a channel the extension itself listens to would never return). A handler that panics is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is `session_start`.
+    pub fn on_loaded(&mut self, handler: impl Fn(&Context) + Send + Sync + 'static) {
+        self.loaded_fns.push(Box::new(handler));
     }
 
     /// Upstream's `pi.events`, shared with every other realm of the session. A listener subscribed before the extension runs is registered with the Host before the extension registers.
@@ -1336,8 +1346,9 @@ impl Extension {
         self.events.connect(&conn);
         // A node factory's pi.events.on runs before its runtime registers; a native listener subscribed before run does the same.
         let mut early_dispatches: std::collections::VecDeque<crate::protocol::Envelope<Box<serde_json::value::RawValue>>> = std::collections::VecDeque::new();
-        for (handler_id, channel) in bus.go_live(&conn) {
-            let call = conn.begin_call_for(None, "events.on", Some(serde_json::json!({"channel": channel, "handlerId": handler_id, "value": true})))?;
+        for crate::event_bus::LiveOp { handler_id, channel } in bus.go_live(&conn) {
+            let method = "events.on";
+            let call = conn.begin_call_for(None, method, Some(serde_json::json!({"channel": channel, "handlerId": handler_id, "value": true})))?;
             loop {
                 let env = conn.read_envelope()?;
                 if conn.complete_call(&env) {
@@ -1346,13 +1357,14 @@ impl Extension {
                 match env.msg_type.as_str() {
                     "ping" => Self::pong(&conn, env)?,
                     "request" if env.request.as_ref().is_some_and(|req| req.method == "events.dispatch") => early_dispatches.push_back(env),
-                    other => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("expected an events.on result, got {other}"))),
+                    other => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("expected an {method} result, got {other}"))),
                 }
             }
             let result = conn.wait_call(call)?;
             if let Some(err) = result.error {
-                return Err(io::Error::other(format!("pi.events.on {channel:?}: {}", crate::context::host_error_message(err))));
+                return Err(io::Error::other(format!("pi.{method} {channel:?}: {}", crate::context::host_error_message(err))));
             }
+
         }
 
         conn.late_tool_renderers.loaded.store(self.tool_renderers.resolvers.len(), std::sync::atomic::Ordering::SeqCst);
@@ -1409,6 +1421,8 @@ impl Extension {
                 let _ = shared_session.lock().unwrap().apply_update(session);
             }
         }
+        let host_subs = Arc::new(crate::host_subscriptions::HostSubscriptions::new(self.provider_objects.workers.clone()));
+        *host_subs.source_info.lock().unwrap() = ready.source_info.clone();
         let shared_ui = Arc::new(Mutex::new(UiState::default()));
         if let Some(state) = ready.state.as_ref().and_then(|state| state.as_object()) {
             shared_ui.lock().unwrap().apply_state(state);
@@ -1462,6 +1476,9 @@ impl Extension {
             editor_slot: Arc::new(Mutex::new(None)),
             shared_ui,
             bus: bus.clone(),
+            host_subs,
+            tool_call_index: None,
+            tool_input: None,
             surfaces: Arc::new(Mutex::new(HashMap::new())),
             replacement: false,
             system_prompt: None,
@@ -1471,9 +1488,36 @@ impl Extension {
             Arc::new(Mutex::new(HashMap::new()));
         let request_threads = ext.provider_objects.workers.clone();
         let width_deliveries = Arc::new(WidthDeliveries::default());
+        let factory_emits = bus.take_factory_emits();
+        let loaded_gate = Arc::new(crate::host_subscriptions::LoadedGate::new(ext.loaded_fns.is_empty() && factory_emits.is_empty()));
+        if !ext.loaded_fns.is_empty() || !factory_emits.is_empty() {
+            request_threads.start();
+            let (loaded_ext, loaded_ctx, opening_gate, loaded_threads) = (ext.clone(), base_ctx.clone(), loaded_gate.clone(), request_threads.clone());
+            let loaded_bus = bus.clone();
+            let spawned = thread::Builder::new().name("pig-on-loaded".to_string()).spawn(move || {
+                for (channel, data) in factory_emits {
+                    if let Err(err) = crate::EventBus::new(loaded_bus.clone(), None).emit(&channel, data) {
+                        eprintln!("pig: pi.events.emit {channel:?} from the factory: {err}");
+                    }
+                }
+                for handler in &loaded_ext.loaded_fns {
+                    if let Err(payload) = catch_unwind(AssertUnwindSafe(|| handler(&loaded_ctx))) {
+                        let detail = payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()));
+                        eprintln!("pig: on_loaded handler panicked: {}", detail.unwrap_or_default());
+                    }
+                }
+                opening_gate.open();
+                loaded_threads.finish();
+            });
+            if spawned.is_err() {
+                loaded_gate.open();
+                request_threads.finish();
+            }
+        }
         let tool_starts = crate::tool_start_order::ToolStartOrder::default();
         let stop_requests = |reason: &str| -> io::Result<()> {
             width_deliveries.stop();
+            base_ctx.host_subs.stop();
             for cancel in active_requests.lock().unwrap().values() {
                 cancel.cancel(reason);
             }
@@ -1529,6 +1573,7 @@ impl Extension {
                             .insert(id.clone(), cancel.clone());
                         let active = active_requests.clone();
                         let base = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                        let loaded_gate = loaded_gate.clone();
                         let conn = conn.clone();
                         let ext = ext.clone();
                         // agent-loop.ts:619-647: the handlers of a batch start in source order.
@@ -1543,6 +1588,9 @@ impl Extension {
                         if let Err(err) = thread::Builder::new()
                             .name(format!("pig-request-{id}"))
                             .spawn(move || {
+                                if req.method != "events.dispatch" {
+                                    loaded_gate.wait();
+                                }
                                 let handled = catch_unwind(AssertUnwindSafe(|| {
                                     ext.handle_request(&base, &conn, &id, &mut req, cancel, start.as_deref())
                                 }));
@@ -1656,7 +1704,8 @@ impl Extension {
                                     if let Some(state) =
                                         args.get("state").and_then(|s| s.as_object())
                                     {
-                                        base_ctx.shared_ui.lock().unwrap().apply_state(state);
+                                        let change = base_ctx.shared_ui.lock().unwrap().apply_state(state);
+                                        base_ctx.host_subs.publish(change);
                                         conn.api_state.lock().unwrap().apply_state(state);
                                         conn.views.apply_state(state);
                                         let (footer_changed, branch_changed) = conn.footer.apply(state);
@@ -1690,11 +1739,12 @@ impl Extension {
                                 }
                             }
                             "theme_change" => {
-                                base_ctx
+                                let change = base_ctx
                                     .shared_ui
                                     .lock()
                                     .unwrap()
                                     .apply_theme_change(notify.args.as_ref());
+                                base_ctx.host_subs.publish(change);
                             }
                             "width_change" => {
                                 if let Some(args) = &notify.args {
@@ -2292,11 +2342,13 @@ impl Extension {
                 let registered = conn.registered_tools.lock().unwrap().get(tool_name).cloned();
                 let handler = registered.as_ref().map(|tool| &tool.execute).or_else(|| self.tool_fns.get(tool_name));
                 if let Some(handler) = handler {
-                    let ctx = base_ctx.clone_for_request(
+                    let mut ctx = base_ctx.clone_for_request(
                         cancel.clone(),
                         req.tool_call_id.clone(),
                         id.to_string(),
                     );
+                    ctx.tool_call_index = req.tool_call_index;
+                    ctx.tool_input = req.args_raw.as_deref().map(Arc::from);
                     let args = req
                         .args
                         .clone()
@@ -2939,6 +2991,7 @@ mod tests {
                     width: 80,
                     height: 24,
                     model: "test-model".to_string(),
+                    source_info: None,
                     state: None,
                 }),
                 ..Default::default()
@@ -2953,6 +3006,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "render_message".to_string(),
                     tool: Some("custom".to_string()),
                     event: None,
@@ -3021,6 +3076,7 @@ mod tests {
                     width: 80,
                     height: 24,
                     model: "test-model".to_string(),
+                    source_info: None,
                     state: None,
                 }),
                 ..Default::default()
@@ -3035,6 +3091,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "command".to_string(),
                     tool: Some("wait".to_string()),
                     event: None,
@@ -3184,6 +3242,7 @@ mod tests {
                     width: 80,
                     height: 24,
                     model: "m".to_string(),
+                    source_info: None,
                     state: None,
                 }),
                 ..Default::default()
@@ -3200,6 +3259,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "oauth_login".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -3265,6 +3326,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "oauth_get_api_key".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -3288,6 +3351,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "oauth_refresh".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -3312,6 +3377,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "oauth_store_credentials".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -3333,6 +3400,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "oauth_credential_status".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -3398,6 +3467,7 @@ mod tests {
                     width: 80,
                     height: 24,
                     model: String::new(),
+                    source_info: None,
                     state: None,
                 }),
                 ..Default::default()
@@ -3425,6 +3495,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "command".to_string(),
                     tool: Some("done".to_string()),
                     event: None,
@@ -3456,6 +3528,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "command".to_string(),
                     tool: Some("ask".to_string()),
                     event: None,
@@ -3523,6 +3597,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "command".to_string(),
                     tool: Some("title".to_string()),
                     event: None,
@@ -3579,6 +3655,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "command".to_string(),
                     tool: Some("panic".to_string()),
                     event: None,
@@ -3644,6 +3722,7 @@ mod tests {
                     width: 80,
                     height: 24,
                     model: String::new(),
+                    source_info: None,
                     state: None,
                 }),
                 ..Default::default()
@@ -3658,6 +3737,8 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                     method: "command".to_string(),
                     tool: Some("label".to_string()),
                     event: None,
@@ -3719,6 +3800,8 @@ mod tests {
                 terminal_input: None,
                 stream: None,
                 stream_error: None,
+ tool_call_index: None,
+ args_raw: None,
                 method: method.to_string(),
                 tool: Some(tool.to_string()),
                 event: None,
@@ -3826,6 +3909,7 @@ mod tests {
                     width: 80,
                     height: 24,
                     model: String::new(),
+                    source_info: None,
                     state: Some(json!({
                         "hasUI": false,
                         "theme": {"name": "light", "sourcePath": "/t/light.json",

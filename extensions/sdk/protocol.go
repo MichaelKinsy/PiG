@@ -180,16 +180,20 @@ type readyMsg struct {
 	Height      int             `json:"height,omitempty"`
 	Model       string          `json:"model"`
 	State       json.RawMessage `json:"state,omitempty"` // initial StatePayload snapshot
+	// SourceInfo is the provenance the loader stamped on this extension (Context.ExtensionSourceInfo).
+	SourceInfo *SourceInfo `json:"sourceInfo,omitempty"`
 }
 
 type requestMsg struct {
-	Method     string          `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry", "render_tool"
-	Tool       string          `json:"tool,omitempty"`
-	Event      string          `json:"event,omitempty"`
-	HandlerID  int             `json:"handler_id,omitempty"`
-	ToolCallID string          `json:"tool_call_id,omitempty"`
-	Args       json.RawMessage `json:"args,omitempty"`
-	Stream     *eventStreamMsg `json:"stream,omitempty"`
+	Method     string `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry", "render_tool"
+	Tool       string `json:"tool,omitempty"`
+	Event      string `json:"event,omitempty"`
+	HandlerID  int    `json:"handler_id,omitempty"`
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	// ToolCallIndex, on tool_call, is the call's position in its assistant message's batch (Context.ToolCallIndex).
+	ToolCallIndex *int            `json:"tool_call_index,omitempty"`
+	Args          json.RawMessage `json:"args,omitempty"`
+	Stream        *eventStreamMsg `json:"stream,omitempty"`
 
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any

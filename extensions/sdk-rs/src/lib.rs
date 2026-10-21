@@ -118,6 +118,7 @@ pub mod kit;
 mod login;
 mod oauth;
 mod protocol;
+mod host_subscriptions;
 mod theme;
 mod theme_color;
 mod tool_render;
@@ -138,6 +139,7 @@ pub use context::{
     message_text, is_tool_call_event_type, is_bash_tool_result, is_powershell_tool_result, is_read_tool_result, is_edit_tool_result, is_write_tool_result, is_grep_tool_result, is_find_tool_result, is_ls_tool_result,
 };
 pub use events::*;
+pub use host_subscriptions::HostSubscription;
 #[doc(hidden)]
 pub use extension::report_load_failure;
 pub use extension::{

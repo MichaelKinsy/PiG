@@ -222,5 +222,6 @@ func Extension() *sdk.Extension {
 	})
 	registerLateProbe(e)
 	registerThemeProbe(e)
+	registerHostSurface(e)
 	return e
 }

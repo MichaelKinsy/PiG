@@ -1393,6 +1393,13 @@ class RuntimeContext {
   get width() { return Number(this.runtime.ready?.width || 0); }
   get height() { return Number(this.runtime.ready?.height || 0); }
 
+  // pig additive: the provenance the loader stamped on this extension (types.ts SourceInfo: path, source, scope, origin, baseDir), the value ExtensionRunner.getExtensionPaths reads; undefined when the host holds none.
+  extensionSourceInfo() {
+    this.runtime.extensionRuntime.assertActive();
+    const info = this.runtime.ready?.sourceInfo;
+    return info && typeof info === "object" ? { ...info } : undefined;
+  }
+
   isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.isIdle; }
   isProjectTrusted() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.projectTrusted; }
   abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.fireAndForget("abort", {}); }
@@ -1477,6 +1484,9 @@ function createNoOpUI(ui) {
     // pig divergence (D2): sprite validation remains owned by the host.
     registerSprite: ui.registerSprite,
     onWidthChange: ui.onWidthChange,
+    onThemeChange: ui.onThemeChange,
+    onToolsExpandedChange: ui.onToolsExpandedChange,
+    bell: ui.bell,
   };
 }
 
@@ -1520,6 +1530,22 @@ class RuntimeUI {
     }
     return this.runtime.addWidthChangeHandler(handler);
   }
+  // pig additive: Pi calls a widget component's invalidate() on a theme change and the component reads ui.theme at its next render; a subprocess extension that pushes rows colored when it built them re-renders from this. The handler receives ui.theme after it took the new palette.
+  onThemeChange(handler) {
+    if (typeof handler !== "function") {
+      throw new TypeError("onThemeChange requires a handler function");
+    }
+    return this.runtime.addChangeHandler(this.runtime.themeChangeHandlers, handler);
+  }
+  // pig additive: the original of a widget reads ui.getToolsExpanded() at every frame and Pi redraws on its expand key; the handler receives the new state after getToolsExpanded() reports it.
+  onToolsExpandedChange(handler) {
+    if (typeof handler !== "function") {
+      throw new TypeError("onToolsExpandedChange requires a handler function");
+    }
+    return this.runtime.addChangeHandler(this.runtime.toolsExpandedChangeHandlers, handler);
+  }
+  // pig additive: a Pi extension rings the bell by writing BEL to process.stdout, which in this subprocess is not the terminal.
+  bell() { this.runtime.fireAndForget("ui.bell", {}); }
   setStatus(key, text) {
     // Upstream mutates FooterDataProvider synchronously before requesting a
     // render. Keep the subprocess replica current before sending the host call
@@ -1616,7 +1642,7 @@ class RuntimeUI {
   setTheme(name) {
     const result = this.runtime.callSync("ui.setTheme", { theme: name });
     const palette = this.runtime.callSync("ui.theme")?.theme;
-    if (palette) this.theme.setPalette(palette);
+    if (palette) this.runtime.applyThemePalette(palette);
     return result;
   }
   getToolsExpanded() { return this.runtime.state.toolsExpanded ?? false; }
@@ -1872,6 +1898,13 @@ export class Runtime {
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
     this.widthChangeHandlers = [];
+    // pig additive: subscribers to the host's theme and tool-expansion changes, and the pi.onLoaded handlers. themeSignature and toolsExpandedKnown say the host has sent a first value, so a later different one is a change.
+    this.themeChangeHandlers = [];
+    this.toolsExpandedChangeHandlers = [];
+    this.themeSignature = undefined;
+    this.toolsExpandedKnown = false;
+    this.loadedHandlers = [];
+    this.loadedPromise = undefined;
     this.commands = new Map();
     this.shortcuts = new Map();
     this.flags = new Map();
@@ -1994,6 +2027,11 @@ export class Runtime {
       registerCommand: (name, definition) => this.registerCommand(name, definition),
       registerShortcut: (key, definition) => this.registerShortcut(key, definition),
       registerFlag: (name, definition) => this.registerFlag(name, definition),
+      // pig additive: runs handler(ctx) once the runtime registered and has its state, before it serves a request.
+      onLoaded: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onLoaded requires a handler function");
+        this.loadedHandlers.push(handler);
+      },
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
       registerMarkdownTransformer: (transformer) => {
@@ -2299,9 +2337,13 @@ export class Runtime {
   }
 
   // runner.ts:952-985 (createToolContext). The context of a tool call also lists the tools executeTool can call and runs one. An explicit signal replaces the calling tool's, so the call is not tied to the calling request; without one the Host cancels the call with the request.
-  addToolContext(ctx, toolCallId) {
+  addToolContext(ctx, toolCallId, toolCallIndex, params) {
     const runtime = this;
     return Object.defineProperties(ctx, {
+      // pig additive: the call's position among the tool calls of the assistant message that issued it (its batch); undefined for a call no assistant message issued, such as a nested executeTool call.
+      toolCallIndex: { value: typeof toolCallIndex === "number" ? toolCallIndex : undefined, enumerable: true },
+      // pig additive: the JSON text of the call's arguments, members in the order the model wrote them. Pi's execute params is that object; this is its JSON.stringify.
+      toolInput: { value: JSON.stringify(params), enumerable: true },
       tools: {
         get() {
           runtime.extensionRuntime.assertActive();
@@ -2698,6 +2740,7 @@ export class Runtime {
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
     const task = this.requestContext.run(request, async () => {
       try {
+        if (this.loadedPromise && env.request?.method !== "events.dispatch") await this.loadedPromise;
         await this.handleRequest(env.id, env.request || {}, requestCtx);
       } finally {
         if (env.request?.method === "event") this.loadHighlightLanguagesAfterStartup(env.request.event);
@@ -2752,6 +2795,7 @@ export class Runtime {
           }
           // The host owns process teardown, so flush bytecode when processing ready rather than relying on normal Node exit. Factory/module state is not persisted.
           flushCompileCache();
+          if (this.loadedHandlers.length > 0) this.loadedPromise = this.runLoadedHandlers();
           continue;
         }
         if (env.type === "ping") {
@@ -3035,7 +3079,12 @@ export class Runtime {
     }
     if (typeof snapshot.hasPendingMessages === "boolean") this.state.hasPendingMessages = snapshot.hasPendingMessages;
     if (typeof snapshot.editorText === "string") this.state.editorText = snapshot.editorText;
-    if (typeof snapshot.toolsExpanded === "boolean") this.state.toolsExpanded = snapshot.toolsExpanded;
+    if (typeof snapshot.toolsExpanded === "boolean") {
+      const changed = this.toolsExpandedKnown && this.state.toolsExpanded !== snapshot.toolsExpanded;
+      this.state.toolsExpanded = snapshot.toolsExpanded;
+      this.toolsExpandedKnown = true;
+      if (changed) this.fireChangeHandlers(this.toolsExpandedChangeHandlers, snapshot.toolsExpanded);
+    }
     if (Object.hasOwn(snapshot, "contextUsage")) {
       this.state.contextUsage = snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage };
     }
@@ -3053,7 +3102,7 @@ export class Runtime {
     // Markdown reads.
     // The host's active theme colors ctx.ui.theme and the pi-coding-agent
     // theme helpers, as Pi's global theme does in its own process.
-    if (snapshot.theme && typeof snapshot.theme === "object") this.ui.theme.setPalette(snapshot.theme);
+    if (snapshot.theme && typeof snapshot.theme === "object") this.applyThemePalette(snapshot.theme);
     applyTerminalCapabilities(snapshot.terminalCapabilities);
     if (snapshot.keybindings && typeof snapshot.keybindings === "object") this.applyKeybindings(snapshot.keybindings);
     if (typeof snapshot.hasUI === "boolean") this.state.hasUI = snapshot.hasUI;
@@ -3942,7 +3991,7 @@ export class Runtime {
         } catch {
           args = {};
         }
-        this.ui.theme.setPalette(args || {});
+        this.applyThemePalette(args || {});
         for (const key of this.widgets.keys()) this.renderWidget(key);
         for (const overlay of this.customOverlays?.values() || []) overlay.renderFrame();
         this.renderSpecialSurface("header");
@@ -4275,7 +4324,7 @@ export class Runtime {
           };
           let result;
           try {
-            result = await tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id));
+            result = await tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id, request.tool_call_index, params));
           } finally {
             done = true;
           }
@@ -4878,6 +4927,49 @@ export class Runtime {
   // addTerminalInputHandler subscribes to raw terminal input, telling the host
   // to start forwarding only on the first handler and to stop on the last, so
   // an extension that never subscribes costs the input loop nothing.
+  // applyThemePalette installs the host's palette and tells the onThemeChange subscribers when it differs from the one before (Pi calls a widget component's invalidate() on a theme change).
+  applyThemePalette(palette) {
+    const signature = JSON.stringify(palette);
+    const changed = this.themeSignature !== undefined && this.themeSignature !== signature;
+    this.ui.theme.setPalette(palette);
+    this.themeSignature = signature;
+    if (changed) this.fireChangeHandlers(this.themeChangeHandlers, this.ui.theme);
+  }
+
+  // fireChangeHandlers calls the handlers subscribed now, in order; a throw or a rejection of one does not stop the others.
+  fireChangeHandlers(handlers, value) {
+    for (const handler of [...handlers]) {
+      try {
+        const result = handler(value);
+        if (result && typeof result.then === "function") result.then(undefined, () => {});
+      } catch {}
+    }
+  }
+
+  addChangeHandler(handlers, handler) {
+    handlers.push(handler);
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      const i = handlers.indexOf(handler);
+      if (i >= 0) handlers.splice(i, 1);
+    };
+  }
+
+  // runLoadedHandlers runs the pi.onLoaded handlers in order, each to completion. Requests wait for them (startRequest), the loop does not, so a handler's host calls are answered.
+  async runLoadedHandlers() {
+    const handlers = this.loadedHandlers;
+    this.loadedHandlers = [];
+    for (const handler of handlers) {
+      try {
+        await handler(this.ctx);
+      } catch (error) {
+        process.stderr.write(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
+      }
+    }
+  }
+
   addWidthChangeHandler(handler) {
     this.widthChangeHandlers.push(handler);
     let done = false;

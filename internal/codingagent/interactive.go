@@ -417,6 +417,8 @@ type InteractiveMode struct {
 	toolOrder     []*tui.ToolExecutionComponent
 	bashOrder     []*tui.BashExecutionComponent // row 2.8a: Ctrl+O drives bash blocks too
 	toolsExpanded bool
+	// toolsExpandedChanged reports a toggle of toolsExpanded to the extension host, whose runtimes replicate it. Guarded by toolMu.
+	toolsExpandedChanged func()
 	// builtInHeaderExpanded starts from verbose || toolsExpanded, then follows explicit expansion and restoration. Guarded by toolMu.
 	builtInHeaderExpanded bool
 	// builtInHeaderLogo is the clickable logo of the built-in header as last rendered; the render loop writes it and the

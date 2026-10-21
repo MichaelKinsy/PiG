@@ -50,6 +50,14 @@ class EventBus:
         Raises ``TypeError`` for a payload without a JSON form, and
         ``RuntimeError`` for an emit on ``"error"`` that no listener handles,
         as EventEmitter throws (event-bus.ts:15-22).
+
+        Called while the factory runs (through ``Extension.events``, before the
+        extension serves), the emit is queued and delivered once the extension is loaded,
+        before ``on_loaded`` handlers and any request; Pi delivers it at once
+        to the listeners of the extensions loaded before this one and to the
+        factory's own, and the host does the same at that point. It returns
+        after queueing, and a failure of the delivery is reported on stderr. Use ``Extension.on_loaded`` for work that needs the live
+        session.
         """
         self._extension._bus.emit(channel, data, self._ctx)
 
@@ -82,9 +90,10 @@ class _EventBusHub:
         self._lock = threading.Lock()
         # A listener stays here after unsubscribe until the host releases it: the host dispatches the snapshot it took before the off call, as EventEmitter clones its listener array for each emit.
         self._subs: dict[str, _Subscription] = {}
-        # Subscriptions made while the factory runs, not yet sent.
-        self._pending: list[_Subscription] = []
+        # What the factory did before the extension connected, in the order it did it: a subscription (a _Subscription) is registered with the host and an emit (a tuple of channel and data) is delivered, each in turn, so a listener subscribed before an emit hears it, as with Pi's synchronous EventEmitter.
+        self._pending: list[_Subscription | tuple[str, Any]] = []
         self._live = False
+        self._factory_emits: list[tuple[str, Any]] = []
 
     def on(self, channel: str, handler: EventBusHandler, ctx: Context | None) -> Callable[[], None]:
         if not isinstance(channel, str):
@@ -117,8 +126,8 @@ class _EventBusHub:
                 sent = sub.sent
                 if not sent:
                     self._subs.pop(sub.id, None)
-                    if sub in self._pending:
-                        self._pending.remove(sub)
+                    if any(op is sub for op in self._pending):
+                        self._pending = [op for op in self._pending if op is not sub]
             if not sent:
                 return
             # EventEmitter.off never throws (event-bus.ts:27); a failed off is reported, as the Go SDK reports it.
@@ -137,9 +146,10 @@ class _EventBusHub:
         except (TypeError, ValueError) as exc:
             raise TypeError("event payload must be JSON-serializable") from exc
         with self._lock:
-            live = self._live
-        if not live:
-            raise RuntimeError("pi.events.emit is not available until the extension is connected to the host")
+            if not self._live:
+                # Called while the factory runs: delivered when the extension connects, in order with the subscriptions made before it and before the extension registers, as a node factory's pi.events.emit reaches the listeners of the extensions loaded before it. A failure of the delivery fails the load.
+                self._pending.append((channel, data))
+                return
         reply = self._call("events.emit", {"channel": channel, "json": data, "value": True}, ctx)
         if (reply.get("result") or {}).get("unhandledError"):
             raise RuntimeError(f"pi.events.emit {channel!r}: unhandled error event: {json.dumps(data)}")
@@ -165,14 +175,33 @@ class _EventBusHub:
         with self._lock:
             pending, self._pending = self._pending, []
             self._live = True
-            for sub in pending:
-                sub.sent = True
-        for sub in pending:
+            for op in pending:
+                if isinstance(op, _Subscription):
+                    op.sent = True
+        for op in pending:
+            if not isinstance(op, _Subscription):
+                # The host dispatches an emit to this extension's own listeners too, and the extension serves a dispatch only once it has registered: flush_factory_emits sends it then.
+                self._factory_emits.append(op)
+                continue
             with self._lock:
-                off = sub.off
+                off = op.off
             if off:
                 continue
-            self._extension._load_call("events.on", {"channel": sub.channel, "handlerId": sub.id, "value": True})
+            self._extension._load_call("events.on", {"channel": op.channel, "handlerId": op.id, "value": True})
+
+    def has_factory_emits(self) -> bool:
+        return bool(self._factory_emits)
+
+    def flush_factory_emits(self) -> None:
+        """Deliver the emits the factory made before the extension connected, in the order it made them, once the extension serves requests. A failed delivery, such as an emit on ``"error"`` that no listener handles, is reported on stderr: the extension is already loaded."""
+        emits, self._factory_emits = self._factory_emits, []
+        for channel, data in emits:
+            try:
+                reply = self._extension._call("events.emit", {"channel": channel, "json": data, "value": True})
+                if (reply.get("result") or {}).get("unhandledError"):
+                    raise RuntimeError(f"unhandled error event: {json.dumps(data)}")
+            except Exception as exc:  # noqa: BLE001 - reported, as Go's flush reports it
+                print(f"extension: pi.events.emit {channel!r} from the factory: {exc}", file=sys.stderr)
 
     def _call(self, method: str, args: dict[str, Any], ctx: Context | None) -> dict[str, Any]:
         return ctx._call(method, args) if ctx is not None else self._extension._call(method, args)

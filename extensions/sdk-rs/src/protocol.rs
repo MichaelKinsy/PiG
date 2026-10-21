@@ -2,6 +2,7 @@
 //! 4-byte big-endian length prefix + JSON payload.
 
 use crate::JsString;
+use crate::context::SourceInfo;
 use crate::transport::UnixStream;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -316,6 +317,9 @@ pub struct ReadyMsg {
     pub height: u32,
     #[serde(default)]
     pub model: String,
+    /// The provenance the loader stamped on this extension (`Context::extension_source_info`).
+    #[serde(default, rename = "sourceInfo")]
+    pub source_info: Option<SourceInfo>,
     /// Initial state snapshot, including session entries.
     #[serde(default, deserialize_with = "deserialize_state_replica")]
     pub state: Option<serde_json::Value>,
@@ -340,6 +344,10 @@ pub struct RequestMsg {
     pub stream: Option<EventStream>,
     /// Why `apply_event_stream` could not produce the payload.
     pub stream_error: Option<String>,
+    /// On `tool_call`: the call's position among the tool calls of the assistant message that issued it (the host's `tool_call_index`).
+    pub tool_call_index: Option<u32>,
+    /// On `tool_call`: the JSON text of `args` as the host wrote it.
+    pub args_raw: Option<String>,
 }
 
 /// The delta of an event payload: a request with args is a keyframe the extension keeps, one without applies `ops` to the payload numbered `base`.
@@ -382,6 +390,8 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     tool_call_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    tool_call_index: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     args: Option<Box<serde_json::value::RawValue>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     stream: Option<EventStream>,
@@ -397,7 +407,8 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
         } else {
             raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?
         };
-        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, args, terminal_input, stream: raw.stream, stream_error: None })
+        let args_raw = if raw.method == "tool_call" { raw.args.as_ref().map(|a| a.get().to_string()) } else { None };
+        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, args, terminal_input, stream: raw.stream, stream_error: None, tool_call_index: raw.tool_call_index, args_raw })
     }
 }
 
@@ -407,7 +418,7 @@ impl From<RequestMsg> for RawRequestMsg {
             Some(args) => Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON")),
             None => req.args.map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
         };
-        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, args, stream: req.stream }
+        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, tool_call_index: req.tool_call_index, args, stream: req.stream }
     }
 }
 

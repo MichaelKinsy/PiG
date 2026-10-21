@@ -467,6 +467,8 @@ type ReadyPayload struct {
 	Models      []json.RawMessage `json:"models,omitempty"`       //portlint:allow emptydrop PiG-only ready member (the complete registry snapshot for a runtime that declared WantsModelRegistry); absent and [] both give the Node runtime an empty catalog (runtime.mjs replaceModels → catalogOf)
 	Theme       json.RawMessage   `json:"theme,omitempty"`        // Current theme data
 	State       *StatePayload     `json:"state,omitempty"`        // Initial extension-host state snapshot
+	// SourceInfo is the provenance the loader stamped on this extension (path, source, scope, origin, baseDir): upstream's extension.sourceInfo, which ExtensionRunner.getExtensionPaths reads. Absent when the host holds none.
+	SourceInfo *extension.SourceInfo `json:"sourceInfo,omitempty"`
 }
 
 // StatePayload is the host's view of state visible to extensions through
@@ -583,12 +585,14 @@ type extensionContextUsageDTO struct {
 
 // RequestPayload carries a host request that expects a response.
 type RequestPayload struct {
-	Method     string          `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry", "render_tool"
-	Tool       string          `json:"tool,omitempty"`
-	Event      string          `json:"event,omitempty"`
-	HandlerID  int             `json:"handler_id,omitempty"`
-	ToolCallID string          `json:"tool_call_id,omitempty"` // For tool_call: unique ID
-	Args       json.RawMessage `json:"args,omitempty"`         // Tool args or event payload
+	Method     string `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry", "render_tool"
+	Tool       string `json:"tool,omitempty"`
+	Event      string `json:"event,omitempty"`
+	HandlerID  int    `json:"handler_id,omitempty"`
+	ToolCallID string `json:"tool_call_id,omitempty"` // For tool_call: unique ID
+	// ToolCallIndex, on tool_call, is the call's position among the tool calls of the assistant message that issued it (its batch). Absent for a call no assistant message issued (a nested executeTool call).
+	ToolCallIndex *int            `json:"tool_call_index,omitempty"`
+	Args          json.RawMessage `json:"args,omitempty"` // Tool args or event payload
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.
@@ -799,6 +803,8 @@ const (
 	CallUICustom = "ui.custom"
 	// pig additive (D60): typed native login crosses the subprocess boundary.
 	CallUISetLogin = "ui.setLogin"
+	// CallUIBell rings the terminal bell of the interactive terminal; it does nothing without one.
+	CallUIBell = "ui.bell"
 	// pig divergence (D2): an extension's sprite joins /sprite.
 	CallUIRegisterSprite = "ui.registerSprite"
 	NotifyUICustomInput  = "ui.custom.input"

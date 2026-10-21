@@ -91,7 +91,12 @@ func (m *InteractiveMode) setAllToolsExpanded(expanded bool) {
 	}
 	m.toolsExpanded = expanded
 	m.builtInHeaderExpanded = expanded
+	notify := m.toolsExpandedChanged
 	m.toolMu.Unlock()
+	// ctx.ui.getToolsExpanded() is replicated state: every extension runtime learns the toggle when it happens.
+	if notify != nil {
+		notify()
+	}
 	for _, container := range []*tui.Container{m.loadedResourcesContainer, m.chatContainer} {
 		if container == nil {
 			continue

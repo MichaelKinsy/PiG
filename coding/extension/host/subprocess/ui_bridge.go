@@ -1347,7 +1347,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 			"ui.setWorkingVisible", "ui.setHiddenThinkingLabel", "ui.setWidget", "ui.setFooter",
 			"ui.setHeader", "ui.setTitle", "ui.setEditorComponent", "ui.pasteToEditor",
 			"ui.setEditorText", "ui.setToolsExpanded", "ui.addAutocompleteProvider",
-			"ui.onTerminalInput", "ui.offTerminalInput":
+			"ui.onTerminalInput", "ui.offTerminalInput", CallUIBell:
 			return &CallResultPayload{}, nil
 		case CallUICustom:
 			extension.CallInitiated(ctx)
@@ -1378,6 +1378,12 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleSetHiddenThinkingLabel(ui, call.Args)
 	case "ui.setWidget":
 		return b.handleSetWidget(extName, owner, call.Args)
+	// pig additive: a Pi extension rings the terminal bell by writing BEL to process.stdout, which a subprocess extension cannot reach.
+	case CallUIBell:
+		if beller, ok := ui.(extension.TerminalBeller); ok {
+			beller.Bell()
+		}
+		return &CallResultPayload{}, nil
 
 	// ── Category 2: User Interaction (blocking) ──────────────────────────
 	case "ui.select":

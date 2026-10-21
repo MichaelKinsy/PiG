@@ -41,7 +41,21 @@ struct BusState {
     conn: Option<Arc<Connection>>,
     // A dispatch can arrive before events.on returns, and after events.off for a listener the Host had already snapshotted, so a listener stays until the Host releases it.
     subs: HashMap<String, Arc<Sub>>,
-    pending: Vec<Arc<Sub>>,
+    // What the factory did before the extension ran, in the order it did it: a subscription is registered with the Host and an emit is delivered, each in turn, so a listener subscribed before an emit hears it, as with Pi's synchronous EventEmitter.
+    pending: Vec<PendingOp>,
+    // The emits go_live set aside for `take_factory_emits`.
+    factory_emits: Vec<(String, Value)>,
+}
+
+enum PendingOp {
+    On(Arc<Sub>),
+    Emit { channel: String, data: Value },
+}
+
+/// A listener the extension registers with the Host when it connects.
+pub(crate) struct LiveOp {
+    pub(crate) handler_id: String,
+    pub(crate) channel: String,
 }
 
 /// An extension's listeners.
@@ -52,21 +66,32 @@ pub(crate) struct BusRegistry {
 
 impl BusRegistry {
     /// Makes later subscriptions register at once and returns the listeners subscribed before the extension ran, in subscription order.
-    pub(crate) fn go_live(&self, conn: &Arc<Connection>) -> Vec<(String, String)> {
+    pub(crate) fn go_live(&self, conn: &Arc<Connection>) -> Vec<LiveOp> {
         let mut state = self.state.lock().unwrap();
         state.live = true;
         state.conn = Some(conn.clone());
         let pending = std::mem::take(&mut state.pending);
         let mut out = Vec::new();
-        for sub in pending {
-            let mut sub_state = sub.state.lock().unwrap();
-            if sub_state.off {
-                continue;
+        for op in pending {
+            match op {
+                PendingOp::On(sub) => {
+                    let mut sub_state = sub.state.lock().unwrap();
+                    if sub_state.off {
+                        continue;
+                    }
+                    sub_state.sent = true;
+                    out.push(LiveOp { handler_id: sub.id.clone(), channel: sub.channel.clone() });
+                }
+                // The Host dispatches an emit to this extension's own listeners too, and the extension serves a dispatch only once it is ready.
+                PendingOp::Emit { channel, data } => state.factory_emits.push((channel, data)),
             }
-            sub_state.sent = true;
-            out.push((sub.id.clone(), sub.channel.clone()));
         }
         out
+    }
+
+    /// The emits the factory made before the extension connected, in the order it made them.
+    pub(crate) fn take_factory_emits(&self) -> Vec<(String, Value)> {
+        std::mem::take(&mut self.state.lock().unwrap().factory_emits)
     }
 
     /// Forgets a finished run's listeners: the Host dropped them when the connection closed.
@@ -161,7 +186,7 @@ impl EventBus {
             let mut state = self.registry.state.lock().unwrap();
             state.subs.insert(sub.id.clone(), sub.clone());
             if !state.live {
-                state.pending.push(sub);
+                state.pending.push(PendingOp::On(sub));
                 return Ok(subscription);
             }
             sub.state.lock().unwrap().sent = true;
@@ -174,7 +199,16 @@ impl EventBus {
     }
 
     /// Delivers `data` to every listener of `channel`, in registration order, and returns when each has finished. Like EventEmitter, an emit on `"error"` with no listener fails.
+    ///
+    /// Called through [`Extension::events`](crate::Extension::events) before the extension runs, as a node factory's `pi.events.emit` is, the emit is queued and delivered once the extension is loaded, before `on_loaded` handlers and any request: Pi delivers it at once to the listeners of the extensions loaded before this one and to the factory's own, and the host does the same at that point. It returns `Ok` then; a failure of the delivery, such as an emit on `"error"` that no listener handles, is reported on stderr. Use [`Extension::on_loaded`](crate::Extension::on_loaded) for work that needs the live session.
     pub fn emit(&self, channel: &str, data: Value) -> io::Result<()> {
+        if self.ctx.is_none() {
+            let mut state = self.registry.state.lock().unwrap();
+            if state.conn.is_none() {
+                state.pending.push(PendingOp::Emit { channel: channel.to_string(), data });
+                return Ok(());
+            }
+        }
         let outcome = self.call("events.emit", json!({"channel": channel, "value": true, "json": data}))?;
         if outcome.is_some_and(|outcome| outcome["unhandledError"] == Value::Bool(true)) {
             return Err(io::Error::other(format!("pi.events.emit {channel:?}: unhandled error event: {data}")));

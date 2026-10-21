@@ -1163,6 +1163,13 @@ func (u *ExtUIContext) SetTheme(selection extension.ThemeSelection) extension.Se
 
 // ─── Tools state ─────────────────────────────────────────────────────────────
 
+// Bell rings the terminal bell between frames (extension.TerminalBeller).
+func (u *ExtUIContext) Bell() {
+	if !u.m.runOnMainOK(func() { u.m.writeTerminal("\a") }) {
+		u.m.writeTerminal("\a")
+	}
+}
+
 func (u *ExtUIContext) GetToolsExpanded() bool {
 	u.m.toolMu.Lock()
 	defer u.m.toolMu.Unlock()

@@ -889,6 +889,14 @@ func (m *InteractiveMode) watchReplicatedState(bridge SubprocessUIBridge) func()
 		return func() {}
 	}
 	var stops []func()
+	m.toolMu.Lock()
+	m.toolsExpandedChanged = notifier.HostStateChanged
+	m.toolMu.Unlock()
+	stops = append(stops, func() {
+		m.toolMu.Lock()
+		m.toolsExpandedChanged = nil
+		m.toolMu.Unlock()
+	})
 	if session, ok := m.opts.SessionHandle.(replicatedStateSession); ok {
 		stops = append(stops, session.ObserveReplicatedState(notifier.HostStateChanged))
 	}

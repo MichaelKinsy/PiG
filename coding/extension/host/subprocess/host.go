@@ -1578,6 +1578,15 @@ func (h *Host) extensionSourceInfo(me *managedExt) extension.SourceInfo {
 	return h.configSourceInfo[me.config.Name]
 }
 
+// readySourceInfo is the SourceInfo the ready payload carries for me's extension, nil when the host holds none.
+func (h *Host) readySourceInfo(me *managedExt) *extension.SourceInfo {
+	info := h.extensionSourceInfo(me)
+	if info == (extension.SourceInfo{}) {
+		return nil
+	}
+	return &info
+}
+
 // ExtensionCount returns the number of loaded subprocess extensions.
 func (h *Host) ExtensionCount() int {
 	h.mu.Lock()
@@ -3320,8 +3329,9 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 
 	// Send ready. sendReady fills the geometry.
 	readyPayload := &ReadyPayload{
-		Cwd:  h.cwd,
-		Mode: h.mode,
+		Cwd:        h.cwd,
+		Mode:       h.mode,
+		SourceInfo: h.readySourceInfo(me),
 	}
 	if h.uiBridge != nil {
 		flagNames := make([]string, 0, len(reg.Flags))
@@ -3877,12 +3887,13 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		resp, err := conn.requestWithUpdates(reqCtx, &Envelope{
 			Type: MsgRequest,
 			Request: &RequestPayload{
-				Method:     MethodToolCall,
-				Tool:       toolName,
-				ToolCallID: toolCallID,
-				Args:       params,
-				OwnSignal:  extension.OwnsSignal(ctx),
-				ExecuteID:  executeID,
+				Method:        MethodToolCall,
+				Tool:          toolName,
+				ToolCallID:    toolCallID,
+				ToolCallIndex: toolCallIndexOf(ctx, toolCallID),
+				Args:          params,
+				OwnSignal:     extension.OwnsSignal(ctx),
+				ExecuteID:     executeID,
 			},
 		}, toolUpdateSink(onUpdate))
 		if errors.Is(err, ErrToolAborted) {
@@ -3928,6 +3939,26 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 
 		return extension.AgentToolResult{}, nil
 	}
+}
+
+// toolCallIndexOf is the position of the call among the tool calls of the assistant message that issued it, which agent-loop.ts executes as one batch; nil when no assistant message issued the call.
+func toolCallIndexOf(ctx context.Context, toolCallID string) *int {
+	hook, ok := agent.ToolCallHookContextFrom(ctx)
+	if !ok || hook.AssistantMessage == nil {
+		return nil
+	}
+	index := 0
+	for _, block := range hook.AssistantMessage.Content {
+		call, isCall := block.(ai.ToolCall)
+		if !isCall {
+			continue
+		}
+		if call.ID == toolCallID {
+			return &index
+		}
+		index++
+	}
+	return nil
 }
 
 // toolCallOrder reserves a call's place in the order the tool_call requests of the extension's connection are written. A
