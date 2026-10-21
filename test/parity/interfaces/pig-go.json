@@ -82375,6 +82375,17 @@
       "shapeHash": "sha256:c12812c7ff584757f677e15059ed6771f18795f40477f0598de7ab30811f4be7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#compileErrorPosition",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "compileErrorPosition",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*regexp.Regexp"
+      },
+      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#configBuiltinExtensionNames",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "configBuiltinExtensionNames",
@@ -179379,9 +179390,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(dialog bool)"
+        "type": "func()"
       },
-      "shapeHash": "sha256:bade585901d941803577412b70106613f3ed8faf294b136c5ca09c2d757ec5c8"
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolStart.beforeCall",
@@ -179390,9 +179401,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(dialog bool)"
+        "type": "func()"
       },
-      "shapeHash": "sha256:bade585901d941803577412b70106613f3ed8faf294b136c5ca09c2d757ec5c8"
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolStart.begin",
