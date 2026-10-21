@@ -65,6 +65,17 @@ class FileMutationQueueTest(unittest.TestCase):
         with mock.patch.object(host_helpers, "_helper_call", host):
             self.assertEqual(fmq.with_file_mutation_queue("a.txt", lambda: 9), 9)
 
+    def test_an_exit_whose_connection_stopped_is_given_to_another_running_extension(self) -> None:
+        """A packed cell's members share one process and the host's ticket registry for it: when the member whose connection carried the enter stops while another
+        member's task holds the turn, the exit must still reach the host over a member that runs, or the file stays held until the whole process ends."""
+        host = ScriptedHost({"ticket": "fm-4"}, RuntimeError("extension connection is closed or replaced"))
+        stopped, running = mock.Mock(), mock.Mock()
+        stopped._call.side_effect = RuntimeError("extension connection is closed or replaced")
+        running._call.return_value = {"result": {}}
+        with mock.patch.object(host_helpers, "_helper_call", host), mock.patch.object(host_helpers._State, "running", [stopped, running]):
+            self.assertEqual(fmq.with_file_mutation_queue("a.txt", lambda: 5), 5)
+        running._call.assert_called_once_with("fileMutation.exit", {"ticket": "fm-4"})
+
     def test_an_enter_without_a_ticket_is_an_error(self) -> None:
         host = ScriptedHost({})
         with mock.patch.object(host_helpers, "_helper_call", host):
