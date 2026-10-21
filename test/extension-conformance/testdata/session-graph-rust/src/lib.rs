@@ -1,9 +1,10 @@
 //! Fixture for the session graph conformance rows (test/extension-conformance/session_graph_test.go): the script of testfixture/sessiongraph (Go), testdata/session-graph.mjs (Node, Pi's own classes) and testdata/session_graph_python.py.
 
-use pig_sdk::{ModelRuntime, ModelRuntimeCreateOptions, ModelRoute, VirtualModel, DefaultPackageManager, PackageManagerOptions, DefaultResourceLoader, DefaultResourceLoaderOptions, empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
+use pig_sdk::{CreateAgentSessionOptions, ModelRuntime, ModelRuntimeCreateOptions, ModelRoute, VirtualModel, DefaultPackageManager, PackageManagerOptions, DefaultResourceLoader, DefaultResourceLoaderOptions, empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 use serde_json::{json, Value};
 use std::io;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn text(value: &Value) -> &str {
@@ -640,6 +641,97 @@ fn message_text(message: &Value) -> String {
     message["content"].as_array().map(Vec::as_slice).unwrap_or_default().iter().map(|block| text(&block["text"])).collect()
 }
 
+fn child_entry_kinds(manager: &SessionManager) -> io::Result<Vec<String>> {
+    Ok(manager.get_entries()?.as_array().map(Vec::as_slice).unwrap_or_default().iter().map(|entry| {
+        let kind = text(&entry["type"]).to_string();
+        if kind == "message" { format!("{}:{}", kind, text(&entry["message"]["role"])) } else { kind }
+    }).collect())
+}
+
+fn child_last_text(session: &pig_sdk::AgentSession) -> io::Result<String> {
+    let messages = session.messages()?;
+    let last = messages.last().cloned().unwrap_or(Value::Null);
+    Ok(last["content"].as_array().map(Vec::as_slice).unwrap_or_default().iter().filter(|block| block["type"] == "text").map(|block| text(&block["text"]).to_string()).collect::<String>())
+}
+
+/// Creates a session with options over manager and settings, binds extensions when bind is set, prompts it and reports what Pi's createAgentSession run reports.
+fn observe_child(ctx: &Context, mut options: CreateAgentSessionOptions, manager: &SessionManager, settings: &SettingsManager, bind: bool) -> io::Result<(pig_sdk::AgentSession, Value)> {
+    options.session_manager = Some(manager.handle().to_string());
+    options.settings_manager = Some(settings.handle().to_string());
+    let session = ctx.create_agent_session(options)?;
+    let events: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink = events.clone();
+    let _subscription = session.subscribe(move |event| {
+        let mut name = event["type"].as_str().unwrap_or("").to_string();
+        if name.starts_with("message_") {
+            name = format!("{}:{}", name, event["message"]["role"].as_str().unwrap_or(""));
+        }
+        sink.lock().unwrap().push(name);
+    });
+    if bind {
+        session.bind_extensions()?;
+    }
+    let file = manager.get_session_file()?;
+    let created = json!({
+        "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "activeTools": session.active_tools,
+        "fallback": session.model_fallback_message, "extensionErrors": session.extension_errors.len(), "appendix": session.system_prompt.contains("Handle appendix"),
+        "sessionId": json!(session.session_id) == manager.get_session_id()?, "sessionFile": session.session_file.as_ref().map_or(file.is_null(), |path| file.as_str() == Some(path.as_str())),
+        "persisted": session.session_file.is_some(),
+    });
+    session.prompt("hello")?;
+    let state = session.state()?;
+    let roles: Vec<Value> = session.messages()?.iter().map(|message| message["role"].clone()).collect();
+    let report = json!({
+        "created": created, "events": *events.lock().unwrap(), "final": state.get("lastAssistantText").cloned().unwrap_or(Value::Null), "roles": roles,
+        "entries": child_entry_kinds(manager)?, "text": child_last_text(&session)?,
+    });
+    Ok((session, report))
+}
+
+type ChildrenBuilt = (pig_sdk::AgentSession, pig_sdk::AgentSession, SessionManager, SessionManager);
+
+/// Builds the objects and creates two sessions over them; the runtime, settings and loaders are dropped when it returns.
+fn child_handles_build(ctx: &Context, args: &Value, r: &mut serde_json::Map<String, Value>) -> io::Result<ChildrenBuilt> {
+    let (cwd, dir, agent_dir) = (text(&args["cwd"]), text(&args["dir"]), text(&args["agentDir"]));
+    let rt = ModelRuntime::create(ctx, ModelRuntimeCreateOptions { auth_path: Some(text(&args["mrAuth"]).into()), models_path: Some(text(&args["mrModels"]).into()), models_store_path: Some(text(&args["mrStore"]).into()), ..Default::default() })?;
+    let settings = SettingsManager::in_memory(ctx, Some(json!({
+        "compaction": {"enabled": false}, "retry": {"enabled": false}, "defaultProvider": "mr-local", "defaultModel": "m1", "defaultThinkingLevel": "high",
+    })), None)?;
+    let quiet = || DefaultResourceLoaderOptions {
+        cwd: cwd.into(), agent_dir: agent_dir.into(), settings_manager: Some(&settings), no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, ..Default::default()
+    };
+    let loader = DefaultResourceLoader::new(ctx, DefaultResourceLoaderOptions {
+        additional_extension_paths: vec![text(&args["probeExt"]).into()], append_system_prompt: Some(vec!["Handle appendix".into()]), ..quiet()
+    })?;
+    loader.reload(None)?;
+    let memory = SessionManager::in_memory(ctx, Some(cwd), None, None)?;
+    let scoped = json!([{"model": rt.get_model("mr-local", "m1")?, "thinkingLevel": "off"}]);
+    let (first, mut first_report) = observe_child(ctx, CreateAgentSessionOptions { resource_loader: Some(loader.handle().to_string()), model_runtime: Some(rt.handle().to_string()), scoped_models: Some(scoped), ..Default::default() }, &memory, &settings, true)?;
+    first_report["settings"] = json!({"defaultModel": settings.get_default_model()?, "compaction": settings.get_compaction_enabled()?});
+    r.insert("memory".into(), first_report);
+    let file = SessionManager::create(ctx, cwd, Some(dir), None)?;
+    let plain_loader = DefaultResourceLoader::new(ctx, quiet())?;
+    plain_loader.reload(None)?;
+    let (second, mut second_report) = observe_child(ctx, CreateAgentSessionOptions { resource_loader: Some(plain_loader.handle().to_string()), model_runtime: Some(rt.handle().to_string()), ..Default::default() }, &file, &settings, false)?;
+    let file_path = file.get_session_file()?;
+    second_report["onDisk"] = json!(Path::new(text(&file_path)).exists());
+    second_report["samePath"] = json!(second.session_file.as_deref() == file_path.as_str());
+    r.insert("file".into(), second_report);
+    Ok((first, second, memory, file))
+}
+
+fn child_handles_script(ctx: &Context, args: &Value) -> io::Result<Value> {
+    let mut r = serde_json::Map::new();
+    // The extension let go of every object it built (the runtime, settings and loaders are dropped when the build returns); the sessions still run over them.
+    let (first, second, memory, file) = child_handles_build(ctx, args, &mut r)?;
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    first.prompt("again")?;
+    r.insert("afterDrop".into(), json!({"text": child_last_text(&first)?, "entries": child_entry_kinds(&memory)?.len(), "fileEntries": child_entry_kinds(&file)?.len()}));
+    first.dispose();
+    second.dispose();
+    Ok(Value::Object(r))
+}
+
 fn model_runtime_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     let (auth, models, store, server) = (text(&args["mrAuth"]), text(&args["mrModels"]), text(&args["mrStore"]), text(&args["mrServer"]));
     let mut r = serde_json::Map::new();
@@ -785,6 +877,10 @@ pub fn new_extension() -> Extension {
         Err(error) => ToolResult::Error(error.to_string()),
     });
     ext.tool("package_manager", "Runs the DefaultPackageManager script.", empty_schema(), |ctx, args| match packages_script(ctx, &args) {
+        Ok(report) => ToolResult::text(report.to_string()),
+        Err(error) => ToolResult::Error(error.to_string()),
+    });
+    ext.tool("child_handles", "Runs the createAgentSession handle options script.", empty_schema(), |ctx, args| match child_handles_script(ctx, &args) {
         Ok(report) => ToolResult::text(report.to_string()),
         Err(error) => ToolResult::Error(error.to_string()),
     });

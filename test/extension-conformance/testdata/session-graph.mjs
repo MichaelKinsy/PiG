@@ -1,6 +1,6 @@
 // The Node fixture of the session graph conformance rows (session_graph_test.go). It runs the script of testfixture/sessiongraph (Go), testdata/session-graph-rust and the inline Python fixture with Pi's own SessionManager, so the report it makes is Pi's.
-import { DefaultPackageManager, DefaultResourceLoader, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
-import { readFileSync, writeFileSync } from "node:fs";
+import { DefaultPackageManager, DefaultResourceLoader, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, createAgentSession, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf-8"));
@@ -626,6 +626,43 @@ async function modelRuntimeScript({ mrAuth, mrModels, mrStore, mrServer }) {
   return r;
 }
 
+// createAgentSession over the objects the extension built: Pi's own run is the expectation (child_handles). One run of the script per SDK; the Go, Python and Rust scripts build the same objects through their SDK and must report the same.
+async function childHandlesScript({ mrAuth, mrModels, mrStore, cwd, dir, agentDir, probeExt }) {
+  const r = {};
+  const rt = await ModelRuntime.create({ authPath: mrAuth, modelsPath: mrModels, modelsStorePath: mrStore });
+  const settings = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false }, defaultProvider: "mr-local", defaultModel: "m1", defaultThinkingLevel: "high" });
+  const quiet = { cwd, agentDir, settingsManager: settings, noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true };
+  const loader = new DefaultResourceLoader({ ...quiet, additionalExtensionPaths: [probeExt], appendSystemPrompt: ["Handle appendix"] });
+  await loader.reload();
+  const textOf = (message) => (typeof message?.content === "string" ? message.content : (message?.content ?? []).filter((block) => block.type === "text").map((block) => block.text).join(""));
+  const entryKinds = (manager) => manager.getEntries().map((entry) => entry.type + (entry.type === "message" ? ":" + entry.message.role : ""));
+  const observe = async (options, manager, bind) => {
+    const { session, modelFallbackMessage, extensionsResult } = await createAgentSession({ sessionManager: manager, settingsManager: settings, modelRuntime: rt, ...options });
+    const events = [];
+    session.subscribe((event) => events.push(event.type + (event.type.startsWith("message_") ? ":" + event.message.role : "")));
+    if (bind) await session.bindExtensions({});
+    const created = {
+      model: { provider: session.model?.provider, id: session.model?.id }, thinkingLevel: session.thinkingLevel, activeTools: session.getActiveToolNames(), fallback: orNull(modelFallbackMessage),
+      extensionErrors: extensionsResult.errors.length, appendix: session.systemPrompt.includes("Handle appendix"), sessionId: session.sessionId === manager.getSessionId(),
+      sessionFile: orNull(session.sessionFile) === orNull(manager.getSessionFile()), persisted: session.sessionFile !== undefined,
+    };
+    await session.prompt("hello");
+    return { session, report: { created, events: [...events], final: orNull(session.getLastAssistantText()), roles: session.messages.map((message) => message.role), entries: entryKinds(manager), text: textOf(session.messages.at(-1)) } };
+  };
+  const memory = SessionManager.inMemory(cwd);
+  const first = await observe({ resourceLoader: loader, scopedModels: [{ model: rt.getModel("mr-local", "m1"), thinkingLevel: "off" }] }, memory, true);
+  r.memory = { ...first.report, settings: { defaultModel: settings.getDefaultModel(), compaction: settings.getCompactionEnabled() } };
+  const file = SessionManager.create(cwd, dir);
+  const second = await observe({ resourceLoader: new DefaultResourceLoader(quiet) }, file, false);
+  r.file = { ...second.report, onDisk: existsSync(file.getSessionFile()), samePath: second.session.sessionFile === file.getSessionFile() };
+  // The extension lets go of every object it built; the sessions still run over them.
+  await first.session.prompt("again");
+  r.afterDrop = { text: textOf(first.session.messages.at(-1)), entries: entryKinds(memory).length, fileEntries: entryKinds(file).length };
+  first.session.dispose();
+  second.session.dispose();
+  return r;
+}
+
 export default function (pi) {
   pi.registerTool({
     name: "session_manager", label: "session_manager", description: "Runs the SessionManager script.", parameters: { type: "object" },
@@ -650,5 +687,9 @@ export default function (pi) {
   pi.registerTool({
     name: "package_manager", label: "package_manager", description: "Runs the DefaultPackageManager script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await packagesScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "child_handles", label: "child_handles", description: "Runs the createAgentSession handle options script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await childHandlesScript(params)) }] }),
   });
 }

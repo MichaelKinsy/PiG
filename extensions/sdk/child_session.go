@@ -129,23 +129,23 @@ const (
 )
 
 type childSessionCreateMsg struct {
-	ID            string                 `json:"id"`
-	Cwd           string                 `json:"cwd,omitempty"`
-	AgentDir      string                 `json:"agentDir,omitempty"`
-	Model         any                    `json:"model,omitempty"`
-	ThinkingLevel string                 `json:"thinkingLevel,omitempty"`
-	Tools         *[]string              `json:"tools,omitempty"`
-	ExcludeTools  []string               `json:"excludeTools,omitempty"`
-	NoTools       string                 `json:"noTools,omitempty"`
-	CustomTools   []toolDef              `json:"customTools,omitempty"`
-	Settings      map[string]any         `json:"settings,omitempty"`
-	InMemory      bool                   `json:"inMemory,omitempty"`
-	Resources     *childSessionResources `json:"resources,omitempty"`
-	SessionManager  string               `json:"sessionManager,omitempty"`
-	SettingsManager string               `json:"settingsManager,omitempty"`
-	ResourceLoader  string               `json:"resourceLoader,omitempty"`
-	ModelRuntime    string               `json:"modelRuntime,omitempty"`
-	ScopedModels    []ScopedModel        `json:"scopedModels,omitempty"`
+	ID              string                 `json:"id"`
+	Cwd             string                 `json:"cwd,omitempty"`
+	AgentDir        string                 `json:"agentDir,omitempty"`
+	Model           any                    `json:"model,omitempty"`
+	ThinkingLevel   string                 `json:"thinkingLevel,omitempty"`
+	Tools           *[]string              `json:"tools,omitempty"`
+	ExcludeTools    []string               `json:"excludeTools,omitempty"`
+	NoTools         string                 `json:"noTools,omitempty"`
+	CustomTools     []toolDef              `json:"customTools,omitempty"`
+	Settings        map[string]any         `json:"settings,omitempty"`
+	InMemory        bool                   `json:"inMemory,omitempty"`
+	Resources       *childSessionResources `json:"resources,omitempty"`
+	SessionManager  string                 `json:"sessionManager,omitempty"`
+	SettingsManager string                 `json:"settingsManager,omitempty"`
+	ResourceLoader  string                 `json:"resourceLoader,omitempty"`
+	ModelRuntime    string                 `json:"modelRuntime,omitempty"`
+	ScopedModels    []ScopedModel          `json:"scopedModels,omitempty"`
 }
 
 type childSessionResources struct {

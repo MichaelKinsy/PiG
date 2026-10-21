@@ -1,0 +1,7 @@
+### Added
+
+- `createAgentSession` of the Go, Python and Rust extension SDKs takes the objects an extension built, as Pi's `CreateAgentSessionOptions` does: `sessionManager`, `settingsManager`, `resourceLoader`, `modelRuntime` (Go `SessionManager`, `SettingsManager`, `ResourceLoader`, `ModelRuntime` fields; Python `session_manager`, `settings_manager`, `resource_loader`, `model_runtime`; Rust the `handle()` of each) and `scopedModels`. The child uses the very objects: the transcript lands in the extension's `SessionManager`, the model and thinking level come from its `SettingsManager` defaults, the system prompt and the extensions of its `DefaultResourceLoader` are the session's, and its `ModelRuntime` serves the models. Naming an object together with the option it replaces (`inMemory`, `settings`, `resources`) is an error. The conformance row `TestSessionGraphChildHandlesAcrossSDKs` runs one script in Go (fused and isolated), Python, Rust and Node and compares every report with the one Pi's own `createAgentSession` produces.
+
+### Fixed
+
+- Releasing a handle of an object a child session was created over (a `ModelRuntime` first of all) no longer closes the object under the session. The host counts the holders of every session graph object, the extension's handle and each child session created over it, and releases the object when the last one lets go. Before, an extension that built a runtime, created a child over it and let the runtime go out of scope had the runtime's model tasks stopped while the child still ran on it. <!-- fix: 8b3e5a68 -->

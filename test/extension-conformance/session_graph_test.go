@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding/cli"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
@@ -52,6 +53,23 @@ func newSessionGraphRig(t *testing.T) *sessionGraphRig {
 	return r
 }
 
+// newSessionGraphRigWithChildren is the rig of a script that creates child agent sessions: the host also serves createAgentSession over the model runtime of its own services.
+func newSessionGraphRigWithChildren(t *testing.T) *sessionGraphRig {
+	t.Helper()
+	r := newSessionGraphRig(t)
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(services.Close)
+	bridge := subprocess.NewUIBridge(func() {})
+	// A Node extension's own sessions stream through the host, as in the CLI (extensions.go).
+	icodingagent.WireEarlyModelStream(bridge, "")
+	r.host.SetUIBridge(bridge)
+	cli.BindChildSessions(bridge, services)
+	return r
+}
+
 func (r *sessionGraphRig) finish(ext extension.Extension) {
 	r.t.Helper()
 	r.ext = ext
@@ -73,6 +91,7 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 	args := map[string]any{
 		"mrAuth": filepath.Join(root, "mr", "auth.json"), "mrModels": filepath.Join(root, "mr", "models.json"), "mrStore": filepath.Join(root, "mr", "models-store.json"), "mrServer": modelServer,
 		"cwd": filepath.Join(root, "project"), "dir": filepath.Join(root, "sessions"), "otherDir": filepath.Join(root, "other"), "junk": filepath.Join(root, "junk.jsonl"),
+		"probeExt": filepath.Join(root, "probe", "probe.mjs"),
 		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "pmCwd": filepath.Join(root, "pm-project"), "pmAgentDir": filepath.Join(root, "pm-agent"), "loaderAgentDir": filepath.Join(root, "agent-loader"), "brokenCwd": filepath.Join(root, "broken"),
 	}
 	files := map[string]string{
@@ -93,6 +112,7 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 		filepath.Join(root, "project", configDir, "APPEND_SYSTEM.md"):            "project append\n",
 		filepath.Join(root, "extra-skills", "beta", "SKILL.md"):                  "---\nname: beta\ndescription: The beta skill\n---\nBeta body\n",
 		filepath.Join(root, "extra-prompts", "bye.md"):                           "---\ndescription: Say bye\n---\nBye $1\n",
+		filepath.Join(root, "probe", "probe.mjs"):                                childHandlesProbe,
 		filepath.Join(root, "pm-project", ".keep"):                               "",
 		filepath.Join(root, "pm-agent", ".keep"):                                 "",
 		filepath.Join(root, "pkgs", "localpkg", "package.json"):                  `{"name":"localpkg","version":"1.0.0","pi":{"skills":["./skills"]}}`,
@@ -200,6 +220,12 @@ func (r *sessionGraphRig) load(t *testing.T, cfg subprocess.ExtConfig) {
 
 func eachSessionGraphSDK(t *testing.T, body func(t *testing.T, r *sessionGraphRig, sdkName string)) {
 	t.Helper()
+	eachSessionGraphSDKWith(t, newSessionGraphRig, body)
+}
+
+// eachSessionGraphSDKWith runs body for every SDK on the rig newRig builds.
+func eachSessionGraphSDKWith(t *testing.T, newRig func(*testing.T) *sessionGraphRig, body func(t *testing.T, r *sessionGraphRig, sdkName string)) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (starts SDK subprocesses)")
 	}
@@ -211,7 +237,7 @@ func eachSessionGraphSDK(t *testing.T, body func(t *testing.T, r *sessionGraphRi
 	sort.Strings(names)
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
-			r := newSessionGraphRig(t)
+			r := newRig(t)
 			loaders[name](t, r)
 			body(t, r, name)
 		})
@@ -403,3 +429,28 @@ func TestSessionGraphModelRuntimeAcrossSDKs(t *testing.T) {
 //
 //go:embed testdata/session-graph-model-runtime.json
 var sessionGraphModelRuntimeWant string
+
+// childHandlesProbe is the extension the child session of the child_handles script loads (additionalExtensionPaths of its resource loader): it registers one tool, which the session must have among its active tools.
+const childHandlesProbe = `export default function (pi) {
+  pi.registerTool({ name: "probe_tool", label: "probe", description: "the probe extension's tool", parameters: { type: "object" }, execute: async () => ({ content: [{ type: "text", text: "probed" }], details: {} }) });
+}
+`
+
+// createAgentSession over the objects an extension built (sdk.ts: sessionManager, settingsManager, resourceLoader, modelRuntime, scopedModels) for every SDK, against the report of Pi's own createAgentSession run (the Node row): the model, thinking level and settings come from the objects, the transcript lands in the extension's session manager, the appendix is the loader's, the extension of the loader reaches the session as a tool, and the objects the extension let go of keep serving the session.
+func TestSessionGraphChildHandlesAcrossSDKs(t *testing.T) {
+	t.Parallel()
+	eachSessionGraphSDKWith(t, newSessionGraphRigWithChildren, func(t *testing.T, r *sessionGraphRig, _ string) {
+		report, root := r.script("child_handles")
+		got := normalizeSessionGraph(t, report, root)
+		if path := os.Getenv("SESSION_GRAPH_PRINT"); path != "" {
+			encoded, _ := json.MarshalIndent(got, "", "\t")
+			_ = os.WriteFile(path, encoded, 0o600)
+		}
+		requireSessionGraphReport(t, got, sessionGraphChildHandlesWant)
+	})
+}
+
+// sessionGraphChildHandlesWant is the report of Pi's own createAgentSession (the Node row).
+//
+//go:embed testdata/session-graph-child-handles.json
+var sessionGraphChildHandlesWant string

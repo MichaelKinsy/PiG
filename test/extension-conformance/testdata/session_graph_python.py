@@ -692,6 +692,75 @@ def model_runtime_tool(ctx, params):
     return json.dumps(model_runtime_script(ctx, params))
 
 
+def child_handles_script(ctx, args):
+    """createAgentSession over the objects the extension built; the report is Pi's own run's (testdata/session-graph.mjs childHandlesScript)."""
+    import gc
+    import time
+
+    r = {}
+    cwd, directory, agent_dir = args["cwd"], args["dir"], args["agentDir"]
+
+    def entry_kinds(manager):
+        return [entry["type"] + (":" + entry["message"]["role"] if entry["type"] == "message" else "") for entry in manager.get_entries()]
+
+    def last_text(session):
+        message = session.messages()[-1]
+        return "".join(block.get("text", "") for block in message["content"] if block.get("type") == "text")
+
+    def observe(options, manager, settings, bind):
+        options.session_manager, options.settings_manager = manager, settings
+        session = ctx.create_agent_session(options)
+        events = []
+        session.subscribe(lambda event: events.append(event["type"] + (":" + event["message"]["role"] if event["type"].startswith("message_") else "")))
+        if bind:
+            session.bind_extensions()
+        created = {
+            "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "activeTools": session.active_tools,
+            "fallback": session.model_fallback_message, "extensionErrors": len(session.extension_errors), "appendix": "Handle appendix" in session.system_prompt,
+            "sessionId": session.session_id == manager.get_session_id(), "sessionFile": session.session_file == manager.get_session_file(), "persisted": session.session_file is not None,
+        }
+        session.prompt("hello")
+        state = session.state()
+        return session, {"created": created, "events": list(events), "final": state.get("lastAssistantText"), "roles": [message["role"] for message in session.messages()], "entries": entry_kinds(manager), "text": last_text(session)}
+
+    def build():
+        rt = ModelRuntime.create(ctx, auth_path=args["mrAuth"], models_path=args["mrModels"], models_store_path=args["mrStore"])
+        settings = SettingsManager.in_memory(ctx, {
+            "compaction": {"enabled": False}, "retry": {"enabled": False}, "defaultProvider": "mr-local", "defaultModel": "m1", "defaultThinkingLevel": "high",
+        })
+        quiet = dict(cwd=cwd, agent_dir=agent_dir, settings_manager=settings, no_extensions=True, no_skills=True, no_prompt_templates=True, no_themes=True, no_context_files=True)
+        loader = DefaultResourceLoader(ctx, additional_extension_paths=[args["probeExt"]], append_system_prompt=["Handle appendix"], **quiet)
+        loader.reload()
+        memory = SessionManager.in_memory(ctx, cwd)
+        scoped = [{"model": rt.get_model("mr-local", "m1"), "thinkingLevel": "off"}]
+        first, first_report = observe(pig_sdk.CreateAgentSessionOptions(resource_loader=loader, model_runtime=rt, scoped_models=scoped), memory, settings, True)
+        first_report["settings"] = {"defaultModel": settings.get_default_model(), "compaction": settings.get_compaction_enabled()}
+        r["memory"] = first_report
+        file = SessionManager.create(ctx, cwd, directory)
+        plain_loader = DefaultResourceLoader(ctx, **quiet)
+        plain_loader.reload()
+        second, second_report = observe(pig_sdk.CreateAgentSessionOptions(resource_loader=plain_loader, model_runtime=rt), file, settings, False)
+        second_report["onDisk"] = os.path.exists(file.get_session_file())
+        second_report["samePath"] = second.session_file == file.get_session_file()
+        r["file"] = second_report
+        return first, second, memory, file
+
+    first, second, memory, file = build()
+    # The extension let go of every object it built (the runtime, settings and loaders are collected); the sessions still run over them.
+    for _ in range(3):
+        gc.collect()
+        time.sleep(0.1)
+    first.prompt("again")
+    r["afterDrop"] = {"text": last_text(first), "entries": len(entry_kinds(memory)), "fileEntries": len(entry_kinds(file))}
+    first.dispose()
+    second.dispose()
+    return r
+
+
+def child_handles_tool(ctx, params):
+    return json.dumps(child_handles_script(ctx, params))
+
+
 def new_extension():
     ext = pig_sdk.Extension("session-graph")
     ext.register_tool(pig_sdk.ToolDefinition(name="session_manager", label="session_manager", description="Runs the SessionManager script.", parameters={"type": "object"}, execute=session_manager_tool))
@@ -700,4 +769,5 @@ def new_extension():
     ext.register_tool(pig_sdk.ToolDefinition(name="resource_loader", label="resource_loader", description="Runs the DefaultResourceLoader script.", parameters={"type": "object"}, execute=loader_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="model_runtime", label="model_runtime", description="Runs the ModelRuntime script.", parameters={"type": "object"}, execute=model_runtime_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="package_manager", label="package_manager", description="Runs the DefaultPackageManager script.", parameters={"type": "object"}, execute=packages_tool))
+    ext.register_tool(pig_sdk.ToolDefinition(name="child_handles", label="child_handles", description="Runs the createAgentSession handle options script.", parameters={"type": "object"}, execute=child_handles_tool))
     return ext
