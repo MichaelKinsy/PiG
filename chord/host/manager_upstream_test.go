@@ -234,10 +234,13 @@ func TestHostManagerReportsAFatalChildAsAFailedStart(t *testing.T) {
 	}
 }
 
-// manager.test.ts:130-143 "stops an idle child when keepAlive says so".
+// manager.test.ts:130-143 "stops an idle child when keepAlive says so". Upstream runs `status = "stopped"` and onExit in
+// one callback, so a test that sees the status stopped has seen the exit reported. Here the status flips first and onExit
+// follows (TestHostManagerIsStoppedWhenOnExitRunsAndBeforeItReturns), so the test waits for the report.
 func TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo(t *testing.T) {
 	var mu sync.Mutex
 	var exits []Exit
+	reported := make(chan struct{}, 2)
 	manager := CreateHostManager(HostManagerOptions{
 		Driver:        managerDriver(t, nil, nil),
 		KeepAlive:     func(liveness Liveness) bool { return !liveness.Booting && liveness.IdleFor < 150*time.Millisecond },
@@ -246,13 +249,16 @@ func TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo(t *testing.T) {
 			mu.Lock()
 			exits = append(exits, exit)
 			mu.Unlock()
+			reported <- struct{}{}
 		},
 	})
 	if _, err := manager.Start(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 100 && manager.Status() != HostManagerStopped; i++ {
-		time.Sleep(20 * time.Millisecond)
+	select {
+	case <-reported:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("status = %s: the idle child's exit was not reported", manager.Status())
 	}
 	if manager.Status() != HostManagerStopped {
 		t.Fatalf("status = %s", manager.Status())
@@ -262,6 +268,32 @@ func TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo(t *testing.T) {
 	if len(exits) != 1 {
 		t.Fatalf("exits = %+v", exits)
 	}
+}
+
+// manager.ts `current.exited.then`: the status is "stopped" and the instance gone when onExit runs. onExit is called
+// outside the manager's lock, as a callback that may use the manager has to be, so a caller that polls the status can
+// see it stopped before onExit has returned (or run): it waits for onExit itself when it needs the report.
+func TestHostManagerIsStoppedWhenOnExitRunsAndBeforeItReturns(t *testing.T) {
+	driver := newFakeDriver()
+	var manager *HostManager
+	inExit, release := make(chan string), make(chan struct{})
+	manager = CreateHostManager(HostManagerOptions{Driver: driver, OnExit: func(Exit) {
+		inExit <- manager.Status()
+		<-release
+	}})
+	startReady(t, manager, driver)
+	driver.instances[0].end(Exit{Code: new(0)})
+	if status := <-inExit; status != HostManagerStopped {
+		t.Fatalf("status inside onExit = %s, want stopped", status)
+	}
+	// onExit has not returned: the report is not complete, and the status already reads stopped.
+	if status := manager.Status(); status != HostManagerStopped {
+		t.Fatalf("status while onExit runs = %s, want stopped", status)
+	}
+	if manager.Instance() != nil {
+		t.Fatal("the exited instance is still the manager's")
+	}
+	close(release)
 }
 
 type fakeInstance struct {
