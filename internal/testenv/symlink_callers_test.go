@@ -85,6 +85,8 @@ func TestWindowsTestsCreateSymlinksThroughSymlink(t *testing.T) {
 
 // fileSymlinkCallers lists every function that may call Symlink, keyed by "module-relative file::function". Symlink skips on a Windows host without the symlink privilege, so a caller belongs here only when its behavior depends on a file symbolic link or on a link whose target is missing or cyclic, which a privilege-free junction cannot stand in for. A link to an existing directory uses RequireDirectoryLink and runs on stock Windows.
 var fileSymlinkCallers = map[string]string{
+	"coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterFailsForAnUnresolvablePath": "cyclic file links; a junction names only an existing directory, so the loop that makes the path unresolvable needs a file link",
+	"coding/extension/host/subprocess/sdk_fingerprint_marker_test.go::TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker": "dangling file link where the marker goes; a junction cannot point at a missing target",
 	"internal/codingagent/canonical_path_windows_test.go::TestCanonicalizePathResolvesRootedLinkTargetsBeyondVolumeMounts":     "rooted link; a junction stores only an absolute target, so the rooted relative target `\\dir` needs a real symbolic link",
 	"internal/codingagent/canonical_path_windows_test.go::TestCanonicalizePathResolvesRootedLinkOnLinkDriveNotProcessDrive":    "rooted link; a junction stores only an absolute target, so the rooted relative target `\\dir` needs a real symbolic link",
 	"coding/extension/builtin/codemode/store_entry_order_oracle_test.go::TestStoreEntryKeyOrderMatchesPi":                      "file link; the extension cache entry quickjs.wasm links to the packaged wasm file",

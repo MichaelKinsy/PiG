@@ -56,7 +56,7 @@ func syntheticRuntime(extra map[string]string) map[string]string {
 }
 
 // The command packages exactly the runtime sources (top-level *.mjs, harness/ without dot or underscore names, shims/)
-// without the files nothing reads at runtime (unreadAtRuntime), and the generated host peers into a noderuntimepack archive, and writes the hash of the entry names and bytes as the generated Go constant; the same input gives
+// without the files nothing reads at runtime (noderuntimepack.UnreadAtRuntime), and the generated host peers into a noderuntimepack archive, and writes the hash of the entry names and bytes as the generated Go constant; the same input gives
 // byte-identical outputs, and a changed source changes the hash.
 func TestMainPackagesRuntimeReproducibly(t *testing.T) {
 	root := t.TempDir()
