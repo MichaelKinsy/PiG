@@ -7,9 +7,14 @@ tags = ["hermetic", "fast"]
 driver = "rpc-mode"
 
 [rpc]
-input_lines = ['{"id":"s","type":"prompt","message":"/dialog-signal"}']
-timeout_seconds = 15
-settle_seconds = 2
+timeout_seconds = 30
+settle_seconds = 1
+
+# The command finishes by itself once its two timers fired; wait for its response before stdin closes, whatever the start-up time.
+[[rpc.steps]]
+line = '{"id":"s","type":"prompt","message":"/dialog-signal"}'
+wait_contains = ['"id":"s","type":"response"']
+wait_timeout_seconds = 20
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]

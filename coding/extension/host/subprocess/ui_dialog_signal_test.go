@@ -16,10 +16,12 @@ type dialogProbeUI struct {
 	mu      sync.Mutex
 	started map[string]chan struct{}
 	ended   map[string]chan struct{}
+	// release ends every dialog still open when the test does, so none outlives it.
+	release chan struct{}
 }
 
 func newDialogProbeUI() *dialogProbeUI {
-	return &dialogProbeUI{UIContext: extension.NoopUIContext, started: map[string]chan struct{}{}, ended: map[string]chan struct{}{}}
+	return &dialogProbeUI{UIContext: extension.NoopUIContext, started: map[string]chan struct{}{}, ended: map[string]chan struct{}{}, release: make(chan struct{})}
 }
 
 func (u *dialogProbeUI) channels(title string) (started, ended chan struct{}) {
@@ -34,7 +36,10 @@ func (u *dialogProbeUI) channels(title string) (started, ended chan struct{}) {
 func (u *dialogProbeUI) Select(ctx context.Context, title string, _ []string, _ extension.ExtensionUIDialogOptions) (string, error) {
 	started, ended := u.channels(title)
 	close(started)
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case <-u.release:
+	}
 	close(ended)
 	return "", ctx.Err()
 }
@@ -45,6 +50,7 @@ func (u *dialogProbeUI) Select(ctx context.Context, title string, _ []string, _ 
 func TestDialogCancelDismissesOnlyTheNamedDialog(t *testing.T) {
 	host := newWireHost(t)
 	ui := newDialogProbeUI()
+	t.Cleanup(func() { close(ui.release) })
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
 	host.SetUIBridge(bridge)
