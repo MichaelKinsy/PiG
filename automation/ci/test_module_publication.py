@@ -56,7 +56,7 @@ class PublicationTest(unittest.TestCase):
 
     def make_proxy_module(self, module, version):
         directory = self.proxy / module / "@v"
-        directory.mkdir(parents=True)
+        directory.mkdir(parents=True, exist_ok=True)
         manifest = f"module {module}\n\ngo 1.26.0\n"
         (directory / (version + ".mod")).write_text(manifest)
         (directory / (version + ".info")).write_text(json.dumps({"Version": version, "Time": "2026-01-01T00:00:00Z"}))
@@ -93,6 +93,45 @@ class PublicationTest(unittest.TestCase):
         result = self.gate()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("mod download", result.stderr)
+
+    def pin_pseudo_version(self, pseudo):
+        """Require the nested module at a pseudo-version served by the proxy; no tag names it."""
+        self.make_proxy_module(MODULE, pseudo)
+        manifest = f"module example.com/product\n\ngo 1.26.0\n\nrequire {MODULE} {pseudo}\n"
+        (self.root / "go.mod").write_text(manifest)
+        seed = self.base / "seed-pseudo"
+        seed.mkdir()
+        result = subprocess.run(["go", "mod", "download", "-json", MODULE + "@" + pseudo], cwd=seed,
+                                env=dict(self.env, GOWORK="off", GOFLAGS=""), capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout)
+        self.pseudo_sums = f"{MODULE} {pseudo} {data['Sum']}\n{MODULE} {pseudo}/go.mod {data['GoModSum']}\n"
+        (self.root / "go.sum").write_text(self.pseudo_sums)
+
+    def test_pseudo_version_needs_no_tag_but_must_download_with_checksums(self):
+        self.pin_pseudo_version("v0.2.1-0.20260101000000-0123456789ab")
+        result = self.gate()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("published: v0.2.1-0.20260101000000-0123456789ab; Go download and committed checksums verified", result.stdout)
+
+    def test_pseudo_version_that_cannot_be_downloaded_or_is_unpinned_fails(self):
+        pseudo = "v0.2.1-0.20260101000000-0123456789ab"
+        self.pin_pseudo_version(pseudo)
+        (self.root / "go.sum").write_text("")
+        result = self.gate()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("go.sum does not pin", result.stderr)
+        (self.root / "go.sum").write_text(self.pseudo_sums)
+        (self.proxy / MODULE / "@v" / (pseudo + ".zip")).unlink()
+        result = self.gate()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("mod download", result.stderr)
+
+    def test_a_tagged_version_that_only_looks_like_a_pseudo_version_still_needs_its_tag(self):
+        # Not a pseudo-version: the timestamp has 13 digits.
+        (self.root / "go.mod").write_text(f"module example.com/product\n\ngo 1.26.0\n\nrequire {MODULE} v0.2.1-0.2026010100000-0123456789ab\n")
+        result = self.gate()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unpublished nested-module tag(s): sdk/v0.2.1-0.2026010100000-0123456789ab", result.stderr)
 
     def test_every_nested_requirement_needs_its_exact_tag(self):
         self.publish()
