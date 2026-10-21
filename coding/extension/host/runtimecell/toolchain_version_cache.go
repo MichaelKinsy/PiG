@@ -80,9 +80,8 @@ func commandVersion(cacheRoot, name string, args ...string) string {
 		if output, ok := readToolchainVersion(cachePath, fingerprint); ok {
 			return output
 		}
-		//portlint:allow ctxbackground commandVersion has no caller context: it runs under hashing a cell's inputs, and toolchainProbeTimeout bounds the probe
 		//perf:ok once per probe of an uncached toolchain, which spawns a process
-		probeCtx, cancelProbe := context.WithTimeout(context.Background(), toolchainProbeTimeout)
+		probeCtx, cancelProbe := context.WithTimeout(context.Background(), toolchainProbeTimeout) //portlint:allow ctxbackground commandVersion has no caller context: it runs under hashing a cell's inputs, and toolchainProbeTimeout bounds the probe
 		cmd := linkerexec.CommandContext(probeCtx, resolved, args...)
 		cmd.WaitDelay = toolchainProbeKillDelay
 		out, err := cmd.CombinedOutput()
