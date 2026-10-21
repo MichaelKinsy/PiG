@@ -13,12 +13,16 @@ import (
 //
 // A nil *Turns holds nothing: callbacks run at once.
 type Turns struct {
-	mu       sync.Mutex
-	chains   int
-	waits    int
-	held     []func(done func())
-	ticks    []func(done func())
-	flushing bool
+	mu        sync.Mutex
+	chains    int
+	waits     int
+	held      []func(done func())
+	commands  int
+	observers []func(deferring bool)
+	deferring bool
+	notifyMu  sync.Mutex
+	ticks     []func(done func())
+	flushing  bool
 }
 
 // Chain says the running work is a chain of microtasks, and returns the function that ends it. Callbacks wait while any chain runs and no wait is open.
@@ -39,6 +43,54 @@ func (t *Turns) Chain() (end func()) {
 	}
 }
 
+// Command says the running work is the iteration of Pi's loop that handles one stdin command, and returns the function that ends it. While a command runs and no wait is open, a timer or immediate callback an extension runtime queued must not run, since Pi's loop runs nothing else between the command's microtasks and its response; ObserveDefer tells the runtimes. The calls of such a callback cannot be held, because the runtime may wait for their answers.
+func (t *Turns) Command() (end func()) {
+	if t == nil {
+		return func() {}
+	}
+	t.mu.Lock()
+	t.commands++
+	t.syncDeferLocked()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			t.mu.Lock()
+			t.commands--
+			t.syncDeferLocked()
+		})
+	}
+}
+
+// ObserveDefer registers fn, which runs with true when the timer callbacks of an extension runtime must wait (a command runs and no wait is open) and with false when they may run. fn runs in the order of the changes.
+func (t *Turns) ObserveDefer(fn func(deferring bool)) {
+	if t == nil {
+		return
+	}
+	t.mu.Lock()
+	t.observers = append(t.observers, fn)
+	t.mu.Unlock()
+}
+
+// syncDeferLocked tells the observers when the deferring state changed, and unlocks.
+func (t *Turns) syncDeferLocked() {
+	now := t.commands > 0 && t.waits == 0
+	if now == t.deferring {
+		t.mu.Unlock()
+		return
+	}
+	t.deferring = now
+	observers := append([]func(bool){}, t.observers...)
+	t.mu.Unlock()
+	t.notifyMu.Lock()
+	defer t.notifyMu.Unlock()
+	t.mu.Lock()
+	now = t.deferring
+	t.mu.Unlock()
+	for _, fn := range observers {
+		fn(now)
+	}
+}
+
 // Wait says the chain awaits real work, so the loop turns, and returns the function that ends the wait. Opening a wait releases the held callbacks.
 func (t *Turns) Wait() (done func()) {
 	if t == nil {
@@ -46,13 +98,15 @@ func (t *Turns) Wait() (done func()) {
 	}
 	t.mu.Lock()
 	t.waits++
+	t.syncDeferLocked()
+	t.mu.Lock()
 	t.flushLocked(false)
 	var once sync.Once
 	return func() {
 		once.Do(func() {
 			t.mu.Lock()
 			t.waits--
-			t.mu.Unlock()
+			t.syncDeferLocked()
 		})
 	}
 }

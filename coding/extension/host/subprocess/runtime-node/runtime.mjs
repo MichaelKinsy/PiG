@@ -17,7 +17,7 @@ import { inspect } from "node:util";
 import { flushCompileCache } from "node:module";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
-import { installTimerOrigin, originKind, outsideTimer } from "./timer-origin.mjs";
+import { installTimerOrigin, originKind, outsideTimer, setTimerDefer } from "./timer-origin.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
 import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
 import { EditorComponentHost } from "./editor-component.mjs";
@@ -3842,6 +3842,16 @@ export class Runtime {
           return;
         }
         this.bashOperations.delete(args?.handle);
+        return;
+      }
+      case "timer_defer": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        setTimerDefer(args?.on === true);
         return;
       }
       case "run_signal": {

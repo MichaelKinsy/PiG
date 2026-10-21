@@ -7,6 +7,22 @@ const origin = new AsyncLocalStorage();
 
 let installed = false;
 
+// While the host says a stdin command runs (setTimerDefer), a timer or immediate callback waits: Pi's loop runs the command's microtasks and its response before any timer. The waiting callbacks run, in order, in a later iteration once the host lifts the hold.
+let deferring = false;
+let waiting = [];
+const rawSetImmediate = setImmediate;
+
+export function setTimerDefer(on) {
+  deferring = on;
+  if (on || waiting.length === 0) return;
+  rawSetImmediate(() => {
+    if (deferring) return;
+    const batch = waiting;
+    waiting = [];
+    for (const run of batch) run();
+  });
+}
+
 // installTimerOrigin wraps the global timer functions once. The wrapper hands the callback to the original, so the timer object, its ref and unref, and clearTimeout and clearImmediate are the original's.
 export function installTimerOrigin() {
   if (installed) return;
@@ -15,7 +31,11 @@ export function installTimerOrigin() {
     const original = globalThis[name];
     const wrapped = function (callback, ...rest) {
       if (typeof callback !== "function") return Reflect.apply(original, this, [callback, ...rest]);
-      const fromTimer = (...args) => origin.run("timer", callback, ...args);
+      const fromTimer = (...args) => {
+        const run = () => origin.run("timer", callback, ...args);
+        if (deferring) waiting.push(run);
+        else return run();
+      };
       return Reflect.apply(original, this, [fromTimer, ...rest]);
     };
     // setTimeout and setImmediate carry util.promisify.custom, which promisify reads.

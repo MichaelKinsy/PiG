@@ -17,6 +17,8 @@ type rpcLoopChain struct {
 	end   func()
 	// compaction and retry end the wait a compaction or an auto-retry delay opened.
 	compaction, retry func()
+	// command ends the Turns command of the stdin iteration that runs.
+	command func()
 }
 
 // before observes an event ahead of its publication: the chain is running before any extension sees the run's events.
@@ -76,4 +78,19 @@ func (c *rpcLoopChain) reset() {
 			end()
 		}
 	}
+}
+
+// observeCommands marks the iterations of the responses loop that handle a stdin command as Turns commands: from Begin to the end of the drain that writes the response, the extension runtimes hold their timer callbacks (jsloop.Turns.Command).
+func (c *rpcLoopChain) observeCommands(responses *jsloop.Loop) {
+	responses.SetBatchObserver(func(open bool) {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		switch {
+		case open && c.command == nil:
+			c.command = c.turns.Command()
+		case !open && c.command != nil:
+			c.command()
+			c.command = nil
+		}
+	})
 }

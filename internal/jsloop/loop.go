@@ -16,6 +16,16 @@ type Loop struct {
 	macrotasks  []func()
 	active      bool
 	idleWaiters []chan struct{}
+	// observer is told when an input batch begins and ends (SetBatchObserver); batch is whether the loop is held by one.
+	observer func(open bool)
+	batch    bool
+}
+
+// SetBatchObserver registers fn, which runs with true once Begin holds the loop and with false once the loop drained and left the batch End ends. A callback queued by a producer, with no Begin, is no batch. D5: the batch is Pi's iteration that reads one stdin chunk, whose microtasks no timer callback interleaves with.
+func (l *Loop) SetBatchObserver(fn func(open bool)) {
+	l.mu.Lock()
+	l.observer = fn
+	l.mu.Unlock()
 }
 
 // Begin enters the loop for an input batch: it waits for the callback that is running, and holds the loop until End.
@@ -23,7 +33,12 @@ func (l *Loop) Begin() {
 	l.execution.Lock()
 	l.mu.Lock()
 	l.active = true
+	l.batch = true
+	observer := l.observer
 	l.mu.Unlock()
+	if observer != nil {
+		observer(true)
+	}
 }
 
 // Microtask queues the continuation of an await that settles without the event loop turning.
@@ -98,8 +113,13 @@ func (l *Loop) End() {
 				close(waiter)
 			}
 			l.idleWaiters = nil
+			ended, observer := l.batch, l.observer
+			l.batch = false
 			l.execution.Unlock()
 			l.mu.Unlock()
+			if ended && observer != nil {
+				observer(false)
+			}
 			return
 		}
 		l.mu.Unlock()

@@ -357,6 +357,7 @@ func (h *rpcHost) forward(session *coding.Session) {
 	h.settle.reset()
 	h.loop.turns = &h.turns
 	h.loop.reset()
+	h.loop.observeCommands(&h.responses.Loop)
 	session.Agent().SetLoopTurns(&h.turns)
 	// The gate sees an event ahead of its writer (agent_end) or after it (agent_settled), so a held command answers after the event that releases it.
 	gateBefore := session.Subscribe(func(event agent.AgentEvent) { h.settle.before(event); h.loop.before(event) })
