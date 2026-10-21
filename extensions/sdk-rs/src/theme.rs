@@ -365,6 +365,7 @@ impl UiState {
         if let Some(theme) = state.get("theme").filter(|theme| theme.is_object()) {
             self.theme = Theme::from_palette(theme);
         }
+        crate::tui::apply_host_state(state);
     }
 
     /// Applies a `theme_change` notify's palette. A palette sent as a JSON

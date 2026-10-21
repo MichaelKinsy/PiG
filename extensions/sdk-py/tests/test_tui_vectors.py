@@ -209,3 +209,35 @@ def test_hyperlink_and_capabilities_match_pi():
         assert bool(probes) == case["tmuxProbed"], case
         probed += bool(probes)
     assert probed > 0
+
+
+def test_keybindings_vectors_match_pi():
+    v = load("tui-keybindings.json")
+
+    def keys(value):
+        return [value] if isinstance(value, str) else list(value)
+
+    for id, want in v["tuiKeybindings"].items():
+        got = tui.TUI_KEYBINDINGS[id]
+        assert keys(got.default_keys) == keys(want["defaultKeys"]) and got.description == want.get("description"), id
+    assert len(tui.TUI_KEYBINDINGS) == len(v["tuiKeybindings"])
+    assert {i: keys(k) for i, k in tui.get_keybindings().get_resolved_bindings().items()} == {i: keys(k) for i, k in v["defaultResolved"].items()}
+    for n, case in enumerate(v["cases"]):
+        definitions = v["merged"] if case["definitions"] == "merged" else v["tuiKeybindings"]
+        manager = tui.KeybindingsManager(definitions, case["user"])
+        for id, want in case["keys"].items():
+            assert manager.get_keys(id) == want, (n, id)
+            definition = manager.get_definition(id)
+            wanted = case["definition"][id]
+            assert (definition is None) == (wanted is None), (n, id)
+            if definition is not None:
+                assert keys(definition.default_keys) == keys(wanted["defaultKeys"]), (n, id)
+            for i, data in enumerate(v["sample"]):
+                assert manager.matches(data, id) == case["matches"][id][i], (n, id, data)
+        assert manager.get_resolved_bindings() == case["resolved"], n
+        assert [(c.key, c.keybindings) for c in manager.get_conflicts()] == [(c["key"], c["keybindings"]) for c in case["conflicts"]], n
+        assert {i: keys(k) for i, k in manager.get_user_bindings().items()} == {i: keys(k) for i, k in case["userBindings"].items()}, n
+        manager.set_user_bindings({"tui.editor.cursorLeft": "ctrl+g"})
+        assert manager.get_keys("tui.editor.cursorLeft") == case["afterSet"]["keys"], n
+        assert manager.get_resolved_bindings() == case["afterSet"]["resolved"], n
+        assert [(c.key, c.keybindings) for c in manager.get_conflicts()] == [(c["key"], c["keybindings"]) for c in case["afterSet"]["conflicts"]], n

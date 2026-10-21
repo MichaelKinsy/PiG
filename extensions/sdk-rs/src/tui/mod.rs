@@ -7,16 +7,21 @@
 
 mod colors;
 mod fuzzy;
+mod host;
+mod keybindings;
 mod keys;
 mod lower;
 mod tables;
 mod terminal;
+mod tui_keybindings;
 mod text;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use host::apply_host_state;
 pub use colors::*;
 pub use fuzzy::{FuzzyMatch, fuzzy_filter, fuzzy_match};
+pub use keybindings::{KeybindingConflict, KeybindingDefinition, KeybindingsManager, get_keybindings, set_keybindings, tui_keybindings};
 pub use keys::{
     Key, decode_kitty_printable, decode_printable_key, is_key_release, is_key_repeat, is_kitty_protocol_active, matches_key, parse_key,
     set_kitty_protocol_active,

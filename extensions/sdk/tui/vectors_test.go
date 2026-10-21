@@ -272,3 +272,153 @@ func TestHyperlinkAndCapabilitiesMatchPi(t *testing.T) {
 		t.Fatal("no vector exercises the tmux probe")
 	}
 }
+
+func asStrings(t *testing.T, v any) []string {
+	t.Helper()
+	list, _ := v.([]any)
+	out := make([]string, 0, len(list))
+	for _, item := range list {
+		out = append(out, item.(string))
+	}
+	return out
+}
+
+func asKeys(t *testing.T, v any) []string {
+	t.Helper()
+	switch v := v.(type) {
+	case string:
+		return []string{v}
+	case []any:
+		return asStrings(t, v)
+	}
+	return []string{}
+}
+
+func definitionsOf(t *testing.T, raw any) KeybindingDefinitions {
+	t.Helper()
+	defs := KeybindingDefinitions{}
+	for id, def := range raw.(map[string]any) {
+		m := def.(map[string]any)
+		description, _ := m["description"].(string)
+		defs[id] = KeybindingDefinition{DefaultKeys: asKeys(t, m["defaultKeys"]), Description: description}
+	}
+	return defs
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestKeybindingsVectorsMatchPi(t *testing.T) {
+	var v struct {
+		TuiKeybindings  map[string]any `json:"tuiKeybindings"`
+		Merged          map[string]any
+		Sample          []string
+		DefaultResolved map[string]any
+		Cases           []struct {
+			Definitions string
+			User        map[string]any
+			Keys        map[string][]string
+			Resolved    map[string]any
+			Conflicts   []struct {
+				Key         string
+				Keybindings []string
+			}
+			UserBindings map[string]any
+			Matches      map[string][]bool
+			Definition   map[string]map[string]any
+			AfterSet     struct {
+				Keys      []string
+				Resolved  map[string]any
+				Conflicts []struct {
+					Key         string
+					Keybindings []string
+				}
+				UserBindings map[string]any
+			}
+		}
+	}
+	loadVectors(t, "tui-keybindings.json", &v)
+	// Pi's TUI_KEYBINDINGS, and the default keys the SDK's global manager resolves, are Pi's own.
+	for id, want := range definitionsOf(t, v.TuiKeybindings) {
+		got, ok := TUIKeybindings[id]
+		if !ok || !sameStrings(got.DefaultKeys, want.DefaultKeys) || got.Description != want.Description {
+			t.Errorf("TUIKeybindings[%q] = %+v, Pi %+v", id, got, want)
+		}
+	}
+	if len(TUIKeybindings) != len(v.TuiKeybindings) {
+		t.Errorf("TUIKeybindings has %d entries, Pi %d", len(TUIKeybindings), len(v.TuiKeybindings))
+	}
+	for id, want := range v.DefaultResolved {
+		if got := GetKeybindings().GetKeys(id); !sameStrings(got, asKeys(t, want)) {
+			t.Errorf("GetKeybindings().GetKeys(%q) = %v, Pi %v", id, got, want)
+		}
+	}
+	for n, c := range v.Cases {
+		raw := v.TuiKeybindings
+		if c.Definitions == "merged" {
+			raw = v.Merged
+		}
+		user := KeybindingsConfig{}
+		for id, keys := range c.User {
+			user[id] = asKeys(t, keys)
+		}
+		m := NewKeybindingsManager(definitionsOf(t, raw), user)
+		for id, want := range c.Keys {
+			if got := m.GetKeys(id); !sameStrings(got, want) {
+				t.Errorf("case %d GetKeys(%q) = %v, Pi %v", n, id, got, want)
+			}
+			def, ok := m.GetDefinition(id)
+			if wantDef := c.Definition[id]; (wantDef == nil) == ok || (ok && !sameStrings(def.DefaultKeys, asKeys(t, wantDef["defaultKeys"]))) {
+				t.Errorf("case %d GetDefinition(%q) = %+v,%v, Pi %v", n, id, def, ok, wantDef)
+			}
+			for i, data := range v.Sample {
+				if got := m.Matches(data, id); got != c.Matches[id][i] {
+					t.Errorf("case %d Matches(%q, %q) = %v, Pi %v", n, data, id, got, c.Matches[id][i])
+				}
+			}
+		}
+		for id, want := range c.Resolved {
+			if got := m.GetResolvedBindings()[id]; !sameStrings(got, asKeys(t, want)) {
+				t.Errorf("case %d GetResolvedBindings()[%q] = %v, Pi %v", n, id, got, want)
+			}
+		}
+		if len(m.GetResolvedBindings()) != len(c.Resolved) {
+			t.Errorf("case %d resolved has %d ids, Pi %d", n, len(m.GetResolvedBindings()), len(c.Resolved))
+		}
+		got := m.GetConflicts()
+		if len(got) != len(c.Conflicts) {
+			t.Errorf("case %d GetConflicts() = %v, Pi %v", n, got, c.Conflicts)
+		}
+		for i := range got {
+			if i < len(c.Conflicts) && (got[i].Key != c.Conflicts[i].Key || !sameStrings(got[i].Keybindings, c.Conflicts[i].Keybindings)) {
+				t.Errorf("case %d conflict %d = %+v, Pi %+v", n, i, got[i], c.Conflicts[i])
+			}
+		}
+		for id, want := range c.UserBindings {
+			if got := m.GetUserBindings()[id]; !sameStrings(got, asKeys(t, want)) {
+				t.Errorf("case %d GetUserBindings()[%q] = %v, Pi %v", n, id, got, want)
+			}
+		}
+		m.SetUserBindings(KeybindingsConfig{"tui.editor.cursorLeft": {"ctrl+g"}})
+		if got := m.GetKeys("tui.editor.cursorLeft"); !sameStrings(got, c.AfterSet.Keys) {
+			t.Errorf("case %d after SetUserBindings GetKeys = %v, Pi %v", n, got, c.AfterSet.Keys)
+		}
+		for id, want := range c.AfterSet.Resolved {
+			if got := m.GetResolvedBindings()[id]; !sameStrings(got, asKeys(t, want)) {
+				t.Errorf("case %d after SetUserBindings resolved[%q] = %v, Pi %v", n, id, got, want)
+			}
+		}
+		if len(m.GetConflicts()) != len(c.AfterSet.Conflicts) {
+			t.Errorf("case %d after SetUserBindings conflicts = %v, Pi %v", n, m.GetConflicts(), c.AfterSet.Conflicts)
+		}
+	}
+}

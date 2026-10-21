@@ -57,6 +57,7 @@ from .session_skill_helpers import CURRENT_SESSION_VERSION as CURRENT_SESSION_VE
 from .truncate import DEFAULT_MAX_BYTES as DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES as DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH as GREP_MAX_LINE_LENGTH, TruncationResult as TruncationResult, format_size as format_size, truncate_head as truncate_head, truncate_line as truncate_line, truncate_tail as truncate_tail
 from ._color import color_ansi, parse_color, style_text_with_ansi
 from . import kit as kit
+from . import _tui_state
 from .kit import ViewComponent as ViewComponent
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
 from .user_bash import BashExecOptions as BashExecOptions, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
@@ -4655,6 +4656,7 @@ class Extension:
         theme = state.get("theme")
         if isinstance(theme, dict):
             self._theme._set_palette(theme)
+        _tui_state.apply_host_state(state)
         settings = state.get("settings")
         if isinstance(settings, dict):
             self._settings = settings

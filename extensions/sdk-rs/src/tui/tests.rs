@@ -320,3 +320,53 @@ fn hyperlink_and_capabilities_match_pi() {
     }
     assert!(probed > 0);
 }
+
+fn key_list(v: &Value) -> Vec<String> {
+    match v {
+        Value::String(k) => vec![k.clone()],
+        Value::Array(list) => list.iter().map(|k| s(k).to_string()).collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn definitions(v: &Value) -> Vec<(String, KeybindingDefinition)> {
+    v.as_object().unwrap().iter().map(|(id, d)| (id.clone(), KeybindingDefinition { default_keys: key_list(&d["defaultKeys"]), description: d["description"].as_str().map(str::to_string) })).collect()
+}
+
+#[test]
+fn keybindings_vectors_match_pi() {
+    let v = load("tui-keybindings.json");
+    let want = definitions(&v["tuiKeybindings"]);
+    assert_eq!(tui_keybindings(), want);
+    let resolved = |m: &KeybindingsManager| -> std::collections::BTreeMap<String, Vec<String>> { m.get_resolved_bindings().into_iter().collect() };
+    let resolved_of = |v: &Value| -> std::collections::BTreeMap<String, Vec<String>> { v.as_object().unwrap().iter().map(|(k, x)| (k.clone(), key_list(x))).collect() };
+    assert_eq!(resolved(&get_keybindings()), resolved_of(&v["defaultResolved"]));
+    let sample: Vec<&str> = v["sample"].as_array().unwrap().iter().map(s).collect();
+    for (n, case) in v["cases"].as_array().unwrap().iter().enumerate() {
+        let table = if s(&case["definitions"]) == "merged" { &v["merged"] } else { &v["tuiKeybindings"] };
+        let user: Vec<(String, Vec<String>)> = case["user"].as_object().unwrap().iter().map(|(k, x)| (k.clone(), key_list(x))).collect();
+        let mut m = KeybindingsManager::new(definitions(table), user);
+        for (id, want_keys) in case["keys"].as_object().unwrap() {
+            assert_eq!(m.get_keys(id), key_list(want_keys), "case {n} get_keys({id})");
+            let wanted = &case["definition"][id];
+            assert_eq!(m.get_definition(id).is_none(), wanted.is_null(), "case {n} get_definition({id})");
+            if let Some(d) = m.get_definition(id) {
+                assert_eq!(d.default_keys, key_list(&wanted["defaultKeys"]), "case {n} definition({id})");
+            }
+            for (i, data) in sample.iter().enumerate() {
+                assert_eq!(m.matches(data, id), case["matches"][id][i].as_bool().unwrap(), "case {n} matches({data:?}, {id})");
+            }
+        }
+        assert_eq!(resolved(&m), resolved_of(&case["resolved"]), "case {n} resolved");
+        let conflicts = |list: &Value| -> Vec<(String, Vec<String>)> { list.as_array().unwrap().iter().map(|c| (s(&c["key"]).to_string(), c["keybindings"].as_array().unwrap().iter().map(|k| s(k).to_string()).collect())).collect() };
+        let got: Vec<(String, Vec<String>)> = m.get_conflicts().into_iter().map(|c| (c.key, c.keybindings)).collect();
+        assert_eq!(got, conflicts(&case["conflicts"]), "case {n} conflicts");
+        let user_got: std::collections::BTreeMap<String, Vec<String>> = m.get_user_bindings().into_iter().collect();
+        assert_eq!(user_got, resolved_of(&case["userBindings"]), "case {n} user bindings");
+        m.set_user_bindings(vec![("tui.editor.cursorLeft".to_string(), vec!["ctrl+g".to_string()])]);
+        assert_eq!(m.get_keys("tui.editor.cursorLeft"), key_list(&case["afterSet"]["keys"]), "case {n} after set");
+        assert_eq!(resolved(&m), resolved_of(&case["afterSet"]["resolved"]), "case {n} after set resolved");
+        let got: Vec<(String, Vec<String>)> = m.get_conflicts().into_iter().map(|c| (c.key, c.keybindings)).collect();
+        assert_eq!(got, conflicts(&case["afterSet"]["conflicts"]), "case {n} after set conflicts");
+    }
+}

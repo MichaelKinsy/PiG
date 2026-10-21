@@ -9,6 +9,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from typing import Literal, Optional
 
+from .. import _tui_state
 from ._colors import TerminalColorMode
 from ._fuzzy import js_lower
 
@@ -129,6 +130,9 @@ def _apply_overrides(caps: TerminalCapabilities, overrides: CapabilityOverrides)
 def get_capabilities() -> TerminalCapabilities:
     """The detected capabilities with the overrides on top, cached (pi-tui's ``getCapabilities``)."""
     global _cached
+    published = _tui_state.take_capabilities()
+    if published is not None:
+        _cached = TerminalCapabilities(published.get("images") or None, published.get("trueColor") is True, published.get("hyperlinks") is True)
     if _cached is None:
         hyperlinks = _overrides.hyperlinks
         _cached = _apply_overrides(detect_capabilities(None if hyperlinks is None else (lambda: hyperlinks)), _overrides)
