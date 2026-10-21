@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-984 bugs. 934 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 149 bugs have no recorded test.
+986 bugs. 936 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 149 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -972,6 +972,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-b856354](#bf-b856354) | A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached… | PiG's own defect | All platforms | Unreleased |
 | [BF-7827d96](#bf-7827d96) | Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a… | PiG's own defect | All platforms | Unreleased |
 | [BF-b2a73bf](#bf-b2a73bf) | A Node extension's `ctx.ui.select`, `confirm` and `input` honor `options.signal`, as Pi's RPC and interactive… | PiG's own defect | All platforms | Unreleased |
+| [BF-c6cb4f6](#bf-c6cb4f6) | Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it | PiG's own defect | All platforms | Unreleased |
 | [BF-fd51f36](#bf-fd51f36) | A Go or Rust extension edited while it was being built could be cached under the hash of the source from… | PiG's own defect | All platforms | Unreleased |
 | [BF-b8c4b2c](#bf-b8c4b2c) | A tool's `prepareLoadout` hook now runs again before every later turn of a run, as in Pi, so the descriptions… | PiG's own defect | All platforms | Unreleased |
 | [BF-a343b2b](#bf-a343b2b) | Interactive mode now routes a message an extension sends with `sendMessage` while a run streams as Pi does | PiG's own defect | All platforms | Unreleased |
@@ -991,6 +992,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-da81152](#bf-da81152) | Two Bun runtime installs, or an install and a status check, in different processes no longer leave a moment… | PiG's own defect | All platforms | Unreleased |
 | [BF-63d1bf0](#bf-63d1bf0) | A pig session on another machine or container that shares your `~/.pig` (an NFS home, a bind mount) is no… | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
+| [BF-ea32019](#bf-ea32019) | An extension's `ctx.hasPendingMessages()` now asks the Host instead of reading a cached state snapshot, so it… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7af8b](#bf-2f7af8b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-34f3a49](#bf-34f3a49) | In print and JSON mode, a `/skill:name` prompt whose skill file cannot be read now reports the skill's read… | PiG's own defect | All platforms | Unreleased |
 | [BF-9a694a5](#bf-9a694a5) | A message sent with `deliverAs: "nextTurn"` while a run was starting could join that run instead of the next… | PiG's own defect | All platforms | Unreleased |
@@ -14289,6 +14291,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** None recorded.
 - **Release note:** A Node extension's `ctx.ui.select`, `confirm` and `input` honor `options.signal`, as Pi's RPC and interactive modes do. A signal that is already aborted resolves the default (`undefined`, or `false` for `confirm`) without showing the dialog or writing an RPC request, and a signal that aborts while the dialog is open resolves the default at once and dismisses the dialog (RPC: the pending request is dropped). Before, the signal was ignored: the dialog stayed open until the user or its timeout answered, and the extension waited for it.
 
+### BF-c6cb4f6
+
+**Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it.
+- **Root cause:** PiG's Durable writes schema version 2 (Pi main's sleeping task status), which pi-durable 1.3.0 refuses. Opening a version 1 store by file path upgraded it in place, so a user who tried PiG on their Pi data could not go back to the released Pi. driver.OpenHarness and node.OpenNodeSqliteStorage now copy such a store to <path>.schema-v1.bak (VACUUM INTO) before the upgrade; an earlier copy is never replaced, and a failed copy fails the open. pi-durable 1.3.0 opens the copy.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c6cb4f6c37` (2026-10-20)
+- **Tests:** `durable/core/driver/schema_backup_core_test.go::TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading`, `durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading`, `durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore`
+- **Release note:** Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it. PiG's Durable writes schema version 2, which no Pi release reads yet, and it upgraded the store in place. `driver.OpenHarness` and `node.OpenNodeSqliteStorage` now copy a store at an older schema version to `<path>.schema-1.bak` before upgrading it; pi-durable 1.3.0 opens that copy. An earlier copy is never replaced, and if the copy cannot be written the open fails and the store is left as it was (D188, #245; the commit that made the change calls it D186, its number before the renumber).
+
 ### BF-fd51f36
 
 **A Go or Rust extension edited while it was being built could be cached under the hash of the source from…**
@@ -14554,6 +14570,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b2c219f432` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/sdk_fingerprint_marker_test.go::TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker`
 
+### BF-ea32019
+
+**An extension's `ctx.hasPendingMessages()` now asks the Host instead of reading a cached state snapshot, so it…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension's `ctx.hasPendingMessages()` now asks the Host instead of reading a cached state snapshot, so it reports a steering or follow-up message queued while a handler is awaited, as Pi's live getter does.
+- **Root cause:** pi-queue-steer checks that flag right after pi.sendUserMessage() with deliverAs and re-queues on a false negative, which surfaced as "Pi did not accept the queued message at this delivery boundary" even though the message was delivered.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ea32019f45` (2026-10-21)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_has_pending_messages_test.go::TestNodeContextHasPendingMessagesReadsTheHostLive`
+- **Release note:** An extension's `ctx.hasPendingMessages()` now asks the Host instead of reading a cached state snapshot, so it reports a steering or follow-up message queued while a handler is awaited, as Pi's live getter does. Extensions that gate delivery on that flag, such as `pi-queue-steer`, no longer report `Pi did not accept the queued message at this delivery boundary` after a message that was delivered.
+
 ### BF-2f7af8b
 
 **Fix in shipped code**
@@ -14781,6 +14811,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D185 | A Kitty CSI-u Shift+letter with no shifted alternate decodes as the uppercase letter, where Pi keeps the base… | deliberate difference |
 | D186 | A hung-up terminal under a session whose event loop holds nothing: Pi exits 0 or 129, PiG exits 129 | deliberate difference |
 | D187 | A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single… | deliberate difference |
+| D188 | Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 
