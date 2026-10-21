@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-928 bugs. 878 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+929 bugs. 879 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -941,6 +941,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
 | [BF-f35d0a0](#bf-f35d0a0) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | Unreleased |
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
+| [BF-1d7c591](#bf-1d7c591) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6a360d](#bf-f6a360d) | A compaction, branch summary or bug-report summary request is now sent through the session's own stream… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1d1a4c](#bf-c1d1a4c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | Unreleased |
 | [BF-e6d1b69](#bf-e6d1b69) | Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends… | PiG's own defect | All platforms | Unreleased |
@@ -13883,6 +13884,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `96edeab595` (2026-10-20)
 - **Tests:** `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_completeness_test.go::TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeRestoreRemovesAFileItAdded`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeWritesNothingWhenTheRewriteWouldAddACompileError` and 13 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form. It exits 1 and reports `partly upgraded` when uses are left. `--dry-run` compiles the rewritten extension in a temporary directory (the go command's overlay, with the staged SDK) and reports `would upgrade` only when it builds; a rewrite that would add a compile error of its own is not written. The load error of a drifted extension names the changed APIs and the exact command. The stale-copy warning also recognises an edited copy by its Go module path.
+
+### BF-1d7c591
+
+**Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d7c591b61` (2026-10-21)
+- **Tests:** `codemode/sandbox_scaling_test.go::TestSandboxConstructionIsLinearInTheCatalogSize`, `codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled`, `coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog`, `coding/mcpext/extension_test.go::TestAgentSessionMCPRegistrationIsLinearInTheCatalogSize`
+- **Release note:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.
 
 ## Divergences from Pi added in this release
 
