@@ -2026,8 +2026,8 @@ class _SurfaceRenderer:
                 pass
 
 
-class _ToolStart:
-    """One tool_call request's place in the order the handlers start. ``begin`` returns when every earlier request began its handler or ended without one."""
+class _RequestStart:
+    """One request's place in the order the handlers start (``_starts_in_arrival_order``). ``begin`` returns when every earlier request began its handler or ended without one."""
 
     def __init__(self, previous: threading.Event | None) -> None:
         self._previous = previous
@@ -2047,20 +2047,25 @@ class _ToolStart:
         self.done.set()
 
 
-class _ToolStartOrder:
-    """Starts the handlers of tool_call requests in the order the requests arrive.
+def _starts_in_arrival_order(request: dict[str, Any] | None) -> bool:
+    """Whether a request runs a handler whose start Pi orders by call order: a tool_call, an event or a command. Other requests (renders, provider streams, completions) hold no place, so a long one never holds a handler back."""
+    return (request or {}).get("method") in ("tool_call", "event", "command")
 
-    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837). The host writes a batch's tool_call requests in source order, but each request runs on its own thread, and the scheduler is free to run a later thread first.
+
+class _RequestStartOrder:
+    """Starts the handlers of the requests that run extension code in the order the requests arrive (``_starts_in_arrival_order``).
+
+    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837); concurrent emits, such as the tool_result hooks of that batch, start their handlers in call order too (runner.ts:1096-1125). The host writes the requests in that order, but each request runs on its own thread, and the scheduler is free to run a later thread first.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._tail: threading.Event | None = None
 
-    def reserve(self) -> _ToolStart:
+    def reserve(self) -> _RequestStart:
         """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
-            start = _ToolStart(self._tail)
+            start = _RequestStart(self._tail)
             self._tail = start.done
             return start
 
@@ -2282,8 +2287,8 @@ class Context:
     _parent: _RequestParent | None = None
     # A tool_call request: the context has `tools` and `execute_tool` (runner.ts:952-985).
     _tool_context: bool = False
-    # A tool_call request: its place in the order the handlers start.
-    _tool_start: "_ToolStart | None" = None
+    # A tool_call, event or command request: its place in the order the handlers start.
+    _request_start: "_RequestStart | None" = None
     # A withSession context: the replacement Session's locally answered values.
     _replacement: "_ReplacementState | None" = None
     # A before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
@@ -3491,7 +3496,7 @@ class Extension:
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
-        self._tool_starts = _ToolStartOrder()
+        self._request_starts = _RequestStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
         self._with_sessions = _WithSessionRegistry()
         self._setups = _WithSessionRegistry()
@@ -4317,8 +4322,8 @@ class Extension:
 
     def _start_request(self, env: dict[str, Any]) -> None:
         ctx = self._arm_request(env)
-        if (env.get("request") or {}).get("method") == "tool_call":
-            ctx._tool_start = self._tool_starts.reserve()
+        if _starts_in_arrival_order(env.get("request")):
+            ctx._request_start = self._request_starts.reserve()
         self._request_state(env.get("id", ""), "started")
         worker = threading.Thread(
             target=self._handle_request_thread,
@@ -4333,8 +4338,8 @@ class Extension:
         except Exception as exc:
             with self._request_threads_lock:
                 self._request_threads.discard(worker)
-            if ctx._tool_start is not None:
-                ctx._tool_start.release()
+            if ctx._request_start is not None:
+                ctx._request_start.release()
             self._respond(
                 env.get("id", ""),
                 None,
@@ -4719,8 +4724,8 @@ class Extension:
                 with self._tool_registration_lock:
                     handler = self._tool_handlers[name]
                 # agent-loop.ts:619-647: the handlers of a batch start in source order.
-                if ctx._tool_start is not None:
-                    ctx._tool_start.begin()
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 result = handler(ctx, params)
                 payload = result if isinstance(result, dict) else {"content": str(result)}
                 self._respond(req_id, payload, None)
@@ -4814,6 +4819,9 @@ class Extension:
             elif method == "command":
                 name = req.get("tool", "")
                 args = req.get("args") or ""
+                # runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 self._command_handlers[name](ctx, args if isinstance(args, str) else json.dumps(args))
                 self._respond(req_id, None, None)
             elif method == "command_argument_completions":
@@ -4859,6 +4867,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
@@ -4871,6 +4881,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve input edits before reporting the handler error.
                         error = {"message": str(exc)}
@@ -4894,6 +4906,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve section mutations before reporting the handler error.
                         error = {"message": str(exc)}
@@ -4907,6 +4921,8 @@ class Extension:
                 snapshot = list(messages) if isinstance(messages, list) else None
                 # A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
                 encoded_before = _context_messages_encoding(messages) if snapshot is not None and req.get("event") in {"context", "context_with_system"} else None
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 result = handler(ctx, data)
                 if req.get("event") == "user_bash":
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
@@ -4960,8 +4976,8 @@ class Extension:
         except Exception as exc:  # noqa: BLE001 - SDK boundary reports handler errors.
             self._respond(req_id, None, {"message": str(exc)})
         finally:
-            if ctx._tool_start is not None:
-                ctx._tool_start.end()
+            if ctx._request_start is not None:
+                ctx._request_start.end()
             with self._state_lock:
                 self._active.pop(req_id, None)
                 self._request_parents.pop(req_id, None)

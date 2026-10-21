@@ -798,6 +798,25 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.tool("timer_defer", "Notify inline and from deferred work", {"type": "object"}, timer_defer)
     ext.tool("timer_release", "Release the deferred work", {"type": "object"}, timer_release)
+    # order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+    def order_probe(ctx, params):
+        ctx.notify(f"order-call={params.get('n')}", "info")
+        ctx.notify(f"order-then={params.get('n')}", "info")
+        ctx.on_update({"content": [{"type": "text", "text": f"order-update={params.get('n')}"}]})
+        return {"content": f"order-done n={params.get('n')}"}
+
+    ext.tool("order_probe", "Make a host call and an update in the first tick", {"type": "object", "properties": {"n": {"type": "number"}}}, order_probe)
+    # mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+    def mutation_order_probe(ctx, params):
+        def body():
+            path = pathlib.Path(params["file"])
+            before = path.read_text() if path.exists() else ""
+            path.write_text(before + params["tag"] + "\n")
+
+        pig_sdk.with_file_mutation_queue(params["file"], body)
+        return {"content": "mutated " + params["tag"]}
+
+    ext.tool("mutation_order_probe", "Take the file mutation queue and append a tag to the file", {"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}, mutation_order_probe)
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
     ext.tool("tool_error", "Return a thrown tool error", {"type": "object"}, tool_error)
     ext.tool("tool_is_error", "Return a structured tool error result", {"type": "object"}, tool_is_error)
@@ -1703,6 +1722,9 @@ def new_extension() -> pig_sdk.Extension:
         return None
 
     def tool_result(ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any] | None:
+        if data.get("toolName") == "order_probe":
+            ctx.notify("order-result=%s" % data.get("toolCallId"), "info")
+            return None
         guards = (
             ("bash", pig_sdk.is_bash_tool_result),
             ("powershell", pig_sdk.is_powershell_tool_result),

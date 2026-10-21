@@ -121,7 +121,7 @@ mod protocol;
 mod theme;
 mod theme_color;
 mod tool_render;
-mod tool_start_order;
+mod request_start_order;
 mod transport;
 mod user_bash;
 pub use user_bash::{BashExecFn, BashExecOptions, BashOperations};

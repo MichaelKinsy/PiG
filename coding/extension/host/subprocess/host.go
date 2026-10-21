@@ -2551,6 +2551,16 @@ func (me *managedExt) reap() {
 	me.stderrLog.remove()
 }
 
+// processFileMutations is the file mutation queue registry the connections of me's process share: the process of a packed Go, Rust or Python cell, which several
+// extensions run in and whose helpers take and give back a turn over whichever extension's connection is running. Nil for an extension that has its process, or
+// whose runtime (Node) asks over its own connection, so its tickets stay with that connection.
+func (me *managedExt) processFileMutations() *fileMutationTurns {
+	if me.packedProcess == nil || me.packedProcess.share == nil || me.packedProcess.share.node {
+		return nil
+	}
+	return &me.packedProcess.share.turns
+}
+
 // releaseShare gives back the reference me holds on its process, once per process. The process ends with its last reference.
 func (me *managedExt) releaseShare() {
 	if me.share != nil && me.shareReleased.CompareAndSwap(false, true) {
@@ -3696,6 +3706,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 			definition.PrepareArguments = h.makeToolPrepareArguments(me, tool.Name)
 		}
 		definition.ReserveCallOrder = toolCallOrder(me)
+		definition.MayTakeFileMutationQueue = true
 		if tool.RendersCall {
 			definition.RenderCall = h.makeToolRenderCall(me, tool.Name)
 		}
@@ -3874,6 +3885,13 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 			arrived = func() { dispatched = conn.dispatchBarrier(reqCtx); slot.Settle() }
 		}
 		reqCtx = withRequestArrived(reqCtx, arrived)
+		// upstream: agent-loop.ts:619-647: the edit and write calls after this one in the batch register in the file mutation queue once this tool's synchronous
+		// prefix is over, which the extension may spend taking the queue itself (withFileMutationQueue). The host sees the end of the prefix when it applies the
+		// request's first host call that returns a Promise in Pi, or when the runtime reports the handler blocked on something else, and the call's end closes the window.
+		if window := agent.ToolStartWindowFromContext(ctx, toolCallID); window != nil {
+			defer window.Close()
+			reqCtx = withRequestWindow(reqCtx, window)
+		}
 		if err := h.pushStateTo(reqCtx, me, conn); err != nil {
 			return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
 		}
@@ -4329,7 +4347,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			case toolUpdate != nil:
 				resp, err = conn.requestOrdered(parent, envelope, me.toolUpdates.order(conn, *toolUpdate, payload, args[0], boundaryWire))
 			default:
-				resp, err = conn.Request(parent, envelope)
+				requestCtx := parent
+				if started := extension.DispatchStartedFromContext(parent); started != nil {
+					// The request is the handler's start: the process runs requests in the order they arrive.
+					requestCtx = withRequestIssued(parent, started)
+				}
+				resp, err = conn.Request(requestCtx, envelope)
 			}
 			return nil
 		}
@@ -4485,10 +4508,21 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// pig additive (D19): Pi applies a command's calls, such as writing a dialog request, before the process can exit, so the command counts as suspended only after the calls received before its report applied their synchronous parts. The wait runs off the read loop because those calls can need later frames.
 			if env.RequestState != nil {
 				state := *env.RequestState
+				// A report that ends a tool's start window waits for the calls the extension sent before it, not for the call its handler sends after it: the calls
+				// are marked now, in the order the frames were read.
+				applied := lanes.barrier
+				if state.State != "suspended" {
+					applied = lanes.barrierMark()
+				}
 				go func() {
-					lanes.barrier()
+					applied()
 					conn.deliverRequestState(state)
-					conn.settleSuspension(state.RequestID)
+					if state.State == "suspended" {
+						conn.settleSuspension(state.RequestID)
+					} else {
+						// The handler of a tool_call request awaited something that is not a host call: Pi's next call starts (conn.endsStartWindow).
+						conn.endRequestWindowByReport(state.RequestID)
+					}
 				}()
 			}
 

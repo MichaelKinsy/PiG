@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import zlib from "node:zlib";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
@@ -279,6 +280,32 @@ export default function (pi) {
     description: "Nothing: Node's callbacks need no release",
     parameters: { type: "object" },
     async execute() { return { content: [{ type: "text", text: "released" }] }; },
+  });
+  // order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+  pi.registerTool({
+    name: "order_probe",
+    description: "Make a host call and an update in the first tick",
+    parameters: { type: "object", properties: { n: { type: "number" } } },
+    async execute(_id, params, _signal, onUpdate, ctx) {
+      ctx.ui.notify(`order-call=${params.n}`, "info");
+      ctx.ui.notify(`order-then=${params.n}`, "info");
+      onUpdate({ content: [{ type: "text", text: `order-update=${params.n}` }] });
+      return { content: [{ type: "text", text: `order-done n=${params.n}` }] };
+    },
+  });
+  // mutation_order_probe takes the file mutation queue in its first statement (late: "loop" awaits the event loop first) and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+  pi.registerTool({
+    name: "mutation_order_probe",
+    description: "Take the file mutation queue and append a tag to the file",
+    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" }, late: { type: "string" } } },
+    async execute(_id, params) {
+      if (params.late === "loop") await new Promise((resolve) => setImmediate(resolve));
+      await withFileMutationQueue(params.file, async () => {
+        const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
+        fs.writeFileSync(params.file, `${before}${params.tag}\n`);
+      });
+      return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
+    },
   });
   pi.registerTool({
     name: "throw_probe",
@@ -1260,6 +1287,7 @@ export default function (pi) {
     if (event.input?.command === "blocked-command") return { block: true, reason: `blocked ${event.toolName}` };
   });
   pi.on("tool_result", async (event, ctx) => {
+    if (event.toolName === "order_probe") { ctx.ui.notify(`order-result=${event.toolCallId}`, "info"); return; }
     const held = [["bash", isBashToolResult], ["powershell", isPowerShellToolResult], ["read", isReadToolResult], ["edit", isEditToolResult], ["write", isWriteToolResult], ["grep", isGrepToolResult], ["find", isFindToolResult], ["ls", isLsToolResult]].filter(([, is]) => is(event)).map(([name]) => name);
     ctx.ui.notify(`tool-result-guards=${held.join(",")}`, "info");
     if (event.toolName !== "powershell" && event.toolName !== "bash") return;

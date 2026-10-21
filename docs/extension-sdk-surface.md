@@ -43,7 +43,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 901 | 9 | 0 | 10 |
+| `pi-coding-agent` | 900 | 10 | 0 | 10 |
 | `pi-tui` | 361 | 1 | 0 | 1 |
 | `pi-ai` | 85 | 1 | 0 | 0 |
 | `pi-ai/compat` | 136 | 9 | 0 | 0 |
@@ -2330,7 +2330,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: truncateLine` | `function truncateLine` | Pi's own code |
 | `pi-coding-agent: truncateTail` | `function truncateTail` | Pi's own code |
 | `pi-coding-agent: truncateToVisualLines` | `function truncateToVisualLines` | Pi's own code |
-| `pi-coding-agent: withFileMutationQueue` | `function withFileMutationQueue` | Pi's own code |
+| `pi-coding-agent: withFileMutationQueue` | `function withFileMutationQueue` | bridged |
 | `pi-coding-agent: wrapRegisteredTool` | `function wrapRegisteredTool` | Pi's own code |
 | `pi-coding-agent: wrapRegisteredTools` | `function wrapRegisteredTools` | Pi's own code |
 

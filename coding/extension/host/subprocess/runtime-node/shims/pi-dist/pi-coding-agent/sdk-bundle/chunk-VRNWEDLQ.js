@@ -143,14 +143,14 @@ var OutputAccumulator = class {
     }
     const stream = this.tempFileStream;
     this.tempFileStream = void 0;
-    await new Promise((resolve2, reject) => {
+    await new Promise((resolve, reject) => {
       const onError = /* @__PURE__ */ __name((error) => {
         stream.off("finish", onFinish);
         reject(error);
       }, "onError");
       const onFinish = /* @__PURE__ */ __name(() => {
         stream.off("error", onError);
-        resolve2();
+        resolve();
       }, "onFinish");
       stream.once("error", onError);
       stream.once("finish", onFinish);
@@ -1093,52 +1093,8 @@ async function computeEditsDiff(path4, edits, cwd) {
 }
 __name(computeEditsDiff, "computeEditsDiff");
 
-// pi-dist/pi-coding-agent/core/tools/file-mutation-queue.js
-import { realpath } from "node:fs/promises";
-import { resolve } from "node:path";
-var fileMutationQueues = /* @__PURE__ */ new Map();
-var registrationQueue = Promise.resolve();
-function isMissingPathError(error) {
-  return typeof error === "object" && error !== null && "code" in error && (error.code === "ENOENT" || error.code === "ENOTDIR");
-}
-__name(isMissingPathError, "isMissingPathError");
-async function getMutationQueueKey(filePath) {
-  const resolvedPath = resolve(filePath);
-  try {
-    return await realpath(resolvedPath);
-  } catch (error) {
-    if (isMissingPathError(error)) {
-      return resolvedPath;
-    }
-    throw error;
-  }
-}
-__name(getMutationQueueKey, "getMutationQueueKey");
-async function withFileMutationQueue(filePath, fn) {
-  const registration = registrationQueue.then(async () => {
-    const key2 = await getMutationQueueKey(filePath);
-    const currentQueue2 = fileMutationQueues.get(key2) ?? Promise.resolve();
-    let releaseNext2;
-    const nextQueue = new Promise((resolveQueue) => {
-      releaseNext2 = resolveQueue;
-    });
-    const chainedQueue2 = currentQueue2.then(() => nextQueue);
-    fileMutationQueues.set(key2, chainedQueue2);
-    return { key: key2, currentQueue: currentQueue2, chainedQueue: chainedQueue2, releaseNext: releaseNext2 };
-  });
-  registrationQueue = registration.then(() => void 0, () => void 0);
-  const { key, currentQueue, chainedQueue, releaseNext } = await registration;
-  await currentQueue;
-  try {
-    return await fn();
-  } finally {
-    releaseNext();
-    if (fileMutationQueues.get(key) === chainedQueue) {
-      fileMutationQueues.delete(key);
-    }
-  }
-}
-__name(withFileMutationQueue, "withFileMutationQueue");
+// pi-dist/pi-coding-agent/core/tools/edit.js
+import { withFileMutationQueue } from "../../../file-mutation-queue-bridge.mjs";
 
 // pi-dist/pi-coding-agent/core/tools/renderers/edit.js
 import { Box, Container as Container2, Spacer as Spacer2, Text as Text2 } from "../../../pi-tui.mjs";
@@ -1533,6 +1489,9 @@ function createEditTool(cwd, options) {
   return wrapToolDefinition(createEditToolDefinition(cwd, options));
 }
 __name(createEditTool, "createEditTool");
+
+// pi-dist/pi-coding-agent/core/tools/index.js
+import { withFileMutationQueue as withFileMutationQueue3 } from "../../../file-mutation-queue-bridge.mjs";
 
 // pi-dist/pi-coding-agent/core/tools/find.js
 import { createInterface } from "node:readline";
@@ -1968,7 +1927,7 @@ function createFindToolDefinition(cwd, options) {
     promptSnippet: findToolSystemPromptContribution.snippet,
     parameters: findSchema,
     async execute(_toolCallId, { pattern, path: searchDir, limit }, signal, _onUpdate, ctx) {
-      return new Promise((resolve2, reject) => {
+      return new Promise((resolve, reject) => {
         if (signal?.aborted) {
           reject(new Error("Operation aborted"));
           return;
@@ -2011,7 +1970,7 @@ function createFindToolDefinition(cwd, options) {
                 return;
               }
               if (results.length === 0) {
-                settle(() => resolve2({
+                settle(() => resolve({
                   content: [{ type: "text", text: "No files found matching pattern" }],
                   details: void 0
                 }));
@@ -2037,7 +1996,7 @@ function createFindToolDefinition(cwd, options) {
 
 [${notices.join(". ")}]`;
               }
-              settle(() => resolve2({
+              settle(() => resolve({
                 content: [{ type: "text", text: resultOutput }],
                 details: Object.keys(details).length > 0 ? details : void 0
               }));
@@ -2114,7 +2073,7 @@ function createFindToolDefinition(cwd, options) {
                 }
               }
               if (!output) {
-                settle(() => resolve2({
+                settle(() => resolve({
                   content: [{ type: "text", text: "No files found matching pattern" }],
                   details: void 0
                 }));
@@ -2146,7 +2105,7 @@ function createFindToolDefinition(cwd, options) {
 
 [${notices.join(". ")}]`;
               }
-              settle(() => resolve2({
+              settle(() => resolve({
                 content: [{ type: "text", text: resultOutput }],
                 details: Object.keys(details).length > 0 ? details : void 0
               }));
@@ -2268,7 +2227,7 @@ function createGrepToolDefinition(cwd, options) {
     promptSnippet: grepToolSystemPromptContribution.snippet,
     parameters: grepSchema,
     async execute(_toolCallId, { pattern, path: searchDir, glob, ignoreCase, literal, context, limit }, signal, _onUpdate, ctx) {
-      return new Promise((resolve2, reject) => {
+      return new Promise((resolve, reject) => {
         if (signal?.aborted) {
           reject(new Error("Operation aborted"));
           return;
@@ -2417,7 +2376,7 @@ function createGrepToolDefinition(cwd, options) {
                 return;
               }
               if (matchCount === 0) {
-                settle(() => resolve2({ content: [{ type: "text", text: "No matches found" }], details: void 0 }));
+                settle(() => resolve({ content: [{ type: "text", text: "No matches found" }], details: void 0 }));
                 return;
               }
               for (const match of matches) {
@@ -2454,7 +2413,7 @@ function createGrepToolDefinition(cwd, options) {
                 output += `
 
 [${notices.join(". ")}]`;
-              settle(() => resolve2({
+              settle(() => resolve({
                 content: [{ type: "text", text: output }],
                 details: Object.keys(details).length > 0 ? details : void 0
               }));
@@ -2557,7 +2516,7 @@ function createLsToolDefinition(cwd, options) {
     promptSnippet: lsToolSystemPromptContribution.snippet,
     parameters: lsSchema,
     async execute(_toolCallId, { path: path4, limit }, signal, _onUpdate, ctx) {
-      return new Promise((resolve2, reject) => {
+      return new Promise((resolve, reject) => {
         if (signal?.aborted) {
           reject(new Error("Operation aborted"));
           return;
@@ -2605,7 +2564,7 @@ function createLsToolDefinition(cwd, options) {
             }
             signal?.removeEventListener("abort", onAbort);
             if (results.length === 0) {
-              resolve2({ content: [{ type: "text", text: "(empty directory)" }], details: void 0 });
+              resolve({ content: [{ type: "text", text: "(empty directory)" }], details: void 0 });
               return;
             }
             const rawOutput = results.join("\n");
@@ -2626,7 +2585,7 @@ function createLsToolDefinition(cwd, options) {
 
 [${notices.join(". ")}]`;
             }
-            resolve2({
+            resolve({
               content: [{ type: "text", text: output }],
               details: Object.keys(details).length > 0 ? details : void 0
             });
@@ -3139,13 +3098,13 @@ async function resizeImageInWorker(workerSpecifier, inputBytes, mimeType, option
   const worker = createResizeWorker(workerSpecifier);
   try {
     const inputBytesForWorker = toTransferableBytes(inputBytes);
-    return await new Promise((resolve2, reject) => {
+    return await new Promise((resolve, reject) => {
       let settled = false;
       const settle = /* @__PURE__ */ __name((result) => {
         if (settled)
           return;
         settled = true;
-        resolve2(result);
+        resolve(result);
       }, "settle");
       const fail = /* @__PURE__ */ __name((error) => {
         if (settled)
@@ -3562,7 +3521,7 @@ function createReadToolDefinition(cwd, options) {
     outputSchema: readOutputSchema,
     constrainedSampling: { type: "json_schema", strict: "prefer" },
     async execute(_toolCallId, { path: path4, offset, limit }, signal, _onUpdate, ctx) {
-      return new Promise((resolve2, reject) => {
+      return new Promise((resolve, reject) => {
         if (signal?.aborted) {
           reject(new Error("Operation aborted"));
           return;
@@ -3664,7 +3623,7 @@ ${nonVisionImageNote}`;
             if (aborted)
               return;
             signal?.removeEventListener("abort", onAbort);
-            resolve2({ content, details });
+            resolve({ content, details });
           } catch (error) {
             signal?.removeEventListener("abort", onAbort);
             if (!aborted)
@@ -3686,6 +3645,7 @@ __name(createReadTool, "createReadTool");
 import { mkdir as fsMkdir, writeFile as fsWriteFile2 } from "fs/promises";
 import { dirname as dirname3 } from "path";
 import { Type as Type7 } from "../../../typebox.mjs";
+import { withFileMutationQueue as withFileMutationQueue2 } from "../../../file-mutation-queue-bridge.mjs";
 
 // pi-dist/pi-coding-agent/core/tools/renderers/write.js
 import { Container as Container3, Text as Text7 } from "../../../pi-tui.mjs";
@@ -3864,7 +3824,7 @@ function createWriteToolDefinition(cwd, options) {
     async execute(_toolCallId, { path: path4, content }, signal, _onUpdate, ctx) {
       const absolutePath = resolveToCwd(path4, ctx?.cwd || cwd);
       const dir = dirname3(absolutePath);
-      return withFileMutationQueue(absolutePath, async () => {
+      return withFileMutationQueue2(absolutePath, async () => {
         const throwIfAborted = /* @__PURE__ */ __name(() => {
           if (signal?.aborted)
             throw new Error("Operation aborted");
@@ -4023,7 +3983,6 @@ export {
   resolveReadPath,
   generateUnifiedPatch,
   generateDiffString,
-  withFileMutationQueue,
   renderDiff,
   editRenderers,
   createEditToolDefinition,
@@ -4058,5 +4017,6 @@ export {
   createAllToolDefinitions,
   createCodingTools,
   createReadOnlyTools,
-  createAllTools
+  createAllTools,
+  withFileMutationQueue3 as withFileMutationQueue
 };

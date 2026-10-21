@@ -20,21 +20,26 @@ import (
 // Upstream extensions call the host in process, so every synchronous host API
 // applies in program order and every Promise-returning API starts in program
 // order. The host keeps that contract for extension→host calls: calls apply in
-// arrival order within one ordering lane, and a call whose upstream API returns
-// a Promise starts in order but completes on its own goroutine, so a later call
+// arrival order within one ordering lane, the calls of different lanes start
+// in arrival order (callLanes), and a call whose upstream API returns a
+// Promise starts in order but completes on its own goroutine, so a later call
 // never waits for a user, a process, or a model.
 //
-// A lane is keyed by the call's parent request. Calls an extension makes while
-// it handles a host request belong to that request's lane. The host may be
-// waiting for that request inside an earlier call of another lane, for example
-// a setting change that emits an event to the same extension, so lanes never
-// wait for one another.
+// A lane is keyed by the call's parent request (Conn.callLane), and the calls
+// of every tool_call request share one lane. Calls an extension makes while
+// it handles another host request belong to that request's lane. The host may
+// be waiting for that request inside an earlier call of another lane, for
+// example a setting change that emits an event to the same extension, so a
+// lane waits for another lane's calls to start, never to finish.
 
 // startsAsync reports whether the upstream API behind method returns a
 // Promise. Such a call starts in lane order and then runs on its own goroutine.
 func startsAsync(method string) bool {
 	switch method {
 	case "facet.host":
+		return true
+	case CallFileMutationEnter:
+		// The call takes its place in the queue and then waits for the earlier mutations of the file: the lane advances once it is registered (CallInitiated), so a call made after it is not held behind another extension's long mutation.
 		return true
 	case "ui.addAutocompleteProvider", "ui.autocomplete.invoke":
 		// The public call remains synchronous in its SDK. A reverse factory/provider callback can reenter the host, so release its call lane at callback initiation.
@@ -63,15 +68,35 @@ func holdsForLoopTurn(method string) bool {
 
 // callLanes runs extension→host calls in arrival order per lane. Each lane
 // drains on a goroutine that exits when the lane is empty.
+//
+// Calls of different lanes start in the order the connection read them:
+// Pi runs the calls of concurrent requests on one thread, so the call an
+// extension sent first applies first, and the scheduler's choice among the
+// lane goroutines must not reorder them (jsloop.Lane). Each lane's call that
+// is next to run holds a place in starts, taken in read order, and hands it on
+// when the call starts, not when it finishes: a call may wait for a request
+// whose own calls sit in another lane, so a lane never waits for another
+// lane's call to end. A call queued behind an earlier call of its own lane
+// takes its place when it reaches the head of the lane, which is why every
+// tool_call request shares one lane: the calls of a parallel batch's tools
+// then apply in the order they were read, the second call of one tool before
+// the first of the next tool's.
 type callLanes struct {
-	mu    sync.Mutex
-	lanes map[string]*callLane
+	mu     sync.Mutex
+	lanes  map[string]*callLane
+	starts jsloop.Lane
 }
 
 type callLane struct {
-	queue []func()
+	queue []queuedCall
 	// initiated is closed once the dialog call that created the lane applied its synchronous part; nil when that call is not a dialog.
 	initiated <-chan struct{}
+}
+
+type queuedCall struct {
+	run func()
+	// place is the call's place in starts, taken when the call was read if it started a lane; nil for a call that waited behind another call of its lane, which takes its place when it reaches the head.
+	place *jsloop.Place
 }
 
 func newCallLanes() *callLanes {
@@ -95,7 +120,7 @@ func (l *callLanes) pushCall(lane string, initiated <-chan struct{}, run func())
 	l.mu.Lock()
 	current := l.lanes[lane]
 	if current != nil {
-		current.queue = append(current.queue, run)
+		current.queue = append(current.queue, queuedCall{run: run})
 		l.mu.Unlock()
 		return
 	}
@@ -114,7 +139,7 @@ func (l *callLanes) pushCall(lane string, initiated <-chan struct{}, run func())
 			run()
 		}
 	}
-	current = &callLane{queue: []func(){first}, initiated: initiated}
+	current = &callLane{queue: []queuedCall{{run: first, place: l.starts.Reserve()}}, initiated: initiated}
 	l.lanes[lane] = current
 	l.mu.Unlock()
 	go l.drain(lane, current)
@@ -128,25 +153,36 @@ func (l *callLanes) drain(lane string, current *callLane) {
 			l.mu.Unlock()
 			return
 		}
-		run := current.queue[0]
-		current.queue[0] = nil
+		next := current.queue[0]
+		current.queue[0] = queuedCall{}
 		current.queue = current.queue[1:]
+		if next.place == nil {
+			next.place = l.starts.Reserve()
+		}
 		l.mu.Unlock()
-		run()
+		next.place.Wait()
+		next.place.Release()
+		next.run()
 	}
 }
 
 // barrier returns once every call queued before it has run. A Promise-shaped
 // call has run once it applied its synchronous part.
 func (l *callLanes) barrier() {
+	l.barrierMark()()
+}
+
+// barrierMark marks the calls queued so far, on the caller's goroutine, and returns the function that waits until they have run. A caller that reads frames in
+// order marks before it reads the next one, so a call the extension sent after the frame the caller marks for is not waited for.
+func (l *callLanes) barrierMark() func() {
 	var reached sync.WaitGroup
 	l.mu.Lock()
 	for _, lane := range l.lanes {
 		reached.Add(1)
-		lane.queue = append(lane.queue, reached.Done)
+		lane.queue = append(lane.queue, queuedCall{run: reached.Done})
 	}
 	l.mu.Unlock()
-	reached.Wait()
+	return reached.Wait
 }
 
 // queueCall orders one extension→host call. A Promise-shaped call runs on its
@@ -166,7 +202,7 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 	if slot := replaceOnlySlot(call.Method); slot != "" {
 		// The caller is the connection's read loop, so registration follows the order the extension sent the calls.
 		pending := h.slotCalls.register(slot, func() { h.runCall(me, conn, callID, call, nil) })
-		lanes.push(call.ParentRequestID, func() { h.runSlotCall(slot, pending); done() })
+		lanes.push(conn.callLane(call.ParentRequestID), func() { h.runSlotCall(slot, pending); done() })
 		return
 	}
 	var initiated chan struct{}
@@ -179,7 +215,7 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 	}
 	// The read loop reserves a nested call before it reads the frame that may cancel it.
 	release := h.reserveNestedCall(conn, call)
-	lanes.pushCall(call.ParentRequestID, ordering, func() {
+	lanes.pushCall(conn.callLane(call.ParentRequestID), ordering, func() {
 		if initiated == nil {
 			defer release()
 			h.runCall(me, conn, callID, call, nil)
@@ -200,6 +236,9 @@ func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callI
 		case <-finished:
 		}
 		done()
+		// The call returns a Promise in Pi, so its caller is past its first await: when the caller is a tool_call request that holds a start window, the call
+		// has applied its synchronous part, such as taking a place in the file mutation queue, and the calls behind the tool in its batch may register.
+		conn.closeRequestWindow(call.ParentRequestID)
 	})
 }
 
@@ -378,6 +417,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleParseFrontmatter(call)
 	case call.Method == CallParseDate:
 		result, err = h.handleParseDate(call)
+	case call.Method == CallFileMutationEnter:
+		result, err = h.handleFileMutationEnter(callCtx, conn, call)
+	case call.Method == CallFileMutationExit:
+		result, err = h.handleFileMutationExit(conn, call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:

@@ -191,6 +191,9 @@ type ToolDefinition struct {
 	// synchronous prefix in call order, which Go goroutines do not give; this restores it for tools whose request order is
 	// observable, such as MCP tool calls to one server.
 	ReserveCallOrder func(params json.RawMessage) *CallOrder `json:"-"`
+	// MayTakeFileMutationQueue is set for a tool whose code runs in an extension that can register in the host's file mutation queue (withFileMutationQueue),
+	// so the dispatcher holds the edit and write calls that follow it in a parallel batch behind the end of its synchronous prefix (agent.MayTakeFileMutationQueue).
+	MayTakeFileMutationQueue bool `json:"-"`
 	// ReachesTools is for tools that reach other tools (such as codemode, which calls them, and tool_search, which loads
 	// them): which tools a call with the given input may reach. Extensions that register tools late, such as MCP servers
 	// that are still connecting, use it from their tool_call handler to finish registering those tools before the call runs.
@@ -277,4 +280,17 @@ func WithCallOrder(ctx context.Context, order *CallOrder) context.Context {
 func CallOrderFromContext(ctx context.Context) (*CallOrder, bool) {
 	order, ok := ctx.Value(callOrderKey{}).(*CallOrder)
 	return order, ok && order != nil
+}
+
+type dispatchStartedKey struct{}
+
+// WithDispatchStarted returns ctx carrying started, which an event dispatch made with it calls once its first handler has started: an in-process handler when it returns, an extension process's handler when its request is written to the process. Pi starts the tool_result hooks of a parallel batch in the order their tools settled, each running to its first await before the next starts; the caller holds the hooks of later calls back until started runs. started must be idempotent.
+func WithDispatchStarted(ctx context.Context, started func()) context.Context {
+	return context.WithValue(ctx, dispatchStartedKey{}, started)
+}
+
+// DispatchStartedFromContext returns the function the dispatch calls when its first handler has started, or nil.
+func DispatchStartedFromContext(ctx context.Context) func() {
+	started, _ := ctx.Value(dispatchStartedKey{}).(func())
+	return started
 }

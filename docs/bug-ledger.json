@@ -2984,7 +2984,6 @@
           "pr": "170"
         }
       ],
-      "commitsFrom": "release note",
       "tests": [
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack",
@@ -5346,11 +5345,6 @@
           "pr": "171"
         },
         {
-          "hash": "e2db9318fa",
-          "date": "2026-10-06",
-          "pr": "173"
-        },
-        {
           "hash": "9b63b2bc4e",
           "date": "2026-10-07",
           "pr": "176"
@@ -5364,7 +5358,6 @@
       "tests": [
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/cli/rpc_shutdown_test.go::TestRPCInputEndAfterExtensionCommandComparedWithPi",
-        "coding/extension/exec_tree_test.go::TestExecCommandKeepsOutputWrittenAfterTheLeaderExits",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation",
@@ -5451,8 +5444,6 @@
         "internal/npmpublish/npmpublish_test.go::TestTheExistenceCheckAsksTheRegistryPublishSendsTo",
         "internal/npmpublish/npmpublish_test.go::TestTrustedPublishingAddsProvenance",
         "internal/npmpublish/npmpublish_test.go::TestYesPublishesWithTheRequestedTagAccessAndCode",
-        "internal/pilock/delete_pending_windows_test.go::TestAcquireWithOptionsWaitsOutLockBeingRemovedAtMkdir",
-        "internal/pilock/retry_options_test.go::TestAcquireWithOptionsRetriesEveryAttemptErrorUpstream",
         "test/ci-images/windows_test_packages_test.go::TestWindowsNativeShardChecksALongPackageListWithoutSIGPIPE",
         "test/extension-conformance/node_load_exec_test.go::TestNodeExecBetweenLoadAndRegister",
         "test/extension-conformance/node_load_exec_test.go::TestNodeFactoryExecDuringLoad",
@@ -7859,8 +7850,6 @@
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestIsBusyErrorLooksThroughWrappedJoins",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestRemoveTreeContextContinuesPastBusyFile",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestRemoveTreeContextReportsADirectoryHeldByAnNFSSillyRenameAsBusy",
-        "coding/extension/host/runtimecell/hash_inputs_test.go::TestCommandVersionCachesWarmProbeAndDetectsReplacement",
-        "coding/extension/host/subprocess/node_recovery_test.go::TestNodeUnattributableCrashRestartsWholeGroup",
         "coding/extension/host/subprocess/tool_call_input_reply_test.go::TestToolCallReplyEditsTheEventInputInPlace",
         "durable/harness/await_context_regression_test.go::TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution",
         "durable/harness/harness_lifecycle_test.go::TestHarnessClose",
@@ -31082,47 +31071,6 @@
       ]
     },
     {
-      "id": "BF-7fae4f5",
-      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB",
-      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB.",
-      "rootCause": "The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "7fae4f5df2",
-          "date": "2026-10-19"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-b341a82",
-      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
-      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
-      "rootCause": "The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
-      "rootCauseSource": "release note",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "b341a82e9d",
-          "date": "2026-10-19",
-          "pr": "221"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-2d13115",
       "title": "`pig piglet verify \u003cbinary\u003e --source \u003cname|path\u003e` and `pig piglet lineage \u003cbinary\u003e --source \u003cname|path\u003e`…",
       "symptom": "`pig piglet verify \u003cbinary\u003e --source \u003cname|path\u003e` and `pig piglet lineage \u003cbinary\u003e --source \u003cname|path\u003e` report `Provenance: matches` for a Binary built from that unchanged source.",
@@ -31179,81 +31127,21 @@
       ]
     },
     {
-      "id": "BF-ab1324d",
-      "title": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…",
-      "symptom": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.",
-      "rootCause": "A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.",
+      "id": "BF-7fae4f5",
+      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB",
+      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB.",
+      "rootCause": "The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.",
       "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
+      "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.",
+      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "94e6796e8d",
-          "date": "2026-10-20",
-          "pr": "234"
-        },
-        {
-          "hash": "ab1324df34",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts",
-        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart"
-      ]
-    },
-    {
-      "id": "BF-f35d0a0",
-      "title": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation…",
-      "symptom": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout).",
-      "rootCause": "The Harness recomputes its wake (the timer for the earliest sleep, or the value it offers OnWake) in a goroutine that the first change queues, and later changes share it. Pi does this in a microtask (scheduler.ts #scheduleWake), which runs in the turn of the change and reads the clock of the change. Here the goroutine read the clock when it ran. When it ran after a sleep committed meanwhile had come due, the sleep was not ahead of it any more, although a reservation pass queued by the change had found it not yet due, dropped it from the candidates, and relied on that wake. No timer was armed, OnWake was told that work was active instead of the time to wake at, and nothing ran the task again.",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "94e6796e8d",
-          "date": "2026-10-20",
-          "pr": "234"
-        },
-        {
-          "hash": "f35d0a0567",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal",
-        "durable/harness/harness_generation_test.go::TestGeneration",
-        "durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue",
-        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer",
-        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm"
-      ]
-    },
-    {
-      "id": "BF-0e3411c",
-      "title": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…",
-      "symptom": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "0e3411c597",
-          "date": "2026-10-19",
-          "pr": "224"
+          "hash": "7fae4f5df2",
+          "date": "2026-10-19"
         }
       ],
       "tests": []
@@ -31287,6 +31175,27 @@
       ]
     },
     {
+      "id": "BF-b341a82",
+      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
+      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
+      "rootCause": "The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b341a82e9d",
+          "date": "2026-10-19",
+          "pr": "221"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c1d1a4c",
       "title": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit",
       "symptom": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit.",
@@ -31316,55 +31225,6 @@
         "test/parity/cmd/portmapcheck/main_test.go::TestRowsSharingAPackageKeepTheirOwnVerdicts",
         "test/parity/cmd/portmapcheck/main_test.go::TestShardsJudgeEveryRowOnce",
         "test/parity/cmd/portmapcheck/main_test.go::TestWidget"
-      ]
-    },
-    {
-      "id": "BF-e6d1b69",
-      "title": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends…",
-      "symptom": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them.",
-      "rootCause": "the order of the answers was lost at two goroutine hand-offs. A sender that wakes two goroutines in a row runs the second first, so (1) the goroutines waiting in two RPC dialogs, answered by two lines of one stdin chunk, returned in reverse order, and wrote their call results to the extension in that order; and (2) the goroutines of a parallel batch that waited for two tool_call responses the connection's read loop read in order, emitted tool_execution_end in no order (about half the runs ended the second call first).",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "e6d1b69dbc",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
-        "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
-        "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived",
-        "internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors"
-      ]
-    },
-    {
-      "id": "BF-bfd090d",
-      "title": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the…",
-      "symptom": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up.",
-      "rootCause": "Node cannot lose them, because an owner registers in the tick that creates the channel.",
-      "rootCauseSource": "release note",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up. The Go port of Node's IPC channel read messages in its own goroutine and dropped any that arrived before its owner had registered a listener. Node cannot lose them, because an owner registers in the tick that creates the channel. A child that opened its channel after the parent's init message had been written could miss the init (so it never answered), and a manager descheduled between spawning the child and registering its control listener could miss the child's ready. The channel now keeps the messages received before its first listener and replays them to it in order, and a forked child instance does the same for its control listeners.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "bfd090d135",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener",
-        "chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt",
-        "chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog"
       ]
     },
     {
@@ -31452,142 +31312,172 @@
       ]
     },
     {
-      "id": "BF-df5b682",
-      "title": "A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a…",
-      "symptom": "A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as in Pi, instead of before `tool_execution_end`.",
-      "rootCause": "Pi runs a timer or immediate callback on the thread that runs the agent, so it runs only when the run awaits real work or is idle. The Node runtime is another process and ran the callback as soon as the tool answered; the host wrote its host call at once, ahead of the run's own output.",
+      "id": "BF-ab1324d",
+      "title": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…",
+      "symptom": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.",
+      "rootCause": "A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94e6796e8d",
+          "date": "2026-10-20",
+          "pr": "234"
+        },
+        {
+          "hash": "ab1324df34",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts",
+        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart"
+      ]
+    },
+    {
+      "id": "BF-bfd090d",
+      "title": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the…",
+      "symptom": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up.",
+      "rootCause": "Node cannot lose them, because an owner registers in the tick that creates the channel.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up. The Go port of Node's IPC channel read messages in its own goroutine and dropped any that arrived before its owner had registered a listener. Node cannot lose them, because an owner registers in the tick that creates the channel. A child that opened its channel after the parent's init message had been written could miss the init (so it never answered), and a manager descheduled between spawning the child and registering its control listener could miss the child's ready. The channel now keeps the messages received before its first listener and replays them to it in order, and a forked child instance does the same for its control listeners.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bfd090d135",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener",
+        "chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt",
+        "chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog"
+      ]
+    },
+    {
+      "id": "BF-e6d1b69",
+      "title": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends…",
+      "symptom": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them.",
+      "rootCause": "the order of the answers was lost at two goroutine hand-offs. A sender that wakes two goroutines in a row runs the second first, so (1) the goroutines waiting in two RPC dialogs, answered by two lines of one stdin chunk, returned in reverse order, and wrote their call results to the extension in that order; and (2) the goroutines of a parallel batch that waited for two tool_call responses the connection's read loop read in order, emitted tool_execution_end in no order (about half the runs ended the second call first).",
       "rootCauseSource": "commit",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as in Pi, instead of before `tool_execution_end`. Pi runs those callbacks when its event loop turns, which a run's chain of microtasks never gives it. The Node runtime ran them as soon as the tool answered, because it is another process, and its host calls arrived mid-run. The host now holds such calls while the RPC run chains microtasks and runs them in arrival order at the next real wait: a model response's I/O, a built-in tool's run, a dialog, a compaction or an auto-retry delay, or the end of `agent_settled`. A `process.nextTick` callback's notification follows the `tool_execution_end` of the tool that queued it, as in Pi, and the callbacks of a tool that returns while a sibling tool of its batch still runs reach the client right after its `tool_execution_end`.",
+      "releaseNote": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "2ab79ce358",
-          "date": "2026-10-06",
-          "pr": "166"
-        },
-        {
-          "hash": "56c3f85350",
-          "date": "2026-10-06",
-          "pr": "172"
-        },
-        {
-          "hash": "65b7c13e09",
-          "date": "2026-10-06",
-          "pr": "168"
-        },
-        {
-          "hash": "a4753ec61e",
-          "date": "2026-10-06",
-          "pr": "170"
-        },
-        {
-          "hash": "ba9c37b247",
-          "date": "2026-10-06",
-          "pr": "171"
-        },
-        {
-          "hash": "165cf5884d",
-          "date": "2026-10-07",
-          "pr": "180"
-        },
-        {
-          "hash": "3094ee00ca",
-          "date": "2026-10-07",
-          "pr": "185"
-        },
-        {
-          "hash": "3499c2bea7",
-          "date": "2026-10-07",
-          "pr": "181"
-        },
-        {
-          "hash": "9b63b2bc4e",
-          "date": "2026-10-07",
-          "pr": "176"
-        },
-        {
-          "hash": "ce8587ef40",
-          "date": "2026-10-07",
-          "pr": "179"
-        },
-        {
-          "hash": "3452432f8b",
-          "date": "2026-10-08",
-          "pr": "190"
-        },
-        {
-          "hash": "4610c9f4a1",
-          "date": "2026-10-08",
-          "pr": "189"
-        },
-        {
-          "hash": "b5ebeb58d1",
-          "date": "2026-10-08",
-          "pr": "191"
-        },
-        {
-          "hash": "f680b9591a",
-          "date": "2026-10-08",
-          "pr": "197"
-        },
-        {
-          "hash": "74f806c799",
-          "date": "2026-10-10",
-          "pr": "203"
-        },
-        {
-          "hash": "6af0806f7a",
-          "date": "2026-10-19",
-          "pr": "213"
-        },
-        {
-          "hash": "212a506e3e",
+          "hash": "e6d1b69dbc",
           "date": "2026-10-20"
-        },
-        {
-          "hash": "3ee123c6d5",
-          "date": "2026-10-20",
-          "pr": "255"
-        },
-        {
-          "hash": "be541d2224",
-          "date": "2026-10-20"
-        },
-        {
-          "hash": "c02ca868b5",
-          "date": "2026-10-20"
-        },
-        {
-          "hash": "6ba6adbd5e",
-          "date": "2026-10-21"
-        },
-        {
-          "hash": "dca5763ac5",
-          "date": "2026-10-21"
-        },
-        {
-          "hash": "df5b682228",
-          "date": "2026-10-21"
         }
       ],
       "tests": [
-        "internal/jsloop/turns_test.go::TestTurnsHoldCallbacksOfAChainUntilItTurns",
-        "internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers",
-        "coding/extension/host/subprocess/timer_turns_test.go::TestNodeTimerCallbackCallsWaitForTheLoopTurn",
-        "test/extension-conformance/timer_calls_test.go::TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs",
-        "test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun"
+        "agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
+        "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
+        "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived",
+        "internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors"
       ]
     },
     {
-      "id": "BF-3890175",
-      "title": "fix(extensions): write released timer calls before the chain goes on",
-      "symptom": "fix(extensions): write released timer calls before the chain goes on",
+      "id": "BF-f35d0a0",
+      "title": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation…",
+      "symptom": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout).",
+      "rootCause": "The Harness recomputes its wake (the timer for the earliest sleep, or the value it offers OnWake) in a goroutine that the first change queues, and later changes share it. Pi does this in a microtask (scheduler.ts #scheduleWake), which runs in the turn of the change and reads the clock of the change. Here the goroutine read the clock when it ran. When it ran after a sleep committed meanwhile had come due, the sleep was not ahead of it any more, although a reservation pass queued by the change had found it not yet due, dropped it from the candidates, and relied on that wake. No timer was armed, OnWake was told that work was active instead of the time to wake at, and nothing ran the task again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94e6796e8d",
+          "date": "2026-10-20",
+          "pr": "234"
+        },
+        {
+          "hash": "f35d0a0567",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal",
+        "durable/harness/harness_generation_test.go::TestGeneration",
+        "durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue",
+        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer",
+        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm"
+      ]
+    },
+    {
+      "id": "BF-0e3411c",
+      "title": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…",
+      "symptom": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
       "rootCause": "",
       "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0e3411c597",
+          "date": "2026-10-19",
+          "pr": "224"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-0275c62",
+      "title": "Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every…",
+      "symptom": "Each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update.",
+      "rootCause": "Pi has one module-level withFileMutationQueue shared by the built-in edit and write tools and every extension. PiG kept a queue per extension process, so an extension tool and a built-in tool on one file, or two extensions, could lose an update.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every extension process, as in Pi. Before, each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update. The SDKs ask the host's queue for the file's turn (`fileMutation.enter`, `fileMutation.exit`); the turn is released if the extension's connection closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0275c62f29",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationCallsAreRoutedLikeThePureHelperCalls",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterFailsForAnUnresolvablePath",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterHoldsTheHostQueueUntilExit",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterRegistersInCallOrderAndInitiatesBeforeItWaits",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationExitOfAnotherConnectionsTicketFails",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueHostErrorAndTaskFailures",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueKeepsNoQueueOfItsOwn",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueRunsTheTaskBetweenEnterAndExit",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueUsesTheFusedHostHook"
+      ]
+    },
+    {
+      "id": "BF-2f7af8b",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Regenerated by automation/gen/vendor-pi-dist.sh and go generate: the vendored edit, write and tools index load the bridge module, the sdk-bundle chunks and manifest follow, and the embedded runtime archive, the Go interface inventory and the SDK surface matrix (withFileMutationQueue is bridged) are updated. Also satisfy errorlint and staticcheck in the SDK and the host tests.",
+      "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
@@ -31595,7 +31485,158 @@
       "origin": "commit",
       "commits": [
         {
-          "hash": "38901751db",
+          "hash": "2f7af8b96d",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+      ]
+    },
+    {
+      "id": "BF-00e1452",
+      "title": "Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file…",
+      "symptom": "Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds.",
+      "rootCause": "The free function withFileMutationQueue has no Context, so in a packed Go, Rust or Python cell its turn rides the first running connection of the process. The task's exit then went to the closed connection and failed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds. The turns of a packed process now belong to the process: they are released by `fileMutation.exit` over any of its connections, or when its last connection closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00e1452222",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsOfOneProcessOutliveAConnectionAndEndWithTheLast",
+        "coding/extension/host/subprocess/packed_file_mutation_test.go::TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueExitReachesTheHostWhenTheCarryingConnectionStopped"
+      ]
+    },
+    {
+      "id": "BF-1886fff",
+      "title": "The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the…",
+      "symptom": "The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the requests arrive, as they already did for `tool_call`; before, two `tool_result` hooks in flight on one connection could start their handlers out of order (the Go SDK did so in 25 of 3000 probes).",
+      "rootCause": "Pi starts the handlers of concurrent emits in call order on one thread (runner.ts:1096-1125), so the tool_result hooks of a parallel batch reach an extension's handlers in the order they were emitted. The Go, Python and Rust SDKs ran each request on a thread of its own and reserved a start place only for tool_call, so two event requests in flight started their handlers in scheduler order. Event and command requests now take a place when their frame is read and invoke their handler after the earlier requests' handlers were invoked, as tool_call already did; requests that run no extension handler (renders, provider streams, completions) hold no place.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the requests arrive, as they already did for `tool_call`; before, two `tool_result` hooks in flight on one connection could start their handlers out of order (the Go SDK did so in 25 of 3000 probes).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1886fff37b",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-f172d67",
+      "title": "Extension tools of one parallel batch reach the host in Pi's order",
+      "symptom": "Extension tools of one parallel batch reach the host in Pi's order.",
+      "rootCause": "Pi runs the tools of a parallel batch, their hooks and their listeners on one thread.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension tools of one parallel batch reach the host in Pi's order. Pi runs a batch on one thread, so the host calls the tools make in their first tick (`appendEntry`, `ui.notify`, `ui.setStatus`, `setActiveTools`, `sendMessage`, and the rest) apply in the order the extension sent them, whichever tool made each; before, eight parallel tools that each called the host applied their calls in scheduler order, and in a Node extension that also reordered the tools' answers, so `tool_execution_end` and the tool_result hooks came in a different order on every run.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f172d67319",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "agent/tool_settle_test.go::TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook"
+      ]
+    },
+    {
+      "id": "BF-f172d67-2",
+      "title": "The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its…",
+      "symptom": "The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its first await before the next one starts, and a tool's `onUpdate` reaches the listeners in the order the tools called it, across tools; before, both followed goroutine wake order.",
+      "rootCause": "Pi runs the tools of a parallel batch, their hooks and their listeners on one thread.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its first await before the next one starts, and a tool's `onUpdate` reaches the listeners in the order the tools called it, across tools; before, both followed goroutine wake order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f172d67319",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "agent/tool_settle_test.go::TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook"
+      ]
+    },
+    {
+      "id": "BF-536efd5",
+      "title": "An edit or write call of a parallel batch registers in the file mutation queue after the extension tools…",
+      "symptom": "The built-in call registered in the dispatcher's loop, a process hop before the extension's registration arrived, so `[extension tool, write]` applied the write first.",
+      "rootCause": "The built-in calls registered in the dispatcher's loop, before any extension request was written, while the extension's fileMutation.enter reached the host a process hop later: [extension tool, write] applied the write first (confirmed against Pi on c5, 3 of 3). A window closes when the host applies a host call of the request that returns a Promise in Pi (startsAsync), when the Node runtime reports the handler blocked on something that is not a host call (the report follows the tool's execute call, which ran its synchronous prefix), when the request is answered, or when the call ends. A batch with no extension tool before the edit or write call registers it in the loop as before.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An edit or write call of a parallel batch registers in the file mutation queue after the extension tools before it in the batch took the queue, as Pi does: Pi registers a call in the queue when it calls `withFileMutationQueue` and runs each call's first statements in call order. Before, the built-in call registered in the dispatcher's loop, a process hop before the extension's registration arrived, so `[extension tool, write]` applied the write first. The Go, Python, Rust and Node SDKs, isolated, packed and fused, now agree. A native tool that waits on something other than a host call before it takes the queue still registers first, and a write behind a native tool that makes no host call waits for the tool; both are recorded in the parity row.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "536efd5e91",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-d9ec956",
+      "title": "The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes…",
+      "symptom": "The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes the tool's start window after the calls the extension sent before the report, not after the call its handler sends next.",
+      "rootCause": "The Node runtime reports a tool whose execute awaited something that is not a host call, and the host closes the tool's start window once the calls the extension sent before the report applied their synchronous parts. The host marked those calls on the goroutine that waited, so a call the handler sent right after the report (its fileMutation.enter after an await of the event loop) could be queued first and be waited for: the window closed after the extension's registration and the write registered second. The calls are marked on the loop that reads the frames, in arrival order. The generated Node runtime pack and its digest follow runtime.mjs.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes the tool's start window after the calls the extension sent before the report, not after the call its handler sends next.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d9ec9560dd",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-ee65aea",
+      "title": "A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the…",
+      "symptom": "A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the edit or write call behind it, as in Pi; before, the two raced and the extension won every round.",
+      "rootCause": "Pi registers the write first when the extension tool awaits the event loop before it calls withFileMutationQueue: the tool's prefix ends at the await. The Node runtime reported the await and the host closed the tool's start window, but the tool's registration is the next frame it sends, one event-loop turn later, so the write and the extension registered in a race (the extension won every round). The runtime now holds the tool's next fileMutation.enter after such a report until the host says the writes that waited for the window registered (NotifyToolWindowSettled, host to Node runtime, sent only to a runtime that sent the report); the dispatcher counts the calls that wait for each window…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the edit or write call behind it, as in Pi; before, the two raced and the extension won every round. The runtime holds the tool's next `fileMutation.enter` until the host reports the writes behind the tool registered.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee65aead9a",
           "date": "2026-10-21"
         }
       ],

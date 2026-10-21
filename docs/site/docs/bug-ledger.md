@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-930 bugs. 880 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 140 bugs have no recorded test.
+937 bugs. 887 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 143 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -934,21 +934,28 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-c2cdd5b](#bf-c2cdd5b) | An extension that set its header or footer, or registered a sprite or a login, from its own goroutine painted… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2cdd5b-2](#bf-c2cdd5b-2) | The terminal width and height the extension host tells extensions during `/reload`, and when one starts or… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ef10b6](#bf-6ef10b6) | Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each… | PiG's own defect | All platforms | Unreleased |
-| [BF-7fae4f5](#bf-7fae4f5) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | Unreleased |
-| [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
 | [BF-2d13115](#bf-2d13115) | `pig piglet verify <binary> --source <name\|path>` and `pig piglet lineage <binary> --source <name\|path>`… | PiG's own defect | All platforms | Unreleased |
 | [BF-2d13115-2](#bf-2d13115-2) | `pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the… | PiG's own defect | All platforms | Unreleased |
-| [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
-| [BF-f35d0a0](#bf-f35d0a0) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | Unreleased |
-| [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
+| [BF-7fae4f5](#bf-7fae4f5) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | Unreleased |
 | [BF-f6a360d](#bf-f6a360d) | A compaction, branch summary or bug-report summary request is now sent through the session's own stream… | PiG's own defect | All platforms | Unreleased |
+| [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
 | [BF-c1d1a4c](#bf-c1d1a4c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | Unreleased |
-| [BF-e6d1b69](#bf-e6d1b69) | Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends… | PiG's own defect | All platforms | Unreleased |
-| [BF-bfd090d](#bf-bfd090d) | Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the… | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab](#bf-96edeab) | `pig extension upgrade` finds and rewrites every changed API of an extension in one run | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab-2](#bf-96edeab-2) | `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and… | PiG's own defect | All platforms | Unreleased |
-| [BF-df5b682](#bf-df5b682) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a… | PiG's own defect | All platforms | Unreleased |
-| [BF-3890175](#bf-3890175) | fix(extensions): write released timer calls before the chain goes on | PiG's own defect | All platforms | Unreleased |
+| [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
+| [BF-bfd090d](#bf-bfd090d) | Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the… | PiG's own defect | All platforms | Unreleased |
+| [BF-e6d1b69](#bf-e6d1b69) | Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends… | PiG's own defect | All platforms | Unreleased |
+| [BF-f35d0a0](#bf-f35d0a0) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | Unreleased |
+| [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
+| [BF-0275c62](#bf-0275c62) | Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f7af8b](#bf-2f7af8b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-00e1452](#bf-00e1452) | Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file… | PiG's own defect | All platforms | Unreleased |
+| [BF-1886fff](#bf-1886fff) | The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the… | PiG's own defect | All platforms | Unreleased |
+| [BF-f172d67](#bf-f172d67) | Extension tools of one parallel batch reach the host in Pi's order | PiG's own defect | All platforms | Unreleased |
+| [BF-f172d67-2](#bf-f172d67-2) | The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its… | PiG's own defect | All platforms | Unreleased |
+| [BF-536efd5](#bf-536efd5) | An edit or write call of a parallel batch registers in the file mutation queue after the extension tools… | PiG's own defect | All platforms | Unreleased |
+| [BF-d9ec956](#bf-d9ec956) | The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes… | PiG's own defect | All platforms | Unreleased |
+| [BF-ee65aea](#bf-ee65aea) | A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -2056,7 +2063,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
-- **Commit that wrote the release note (the fix commit is not identified):** `a4753ec61e` (2026-10-06, #170)
+- **Fix commits:** `a4753ec61e` (2026-10-06, #170)
 - **Tests:** `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack`, `internal/codingagent/exit_record_test.go::TestBackgroundTaskPanicEndsTheSessionWithACrashRecord`, `internal/codingagent/exit_record_test.go::TestCacheWarmerDecisionPanicKeepsPisDecision`, `internal/codingagent/exit_record_test.go::TestCacheWarmerRefreshPanicOutsideTheCaughtRequestReachesTheUncaughtHandler`, `internal/codingagent/exit_record_test.go::TestCacheWarmerRefreshRequestPanicIsCaughtAndReschedules`, `internal/codingagent/exit_record_test.go::TestCleanEndLeavesNoMarker`, `internal/codingagent/exit_record_test.go::TestDeadTerminalExitLeavesALineWithTheReason` and 13 more in docs/bug-ledger.json
 - **Release note:** The prompt-cache refresh that fires minutes after a prompt now treats a panic in the extension decision or in the refresh request as Pi treats a thrown error there: it keeps Pi's decision or skips that refresh and keeps warming, instead of ending the session.
 
@@ -2714,8 +2721,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Behavior differed from Pi
 - **Platform:** Windows
 - **Fixed in:** 0.5.0
-- **Fix commits:** `2e0f88f794` (2026-10-06, #160), `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `e2db9318fa` (2026-10-06, #173), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179)
-- **Tests:** `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `coding/cli/rpc_shutdown_test.go::TestRPCInputEndAfterExtensionCommandComparedWithPi`, `coding/extension/exec_tree_test.go::TestExecCommandKeepsOutputWrittenAfterTheLeaderExits`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleEntryLeasedAfterClassificationIsSkippedNotAnError`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleOtherErrorsStayErrors` and 91 more in docs/bug-ledger.json
+- **Fix commits:** `2e0f88f794` (2026-10-06, #160), `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179)
+- **Tests:** `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `coding/cli/rpc_shutdown_test.go::TestRPCInputEndAfterExtensionCommandComparedWithPi`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleEntryLeasedAfterClassificationIsSkippedNotAnError`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleOtherErrorsStayErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleStopsWhenItsContextIsCancelled` and 88 more in docs/bug-ledger.json
 - **Release note:** On Windows, the bash tool no longer risks waiting forever after a command exits while a process it started in the background still holds the output pipe. The check that asks Windows whether the command's job still has processes could read an empty answer when Go moved the goroutine stack during the call, and the tool then waited for the pipe to close. The buffers these job-object calls pass to Windows now stay in place.
 
 ### BF-165cf58
@@ -3275,7 +3282,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `3452432f8b` (2026-10-08, #190), `4610c9f4a1` (2026-10-08, #189)
-- **Tests:** `coding/cli/rpc_ctx_signal_test.go::TestExtensionContextSignalComparedWithPi`, `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleEntryLeasedAfterClassificationIsSkippedNotAnError`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleOtherErrorsStayErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleStopsWhenItsContextIsCancelled` and 51 more in docs/bug-ledger.json
+- **Tests:** `coding/cli/rpc_ctx_signal_test.go::TestExtensionContextSignalComparedWithPi`, `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleEntryLeasedAfterClassificationIsSkippedNotAnError`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleOtherErrorsStayErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleStopsWhenItsContextIsCancelled` and 49 more in docs/bug-ledger.json
 - **Release note:** Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with `(cancelled)`. Escape had left the command running until it finished on its own. While an agent run streams, Escape still aborts the run and leaves a command started during it running, as Pi does.
 
 ### BF-66b0fc0
@@ -13704,34 +13711,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `durable/core/jv/delete_scaling_test.go::TestDeleteWhileIteratingAKeysSnapshotSeesEveryKey`, `durable/core/jv/delete_scaling_test.go::TestDeletingOldestFirstCostsConstantTimePerDelete`, `durable/core/jv/delete_scaling_test.go::TestObjectMatchesANaiveOrderedMapUnderRandomSetDelete`, `durable/core/jv/ordered_keys_scaling_test.go::TestKeysOfManyIndexKeysAreSortedInLogLinearTime`
 - **Release note:** Deleting members of a large Durable core JSON object no longer costs time proportional to its size for each delete.
 
-### BF-7fae4f5
-
-**`go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB**
-
-- **Source:** PiG's own defect
-- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB.
-- **Root cause:** The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `7fae4f5df2` (2026-10-19)
-- **Tests:** None recorded.
-- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.
-
-### BF-b341a82
-
-**`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again**
-
-- **Source:** PiG's own defect
-- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.
-- **Root cause:** The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `b341a82e9d` (2026-10-19, #221)
-- **Tests:** None recorded.
-- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
-
 ### BF-2d13115
 
 **`pig piglet verify <binary> --source <name|path>` and `pig piglet lineage <binary> --source <name|path>`…**
@@ -13760,47 +13739,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/piglet/lineage_cli_test.go::TestProvenanceResolvesAgainstTheNamedWorkspace`, `coding/piglet/lineage_cli_test.go::TestVerifyRechecksTheRecordedDigestsAgainstTheSource`, `coding/pigletbuild/strip_test.go::TestBakePigletKeepsStrip`, `coding/pigletbuild/verify_source_test.go::TestBuiltBinaryVerifiesAgainstItsUnchangedSource`, `coding/pigletbuild/with_settings_test.go::TestAC55BinaryBakePreservesPackageAliasesThroughResolution`, `coding/pigletbuild/with_settings_test.go::TestBakePigletInlinesAgentShapeAndStripsBuildOrigins`, `coding/pigletbuild/with_settings_test.go::TestBakePigletRejectsBareSkillName`
 - **Release note:** `pig piglet verify` accepts `--workspace <dir>`, and `pig piglet lineage --workspace` now applies to the provenance check too. A Piglet whose `agentEnv.devContainer` is a `workspace:` path is checked against the workspace its build used instead of failing to resolve from another directory.
 
-### BF-ab1324d
+### BF-7fae4f5
 
-**A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.
-- **Root cause:** A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `94e6796e8d` (2026-10-20, #234), `ab1324df34` (2026-10-20)
-- **Tests:** `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts`, `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart`
-- **Release note:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.
-
-### BF-f35d0a0
-
-**A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation…**
+**`go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB**
 
 - **Source:** PiG's own defect
-- **Symptom:** A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout).
-- **Root cause:** The Harness recomputes its wake (the timer for the earliest sleep, or the value it offers OnWake) in a goroutine that the first change queues, and later changes share it. Pi does this in a microtask (scheduler.ts #scheduleWake), which runs in the turn of the change and reads the clock of the change. Here the goroutine read the clock when it ran. When it ran after a sleep committed meanwhile had come due, the sleep was not ahead of it any more, although a reservation pass queued by the change had found it not yet due, dropped it from the candidates, and relied on that wake. No timer was armed, OnWake was told that work was active instead of the time to wake at, and nothing ran the task again.
-- **User impact:** Crash, hang or runaway process
+- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB.
+- **Root cause:** The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.
+- **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `94e6796e8d` (2026-10-20, #234), `f35d0a0567` (2026-10-20)
-- **Tests:** `durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal`, `durable/harness/harness_generation_test.go::TestGeneration`, `durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm`
-- **Release note:** A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.
-
-### BF-0e3411c
-
-**Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `0e3411c597` (2026-10-19, #224)
+- **Fix commits:** `7fae4f5df2` (2026-10-19)
 - **Tests:** None recorded.
-- **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
+- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.
 
 ### BF-f6a360d
 
@@ -13816,6 +13767,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/stream_fn_descriptor_test.go::TestAgentEffectiveStreamFunction`, `coding/cli/rpc_compaction_provider_hooks_test.go::TestRPCCompactionEmitsOnlyProviderHeadersEvent`, `coding/session_branch_summary_upstream_test.go::TestBranchSummaryRequestAuth`, `coding/session_compaction_provider_hooks_test.go::TestAgentRequestEmitsAllProviderEvents`, `coding/session_compaction_provider_hooks_test.go::TestSummarizationRequestsEmitOnlyProviderHeaders`, `coding/session_compaction_suite_upstream_test.go::TestAgentSessionCompactionSuiteUpstream`, `internal/codingagent/compaction/compaction_summary_reasoning_test.go::TestProviderCompleterSendsSummaryThroughStreamFnWithoutAgentCallbacks`
 - **Release note:** A compaction, branch summary or bug-report summary request is now sent through the session's own stream function, as Pi sends it. Before, a session whose stream function was the stock one sent these requests straight to the model's provider, so the host never ran `before_provider_headers` for them. `/compact`, automatic and overflow-recovery compaction, `/tree` summaries and bug-report summaries now emit `before_provider_headers`, in every mode. They still do not emit `before_provider_request`, `after_provider_response` or `provider_stream_event`: Pi's summary requests carry none of the Agent's payload, response and stream-event callbacks, and neither do PiG's now (agent requests are unchanged and emit all four). `Agent.EffectiveStreamFunction` is new: the stream function a run sends through, with the default stream in place of the nil `StreamFunction` returns for it. Reported by a user.
 
+### BF-b341a82
+
+**`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again**
+
+- **Source:** PiG's own defect
+- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.
+- **Root cause:** The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b341a82e9d` (2026-10-19, #221)
+- **Tests:** None recorded.
+- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
+
 ### BF-c1d1a4c
 
 **CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit**
@@ -13829,34 +13794,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `c1d1a4ce72` (2026-10-20)
 - **Tests:** `test/ci-images/verification_shards_test.go::TestLinuxShardsRetainEveryCheck`, `test/ci-images/verification_shards_test.go::TestPortmapShardsAreWiredEndToEnd`, `test/parity/cmd/portmapcheck/main_test.go::TestAChildOfTheEvidenceBinaryHasACoverageDirectory`, `test/parity/cmd/portmapcheck/main_test.go::TestAKilledMutantIsCachedWithItsRecord`, `test/parity/cmd/portmapcheck/main_test.go::TestASkippedRowIsNotAProblem`, `test/parity/cmd/portmapcheck/main_test.go::TestMain`, `test/parity/cmd/portmapcheck/main_test.go::TestParseShard`, `test/parity/cmd/portmapcheck/main_test.go::TestPartitionAssignsEveryRowToOneBalancedShard` and 3 more in docs/bug-ledger.json
 - **Release note:** CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit. `portmapcheck` builds each evidence package's test binary once instead of once per PORT_MAP row, runs rows that name the same tests of a package once, and keeps a marker row's killed-mutant verdict in its cached record. CI runs the check as three shards (`make portmap-check-N`, `portmapcheck -shard N/3`); every shard computes the same plan and judges its own rows, and the Linux verification job still requires all of them. Each row's requirement is unchanged: its named tests pass, they execute its mapped cited files, and a marker row's mutant makes them fail.
-
-### BF-e6d1b69
-
-**Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them.
-- **Root cause:** the order of the answers was lost at two goroutine hand-offs. A sender that wakes two goroutines in a row runs the second first, so (1) the goroutines waiting in two RPC dialogs, answered by two lines of one stdin chunk, returned in reverse order, and wrote their call results to the extension in that order; and (2) the goroutines of a parallel batch that waited for two tool_call responses the connection's read loop read in order, emitted tool_execution_end in no order (about half the runs ended the second call first).
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `e6d1b69dbc` (2026-10-20)
-- **Tests:** `agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived`, `internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors`
-- **Release note:** Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.
-
-### BF-bfd090d
-
-**Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the child was up.
-- **Root cause:** Node cannot lose them, because an owner registers in the tick that creates the channel.
-- **User impact:** Lost or altered data
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `bfd090d135` (2026-10-20)
-- **Tests:** `chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener`, `chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt`, `chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog`
-- **Release note:** Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the child was up. The Go port of Node's IPC channel read messages in its own goroutine and dropped any that arrived before its owner had registered a listener. Node cannot lose them, because an owner registers in the tick that creates the channel. A child that opened its channel after the parent's init message had been written could miss the init (so it never answered), and a manager descheduled between spawning the child and registering its control listener could miss the child's ready. The channel now keeps the messages received before its first listener and replays them to it in order, and a forked child instance does the same for its control listeners.
 
 ### BF-96edeab
 
@@ -13886,32 +13823,200 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_completeness_test.go::TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeRestoreRemovesAFileItAdded`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeWritesNothingWhenTheRewriteWouldAddACompileError` and 13 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form. It exits 1 and reports `partly upgraded` when uses are left. `--dry-run` compiles the rewritten extension in a temporary directory (the go command's overlay, with the staged SDK) and reports `would upgrade` only when it builds; a rewrite that would add a compile error of its own is not written. The load error of a drifted extension names the changed APIs and the exact command. The stale-copy warning also recognises an edited copy by its Go module path.
 
-### BF-df5b682
+### BF-ab1324d
 
-**A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a…**
+**A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as in Pi, instead of before `tool_execution_end`.
-- **Root cause:** Pi runs a timer or immediate callback on the thread that runs the agent, so it runs only when the run awaits real work or is idle. The Node runtime is another process and ran the callback as soon as the tool answered; the host wrote its host call at once, ahead of the run's own output.
+- **Symptom:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.
+- **Root cause:** A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `94e6796e8d` (2026-10-20, #234), `ab1324df34` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts`, `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart`
+- **Release note:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.
+
+### BF-bfd090d
+
+**Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the child was up.
+- **Root cause:** Node cannot lose them, because an owner registers in the tick that creates the channel.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bfd090d135` (2026-10-20)
+- **Tests:** `chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener`, `chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt`, `chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog`
+- **Release note:** Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the child was up. The Go port of Node's IPC channel read messages in its own goroutine and dropped any that arrived before its owner had registered a listener. Node cannot lose them, because an owner registers in the tick that creates the channel. A child that opened its channel after the parent's init message had been written could miss the init (so it never answered), and a manager descheduled between spawning the child and registering its control listener could miss the child's ready. The channel now keeps the messages received before its first listener and replays them to it in order, and a forked child instance does the same for its control listeners.
+
+### BF-e6d1b69
+
+**Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them.
+- **Root cause:** the order of the answers was lost at two goroutine hand-offs. A sender that wakes two goroutines in a row runs the second first, so (1) the goroutines waiting in two RPC dialogs, answered by two lines of one stdin chunk, returned in reverse order, and wrote their call results to the extension in that order; and (2) the goroutines of a parallel batch that waited for two tool_call responses the connection's read loop read in order, emitted tool_execution_end in no order (about half the runs ended the second call first).
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `2ab79ce358` (2026-10-06, #166), `56c3f85350` (2026-10-06, #172), `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `ce8587ef40` (2026-10-07, #179), `3452432f8b` (2026-10-08, #190), `4610c9f4a1` (2026-10-08, #189), `b5ebeb58d1` (2026-10-08, #191), `f680b9591a` (2026-10-08, #197), `74f806c799` (2026-10-10, #203), `6af0806f7a` (2026-10-19, #213), `212a506e3e` (2026-10-20), `3ee123c6d5` (2026-10-20, #255), `be541d2224` (2026-10-20), `c02ca868b5` (2026-10-20), `6ba6adbd5e` (2026-10-21), `dca5763ac5` (2026-10-21), `df5b682228` (2026-10-21)
-- **Tests:** `internal/jsloop/turns_test.go::TestTurnsHoldCallbacksOfAChainUntilItTurns`, `internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTimerCallbackCallsWaitForTheLoopTurn`, `test/extension-conformance/timer_calls_test.go::TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs`, `test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun`
-- **Release note:** A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as in Pi, instead of before `tool_execution_end`. Pi runs those callbacks when its event loop turns, which a run's chain of microtasks never gives it. The Node runtime ran them as soon as the tool answered, because it is another process, and its host calls arrived mid-run. The host now holds such calls while the RPC run chains microtasks and runs them in arrival order at the next real wait: a model response's I/O, a built-in tool's run, a dialog, a compaction or an auto-retry delay, or the end of `agent_settled`. A `process.nextTick` callback's notification follows the `tool_execution_end` of the tool that queued it, as in Pi, and the callbacks of a tool that returns while a sibling tool of its batch still runs reach the client right after its `tool_execution_end`.
+- **Fix commits:** `e6d1b69dbc` (2026-10-20)
+- **Tests:** `agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived`, `internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors`
+- **Release note:** Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.
 
-### BF-3890175
+### BF-f35d0a0
 
-**fix(extensions): write released timer calls before the chain goes on**
+**A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(extensions): write released timer calls before the chain goes on
+- **Symptom:** A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout).
+- **Root cause:** The Harness recomputes its wake (the timer for the earliest sleep, or the value it offers OnWake) in a goroutine that the first change queues, and later changes share it. Pi does this in a microtask (scheduler.ts #scheduleWake), which runs in the turn of the change and reads the clock of the change. Here the goroutine read the clock when it ran. When it ran after a sleep committed meanwhile had come due, the sleep was not ahead of it any more, although a reservation pass queued by the change had found it not yet due, dropped it from the candidates, and relied on that wake. No timer was armed, OnWake was told that work was active instead of the time to wake at, and nothing ran the task again.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `94e6796e8d` (2026-10-20, #234), `f35d0a0567` (2026-10-20)
+- **Tests:** `durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal`, `durable/harness/harness_generation_test.go::TestGeneration`, `durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm`
+- **Release note:** A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.
+
+### BF-0e3411c
+
+**Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 - **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `38901751db` (2026-10-21)
+- **Fix commits:** `0e3411c597` (2026-10-19, #224)
 - **Tests:** None recorded.
+- **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
+
+### BF-0275c62
+
+**Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update.
+- **Root cause:** Pi has one module-level withFileMutationQueue shared by the built-in edit and write tools and every extension. PiG kept a queue per extension process, so an extension tool and a built-in tool on one file, or two extensions, could lose an update.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0275c62f29` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationCallsAreRoutedLikeThePureHelperCalls`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterFailsForAnUnresolvablePath`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterHoldsTheHostQueueUntilExit`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterRegistersInCallOrderAndInitiatesBeforeItWaits`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationExitOfAnotherConnectionsTicketFails`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses`, `extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueHostErrorAndTaskFailures` and 3 more in docs/bug-ledger.json
+- **Release note:** Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every extension process, as in Pi. Before, each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update. The SDKs ask the host's queue for the file's turn (`fileMutation.enter`, `fileMutation.exit`); the turn is released if the extension's connection closes.
+
+### BF-2f7af8b
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Regenerated by automation/gen/vendor-pi-dist.sh and go generate: the vendored edit, write and tools index load the bridge module, the sdk-bundle chunks and manifest follow, and the embedded runtime archive, the Go interface inventory and the SDK surface matrix (withFileMutationQueue is bridged) are updated. Also satisfy errorlint and staticcheck in the SDK and the host tests.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f7af8b96d` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn`
+
+### BF-00e1452
+
+**Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds.
+- **Root cause:** The free function withFileMutationQueue has no Context, so in a packed Go, Rust or Python cell its turn rides the first running connection of the process. The task's exit then went to the closed connection and failed.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `00e1452222` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsOfOneProcessOutliveAConnectionAndEndWithTheLast`, `coding/extension/host/subprocess/packed_file_mutation_test.go::TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn`, `extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueExitReachesTheHostWhenTheCarryingConnectionStopped`
+- **Release note:** Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds. The turns of a packed process now belong to the process: they are released by `fileMutation.exit` over any of its connections, or when its last connection closes.
+
+### BF-1886fff
+
+**The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the requests arrive, as they already did for `tool_call`; before, two `tool_result` hooks in flight on one connection could start their handlers out of order (the Go SDK did so in 25 of 3000 probes).
+- **Root cause:** Pi starts the handlers of concurrent emits in call order on one thread (runner.ts:1096-1125), so the tool_result hooks of a parallel batch reach an extension's handlers in the order they were emitted. The Go, Python and Rust SDKs ran each request on a thread of its own and reserved a start place only for tool_call, so two event requests in flight started their handlers in scheduler order. Event and command requests now take a place when their frame is read and invoke their handler after the earlier requests' handlers were invoked, as tool_call already did; requests that run no extension handler (renders, provider streams, completions) hold no place.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1886fff37b` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the requests arrive, as they already did for `tool_call`; before, two `tool_result` hooks in flight on one connection could start their handlers out of order (the Go SDK did so in 25 of 3000 probes).
+
+### BF-f172d67
+
+**Extension tools of one parallel batch reach the host in Pi's order**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extension tools of one parallel batch reach the host in Pi's order.
+- **Root cause:** Pi runs the tools of a parallel batch, their hooks and their listeners on one thread.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f172d67319` (2026-10-20)
+- **Tests:** `agent/tool_settle_test.go::TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook`
+- **Release note:** Extension tools of one parallel batch reach the host in Pi's order. Pi runs a batch on one thread, so the host calls the tools make in their first tick (`appendEntry`, `ui.notify`, `ui.setStatus`, `setActiveTools`, `sendMessage`, and the rest) apply in the order the extension sent them, whichever tool made each; before, eight parallel tools that each called the host applied their calls in scheduler order, and in a Node extension that also reordered the tools' answers, so `tool_execution_end` and the tool_result hooks came in a different order on every run.
+
+### BF-f172d67-2
+
+**The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its first await before the next one starts, and a tool's `onUpdate` reaches the listeners in the order the tools called it, across tools; before, both followed goroutine wake order.
+- **Root cause:** Pi runs the tools of a parallel batch, their hooks and their listeners on one thread.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f172d67319` (2026-10-20)
+- **Tests:** `agent/tool_settle_test.go::TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook`
+- **Release note:** The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its first await before the next one starts, and a tool's `onUpdate` reaches the listeners in the order the tools called it, across tools; before, both followed goroutine wake order.
+
+### BF-536efd5
+
+**An edit or write call of a parallel batch registers in the file mutation queue after the extension tools…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The built-in call registered in the dispatcher's loop, a process hop before the extension's registration arrived, so `[extension tool, write]` applied the write first.
+- **Root cause:** The built-in calls registered in the dispatcher's loop, before any extension request was written, while the extension's fileMutation.enter reached the host a process hop later: [extension tool, write] applied the write first (confirmed against Pi on c5, 3 of 3). A window closes when the host applies a host call of the request that returns a Promise in Pi (startsAsync), when the Node runtime reports the handler blocked on something that is not a host call (the report follows the tool's execute call, which ran its synchronous prefix), when the request is answered, or when the call ends. A batch with no extension tool before the edit or write call registers it in the loop as before.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `536efd5e91` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** An edit or write call of a parallel batch registers in the file mutation queue after the extension tools before it in the batch took the queue, as Pi does: Pi registers a call in the queue when it calls `withFileMutationQueue` and runs each call's first statements in call order. Before, the built-in call registered in the dispatcher's loop, a process hop before the extension's registration arrived, so `[extension tool, write]` applied the write first. The Go, Python, Rust and Node SDKs, isolated, packed and fused, now agree. A native tool that waits on something other than a host call before it takes the queue still registers first, and a write behind a native tool that makes no host call waits for the tool; both are recorded in the parity row.
+
+### BF-d9ec956
+
+**The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes the tool's start window after the calls the extension sent before the report, not after the call its handler sends next.
+- **Root cause:** The Node runtime reports a tool whose execute awaited something that is not a host call, and the host closes the tool's start window once the calls the extension sent before the report applied their synchronous parts. The host marked those calls on the goroutine that waited, so a call the handler sent right after the report (its fileMutation.enter after an await of the event loop) could be queued first and be waited for: the window closed after the extension's registration and the write registered second. The calls are marked on the loop that reads the frames, in arrival order. The generated Node runtime pack and its digest follow runtime.mjs.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d9ec9560dd` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes the tool's start window after the calls the extension sent before the report, not after the call its handler sends next.
+
+### BF-ee65aea
+
+**A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the edit or write call behind it, as in Pi; before, the two raced and the extension won every round.
+- **Root cause:** Pi registers the write first when the extension tool awaits the event loop before it calls withFileMutationQueue: the tool's prefix ends at the await. The Node runtime reported the await and the host closed the tool's start window, but the tool's registration is the next frame it sends, one event-loop turn later, so the write and the extension registered in a race (the extension won every round). The runtime now holds the tool's next fileMutation.enter after such a report until the host says the writes that waited for the window registered (NotifyToolWindowSettled, host to Node runtime, sent only to a runtime that sent the report); the dispatcher counts the calls that wait for each window…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ee65aead9a` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the edit or write call behind it, as in Pi; before, the two raced and the extension won every round. The runtime holds the tool's next `fileMutation.enter` until the host reports the writes behind the tool registered.
 
 ## Divergences from Pi added in this release
 
