@@ -1,16 +1,14 @@
-"""Pi's truncation helpers, file mutation queue and host configuration exports (truncate.ts, file-mutation-queue.ts, config.ts).
+"""Pi's truncation helpers and host configuration exports (truncate.ts, config.ts).
 
-The cross-SDK conformance rows run every case against Pi's own code in the Node runtime; these tests keep the documented behavior local.
+The cross-SDK conformance rows run every case against Pi's own code in the Node runtime; these tests keep the documented behavior local. The file mutation queue's
+SDK side is in test_file_mutation_queue.py: the queue is the host's.
 """
 import json
 import os
-import threading
-import time
 
 import pytest
 
 import pig_sdk
-from pig_sdk import file_mutation_queue as fmq
 
 
 def test_format_size_rounds_half_up_like_to_fixed():
@@ -41,96 +39,6 @@ def test_truncate_line_counts_utf16_units():
     assert pig_sdk.truncate_line("😀😀😀😀", 6) == ("😀😀😀... [truncated]", True)
     assert pig_sdk.truncate_line("😀😀😀", 6) == ("😀😀😀", False)
     assert pig_sdk.truncate_line("x" * 501)[1] is True and pig_sdk.truncate_line("x" * 500)[1] is False
-
-
-def _await_admission(key, previous, entered=lambda: False):
-    """Wait until a caller started after ``previous`` was observed has taken its queue position, and return its link. ``entered`` ends the wait
-    early when the caller is already inside its mutation, which only a queue that does not wait allows."""
-    deadline = time.monotonic() + 10
-    while time.monotonic() < deadline:
-        with fmq._registration:
-            current = fmq._chains.get(key)
-        if current is not None and current is not previous:
-            return current
-        if entered():
-            return previous
-        threading.Event().wait(0.001)
-    pytest.fail("a caller never took its queue position")
-
-
-def test_file_mutation_queue_runs_one_file_at_a_time_in_call_order(tmp_path):
-    # Each caller is started only after the previous one was observed in the queue, and the first holds the file until all are queued, so the
-    # order and the overlap check depend on the queue, not on thread scheduling.
-    target = str(tmp_path / "a.txt")
-    key = fmq._queue_key(target)
-    release = threading.Event()
-    running, order, overlaps = [0], [], []
-    lock = threading.Lock()
-
-    def body(number):
-        def run():
-            with lock:
-                running[0] += 1
-                if running[0] != 1:
-                    overlaps.append(number)
-                order.append(number)
-            if number == 0:
-                release.wait(10)
-            with lock:
-                running[0] -= 1
-
-        return run
-
-    threads, link = [], None
-    for number in range(4):
-        thread = threading.Thread(target=pig_sdk.with_file_mutation_queue, args=(target, body(number)), daemon=True)
-        threads.append(thread)
-        thread.start()
-        link = _await_admission(key, link, lambda number=number: number in order)
-    release.set()
-    for thread in threads:
-        thread.join(10)
-    assert overlaps == [], "two mutations of one file overlapped"
-    assert order == [0, 1, 2, 3]
-
-
-def test_file_mutation_queue_releases_the_caller_queued_behind_an_error_and_returns_the_result(tmp_path):
-    target = str(tmp_path / "a.txt")
-    key = fmq._queue_key(target)
-    release = threading.Event()
-    errors, results = [], []
-
-    def failing():
-        release.wait(10)
-        raise RuntimeError("boom")
-
-    def first():
-        try:
-            pig_sdk.with_file_mutation_queue(target, failing)
-        except RuntimeError as error:
-            errors.append(error)
-
-    holder = threading.Thread(target=first, daemon=True)
-    holder.start()
-    held = _await_admission(key, None)
-    waiter = threading.Thread(target=lambda: results.append(pig_sdk.with_file_mutation_queue(target, lambda: 7)), daemon=True)
-    waiter.start()
-    _await_admission(key, held)
-    release.set()
-    holder.join(10)
-    waiter.join(10)
-    assert len(errors) == 1
-    assert results == [7], "the failing mutation never released the caller queued behind it"
-
-
-def test_file_mutation_queue_fails_without_running_for_an_unresolvable_path(tmp_path):
-    loop_a, loop_b = tmp_path / "loop-a", tmp_path / "loop-b"
-    os.symlink(loop_b, loop_a)
-    os.symlink(loop_a, loop_b)
-    ran = []
-    with pytest.raises(OSError):
-        pig_sdk.with_file_mutation_queue(str(loop_a), lambda: ran.append(1))
-    assert ran == []
 
 
 def _with_host_info(value, check):

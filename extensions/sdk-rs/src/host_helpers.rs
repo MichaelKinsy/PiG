@@ -67,7 +67,7 @@ pub(crate) fn decode_date(result: Option<Value>) -> io::Result<Option<f64>> {
 }
 
 /// The result of a host call made outside a handler: over the running extension's connection, or over the one this call dials, which `run` reuses.
-fn helper_call(method: &str, args: Value) -> io::Result<Option<Value>> {
+pub(crate) fn helper_call(method: &str, args: Value) -> io::Result<Option<Value>> {
     let running = running_for(&locked(&RUNNING), socket_path().as_deref());
     if let Some(conn) = running {
         let pending = conn.begin_call_for(None, method, Some(args))?;

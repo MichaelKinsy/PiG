@@ -72,6 +72,11 @@ func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, err
 	return result, err
 }
 
+// ReserveFileMutation registers filePath's next position in the process-wide queue that WithFileMutationQueue and every edit and write tool share, synchronously, and returns the ticket: Wait (or WaitContext) for the turn, then Release exactly once after the mutation completes. The extension host reserves through it for the mutations an extension process runs under its own withFileMutationQueue, so they queue with the built-in tools and with each other (pig additive plumbing for Pi's single process, D19: each SDK runs in a process of its own).
+func ReserveFileMutation(filePath string) (*MutationTicket, error) {
+	return processFileMutationQueue.Reserve(filePath)
+}
+
 // MutationTicket is a reserved position in a FileMutationQueue, obtained via
 // Reserve. It lets a caller fix its place in call order before starting any
 // concurrent work, rather than only being able to register and wait in one
@@ -108,6 +113,25 @@ func (q *FileMutationQueue) Reserve(filePath string) (*MutationTicket, error) {
 func (t *MutationTicket) Wait() {
 	if t.prev != nil {
 		<-t.prev
+	}
+}
+
+// WaitContext is Wait that gives up when ctx ends: it returns ctx's error and the ticket is the queue's from then on, so the caller must not Release it. A ticket that
+// gave up keeps its place until every earlier mutation of the path has completed and only then passes it on; a successor never runs ahead of a predecessor that is
+// still inside the queue. A ticket with no earlier mutation is admitted whatever ctx says.
+func (t *MutationTicket) WaitContext(ctx context.Context) error {
+	if t.prev == nil {
+		return nil
+	}
+	select {
+	case <-t.prev:
+		return nil
+	case <-ctx.Done():
+		go func() {
+			<-t.prev
+			t.Release()
+		}()
+		return ctx.Err()
 	}
 }
 

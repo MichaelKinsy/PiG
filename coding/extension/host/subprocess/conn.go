@@ -137,6 +137,8 @@ type Conn struct {
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
 	onClosed func()
+	// fileMutations holds the file mutation queue tickets this connection's extension process was admitted to and has not exited (host_file_mutation.go).
+	fileMutations connFileMutations
 	// viewImages holds the image bytes this connection's views sent (D107).
 	viewImagesOnce sync.Once
 	viewImages     *viewImageStore
@@ -1016,6 +1018,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		close(c.inCh)
 		c.settleAllAbandoned()
 		c.stopAbortForwards()
+		c.fileMutations.releaseAll()
 		if c.onClosed != nil {
 			c.onClosed()
 		}
