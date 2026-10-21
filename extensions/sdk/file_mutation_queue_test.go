@@ -13,20 +13,23 @@ import (
 	"time"
 )
 
-// queuedChain returns the chain link the queue holds for key, nil when none.
-func queuedChain(key string) chan struct{} {
+// admittedCallers returns how many callers the queue of key admitted and has not finished, 0 when it holds none.
+func admittedCallers(key string) int {
 	fileMutationQueues.mu.Lock()
 	defer fileMutationQueues.mu.Unlock()
-	return fileMutationQueues.chains[key]
+	if queue := fileMutationQueues.queues[key]; queue != nil {
+		return queue.admitted
+	}
+	return 0
 }
 
-// awaitAdmission spins until the chain link for key is no longer previous, that is until a caller started earlier has taken its position, and returns the new link.
-// The first caller holds the file until every caller is admitted, so no link is released while this waits.
-func awaitAdmission(t *testing.T, key string, previous chan struct{}) chan struct{} {
+// awaitAdmission spins until the queue of key admitted more callers than previous, that is until a caller started earlier has taken its position, and returns the new count.
+// The first caller holds the file until every caller is admitted, so no caller finishes while this waits.
+func awaitAdmission(t *testing.T, key string, previous int) int {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		if current := queuedChain(key); current != previous {
+		if current := admittedCallers(key); current > previous {
 			return current
 		}
 		if time.Now().After(deadline) {
@@ -47,7 +50,7 @@ func TestWithFileMutationQueueSerializesOneFileInCallOrder(t *testing.T) {
 	var mu sync.Mutex
 	var order []int
 	var wg sync.WaitGroup
-	var link chan struct{}
+	var link int
 	for id := range 4 {
 		wg.Go(func() {
 			_, _ = WithFileMutationQueue(file, func() (struct{}, error) {
@@ -79,8 +82,8 @@ func TestWithFileMutationQueueSerializesOneFileInCallOrder(t *testing.T) {
 	}
 	fileMutationQueues.mu.Lock()
 	defer fileMutationQueues.mu.Unlock()
-	if len(fileMutationQueues.chains) != 0 {
-		t.Fatalf("drained chains were kept: %v", fileMutationQueues.chains)
+	if len(fileMutationQueues.queues) != 0 {
+		t.Fatalf("drained queues were kept: %v", fileMutationQueues.queues)
 	}
 }
 
@@ -115,7 +118,7 @@ func TestWithFileMutationQueueReleasesAQueuedSymlinkCallerAfterAnError(t *testin
 		})
 		firstErr <- err
 	}()
-	held := awaitAdmission(t, key, nil)
+	held := awaitAdmission(t, key, 0)
 	type result struct {
 		value int
 		err   error

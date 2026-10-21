@@ -8,14 +8,21 @@ import (
 	"slices"
 	"sync"
 	"syscall"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop"
 )
 
 // fileMutationQueues serializes the mutations of one file inside this extension process, as Pi's module-level queue does (core/tools/file-mutation-queue.ts). Each
-// entry is a chain: its value closes when the last registered mutation of that file finishes.
+// file has a lane and the number of mutations admitted and not finished; the entry is dropped when the count reaches zero.
 var fileMutationQueues = struct {
 	mu     sync.Mutex
-	chains map[string]chan struct{}
-}{chains: map[string]chan struct{}{}}
+	queues map[string]*mutationQueue
+}{queues: map[string]*mutationQueue{}}
+
+type mutationQueue struct {
+	lane     jsloop.Lane
+	admitted int
+}
 
 // WithFileMutationQueue runs fn once every mutation registered earlier for the same file has finished, then lets the next one run, and returns fn's result and error.
 // Mutations of different files run in parallel. It mirrors Pi's withFileMutationQueue, which edit and write extension tools wrap around their read-modify-write so
@@ -34,21 +41,23 @@ func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, err
 		var zero T
 		return zero, err
 	}
-	previous := queues.chains[key]
-	done := make(chan struct{})
-	queues.chains[key] = done
+	queue := queues.queues[key]
+	if queue == nil {
+		queue = &mutationQueue{}
+		queues.queues[key] = queue
+	}
+	queue.admitted++
+	place := queue.lane.Reserve()
 	queues.mu.Unlock()
 
-	if previous != nil {
-		<-previous
-	}
+	place.Wait()
 	defer func() {
+		place.Release()
 		queues.mu.Lock()
-		if queues.chains[key] == done {
-			delete(queues.chains, key)
+		if queue.admitted--; queue.admitted == 0 {
+			delete(queues.queues, key)
 		}
 		queues.mu.Unlock()
-		close(done)
 	}()
 	return fn()
 }
