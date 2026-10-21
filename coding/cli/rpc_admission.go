@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/stackprime"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -64,8 +65,10 @@ type rpcInputResult struct {
 	handled bool
 }
 type rpcAdmission struct {
-	ctx           context.Context
-	turn          *rpcResponseTurn
+	ctx  context.Context
+	turn *rpcResponseTurn
+	// turns is the mode's model of Pi's loop (D5).
+	turns         *jsloop.Turns
 	session       *coding.Session
 	runner        *inproc.Runner
 	catalog       headlessCommandCatalog
@@ -94,19 +97,28 @@ func (a *rpcAdmission) taskGroup() *rpcTaskGroup {
 	return &a.tasks
 }
 
+// commandTurn opens a Turns command for work that runs outside the executor and returns the function that ends it once its result settled: Pi runs the command's microtasks to the response without a timer callback between, so the extension runtimes hold theirs until then. The end is queued as a task of its own, behind the continuation that writes the response.
+func (a *rpcAdmission) commandTurn() (end func()) {
+	finish := a.turns.Command()
+	return func() { a.turn.Macrotask(finish) }
+}
+
 func rpcAwaitWork[T any](a *rpcAdmission, slow bool, work func() (T, error)) *rpcPromise[T] {
 	if !slow {
 		value, err := work()
 		return rpcResolved(a.turn, value, err)
 	}
 	p := &rpcPromise[T]{turn: a.turn}
+	end := a.commandTurn()
 	// The work ran outside the executor, so its result settles the promise from an event-loop task of its own, after the microtasks already queued (jsloop.Loop.Macrotask).
 	if !a.taskGroup().Go(func() {
 		value, err := work()
 		a.turn.Macrotask(func() { p.resolve(value, err) })
+		end()
 	}) {
 		var zero T
 		p.resolve(zero, context.Canceled)
+		end()
 	}
 	return p
 }
@@ -128,11 +140,13 @@ func rpcAwaitInOrder[T any](a *rpcAdmission, previous <-chan struct{}, work func
 		case <-a.ctx.Done():
 		}
 	}
+	end := a.commandTurn()
 	if !a.taskGroup().Go(func() {
 		value, err := work()
 		if early, ok := errors.AsType[rpcEarlyError](err); ok {
 			var zero T
 			a.turn.Macrotask(func() { p.resolve(zero, early.err) })
+			end()
 			await()
 			close(resolved)
 			return
@@ -142,10 +156,12 @@ func rpcAwaitInOrder[T any](a *rpcAdmission, previous <-chan struct{}, work func
 			p.resolve(value, err)
 			close(resolved)
 		})
+		end()
 	}) {
 		var zero T
 		p.resolve(zero, context.Canceled)
 		close(resolved)
+		end()
 	}
 	return p, resolved
 }

@@ -333,7 +333,7 @@ func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, c
 	registry := services.Registry()
 	return &rpcAdmission{
 		ctx: h.ctx, turn: h.responses, session: session, runner: runner, catalog: catalog,
-		write: h.responses.write, runs: h.promptWG, shared: h.tasks, commandDone: h.commandDone, commands: commands, commandsInFlight: &h.commandsInFlight,
+		write: h.responses.write, turns: &h.turns, runs: h.promptWG, shared: h.tasks, commandDone: h.commandDone, commands: commands, commandsInFlight: &h.commandsInFlight,
 		validateModel: func() error {
 			model := session.Model()
 			if model == nil {

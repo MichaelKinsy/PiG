@@ -17,7 +17,7 @@ import { inspect } from "node:util";
 import { flushCompileCache } from "node:module";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
-import { installTimerOrigin, originKind, outsideTimer, setTimerDefer } from "./timer-origin.mjs";
+import { installTimerOrigin, originKind, outsideTimer, setHandlersRunning, setTimerDefer } from "./timer-origin.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
 import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
 import { EditorComponentHost } from "./editor-component.mjs";
@@ -36,6 +36,14 @@ import { dispatchOverlayMouse, takesMouse } from "./mouse.mjs";
 import { EventReplicas } from "./event-stream.mjs";
 
 installTimerOrigin();
+setHandlersRunning(() => {
+  for (const runtime of liveRuntimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (!request.settled) return true;
+    }
+  }
+  return false;
+});
 
 // Pi hands every extension one shared event bus (resource-loader.ts creates
 // one per loader and passes it to each extension). Every Node realm of this

@@ -12,6 +12,12 @@ let deferring = false;
 let waiting = [];
 const rawSetImmediate = setImmediate;
 
+// A handler that is still running awaits its own timer or I/O, which is a turn of Pi's loop, so a callback runs. The runtime says whether one is: only a runtime whose handlers all returned holds its callbacks.
+let handlersRunning = () => false;
+export function setHandlersRunning(fn) {
+  handlersRunning = fn;
+}
+
 export function setTimerDefer(on) {
   deferring = on;
   if (on || waiting.length === 0) return;
@@ -33,7 +39,7 @@ export function installTimerOrigin() {
       if (typeof callback !== "function") return Reflect.apply(original, this, [callback, ...rest]);
       const fromTimer = (...args) => {
         const run = () => origin.run("timer", callback, ...args);
-        if (deferring) waiting.push(run);
+        if (deferring && !handlersRunning()) waiting.push(run);
         else return run();
       };
       return Reflect.apply(original, this, [fromTimer, ...rest]);
