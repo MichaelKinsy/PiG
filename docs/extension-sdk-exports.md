@@ -11,7 +11,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
 | `pi-coding-agent` | 920 | 305 | 910 | 804 | 793 | 794 |
-| `pi-tui` | 364 | 85 | 363 | 264 | 279 | 279 |
+| `pi-tui` | 364 | 85 | 363 | 216 | 230 | 230 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
 | `pi-agent-core` | 43 | 34 | 43 | 43 | 43 | 43 |
@@ -22,22 +22,17 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 |---|---|---|---|---|
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 432 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
 | SdkBuiltinToolDelegate | SdkBuiltinToolDelegate lane (built-in tool delegation, E7) | 0.5.2 | 60 | TestConformance_BuiltinToolDelegationAcrossSDKs |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1125 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 1041 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
-| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1068 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
+| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 925 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
 
-88 exports imported by 5 or more scanned packages have a gap.
+71 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
-| `pi-tui: truncateToWidth` | 91 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: matchesKey` | 79 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: visibleWidth` | 75 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: Key` | 60 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: wrapTextWithAnsi` | 45 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: SettingsManager` | 39 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: SessionManager` | 37 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getMarkdownTheme` | 30 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
@@ -50,7 +45,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: DefaultResourceLoader` | 18 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: ModelRuntime` | 18 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getSettingsListTheme` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: isKeyRelease` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai/compat: clampThinkingLevel` | 16 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: createAssistantMessageEventStream` | 16 | Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
@@ -58,16 +52,12 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-ai/compat: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createWriteToolDefinition` | 13 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: keyHint` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: CURSOR_MARKER` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: fuzzyFilter` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: getKeybindings` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: DefaultPackageManager` | 12 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createBashToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createEditToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createGrepToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createReadToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: highlightCode` | 12 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: stripTerminalSequences` | 12 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: clampThinkingLevel` | 12 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: getSupportedThinkingLevels` | 12 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createFindToolDefinition` | 10 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
@@ -79,7 +69,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: createAgentSessionFromServices` | 8 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-coding-agent: createCodemodeExtension` | 8 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: ScrollView` | 8 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: sliceByColumn` | 8 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: calculateCost` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: getCurrentTools` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: calculateCost` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
@@ -87,8 +76,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: UserMessageComponent` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: createToolSearchExtension` | 7 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-coding-agent: getSelectListTheme` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: getCapabilities` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: parseKey` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: contentText` | 7 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: contentText` | 7 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: AssistantMessageComponent` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
@@ -102,7 +89,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: initTheme` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: resizeImage` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-tui: MouseRegion` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: TUI_KEYBINDINGS` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: TuiAltScreen` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: createProvider` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-ai: getCurrentSystemMessage` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
@@ -115,9 +101,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: ModelRegistry` | 5 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: ToolExecutionComponent` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: generateDiffString` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-tui: KeybindingsManager` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: decodeKittyPrintable` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-tui: isKeyRepeat` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: getCurrentSystemPrompt` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: isRetryableAssistantError` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: getCurrentSystemPrompt` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
@@ -1065,7 +1048,7 @@ None.
 | `Box.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `Box.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `Box.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CURSOR_MARKER` | 13 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `CURSOR_MARKER` | 13 | served | native:tui.CursorMarker | native:tui::CURSOR_MARKER | native:tui.CURSOR_MARKER |
 | `CancellableLoader` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `CancellableLoader.aborted` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `CancellableLoader.dispose` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
@@ -1139,15 +1122,15 @@ None.
 | `Input.onSubmit` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `Input.render` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `Input.setValue` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `Key` | 60 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager` | 5 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager.getConflicts` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager.getDefinition` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager.getKeys` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager.getResolvedBindings` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager.getUserBindings` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager.matches` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `KeybindingsManager.setUserBindings` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `Key` | 60 | served | native:tui.Key | native:tui::Key | native:tui.Key |
+| `KeybindingsManager` | 5 | served | native:tui.KeybindingsManager | native:tui::KeybindingsManager | native:tui.KeybindingsManager |
+| `KeybindingsManager.getConflicts` | 0 | served | native:tui.KeybindingsManager.GetConflicts | native:tui::KeybindingsManager::get_conflicts | native:tui.KeybindingsManager.get_conflicts |
+| `KeybindingsManager.getDefinition` | 0 | served | native:tui.KeybindingsManager.GetDefinition | native:tui::KeybindingsManager::get_definition | native:tui.KeybindingsManager.get_definition |
+| `KeybindingsManager.getKeys` | 0 | served | native:tui.KeybindingsManager.GetKeys | native:tui::KeybindingsManager::get_keys | native:tui.KeybindingsManager.get_keys |
+| `KeybindingsManager.getResolvedBindings` | 0 | served | native:tui.KeybindingsManager.GetResolvedBindings | native:tui::KeybindingsManager::get_resolved_bindings | native:tui.KeybindingsManager.get_resolved_bindings |
+| `KeybindingsManager.getUserBindings` | 0 | served | native:tui.KeybindingsManager.GetUserBindings | native:tui::KeybindingsManager::get_user_bindings | native:tui.KeybindingsManager.get_user_bindings |
+| `KeybindingsManager.matches` | 0 | served | native:tui.KeybindingsManager.Matches | native:tui::KeybindingsManager::matches | native:tui.KeybindingsManager.matches |
+| `KeybindingsManager.setUserBindings` | 0 | served | native:tui.KeybindingsManager.SetUserBindings | native:tui::KeybindingsManager::set_user_bindings | native:tui.KeybindingsManager.set_user_bindings |
 | `Loader` | 4 | served | kit:Loader | kit:Loader | kit:Loader |
 | `Loader.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `Loader.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
@@ -1257,7 +1240,7 @@ None.
 | `StdinBuffer.removeAllListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `StdinBuffer.removeListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `StdinBuffer.setMaxListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TUI_KEYBINDINGS` | 6 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TUI_KEYBINDINGS` | 6 | served | native:tui.TUIKeybindings | native:tui::tui_keybindings | native:tui.TUI_KEYBINDINGS |
 | `Text` | 90 | served | kit:Text | kit:Text | kit:Text |
 | `Text.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `Text.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
@@ -1356,69 +1339,69 @@ None.
 | `VStack.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `VStack.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `allocateImageId` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `backgroundAnsi` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `backgroundAnsi` | 1 | served | native:tui.BackgroundAnsi | native:tui::background_ansi | native:tui.background_ansi |
 | `calculateImageRows` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `colorToHex` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `colorToOkhsl` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `colorToOklch` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `colorToRgb` | 3 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `colorToHex` | 1 | served | native:tui.ColorToHex | native:tui::color_to_hex | native:tui.color_to_hex |
+| `colorToOkhsl` | 1 | served | native:tui.ColorToOkhsl | native:tui::color_to_okhsl | native:tui.color_to_okhsl |
+| `colorToOklch` | 1 | served | native:tui.ColorToOklch | native:tui::color_to_oklch | native:tui.color_to_oklch |
+| `colorToRgb` | 3 | served | native:tui.ColorToRgb | native:tui::color_to_rgb | native:tui.color_to_rgb |
 | `compositeTuiLine` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `decodeKittyPrintable` | 5 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `decodeKittyPrintable` | 5 | served | native:tui.DecodeKittyPrintable | native:tui::decode_kitty_printable | native:tui.decode_kitty_printable |
 | `deleteAllKittyImages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `deleteKittyImage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `detectCapabilities` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `detectCapabilities` | 1 | served | native:tui.DetectCapabilities | native:tui::detect_capabilities | native:tui.detect_capabilities |
 | `encodeITerm2` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `encodeKitty` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `foregroundAnsi` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `foregroundAnsi` | 1 | served | native:tui.ForegroundAnsi | native:tui::foreground_ansi | native:tui.foreground_ansi |
 | `formatProgramStatus` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fuzzyFilter` | 13 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `fuzzyMatch` | 4 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `getCapabilities` | 7 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `fuzzyFilter` | 13 | served | native:tui.FuzzyFilter | native:tui::fuzzy_filter | native:tui.fuzzy_filter |
+| `fuzzyMatch` | 4 | served | native:tui.FuzzyMatch | native:tui::fuzzy_match | native:tui.fuzzy_match |
+| `getCapabilities` | 7 | served | native:tui.GetCapabilities | native:tui::get_capabilities | native:tui.get_capabilities |
 | `getCellDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getGifDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getImageDimensions` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getJpegDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getKeybindings` | 13 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `getKeybindings` | 13 | served | native:tui.GetKeybindings | native:tui::get_keybindings | native:tui.get_keybindings |
 | `getNativeClipboard` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getOsc8LinkAtColumn` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getOsc8LinkAtColumn` | 0 | served | native:tui.GetOsc8LinkAtColumn | native:tui::get_osc8_link_at_column | native:tui.get_osc8_link_at_column |
 | `getPngDimensions` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getTerminalColorMode` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `getTerminalColorMode` | 1 | served | native:tui.GetTerminalColorMode | native:tui::get_terminal_color_mode | native:tui.get_terminal_color_mode |
 | `getWebpDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `hyperlink` | 3 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `hyperlink` | 3 | served | native:tui.Hyperlink | native:tui::hyperlink | native:tui.hyperlink |
 | `imageFallback` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `indexedColor` | 1 | served | native:IndexedColor | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `indexedColor` | 1 | served | native:tui.NewIndexedColor | native:tui::indexed_color | native:tui.indexed_color |
 | `isAppleTerminalSession` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `isFocusable` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `isKeyRelease` | 16 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `isKeyRepeat` | 5 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `isKittyProtocolActive` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `isKeyRelease` | 16 | served | native:tui.IsKeyRelease | native:tui::is_key_release | native:tui.is_key_release |
+| `isKeyRepeat` | 5 | served | native:tui.IsKeyRepeat | native:tui::is_key_repeat | native:tui.is_key_repeat |
+| `isKittyProtocolActive` | 1 | served | native:tui.IsKittyProtocolActive | native:tui::is_kitty_protocol_active | native:tui.is_kitty_protocol_active |
 | `isViewportTUI` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `matchesKey` | 79 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `mixColors` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `okhslColor` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `matchesKey` | 79 | served | native:tui.MatchesKey | native:tui::matches_key | native:tui.matches_key |
+| `mixColors` | 1 | served | native:tui.MixColors | native:tui::mix_colors | native:tui.mix_colors |
+| `okhslColor` | 1 | served | native:tui.NewOkhslColor | native:tui::okhsl_color | native:tui.okhsl_color |
 | `oklabToOkhslLightness` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `oklchColor` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `parseColor` | 2 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `parseKey` | 7 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `oklchColor` | 1 | served | native:tui.NewOklchColor | native:tui::oklch_color | native:tui.oklch_color |
+| `parseColor` | 2 | served | native:tui.ParseColor | native:tui::parse_color | native:parse_color |
+| `parseKey` | 7 | served | native:tui.ParseKey | native:tui::parse_key | native:tui.parse_key |
 | `parseTerminalColorSchemeReport` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `renderFakeCursor` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `renderImage` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `renderLatex` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `resetCapabilitiesCache` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `rgbColor` | 3 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `setCapabilities` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `setCapabilityOverrides` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `resetCapabilitiesCache` | 1 | served | native:tui.ResetCapabilitiesCache | native:tui::reset_capabilities_cache | native:tui.reset_capabilities_cache |
+| `rgbColor` | 3 | served | native:tui.NewRgbColor | native:tui::rgb_color | native:tui.rgb_color |
+| `setCapabilities` | 1 | served | native:tui.SetCapabilities | native:tui::set_capabilities | native:tui.set_capabilities |
+| `setCapabilityOverrides` | 1 | served | native:tui.SetCapabilityOverrides | native:tui::set_capability_overrides | native:tui.set_capability_overrides |
 | `setCellDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `setImageTranscoder` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `setKeybindings` | 4 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `setKittyProtocolActive` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `sliceByColumn` | 8 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `stripTerminalSequences` | 12 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `styleText` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `styleTextWithAnsi` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `truncateToWidth` | 91 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `visibleWidth` | 75 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `wrapTextWithAnsi` | 45 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `setKeybindings` | 4 | served | native:tui.SetKeybindings | native:tui::set_keybindings | native:tui.set_keybindings |
+| `setKittyProtocolActive` | 0 | served | native:tui.SetKittyProtocolActive | native:tui::set_kitty_protocol_active | native:tui.set_kitty_protocol_active |
+| `sliceByColumn` | 8 | served | native:tui.SliceByColumn | native:tui::slice_by_column | native:tui.slice_by_column |
+| `stripTerminalSequences` | 12 | served | native:tui.StripTerminalSequences | native:tui::strip_terminal_sequences | native:tui.strip_terminal_sequences |
+| `styleText` | 0 | served | native:tui.StyleText | native:tui::style_text | native:tui.style_text |
+| `styleTextWithAnsi` | 1 | served | native:tui.StyleTextWithAnsi | native:tui::style_text_with_ansi | native:style_text_with_ansi |
+| `truncateToWidth` | 91 | served | native:tui.TruncateToWidth | native:tui::truncate_to_width | native:tui.truncate_to_width |
+| `visibleWidth` | 75 | served | native:tui.VisibleWidth | native:tui::visible_width | native:tui.visible_width |
+| `wrapTextWithAnsi` | 45 | served | native:tui.WrapTextWithAnsi | native:tui::wrap_text_with_ansi | native:tui.wrap_text_with_ansi |
 
 ## pi-ai
 
