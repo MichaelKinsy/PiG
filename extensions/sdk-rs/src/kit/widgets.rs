@@ -21,7 +21,7 @@ pub enum Widget {
 }
 
 macro_rules! widget_from {
-    ($($kind:ident),*) => {$(
+    ($($kind:ident),* $(,)?) => {$(
         impl From<$kind> for Node {
             fn from(node: $kind) -> Self {
                 Node::Widget(Widget::$kind(node))
@@ -29,7 +29,16 @@ macro_rules! widget_from {
         }
     )*};
 }
-widget_from!(BranchSummary , CompactionSummary , SkillInvocation , CustomMessage , CancellableLoader , BorderedLoader , Input /* widget-from */);
+widget_from!(
+    BranchSummary,
+    CompactionSummary,
+    SkillInvocation,
+    CustomMessage,
+    CancellableLoader,
+    BorderedLoader,
+    Input,
+    /* widget-from */
+);
 
 impl Widget {
     pub(super) fn kind(&self) -> &'static str {
