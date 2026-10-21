@@ -17,7 +17,8 @@ func check(err error) {
 	}
 }
 
-func ptr[T any](value T) *T { return &value }
+//go:fix inline
+func ptr[T any](value T) *T { return new(value) }
 
 func orNilF(value *float64) any {
 	if value == nil {
@@ -134,8 +135,8 @@ func settingsScript(ctx sdk.Context, args map[string]any) map[string]any {
 	check(s.SetThemePaths([]string{"t1"}))
 	check(s.SetEnabledModels([]string{"m1", "m2"}))
 	check(s.SetQuietStartup("header"))
-	check(s.SetShellPath(ptr("/bin/sh")))
-	check(s.SetShellCommandPrefix(ptr("set -e")))
+	check(s.SetShellPath(new("/bin/sh")))
+	check(s.SetShellCommandPrefix(new("set -e")))
 	check(s.SetNpmCommand([]string{"pnpm", "dlx"}))
 	check(s.SetModelThinkingLevel("p", "m", "low"))
 	check(s.SetHttpIdleTimeoutMs(float64(5000)))
@@ -207,7 +208,7 @@ func settingsScript(ctx sdk.Context, args map[string]any) map[string]any {
 	check(memory.SetDefaultModel("mm"))
 	check(memory.ApplyOverrides(map[string]any{"defaultModel": "ov"}))
 	r["memoryAfter"] = map[string]any{"model": orNil(ok(memory.GetDefaultModel())), "global": ok(memory.GetGlobalSettings()), "merged": ok(memory.GetSettings())}
-	untrusted := ok(sdk.SettingsManagerInMemory(ctx, nil, &sdk.SettingsManagerCreateOptions{ProjectTrusted: ptr(false)}))
+	untrusted := ok(sdk.SettingsManagerInMemory(ctx, nil, &sdk.SettingsManagerCreateOptions{ProjectTrusted: new(false)}))
 	r["untrustedMemory"] = map[string]any{"trusted": ok(untrusted.IsProjectTrusted()), "write": failure(untrusted.SetProjectPackages([]any{"x"}), "refusing to write project settings")}
 
 	broken := ok(sdk.SettingsManagerCreate(ctx, brokenCwd, &agentDir, nil))
@@ -221,7 +222,7 @@ func settingsScript(ctx sdk.Context, args map[string]any) map[string]any {
 	entry["again"] = len(ok(broken.DrainErrors()))
 	r["errors"] = entry
 
-	distrust := ok(sdk.SettingsManagerCreate(ctx, cwd, &agentDir, &sdk.SettingsManagerCreateOptions{ProjectTrusted: ptr(false)}))
+	distrust := ok(sdk.SettingsManagerCreate(ctx, cwd, &agentDir, &sdk.SettingsManagerCreateOptions{ProjectTrusted: new(false)}))
 	r["distrusted"] = map[string]any{
 		"trusted": ok(distrust.IsProjectTrusted()), "project": ok(distrust.GetProjectSettings()), "merged": ok(distrust.GetSettings()),
 		"write": failure(distrust.SetProjectExtensionPaths([]string{"z"}), "refusing to write project settings"),
@@ -294,7 +295,7 @@ func storageReport(ctx sdk.Context) map[string]any {
 	}
 	out["projectWrote"] = map[string]any{"project": parsedText(store["project"]), "calls": snapshot(), "paths": projectPaths}
 	calls = calls[:0]
-	untrusted := ok(sdk.SettingsManagerFromStorage(ctx, storage, &sdk.SettingsManagerCreateOptions{ProjectTrusted: ptr(false)}))
+	untrusted := ok(sdk.SettingsManagerFromStorage(ctx, storage, &sdk.SettingsManagerCreateOptions{ProjectTrusted: new(false)}))
 	out["untrusted"] = map[string]any{"calls": snapshot(), "theme": orNil(ok(untrusted.GetTheme())), "trusted": ok(untrusted.IsProjectTrusted())}
 	bad := "{bad"
 	store["global"] = &bad

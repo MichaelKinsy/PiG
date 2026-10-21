@@ -179,7 +179,7 @@ func parseRustModule(dir string) (symbolSet, error) {
 				out[s] = true
 			}
 		case strings.HasPrefix(rest, "{"):
-			for _, item := range strings.Split(strings.Trim(rest, "{} "), ",") {
+			for item := range strings.SplitSeq(strings.Trim(rest, "{} "), ",") {
 				item = strings.TrimSpace(item)
 				if item == "" {
 					continue

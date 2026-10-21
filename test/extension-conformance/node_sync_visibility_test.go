@@ -246,9 +246,7 @@ func TestNodeRegistryWritesSurviveConcurrentPublications(t *testing.T) {
 		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-registry", nodeSyncRegistryFixture})
 		stop := make(chan struct{})
 		var published sync.WaitGroup
-		published.Add(1)
-		go func() {
-			defer published.Done()
+		published.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -258,7 +256,7 @@ func TestNodeRegistryWritesSurviveConcurrentPublications(t *testing.T) {
 					time.Sleep(time.Millisecond)
 				}
 			}
-		}()
+		})
 		t.Cleanup(func() { close(stop); published.Wait() })
 		rig.command("nodesync-registry", "churn", "60")
 		if got := rig.reported("churn"); got != "[]" {
@@ -385,9 +383,7 @@ func TestNodeRegistryVirtualWritesSurviveConcurrentPublications(t *testing.T) {
 		rig := newNodeSyncRig(t, isolation, nil, nodeAPIFixture{"nodesync-native", nodeSyncNativeFixture})
 		stop := make(chan struct{})
 		var published sync.WaitGroup
-		published.Add(1)
-		go func() {
-			defer published.Done()
+		published.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -397,7 +393,7 @@ func TestNodeRegistryVirtualWritesSurviveConcurrentPublications(t *testing.T) {
 					time.Sleep(time.Millisecond)
 				}
 			}
-		}()
+		})
 		t.Cleanup(func() { close(stop); published.Wait() })
 		rig.command("nodesync-native", "virtual-churn", "60")
 		if got := rig.reported("virtual-churn"); got != "[]" {

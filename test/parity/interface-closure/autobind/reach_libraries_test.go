@@ -32,7 +32,7 @@ func TestReachLibrariesPortPublishedEntryPoints(t *testing.T) {
 			t.Errorf("%s is designed out, so libraryEntries must not map it", entry)
 		}
 		row := ""
-		for _, line := range strings.Split(string(portMap), "\n") {
+		for line := range strings.SplitSeq(string(portMap), "\n") {
 			if strings.HasPrefix(line, "| `"+file+"` |") {
 				row = line
 			}

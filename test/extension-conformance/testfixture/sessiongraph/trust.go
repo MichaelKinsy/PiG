@@ -28,16 +28,16 @@ func trustScript(ctx sdk.Context, args map[string]any) map[string]any {
 	r := map[string]any{}
 	store := ok(sdk.NewProjectTrustStore(ctx, agentDir))
 	r["initial"] = map[string]any{"get": decision(ok(store.Get(cwd))), "entry": entry(ok(store.GetEntry(cwd)))}
-	check(store.Set(cwd, ptr(true)))
-	check(store.Set(other, ptr(false)))
+	check(store.Set(cwd, new(true)))
+	check(store.Set(other, new(false)))
 	r["saved"] = map[string]any{
 		"get": decision(ok(store.Get(cwd))), "entry": entry(ok(store.GetEntry(sub))), "otherGet": decision(ok(store.Get(other))), "file": readFile(filepath.Join(agentDir, "trust.json")),
 	}
-	check(store.SetMany([]sdk.ProjectTrustUpdate{{Path: cwd, Decision: nil}, {Path: anc, Decision: ptr(true)}}))
+	check(store.SetMany([]sdk.ProjectTrustUpdate{{Path: cwd, Decision: nil}, {Path: anc, Decision: new(true)}}))
 	r["many"] = map[string]any{
 		"cwd": decision(ok(store.Get(cwd))), "anc": decision(ok(store.Get(ancProject))), "entryAnc": entry(ok(store.GetEntry(ancProject))), "file": readFile(filepath.Join(agentDir, "trust.json")),
 	}
-	check(store.Set(sub, ptr(false)))
+	check(store.Set(sub, new(false)))
 	r["nested"] = map[string]any{"sub": decision(ok(store.Get(sub))), "parent": decision(ok(store.Get(cwd))), "file": readFile(filepath.Join(agentDir, "trust.json"))}
 
 	failureOfGet := func(dir, contains string) string {

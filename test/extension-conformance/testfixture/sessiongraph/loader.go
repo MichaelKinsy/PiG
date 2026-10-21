@@ -83,7 +83,7 @@ func loaderScript(ctx sdk.Context, args map[string]any) map[string]any {
 			if base == nil {
 				return nil
 			}
-			return ptr(*base + "!")
+			return new(*base + "!")
 		},
 		AppendSystemPromptOverride: func(base []string) []string { return append(append([]string{}, base...), "z") },
 		SkillsOverride: func(base sdk.SkillsResult) sdk.SkillsResult {

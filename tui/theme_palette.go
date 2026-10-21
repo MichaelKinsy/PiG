@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -28,9 +29,7 @@ func NewThemeFromANSIPalette(name string, foregrounds, backgrounds map[string]st
 			t.fgAnsi[token] = ansi
 		}
 	}
-	for token, ansi := range backgrounds {
-		t.bgAnsi[token] = ansi
-	}
+	maps.Copy(t.bgAnsi, backgrounds)
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			theme, err = nil, fmt.Errorf("theme palette: %v", recovered)

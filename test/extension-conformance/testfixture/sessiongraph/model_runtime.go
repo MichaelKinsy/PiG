@@ -3,6 +3,7 @@ package sessiongraph
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -166,9 +167,7 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 	completed := rt.CompleteSimple(local, conversation, options)
 	full := rt.Complete(local, conversation, options)
 	unknownModel := map[string]any{}
-	for key, value := range local {
-		unknownModel[key] = value
-	}
+	maps.Copy(unknownModel, local)
 	unknownModel["provider"] = "nope-prov"
 	r["stream"] = map[string]any{
 		"events": events, "stopReason": message["stopReason"], "text": messageText(message), "provider": message["provider"], "model": message["model"], "api": message["api"],

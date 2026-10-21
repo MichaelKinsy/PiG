@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
@@ -90,9 +91,7 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 		hook = func(spawn sdk.BashSpawnContext) (sdk.BashSpawnContext, error) {
 			log.add("spawnHook:%s", spawn.Command)
 			env := map[string]string{}
-			for k, v := range spawn.Env {
-				env[k] = v
-			}
+			maps.Copy(env, spawn.Env)
 			env["HOOK_VAR"] = "hook-env"
 			return sdk.BashSpawnContext{Command: "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", Cwd: spawn.Cwd, Env: env}, nil
 		}
