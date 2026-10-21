@@ -364,9 +364,10 @@ func TestReadLoopRunsSlotCallsInSendOrder(t *testing.T) {
 			return []slotSend{footerSend("c1", "", "older"), footerSend("c2", "r9", "newer")}
 		}},
 		{"widget", func(*testing.T) []slotSend {
+			// A string list, as the Go, Rust and Python SDKs send it: a width marks a frame a component rendered, which the non-interactive observer installed by runSlotOrder never receives (handleSetWidget).
 			return []slotSend{
-				{"c1", "ui.setWidget", "", map[string]any{"key": "list", "lines": []string{"older"}, "width": 20}, "widget:older"},
-				{"c2", "ui.setWidget", "r9", map[string]any{"key": "list", "lines": []string{"newer"}, "width": 40}, "widget:newer"},
+				{"c1", "ui.setWidget", "", map[string]any{"key": "list", "lines": []string{"older"}}, "widget:older"},
+				{"c2", "ui.setWidget", "r9", map[string]any{"key": "list", "lines": []string{"newer"}}, "widget:newer"},
 			}
 		}},
 		{"header then login", func(t *testing.T) []slotSend {

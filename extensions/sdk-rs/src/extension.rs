@@ -1471,7 +1471,7 @@ impl Extension {
             Arc::new(Mutex::new(HashMap::new()));
         let request_threads = ext.provider_objects.workers.clone();
         let width_deliveries = Arc::new(WidthDeliveries::default());
-        let tool_starts = crate::tool_start_order::ToolStartOrder::default();
+        let tool_batches = crate::tool_start_order::ToolBatches::default();
         let stop_requests = |reason: &str| -> io::Result<()> {
             width_deliveries.stop();
             for cancel in active_requests.lock().unwrap().values() {
@@ -1531,9 +1531,13 @@ impl Extension {
                         let base = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                         let conn = conn.clone();
                         let ext = ext.clone();
-                        // agent-loop.ts:619-647: the handlers of a batch start in source order.
-                        let start = (req.method == "tool_call").then(|| tool_starts.reserve());
+                        // agent-loop.ts:619-647: the handlers of a parallel batch start in source order. A call that names no batch is in no order.
+                        let start = if req.method == "tool_call" { tool_batches.reserve(req.batch.as_deref()) } else { None };
                         let failed_start = start.clone();
+                        // The request's host calls find its place in the orders through the parent they carry.
+                        if let (Some(start), Some(parent)) = (&start, &base.request_parent) {
+                            parent.attach_start(start.clone());
+                        }
                         request_threads.start();
                         let threads = request_threads.clone();
                         let failed_id = id.clone();
@@ -1546,26 +1550,33 @@ impl Extension {
                                 let handled = catch_unwind(AssertUnwindSafe(|| {
                                     ext.handle_request(&base, &conn, &id, &mut req, cancel, start.as_deref())
                                 }));
-                                if let Some(start) = &start {
-                                    start.end();
-                                }
                                 if let Err(payload) = handled {
                                     // The panic value reaches the caller, as a thrown Error's message does in Pi (the stale-context message is raised this way).
                                     let detail = payload
                                         .downcast_ref::<String>()
                                         .cloned()
                                         .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()));
-                                    let _ = conn.respond(
-                                        &id,
-                                        None,
-                                        Some(ErrorInfo {
-                                            code: Some("handler_panic".to_string()),
-                                            message: match detail {
-                                                Some(detail) => format!("extension handler panicked: {detail}"),
-                                                None => "extension handler panicked".to_string(),
-                                            },
-                                        }),
-                                    );
+                                    let respond = || {
+                                        let _ = conn.respond(
+                                            &id,
+                                            None,
+                                            Some(ErrorInfo {
+                                                code: Some("handler_panic".to_string()),
+                                                message: match detail {
+                                                    Some(detail) => format!("extension handler panicked: {detail}"),
+                                                    None => "extension handler panicked".to_string(),
+                                                },
+                                            }),
+                                        );
+                                    };
+                                    // A handler that panics after its dialog was answered still responds in the order of the answers.
+                                    match &start {
+                                        Some(start) => start.respond(respond),
+                                        None => respond(),
+                                    }
+                                }
+                                if let Some(start) = &start {
+                                    start.end();
                                 }
                                 active.lock().unwrap().remove(&id);
                                 threads.finish();
@@ -2305,7 +2316,7 @@ impl Extension {
                         start.begin();
                     }
                     let result = handler(&ctx, args);
-                    match result {
+                    let respond = || match result {
                         ToolResult::Text(s) => {
                             let _ = conn.respond(id, Some(serde_json::json!({"content": s})), None);
                         }
@@ -2322,6 +2333,11 @@ impl Extension {
                                 }),
                             );
                         }
+                    };
+                    // A handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers.
+                    match start {
+                        Some(start) => start.respond(respond),
+                        None => respond(),
                     }
                 } else {
                     let _ = conn.respond(
@@ -2958,6 +2974,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(
                         serde_json::json!({"message":{"text":"hi"},"options":{},"width":42}),
                     ),
@@ -3040,6 +3057,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3205,6 +3223,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3270,6 +3289,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(cred_args.clone()),
                 }),
                 ..Default::default()
@@ -3293,6 +3313,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(cred_args.clone()),
                 }),
                 ..Default::default()
@@ -3317,6 +3338,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: Some(cred_args),
                 }),
                 ..Default::default()
@@ -3338,6 +3360,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3430,6 +3453,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3461,6 +3485,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3528,6 +3553,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3584,6 +3610,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3663,6 +3690,7 @@ mod tests {
                     event: None,
                     handler_id: 0,
                     tool_call_id: None,
+                    batch: None,
                     args: None,
                 }),
                 ..Default::default()
@@ -3724,6 +3752,7 @@ mod tests {
                 event: None,
                 handler_id: 0,
                 tool_call_id: Some(format!("call-{id}")),
+                batch: None,
                 args,
             }),
             ..Default::default()

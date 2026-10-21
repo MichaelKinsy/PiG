@@ -171,6 +171,10 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 			slices.Sort(keys)
 			// The bridge keys widgets by the widget key alone, one namespace for every extension, as Pi's setExtensionWidget does.
 			for _, key := range keys {
+				// A component's rendered frame is not a string array: rpc-mode.ts ignores a component factory.
+				if widgets[key].IsFrame() {
+					continue
+				}
 				lines := widgets[key].Lines()
 				previous, exists := previousWidgets[key]
 				if exists && slices.Equal(previous, lines) {

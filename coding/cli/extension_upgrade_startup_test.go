@@ -57,7 +57,7 @@ func TestStartupNamesSDKDriftAndExitsInPrintMode(t *testing.T) {
 		`Extension "ask" was written for an older SDK:`,
 		"Context.GetSessionID: func() string -> func() (string, error) (SDK 0.3.0)",
 		"SendMessageOptions.TriggerTurn: bool -> *bool (SDK 0.2.0)",
-		"Run: pig extension upgrade " + extension + "\n",
+		"Run: pig extension upgrade " + commandWord(extension) + "\n",
 		"written for an older SDK (",
 	} {
 		if !strings.Contains(stderr, want) {

@@ -113,6 +113,9 @@ func makePackedUIHarness(t *testing.T, language string) *harness {
 	bridge.SetUIContext(ui)
 	bridge.SetActions(conformanceActions(actions))
 	host := subprocess.NewHost(t.TempDir())
+	if rpcRowMode != "" {
+		host.SetMode(rpcRowMode)
+	}
 	host.SetHostInfo(conformanceHostInfo)
 	host.SetUIBridge(bridge)
 	wire := observeWire(t, host)

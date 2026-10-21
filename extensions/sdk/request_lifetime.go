@@ -37,10 +37,18 @@ func (c Context) hostConnection() *conn {
 
 func (c Context) beginHostCall(method string, args any) (pendingCall, error) {
 	connection := c.hostConnection()
-	if c.parent == nil {
-		return connection.beginCallFor(c.requestID, method, args)
+	// A tool handler's host call, of any kind, is an await of Pi's handler: it orders the handler among the calls of its batch (toolStartOrder). Only a dialog call
+	// carries the response slot.
+	c.start.beforeCall()
+	defer c.start.afterCall()
+	var slot *settleSlot
+	if c.start != nil && isDialogMethod(method) {
+		slot = c.start.responseSlot()
 	}
-	return connection.beginParentCall(c.parent, method, args)
+	if c.parent == nil {
+		return connection.beginCallForSlot(c.requestID, method, args, slot)
+	}
+	return connection.beginParentCallFor(c.parent, method, args, slot)
 }
 
 func (p *requestParent) lifetime() (context.Context, bool) {

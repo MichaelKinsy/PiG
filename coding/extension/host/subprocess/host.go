@@ -3875,6 +3875,7 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 				Method:     MethodToolCall,
 				Tool:       toolName,
 				ToolCallID: toolCallID,
+				Batch:      agent.ToolBatchFromContext(ctx, toolCallID),
 				Args:       params,
 				OwnSignal:  extension.OwnsSignal(ctx),
 				ExecuteID:  executeID,

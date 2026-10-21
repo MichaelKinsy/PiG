@@ -1906,6 +1906,14 @@ impl Context {
         }
     }
 
+    /// A host call that carries no request id (`conn.call`) is still an await of a tool handler: a handler whose dialog was answered gives up
+    /// its place in the batch's response order, as `Connection::begin_call_with_scope` does for the calls that carry one.
+    fn yield_batch_turn(&self) {
+        if let Some(start) = self.request_parent.as_deref().and_then(crate::protocol::RequestParent::tool_start) {
+            start.yield_turn();
+        }
+    }
+
     /// Register or replace a tool in the running Session. Validation precedes replacement; the host refresh completes before returning.
     pub fn register_tool(&self, definition: crate::ToolDefinition) -> io::Result<()> {
         if !definition.parameters.is_object() {
@@ -2507,6 +2515,7 @@ impl Context {
     pub fn set_login(&self, definition: &LoginDefinition) -> io::Result<()> {
         let args = serde_json::to_value(definition)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
+        self.yield_batch_turn();
         call_result_to_io(self.conn.call("ui.setLogin", Some(args))?)
     }
 
@@ -2516,6 +2525,7 @@ impl Context {
     pub fn register_sprite(&self, definition: &SpriteDefinition) -> io::Result<()> {
         let args = serde_json::to_value(definition)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
+        self.yield_batch_turn();
         call_result_to_io(self.conn.call("ui.registerSprite", Some(args))?)
     }
 
@@ -3623,6 +3633,7 @@ impl Context {
             return;
         }
         args.insert("awaitCompletion".into(), serde_json::Value::Bool(true));
+        self.yield_batch_turn();
         let conn = self.conn.clone();
         thread::spawn(move || {
             let outcome = match conn.call("compact", Some(serde_json::Value::Object(args))) {
