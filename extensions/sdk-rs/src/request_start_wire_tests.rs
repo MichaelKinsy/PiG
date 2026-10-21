@@ -26,14 +26,18 @@ fn request(id: &str, method: &str, tool: Option<&str>, event: Option<&str>, hand
         msg_type: "request".into(),
         id: Some(id.into()),
         request: Some(RequestMsg {
+            child_session: None,
             terminal_input: None,
             stream: None,
             stream_error: None,
+            tool_call_index: None,
+            args_raw: None,
             method: method.into(),
             tool: tool.map(Into::into),
             event: event.map(Into::into),
             handler_id,
             tool_call_id: Some(format!("call-{id}")),
+            batch: None,
             args: Some(json!({})),
         }),
         ..Default::default()
