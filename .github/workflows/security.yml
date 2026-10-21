@@ -2,8 +2,11 @@
 
 name: Security and supply chain
 
+# Security result is a required check, so every event that can land a change
+# reports it: a pull request, and the merge queue's merge_group run.
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
   schedule:
@@ -33,11 +36,11 @@ jobs:
         id: classify
         env:
           EVENT: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         shell: bash
-        # Source analysis skips pull requests that change only project prose
-        # and repository metadata. Secret scanning always runs.
+        # Source analysis skips pull requests and merge groups that change only
+        # project prose and repository metadata. Secret scanning always runs.
         run: automation/ci/classify-changes.sh "$EVENT" "$BASE_SHA" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
 
   source-assurance:
@@ -159,14 +162,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # gitleaks-action supports only push, pull_request, workflow_dispatch and schedule; on merge_group it exits with an
+      # error. The commits a merge group adds are the queued pull request's own, which the pull_request run scanned.
       - name: Gitleaks
+        if: github.event_name != 'merge_group'
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # base and head are empty outside a merge group, which keeps the action's per-event range there; in a merge group
+      # they scan the commits the queue added to the base branch.
       - name: TruffleHog verified findings
         uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
         with:
           path: ./
+          base: ${{ github.event.merge_group.base_sha }}
+          head: ${{ github.event.merge_group.head_sha }}
           extra_args: --only-verified
 
   dependency-review:
