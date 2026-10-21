@@ -972,7 +972,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-b856354](#bf-b856354) | A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached… | PiG's own defect | All platforms | Unreleased |
 | [BF-7827d96](#bf-7827d96) | Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a… | PiG's own defect | All platforms | Unreleased |
 | [BF-b2a73bf](#bf-b2a73bf) | A Node extension's `ctx.ui.select`, `confirm` and `input` honor `options.signal`, as Pi's RPC and interactive… | PiG's own defect | All platforms | Unreleased |
-| [BF-c6cb4f6](#bf-c6cb4f6) | Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it | PiG's own defect | All platforms | Unreleased |
+| [BF-91e8d60](#bf-91e8d60) | Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it | PiG's own defect | All platforms | Unreleased |
 | [BF-fd51f36](#bf-fd51f36) | A Go or Rust extension edited while it was being built could be cached under the hash of the source from… | PiG's own defect | All platforms | Unreleased |
 | [BF-b8c4b2c](#bf-b8c4b2c) | A tool's `prepareLoadout` hook now runs again before every later turn of a run, as in Pi, so the descriptions… | PiG's own defect | All platforms | Unreleased |
 | [BF-a343b2b](#bf-a343b2b) | Interactive mode now routes a message an extension sends with `sendMessage` while a run streams as Pi does | PiG's own defect | All platforms | Unreleased |
@@ -14291,19 +14291,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** None recorded.
 - **Release note:** A Node extension's `ctx.ui.select`, `confirm` and `input` honor `options.signal`, as Pi's RPC and interactive modes do. A signal that is already aborted resolves the default (`undefined`, or `false` for `confirm`) without showing the dialog or writing an RPC request, and a signal that aborts while the dialog is open resolves the default at once and dismisses the dialog (RPC: the pending request is dropped). Before, the signal was ignored: the dialog stayed open until the user or its timeout answered, and the extension waited for it.
 
-### BF-c6cb4f6
+### BF-91e8d60
 
 **Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it**
 
 - **Source:** PiG's own defect
 - **Symptom:** Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it.
-- **Root cause:** PiG's Durable writes schema version 2 (Pi main's sleeping task status), which pi-durable 1.3.0 refuses. Opening a version 1 store by file path upgraded it in place, so a user who tried PiG on their Pi data could not go back to the released Pi. driver.OpenHarness and node.OpenNodeSqliteStorage now copy such a store to <path>.schema-v1.bak (VACUUM INTO) before the upgrade; an earlier copy is never replaced, and a failed copy fails the open. pi-durable 1.3.0 opens the copy.
+- **Root cause:** PiG's Durable writes schema version 2, which pi-durable 1.3.0 refuses, and opening a version 1 store by file path upgraded it in place, so a user could not go back to the released Pi. The fix copies such a store to <path>.schema-<N>.bak (VACUUM INTO) before the upgrade; an earlier copy is never replaced, and a failed copy fails the open.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `c6cb4f6c37` (2026-10-20)
+- **Fix commits:** `c6cb4f6c37` (2026-10-20), `91e8d60919` (2026-10-21)
 - **Tests:** `durable/core/driver/schema_backup_core_test.go::TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading`, `durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading`, `durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore`
-- **Release note:** Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it. PiG's Durable writes schema version 2, which no Pi release reads yet, and it upgraded the store in place. `driver.OpenHarness` and `node.OpenNodeSqliteStorage` now copy a store at an older schema version to `<path>.schema-1.bak` before upgrading it; pi-durable 1.3.0 opens that copy. An earlier copy is never replaced, and if the copy cannot be written the open fails and the store is left as it was (D188, #245; the commit that made the change calls it D186, its number before the renumber).
+- **Release note:** Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it. PiG's Durable writes schema version 2, which no Pi release reads yet, and it upgraded the store in place. `driver.OpenHarness` and `node.OpenNodeSqliteStorage` now copy a store at an older schema version to `<path>.schema-1.bak` before upgrading it; pi-durable 1.3.0 opens that copy. An earlier copy is never replaced, and if the copy cannot be written the open fails and the store is left as it was. The copy is one extra file the size of the store, written once per older store (D188, #245; the commit that made the change calls it D186, its number before the renumber).
 
 ### BF-fd51f36
 
