@@ -130120,7 +130120,7 @@
       "evidence": [
         "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream",
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteRoutesTheFirstRequestOfAPromptAsAUserTurnWhenExtensionMessagesFollowThePrompt",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs"
       ]
     },
     {
@@ -132321,8 +132321,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/before_agent_start_trigger_test.go#TestBeforeAgentStartTriggerAcrossSDKs",
-        "test:test/extension-conformance/prompt_chain_test.go#TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs",
-        "test:test/extension-conformance/prompt_options_test.go#TestPromptOptionEditsAcrossSDKs"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/prompt_chain_test.go#TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs"
       ]
     },
     {
@@ -147185,8 +147185,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -147207,8 +147207,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -148348,8 +148348,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -148370,8 +148370,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -154441,8 +154441,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
@@ -154463,8 +154463,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs",
-        "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward"
+        "test:test/extension-conformance/ctx_system_prompt_read_test.go#TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs",
+        "test:test/extension-conformance/render_system_prompt_test.go#TestRenderCurrentSystemPromptAcrossSDKs"
       ]
     },
     {
