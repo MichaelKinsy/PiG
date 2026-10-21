@@ -201,6 +201,9 @@ func loadSymbols(root string, probe *probeResult) (*sdkSymbols, error) {
 	if err := addKitSymbols(root, goSDK.symbols, rs, py); err != nil {
 		return nil, err
 	}
+	if err := addSubpackageSymbols(root, goSDK.symbols, rs, py); err != nil {
+		return nil, err
+	}
 	// The Node runtime's objects come from the runtime probe; the properties
 	// it reads from an extension's definitions (tool, command, flag objects)
 	// and its components (the view walk, D107) come from its source.

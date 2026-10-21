@@ -65,6 +65,8 @@ type modelTypesRig struct {
 	virtual       []string
 	available     []string
 	theme         any
+	keybindings   any
+	capabilities  subprocess.TerminalCapabilitiesPayload
 }
 
 // setTheme is the palette the host publishes with its state before each call.
@@ -72,6 +74,24 @@ func (r *modelTypesRig) setTheme(palette any) {
 	r.mu.Lock()
 	r.theme = palette
 	r.mu.Unlock()
+}
+
+// setTuiState is the keybinding table and terminal capabilities the host publishes with its state; the next state push carries them to the extension's pi-tui.
+func (r *modelTypesRig) setTuiState(keybindings any, capabilities subprocess.TerminalCapabilitiesPayload) {
+	r.mu.Lock()
+	r.keybindings, r.capabilities = keybindings, capabilities
+	r.mu.Unlock()
+	r.bridge.SetKeybindingsFunc(func() any {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return r.keybindings
+	})
+	r.bridge.SetTerminalCapabilitiesFunc(func() subprocess.TerminalCapabilitiesPayload {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return r.capabilities
+	})
+	r.host.BroadcastStateUpdate()
 }
 
 func newModelTypesRig(t *testing.T) *modelTypesRig {
@@ -624,7 +644,62 @@ def new_extension():
             registry.unregister_provider("late")
         return json.dumps({"mode": args.get("mode")})
 
-    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
+    def tui_probe(ctx, args):
+        from pig_sdk import tui
+
+        def as_list(keys):
+            if keys is None:
+                return []
+            return [keys] if isinstance(keys, str) else list(keys)
+
+        def caps_json(value):
+            return {"images": value.images, "trueColor": value.true_color, "hyperlinks": value.hyperlinks}
+
+        ids = args.get("ids", [])
+        keybindings = tui.get_keybindings()
+        original = tui.get_capabilities()
+        definitions = {}
+        for id in ids:
+            definition = keybindings.get_definition(id)
+            definitions[id] = definition.description if definition is not None else None
+        report = {
+            "keys": {id: keybindings.get_keys(id) for id in ids},
+            "matches": [keybindings.matches(item["data"], item["id"]) for item in args.get("inputs", [])],
+            "definitions": definitions,
+            "user": {id: as_list(keys) for id, keys in keybindings.get_user_bindings().items()},
+            "conflicts": [{"key": c.key, "keybindings": list(c.keybindings)} for c in keybindings.get_conflicts()],
+            "resolvedIds": sorted(keybindings.get_resolved_bindings()),
+            "defaults": {"count": len(tui.TUI_KEYBINDINGS), "tui.input.submit": as_list(tui.TUI_KEYBINDINGS["tui.input.submit"].default_keys), "tui.select.confirm": as_list(tui.TUI_KEYBINDINGS["tui.select.confirm"].default_keys)},
+            "key": {"ctrl": tui.Key.ctrl("x"), "alt": tui.Key.alt(tui.Key.enter), "shift": tui.Key.shift(tui.Key.tab), "escape": tui.Key.escape, "ctrlShift": tui.Key.ctrl_shift("p")},
+            "capabilities": caps_json(original), "colorMode": tui.get_terminal_color_mode(),
+        }
+        tui.set_keybindings(tui.KeybindingsManager({"x.probe": tui.KeybindingDefinition(default_keys=["ctrl+q"])}))
+        installed = {"keys": tui.get_keybindings().get_keys("x.probe"), "hostKeys": tui.get_keybindings().get_keys("tui.input.submit")}
+        tui.get_keybindings().set_user_bindings({"x.probe": ["ctrl+w"]})
+        installed["rebound"] = tui.get_keybindings().get_keys("x.probe")
+        tui.set_keybindings(keybindings)
+        installed["restored"] = tui.get_keybindings().get_keys("tui.input.submit")
+        report["installed"] = installed
+
+        tui.set_capabilities(tui.TerminalCapabilities("kitty", False, False))
+        swapped = {"capabilities": caps_json(tui.get_capabilities()), "colorMode": tui.get_terminal_color_mode()}
+        tui.set_capability_overrides(tui.CapabilityOverrides(hyperlinks=True))
+        swapped["overridden"] = tui.get_capabilities().hyperlinks
+        tui.set_capability_overrides(tui.CapabilityOverrides())
+        tui.reset_capabilities_cache()
+        tui.detect_capabilities(lambda: False)
+        swapped["detected"] = True
+        tui.set_capabilities(original)
+        swapped["restored"] = caps_json(tui.get_capabilities())
+        before = tui.is_kitty_protocol_active()
+        tui.set_kitty_protocol_active(True)
+        after = tui.is_kitty_protocol_active()
+        tui.set_kitty_protocol_active(before)
+        swapped["kitty"] = [before, after, tui.is_kitty_protocol_active()]
+        report["swapped"] = swapped
+        return json.dumps(report)
+
+    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
     return ext
 `

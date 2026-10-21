@@ -128,7 +128,6 @@ mod keybinding_hints;
 pub use keybinding_hints::{KeyTextFormatOptions, format_key_text, key_display_text, key_hint, key_text, raw_key_hint};
 mod theme_helpers;
 pub use theme_helpers::{EditorTheme, HighlightFn, MarkdownTheme, SelectListTheme, SelectedStyleFn, SettingsListTheme, StyleFn, get_editor_theme, get_markdown_theme, get_select_list_theme, get_settings_list_theme, highlight_code, init_theme};
-mod theme_color;
 mod tool_render;
 mod tool_start_order;
 mod transport;
