@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gofrs/flock"
+	"github.com/MichaelKinsy/PiG/internal/filelock"
 )
 
 const (
@@ -87,7 +87,7 @@ type CacheLifecycleOptions struct {
 }
 
 type UsageLease struct {
-	lock *flock.Flock
+	lock filelock.Lock
 }
 
 func (l *UsageLease) Release() error {
@@ -154,19 +154,19 @@ func cacheEntryRemoved(entryDir, artifactPath string) bool {
 
 // lockUsageShared takes the shared usage lock of entryDir, waiting for a collection that holds it exclusively while it renames the
 // entry away.
-func lockUsageShared(entryDir string) (*flock.Flock, error) {
+func lockUsageShared(entryDir string) (filelock.Lock, error) {
 	lock, err := newUsageLock(entryDir)
 	if err != nil {
 		return nil, err
 	}
 	if err := lock.RLock(); err != nil {
-		return nil, err
+		return nil, filelock.Explain(filepath.Dir(entryDir), err)
 	}
 	return lock, nil
 }
 
 // tryLockUsageShared is lockUsageShared without the wait: it reports false when a collection holds the lock or it cannot be taken.
-func tryLockUsageShared(entryDir string) (*flock.Flock, bool) {
+func tryLockUsageShared(entryDir string) (filelock.Lock, bool) {
 	lock, err := newUsageLock(entryDir)
 	if err != nil {
 		return nil, false
@@ -177,12 +177,12 @@ func tryLockUsageShared(entryDir string) (*flock.Flock, bool) {
 	return lock, true
 }
 
-func newUsageLock(entryDir string) (*flock.Flock, error) {
+func newUsageLock(entryDir string) (filelock.Lock, error) {
 	lockPath := cacheLockPath(entryDir, ".usage.lock")
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
 		return nil, err
 	}
-	return flock.New(lockPath), nil
+	return filelock.New(lockPath), nil
 }
 
 func AcquireUsageLease(entryDir string) (*UsageLease, error) {
@@ -267,14 +267,14 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 		return report, errors.New("cache root is required")
 	}
 
-	var gcLock *flock.Flock
+	var gcLock filelock.Lock
 	if prune {
 		if err := os.MkdirAll(options.CacheRoot, 0o755); err != nil {
 			return report, err
 		}
-		gcLock = flock.New(filepath.Join(options.CacheRoot, ".gc.lock"))
+		gcLock = filelock.New(filepath.Join(options.CacheRoot, ".gc.lock"))
 		if _, err := gcLock.TryLockContext(ctx, gcLockRetry); err != nil {
-			return report, fmt.Errorf("lock extension cache GC: %w", err)
+			return report, fmt.Errorf("lock extension cache GC: %w", filelock.Explain(options.CacheRoot, err))
 		}
 		defer func() { _ = gcLock.Unlock() }()
 	}
@@ -368,13 +368,13 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 			report.Errors = append(report.Errors, fmt.Sprintf("prepare lock for %s: %v", entry.Path, err))
 			continue
 		}
-		usageLock := flock.New(lockPath)
+		usageLock := filelock.New(lockPath)
 		locked, lockErr := usageLock.TryLock()
 		if lockErr != nil || !locked {
 			report.Skipped++
 			continue
 		}
-		buildLock := flock.New(cacheBuildLockPath(entry.Path))
+		buildLock := filelock.New(cacheBuildLockPath(entry.Path))
 		buildLocked, buildLockErr := buildLock.TryLock()
 		if buildLockErr != nil || !buildLocked {
 			_ = usageLock.Unlock()
@@ -706,7 +706,7 @@ func lockHeld(path string) bool {
 	if _, err := os.Stat(path); err != nil {
 		return false
 	}
-	lock := flock.New(path)
+	lock := filelock.New(path)
 	locked, err := lock.TryLock()
 	if err != nil || !locked {
 		return true
