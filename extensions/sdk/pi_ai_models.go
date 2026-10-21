@@ -211,7 +211,7 @@ func jsAlternation(patterns ...string) *regexp.Regexp { return jsRegexp(strings.
 // alternative is tried on its own, as Pi's .some() does, so its anchors keep their meaning. Every pattern compiles on first use: the pig binary links this package, and compiling at
 // package initialization cost startup allocations on every run (TestPackageInitWorkBudget).
 var (
-	overflowPatterns = sync.OnceValue(func() []*regexp.Regexp { return compileEach(
+	overflowPatterns = lazyEach(
 		`prompt (?:is )?too long`,
 		`prompt exceeds max length`,
 		`request_too_large`,
@@ -237,15 +237,15 @@ var (
 		`context[_ ]length[_ ]exceeded`,
 		`too many tokens`,
 		`token limit exceeded`,
-	) })
-	nonOverflowPatterns = sync.OnceValue(func() []*regexp.Regexp { return compileEach(
+	)
+	nonOverflowPatterns = lazyEach(
 		`^(Throttling error|Service unavailable):`,
 		`rate limit`,
 		`too many requests`,
-	) })
-	cerebrasBodylessOverflowPattern = sync.OnceValue(func() *regexp.Regexp { return jsRegexp(`^4(?:00|13)\s*(?:status code)?\s*\(no body\)`) })
+	)
+	cerebrasBodylessOverflowPattern = lazyRegexp(`^4(?:00|13)\s*(?:status code)?\s*\(no body\)`)
 
-	nonRetryableProviderLimitErrorPattern = sync.OnceValue(func() *regexp.Regexp { return jsAlternation(
+	nonRetryableProviderLimitErrorPattern = lazyAlternation(
 		`GoUsageLimitError`,
 		`FreeUsageLimitError`,
 		`Monthly usage limit reached`,
@@ -255,8 +255,8 @@ var (
 		`quota exceeded`,
 		`billing`,
 		`subscription_sharing_usage_limit_exceeded`,
-	) })
-	retryableProviderErrorPattern = sync.OnceValue(func() *regexp.Regexp { return jsAlternation(
+	)
+	retryableProviderErrorPattern = lazyAlternation(
 		`overloaded`,
 		`server_busy`,
 		`servers are currently busy`,
@@ -312,8 +312,21 @@ var (
 		`ResourceExhausted`,
 		`subscription_sharing_usage_unavailable`,
 		`subscription_sharing_user_unavailable`,
-	) })
+	)
 )
+
+// lazyEach, lazyAlternation and lazyRegexp compile on the first call of the function they return, not when the package initializes.
+func lazyEach(patterns ...string) func() []*regexp.Regexp {
+	return sync.OnceValue(func() []*regexp.Regexp { return compileEach(patterns...) })
+}
+
+func lazyAlternation(patterns ...string) func() *regexp.Regexp {
+	return sync.OnceValue(func() *regexp.Regexp { return jsAlternation(patterns...) })
+}
+
+func lazyRegexp(source string) func() *regexp.Regexp {
+	return sync.OnceValue(func() *regexp.Regexp { return jsRegexp(source) })
+}
 
 func compileEach(patterns ...string) []*regexp.Regexp {
 	out := make([]*regexp.Regexp, len(patterns))
