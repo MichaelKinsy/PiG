@@ -88,7 +88,7 @@ func TestAMutationCallRegistersAfterTheStartWindowOfTheExtensionToolBeforeIt(t *
 	waitSignal(t, done, "the run")
 	got := log.list()
 	index := func(entry string) int { return slices.Index(got, entry) }
-	if !(index("ext-window") >= 0 && index("ext-window") < index("reserve:call-2") && index("reserve:call-2") < index("after-start")) {
+	if index("ext-window") < 0 || index("ext-window") >= index("reserve:call-2") || index("reserve:call-2") >= index("after-start") {
 		t.Fatalf("order = %v, want the extension tool's window, then the edit call's registration, then the start of the extension tool behind it", got)
 	}
 }

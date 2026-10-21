@@ -19,7 +19,7 @@ func waitProcessExit(ctx context.Context, pid int) error {
 	if err != nil {
 		return fmt.Errorf("pidfd_open %d: %w", pid, err)
 	}
-	defer unix.Close(fd)
+	defer func() { _ = unix.Close(fd) }()
 	for ctx.Err() == nil {
 		timeout := -1
 		if deadline, ok := ctx.Deadline(); ok {
