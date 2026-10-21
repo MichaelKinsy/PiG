@@ -48,12 +48,12 @@ func TestTuiStateAcrossSDKs(t *testing.T) {
 			"definitions": map[string]any{
 				"tui.input.submit": "Submit input", "tui.select.confirm": "Confirm selection (host)", "x.probe.a": "Probe A", "x.probe.b": nil, "x.probe.missing": nil,
 			},
-			"user":      map[string]any{"tui.input.submit": []any{"ctrl+y"}, "x.probe.a": []any{"ctrl+k"}, "x.probe.b": []any{"ctrl+k"}},
-			"conflicts": []any{map[string]any{"key": "ctrl+k", "keybindings": []any{"x.probe.a", "x.probe.b"}}},
+			"user":        map[string]any{"tui.input.submit": []any{"ctrl+y"}, "x.probe.a": []any{"ctrl+k"}, "x.probe.b": []any{"ctrl+k"}},
+			"conflicts":   []any{map[string]any{"key": "ctrl+k", "keybindings": []any{"x.probe.a", "x.probe.b"}}},
 			"resolvedIds": []any{"tui.input.submit", "tui.select.confirm", "x.probe.a", "x.probe.b"},
 			// TUI_KEYBINDINGS stays Pi's table, not the host's.
-			"defaults": map[string]any{"tui.input.submit": []any{"enter"}, "tui.select.confirm": []any{"enter"}, "count": float64(0)},
-			"key":      map[string]any{"ctrl": "ctrl+x", "alt": "alt+enter", "shift": "shift+tab", "escape": "escape", "ctrlShift": "ctrl+shift+p"},
+			"defaults":     map[string]any{"tui.input.submit": []any{"enter"}, "tui.select.confirm": []any{"enter"}, "count": float64(0)},
+			"key":          map[string]any{"ctrl": "ctrl+x", "alt": "alt+enter", "shift": "shift+tab", "escape": "escape", "ctrlShift": "ctrl+shift+p"},
 			"capabilities": map[string]any{"images": "iterm2", "trueColor": true, "hyperlinks": true},
 			"colorMode":    "truecolor",
 		}
