@@ -82925,6 +82925,17 @@
       "shapeHash": "sha256:48d6fec6945366db651b1d044218cf8f10dc179edbd193a495136aafd43ae933"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#docsLeases",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "docsLeases",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "struct{sync.Mutex; releases []func()}"
+      },
+      "shapeHash": "sha256:3aa9e13c0b3f6df914f16a8016dd8042051712c6dd779cfd7a1c99a235741c39"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#driveConfigSelector",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "driveConfigSelector",
@@ -84375,6 +84386,17 @@
         "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#holdDocsBundle",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "holdDocsBundle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#holdsToolCall",

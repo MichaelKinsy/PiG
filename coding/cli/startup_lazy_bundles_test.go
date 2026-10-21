@@ -248,6 +248,7 @@ func TestBuildWritesTheDocsBundleBeforeItStartsAnExtension(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("PIG_HOME", home)
 			t.Cleanup(func() { configroot.SetDocsWriter(nil); configroot.SetDocsPresent(true) })
+			t.Cleanup(releaseDocsLeases)
 			prepareDocsBundle()
 			if !configroot.DocsPresent() {
 				t.Fatal("a writable config root names no docs bundle")

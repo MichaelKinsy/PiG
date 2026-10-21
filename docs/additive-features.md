@@ -435,7 +435,10 @@ login help that names a page. A print or JSON run that calls no tool and starts
 no extension writes nothing; Pi writes nothing either. When the bundle is not
 on disk yet, the system prompt names it if the config root lets PiG create it.
 Builds that share a config root each keep their own bundle and never rewrite
-another's; a sync keeps the four most recently used bundles (internal/contentdirs).
+another's; a sync keeps the four most recently used bundles (internal/contentdirs),
+and never removes the bundle of a running session, which holds a lease on its bundle
+file until it exits, so the pages its system prompt names stay for as long as the
+session runs.
 The stock system prompt points at this build's bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
 The `codemode` description and the argument errors of its `models` globals name
