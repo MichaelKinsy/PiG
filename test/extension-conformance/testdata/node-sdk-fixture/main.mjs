@@ -305,7 +305,7 @@ export default function (pi) {
     parameters: { type: "object", properties: { n: { type: "number" } } },
     async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
   });
-  // Notifies inline (before the handler returns, and from a microtask and a promise continuation) and from a setImmediate and a setTimeout(0) callback; the callbacks run once the handler returned (D5).
+  // Notifies inline (before the handler returns, and from a microtask and a promise continuation) and from a setImmediate and a setTimeout(0) callback; the callbacks run once the handler returned (D189).
   let staleCtx;
   pi.registerTool({
     name: "timer_defer",

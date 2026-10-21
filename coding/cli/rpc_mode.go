@@ -910,7 +910,7 @@ commandLoop:
 			}
 			// Pi reads a stdin chunk in an iteration of its own, after any microtask tail that agent_end started.
 			host.settle.wait(ctx, rpcUI.PendingRequest, shutdown.Started())
-			// pig divergence (D5): the extension runtimes hold their timer callbacks before the command's first event, which the loop's Begin below lets run.
+			// pig additive (D189): the extension runtimes hold their timer callbacks before the command's first event, which the loop's Begin below lets run.
 			host.loop.arm(ctx)
 			responses.Begin()
 			inputTurn = responses

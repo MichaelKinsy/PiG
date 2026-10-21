@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
@@ -16,8 +17,8 @@ func GraphModelStreamRequest(ctx context.Context, model *ai.Model, request map[s
 }
 
 // GraphAPIModel decodes a model object an extension passed that its runtime does not list (Pi's stream takes any Model object).
-func GraphAPIModel(info map[string]any) (*ai.Model, error) {
-	return subprocessAPIModel(info)
+func GraphAPIModel(raw json.RawMessage) (*ai.Model, error) {
+	return apiModelOfJSON(raw)
 }
 
 // GraphProviderInput is the ProviderConfigInput of the declarative ProviderConfig JSON an extension passed to registerProvider.
@@ -71,16 +72,25 @@ func GraphProviderConfig(input *ProviderConfigInput) (map[string]any, error) {
 }
 
 // GraphClassify is ModelRuntime.classify for a model object, context and options an extension sent. It never fails: a failure is the classifier result Pi returns.
-func GraphClassify(ctx context.Context, classify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult, model map[string]any, request json.RawMessage, options map[string]any) json.RawMessage {
-	return extensionClassify(ctx, classify, model, request, options)
+func GraphClassify(ctx context.Context, classify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult, model, request, options json.RawMessage) json.RawMessage {
+	return extensionClassifyJSON(ctx, classify, model, request, options)
 }
 
 // GraphGenerateImages is ModelRuntime.generateImages for a model object, context and options an extension sent. It never fails: a failure is the images result Pi returns.
-func GraphGenerateImages(ctx context.Context, generate func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages, model map[string]any, request json.RawMessage, options map[string]any) json.RawMessage {
-	return extensionGenerateImages(ctx, generate, model, request, options)
+func GraphGenerateImages(ctx context.Context, generate func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages, model, request, options json.RawMessage) json.RawMessage {
+	return extensionGenerateImagesJSON(ctx, generate, model, request, options)
 }
 
-// GraphMessages decodes the messages of a request an extension sent (Pi's Message objects as decoded JSON).
-func GraphMessages(raw any) ([]ai.Message, error) {
-	return subprocessRequestMessages(raw)
+// GraphMessages decodes the messages of a request an extension sent (a JSON array of Pi's Message objects).
+func GraphMessages(raw json.RawMessage) ([]ai.Message, error) {
+	var decoded []agent.AgentMessage
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return nil, fmt.Errorf("model request messages: %w", err)
+	}
+	for index := range decoded {
+		if decoded[index].Custom != nil {
+			return nil, fmt.Errorf("model request messages[%d] has unsupported role", index)
+		}
+	}
+	return agent.ConvertToLLM(decoded), nil
 }

@@ -80,7 +80,7 @@ fn retained_parent_uses_live_connection_after_response() {
         let call = host.read_envelope().unwrap();
         let call_msg = call.call.unwrap();
         let observed_parent = call_msg.parent_request_id;
-        // D5: a call made through a request's scope after its handler returned is deferred work, and the host holds it for Pi's loop to turn.
+        // D189: a call made through a request's scope after its handler returned is deferred work, and the host holds it for Pi's loop to turn.
         assert!(call_msg.timer, "a call after the handler returned carries the timer mark");
         host.write_envelope(&Envelope {
             msg_type: "call_result".into(),

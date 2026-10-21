@@ -67,7 +67,7 @@ type rpcInputResult struct {
 type rpcAdmission struct {
 	ctx  context.Context
 	turn *rpcResponseTurn
-	// turns is the mode's model of Pi's loop (D5).
+	// turns is the mode's model of Pi's loop (D189).
 	turns         *jsloop.Turns
 	session       *coding.Session
 	runner        *inproc.Runner

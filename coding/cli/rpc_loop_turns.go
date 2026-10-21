@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
-// pig divergence (D5): Pi runs the agent's run and the extensions' timers on one event loop, so a setTimeout or setImmediate callback an extension queued cannot run while the run chains microtasks. It runs when the run awaits real work, or once the loop is idle after agent_settled. An extension runtime is another process, whose own loop runs the callback at once and marks the host calls it makes (CallPayload.Timer); rpcLoopChain tells the host's jsloop.Turns where the run's chain is, so it holds those calls until Pi's loop would run them.
+// pig additive (D189): Pi runs the agent's run and the extensions' timers on one event loop, so a setTimeout or setImmediate callback an extension queued cannot run while the run chains microtasks. It runs when the run awaits real work, or once the loop is idle after agent_settled. An extension runtime is another process, whose own loop runs the callback at once and marks the host calls it makes (CallPayload.Timer); rpcLoopChain tells the host's jsloop.Turns where the run's chain is, so it holds those calls until Pi's loop would run them.
 //
 // The chain runs from agent_start, published, to the end of agent_settled, written. A compaction and an auto-retry delay are real waits inside it; the run's I/O and tools report their own (agent.Agent.SetLoopTurns).
 type rpcLoopChain struct {

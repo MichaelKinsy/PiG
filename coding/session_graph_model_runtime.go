@@ -44,7 +44,7 @@ func newGraphModelRuntime(ctx context.Context, scope subprocess.SessionGraphScop
 		CatalogBaseURL        string          `json:"catalogBaseUrl"`
 		RefreshOnCreate       *bool           `json:"refreshOnCreate"`
 	}
-	if err := args.Decode(0, &options); err != nil {
+	if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 		return nil, err
 	}
 	if len(options.Credentials) != 0 && string(options.Credentials) != "null" {
@@ -103,11 +103,8 @@ func (g *GraphModelRuntime) anyModel(raw json.RawMessage) (ai.AnyModel, error) {
 		if model := g.runtime.GetModel(wire.Provider, wire.ID); model != nil {
 			return model, nil
 		}
-		var info map[string]any
-		if err := json.Unmarshal(raw, &info); err == nil {
-			if model, err := icodingagent.GraphAPIModel(info); err == nil {
-				return model, nil
-			}
+		if model, err := icodingagent.GraphAPIModel(raw); err == nil {
+			return model, nil
 		}
 		return &ai.Model{ID: wire.ID, ProviderMeta: ai.ProviderMetadata{ProviderID: wire.Provider}}, nil
 	}
@@ -155,7 +152,7 @@ func graphAuthOverrides(args icodingagent.GraphArgs, i int) (ai.AuthResolutionOv
 		Env                map[string]string `json:"env"`
 		MinOAuthValidityMs *float64          `json:"minOAuthValidityMs"`
 	}
-	if err := args.Decode(i, &wire); err != nil {
+	if err := args.Unmarshal(i, func(raw json.RawMessage) error { return json.Unmarshal(raw, &wire) }); err != nil {
 		return ai.AuthResolutionOverrides{}, err
 	}
 	return ai.AuthResolutionOverrides{APIKey: wire.APIKey, Env: wire.Env, MinOAuthValidityMs: wire.MinOAuthValidityMs}, nil
@@ -432,7 +429,7 @@ func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.Ra
 			Providers    []string `json:"providers"`
 			Force        *bool    `json:"force"`
 		}
-		if err := args.Decode(0, &options); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		return graphRefreshResult(runtime.Refresh(ctx, ai.ModelsRefreshOptions{AllowNetwork: options.AllowNetwork, Providers: options.Providers, Force: options.Force})), nil
@@ -464,7 +461,7 @@ func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.Ra
 			Input          []string `json:"input"`
 			Route          string   `json:"route"`
 		}
-		if err := args.Decode(0, &definition); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &definition) }); err != nil {
 			return nil, err
 		}
 		levels := make([]ai.ModelThinkingLevel, len(definition.ThinkingLevels))
@@ -493,37 +490,21 @@ func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.Ra
 		if err != nil {
 			return nil, err
 		}
-		var options map[string]any
-		if err := args.Decode(2, &options); err != nil {
-			return nil, err
-		}
 		modelObject, err := extension.ModelObject(model)
 		if err != nil {
 			return nil, err
 		}
-		var wireModel map[string]any
-		if err := json.Unmarshal(modelObject, &wireModel); err != nil {
-			return nil, err
-		}
-		return icodingagent.GraphClassify(ctx, runtime.Classify, wireModel, args.Raw(1), options), nil
+		return icodingagent.GraphClassify(ctx, runtime.Classify, modelObject, args.Raw(1), args.Raw(2)), nil
 	case "generateImages":
 		model, err := g.anyModel(args.Raw(0))
 		if err != nil {
 			return nil, err
 		}
-		var options map[string]any
-		if err := args.Decode(2, &options); err != nil {
-			return nil, err
-		}
 		modelObject, err := extension.ModelObject(model)
 		if err != nil {
 			return nil, err
 		}
-		var wireModel map[string]any
-		if err := json.Unmarshal(modelObject, &wireModel); err != nil {
-			return nil, err
-		}
-		return icodingagent.GraphGenerateImages(ctx, runtime.GenerateImages, wireModel, args.Raw(1), options), nil
+		return icodingagent.GraphGenerateImages(ctx, runtime.GenerateImages, modelObject, args.Raw(1), args.Raw(2)), nil
 	case "stream", "streamSimple", "complete", "completeSimple", "streamDeferred", "fetchDeferred", "cancelDeferred":
 		return nil, fmt.Errorf("ModelRuntime.%s is not a call: a model stream runs as a modelStream call that names the runtime", method)
 	}
@@ -536,11 +517,7 @@ func (g *GraphModelRuntime) resolveModel(ctx context.Context, args icodingagent.
 	if err != nil {
 		return nil, err
 	}
-	var rawMessages []any
-	if err := args.Decode(1, &rawMessages); err != nil {
-		return nil, err
-	}
-	messages, err := icodingagent.GraphMessages(rawMessages)
+	messages, err := icodingagent.GraphMessages(args.Raw(1))
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +527,7 @@ func (g *GraphModelRuntime) resolveModel(ctx context.Context, args icodingagent.
 		Failed        *ai.AssistantMessage  `json:"failed"`
 		State         json.RawMessage       `json:"state"`
 	}
-	if err := args.Decode(2, &options); err != nil {
+	if err := args.Unmarshal(2, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 		return nil, err
 	}
 	route, err := g.runtime.ResolveModel(ctx, model, messages, ResolveModelOptions{Reason: options.Reason, ThinkingLevel: options.ThinkingLevel, Failed: options.Failed, State: options.State})
@@ -582,14 +559,14 @@ func (g *GraphModelRuntime) login(ctx context.Context, args icodingagent.GraphAr
 		Prompt string `json:"prompt"`
 		Notify string `json:"notify"`
 	}
-	if err := args.Decode(2, &interaction); err != nil {
+	if err := args.Unmarshal(2, func(raw json.RawMessage) error { return json.Unmarshal(raw, &interaction) }); err != nil {
 		return nil, err
 	}
 	var options struct {
 		AgentName   *string `json:"agentName"`
 		GetDeviceID string  `json:"getDeviceId"`
 	}
-	if err := args.Decode(3, &options); err != nil {
+	if err := args.Unmarshal(3, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 		return nil, err
 	}
 	loginOptions := ai.LoginOptions{AgentName: options.AgentName}

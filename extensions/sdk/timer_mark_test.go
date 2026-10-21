@@ -2,7 +2,7 @@ package sdk
 
 import "testing"
 
-// D5: a call made through a request's context after its handler returned is deferred work, and Pi runs it once its loop turns; the call says so (callMsg.Timer) and the host holds it. A call the handler makes while it runs carries no mark.
+// D189: a call made through a request's context after its handler returned is deferred work, and Pi runs it once its loop turns; the call says so (callMsg.Timer) and the host holds it. A call the handler makes while it runs carries no mark.
 func TestCallAfterTheRequestReturnedCarriesTheTimerMark(t *testing.T) {
 	_, connection, host, ctx, finish := retainedContextHarness(t)
 	defer finish()

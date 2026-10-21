@@ -21,7 +21,7 @@ type Loop struct {
 	batch    bool
 }
 
-// SetBatchObserver registers fn, which runs with true once Begin holds the loop and with false once the loop drained and left the batch End ends. A callback queued by a producer, with no Begin, is no batch. D5: the batch is Pi's iteration that reads one stdin chunk, whose microtasks no timer callback interleaves with.
+// SetBatchObserver registers fn, which runs with true once Begin holds the loop and with false once the loop drained and left the batch End ends. A callback queued by a producer, with no Begin, is no batch. D189: the batch is Pi's iteration that reads one stdin chunk, whose microtasks no timer callback interleaves with.
 func (l *Loop) SetBatchObserver(fn func(open bool)) {
 	l.mu.Lock()
 	l.observer = fn

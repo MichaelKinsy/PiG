@@ -5871,7 +5871,7 @@ class Extension:
                     if parent.state == "cancelled":
                         raise RuntimeError("host call cancelled with its parent request")
                     parent_request_id = "" if parent.state == "completed" else parent.request_id
-                    # pig additive (D5): a call made through a request's context after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
+                    # pig additive (D189): a call made through a request's context after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
                     timer = parent.state == "completed"
                 self._call_id += 1
                 call_id = f"c{self._call_id}"

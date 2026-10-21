@@ -360,11 +360,8 @@ func ResizeImage(args ResizeImageArgs) (*ImageResult, error) {
 	return result, nil
 }
 
-func decodeArgs(call *CallPayload, into any) error {
-	if err := json.Unmarshal(call.Args, into); err != nil {
-		return fmt.Errorf("decode %s: %w", call.Method, err)
-	}
-	return nil
+func decodeArgsError(call *CallPayload, err error) error {
+	return fmt.Errorf("decode %s: %w", call.Method, err)
 }
 
 func jsonResult(value any) (*CallResultPayload, error) {
@@ -378,8 +375,8 @@ func jsonResult(value any) (*CallResultPayload, error) {
 // handleGenerateDiffString serves CallGenerateDiffString.
 func (h *Host) handleGenerateDiffString(call *CallPayload) (*CallResultPayload, error) {
 	var args GenerateDiffStringArgs
-	if err := decodeArgs(call, &args); err != nil {
-		return nil, err
+	if err := json.Unmarshal(call.Args, &args); err != nil {
+		return nil, decodeArgsError(call, err)
 	}
 	return jsonResult(GenerateDiffString(args.OldContent, args.NewContent, args.ContextLines))
 }
@@ -387,8 +384,8 @@ func (h *Host) handleGenerateDiffString(call *CallPayload) (*CallResultPayload, 
 // handleGenerateUnifiedPatch serves CallGenerateUnifiedPatch.
 func (h *Host) handleGenerateUnifiedPatch(call *CallPayload) (*CallResultPayload, error) {
 	var args GenerateUnifiedPatchArgs
-	if err := decodeArgs(call, &args); err != nil {
-		return nil, err
+	if err := json.Unmarshal(call.Args, &args); err != nil {
+		return nil, decodeArgsError(call, err)
 	}
 	return jsonResult(GenerateUnifiedPatchResult{Patch: GenerateUnifiedPatch(args.Path, args.OldContent, args.NewContent, args.ContextLines)})
 }
@@ -396,8 +393,8 @@ func (h *Host) handleGenerateUnifiedPatch(call *CallPayload) (*CallResultPayload
 // handleCopyToClipboard serves CallCopyToClipboard.
 func (h *Host) handleCopyToClipboard(call *CallPayload) (*CallResultPayload, error) {
 	var args CopyToClipboardArgs
-	if err := decodeArgs(call, &args); err != nil {
-		return nil, err
+	if err := json.Unmarshal(call.Args, &args); err != nil {
+		return nil, decodeArgsError(call, err)
 	}
 	if err := CopyToClipboard(args.Text); err != nil {
 		return nil, err
@@ -408,8 +405,8 @@ func (h *Host) handleCopyToClipboard(call *CallPayload) (*CallResultPayload, err
 // handleConvertToPng serves CallConvertToPng.
 func (h *Host) handleConvertToPng(call *CallPayload) (*CallResultPayload, error) {
 	var args ConvertToPngArgs
-	if err := decodeArgs(call, &args); err != nil {
-		return nil, err
+	if err := json.Unmarshal(call.Args, &args); err != nil {
+		return nil, decodeArgsError(call, err)
 	}
 	return jsonResult(ConvertToPng(args.Data, args.MimeType))
 }
@@ -417,8 +414,8 @@ func (h *Host) handleConvertToPng(call *CallPayload) (*CallResultPayload, error)
 // handleResizeImage serves CallResizeImage.
 func (h *Host) handleResizeImage(call *CallPayload) (*CallResultPayload, error) {
 	var args ResizeImageArgs
-	if err := decodeArgs(call, &args); err != nil {
-		return nil, err
+	if err := json.Unmarshal(call.Args, &args); err != nil {
+		return nil, decodeArgsError(call, err)
 	}
 	result, err := ResizeImage(args)
 	if err != nil {

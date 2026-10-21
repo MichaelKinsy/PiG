@@ -111,7 +111,7 @@ type rpcHost struct {
 	commandDone     func()
 	// settle holds stdin between a published agent_end and agent_settled.
 	settle rpcSettleGate
-	// turns models where Pi's event loop turns (D5); loop reports the run's chain to it.
+	// turns models where Pi's event loop turns (D189); loop reports the run's chain to it.
 	turns jsloop.Turns
 	loop  rpcLoopChain
 	// drain is the process-owner callback for a Node event-loop drain after input end.

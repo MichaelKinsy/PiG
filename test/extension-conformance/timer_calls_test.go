@@ -44,7 +44,7 @@ func timerDeferWant(name string) (deferred, inline, tick int) {
 	return 1, 1, 0
 }
 
-// D5: Pi runs the callback of a timer or an immediate once its event loop turns, which a chain of microtasks does not give it. An extension runtime that is another process runs
+// D189: Pi runs the callback of a timer or an immediate once its event loop turns, which a chain of microtasks does not give it. An extension runtime that is another process runs
 // the callback at once, so each runtime marks the host calls of deferred work (CallPayload.Timer) and the host holds them. Node marks the calls of a setImmediate or setTimeout
 // callback that fires after the handler returned; the Go, Rust and Python SDKs mark a call made through a request's context after the handler returned. Calls the handler
 // and its microtask and promise continuations make carry no mark. Probed against Pi: those continuations notify before tool_execution_end, the callbacks after agent_settled.
@@ -128,7 +128,7 @@ func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
 	}
 }
 
-// D5: the host holds the calls of deferred work while the agent's run chains microtasks, so they reach the UI after the run's own output, as Pi's loop runs the callbacks once the run
+// D189: the host holds the calls of deferred work while the agent's run chains microtasks, so they reach the UI after the run's own output, as Pi's loop runs the callbacks once the run
 // is over. A Node tool that queued a setImmediate and a setTimeout(0) callback returns; its callbacks fire while the run still awaits the tool's result hooks and the next model request,
 // and their notifications must not reach the UI before tool_execution_end or before the chain ends.
 func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
@@ -198,7 +198,7 @@ func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
 	}
 }
 
-// D5: a Go, Rust or Python SDK marks every call made through a context whose request returned, and Pi-port extensions keep such a context (an activeCtx) and call through it from a handler that awaits the
+// D189: a Go, Rust or Python SDK marks every call made through a context whose request returned, and Pi-port extensions keep such a context (an activeCtx) and call through it from a handler that awaits the
 // answer. The host holds a marked call until the loop turns, and the turn waits for the handler, so a held call that a running handler awaits hangs every run that reaches it. The host must run such a
 // call on arrival: while a handler is pending, Pi's loop is turning. The tool timer_stale awaits a ui.notify made through the context of an earlier timer_defer request while a chain runs and holds calls.
 func TestHostCallAwaitedByARunningHandlerIsNotHeldForTheLoopTurn(t *testing.T) {

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-// pig additive (D5): Pi runs an extension's timer and immediate callbacks on the thread that runs the agent, so such a callback runs only when the agent's run awaits real work or the loop is idle (agent-loop.ts, rpc-mode.ts). This runtime is another process, whose loop runs the callback at once and writes the host calls it makes. The host holds those calls until Pi's loop would have run the callback, so each call says it came from a timer or an immediate: CallPayload.Timer.
+// pig additive (D189): Pi runs an extension's timer and immediate callbacks on the thread that runs the agent, so such a callback runs only when the agent's run awaits real work or the loop is idle (agent-loop.ts, rpc-mode.ts). This runtime is another process, whose loop runs the callback at once and writes the host calls it makes. The host holds those calls until Pi's loop would have run the callback, so each call says it came from a timer or an immediate: CallPayload.Timer.
 //
 // A callback runs in a store that every promise continuation and later callback it starts inherits, so the work a callback causes is marked as well. A request the host sends is served outside the store: it starts on the host's step, not on the timer's.
 const origin = new AsyncLocalStorage();

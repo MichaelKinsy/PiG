@@ -2391,7 +2391,7 @@ func (h *Host) SetCommandWindowHandler(fn func(suspended int)) {
 	h.commandFlightMu.Unlock()
 }
 
-// SetTimerTurns gives the host the owner's model of Pi's event loop (D5). A host call that the runtime marks Timer runs when the loop would run the timer or immediate that made it: while the agent's run chains microtasks it waits (jsloop.Turns). Without it such a call runs on arrival.
+// SetTimerTurns gives the host the owner's model of Pi's event loop (D189). A host call that the runtime marks Timer runs when the loop would run the timer or immediate that made it: while the agent's run chains microtasks it waits (jsloop.Turns). Without it such a call runs on arrival.
 func (h *Host) SetTimerTurns(turns *jsloop.Turns) {
 	if previous := h.timerTurns.Swap(turns); previous != turns && turns != nil {
 		turns.ObserveDefer(h.sendTimerDefer, h.awaitTimerDefer)

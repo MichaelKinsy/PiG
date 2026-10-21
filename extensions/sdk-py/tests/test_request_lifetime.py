@@ -277,7 +277,7 @@ def test_loop_turned_notify_changes_nothing():
 
 
 def test_call_after_the_handler_returned_carries_the_timer_mark():
-    # D5: deferred work is the work Pi runs once its event loop turns, so the call says so and the host holds it.
+    # D189: deferred work is the work Pi runs once its event loop turns, so the call says so and the host holds it.
     ext = pig_sdk.Extension("timer-mark")
     contexts = []
     ext.command("capture", "Capture original context", lambda ctx, _: contexts.append(ctx))

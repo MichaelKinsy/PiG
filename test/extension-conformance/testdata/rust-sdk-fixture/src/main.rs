@@ -1633,7 +1633,7 @@ fn main() {
             ToolResult::text(format!("start#{number} n={}", params.get("n").map(Value::to_string).unwrap_or_default()))
         },
     );
-    // A tool that notifies inline and, from a thread timer_release releases, after its handler returned (D5).
+    // A tool that notifies inline and, from a thread timer_release releases, after its handler returned (D189).
     static TIMER_GATE: (std::sync::Mutex<usize>, std::sync::Condvar) = (std::sync::Mutex::new(0), std::sync::Condvar::new());
     static STALE_CTX: std::sync::Mutex<Option<pig_sdk::Context>> = std::sync::Mutex::new(None);
     ext.tool(

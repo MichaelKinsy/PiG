@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -20,12 +21,38 @@ func subprocessAPIModel(info map[string]any) (*ai.Model, error) {
 	if err != nil {
 		return nil, err
 	}
+	var cost ai.ModelCost
+	if provider != "" && definition.ID != "" && definition.API != "" {
+		if err := subprocessDecodeJSON(info["cost"], &cost, "API model.cost"); err != nil {
+			return nil, err
+		}
+	}
+	return apiModelOf(&definition, provider, cost)
+}
+
+// apiModelOfJSON is subprocessAPIModel for the JSON text of the model object.
+func apiModelOfJSON(raw json.RawMessage) (*ai.Model, error) {
+	var definition extension.ProviderModelConfig
+	if err := json.Unmarshal(raw, &definition); err != nil {
+		return nil, fmt.Errorf("API model: %w", err)
+	}
+	var wire struct {
+		Provider *string      `json:"provider"`
+		Cost     ai.ModelCost `json:"cost"`
+	}
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		return nil, fmt.Errorf("API model: %w", err)
+	}
+	provider := ""
+	if wire.Provider != nil {
+		provider = *wire.Provider
+	}
+	return apiModelOf(&definition, provider, wire.Cost)
+}
+
+func apiModelOf(definition *extension.ProviderModelConfig, provider string, cost ai.ModelCost) (*ai.Model, error) {
 	if provider == "" || definition.ID == "" || definition.API == "" {
 		return nil, fmt.Errorf("API model requires provider, id and api")
-	}
-	var cost ai.ModelCost
-	if err := subprocessDecodeJSON(info["cost"], &cost, "API model.cost"); err != nil {
-		return nil, err
 	}
 	var compat *ai.ModelCompat
 	if definition.Compat != nil {

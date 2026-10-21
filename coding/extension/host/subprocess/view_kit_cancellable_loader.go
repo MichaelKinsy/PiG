@@ -42,6 +42,7 @@ type loaderSetup struct {
 // loaderSetupFor reads the constructor arguments of a loader-like node: upstream's
 // message default and DEFAULT_INTERVAL_MS (loader.ts) apply to what it omits.
 func (b *viewBuilder) loaderSetupFor(n *ViewNode) loaderSetup {
+	// upstream: packages/tui/src/components/loader.ts DEFAULT_INTERVAL_MS
 	s := loaderSetup{message: "Loading...", spinner: b.fgFn(n.SpinnerColor), messageFn: b.fgFn(n.MessageColor), interval: 80 * time.Millisecond}
 	if n.Message != nil {
 		s.message = *n.Message

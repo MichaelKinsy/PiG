@@ -38,7 +38,7 @@ export async function probeFailedAPI(api, onLateEvent = () => {}, pigAdditive = 
     ["events.emit", () => api.events.emit("factory-failure", undefined)],
     ["events.on", () => api.events.on("factory-failure", onLateEvent)],
   ];
-  // pig additive: a captured onLoaded of a failed factory rejects like every other call.
+  // pig additive (D19): a captured onLoaded of a failed factory rejects like every other call.
   if (pigAdditive) calls.splice(5, 0, ["onLoaded", () => api.onLoaded(() => {})]);
   const results = [];
   for (const [method, call] of calls) {

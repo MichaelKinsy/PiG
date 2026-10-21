@@ -62,7 +62,7 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 		return nil, err
 	}
 	var options graphLoaderOptions
-	if err := args.Decode(0, &options); err != nil {
+	if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 		return nil, err
 	}
 	g := &GraphResourceLoader{scope: scope}
@@ -87,7 +87,7 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 	if id := options.SkillsOverride; id != "" {
 		loaderOptions.SkillsOverride = func(base SkillsResult) SkillsResult {
 			var out graphSkills
-			if g.override(id, graphSkillsOf(base), &out) {
+			if raw, ok := g.override(id, graphSkillsOf(base)); ok && g.decoded(json.Unmarshal(raw, &out)) {
 				return out.skills(base)
 			}
 			return base
@@ -96,7 +96,7 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 	if id := options.PromptsOverride; id != "" {
 		loaderOptions.PromptsOverride = func(base PromptsResult) PromptsResult {
 			var out graphPrompts
-			if g.override(id, graphPromptsOf(base), &out) {
+			if raw, ok := g.override(id, graphPromptsOf(base)); ok && g.decoded(json.Unmarshal(raw, &out)) {
 				return out.prompts(base)
 			}
 			return base
@@ -105,7 +105,7 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 	if id := options.ThemesOverride; id != "" {
 		loaderOptions.ThemesOverride = func(base ThemesResult) ThemesResult {
 			var out graphThemes
-			if g.override(id, graphThemesOf(base), &out) {
+			if raw, ok := g.override(id, graphThemesOf(base)); ok && g.decoded(json.Unmarshal(raw, &out)) {
 				return out.themes(base)
 			}
 			return base
@@ -119,7 +119,8 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 					Content string `json:"content"`
 				} `json:"agentsFiles"`
 			}
-			if !g.override(id, graphAgentsFilesOf(base), &out) {
+			raw, ok := g.override(id, graphAgentsFilesOf(base))
+			if !ok || !g.decoded(json.Unmarshal(raw, &out)) {
 				return base
 			}
 			files := make([]ContextFile, len(out.AgentsFiles))
@@ -132,7 +133,7 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 	if id := options.SystemPromptOverride; id != "" {
 		loaderOptions.SystemPromptOverride = func(base *string) *string {
 			var out *string
-			if g.override(id, base, &out) {
+			if raw, ok := g.override(id, base); ok && g.decoded(json.Unmarshal(raw, &out)) {
 				return out
 			}
 			return base
@@ -141,7 +142,7 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 	if id := options.AppendSystemPromptOverride; id != "" {
 		loaderOptions.AppendSystemPromptOverride = func(base []string) []string {
 			var out []string
-			if g.override(id, base, &out) {
+			if raw, ok := g.override(id, base); ok && g.decoded(json.Unmarshal(raw, &out)) {
 				return out
 			}
 			return base
@@ -151,24 +152,35 @@ func newGraphResourceLoader(scope subprocess.SessionGraphScope, op string, raw j
 	return g, nil
 }
 
-// override runs the extension's function id with base and decodes its result into out. It reports false, and keeps the error for the call that is running, when the function failed.
-func (g *GraphResourceLoader) override(id string, base, out any) bool {
+// override runs the extension's function id with base and returns its result. It reports false, and keeps the error for the call that is running, when the function failed.
+func (g *GraphResourceLoader) override(id string, base any) (json.RawMessage, bool) {
 	input, err := jsstring.AppendMarshalJSON([]byte{'['}, base)
 	if err == nil {
 		var result json.RawMessage
 		//portlint:allow ctxbackground Pi's override options (agentsFilesOverride, systemPromptOverride and the rest) are synchronous functions of the loader's load, which carries no signal
 		if result, err = g.scope.Callback(context.Background(), id, json.RawMessage(append(input, ']'))); err == nil {
-			if err = json.Unmarshal(result, out); err == nil {
-				return true
-			}
+			return result, true
 		}
 	}
+	g.keepCallbackErr(err)
+	return nil, false
+}
+
+// decoded reports whether err, the error of decoding an override's result, is nil, and keeps it for the call that is running otherwise.
+func (g *GraphResourceLoader) decoded(err error) bool {
+	if err == nil {
+		return true
+	}
+	g.keepCallbackErr(err)
+	return false
+}
+
+func (g *GraphResourceLoader) keepCallbackErr(err error) {
 	g.mu.Lock()
 	if g.callbackErr == nil {
 		g.callbackErr = err
 	}
 	g.mu.Unlock()
-	return false
 }
 
 func (g *GraphResourceLoader) takeCallbackErr() error {
@@ -384,7 +396,7 @@ func (g *GraphResourceLoader) extendResources(args icodingagent.GraphArgs) error
 		PromptPaths []graphResourcePath `json:"promptPaths"`
 		ThemePaths  []graphResourcePath `json:"themePaths"`
 	}
-	if err := args.Decode(0, &paths); err != nil {
+	if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &paths) }); err != nil {
 		return err
 	}
 	convert := func(list []graphResourcePath) []ExtensionResourcePath {
@@ -416,7 +428,7 @@ func (g *GraphResourceLoader) reload(ctx context.Context, args icodingagent.Grap
 	var options struct {
 		ResolveProjectTrust string `json:"resolveProjectTrust"`
 	}
-	if err := args.Decode(0, &options); err != nil {
+	if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 		return err
 	}
 	var reloadOptions []ResourceLoaderReloadOptions
