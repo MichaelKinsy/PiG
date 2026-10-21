@@ -152,7 +152,7 @@ func decodeRaw(t *testing.T, raw json.RawMessage) any {
 
 func TestMarkdownThemeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "getMarkdownTheme")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachModelTypesPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
 		for _, c := range cases {
 			var want struct {
 				Palette   json.RawMessage
@@ -237,7 +237,7 @@ func TestSettingsListThemeAcrossSDKs(t *testing.T) {
 // sent its palette with the call.
 func TestHighlightCodeAcrossSDKs(t *testing.T) {
 	cases := loadTuiVectors(t, "highlightCode")
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachModelTypesPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
 		palettes := map[string]json.RawMessage{}
 		for _, c := range cases {
 			var want struct{ Palette json.RawMessage }
@@ -398,4 +398,12 @@ func TestRawKeyHintAcrossSDKs(t *testing.T) {
 			t.Fatalf("no vector runs on %s", runtime.GOOS)
 		}
 	})
+}
+
+// printModeRig reports print mode to the extension. The Pi vectors of highlightCode and getMarkdownTheme come from a Pi that holds highlight.js's eager language set; Pi's
+// interactive mode registers every language once startup has emitted session_start and resources_discover (interactive-mode.ts:1100-1122), after which html, markdown, sql
+// and diff come out highlighted. A Node runtime that serves a tui-mode host loads the full set the same way, so the rows that compare with the eager vectors run in a mode that keeps it.
+func printModeRig(t *testing.T, r *modelTypesRig) {
+	t.Helper()
+	r.host.SetMode("print")
 }
