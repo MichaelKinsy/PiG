@@ -31716,6 +31716,74 @@
       "tests": [
         "test/gomodule/gomodule_test.go::TestModuleTagsScriptRefusesAPseudoVersionPin"
       ]
+    },
+    {
+      "id": "BF-6811585",
+      "title": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary…",
+      "symptom": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does.",
+      "rootCause": "The notice prints each extension path through commandWord, which quotes a path with a character outside the plain set. Windows runner temp directories carry the \"~\" of an 8.3 short name (RUNNER~1), so the path prints in double quotes and three assertions that expected the raw path failed on Windows (TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch). The tests now build the expected command with commandWord, as the notice test beside them already does.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does. The notice already quotes such a path for the Windows shell (`\"C:\\Users\\RUNNER~1\\...\"`) and is unchanged; the tests expected the raw path and now expect the quoted word, as the notice test beside them does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6811585d05",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll",
+        "coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch",
+        "coding/cli/extension_upgrade_startup_test.go::TestStartupNamesSDKDriftAndExitsInPrintMode"
+      ]
+    },
+    {
+      "id": "BF-aca002e",
+      "title": "CI: `make interface-gaps` passes on main again",
+      "symptom": "The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: `make interface-gaps` passes on main again. The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aca002e54b",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener"
+      ]
+    },
+    {
+      "id": "BF-626f830",
+      "title": "`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path…",
+      "symptom": "The backslash printed bare and the shell read it as an escape, so the command named a different path.",
+      "rootCause": "The plain-word set of the printed command held \"\\\\\" on every OS, so a POSIX path with a backslash printed unquoted and the shell read the backslash as an escape. The set is now per platform: a backslash is plain only on Windows, where it separates path elements. Windows quoting is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path that holds a backslash. Before, the backslash printed bare and the shell read it as an escape, so the command named a different path. A backslash stays plain in a Windows path, where it separates elements.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "626f83000c",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform"
+      ]
     }
   ],
   "divergences": [
