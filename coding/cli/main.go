@@ -1119,7 +1119,7 @@ func Main(args []string, options *MainOptions) {
 	}
 	if flags.ListModels != "" || flags.ListModelsAll {
 		codingagent.ReportDiagnostics(startupSettingsDiagnostics)
-		printModelList(build.Services.Registry().ModelRegistry, agentDir, flags.ListModels)
+		printModelList(build.Services.Registry().ModelRegistry, flags.ListModels)
 		exitProcess(0)
 	}
 	// RPC owns stdin as JSONL. Other modes read piped input before runtime diagnostics, and metadata commands above never consume it.

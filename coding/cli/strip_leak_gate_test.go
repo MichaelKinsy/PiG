@@ -107,7 +107,7 @@ func cliLeakSurfaces(agentDir string) []cliLeakSurface {
 			for name, value := range stripLeakProviderEnv {
 				t.Setenv(name, value)
 			}
-			return modelProviders(captureStdout(func() { printModelList(codingagent.NewModelRegistry(agentDir), agentDir, "") }))
+			return modelProviders(captureStdout(func() { printModelList(codingagent.NewModelRegistry(agentDir), "") }))
 		}},
 	}
 }

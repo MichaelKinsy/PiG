@@ -41,7 +41,7 @@ func TestPrintModelList_OpenCodeEnvKey_ListsOpenCodeGo(t *testing.T) {
 	dir := t.TempDir()
 	reg := codingagent.NewModelRegistry(dir)
 
-	out := captureStdout(func() { printModelList(reg, dir, "") })
+	out := captureStdout(func() { printModelList(reg, "") })
 
 	for _, want := range []string{"opencode", "opencode-go"} {
 		if !strings.Contains(out, want) {
