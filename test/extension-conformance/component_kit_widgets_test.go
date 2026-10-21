@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,6 +33,17 @@ var kitWidgetExports = []struct{ dir, export string }{
 	{"pi-tui", "CancellableLoader"},
 	{"pi-coding-agent", "BorderedLoader"},
 	{"pi-tui", "Input"},
+	{"pi-tui", "Editor"},
+	{"pi-tui", "ScrollView"},
+	{"pi-tui", "MouseRegion"},
+}
+
+// kitTerminalRows is the terminal height the host reports to each cell (a harness's); a case sets it before it opens.
+var kitTerminalRows sync.Map // *harness -> *atomic.Int32
+
+func kitRowsOf(h *harness) *atomic.Int32 {
+	rows, _ := kitTerminalRows.LoadOrStore(h, new(atomic.Int32))
+	return rows.(*atomic.Int32)
 }
 
 type kitWidgetCase struct {
@@ -88,6 +101,8 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 	var steps []kitWidgetStep
 	var spec struct {
 		Steps []kitWidgetStep `json:"steps"`
+		// Rows is the terminal's height, which an editor's visible line count follows; Pi's cases default to 24.
+		Rows int `json:"rows"`
 	}
 	if err := json.Unmarshal(c.Args[0], &spec); err != nil {
 		t.Fatal(err)
@@ -98,6 +113,14 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 		t.Fatal("kit-widget is not registered")
 	}
 	h.ui.ClearRecorded()
+	rows := spec.Rows
+	if rows == 0 {
+		rows = 24
+	}
+	kitRowsOf(h).Store(int32(rows))
+	if h.host != nil {
+		h.host.NotifyHeight(rows)
+	}
 	done := make(chan error, 1)
 	args := key
 	if len(events) > 0 {
@@ -178,6 +201,8 @@ func TestConformance_ComponentKitWidgetsMatchPi(t *testing.T) {
 	t.Parallel()
 	for _, tc := range componentKitSDKCells() {
 		t.Run(tc.name, func(t *testing.T) {
+			// The cells are independent processes; a vector file's cases take minutes in each.
+			t.Parallel()
 			h := startKitCell(t, tc)
 			ui := newKitUI(h)
 			for _, v := range kitWidgetExports {

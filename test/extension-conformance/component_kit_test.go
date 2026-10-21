@@ -126,6 +126,9 @@ func startKitCell(t *testing.T, tc kitCell) *harness {
 	keybindings := codingagent.DefaultKeybindingsManager().ExtensionKeybindingTable()
 	h.bridge.SetKeybindingsFunc(func() any { return keybindings })
 	h.bridge.SetFrontend(tc.frontend)
+	// The terminal's rows, which a view's editor reads (a widget case sets them).
+	rows := kitRowsOf(h)
+	h.host.SetHeightFunc(func() int { return int(rows.Load()) })
 	h.host.BroadcastStateUpdate()
 	return h
 }

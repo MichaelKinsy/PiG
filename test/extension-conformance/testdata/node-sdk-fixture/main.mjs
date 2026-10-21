@@ -1127,6 +1127,149 @@ export default function (pi) {
     kitWidgetCases[`${i}submit newline key`] = input({ value: "preset" });
     kitWidgetCases[`${i}escape`] = input({ value: "keep" });
   }
+  {
+    const commands = [
+      { name: "help", description: "Show help" },
+      { name: "model", description: "Switch the model", argumentHint: "<name>" },
+      { name: "quit", description: "Exit" },
+      { name: "session", description: "Session info" },
+      { name: "settings", description: "Open settings" },
+      { name: "share" },
+      { name: "skills", description: "List skills" },
+      { name: "compact", description: "Compact the context" },
+    ];
+    const editor = ({ value, padding, acmax, border, disable, history = [], auto = false, focused = true } = {}) => ({ tui, theme, note }) => {
+      const options = {};
+      if (padding !== undefined) options.paddingX = padding;
+      if (acmax !== undefined) options.autocompleteMaxVisible = acmax;
+      const component = new piTui.Editor(tui, { borderColor: (text) => theme.fg("borderMuted", text), selectList: piCodingAgent.getSelectListTheme() }, options);
+      if (border) component.borderColor = (text) => theme.fg(border, text);
+      if (disable) component.disableSubmit = true;
+      for (const entry of history) component.addToHistory(entry);
+      if (auto) component.setAutocompleteProvider(new piTui.CombinedAutocompleteProvider(commands, process.cwd()));
+      if (value) component.setText(value);
+      component.focused = focused;
+      component.onSubmit = (text) => note(`submit:${text}`);
+      const root = new Container();
+      root.addChild(component);
+      return { root, focus: component };
+    };
+    const e = "pi-tui/Editor/";
+    kitWidgetCases[e + "empty"] = editor({ focused: false });
+    kitWidgetCases[e + "empty focused"] = editor();
+    kitWidgetCases[e + "value"] = editor({ value: "hello world", focused: false });
+    kitWidgetCases[e + "multiline value focused"] = editor({ value: "one\ntwo\nthree" });
+    kitWidgetCases[e + "wrapped line"] = editor({ value: "The quick brown fox jumps over the lazy dog and keeps running through the field" });
+    kitWidgetCases[e + "wide characters"] = editor({ value: "漢字 and 😀 text" });
+    kitWidgetCases[e + "typing"] = editor();
+    kitWidgetCases[e + "newline"] = editor();
+    kitWidgetCases[e + "backspace and delete"] = editor();
+    kitWidgetCases[e + "kill word and yank"] = editor();
+    kitWidgetCases[e + "undo"] = editor();
+    kitWidgetCases[e + "submit"] = editor();
+    kitWidgetCases[e + "paste"] = editor();
+    kitWidgetCases[e + "paste large"] = editor();
+    kitWidgetCases[e + "cursor movement"] = editor({ value: "one\ntwo\nthree" });
+    kitWidgetCases[e + "submit multiline"] = editor({ value: "one\ntwo" });
+    kitWidgetCases[e + "submit disabled"] = editor({ value: "keep", disable: true });
+    kitWidgetCases[e + "padding"] = editor({ value: "padded text", padding: 2 });
+    kitWidgetCases[e + "padding wrapped"] = editor({ value: "The quick brown fox jumps over the lazy dog and keeps running", padding: 3 });
+    kitWidgetCases[e + "border color"] = editor({ value: "colored", border: "accent" });
+    kitWidgetCases[e + "history"] = editor({ history: ["first", "second", "third"] });
+    kitWidgetCases[e + "history then edit"] = editor({ history: ["first", "second"] });
+    kitWidgetCases[e + "scrolls past the visible lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "scroll indicator below"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "more rows show more lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "few rows show five lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "page up and down"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30" });
+    kitWidgetCases[e + "click moves the cursor"] = editor({ value: "hello\nworld" });
+    kitWidgetCases[e + "click on the border"] = editor({ value: "hello\nworld" });
+    kitWidgetCases[e + "right click ignored"] = editor({ value: "hello" });
+    kitWidgetCases[e + "slash opens the menu"] = editor({ auto: true });
+    kitWidgetCases[e + "slash narrows"] = editor({ auto: true });
+    kitWidgetCases[e + "slash no match"] = editor({ auto: true });
+    kitWidgetCases[e + "slash tab accepts"] = editor({ auto: true });
+    kitWidgetCases[e + "slash arrow then tab"] = editor({ auto: true });
+    kitWidgetCases[e + "slash enter accepts"] = editor({ auto: true });
+    kitWidgetCases[e + "slash escape closes"] = editor({ auto: true });
+    kitWidgetCases[e + "slash click selects"] = editor({ auto: true });
+    kitWidgetCases[e + "text after the slash opens nothing"] = editor({ auto: true });
+    kitWidgetCases[e + "slash max visible 3"] = editor({ acmax: 3, auto: true });
+    kitWidgetCases[e + "slash with padding"] = editor({ padding: 2, auto: true });
+    kitWidgetCases[e + "autocomplete menu does not follow disabled submit"] = editor({ disable: true, auto: true });
+  }
+  // The child the scroll-view and mouse-region cases wrap: a text of wrapping rows, a markdown, an empty container, or a
+  // branch summary (which a click toggles).
+  const kitScrollLines = "Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta";
+  const kitScrollMarkdown = "# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`";
+  const kitScrollChild = (kind) => {
+    if (kind === "md") return new piTui.Markdown(kitScrollMarkdown, 1, 0, piCodingAgent.getMarkdownTheme());
+    if (kind === "empty") return new Container();
+    if (kind === "branch") return new piCodingAgent.BranchSummaryMessageComponent({ summary: "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`." }, undefined, 1);
+    return new piTui.Text(kitScrollLines, 1, 0);
+  };
+  {
+    const styled = (theme, token) => (token ? (text) => theme.fg(token, text) : undefined);
+    const scroll = (o, kind = "text", wrap) => ({ theme }) => {
+      const options = {};
+      if (o.follow) options.follow = o.follow;
+      if (o.primary) options.primary = true;
+      if (o.overscroll) options.overscroll = o.overscroll;
+      if (o.scrollbar) options.scrollbar = o.scrollbar;
+      if (o.track) options.scrollbarTrackStyle = styled(theme, o.track);
+      if (o.thumb) options.scrollbarThumbStyle = styled(theme, o.thumb);
+      if (o.delay !== undefined) options.scrollbarHideDelayMs = o.delay;
+      const view = new piTui.ScrollView(kitScrollChild(kind), options);
+      if (o.scrollTop !== undefined) view.scrollTo(o.scrollTop);
+      const root = new Container();
+      if (wrap === "hf") root.addChild(new piTui.Text("Header", 1, 0));
+      root.addChild(view);
+      if (wrap === "hf") root.addChild(new piTui.Text("Footer", 1, 0));
+      if (wrap === "after") root.addChild(new piTui.Text("after", 1, 0));
+      return { root };
+    };
+    const s = "pi-tui/ScrollView/";
+    kitWidgetCases[s + "default"] = scroll({}, "text", undefined);
+    kitWidgetCases[s + "scrollbar always"] = scroll({"scrollbar": "always"}, "text", undefined);
+    kitWidgetCases[s + "scrollbar auto"] = scroll({"scrollbar": "auto"}, "text", undefined);
+    kitWidgetCases[s + "scrollbar colors"] = scroll({"scrollbar": "always", "track": "dim", "thumb": "accent"}, "text", undefined);
+    kitWidgetCases[s + "follow end"] = scroll({"follow": "end"}, "text", undefined);
+    kitWidgetCases[s + "primary and contain"] = scroll({"overscroll": "contain", "primary": true}, "text", undefined);
+    kitWidgetCases[s + "hide delay"] = scroll({"scrollbar": "auto", "delay": 50}, "text", undefined);
+    kitWidgetCases[s + "scroll top clamps"] = scroll({"scrollTop": 3}, "text", undefined);
+    kitWidgetCases[s + "markdown child"] = scroll({"scrollbar": "always"}, "md", undefined);
+    kitWidgetCases[s + "after other rows"] = scroll({"scrollbar": "always"}, "text", "hf");
+    kitWidgetCases[s + "empty child"] = scroll({"scrollbar": "always"}, "empty", undefined);
+    kitWidgetCases[s + "wheel and click pass"] = scroll({}, "text", "after");
+  }
+  {
+    const region = (o, kind = "text", wrap) => ({ note }) => {
+      const mouseRegion = new piTui.MouseRegion(kitScrollChild(kind), (event) => {
+        if (o.types && !o.types.includes(event.type)) return undefined;
+        note(`mouse:${event.type}/${event.button}/${event.x},${event.y}`);
+        const result = { handled: o.handled ?? true };
+        if (o.capture) result.capture = true;
+        if (o.focus) result.focus = true;
+        if (o.render !== undefined) result.render = o.render;
+        return result;
+      });
+      const root = new Container();
+      if (wrap === "ab") root.addChild(new piTui.Text("Above the region", 1, 0));
+      root.addChild(mouseRegion);
+      if (wrap === "ab") root.addChild(new piTui.Text("Below", 1, 0));
+      return { root };
+    };
+    const m = "pi-tui/MouseRegion/";
+    kitWidgetCases[m + "renders its child"] = region({}, "text", undefined);
+    kitWidgetCases[m + "every type by default"] = region({}, "text", undefined);
+    kitWidgetCases[m + "types filter"] = region({"types": ["click"]}, "text", undefined);
+    kitWidgetCases[m + "not handled"] = region({"handled": false}, "text", undefined);
+    kitWidgetCases[m + "capture"] = region({"capture": true}, "text", undefined);
+    kitWidgetCases[m + "focus and render"] = region({"focus": true, "render": false}, "text", undefined);
+    kitWidgetCases[m + "local coordinates"] = region({}, "text", "ab");
+    kitWidgetCases[m + "the child takes the event first"] = region({}, "branch", undefined);
+    kitWidgetCases[m + "right button"] = region({}, "text", undefined);
+  }
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
     description: "Show a widget kind's Pi vector case (D107)",
@@ -1138,14 +1281,14 @@ export default function (pi) {
       if (!build) throw new Error(`kit-widget: unknown case ${JSON.stringify(key)}`);
       const log = [];
       let count = 0;
-      const result = await ctx.ui.custom((_tui, theme, keys, done) => {
+      const result = await ctx.ui.custom((tui, theme, keys, done) => {
         const note = (entry, callback = true) => {
           log.push(entry);
           if (callback) count++;
           if (want > 0 && count >= want) done(log.join(","));
         };
         // build returns the root component and, when a node of it holds the focus, that node.
-        const { root, focus } = build({ theme, keys, note, log });
+        const { root, focus } = build({ tui, theme, keys, note, log });
         if (focus) root.handleInput = (data) => focus.handleInput(data);
         else if (!root.handleInput) root.handleInput = (data) => { log.push(`input:${data}`); };
         return root;

@@ -460,6 +460,7 @@ def theme_queries(theme, args):
         "thinking": {level: theme_attempt(lambda level=level: theme.get_thinking_border_color(level)("x")) for level in args.get("levels", [])},
         "bash": theme_attempt(lambda: theme.get_bash_mode_border_color()("x")),
         "sourcePath": theme.source_path,
+        "sourceInfo": theme.source_info,
     }
 
 

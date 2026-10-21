@@ -384,6 +384,7 @@ fn theme_queries(theme: &Theme, args: &Value) -> Value {
         "thinking": thinking,
         "bash": attempt(std::panic::AssertUnwindSafe(|| Ok(theme.get_bash_mode_border_color()("x")))),
         "sourcePath": theme.source_path,
+        "sourceInfo": theme.source_info,
     })
 }
 

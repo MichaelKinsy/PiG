@@ -51,13 +51,9 @@ export function buildTree(lib, node, registry = builders) {
   return make(lib, node, build);
 }
 
-// A step is { flush: true }, { keys: "…" } or { mouse: { type, button, x, y, … } } (the local cell of the root component).
+// The mouse steps' dispatch results are the frame's `results`, in order.
+// A step is { keys: "…" } or { mouse: { type, button, x, y, … } } (the local cell of the root component).
 async function applyStep(lib, root, rows, width, step) {
-  // A flush lets the asynchronous work a step started (an editor's autocomplete query) settle before the next render.
-  if (step.flush) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return;
-  }
   if (step.keys !== undefined) {
     // The focused node takes the keys; a case names it with `focus` (the node's id) through its builder's registry.
     if (root.__focus?.handleInput) root.__focus.handleInput(step.keys);
@@ -67,7 +63,10 @@ async function applyStep(lib, root, rows, width, step) {
   const event = { type: m.type, button: m.button ?? "none", x: m.x, y: m.y, screenX: m.screenX ?? m.x, screenY: m.screenY ?? m.y, width, height: rows.length, shift: !!m.shift, alt: !!m.alt, ctrl: !!m.ctrl };
   if (m.wheelDelta !== undefined) event.wheelDelta = m.wheelDelta;
   if (m.clickCount !== undefined) event.clickCount = m.clickCount;
-  root.handleMouse?.(event);
+  // The frame's mouseResults: what the renderer would act on, "h" handled, "c" capture, "f" focus ("-" for none).
+  const result = root.handleMouse?.(event);
+  const flags = result ? `${result.handled ? "h" : ""}${result.capture ? "c" : ""}${result.focus ? "f" : ""}` : "";
+  lib.results.push(flags || "-");
 }
 
 // renderCase builds the case's tree afresh for each width, renders it, applies the steps in order and renders
@@ -79,24 +78,30 @@ export async function renderCase(env, spec, registry = builders, themeName = "da
     lib.ids = {};
     lib.events = [];
     lib.changes = [];
+    lib.results = [];
     lib.timers = [];
     lib.focus = spec.focus;
     // The terminal's rows: an editor shows max(5, floor(rows * 0.3)) lines.
     lib.rows = spec.rows ?? 24;
     lib.probe = undefined;
+    lib.probeInitial = false;
     const root = buildTree(lib, spec.root, registry);
     if (spec.focus) root.__focus = lib.ids[spec.focus];
     let rows = root.render(width);
     const states = [rows];
+    // A case whose probe reads state the first render sets (a scroll view's layout) records it before the steps.
+    if (lib.probe && lib.probeInitial) lib.changes.push(lib.probe());
     for (const step of spec.steps ?? []) {
       await applyStep(lib, root, rows, width, step);
+      // A `settle` case lets the asynchronous work a step started (an editor's autocomplete query) finish before it renders.
+      if (spec.settle) await new Promise((resolve) => setTimeout(resolve, 100));
       rows = root.render(width);
       states.push(rows);
       if (lib.probe) lib.changes.push(lib.probe());
     }
     // Loaders animate on a timer; the case drives its frames itself.
     for (const stop of lib.timers) stop();
-    frames.push({ width, states, events: lib.events, changes: lib.changes });
+    frames.push({ width, states, events: lib.events, changes: lib.changes, results: lib.results });
   }
   return { palette: lib.palette, frames };
 }

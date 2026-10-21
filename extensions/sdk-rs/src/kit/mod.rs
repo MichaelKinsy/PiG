@@ -1101,8 +1101,9 @@ impl View {
         Self { root: root.into(), focus: None, theme: Vec::new() }
     }
 
-    /// The id of the select-list or settings-list that receives the keys it
-    /// binds (`ui.custom` only).
+    /// The id of the select-list, settings-list, input, editor,
+    /// cancellable-loader or bordered-loader that receives the keys it binds
+    /// (every key for an input and an editor; `ui.custom` only).
     pub fn focus(mut self, id: impl Into<String>) -> Self {
         self.focus = Some(id.into());
         self

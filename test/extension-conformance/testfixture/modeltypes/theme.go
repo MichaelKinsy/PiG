@@ -158,6 +158,15 @@ func themeQueries(theme sdk.UITheme, args map[string]any) any {
 	if theme.SourcePath != "" {
 		sourcePath = theme.SourcePath
 	}
+	// Theme.sourceInfo: where the resource loader found the theme, nil for one it did not load.
+	var sourceInfo any
+	if info := theme.SourceInfo; info != nil {
+		fields := map[string]any{"path": info.Path, "source": info.Source, "scope": info.Scope, "origin": info.Origin}
+		if info.BaseDir != "" {
+			fields["baseDir"] = info.BaseDir
+		}
+		sourceInfo = fields
+	}
 	return map[string]any{
 		"modifiers":     map[string]any{"bold": theme.Bold("x"), "italic": theme.Italic("x"), "underline": theme.Underline("x"), "inverse": theme.Inverse("x"), "strikethrough": theme.Strikethrough("x")},
 		"modifierTexts": modifierTexts,
@@ -168,6 +177,7 @@ func themeQueries(theme sdk.UITheme, args map[string]any) any {
 		"thinking":      thinking,
 		"bash":          attempt(func() (string, error) { return theme.GetBashModeBorderColor()("x"), nil }),
 		"sourcePath":    sourcePath,
+		"sourceInfo":    sourceInfo,
 	}
 }
 

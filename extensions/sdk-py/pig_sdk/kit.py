@@ -22,6 +22,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, TypeAlias, Union
 
@@ -1062,8 +1063,9 @@ Node: TypeAlias = Union[
 class View:
     """A component tree with the surface's focus and theme overrides.
 
-    ``focus`` is the id of the select-list or settings-list that receives the
-    keys it binds (``ui.custom`` only). ``theme`` overrides tokens for this
+    ``focus`` is the id of the select-list, settings-list, input, editor,
+    cancellable-loader or bordered-loader that receives the keys it binds (every
+    key for an input and an editor; ``ui.custom`` only). ``theme`` overrides tokens for this
     surface only: foreground ``accent``, ``muted``, ``dim``, ``text``,
     ``border``, ``borderAccent``, ``borderMuted``, ``success``, ``warning``,
     ``error``; background ``selectedBg``, ``customMessageBg``; values are
@@ -1512,3 +1514,214 @@ class Input(_Node):
 
 
 __all__ += ["Input"]
+
+
+class SlashCommand:
+    """Pi-tui's ``SlashCommand`` without ``getArgumentCompletions``, which is a
+    closure and cannot cross."""
+
+    def __init__(self, name: str, description: str = "", argument_hint: str = "") -> None:
+        self.name = str(name)
+        self.description = str(description)
+        self.argument_hint = str(argument_hint)
+
+    def _wire(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"name": self.name}
+        if self.description:
+            out["description"] = self.description
+        if self.argument_hint:
+            out["argumentHint"] = self.argument_hint
+        return out
+
+
+class Autocomplete:
+    """Pi-tui's ``CombinedAutocompleteProvider(commands, basePath)``: the slash
+    commands and the directory its path completion starts from (the host's
+    working directory when empty). The host runs its ``getSuggestions``,
+    ``applyCompletion`` and ``shouldTriggerFileCompletion`` as the editor
+    asks."""
+
+    def __init__(self, commands: Sequence[SlashCommand] = (), base_path: str = "") -> None:
+        self.commands = list(commands)
+        self.base_path = str(base_path)
+
+    def _wire(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.commands:
+            out["commands"] = [command._wire() for command in self.commands]
+        if self.base_path:
+            out["basePath"] = self.base_path
+        return out
+
+
+class Editor(_Node):
+    """Pi-tui's ``Editor(tui, theme, {paddingX, autocompleteMaxVisible})`` with
+    the setters an author calls on it: a multi-line text editor between two
+    borders. ``id`` is required and unique within the view. The host owns the
+    text and the cursor and runs Editor's own key and mouse handling once the
+    view's ``focus`` names it. The extension receives ``onSubmit`` as a
+    :data:`SUBMIT` event of the node (the text in ``value``) and a
+    :data:`CHANGE` event with the text and ``cursor`` after each key or press
+    that changed either. The editor shows ``max(5, floor(terminal rows * 0.3))``
+    lines, the terminal's rows being the host's.
+
+    ``value`` is ``setText``'s argument, applied when it differs from the one
+    the previous frame sent. ``autocomplete_max_visible`` ``0`` takes upstream's
+    5; ``border_color`` is a theme foreground token (default ``borderMuted``);
+    ``history`` is the ``addToHistory`` calls, oldest first: a frame that
+    extends the history the previous frame sent adds the new entries, another
+    history is another editor."""
+
+    kind = "editor"
+
+    def __init__(
+        self,
+        id: str,  # noqa: A002 - upstream's field name
+        value: str = "",
+        *,
+        padding_x: int = 0,
+        autocomplete_max_visible: int = 0,
+        border_color: str | None = None,
+        disable_submit: bool = False,
+        history: Sequence[str] = (),
+        autocomplete: Autocomplete | None = None,
+    ) -> None:
+        self.id = str(id)
+        self.value = str(value)
+        self.padding_x = int(padding_x)
+        self.autocomplete_max_visible = int(autocomplete_max_visible)
+        self.border_color = border_color
+        self.disable_submit = bool(disable_submit)
+        self.history = [str(entry) for entry in history]
+        self.autocomplete = autocomplete
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {"id": self.id}
+        if self.value:
+            out["value"] = self.value
+        if self.padding_x:
+            out["paddingX"] = self.padding_x
+        if self.autocomplete_max_visible:
+            out["autocompleteMaxVisible"] = self.autocomplete_max_visible
+        _put(out, "borderColor", self.border_color)
+        if self.disable_submit:
+            out["disableSubmit"] = True
+        if self.history:
+            out["history"] = list(self.history)
+        if self.autocomplete is not None:
+            out["autocomplete"] = self.autocomplete._wire()
+        return out
+
+
+__all__ += ["Autocomplete", "Editor", "SlashCommand"]
+
+
+class ScrollView(_Node):
+    """Pi-tui's ``ScrollView(child, {follow, primary, overscroll, scrollbar,
+    scrollbarTrackStyle, scrollbarThumbStyle, scrollbarHideDelayMs})``: one
+    child that scrolls. A view is laid out without a viewport height, as Pi's
+    layout engine does for a scroll node given none: the host draws the child's
+    rows, padded by a column when ``scrollbar`` is ``"always"``, and a frontend
+    scrolls from the state the component reports. The host keeps its component
+    (and its scroll state) across frames.
+
+    ``follow`` is ``"none"`` (default) or ``"end"``; ``overscroll`` ``"chain"``
+    (default) or ``"contain"``; ``scrollbar`` ``"hidden"`` (default),
+    ``"auto"`` or ``"always"``; ``scrollbar_track_color`` and
+    ``scrollbar_thumb_color`` are theme foreground tokens;
+    ``scrollbar_hide_delay_ms`` ``None`` takes upstream's 1000; ``scroll_top``
+    is ``scrollTo``'s argument, applied when it differs from the one the
+    previous frame sent."""
+
+    kind = "scroll-view"
+
+    def __init__(
+        self,
+        id: str,  # noqa: A002 - upstream's field name
+        child: Node,
+        *,
+        follow: str = "",
+        primary: bool = False,
+        overscroll: str = "",
+        scrollbar: str = "",
+        scrollbar_track_color: str | None = None,
+        scrollbar_thumb_color: str | None = None,
+        scrollbar_hide_delay_ms: int | None = None,
+        scroll_top: int | None = None,
+    ) -> None:
+        self.id = str(id)
+        self.child = child
+        self.follow = follow
+        self.primary = bool(primary)
+        self.overscroll = overscroll
+        self.scrollbar = scrollbar
+        self.scrollbar_track_color = scrollbar_track_color
+        self.scrollbar_thumb_color = scrollbar_thumb_color
+        self.scrollbar_hide_delay_ms = scrollbar_hide_delay_ms
+        self.scroll_top = scroll_top
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {"id": self.id, "children": [enc.node(self.child, depth + 1)]}
+        if self.follow:
+            out["follow"] = self.follow
+        if self.primary:
+            out["primary"] = True
+        if self.overscroll:
+            out["overscroll"] = self.overscroll
+        if self.scrollbar:
+            out["scrollbar"] = self.scrollbar
+        _put(out, "scrollbarTrackColor", self.scrollbar_track_color)
+        _put(out, "scrollbarThumbColor", self.scrollbar_thumb_color)
+        _put(out, "scrollbarHideDelayMs", self.scrollbar_hide_delay_ms)
+        _put(out, "scrollTop", self.scroll_top)
+        return out
+
+
+class MouseRegion(_Node):
+    """Pi-tui's ``MouseRegion(child, onMouse)``: mouse handling added to a child
+    without changing how it draws. The child gets each event first and the
+    region's handler only the events it leaves. The handler is a closure
+    upstream and crosses as a description: for each event whose type is in
+    ``types`` (``"press"``, ``"release"``, ``"click"``, ``"drag"``, ``"move"``,
+    ``"wheel"``; every type when none is named) it returns the result below,
+    and for the others no result. The host answers the terminal at once and
+    reports each event the handler ran for as a :data:`MOUSE` event of the node,
+    with coordinates local to the region. ``handled`` ``None`` takes true;
+    ``render`` ``None`` takes upstream's per-type default. ``id`` is required
+    and unique within the view."""
+
+    kind = "mouse-region"
+
+    def __init__(
+        self,
+        id: str,  # noqa: A002 - upstream's field name
+        child: Node,
+        *,
+        types: Sequence[str] = (),
+        handled: bool | None = None,
+        capture: bool = False,
+        focus: bool = False,
+        render: bool | None = None,
+    ) -> None:
+        self.id = str(id)
+        self.child = child
+        self.types = list(types)
+        self.handled = handled
+        self.capture = bool(capture)
+        self.focus = bool(focus)
+        self.render = render
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        region: dict[str, Any] = {}
+        if self.types:
+            region["types"] = list(self.types)
+        _put(region, "handled", self.handled)
+        if self.capture:
+            region["capture"] = True
+        if self.focus:
+            region["focus"] = True
+        _put(region, "render", self.render)
+        return {"id": self.id, "children": [enc.node(self.child, depth + 1)], "region": region}
+
+
+__all__ += ["MouseRegion", "ScrollView"]
