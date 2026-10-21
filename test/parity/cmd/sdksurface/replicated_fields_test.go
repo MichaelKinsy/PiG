@@ -60,13 +60,22 @@ func funcBody(t *testing.T, src string, start *regexp.Regexp) string {
 
 func TestGoSDKReplicatedFieldsAreAssignedFromStateUpdates(t *testing.T) {
 	fset := token.NewFileSet()
-	dir := filepath.Join(repoRoot, "extensions", "sdk")
-	pkgs, err := parser.ParseDir(fset, dir, func(info os.FileInfo) bool { return !strings.HasSuffix(info.Name(), "_test.go") }, 0)
+	paths, err := filepath.Glob(filepath.Join(repoRoot, "extensions", "sdk", "*.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkg := pkgs["sdk"]
-	if pkg == nil {
+	pkg := struct{ Files map[string]*ast.File }{Files: map[string]*ast.File{}}
+	for _, path := range paths {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pkg.Files[path] = file
+	}
+	if len(pkg.Files) == 0 {
 		t.Fatal("package sdk not found")
 	}
 	// The fields the Extension struct guards with mu, in declaration order, up to the next lock.
