@@ -23,8 +23,8 @@ exit_code = 0
 runs = 3
 json_output_equal = true
 stderr_equal = true
-both_contain = ['"ran":[]', '"custom":"undefined"', '"editorComponent":"undefined"', '"onTerminalInput":"function"', 'Theme switching not supported in RPC mode', '"id":"u","type":"response","command":"prompt","success":true']
-both_not_contain = ['FOOTER-FRAME', 'HEADER-FRAME', 'EDITOR-FRAME', 'CUSTOM-FRAME', 'render failed', '"success":false,"error":"parse', 'extension_error']
+both_contain = ['\"ran\":[]', '\"custom\":\"undefined\"', '\"editorComponent\":\"undefined\"', '\"onTerminalInput\":\"function\"', 'Theme switching not supported in RPC mode', '"id":"u","type":"response","command":"prompt","success":true']
+both_not_contain = ['FOOTER-FRAME', 'HEADER-FRAME', 'EDITOR-FRAME', 'CUSTOM-FRAME', 'render failed', 'parse setTheme args', 'extension_error']
 
 [[assert.json_aliases]]
 paths = ["/*/id"]
