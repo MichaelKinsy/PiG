@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"unicode/utf16"
 )
 
@@ -207,9 +208,10 @@ func toJSUnits(text string) string {
 func jsAlternation(patterns ...string) *regexp.Regexp { return jsRegexp(strings.Join(patterns, "|")) }
 
 // overflowPatterns, nonOverflowPatterns and cerebrasBodylessOverflowPattern are overflow.ts's OVERFLOW_PATTERNS, NON_OVERFLOW_PATTERNS and CEREBRAS_BODYLESS_OVERFLOW_PATTERN. Each
-// alternative is tried on its own, as Pi's .some() does, so its anchors keep their meaning.
+// alternative is tried on its own, as Pi's .some() does, so its anchors keep their meaning. Every pattern compiles on first use: the pig binary links this package, and compiling at
+// package initialization cost startup allocations on every run (TestPackageInitWorkBudget).
 var (
-	overflowPatterns = compileEach(
+	overflowPatterns = sync.OnceValue(func() []*regexp.Regexp { return compileEach(
 		`prompt (?:is )?too long`,
 		`prompt exceeds max length`,
 		`request_too_large`,
@@ -235,15 +237,15 @@ var (
 		`context[_ ]length[_ ]exceeded`,
 		`too many tokens`,
 		`token limit exceeded`,
-	)
-	nonOverflowPatterns = compileEach(
+	) })
+	nonOverflowPatterns = sync.OnceValue(func() []*regexp.Regexp { return compileEach(
 		`^(Throttling error|Service unavailable):`,
 		`rate limit`,
 		`too many requests`,
-	)
-	cerebrasBodylessOverflowPattern = jsRegexp(`^4(?:00|13)\s*(?:status code)?\s*\(no body\)`)
+	) })
+	cerebrasBodylessOverflowPattern = sync.OnceValue(func() *regexp.Regexp { return jsRegexp(`^4(?:00|13)\s*(?:status code)?\s*\(no body\)`) })
 
-	nonRetryableProviderLimitErrorPattern = jsAlternation(
+	nonRetryableProviderLimitErrorPattern = sync.OnceValue(func() *regexp.Regexp { return jsAlternation(
 		`GoUsageLimitError`,
 		`FreeUsageLimitError`,
 		`Monthly usage limit reached`,
@@ -253,8 +255,8 @@ var (
 		`quota exceeded`,
 		`billing`,
 		`subscription_sharing_usage_limit_exceeded`,
-	)
-	retryableProviderErrorPattern = jsAlternation(
+	) })
+	retryableProviderErrorPattern = sync.OnceValue(func() *regexp.Regexp { return jsAlternation(
 		`overloaded`,
 		`server_busy`,
 		`servers are currently busy`,
@@ -310,7 +312,7 @@ var (
 		`ResourceExhausted`,
 		`subscription_sharing_usage_unavailable`,
 		`subscription_sharing_user_unavailable`,
-	)
+	) })
 )
 
 func compileEach(patterns ...string) []*regexp.Regexp {
@@ -341,10 +343,10 @@ func IsRetryableAssistantError(message map[string]any) bool {
 		return false
 	}
 	text := toJSUnits(errorMessage)
-	if nonRetryableProviderLimitErrorPattern.MatchString(text) {
+	if nonRetryableProviderLimitErrorPattern().MatchString(text) {
 		return false
 	}
-	return retryableProviderErrorPattern.MatchString(text)
+	return retryableProviderErrorPattern().MatchString(text)
 }
 
 // IsContextOverflow is pi-ai's isContextOverflow: whether an assistant message is a context overflow. It is one when it failed with an overflow error message that is not a rate
@@ -354,11 +356,11 @@ func IsContextOverflow(message map[string]any, contextWindow float64) bool {
 	stopReason, errorMessage := assistantError(message)
 	if stopReason == "error" && errorMessage != "" {
 		text := toJSUnits(errorMessage)
-		if !matchesAny(nonOverflowPatterns, text) {
-			if matchesAny(overflowPatterns, text) {
+		if !matchesAny(nonOverflowPatterns(), text) {
+			if matchesAny(overflowPatterns(), text) {
 				return true
 			}
-			if provider, _ := message["provider"].(string); provider == "cerebras" && cerebrasBodylessOverflowPattern.MatchString(text) {
+			if provider, _ := message["provider"].(string); provider == "cerebras" && cerebrasBodylessOverflowPattern().MatchString(text) {
 				return true
 			}
 		}
