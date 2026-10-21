@@ -138,9 +138,9 @@ func (b *bridgeTool) Execute(
 		return agent.AgentToolResult{}, fmt.Errorf("bridge tool %q: Execute is nil", b.def.Name)
 	}
 
-	if closeWindow := agent.ToolStartWindowFromContext(ctx, toolCallID); closeWindow != nil {
+	if window := agent.ToolStartWindowFromContext(ctx, toolCallID); window != nil {
 		// The call's synchronous prefix is over when the tool returns at the latest.
-		defer closeWindow()
+		defer window.Close()
 	}
 	if ticket, ok := agent.MutationTicketFromContext(ctx); ok && b.def.ReserveCallOrder != nil {
 		order := &extension.CallOrder{Wait: ticket.Wait, Release: ticket.Release}

@@ -178,7 +178,7 @@ type Conn struct {
 	// toolRequests holds the pending tool_call requests; guarded by pendingMu.
 	toolRequests map[string]struct{}
 	// startWindows closes the start window of a pending tool_call request that holds one (withRequestWindow); guarded by pendingMu.
-	startWindows map[string]func()
+	startWindows map[string]requestWindowHandle
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
@@ -294,7 +294,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
 		toolRequests:       make(map[string]struct{}),
-		startWindows:       make(map[string]func()),
+		startWindows:       make(map[string]requestWindowHandle),
 		toolUpdates:        newCallLanes(),
 		answered:           make(map[string]func()),
 		arrived:            make(map[string]func()),
@@ -758,8 +758,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if fn := requestHostCalls(ctx); fn != nil {
 		c.hostCallCounts[env.ID] = fn
 	}
-	if fn := requestWindow(ctx); fn != nil {
-		c.startWindows[env.ID] = fn
+	if window := requestWindow(ctx); window != nil {
+		c.startWindows[env.ID] = window
 	}
 	if fn := requestDrained(ctx); fn != nil {
 		c.drainable[env.ID] = &drainableRequest{drained: fn}
@@ -1408,11 +1408,30 @@ func (c *Conn) closeRequestWindow(requestID string) {
 		return
 	}
 	c.pendingMu.Lock()
-	closeWindow := c.startWindows[requestID]
+	window := c.startWindows[requestID]
 	c.pendingMu.Unlock()
-	if closeWindow != nil {
-		closeWindow()
+	if window != nil {
+		window.Close()
 	}
+}
+
+// endRequestWindowByReport closes the start window of the request requestID after its runtime reported that the handler awaits something that is not a host
+// call, and tells the runtime when the calls that waited for the window registered in the file mutation queue (NotifyToolWindowSettled): Pi registered them
+// before the handler's next call, which the runtime holds until then.
+func (c *Conn) endRequestWindowByReport(requestID string) {
+	c.pendingMu.Lock()
+	window := c.startWindows[requestID]
+	c.pendingMu.Unlock()
+	if window == nil {
+		return
+	}
+	window.Close()
+	go func() {
+		window.AwaitSettled()
+		// A request id is the host's own "r" and a number, or the id of the request it nests in: plain ASCII, so strconv's quoting is JSON's.
+		args := []byte(`{"request_id":` + strconv.Quote(requestID) + `}`)
+		_ = c.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyToolWindowSettled, Args: args}})
+	}()
 }
 
 // writeBatchFrames and writeBatchBytes bound the encoded frames the writer coalesces into one socket write.
@@ -2106,16 +2125,21 @@ func requestIssued(ctx context.Context) func() {
 
 type requestWindowKey struct{}
 
-// withRequestWindow has a tool_call request close the start window its call holds (agent.ToolStartWindowFromContext) once the request's handler ran to its first
-// await: when the host applied a host call the request made that returns a Promise in Pi (startsAsync), or the runtime reported the handler blocked on something
-// else. The window ends with the request in any case. fn must be idempotent.
-func withRequestWindow(ctx context.Context, fn func()) context.Context {
-	return context.WithValue(ctx, requestWindowKey{}, fn)
+// requestWindowHandle is the start window of a tool_call request (agent.StartWindow): the request closes it once its handler ran to its first await: when the host
+// applied a host call the request made that returns a Promise in Pi (startsAsync), or when the runtime reported the handler blocked on something else. The window
+// ends with the request in any case.
+type requestWindowHandle interface {
+	Close()
+	AwaitSettled()
 }
 
-func requestWindow(ctx context.Context) func() {
-	fn, _ := ctx.Value(requestWindowKey{}).(func())
-	return fn
+func withRequestWindow(ctx context.Context, window requestWindowHandle) context.Context {
+	return context.WithValue(ctx, requestWindowKey{}, window)
+}
+
+func requestWindow(ctx context.Context) requestWindowHandle {
+	window, _ := ctx.Value(requestWindowKey{}).(requestWindowHandle)
+	return window
 }
 
 type requestHostCallsKey struct{}

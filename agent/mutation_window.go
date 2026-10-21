@@ -5,6 +5,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
@@ -26,25 +27,46 @@ type RegistersInFileMutationQueue interface {
 
 type startWindowKey struct{}
 
-type startWindow struct {
+// StartWindow is the window of one extension tool call: it is open from the call's start until the call's synchronous prefix is over. Close ends it, and
+// AwaitSettled returns once every edit or write call that waited for it registered in the file mutation queue, which Pi has done before the extension's own
+// later registration when the extension tool awaited something first.
+type StartWindow struct {
+	closed  *jsloop.Place
+	settled *jsloop.Place
+	// dependents counts the calls that wait for the window and have not registered.
+	dependents atomic.Int32
+}
+
+func newStartWindow() *StartWindow {
+	return &StartWindow{closed: jsloop.After(nil), settled: jsloop.After(nil)}
+}
+
+// Close ends the window. It is idempotent.
+func (w *StartWindow) Close() { w.closed.Release() }
+
+// AwaitSettled returns once every call that waited for the window registered (at once when none did, once the dispatcher has prepared its batch).
+func (w *StartWindow) AwaitSettled() { jsloop.After(w.settled).Wait() }
+
+type startWindowOf struct {
 	toolCallID string
-	place      *jsloop.Place
+	window     *StartWindow
 }
 
 // withStartWindow carries to the call toolCallID the window its tool closes when the call's synchronous prefix is over.
-func withStartWindow(ctx context.Context, toolCallID string, place *jsloop.Place) context.Context {
-	return context.WithValue(ctx, startWindowKey{}, startWindow{toolCallID: toolCallID, place: place})
+func withStartWindow(ctx context.Context, toolCallID string, window *StartWindow) context.Context {
+	return context.WithValue(ctx, startWindowKey{}, startWindowOf{toolCallID: toolCallID, window: window})
 }
 
-// ToolStartWindowFromContext returns the function a tool that MayTakeFileMutationQueue calls when its synchronous prefix is over, which is Pi's first await of
-// the tool's execute: an extension's host call that returns a Promise, a report that its handler awaits, or its answer. It returns nil for a call that holds
-// no window. The function is idempotent, and the dispatcher calls it when the call ends, so a tool that never calls it holds nobody back for long.
-func ToolStartWindowFromContext(ctx context.Context, toolCallID string) func() {
-	window, ok := ctx.Value(startWindowKey{}).(startWindow)
+// ToolStartWindowFromContext returns the window of the call toolCallID, for a tool that MayTakeFileMutationQueue. The tool closes it when its synchronous prefix is
+// over, which is Pi's first await of the tool's execute: an extension's host call that returns a Promise, a report that its handler awaits, or its answer. It
+// returns nil for a call that holds no window. Close is idempotent, and the dispatcher closes the window when the call ends, so a tool that never closes it holds
+// nobody back for long.
+func ToolStartWindowFromContext(ctx context.Context, toolCallID string) *StartWindow {
+	window, ok := ctx.Value(startWindowKey{}).(startWindowOf)
 	if !ok || window.toolCallID != toolCallID {
 		return nil
 	}
-	return window.place.Release
+	return window.window
 }
 
 type registrationTurnKey struct{}
@@ -54,7 +76,7 @@ type registrationTurn struct {
 	toolCallID string
 	// windows are the start windows of the tools before the call that may take the queue; the call registers after they closed. Empty for a call behind
 	// no extension tool, which registers in the dispatcher's loop.
-	windows []*jsloop.Place
+	windows []*StartWindow
 	// place orders this call against the other calls that register late.
 	place *jsloop.Place
 	// orderer registers the call (a consumer), nil for an extension tool that only waits its turn.
@@ -69,7 +91,7 @@ func withRegistrationTurn(ctx context.Context, turn registrationTurn) context.Co
 // registrationOrder tracks, while the dispatcher prepares a batch's calls in source order, the calls that register in the queue after an extension tool.
 type registrationOrder struct {
 	// windows are the start windows of the extension tools seen so far.
-	windows []*jsloop.Place
+	windows []*StartWindow
 	// turns orders the calls that register late.
 	turns jsloop.Lane
 	// late is set once a call registers late: an extension tool after it must start after that registration.
@@ -79,7 +101,7 @@ type registrationOrder struct {
 // extensionTool records the call of an extension tool and returns its context: it carries the window the tool closes, and, after a call that registers
 // late, the turn the call takes before its tool starts, so the registration of an earlier edit or write precedes whatever the extension tool registers.
 func (o *registrationOrder) extensionTool(ctx context.Context, toolCallID string) context.Context {
-	window := jsloop.After(nil)
+	window := newStartWindow()
 	o.windows = append(o.windows, window)
 	ctx = withStartWindow(ctx, toolCallID, window)
 	if o.late {
@@ -95,6 +117,9 @@ func (o *registrationOrder) registersLate(ctx context.Context, toolCallID string
 		return ctx, false
 	}
 	o.late = true
+	for _, window := range o.windows {
+		window.dependents.Add(1)
+	}
 	return withRegistrationTurn(ctx, registrationTurn{
 		toolCallID: toolCallID,
 		windows:    o.windows[:len(o.windows):len(o.windows)],
@@ -102,6 +127,15 @@ func (o *registrationOrder) registersLate(ctx context.Context, toolCallID string
 		orderer:    orderer,
 		args:       args,
 	}), true
+}
+
+// prepared tells the windows that no more calls will wait for them: the windows no call waits for are settled.
+func (o *registrationOrder) prepared() {
+	for _, window := range o.windows {
+		if window.dependents.Load() == 0 {
+			window.settled.Release()
+		}
+	}
 }
 
 // enterRegistrationOrder runs on the call's goroutine before its tool starts. An edit or write registers in the queue now, after the start windows of the
@@ -113,8 +147,16 @@ func enterRegistrationOrder(ctx context.Context, toolCallID string) context.Cont
 		return ctx
 	}
 	defer turn.place.Release()
+	defer func() {
+		// The registration is made, or the call ends without one: the windows it waited for are one dependent closer to settled.
+		for _, window := range turn.windows {
+			if window.dependents.Add(-1) == 0 {
+				window.settled.Release()
+			}
+		}
+	}()
 	for _, window := range turn.windows {
-		jsloop.After(window).Wait()
+		jsloop.After(window.closed).Wait()
 	}
 	turn.place.Wait()
 	if turn.orderer == nil || ctx.Err() != nil {

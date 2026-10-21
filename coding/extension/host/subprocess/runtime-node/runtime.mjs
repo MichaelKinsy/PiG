@@ -2235,6 +2235,12 @@ export class Runtime {
 
   // pig additive (D19): a file mutation queue call (shims/file-mutation-queue-bridge.mjs). Pi's queue is a module-level map every extension shares, so a factory may use it while it loads: like exec, the call opens the loading connection and is applied when its reply arrives. The call is detached from the request that makes it: an aborted request does not end the wait for the file or the release of its turn, as Pi's queue does not.
   fileMutation(method, args) {
+    const owner = method === "fileMutation.enter" ? this.activeRequest() : undefined;
+    if (owner?.windowSettled) {
+      const settled = owner.windowSettled;
+      owner.windowSettled = undefined;
+      return settled.then(() => this.fileMutation(method, args));
+    }
     if (this.conn) return this.call(method, args, { detached: true });
     if (this.loadState === "loading") {
       this.ensureConnectionSync();
@@ -3800,6 +3806,16 @@ export class Runtime {
       return;
     }
     switch (notify.method) {
+      case "tool_window_settled": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        this.requestRecords.get(args?.request_id)?.settleWindow?.();
+        return;
+      }
       case "bash_operations_release": {
         let args = notify.args;
         try {
@@ -5010,7 +5026,11 @@ export class Runtime {
     let settled = false;
     Promise.resolve(pending).then(() => { settled = true; }, () => { settled = true; });
     queueMicrotask(() => {
-      if (!settled && !this.conn.closed) this.conn.requestState(id, "blocked", "external_io");
+      if (settled || this.conn.closed) return;
+      // Pi registers the edit and write calls behind this tool in the file mutation queue before the tool's next call: the host says when it has, and the tool's next fileMutation.enter waits for it.
+      const request = this.requestRecords.get(id);
+      if (request) request.windowSettled = new Promise((resolve) => { request.settleWindow = resolve; });
+      this.conn.requestState(id, "blocked", "external_io");
     });
   }
 

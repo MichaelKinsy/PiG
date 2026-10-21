@@ -657,6 +657,11 @@ const RequestEventLoopTurn = "event_loop_turn"
 // NotifyEventLoopTurned (Node runtime→host) reports that the process took the turn RequestEventLoopTurn asked for. The host applies the calls the connection sent before it, as it does for a request_state report, before the turn counts as taken.
 const NotifyEventLoopTurned = "event_loop_turned"
 
+// NotifyToolWindowSettled (host→Node runtime) tells a runtime that reported a tool_call request's handler blocked on something that is not a host call (RequestStatePayload
+// blocked, external_io) that the edit and write calls waiting for the request's start window registered in the file mutation queue. Pi registers them before the handler's next
+// call, so the runtime holds that request's next fileMutation.enter until it arrives. Args carry {"request_id": ...}. The host sends it only to a runtime that sent the report.
+const NotifyToolWindowSettled = "tool_window_settled"
+
 // TerminalInputArgs carries an ordered input and the UI values visible before its listener runs. Data and EditorText preserve UTF-16 units using WTF-8 in Go and surrogate escapes in JSON. Runtimes with synchronous local UI getters refresh those values before invoking the listener; host-query SDKs read the same live UI through their existing calls.
 type TerminalInputArgs struct {
 	Data          string `json:"data"`

@@ -152,6 +152,7 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 		}
 	}
 
+	registration.prepared()
 	finalized := make([]finalizedToolCall, len(outcomes))
 	prepared := 0
 	for i, outcome := range outcomes {
@@ -183,9 +184,9 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 			wg.Go(func() {
 				defer slot.Close()
 				stackprime.Prime()
-				if closeWindow := ToolStartWindowFromContext(callCtx, outcome.prepared.call.id); closeWindow != nil {
+				if window := ToolStartWindowFromContext(callCtx, outcome.prepared.call.id); window != nil {
 					// The call's start window closes when the call ends at the latest, whether or not the extension reported its prefix over.
-					defer closeWindow()
+					defer window.Close()
 				}
 				callCtx := enterRegistrationOrder(callCtx, outcome.prepared.call.id)
 				var err error

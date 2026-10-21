@@ -3874,9 +3874,9 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		// upstream: agent-loop.ts:619-647: the edit and write calls after this one in the batch register in the file mutation queue once this tool's synchronous
 		// prefix is over, which the extension may spend taking the queue itself (withFileMutationQueue). The host sees the end of the prefix when it applies the
 		// request's first host call that returns a Promise in Pi, or when the runtime reports the handler blocked on something else, and the call's end closes the window.
-		if closeWindow := agent.ToolStartWindowFromContext(ctx, toolCallID); closeWindow != nil {
-			defer closeWindow()
-			reqCtx = withRequestWindow(reqCtx, closeWindow)
+		if window := agent.ToolStartWindowFromContext(ctx, toolCallID); window != nil {
+			defer window.Close()
+			reqCtx = withRequestWindow(reqCtx, window)
 		}
 		if err := h.pushStateTo(reqCtx, me, conn); err != nil {
 			return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
@@ -4497,7 +4497,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 						conn.settleSuspension(state.RequestID)
 					} else {
 						// The handler of a tool_call request awaited something that is not a host call: Pi's next call starts (conn.endsStartWindow).
-						conn.closeRequestWindow(state.RequestID)
+						conn.endRequestWindowByReport(state.RequestID)
 					}
 				}()
 			}
