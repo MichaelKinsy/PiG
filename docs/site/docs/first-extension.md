@@ -263,7 +263,7 @@ func Extension() *sdk.Extension {
 		if err != nil {
 			return err
 		}
-		if ok {
+		if ok == true {
 			ctx.Notify("You said yes", "info")
 		} else {
 			ctx.Notify("You said no", "warning")

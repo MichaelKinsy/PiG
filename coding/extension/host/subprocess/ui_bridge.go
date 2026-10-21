@@ -2687,6 +2687,7 @@ func (b *UIBridge) handleConfirm(ctx context.Context, ui extension.UIContext, ar
 		}
 		confirmed = json.RawMessage("false")
 	}
+	//portlint:allow mapkeyorder host-runtime IPC reply the Go, Rust, Python and Node SDKs read by member name, not Pi output; it has one member
 	result, _ := json.Marshal(map[string]json.RawMessage{"confirmed": confirmed})
 	return &CallResultPayload{Result: result}, nil
 }
@@ -3048,9 +3049,11 @@ func dialogValueResult(member string, value json.RawMessage, err error) (*CallRe
 		if !errors.Is(err, context.Canceled) {
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
 		}
+		//portlint:allow mapkeyorder host-runtime IPC reply the Go, Rust, Python and Node SDKs read by member name, not Pi output
 		result, _ := json.Marshal(map[string]any{member: "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
+	//portlint:allow mapkeyorder host-runtime IPC reply the Go, Rust, Python and Node SDKs read by member name, not Pi output
 	result, _ := json.Marshal(map[string]any{member: value, "ok": true})
 	return &CallResultPayload{Result: result}, nil
 }
