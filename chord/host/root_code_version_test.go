@@ -11,9 +11,9 @@ import "testing"
 func TestRootIsCountedInItsCodeVersionBeforeAQueuedCallbackCanRetireIt(t *testing.T) {
 	host := requestsHost(t, HostOptions{Name: "h"})
 	// Queue the callback as if a drain were pending: nothing runs it until the next section that ends.
-	host.loop.mu.Lock()
-	host.loop.scheduled = true
-	host.loop.mu.Unlock()
+	host.mu.Lock()
+	host.scheduled = true
+	host.mu.Unlock()
 	host.post(func() {
 		host.codeVersionSeq++
 		next := newCodeVersionState(host.codeVersionSeq, newOrderedMap[string, *Service]())
