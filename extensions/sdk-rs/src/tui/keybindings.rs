@@ -161,6 +161,13 @@ pub fn set_keybindings(keybindings: KeybindingsManager) {
     *GLOBAL.lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(keybindings));
 }
 
+/// Forgets the installed manager, so [`get_keybindings`] answers the default again: the tests that read the default restore the process
+/// state the tests that install a manager changed.
+#[cfg(test)]
+pub(crate) fn reset_keybindings() {
+    *GLOBAL.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}
+
 /// pi-tui's `getKeybindings`: the global manager, over [`tui_keybindings`] until one is installed.
 pub fn get_keybindings() -> Arc<KeybindingsManager> {
     let mut guard = GLOBAL.lock().unwrap_or_else(|e| e.into_inner());
