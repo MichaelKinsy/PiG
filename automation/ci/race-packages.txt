@@ -1,0 +1,60 @@
+# Every package that starts goroutines or timers in non-test code and has tests, with the nightly -race group that runs it
+# (or `exempt` and the reason). Read by test-race-nightly.sh (what runs) and race-coverage.sh (the drift gate: a package
+# missing here fails `make race-coverage`). A path with its own go.mod is a nested module, run as `go test ./...` inside it.
+# Groups are the matrix of .github/workflows/nightly.yml.
+#
+# group   path   [reason, for exempt]
+ai    ./ai
+rest  ./agent
+rest  ./tui
+rest  ./internal/codingagent
+rest  ./durable/harness
+rest  ./durable/core/driver
+rest  ./durable/core/sqlhost
+rest  ./coding/extension/host/subprocess
+host  ./coding/extension
+host  ./coding/extension/host/inproc
+host  ./coding/extension/host/runtimecell
+host  ./coding/extension/host/cellpack
+host  ./coding/mcpext
+host  ./coding/rpcclient
+host  ./internal/packagemanager
+host  ./internal/pilock
+host  ./internal/pigsdklock
+host  ./extensions/sdk
+coding  ./coding
+coding  ./internal/codingagent/tools
+cli   ./coding/cli
+libs  ./chord
+libs  ./chord/host
+libs  ./chord/output
+libs  ./codemode
+libs  ./coding/extension/builtin/codemode
+libs  ./durable
+libs  ./durable/codemode
+libs  ./durable/env/node
+libs  ./durable/session
+libs  ./env
+libs  ./env/daemon
+libs  ./internal/buildprogress
+libs  ./internal/childwait
+libs  ./internal/codingagent/llama
+libs  ./internal/evals
+libs  ./internal/sessionentry
+libs  ./mcp
+libs  ./mcp/oauth
+libs  ./cmd/gen-models
+libs  ./coding/extension/host/subprocess/internal/noderuntimepack
+libs  ./durable/core/cmd/corenative
+libs  ./durable/core/contracttest/guard
+libs  ./durable/durabletest
+libs  ./durable/images/node
+libs  ./internal/entered
+libs  ./internal/requestvalidity
+libs  ./internal/testenv
+libs  ./mcp/mcptest
+libs  ./piglets/aot
+libs  ./piglets/porter/extensions/pig-porter
+libs  ./piglets/standard
+libs  ./durable/images
+libs  ./internal/nativeplatform
