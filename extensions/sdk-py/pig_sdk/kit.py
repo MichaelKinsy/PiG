@@ -1371,3 +1371,46 @@ class SkillInvocation(_Node):
 
 
 __all__ += ["SkillInvocation"]
+
+
+class CustomMessage(_Node):
+    """Coding-agent's ``CustomMessageComponent(message, undefined,
+    getMarkdownTheme(), outputPad)``: the default rendering of an extension's
+    message, "[customType]" over the content's text in a customMessageBg box.
+    A message's custom renderer is a closure upstream and has no kind here;
+    the message-renderer surfaces draw it. It draws with the active theme, and
+    a node with an ``id`` keeps its host component across frames."""
+
+    kind = "custom-message"
+
+    def __init__(self, custom_type: str, text: str, *, output_pad: int = 1, id: str = "") -> None:  # noqa: A002 - upstream's field name
+        self.id = str(id)
+        self.custom_type = str(custom_type)
+        self.text = str(text)
+        self.output_pad = int(output_pad)
+        self.expanded = False
+
+    def set_expanded(self, expanded: bool) -> None:
+        """Upstream ``setExpanded``; the default rendering does not draw it."""
+        self.expanded = bool(expanded)
+
+    def set_output_pad(self, output_pad: int) -> None:
+        """Upstream ``setOutputPad``."""
+        self.output_pad = int(output_pad)
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.id:
+            out["id"] = self.id
+        if self.output_pad != 1:
+            out["outputPad"] = self.output_pad
+        if self.expanded:
+            out["expanded"] = True
+        if self.custom_type:
+            out["customType"] = self.custom_type
+        if self.text:
+            out["text"] = self.text
+        return out
+
+
+__all__ += ["CustomMessage"]

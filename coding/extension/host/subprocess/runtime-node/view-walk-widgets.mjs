@@ -6,7 +6,7 @@
 // so this module imports nothing from it.
 
 // The coding-agent classes the walk loads the coding-agent bundle for.
-export const WIDGET_CODING_AGENT_CLASSES = ["BranchSummaryMessageComponent" , "CompactionSummaryMessageComponent" , "SkillInvocationMessageComponent" /* widget-classes */];
+export const WIDGET_CODING_AGENT_CLASSES = ["BranchSummaryMessageComponent" , "CompactionSummaryMessageComponent" , "SkillInvocationMessageComponent" , "CustomMessageComponent" /* widget-classes */];
 
 // The pi-tui widget classes by render function: none are drawn by their
 // base class's render alone.
@@ -56,6 +56,21 @@ export function widgetClassHandlers(codingAgent, h) {
     if (c.skillBlock.name) skill.name = c.skillBlock.name;
     if (c.skillBlock.content) skill.content = c.skillBlock.content;
     node.skill = skill;
+    return node;
+  });
+  add(codingAgent.CustomMessageComponent, (walk, c) => {
+    // The default rendering only: a custom renderer is a closure.
+    if (c.customRenderer !== undefined || typeof c.message?.customType !== "string" || typeof c._expanded !== "boolean" || !padOk(c.outputPad) || !markdownOk(walk, c)) return undefined;
+    let text;
+    if (typeof c.message.content === "string") text = c.message.content;
+    else if (Array.isArray(c.message.content) && c.message.content.length <= h.maxListItems && c.message.content.every((b) => b?.type !== "text" || typeof b.text === "string")) {
+      text = c.message.content.filter((b) => b?.type === "text").map((b) => b.text).join("\n");
+    } else return undefined;
+    const node = { kind: "custom-message", id: h.conversationId(c, "custom-message") };
+    if (c.message.customType) node.customType = c.message.customType;
+    if (text) node.text = text;
+    if (c.outputPad !== 1) node.outputPad = c.outputPad;
+    if (c._expanded) node.expanded = true;
     return node;
   });
   // widget-walkers

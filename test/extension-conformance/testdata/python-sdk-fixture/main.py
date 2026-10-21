@@ -168,6 +168,22 @@ KIT_WIDGET_CASES[_SKILL + "outputPad 0 collapsed"] = lambda: _kit_skill_view(out
 KIT_WIDGET_CASES[_SKILL + "outputPad 0 expanded"] = lambda: _kit_skill_view(expanded=True, output_pad=0)
 KIT_WIDGET_CASES[_SKILL + "empty skill expanded"] = _kit_skill_empty
 
+KIT_CUSTOM_TEXT = "Build **passed** in 12s\n\n- 214 tests\n- 0 failures"
+
+
+def _kit_custom_view(text: str = KIT_CUSTOM_TEXT, expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.CustomMessage("ci-status", text, output_pad=output_pad, id="m")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+_CUSTOM = "pi-coding-agent/CustomMessageComponent/"
+KIT_WIDGET_CASES[_CUSTOM + "default"] = lambda: _kit_custom_view()
+KIT_WIDGET_CASES[_CUSTOM + "outputPad 0"] = lambda: _kit_custom_view(output_pad=0)
+KIT_WIDGET_CASES[_CUSTOM + "expanded changes nothing"] = lambda: _kit_custom_view(expanded=True)
+KIT_WIDGET_CASES[_CUSTOM + "empty text"] = lambda: _kit_custom_view(text="")
+KIT_WIDGET_CASES[_CUSTOM + "no id"] = lambda: kit.View(kit.CustomMessage("note", "plain"))
+
 # kit-widget-cases
 
 
