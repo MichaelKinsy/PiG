@@ -181,6 +181,7 @@ func TestToolUpdatesOfConcurrentRequestsReachTheirSinksInFrameOrder(t *testing.T
 	hostEnd, peer := socketPair(t)
 	conn := NewConn("updates", hostEnd)
 	conn.Start(t.Context())
+	serveDispatch(conn)
 	t.Cleanup(func() { _ = peer.Close(); _ = conn.Close("test done") })
 	host := NewHost(t.TempDir())
 	defer host.Shutdown("test done")
@@ -229,4 +230,15 @@ func TestToolUpdatesOfConcurrentRequestsReachTheirSinksInFrameOrder(t *testing.T
 			t.Fatalf("round %d: the updates of %d concurrent requests reached their sinks as %v, want the frame order %v", round, requests, got, sent)
 		}
 	}
+}
+
+// serveDispatch stands in for the host's dispatcher: it takes the frames conn reads off Incoming and releases the dispatch markers makeToolExecuteFunc waits for.
+func serveDispatch(conn *Conn) {
+	go func() {
+		for env := range conn.Incoming() {
+			if env.barrier != nil {
+				env.barrier.release()
+			}
+		}
+	}()
 }
