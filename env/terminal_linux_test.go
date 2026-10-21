@@ -58,13 +58,24 @@ func TestTerminalEnvironmentIsOrderedByName(t *testing.T) {
 
 // pty.rs resets every signal to its default before exec, so a daemon started with SIGINT and SIGHUP ignored (from a
 // background job or nohup) still gives the terminal's program Ctrl-C and hangup.
+//
+// The reset covers signals 1 through 31 only (`for signal in 1..32`, as the daemon's own loop does): a signal above that
+// range, which glibc reserves for its threads (32 and 33), keeps the disposition the daemon inherited. GNU make 4.4 starts
+// its recipes with 32 and 33 ignored, so a test run under `make test-fast` reaches the daemon with SigIgn 0x180000000 and
+// the program ends with 0x80000000 under Pi's daemon and ours alike; the assertion is the daemon's contract (signals 1
+// through 31), not the launcher's state.
 func TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem(t *testing.T) {
+	const resetSignals = 1<<31 - 1 // bit n-1 is signal n: signals 1 through 31
 	eachDaemon(t, func(t *testing.T) {
 		connection := NewConnection(ConnectionOptions{Command: []string{"sh", "-c", `trap '' INT HUP; exec "$0" "$@"`, terminalDaemon}})
 		t.Cleanup(connection.Close)
 		got := terminalOutput(t, connection, TerminalOptions{Argv: []string{"grep", "^SigIgn:", "/proc/self/status"}})
-		if want := "SigIgn:\t0000000000000000\n"; got != want {
-			t.Fatalf("ignored signals of the terminal's program = %q, want %q", got, want)
+		ignored, err := strconv.ParseUint(strings.TrimSpace(strings.TrimPrefix(got, "SigIgn:")), 16, 64)
+		if err != nil {
+			t.Fatalf("ignored signals of the terminal's program = %q: %v", got, err)
+		}
+		if ignored&resetSignals != 0 {
+			t.Fatalf("ignored signals of the terminal's program = %q, want none of signals 1 through 31 (mask %#x)", got, uint64(resetSignals))
 		}
 	})
 }
