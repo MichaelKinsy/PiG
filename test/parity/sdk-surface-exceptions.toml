@@ -31,11 +31,6 @@ sdks = ["node", "go", "rust", "python"]
 reason = "The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership."
 
 [[exception]]
-key = "ctx.ui.custom(options.onHandle)"
-sdks = ["go", "rust", "python"]
-reason = "Native SDKs do not expose the mounted-overlay control handle. Node uses the host overlay control protocol and synchronous acknowledgement."
-
-[[exception]]
 key = "tool render context.lastComponent"
 sdks = ["go", "rust", "python"]
 reason = "Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State."

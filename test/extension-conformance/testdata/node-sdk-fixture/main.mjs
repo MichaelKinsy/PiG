@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import zlib from "node:zlib";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
@@ -562,6 +563,39 @@ export default function (pi) {
       ctx.ui.notify(`getThinkingLevel=${pi.getThinkingLevel()};getCommands=${commands.join(",")}`, "info");
     },
   });
+  // rw_prompt_state registers two tools and activates one, reading the system prompt state after each write.
+  pi.registerCommand("rw_prompt_state", {
+    description: "Read the system prompt state after registering and activating tools",
+    handler: async (_args, ctx) => {
+      const tool = (name) => ({ name, label: name, description: name, promptSnippet: `${name}-snippet`, parameters: { type: "object", properties: {} }, execute: async () => ({ content: [{ type: "text", text: "ok" }] }) });
+      pi.registerTool(tool("rw-alpha"));
+      pi.registerTool(tool("rw-beta"));
+      const registered = ctx.getSystemPromptOptions();
+      pi.setActiveTools(["rw-beta"]);
+      const options = ctx.getSystemPromptOptions();
+      const prompt = ctx.getSystemPrompt();
+      ctx.ui.notify(`rw_prompt_state=registered:${registered.toolSnippets?.["rw-alpha"] ?? ""};selected:${(options.selectedTools ?? []).join(",")};beta:${prompt.includes("rw-beta-snippet")};alpha:${prompt.includes("rw-alpha-snippet")}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_after_trigger", {
+    description: "Read isIdle after a message that starts a run",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      ctx.ui.notify(`rw_idle_after_trigger=${ctx.isIdle()}`, "info");
+    },
+  });
+  let rwSettledOnce = false;
+  pi.registerCommand("rw_idle_in_settled", {
+    description: "Read isIdle after a message that starts a run, sent from an agent_settled handler",
+    handler: async () => {
+      pi.on("agent_settled", async (_event, ctx) => {
+        if (rwSettledOnce) return;
+        rwSettledOnce = true;
+        pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+        ctx.ui.notify(`rw_idle_in_settled=${ctx.isIdle()}`, "info");
+      });
+    },
+  });
   pi.registerCommand("set_model", {
     description: "Switch to the model in the arguments",
     handler: async (args, ctx) => {
@@ -709,6 +743,14 @@ export default function (pi) {
   pi.registerCommand("host_info_probe", { description: "Report getAgentDir, CONFIG_DIR_NAME and VERSION", handler: async (_args, ctx) => {
     ctx.ui.notify(`host_info:${JSON.stringify({ agentDir: getAgentDir(), configDirName: CONFIG_DIR_NAME, version: VERSION, factoryAgentDir })}:end`, "info");
   } });
+  // ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+  pi.registerCommand("ui_dialog_values_probe", { description: "Report the typed result of each dialog", handler: async (_args, ctx) => {
+    const report = (name, value) => ctx.ui.notify(`${name}=${value === undefined ? "<undefined>" : JSON.stringify(value)}`, "info");
+    for (const title of ["S1", "S2", "S3", "S4"]) report(title, await ctx.ui.select(title, ["a", "b"]));
+    for (const title of ["C1", "C2", "C3", "C4"]) report(title, await ctx.ui.confirm(title, "m"));
+    for (const title of ["I1", "I2"]) report(title, await ctx.ui.input(title, "p"));
+    for (const title of ["E1", "E2"]) report(title, await ctx.ui.editor(title, "p"));
+  } });
   pi.registerCommand("ui_forward_probe", { description: "Call the working, paste, editor-text and tools-expanded UI members", handler: async (_args, ctx) => {
     ctx.ui.setWorkingMessage("Thinking hard");
     ctx.ui.setWorkingMessage("");
@@ -730,6 +772,23 @@ export default function (pi) {
       : [ctx.ui.select("A", ["a1", "a2"]).then(settled("A")), ctx.ui.confirm("B", "message").then(settled("B"))];
     await Promise.all(dialogs);
     ctx.ui.notify("stack done", "info");
+  } });
+  // ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+  pi.registerCommand("ui_wire_empties_probe", { description: "Call the UI members with empty and unset arguments", handler: async (_args, ctx) => {
+    ctx.ui.setStatus("k", "");
+    ctx.ui.setStatus("k", undefined);
+    ctx.ui.notify("");
+    ctx.ui.notify("typed", "warning");
+    ctx.ui.setTitle("");
+    ctx.ui.setEditorText("");
+    await ctx.ui.select("T", []);
+    await ctx.ui.confirm("", "");
+    await ctx.ui.input("T1");
+    await ctx.ui.input("T2", "");
+    await ctx.ui.input("T3", "ph");
+    await ctx.ui.editor("E1");
+    await ctx.ui.editor("E2", "");
+    await ctx.ui.editor("E3", "pre");
   } });
   pi.registerCommand("tool_call_guard_probe", { description: "Report the tool names the tool_call guard accepts", handler: async () => {
     pi.on("tool_call", async (event, ctx) => { ctx.ui.notify(`tool_call_guard:${["bash", "read", "probe", "other"].filter((name) => isToolCallEventType(name, event)).join(",")}:end`, "info"); });
@@ -1048,6 +1107,37 @@ export default function (pi) {
         c.addChild(new piTui.Text(args, 0, 0));
         return c;
       });
+    },
+  });
+  // headless-ui-probe hands the runtime footer, header, custom, editor, terminal-input and theme calls; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
+  pi.registerCommand("headless-ui-probe", {
+    description: "Hand the runtime footer, header and custom component closures",
+    handler: async (path, ctx) => {
+      const mark = (line) => fs.appendFileSync(path, `${line}\n`);
+      ctx.ui.setFooter(() => {
+        mark("node:footer");
+        return { render: () => { mark("node:footer-render"); return ["node:footer"]; }, invalidate() {} };
+      });
+      ctx.ui.setHeader(() => {
+        mark("node:header");
+        return { render: () => { mark("node:header-render"); return ["node:header"]; }, invalidate() {} };
+      });
+      await ctx.ui.custom((_tui, _theme, _keybindings, done) => {
+        mark("node:custom");
+        return { render: () => { mark("node:custom-render"); return ["node:custom"]; }, handleInput: () => done("closed"), invalidate() {} };
+      });
+      ctx.ui.setEditorComponent(() => { mark("node:editor"); return { render: () => ["node:editor"], handleInput() {}, invalidate() {} }; });
+      mark(`node:getEditorComponent:${typeof ctx.ui.getEditorComponent()}`);
+      const unsubscribe = ctx.ui.onTerminalInput(() => { mark("node:terminal-input"); });
+      mark(`node:onTerminalInput:${typeof unsubscribe}`);
+      unsubscribe();
+      ctx.ui.setWorkingMessage("node:working");
+      ctx.ui.setWorkingIndicator({ frames: ["node:working"] });
+      try {
+        mark(`node:setTheme:${JSON.stringify(ctx.ui.setTheme(ctx.ui.theme))}`);
+      } catch (error) {
+        mark(`node:setTheme:threw:${error?.message}`);
+      }
     },
   });
   // kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not

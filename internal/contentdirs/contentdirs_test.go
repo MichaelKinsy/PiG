@@ -73,3 +73,87 @@ func TestNameRequiresAHexHash(t *testing.T) {
 		t.Fatal("Name accepted a short hash")
 	}
 }
+
+// A process that holds a directory keeps it, whatever its use time: another build's eviction runs in another process and sees only the lease. The held directory
+// does not count among the kept ones, so the idle directories beyond Keep are still evicted around it.
+func TestEvictLeavesADirectoryAProcessHolds(t *testing.T) {
+	parent := t.TempDir()
+	own := makeDir(t, parent, "docs-0000000000000000", time.Hour)
+	held := makeDir(t, parent, "docs-1111111111111111", 90*time.Hour)
+	release := Hold(held)
+	t.Cleanup(release)
+	var idle []string
+	for i := range Keep + 1 {
+		idle = append(idle, makeDir(t, parent, "docs-"+string(rune('a'+i))+"000000000000000", time.Duration(i+2)*time.Hour))
+	}
+	removed, err := Evict(parent, "docs", own)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(held); err != nil {
+		t.Fatalf("a held directory was evicted: %v", err)
+	}
+	if want := idle[Keep-1:]; !slices.Equal(removed, want) {
+		t.Fatalf("removed %v, want the idle directories beyond Keep: %v", removed, want)
+	}
+
+	// Once the holder lets go, the directory is an ordinary old one and goes with its lease file.
+	release()
+	removed, err = Evict(parent, "docs", own)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(removed, held) {
+		t.Fatalf("removed %v, want the released directory %s", removed, held)
+	}
+	if _, err := os.Stat(held + leaseSuffix); !os.IsNotExist(err) {
+		t.Fatalf("the lease file of an evicted directory stayed: %v", err)
+	}
+}
+
+// A directory with no lease file has no holder (an older PiG never holds one), and a lease file nobody holds, such as a dead holder's, does not keep its directory.
+func TestEvictRemovesADirectoryWithNoLiveHolder(t *testing.T) {
+	parent := t.TempDir()
+	own := makeDir(t, parent, "docs-0000000000000000", time.Hour)
+	for i := range Keep - 1 {
+		makeDir(t, parent, "docs-"+string(rune('a'+i))+"000000000000000", time.Duration(i+2)*time.Hour)
+	}
+	bare := makeDir(t, parent, "docs-1111111111111111", 80*time.Hour)
+	stale := makeDir(t, parent, "docs-2222222222222222", 90*time.Hour)
+	if err := os.WriteFile(stale+leaseSuffix, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := Evict(parent, "docs", own)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(removed, bare) || !slices.Contains(removed, stale) {
+		t.Fatalf("removed %v, want %s and %s", removed, bare, stale)
+	}
+	if _, err := os.Stat(stale + leaseSuffix); !os.IsNotExist(err) {
+		t.Fatalf("a dead holder's lease file stayed: %v", err)
+	}
+	if _, err := os.Stat(bare + leaseSuffix); !os.IsNotExist(err) {
+		t.Fatalf("evicting a directory with no lease created one: %v", err)
+	}
+}
+
+// Holding a directory twice holds it once, and a release does not drop the other holder's lease.
+func TestHoldTwiceHoldsOnce(t *testing.T) {
+	parent := t.TempDir()
+	dir := makeDir(t, parent, "docs-1111111111111111", 90*time.Hour)
+	first := Hold(dir)
+	t.Cleanup(first)
+	second := Hold(dir)
+	second()
+	own := makeDir(t, parent, "docs-0000000000000000", time.Hour)
+	for i := range Keep - 1 {
+		makeDir(t, parent, "docs-"+string(rune('a'+i))+"000000000000000", time.Duration(i+2)*time.Hour)
+	}
+	if _, err := Evict(parent, "docs", own); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir); err != nil {
+		t.Fatalf("the second Hold's release dropped the first's lease: %v", err)
+	}
+}

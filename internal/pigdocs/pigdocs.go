@@ -10,7 +10,7 @@
 // builds that share a config root (two installed versions, or stock PiG beside
 // a Piglet Binary) never rewrite each other's docs, and a running session's
 // docs never change under it. Users can also force a sync or read the bundle
-// through `pig docs`. This is stock distribution infrastructure; it does not
+// through `pig docs`. A session leases its bundle ([HoldBundle]), so another build's eviction never removes the pages the session's prompt names. This is stock distribution infrastructure; it does not
 // activate an extension or optional Piglet.
 //
 // Output layout
@@ -323,6 +323,27 @@ func writeNewFile(path string, data []byte, mode os.FileMode) error {
 func current(dir, digest string) bool {
 	data, err := os.ReadFile(filepath.Join(dir, markerFile))
 	return err == nil && strings.TrimSpace(string(data)) == digest
+}
+
+// HoldBundle leases this build's bundle in configRoot for as long as the process lives, so another build's eviction does not remove the pages a running
+// session's prompt names. It does nothing when the bundle is not complete on disk, and nothing is written. A session does not call the returned release until it
+// exits (the exit path calls it just before the exit record counts descriptors) and tests call it. The bundle is read again once leased, so an eviction between the check and the lease is not mistaken for a held bundle.
+// pig additive (D22): Pi's package docs stay where they are for as long as Pi runs; PiG's bundle lives in a directory that other builds evict.
+func HoldBundle(configRoot string) (release func()) {
+	digest, err := contentDigest()
+	if err != nil {
+		return func() {}
+	}
+	dir := DocsDir(configRoot)
+	if !current(dir, digest) {
+		return func() {}
+	}
+	release = contentdirs.Hold(dir)
+	if !current(dir, digest) {
+		release()
+		return func() {}
+	}
+	return release
 }
 
 // Prepare is the startup check that defers the write of the bundle until something can read it. It returns present, whether text may name the

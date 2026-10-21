@@ -331,6 +331,7 @@ func (c CellSpec) GoExtensions() ([]runtimecell.GoExtension, error) {
 			Factory:          factory,
 			Hash:             valueOr(cfg.ContentHash, cfg.Source),
 			WorkspaceModules: append([]string(nil), cfg.GoWorkspaceModules...),
+			Verify:           cfg.sourceCheck,
 		})
 	}
 	return out, nil
@@ -355,6 +356,7 @@ func (c CellSpec) RustExtensions() ([]runtimecell.RustExtension, error) {
 			Package: cfg.Package,
 			Factory: factory,
 			Hash:    valueOr(cfg.ContentHash, cfg.Source),
+			Verify:  cfg.sourceCheck,
 		})
 	}
 	return out, nil

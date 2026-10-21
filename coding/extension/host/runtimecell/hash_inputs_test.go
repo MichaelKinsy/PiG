@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
@@ -279,6 +280,9 @@ func TestCommandVersionProbeHelper(t *testing.T) {
 	}
 	if err := logFile.Close(); err != nil {
 		t.Fatal(err)
+	}
+	if sleep, err := time.ParseDuration(os.Getenv("PIG_TEST_TOOLCHAIN_SLEEP")); err == nil {
+		time.Sleep(sleep)
 	}
 	if _, err := fmt.Fprintln(os.Stdout, os.Getenv("PIG_TEST_TOOLCHAIN_VERSION")); err != nil {
 		t.Fatal(err)

@@ -158,13 +158,6 @@ snippet = "case m.uiTaskCh <- fn:"
 finding = "TUI-03"
 
 [[hit]]
-check = "discarded-io-error"
-file = "coding/extension/host/subprocess/builder.go"
-func = "Builder.BuildContext"
-snippet = "_ = os.WriteFile(marker, []byte(fp), 0o644)"
-finding = "D20"
-
-[[hit]]
 check = "magic-literal"
 file = "ai/anthropic.go"
 func = "anthropicProvider.buildParams"

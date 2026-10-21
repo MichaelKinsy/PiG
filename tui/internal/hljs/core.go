@@ -811,7 +811,7 @@ func (h *highlightRun) processSubLanguage() {
 	top := h.top.mode
 	var result Result
 	if !top.rare().subLanguage.isList {
-		if h.registry.languages[top.rare().subLanguage.name] == nil {
+		if h.registry.registeredLanguage(top.rare().subLanguage.name) == nil {
 			h.emitter.addText(unitsToString(h.modeBuffer))
 			return
 		}
@@ -1022,6 +1022,8 @@ func (h *highlightRun) processLexeme(textBeforeMatch []rune, match *enhancedMatc
 // highlightAuto is highlight.js highlightAuto(code, languageSubset).
 func (r *Registry) highlightAuto(code []rune, languageSubset []string) Result {
 	if languageSubset == nil {
+		// Auto-detection runs every language, so the rest of the full set is decoded now.
+		r.decodeAllDeferred()
 		languageSubset = slices.Clone(r.order)
 	}
 	plaintext := Result{Value: escapeHTML(unitsToString(code)), emitter: newTokenTreeEmitter()}

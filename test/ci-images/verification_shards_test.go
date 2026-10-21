@@ -26,7 +26,8 @@ type verificationJob struct {
 	Timeout  int `yaml:"timeout-minutes"`
 	Strategy struct {
 		FailFast *bool `yaml:"fail-fast"`
-		Matrix   struct{ Shard []string }
+		// Include is the expression that expands to the job's matrix; planFor derives the shards it holds.
+		Matrix struct{ Include any }
 	}
 	Steps []struct {
 		If   string
@@ -50,26 +51,10 @@ func verificationJobs(t *testing.T) map[string]verificationJob {
 	return workflow.Jobs
 }
 
-func TestLinuxShardsRetainEveryCheck(t *testing.T) {
-	jobs := verificationJobs(t)
-	linux := jobs["linux"]
-	if len(linux.Strategy.Matrix.Shard) < 2 {
-		t.Fatal("Linux verification is not sharded")
-	}
-	if linux.Timeout > 60 || linux.Timeout <= 0 || linux.Strategy.FailFast == nil || *linux.Strategy.FailFast {
-		t.Fatal("Linux shards must retain the timeout ceiling and run every shard on failure")
-	}
-	invokesShard := false
-	for _, step := range linux.Steps {
-		if step.Env["SHARD"] == "${{ matrix.shard }}" && strings.Contains(step.Run, `make "ci-$SHARD"`) {
-			invokesShard = true
-		}
-	}
-	if !invokesShard {
-		t.Fatal("matrix does not invoke the checked Make targets")
-	}
-
-	// The independent denominator is make check, not a snapshot count of jobs.
+// gateLeaves expands a make target into the leaf gates it runs. The independent denominator is make check, not a snapshot
+// count of jobs: every ci-* target expands through its prerequisites, and the targets CI runs in halves expand to their halves.
+func gateLeaves(t *testing.T) func(string) []string {
+	t.Helper()
 	rules := map[string][]string{}
 	for line := range strings.SplitSeq(readMakeSources(t, repoRoot(t)), "\n") {
 		if strings.HasPrefix(line, "\t") {
@@ -113,10 +98,41 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		}
 		return result
 	}
+	return leaves
+}
+
+func TestLinuxShardsRetainEveryCheck(t *testing.T) {
+	jobs := verificationJobs(t)
+	linux := jobs["linux"]
+	// The full run is every event that can land a change; its matrix is the denominator of the partition below.
+	full := planFor(t, "merge_group", "")
+	if len(full.Matrix["linux"]) < 2 {
+		t.Fatal("Linux verification is not sharded")
+	}
+	if linux.Timeout > 60 || linux.Timeout <= 0 || linux.Strategy.FailFast == nil || *linux.Strategy.FailFast {
+		t.Fatal("Linux shards must retain the timeout ceiling and run every shard on failure")
+	}
+	if linux.Strategy.Matrix.Include != "${{ fromJSON(needs.changes.outputs.linux) }}" {
+		t.Fatalf("the Linux matrix is %v, want the changes job's plan", linux.Strategy.Matrix.Include)
+	}
+	invokesShard := false
+	for _, step := range linux.Steps {
+		if step.Env["SHARD"] == "${{ matrix.shard }}" && step.Env["TARGET"] == "${{ matrix.target }}" && strings.Contains(step.Run, `make "$TARGET"`) {
+			invokesShard = true
+		}
+	}
+	if !invokesShard {
+		t.Fatal("matrix does not invoke the checked Make targets")
+	}
+
+	leaves := gateLeaves(t)
 	want := leaves("check")
 	var got []string
-	for _, shard := range linux.Strategy.Matrix.Shard {
-		got = append(got, leaves("ci-"+shard)...)
+	for _, entry := range full.Matrix["linux"] {
+		if entry.Target != "ci-"+entry.Shard {
+			t.Errorf("the full run's shard %s runs %s, want ci-%s", entry.Shard, entry.Target, entry.Shard)
+		}
+		got = append(got, leaves(entry.Target)...)
 	}
 	// The preflight job runs the compile gates the Windows, macOS and Node loader jobs wait for; they count once, there.
 	preflight, ok := jobs["preflight"]
@@ -187,7 +203,7 @@ func TestPortmapShardsAreWiredEndToEnd(t *testing.T) {
 		t.Fatalf("PORTMAP_SHARDS = %d, want the evidence run split", total)
 	}
 	var matrix []string
-	for _, shard := range verificationJobs(t)["linux"].Strategy.Matrix.Shard {
+	for _, shard := range planFor(t, "merge_group", "").shards("linux") {
 		if strings.HasPrefix(shard, "portmap") {
 			matrix = append(matrix, shard)
 		}

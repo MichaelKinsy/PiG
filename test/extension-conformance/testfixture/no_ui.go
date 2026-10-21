@@ -15,16 +15,16 @@ func (noUIComponent) Dispose()                                              { pa
 
 func probeNoUI(ctx sdk.Context) error {
 	input, ok, err := ctx.Input("Input", "placeholder")
-	if err != nil || ok || input != "" {
-		return fmt.Errorf("headless input: %q %t %w", input, ok, err)
+	if err != nil || ok || input != nil {
+		return fmt.Errorf("headless input: %v %t %w", input, ok, err)
 	}
 	editor, ok, err := ctx.Editor("Editor", "prefill")
-	if err != nil || ok || editor != "" {
-		return fmt.Errorf("headless editor: %q %t %w", editor, ok, err)
+	if err != nil || ok || editor != nil {
+		return fmt.Errorf("headless editor: %v %t %w", editor, ok, err)
 	}
 	confirmed, err := ctx.Confirm("Confirm", "message")
-	if err != nil || confirmed {
-		return fmt.Errorf("headless confirm: %t %w", confirmed, err)
+	if err != nil || confirmed != false {
+		return fmt.Errorf("headless confirm: %v %w", confirmed, err)
 	}
 	value, err := ctx.Custom(noUIComponent{}, nil)
 	if err != nil || value != nil {

@@ -346,7 +346,7 @@ func Extension() *sdk.Extension {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(string(stagedContext), "(string, bool, error)") {
+			if !strings.Contains(string(stagedContext), "(any, bool, error)") {
 				t.Fatalf("validation did not refresh stale staged SDK:\n%s", stagedContext)
 			}
 		})

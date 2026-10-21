@@ -228,6 +228,9 @@ type Session struct {
 	revision uint64
 }
 
+// sessionClock is the time a new session's header records; tests replace it to make two sessions share a timestamp, as Pi's `new Date()` does for two sessions created in one millisecond.
+var sessionClock = time.Now
+
 // NewSession creates an in-memory session with an ISO millisecond header timestamp and an optional parent session path.
 func NewSession(id, cwd string, parentSession ...string) *Session {
 	parent := ""
@@ -240,7 +243,7 @@ func NewSession(id, cwd string, parentSession ...string) *Session {
 			Type:          "session",
 			Version:       CurrentSessionVersion,
 			ID:            id,
-			Timestamp:     time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
+			Timestamp:     sessionClock().UTC().Format("2006-01-02T15:04:05.000Z"),
 			CWD:           cwd,
 		},
 		branchLeaf: -1,

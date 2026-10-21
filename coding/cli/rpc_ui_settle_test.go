@@ -37,7 +37,7 @@ func TestRPCUIResponsesSettleTheirDialogsInStdinOrder(t *testing.T) {
 	mu.Lock()
 	ids := map[string]string{}
 	for _, request := range requests {
-		ids[request.Title] = request.ID
+		ids[*request.Title] = request.ID
 	}
 	mu.Unlock()
 	// The answers arrive as the lines of one chunk: Second? first.

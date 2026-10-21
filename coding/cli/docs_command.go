@@ -38,10 +38,44 @@ func prepareDocsBundle() {
 	present, pending, err := pigdocs.Prepare(codingagent.ConfigRoot())
 	// pig additive (D22): a config root this user cannot write leaves no bundle to name; `pig docs show` still reads the embedded one.
 	configroot.SetDocsPresent(err == nil && present)
+	if err == nil && present && !pending {
+		// pig additive (D22): the session reads the pages its prompt names for as long as it runs, so another build's eviction must leave them.
+		holdDocsBundle()
+	}
 	if err == nil && present && pending {
 		configroot.SetDocsWriter(sync.OnceFunc(func() {
-			configroot.SetDocsPresent(pigdocs.EnsureSynced(codingagent.ConfigRoot()) == nil)
+			synced := pigdocs.EnsureSynced(codingagent.ConfigRoot()) == nil
+			configroot.SetDocsPresent(synced)
+			if synced {
+				holdDocsBundle()
+			}
 		}))
+	}
+}
+
+// docsLeases are the releases of the leases this process holds on its documentation bundle. A session holds them until it exits: the exit path releases them just before it writes its profiles, so the descriptor count the exit record reports is the process's own, and the operating system would release them with the process anyway. Tests release them too.
+var docsLeases struct {
+	sync.Mutex
+	releases []func()
+}
+
+// holdDocsBundle leases this build's bundle for the life of the process ([pigdocs.HoldBundle]).
+func holdDocsBundle() {
+	release := pigdocs.HoldBundle(codingagent.ConfigRoot())
+	docsLeases.Lock()
+	docsLeases.releases = append(docsLeases.releases, release)
+	docsLeases.Unlock()
+}
+
+// releaseDocsLeases gives back the leases this process took on its documentation bundle. The exit paths call it just before the profiles are written, and a
+// test calls it so the test's temporary directory can be removed where an open lease file blocks that (Windows). It is idempotent.
+func releaseDocsLeases() {
+	docsLeases.Lock()
+	releases := docsLeases.releases
+	docsLeases.releases = nil
+	docsLeases.Unlock()
+	for _, release := range releases {
+		release()
 	}
 }
 

@@ -966,6 +966,8 @@ func (u *ExtUIContext) GetEditorComponent() extension.EditorFactory {
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
 
+func init() { extension.SetNoopUITheme(ActiveExtensionTheme) }
+
 func (u *ExtUIContext) Theme() extension.Theme { return ActiveExtensionTheme() }
 
 // ActiveExtensionTheme is the active theme as extensions see it

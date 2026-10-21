@@ -32,6 +32,11 @@ func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
 		replacements = append(replacements, [2]string{`from "./sdk.js";`, `from "../../../independent-session.mjs";`})
 	case "core/extensions/virtual-modules.js":
 		replacements = append(replacements, [2]string{`from "../../index.js";`, `from "../../../../pi-coding-agent.mjs";`})
+	case "core/tools/edit.js", "core/tools/write.js":
+		// pig additive (D19): the file mutation queue is the host's (shims/file-mutation-queue-bridge.mjs).
+		replacements = append(replacements, [2]string{`import { withFileMutationQueue } from "./file-mutation-queue.js";`, `import { withFileMutationQueue } from "../../../../file-mutation-queue-bridge.mjs";`})
+	case "core/tools/index.js":
+		replacements = append(replacements, [2]string{`export { withFileMutationQueue } from "./file-mutation-queue.js";`, `export { withFileMutationQueue } from "../../../../file-mutation-queue-bridge.mjs";`})
 	case "modes/interactive/theme/theme.js":
 		replacements = append(replacements,
 			// .upstream/v0.99.1/packages/coding-agent/src/modes/interactive/theme/theme.ts:4-24 imports its colour helpers and getTerminalColorMode from the pi-tui barrel.

@@ -25,10 +25,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 475 | 32 | 11 |
-| Go | 480 | 27 | 11 |
-| Rust | 480 | 27 | 11 |
-| Python | 480 | 27 | 11 |
+| Node runtime | 478 | 29 | 11 |
+| Go | 481 | 27 | 10 |
+| Rust | 481 | 27 | 10 |
+| Python | 481 | 27 | 10 |
 
 31 PiG-only surfaces:
 
@@ -1106,7 +1106,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.ui.select(opts.signal)` | `ExtensionUIContext.select(opts.signal)` | stand-in/partial `RuntimeUI.select`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
+| `ctx.ui.select(opts.signal)` | `ExtensionUIContext.select(opts.signal)` | implemented `RuntimeUI.select` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
 | `ctx.ui.select(opts.timeout)` | `ExtensionUIContext.select(opts.timeout)` | stand-in/partial `RuntimeUI.select`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.select(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
@@ -1119,7 +1119,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.ui.confirm(opts.signal)` | `ExtensionUIContext.confirm(opts.signal)` | stand-in/partial `RuntimeUI.confirm`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
+| `ctx.ui.confirm(opts.signal)` | `ExtensionUIContext.confirm(opts.signal)` | implemented `RuntimeUI.confirm` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
 | `ctx.ui.confirm(opts.timeout)` | `ExtensionUIContext.confirm(opts.timeout)` | stand-in/partial `RuntimeUI.confirm`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.confirm(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
@@ -1132,7 +1132,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.ui.input(opts.signal)` | `ExtensionUIContext.input(opts.signal)` | stand-in/partial `RuntimeUI.input`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
+| `ctx.ui.input(opts.signal)` | `ExtensionUIContext.input(opts.signal)` | implemented `RuntimeUI.input` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
 | `ctx.ui.input(opts.timeout)` | `ExtensionUIContext.input(opts.timeout)` | stand-in/partial `RuntimeUI.input`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.input(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
@@ -1195,7 +1195,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|
 | `ctx.ui.custom(options.overlay)` | `ExtensionUIContext.custom(options.overlay)` | implemented `RuntimeUI.custom` | implemented `RemoteOverlayOptions.Overlay` | implemented `Context::custom_component` | implemented `Context.custom` |
 | `ctx.ui.custom(options.overlayOptions)` | `ExtensionUIContext.custom(options.overlayOptions)` | stand-in/partial `RuntimeUI.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `RemoteOverlayOptions.OverlayOptions`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context::custom_component`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary |
-| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | implemented `RemoteOverlayOptions.OnHandle` | implemented `Context::custom_component_with_handle` | implemented `_RemoteOverlayState.on_handle` |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -2331,7 +2331,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: truncateLine` | `function truncateLine` | Pi's own code |
 | `pi-coding-agent: truncateTail` | `function truncateTail` | Pi's own code |
 | `pi-coding-agent: truncateToVisualLines` | `function truncateToVisualLines` | Pi's own code |
-| `pi-coding-agent: withFileMutationQueue` | `function withFileMutationQueue` | Pi's own code |
+| `pi-coding-agent: withFileMutationQueue` | `function withFileMutationQueue` | bridged |
 | `pi-coding-agent: wrapRegisteredTool` | `function wrapRegisteredTool` | Pi's own code |
 | `pi-coding-agent: wrapRegisteredTools` | `function wrapRegisteredTools` | Pi's own code |
 
@@ -3062,7 +3062,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
 | `user_bash return.operations` | Node runtime, Go, Rust, Python | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |
-| `ctx.ui.custom(options.onHandle)` | Go, Rust, Python | Native SDKs do not expose the mounted-overlay control handle. Node uses the host overlay control protocol and synchronous acknowledgement. |
 | `tool render context.lastComponent` | Go, Rust, Python | Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State. |
 | `provider.streamSimple` | Node runtime, Go, Rust, Python | The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction. |
 | `provider.refreshModels` | Node runtime, Go, Rust, Python | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |

@@ -137,6 +137,21 @@ impl RemoteComponent for TimerFocused {
     }
 }
 
+/// Subscribes `handler` to the event `name`. A before_agent_start handler registers with `on_before_agent_start` and receives the event as Pi's object (`BeforeAgentStartEvent::snapshot`).
+fn subscribe(
+    subscriber: &pig_sdk::EventSubscriber,
+    name: &str,
+    handler: impl Fn(&pig_sdk::Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync + 'static,
+) -> pig_sdk::EventSubscription {
+    if name == pig_sdk::EVENT_BEFORE_AGENT_START {
+        return subscriber.on_before_agent_start(move |ctx, event| {
+            let mut data = event.snapshot().map_err(|err| err.to_string())?;
+            handler(ctx, &mut data)
+        });
+    }
+    subscriber.on_event(name, handler)
+}
+
 fn conformance_login_definition() -> LoginDefinition {
     LoginDefinition {
         brand: vec!["A".repeat(41); 5],
@@ -639,6 +654,32 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         }
     });
+    // ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+    ext.command("ui_dialog_values_probe", "Report the typed result of each dialog", |ctx, _args| {
+        let report = |name: &str, value: Value, ok: bool| {
+            let text = if ok { value.to_string() } else { "<undefined>".to_string() };
+            ctx.notify(&format!("{name}={text}"), "info");
+        };
+        let result = (|| -> std::io::Result<()> {
+            for title in ["S1", "S2", "S3", "S4"] {
+                let (value, ok) = ctx.select(title, &["a", "b"])?;
+                report(title, value, ok);
+            }
+            for title in ["C1", "C2", "C3", "C4"] {
+                report(title, ctx.confirm(title, "m")?, true);
+            }
+            for title in ["I1", "I2"] {
+                let (value, ok) = ctx.input(title, "p")?;
+                report(title, value, ok);
+            }
+            for title in ["E1", "E2"] {
+                let (value, ok) = ctx.editor(title, "p")?;
+                report(title, value, ok);
+            }
+            Ok(())
+        })();
+        match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
+    });
     // ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", |ctx, _args| {
         ctx.set_working_message("Thinking hard");
@@ -689,6 +730,22 @@ fn main() {
         ctx.notify("stack done", "info");
         CommandResult::Ok
     });
+    // ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+    ext.command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", |ctx, _args| {
+        ctx.set_status("k", "");
+        ctx.clear_status("k");
+        ctx.notify("", "");
+        ctx.notify("typed", "warning");
+        ctx.set_title("");
+        ctx.set_editor_text("");
+        let _ = ctx.select("T", &[]);
+        let _ = ctx.confirm("", "");
+        let _ = ctx.input("T1", "");
+        let _ = ctx.input("T3", "ph");
+        let _ = ctx.editor("E1", "");
+        let _ = ctx.editor("E3", "pre");
+        CommandResult::Ok
+    });
     let installed = installed_factory;
     ext.command("editor-clear", "Restore the host's editor", move |ctx, _args| {
         *installed.lock().unwrap() = None;
@@ -716,6 +773,50 @@ fn main() {
             Ok(()) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
         }
+    });
+    // headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
+    ext.command("headless-ui-probe", "Hand the SDK footer, header and custom component closures", |ctx, path| {
+        fn mark(path: &str, line: &str) {
+            use std::io::Write;
+            if let Ok(mut file) = std::fs::OpenOptions::new().append(true).create(true).open(path) {
+                let _ = writeln!(file, "{line}");
+            }
+        }
+        struct HeadlessComponent(String);
+        impl RemoteComponent for HeadlessComponent {
+            fn render(&self, _width: u32) -> Vec<String> {
+                mark(&self.0, "rust:custom");
+                vec!["rust:custom".to_string()]
+            }
+            fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                mark(&self.0, "rust:custom");
+                Ok(RemoteComponentResult::done(Some(json!("closed"))))
+            }
+        }
+        let footer_path = path.to_string();
+        if let Err(err) = ctx.set_footer_renderer(Some(move |_width: u32| {
+            mark(&footer_path, "rust:footer");
+            vec!["rust:footer".to_string()]
+        })) {
+            return CommandResult::Error(err.to_string());
+        }
+        let header_path = path.to_string();
+        if let Err(err) = ctx.set_header_renderer(Some(move |_width: u32| {
+            mark(&header_path, "rust:header");
+            vec!["rust:header".to_string()]
+        })) {
+            return CommandResult::Error(err.to_string());
+        }
+        if let Err(err) = ctx.custom_component(HeadlessComponent(path.to_string()), json!({})) {
+            return CommandResult::Error(err.to_string());
+        }
+        // Options only, no component: Pi's RPC and no-op UIs resolve undefined, the TUI SDK reports it unsupported.
+        match ctx.custom(json!({})) {
+            Ok(None) => mark(path, "rust:custom-opaque:undefined"),
+            Ok(Some(_)) => mark(path, "rust:custom-opaque:value"),
+            Err(_) => mark(path, "rust:custom-opaque:error"),
+        }
+        CommandResult::Ok
     });
     ext.flag("flag-true", pig_sdk::FlagOptions::boolean("", true));
     ext.flag("flag-false", pig_sdk::FlagOptions::boolean("", false));
@@ -1641,7 +1742,7 @@ fn main() {
             let mut words = args.split_whitespace();
             let (name, field) = (words.next().unwrap_or("").to_string(), words.next().unwrap_or("").to_string());
             let reported = name.clone();
-            let subscription = event_field_subscriber.on_event(&name, move |ctx, data| {
+            let subscription = subscribe(&event_field_subscriber, &name, move |ctx, data| {
                 let value = data.get(field.as_str()).map_or_else(|| "absent".to_string(), |value| value.to_string());
                 ctx.notify(&format!("event_field:{}.{}={}", reported, field, value), "info");
                 Ok(None)
@@ -1683,6 +1784,80 @@ fn main() {
         },
     );
     ext.command(
+        "rw_prompt_state",
+        "Read the system prompt state after registering and activating tools",
+        |ctx, _args| {
+            let tool = |name: &str| {
+                let mut tool = ToolDefinition::new(name, name, name, json!({"type":"object"}), |_, _| ToolResult::text("ok"));
+                tool.prompt_snippet = Some(format!("{name}-snippet"));
+                tool
+            };
+            if let Err(err) = ctx.register_tool(tool("rw-alpha")).and_then(|_| ctx.register_tool(tool("rw-beta"))) {
+                return CommandResult::Error(err.to_string());
+            }
+            let registered = match ctx.get_system_prompt_options() {
+                Ok(options) => options,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            ctx.set_active_tools(&["rw-beta"]);
+            let options = match ctx.get_system_prompt_options() {
+                Ok(options) => options,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let prompt = match ctx.get_system_prompt() {
+                Ok(prompt) => prompt,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let selected: Vec<&str> = options["selectedTools"].as_array().map(|tools| tools.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+            ctx.notify(
+                &format!(
+                    "rw_prompt_state=registered:{};selected:{};beta:{};alpha:{}",
+                    registered["toolSnippets"]["rw-alpha"].as_str().unwrap_or(""),
+                    selected.join(","),
+                    prompt.contains("rw-beta-snippet"),
+                    prompt.contains("rw-alpha-snippet"),
+                ),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "rw_idle_after_trigger",
+        "Read isIdle after a message that starts a run",
+        |ctx, _args| {
+            if let Err(err) = ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None) {
+                return CommandResult::Error(err.to_string());
+            }
+            match ctx.is_idle() {
+                Ok(idle) => ctx.notify(&format!("rw_idle_after_trigger={idle}"), "info"),
+                Err(err) => return CommandResult::Error(err.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    let rw_settled_subscriber = ext.event_subscriber();
+    let rw_settled_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    let rw_settled_once = Arc::new(AtomicBool::new(false));
+    ext.command(
+        "rw_idle_in_settled",
+        "Read isIdle after a message that starts a run, sent from an agent_settled handler",
+        move |_ctx, _args| {
+            let once = rw_settled_once.clone();
+            let subscription = rw_settled_subscriber.on_event("agent_settled", move |ctx, _data| {
+                if once.swap(true, Ordering::SeqCst) {
+                    return Ok(None);
+                }
+                ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None).map_err(|err| err.to_string())?;
+                let idle = ctx.is_idle().map_err(|err| err.to_string())?;
+                ctx.notify(&format!("rw_idle_in_settled={idle}"), "info");
+                Ok(None)
+            });
+            rw_settled_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "set_model",
         "Switch to the model in the arguments",
         |ctx, args| {
@@ -1720,7 +1895,7 @@ fn main() {
             let name = args.trim().to_string();
             let reported = name.clone();
             let results = event_probe_results.clone();
-            let subscription = event_probe_on_subscriber.on_event(&name, move |ctx, data| {
+            let subscription = subscribe(&event_probe_on_subscriber, &name, move |ctx, data| {
                 ctx.notify(&format!("event_probe_on:{}", reported), "info");
                 // The event as the host sent it, for the tests that compare a payload field with the Go reference's.
                 ctx.notify(&format!("event_probe_data:{}:{}", reported, serde_json::to_string(&*data).unwrap()), "info");
@@ -1766,7 +1941,7 @@ fn main() {
                 Ok(value) => value,
                 Err(err) => return CommandResult::Error(err.to_string()),
             };
-            let subscription = event_probe_result_subscriber.on_event(name, move |_ctx, _data| Ok(Some(result.clone())));
+            let subscription = subscribe(&event_probe_result_subscriber, name, move |_ctx, _data| Ok(Some(result.clone())));
             event_probe_result_subscriptions.lock().unwrap().push(subscription);
             CommandResult::Ok
         },
@@ -1828,7 +2003,7 @@ fn main() {
         move |_ctx, args| {
             let name = args.trim().to_string();
             let reported = name.clone();
-            let subscription = event_payload_subscriber.on_event(&name, move |ctx, data| {
+            let subscription = subscribe(&event_payload_subscriber, &name, move |ctx, data| {
                 ctx.notify(&format!("event_payload:{}:{}", reported, serde_json::to_string(&*data).unwrap()), "info");
                 Ok(None)
             });
@@ -1909,11 +2084,12 @@ fn main() {
     ext.command("ui-availability", "Probe bound UI and headless defaults", |ctx, _args| {
         let result = (|| -> std::io::Result<()> {
             let (selected, _) = ctx.select("Pick", &["first", "second"])?;
+            let selected = dialog_text(&selected);
             ctx.notify("availability-notify", "info");
             if !ctx.has_ui() {
-                assert_eq!(ctx.input("Input", "placeholder")?, (String::new(), false));
-                assert_eq!(ctx.editor("Editor", "prefill")?, (String::new(), false));
-                assert!(!ctx.confirm("Confirm", "message")?);
+                assert_eq!(ctx.input("Input", "placeholder")?, (serde_json::Value::Null, false));
+                assert_eq!(ctx.editor("Editor", "prefill")?, (serde_json::Value::Null, false));
+                assert_eq!(ctx.confirm("Confirm", "message")?, json!(false));
                 struct NoUIComponent;
                 impl pig_sdk::RemoteComponent for NoUIComponent {
                     fn render(&self, _: u32) -> Vec<String> { panic!("headless render") }
@@ -1939,6 +2115,7 @@ fn main() {
     ext.command("ui-state-barrier", "Read UI state after a dialog", |ctx, _args| {
         let result = (|| -> std::io::Result<()> {
             let (selected, _) = ctx.select("expand", &["chosen"])?;
+            let selected = dialog_text(&selected);
             let named = ctx.get_theme("light")?.unwrap();
             let missing = ctx.get_theme("missing")?;
             let (success, message) = ctx.set_theme("missing");
@@ -2157,10 +2334,10 @@ fn main() {
         "Exercise interactive dialog responses",
         |ctx, _args| {
             let result = (|| -> std::io::Result<String> {
-                let (selected, _) = ctx.select("Pick", &["first", "second"])?;
-                let (input, _) = ctx.input("Input", "placeholder")?;
-                let (edited, _) = ctx.editor("Editor", "prefill")?;
-                let confirmed = ctx.confirm("Confirm", "message")?;
+                let selected = dialog_text(&ctx.select("Pick", &["first", "second"])?.0);
+                let input = dialog_text(&ctx.input("Input", "placeholder")?.0);
+                let edited = dialog_text(&ctx.editor("Editor", "prefill")?.0);
+                let confirmed = ctx.confirm("Confirm", "message")? == json!(true);
                 Ok(format!(
                     "select={selected} input={input} editor={edited} confirm={confirmed}"
                 ))
@@ -3086,4 +3263,9 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
             other => Err(format!("exec failed: {other}")),
         }),
     }
+}
+
+/// A dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is null.
+fn dialog_text(value: &serde_json::Value) -> String {
+    value.as_str().unwrap_or("").to_string()
 }

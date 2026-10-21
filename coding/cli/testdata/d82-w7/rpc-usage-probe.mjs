@@ -42,7 +42,6 @@ await new Promise((resolve) => {
 	});
 	if (mode === 'rpc') child.stdin.write(JSON.stringify({ id: 'p', type: 'prompt', message: 'hi' }) + '\n');
 	else child.stdin.end();
-	setTimeout(resolve, 20000).unref();
 });
 // The child runs with dir as its cwd; Windows refuses to remove a directory a live process is in, so wait for it to exit.
 const exited = child.exitCode !== null || child.signalCode !== null ? Promise.resolve() : new Promise((resolve) => child.once('exit', resolve));
@@ -50,5 +49,10 @@ child.kill();
 await exited;
 server.close();
 rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+// No wall-clock bound: how long Pi takes to start depends on the host's load, and a fixed bound turned a slow start into an empty frame list that read as a stale golden. A Pi that never answers is the caller's to bound (the Go test's deadline); one that exits without a frame is a fault.
+if (frames.length === 0) {
+	console.error('the CLI wrote no assistant message frame before its output closed');
+	process.exit(1);
+}
 const text = JSON.stringify(frames, null, 2) + '\n';
 if (outPath) writeFileSync(outPath, text); else process.stdout.write(text);

@@ -49,6 +49,11 @@ fn write_frame(stream: &Mutex<UnixStream>, frame: &Value) {
 impl Host {
     /// Runs `ext` against a host that answers every call and records the calls in order.
     fn start(ext: Extension) -> Self {
+        Self::start_in(ext, "tui", true)
+    }
+
+    /// `start` with the mode and hasUI the host reports: Pi runs a footer or header factory only in the TUI.
+    fn start_in(ext: Extension, mode: &str, has_ui: bool) -> Self {
         let dir = std::env::temp_dir().join(format!("pig-surface-width-{}-{:?}", std::process::id(), thread::current().id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir(&dir).unwrap();
@@ -58,7 +63,7 @@ impl Host {
         let (mut stream, _) = listener.accept().unwrap();
         let write = Arc::new(Mutex::new(stream.try_clone().unwrap()));
         assert_eq!(read_frame(&mut stream).unwrap()["type"], "register");
-        write_frame(&write, &json!({"type": "ready", "ready": {"cwd": "/tmp", "width": 80}}));
+        write_frame(&write, &json!({"type": "ready", "ready": {"cwd": "/tmp", "width": 80, "mode": mode, "state": {"hasUI": has_ui}}}));
         let (tx, calls) = channel();
         let reply = write.clone();
         thread::spawn(move || {
@@ -215,6 +220,21 @@ fn set_widget_string_list_is_content_without_width() {
     assert_eq!(host.next("widget_push"), json!({"key": "status", "lines": ["● 3 agents running"]}));
 }
 
+// Pi's RPC mode writes one request per setWidget call, in call order and before the handler's response (rpc-mode.ts), so in RPC mode a string
+// list is a ui.setWidget host call like every other shape: an unanswered widget_push frame has no place in that order.
+#[test]
+fn set_widget_string_list_in_rpc_mode_is_a_host_call() {
+    let mut ext = Extension::new("rs-surface");
+    ext.command("go", "set widget", |ctx, _| {
+        ctx.set_widget("status", vec!["w-one".to_string()]).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+    });
+    let host = Host::start_in(ext, "rpc", true);
+    host.command("go");
+    let call = host.next("ui.setWidget");
+    assert_eq!(call["key"], "status");
+    assert_eq!(call["content"], json!(["w-one"]));
+}
+
 // Pi's ctx.ui.setWidget returns without a host round trip
 // (interactive-mode.ts:2300-2340). Width handlers run on the loop that reads
 // host replies, so a set_widget that waited for a reply there would never
@@ -237,4 +257,69 @@ fn set_widget_from_a_width_handler_does_not_block_the_message_loop() {
     // The second resize is read only if the first handler returned.
     host.width(90);
     assert_eq!(host.next("widget_push")["lines"], json!(["w@90"]));
+}
+
+// Pi calls a footer or header factory only in the TUI: rpc-mode.ts setFooter/setHeader and runner.ts noOpUIContext ignore it, so the renderer is never
+// called, no frame is sent for it, and a resize does not render it.
+#[test]
+fn renderers_are_not_run_outside_the_tui() {
+    for (mode, has_ui) in [("rpc", true), ("print", false), ("json", false)] {
+        for (surface, method) in [("footer", "ui.setFooter"), ("header", "ui.setHeader")] {
+            let rendered: Arc<Mutex<Vec<u32>>> = Arc::default();
+            let mut ext = Extension::new("rs-surface");
+            let seen = rendered.clone();
+            ext.command("go", "install", move |ctx, _| {
+                let seen = seen.clone();
+                let render = move |width: u32| {
+                    seen.lock().unwrap().push(width);
+                    vec!["must-not-render".to_string()]
+                };
+                let result = if surface == "footer" { ctx.set_footer_renderer(Some(render)) } else { ctx.set_header_renderer(Some(render)) };
+                result.map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+            });
+            let host = Host::start_in(ext, mode, has_ui);
+            host.command("go");
+            host.width(60);
+            host.quiet(method);
+            host.command("go");
+            host.quiet(method);
+            assert_eq!(*rendered.lock().unwrap(), Vec::<u32>::new(), "{mode} {surface}");
+        }
+    }
+}
+
+// rpc-mode.ts custom() resolves undefined without running the component; the host call keeps the dialog scope, as the Node runtime's does.
+#[test]
+fn custom_resolves_none_in_rpc_without_running_the_component() {
+    use pig_sdk::{RemoteComponent, RemoteComponentResult};
+    struct Component(Arc<Mutex<Vec<&'static str>>>);
+    impl RemoteComponent for Component {
+        fn render(&self, _width: u32) -> Vec<String> {
+            self.0.lock().unwrap().push("render");
+            Vec::new()
+        }
+        fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+            self.0.lock().unwrap().push("input");
+            Ok(RemoteComponentResult::pending())
+        }
+    }
+    let ran: Arc<Mutex<Vec<&'static str>>> = Arc::default();
+    let (results_tx, results) = channel::<String>();
+    let (seen_ran, seen_results) = (ran.clone(), Mutex::new(results_tx));
+    let mut ext = Extension::new("rs-surface");
+    ext.command("go", "custom", move |ctx, _| {
+        let component = ctx.custom_component(Component(seen_ran.clone()), json!({}));
+        let options = ctx.custom(json!({"overlay": true}));
+        seen_results.lock().unwrap().send(format!("{component:?} {options:?}")).unwrap();
+        CommandResult::Ok
+    });
+    let host = Host::start_in(ext, "rpc", true);
+    host.command("go");
+    for _ in 0..2 {
+        let args = host.next("ui.custom");
+        let keys: Vec<&String> = args.as_object().unwrap().keys().collect();
+        assert_eq!(keys, ["key"], "ui.custom args {args}");
+    }
+    assert_eq!(results.recv_timeout(Duration::from_secs(5)).unwrap(), "Ok(None) Ok(None)");
+    assert!(ran.lock().unwrap().is_empty(), "component callbacks ran in RPC mode: {:?}", ran.lock().unwrap());
 }

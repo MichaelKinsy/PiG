@@ -10,7 +10,8 @@
 // deleted, so a later fold takes only the fragments written since.
 //
 // -check also resolves commits against the history of HEAD (history.go): the commit in a fragment's name and in each
-// fix marker must be reachable from HEAD, and every bullet of a section the bug ledger reads ("### Fixed") needs a
+// fix marker must be reachable from HEAD, or named by a "Fix-Commit: <full sha>" trailer of a commit HEAD reaches (a
+// squash commit carries one for each commit it replaced), and every bullet of a section the bug ledger reads ("### Fixed") needs a
 // "<!-- fix: <sha> -->" marker, so the ledger never has to guess which commit fixed it. Fragments that predate these
 // rules, whose commits a squash replaced, are listed in legacy.txt and are exempt.
 package main

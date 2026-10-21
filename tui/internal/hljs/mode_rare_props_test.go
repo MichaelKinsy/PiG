@@ -7,8 +7,7 @@ import (
 
 // The rarer mode properties sit behind a pointer only the modes that set one carry. inherit must copy them into the new mode's own properties, a mode without them must read them as absent, and no write may reach the shared zero values.
 func TestRareModePropertiesStayWithTheirMode(t *testing.T) {
-	r := NewRegistry()
-	r.LoadAllLanguages()
+	r := eagerRegistry()
 
 	modes, withRare := 0, 0
 	for _, node := range r.nodes {

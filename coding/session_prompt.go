@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -305,8 +306,12 @@ func (s *Session) SendExtensionUserMessageStaged(content any, options *extension
 
 // startExtensionUserMessage prepares the extension's prompt and passes schedule the step that starts its run.
 func (s *Session) startExtensionUserMessage(ctx context.Context, text string, opts PromptOptions, schedule func(start func())) error {
+	s.runState.userRunsPending.Add(1)
+	var pendingOnce sync.Once
+	endPending := func() { pendingOnce.Do(func() { s.runState.userRunsPending.Add(-1) }) }
 	run, err := s.preparePromptInvocation(ctx, text, opts)
 	if err != nil || run == nil {
+		endPending()
 		s.reportRuntimeError("send_user_message", err)
 		return nil
 	}
@@ -316,10 +321,12 @@ func (s *Session) startExtensionUserMessage(ctx context.Context, text string, op
 		_, err := run.Run()
 		s.reportRuntimeError("send_user_message", ignoreCancellation(err))
 	}); err != nil {
+		endPending()
 		_, _ = run.Run()
 		return err
 	}
 	schedule(func() {
+		endPending()
 		_ = run.Start()
 		close(started)
 	})

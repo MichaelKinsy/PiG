@@ -1,0 +1,3 @@
+### Fixed
+
+- An extension's UI closures now run only in the TUI, as in Pi. In RPC mode the Node runtime no longer runs `setFooter`/`setHeader` factories (a throwing render leaked a `notify` error), keeps `setEditorComponent` and `onTerminalInput` handlers, forwards the working-indicator calls, answers `getEditorComponent` with the installed factory, or fails `setTheme(Theme)`; they are no-ops, `getEditorComponent` answers undefined and `setTheme` answers `{success:false,error:"Theme switching not supported in RPC mode"}`. The Go, Python and Rust SDKs no longer run footer and header renderers in RPC, print or JSON mode, and `Custom` in RPC mode resolves nil/None without running the component. <!-- fix: a293b81d2a -->

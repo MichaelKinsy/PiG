@@ -5,7 +5,10 @@ package subprocess
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepack"
 )
 
 // pi-tui's utils.js imports the vendored get-east-asian-width package, so the
@@ -28,6 +31,9 @@ func TestNodeRuntimeEmbedsVendoredPiDistAndDependencies(t *testing.T) {
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return err
+			}
+			if noderuntimepack.UnreadAtRuntime(strings.TrimPrefix(filepath.ToSlash(path), "runtime-node/")) {
+				return nil
 			}
 			if _, err := nodeRuntimeFS.ReadFile(filepath.ToSlash(path)); err != nil {
 				t.Errorf("embedded runtime lacks %s: %v", filepath.ToSlash(path), err)

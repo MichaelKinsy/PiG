@@ -195,6 +195,12 @@ func (h *cliExtensionHost[S]) SetSettleTailHandler(fn func(suspended int)) {
 	}
 }
 
+func (h *cliExtensionHost[S]) SetBackgroundCallGate(gate func() <-chan struct{}) {
+	if h.host != nil {
+		h.host.SetBackgroundCallGate(gate)
+	}
+}
+
 func (h *cliExtensionHost[S]) SetCommandSuspendHandler(fn func(suspended int)) {
 	if h.host != nil {
 		h.host.SetCommandSuspendHandler(fn)

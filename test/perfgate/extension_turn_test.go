@@ -25,7 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// benchExtensionCount is the extension count of pi-arena's rpc-ext10 workload: each extension registers a tool, a command and handlers for session_start, before_agent_start, tool_call and turn_end.
+// benchExtensionCount is the extension count of Buffon's rpc-ext10 workload: each extension registers a tool, a command and handlers for session_start, before_agent_start, tool_call and turn_end.
 const benchExtensionCount = 10
 
 // writeBenchExtensions writes benchExtensionCount trivial TypeScript extensions and returns their paths.

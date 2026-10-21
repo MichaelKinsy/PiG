@@ -28,6 +28,9 @@ func TestNodeRuntimeArchiveMatchesSources(t *testing.T) {
 		if err != nil || entry.IsDir() {
 			return err
 		}
+		if noderuntimepack.UnreadAtRuntime(strings.TrimPrefix(path, "runtime-node/")) {
+			return nil
+		}
 		want, err := nodeRuntimeSource.ReadFile(path)
 		if err != nil {
 			return err

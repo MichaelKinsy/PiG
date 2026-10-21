@@ -84,8 +84,8 @@ func TestHeadlessNoModelOutputMatchesPi(t *testing.T) {
 				run := runStartupDiagnosticProcess(t, binary, root, agentDir, args...)
 				wantError := ""
 				if prompt != "" {
-					// Each PiG build stages its docs in its own bundle directory under docs (D22): the message names that directory.
-					bundles, globErr := filepath.Glob(filepath.Join(root, "pig", "docs", "bundle-*"))
+					// Each PiG build stages its docs in its own bundle directory under docs (D22): the message names that directory. A session also leaves the lease file beside it (bundle-<hash>.lease), which is no bundle.
+					bundles, globErr := filepath.Glob(filepath.Join(root, "pig", "docs", "bundle-????????????????"))
 					if globErr != nil || len(bundles) != 1 {
 						t.Fatalf("docs bundle directories = %v (%v), want exactly one", bundles, globErr)
 					}

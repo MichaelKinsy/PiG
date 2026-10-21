@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/stackprime"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
@@ -153,8 +154,8 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 		var wg sync.WaitGroup
 		var failureMu sync.Mutex
 		var failure error
-		// The calls' tool_execution_end events follow the order their tools settle (SettleGate).
-		var settleGate SettleGate
+		// The calls' tool_execution_end events follow the order their tools settle (jsloop.SettleGate).
+		var settleGate jsloop.SettleGate
 		batch := toolBatches.Add(1)
 		for i, outcome := range outcomes {
 			if outcome.prepared == nil {
@@ -225,7 +226,7 @@ func (h *loopHost) runPreparedToolCall(ctx context.Context, prepared preparedToo
 	var err error
 	deliver := func() { err = h.deliver(toolExecutionEndEvent(finalized)) }
 	if slot := ToolSettleFromContext(ctx, prepared.call.id); slot != nil {
-		// A call ends after every call whose tool settled before its own (SettleGate).
+		// A call ends after every call whose tool settled before its own (jsloop.SettleGate).
 		slot.Run(deliver)
 	} else {
 		deliver()

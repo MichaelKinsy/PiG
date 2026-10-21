@@ -7799,11 +7799,6 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "65b7c13e09",
-          "date": "2026-10-06",
-          "pr": "168"
-        },
-        {
           "hash": "a4753ec61e",
           "date": "2026-10-06",
           "pr": "170"
@@ -7851,7 +7846,6 @@
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestIsBusyErrorLooksThroughWrappedJoins",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestRemoveTreeContextContinuesPastBusyFile",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestRemoveTreeContextReportsADirectoryHeldByAnNFSSillyRenameAsBusy",
-        "coding/extension/host/subprocess/tool_call_input_reply_test.go::TestToolCallReplyEditsTheEventInputInPlace",
         "durable/harness/await_context_regression_test.go::TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution",
         "durable/harness/harness_lifecycle_test.go::TestHarnessClose",
         "durable/harness/harness_tasks_scheduling_test.go::TestTaskAbort",
@@ -7881,13 +7875,6 @@
         "internal/codingagent/interactive_user_bash_lifetime_test.go::TestInteractiveEscapeCancelsRunningUserBash",
         "internal/codingagent/send_user_message_test.go::TestSubprocessShutdownHostActionRequestsExitViaOwnerLoop",
         "internal/codingagent/tools/bash_group_stack_windows_test.go::TestWin_JobQueriesSurviveAGoroutineStackMove",
-        "test/extension-conformance/node_load_exec_test.go::TestNodeExecBetweenLoadAndRegister",
-        "test/extension-conformance/node_load_exec_test.go::TestNodeFactoryExecDuringLoad",
-        "test/extension-conformance/tool_call_input_mutation_test.go::TestToolCallInputMutationAcrossSDKs",
-        "test/parity/scenarios/extensions-runtime/72-extension-exec-after-load.toml",
-        "test/parity/scenarios/extensions-runtime/72-extension-load-time-exec.toml",
-        "test/parity/scenarios/extensions-runtime/72-tool-call-input-reassign.toml",
-        "test/parity/scenarios/extensions-runtime/72-tool-call-input-rewrite.toml",
         "test/parity/scenarios/interactive-rendering/45-bash-execution-exit-status.toml",
         "test/parity/scenarios/interactive-rendering/46-bash-execution-running-spinner.toml",
         "test/parity/scenarios/interactive-rendering/47-bash-execution-cancelled.toml",
@@ -31552,7 +31539,6 @@
         }
       ],
       "tests": [
-        "agent/settle_order_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "extensions/sdk-py/tests/test_tool_dialog_order.py",
         "extensions/sdk/tool_dialog_order_test.go::TestToolBatchOrdersAreIndependentAcrossBatches",
         "extensions/sdk/tool_dialog_order_test.go::TestToolDialogOrderPassesAnEndedRequest",
@@ -31793,8 +31779,6 @@
         }
       ],
       "tests": [
-        "agent/settle_order_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
-        "agent/settle_order_test.go::TestSettleGateRunsActionsInSettleOrder",
         "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
         "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived"
       ]
@@ -33011,6 +32995,10 @@
     {
       "id": "D187",
       "title": "A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single…"
+    },
+    {
+      "id": "D188",
+      "title": "Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place"
     }
   ],
   "exemptCommits": {

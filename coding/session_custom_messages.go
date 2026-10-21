@@ -122,6 +122,7 @@ func (s *Session) startCustomRun(ctx context.Context, start *RunStart, app agent
 	if err != nil {
 		return fail(err)
 	}
+	prepared.takeNextTurn()
 	if schedule == nil {
 		return s.beginCustomRun(ctx, start, app, prepared)
 	}
@@ -150,7 +151,7 @@ func (s *Session) beginCustomRun(ctx context.Context, start *RunStart, app agent
 		return fail(errors.New("coding: session is closed"))
 	default:
 	}
-	starting := append([]agent.AgentMessage{app}, s.agent.TakePendingNextTurn()...)
+	starting := append([]agent.AgentMessage{app}, prepared.nextTurn...)
 	runCtx, cancel := context.WithCancel(ctx)
 	run, err := s.agent.BeginSendMessages(runCtx, starting)
 	if err != nil {
@@ -180,12 +181,13 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err = s.runPostAgentRuns(ctx, messages, err)
+	// The run's prompt options end before the held messages flush, as in runPreparedPrompt.
+	s.finishRunPrompt(prepared)
 	if flushErr := s.flushPendingBashLocked(); flushErr != nil {
 		err = errors.Join(err, flushErr)
 	} else {
 		err = errors.Join(err, s.flushPendingCustomMessages())
 	}
-	s.finishRunPrompt(prepared)
 	// agent_settled handlers run without the Session lock (see runPreparedPrompt).
 	s.mu.Unlock()
 	defer s.mu.Lock()
@@ -211,6 +213,34 @@ func (s *Session) emitCustomMessage(message agent.AgentMessage) {
 		s.notifyAgentEventListeners(event)
 		s.emitOrderedEvent(publishedSessionEvent{event})
 	}
+}
+
+// DeferCustomMessage holds a custom message an extension sent with triggerTurn false while a run streams, until that turn's tool results are
+// complete (agent-session.ts:2351-2356). It reports false when no run is active, so the caller appends the message at once.
+func (s *Session) DeferCustomMessage(message agent.AgentMessage) bool {
+	s.pendingBashMu.Lock()
+	defer s.pendingBashMu.Unlock()
+	if !s.IsStreaming() {
+		return false
+	}
+	s.runState.mu.Lock()
+	s.runState.pendingCustom = append(s.runState.pendingCustom, message)
+	s.runState.mu.Unlock()
+	return true
+}
+
+// HasDeferredCustomMessages reports whether a custom message waits for the end of its turn.
+func (s *Session) HasDeferredCustomMessages() bool {
+	s.runState.mu.Lock()
+	defer s.runState.mu.Unlock()
+	return len(s.runState.pendingCustom) > 0
+}
+
+// FlushDeferredCustomMessages appends the custom messages held for the end of a turn.
+func (s *Session) FlushDeferredCustomMessages() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.flushPendingCustomMessages()
 }
 
 func (s *Session) flushPendingCustomMessages() error {
