@@ -5,7 +5,7 @@ import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
 const { Container } = piTui;
 import {
-  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, VERSION, formatSize, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
+  createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
 } from "@earendil-works/pi-coding-agent";
 
@@ -68,6 +68,7 @@ export default function (pi) {
       cwd:s.getCwd(), dir:s.getSessionDir(), id:s.getSessionId(), name:s.getSessionName()??null, leaf:s.getLeafId(),
       entry:s.getEntry("one"), missing:s.getEntry("missing")??null, label:s.getLabel("one")??null,
       entries:s.getEntries(), branch:s.getBranch("one"), tree:s.getTree(), contextEntries:s.buildContextEntries(), projection:s.buildSessionProjection(),
+      persisted:s.isPersisted(), usesDefaultDir:s.usesDefaultSessionDir(), children:s.getChildren("one"), sessionContext:s.buildSessionContext(),
       models:r.getAll(), available:r.getAvailable(), status:r.getProviderAuthStatus("registry-probe"),
       display:r.getProviderDisplayName("registry-probe"), error:r.getError()??null,
       config:r.getRegisteredProviderConfig("registry-probe")??null, ids:r.getRegisteredProviderIds(),
@@ -618,7 +619,7 @@ export default function (pi) {
       return { frontmatter: parsed.frontmatter, body: parsed.body, keys: keyLists(parsed.frontmatter) };
     } catch { return { error: true }; }
   };
-  const factoryHelpers = { frontmatter: helperReport("frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"), error: helperReport("frontmatter", "---\na: [\n---\nx"), date: helperReport("date", "2020-01-02T03:04:05.678Z") };
+  const factoryHelpers = { frontmatter: helperReport("frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"), error: helperReport("frontmatter", "---\na: [\n---\nx"), date: helperReport("date", "2020-01-02T03:04:05.678Z"), strip: helperReport("strip", "---\nz: 1\n---\nbody text\n") };
   pi.registerCommand("helper_probe", { description: "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", handler: async (args, ctx) => {
     const c = JSON.parse(args);
     ctx.ui.notify(`helper:${JSON.stringify(helperReport(c.fn, c.input))}:end`, "info");
@@ -655,6 +656,7 @@ export default function (pi) {
     if (c.fn === "head") result = truncateHead(c.content, options);
     else if (c.fn === "tail") result = truncateTail(c.content, options);
     else if (c.fn === "line") { const r = c.maxChars === undefined ? truncateLine(c.content) : truncateLine(c.content, c.maxChars); result = { text: r.text, wasTruncated: r.wasTruncated }; }
+    else if (c.fn === "limits") result = { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES };
     else result = { text: formatSize(c.bytes) };
     ctx.ui.notify(`truncate:${JSON.stringify(result)}:end`, "info");
   } });
