@@ -4,6 +4,7 @@ package childsession
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"strings"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
@@ -19,6 +20,19 @@ func Extension() *sdk.Extension {
 		Name: "child_run", Label: "child_run", Description: "child_run", Parameters: sdk.Schema{"type": "object"},
 		Execute: func(ctx sdk.Context, args map[string]any) (any, error) {
 			var seen []string
+			updates, streamed, partial := 0, "", ""
+			text := func(message any) string {
+				if message, ok := message.(map[string]any); ok {
+					if content, ok := message["content"].([]any); ok && len(content) > 0 {
+						if block, ok := content[0].(map[string]any); ok {
+							if value, ok := block["text"].(string); ok {
+								return value
+							}
+						}
+					}
+				}
+				return ""
+			}
 			session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
 				Model: "sentinel/echo", Tools: []string{"sentinel_tool"}, InMemory: true,
 				Settings:  map[string]any{"compaction": map[string]any{"enabled": false}},
@@ -40,6 +54,13 @@ func Extension() *sdk.Extension {
 					name += ":" + message["role"].(string)
 				}
 				seen = append(seen, name)
+				if event["type"] == "message_update" {
+					updates++
+					streamed = text(event["message"])
+					if inner, ok := event["assistantMessageEvent"].(map[string]any); ok {
+						partial = text(inner["partial"])
+					}
+				}
 			})
 			if err := session.Prompt(context.Background(), args["prompt"].(string)); err != nil {
 				return nil, err
@@ -52,6 +73,22 @@ func Extension() *sdk.Extension {
 			for _, message := range messages {
 				roles = append(roles, message["role"].(string))
 			}
+			system := map[string]any{}
+			if len(messages) > 0 {
+				keys := []string{}
+				for key := range messages[0] {
+					keys = append(keys, key)
+				}
+				sort.Strings(keys)
+				sections := []string{}
+				if members, ok := messages[0]["sections"].(map[string]any); ok {
+					for key := range members {
+						sections = append(sections, key)
+					}
+				}
+				sort.Strings(sections)
+				system = map[string]any{"keys": keys, "role": messages[0]["role"], "content": messages[0]["content"], "sections": sections, "toolsAdded": messages[0]["toolsAdded"]}
+			}
 			state, err := session.State()
 			if err != nil {
 				return nil, err
@@ -60,9 +97,10 @@ func Extension() *sdk.Extension {
 			if state.LastAssistantText != nil {
 				final = *state.LastAssistantText
 			}
-			out, err := json.Marshal(map[string]any{"events": seen, "roles": roles, "final": final, "model": state.Model["id"], "activeTools": state.ActiveTools, "file": state.SessionFile, "appendix": strings.Contains(state.SystemPrompt, "Child appendix")})
+			out, err := json.Marshal(map[string]any{"events": seen, "updates": updates, "streamed": streamed, "partial": partial, "roles": roles, "system": system, "final": final, "model": state.Model["id"], "activeTools": state.ActiveTools, "file": state.SessionFile, "appendix": strings.Contains(state.SystemPrompt, "Child appendix")})
 			return string(out), err
 		},
 	})
+	registerLifecycle(e)
 	return e
 }

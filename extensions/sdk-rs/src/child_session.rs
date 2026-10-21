@@ -151,7 +151,12 @@ impl ChildSessions {
     pub(crate) fn deliver(&self, args: &Value) {
         let Some(id) = args["id"].as_str() else { return };
         if let Some(session) = self.lookup(id) {
-            session.enqueue(args["seq"].as_u64().unwrap_or(0), args["event"].clone());
+            let seq = args["seq"].as_u64().unwrap_or(0);
+            let event = match args.get("stream") {
+                None | Some(Value::Null) => args["event"].clone(),
+                Some(stream) => session.apply_update(stream, args.get("event")),
+            };
+            session.enqueue(seq, event);
         }
     }
 }
@@ -162,6 +167,8 @@ pub(crate) struct SessionShared {
     /// The custom tools by name; the host's `tool_call` and `tool_prepare_arguments` requests name the session.
     pub(crate) tools: HashMap<String, Arc<ToolDefinition>>,
     queue: Mutex<Delivery>,
+    /// The `message_update` payload the host last sent, with its number; only the connection's reader touches it.
+    replica: Mutex<Option<(u64, Value)>>,
     changed: Condvar,
     disposed: AtomicBool,
 }
@@ -184,6 +191,31 @@ impl SessionShared {
         delivery.listeners.clear();
         delivery.pending.clear();
         self.changed.notify_all();
+    }
+
+    /// The full `message_update` event the stream member produces (`EventStream` in the host's protocol.go), or `Null` when it cannot be: no listener sees the event, but its number still counts.
+    fn apply_update(&self, stream: &Value, keyframe: Option<&Value>) -> Value {
+        let mut replica = self.replica.lock().unwrap();
+        let produced = match keyframe {
+            Some(keyframe) if !keyframe.is_null() => Ok(keyframe.clone()),
+            _ => {
+                let base = stream["base"].as_u64().unwrap_or(0);
+                match replica.take() {
+                    Some((seq, mut root)) if seq == base => crate::event_stream::apply_ops(&mut root, &stream["ops"]).map(|()| root),
+                    _ => Err(format!("message_update delta applies to payload {base}, the replica holds a different one")),
+                }
+            }
+        };
+        match produced {
+            Ok(root) => {
+                *replica = Some((stream["seq"].as_u64().unwrap_or(0), root.clone()));
+                root
+            }
+            Err(message) => {
+                eprintln!("pig: child session {}: {message}", self.id);
+                Value::Null
+            }
+        }
     }
 
     fn enqueue(self: &Arc<Self>, seq: u64, event: Value) {
@@ -213,7 +245,7 @@ impl SessionShared {
                     }
                 }
             };
-            for listener in listeners {
+            for listener in listeners.into_iter().filter(|_| !event.is_null()) {
                 // A panicking listener does not stop Pi's emission.
                 let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| listener(&event)));
             }
@@ -310,7 +342,7 @@ pub(crate) fn create(conn: &Arc<Connection>, call_host: impl Fn(&str, Option<Val
     if !declarations.is_empty() {
         args.insert("customTools".into(), Value::Array(declarations));
     }
-    let shared = Arc::new(SessionShared { id: id.clone(), tools, queue: Mutex::new(Delivery::default()), changed: Condvar::new(), disposed: AtomicBool::new(false) });
+    let shared = Arc::new(SessionShared { id: id.clone(), tools, queue: Mutex::new(Delivery::default()), replica: Mutex::new(None), changed: Condvar::new(), disposed: AtomicBool::new(false) });
     // The tools are served from the moment the host knows the session, which can be before the call returns.
     if !conn.children.add(&shared) {
         return Err(io::Error::new(io::ErrorKind::BrokenPipe, "Extension connection is closed"));

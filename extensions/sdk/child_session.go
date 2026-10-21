@@ -260,16 +260,58 @@ func (t *childSessions) closeAll() {
 // deliver queues one childSession.event notification on its session. The reader calls it, so it only queues.
 func (t *childSessions) deliver(args json.RawMessage) {
 	var event struct {
-		ID    string          `json:"id"`
-		Seq   uint64          `json:"seq"`
-		Event json.RawMessage `json:"event"`
+		ID     string          `json:"id"`
+		Seq    uint64          `json:"seq"`
+		Event  json.RawMessage `json:"event"`
+		Stream *eventStreamMsg `json:"stream"`
 	}
 	if json.Unmarshal(args, &event) != nil {
 		return
 	}
-	if session := t.lookup(event.ID); session != nil {
-		session.enqueue(event.Seq, event.Event)
+	session := t.lookup(event.ID)
+	if session == nil {
+		return
 	}
+	if event.Stream == nil {
+		session.enqueue(queuedEvent{seq: event.Seq, raw: event.Event})
+		return
+	}
+	// A message_update of the session's sequence: the full event is the keyframe, or the replica the operations turned into it.
+	full, err := session.applyUpdate(event.Stream, event.Event)
+	if err != nil {
+		// The event is not delivered; its number still counts, so a prompt does not wait for it.
+		fmt.Fprintf(os.Stderr, "pig: child session %s: %v\n", session.id, err)
+		session.enqueue(queuedEvent{seq: event.Seq})
+		return
+	}
+	session.enqueue(queuedEvent{seq: event.Seq, event: full})
+}
+
+// applyUpdate returns the full message_update event the stream member produces, and keeps it as the payload the next patch applies to. Only the connection's reader calls it, in arrival order.
+func (s *AgentSession) applyUpdate(stream *eventStreamMsg, keyframe json.RawMessage) (map[string]any, error) {
+	var root any
+	if len(keyframe) > 0 {
+		if err := json.Unmarshal(keyframe, &root); err != nil {
+			s.replica = nil
+			return nil, fmt.Errorf("event stream: decode keyframe: %w", err)
+		}
+	} else {
+		if s.replica == nil || s.replicaSeq != stream.Base {
+			s.replica = nil
+			return nil, fmt.Errorf("message_update delta applies to payload %d, the replica holds a different one", stream.Base)
+		}
+		var err error
+		if root, err = applyStreamOps(s.replica, stream.Ops); err != nil {
+			s.replica = nil
+			return nil, err
+		}
+	}
+	s.replica, s.replicaSeq = root, stream.Seq
+	full, _ := cloneStreamValue(root).(map[string]any)
+	if full == nil {
+		return nil, errors.New("event stream: the payload is not an object")
+	}
+	return full, nil
 }
 
 // AgentSession is a child agent session: Pi's AgentSession as an extension holds it.
@@ -297,6 +339,9 @@ type AgentSession struct {
 	cond      *sync.Cond
 	listeners []*childListener
 	pending   []queuedEvent
+	// replica is the message_update payload the host last sent and replicaSeq its number; the connection's reader owns them.
+	replica    any
+	replicaSeq uint64
 	// delivered is the number of the last event whose listeners ran.
 	delivered uint64
 	stopped   bool
@@ -306,9 +351,11 @@ type AgentSession struct {
 
 type childListener struct{ fn AgentSessionEventListener }
 
+// queuedEvent is one event: its JSON, or the object a message_update's stream produced.
 type queuedEvent struct {
-	seq uint64
-	raw json.RawMessage
+	seq   uint64
+	raw   json.RawMessage
+	event map[string]any
 }
 
 // CreateAgentSession is Pi's createAgentSession: it creates a child agent session in the host and returns once it is ready. The session belongs to this extension's connection and is disposed with it.
@@ -520,13 +567,13 @@ func (s *AgentSession) stop() {
 }
 
 // enqueue adds an event; the session's delivery goroutine runs the listeners.
-func (s *AgentSession) enqueue(seq uint64, raw json.RawMessage) {
+func (s *AgentSession) enqueue(event queuedEvent) {
 	s.mu.Lock()
 	if s.stopped {
 		s.mu.Unlock()
 		return
 	}
-	s.pending = append(s.pending, queuedEvent{seq, raw})
+	s.pending = append(s.pending, event)
 	start := !s.running
 	s.running = true
 	s.mu.Unlock()
@@ -551,8 +598,12 @@ func (s *AgentSession) deliverLoop() {
 		copy(listeners, s.listeners)
 		s.mu.Unlock()
 		if len(listeners) != 0 {
-			var event map[string]any
-			if err := json.Unmarshal(next.raw, &event); err == nil {
+			event := next.event
+			var err error
+			if event == nil {
+				err = json.Unmarshal(next.raw, &event)
+			}
+			if err == nil {
 				for _, listener := range listeners {
 					s.call1(listener, event)
 				}

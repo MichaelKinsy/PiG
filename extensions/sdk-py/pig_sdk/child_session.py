@@ -141,7 +141,9 @@ class _ChildSessions:
         """Queue one ``childSession.event`` notification on its session. The reader calls it, so it only queues."""
         session = self.lookup(str(args.get("id") or ""))
         if session is not None:
-            session._enqueue(int(args.get("seq") or 0), args.get("event"))
+            seq = int(args.get("seq") or 0)
+            stream = args.get("stream")
+            session._enqueue(seq, args.get("event") if stream is None else session._apply_update(stream, args.get("event")))
 
 
 class AgentSession:
@@ -156,6 +158,8 @@ class AgentSession:
         self._listeners: list[Callable[[dict[str, Any]], None]] = []
         self._pending: list[tuple[int, Any]] = []
         self._delivered = 0
+        #: The message_update payload the host last sent, with its number; the connection's reader owns it.
+        self._replica: tuple[int, Any] | None = None
         self._stopped = False
         self._running = False
         self._disposed = False
@@ -260,6 +264,25 @@ class AgentSession:
             self._pending = []
             self._cond.notify_all()
 
+    def _apply_update(self, stream: dict[str, Any], keyframe: Any) -> Any:
+        """The full message_update event the stream member produces (EventStream in the host's protocol.go), or ``None`` when it cannot be: the event is then not delivered, but its number still counts. The connection's reader calls it, in arrival order."""
+        from . import _apply_stream_ops, _clone_stream_value
+
+        try:
+            if keyframe is not None:
+                root = keyframe
+            else:
+                base = int(stream.get("base") or 0)
+                if self._replica is None or self._replica[0] != base:
+                    raise RuntimeError(f"message_update delta applies to payload {base}, the replica holds a different one")
+                root = _apply_stream_ops(self._replica[1], stream.get("ops"))
+            self._replica = (int(stream.get("seq") or 0), root)
+            return _clone_stream_value(root)
+        except Exception as error:  # noqa: BLE001 - a protocol violation drops the event, not the connection
+            self._replica = None
+            print(f"pig: child session {self._id}: {error}", file=sys.stderr)
+            return None
+
     def _enqueue(self, seq: int, event: Any) -> None:
         with self._cond:
             if self._stopped:
@@ -278,7 +301,7 @@ class AgentSession:
                     return
                 seq, event = self._pending.pop(0)
                 listeners = list(self._listeners)
-            for listener in listeners:
+            for listener in listeners if event is not None else ():
                 try:
                     listener(event)
                 except Exception as error:  # noqa: BLE001 - a throwing listener does not stop Pi's emission

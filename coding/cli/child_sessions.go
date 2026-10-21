@@ -24,9 +24,14 @@ func BindChildSessions(bridge *subprocess.UIBridge, services *coding.AgentSessio
 	if bridge == nil || services == nil {
 		return
 	}
-	bridge.SetHostAction("createChildSession", subprocess.ChildSessionFactory(func(ctx context.Context, request subprocess.ChildSessionRequest) (subprocess.ChildSession, error) {
+	bridge.SetHostAction("createChildSession", ChildSessionFactory(services))
+}
+
+// ChildSessionFactory is the factory BindChildSessions installs: it builds each session over services' model runtime.
+func ChildSessionFactory(services *coding.AgentSessionServices) subprocess.ChildSessionFactory {
+	return func(ctx context.Context, request subprocess.ChildSessionRequest) (subprocess.ChildSession, error) {
 		return newChildSession(ctx, services, request)
-	}))
+	}
 }
 
 // childSession is a coding.Session behind the extension wire.
@@ -287,13 +292,23 @@ var childEventBuffers = sync.Pool{New: func() any { return new([]byte) }}
 
 func (c *childSession) Subscribe(listener func(event json.RawMessage)) func() {
 	return c.session.Subscribe(func(event agent.AgentEvent) {
+		buffer := childEventBuffers.Get().(*[]byte)
+		defer childEventBuffers.Put(buffer)
+		if update, ok := event.(agent.MessageUpdateEvent); ok {
+			// AgentSession.subscribe hands a listener the message so far and the assistant event with its partial, as extension handlers get them; RPC mode's message_update drops both.
+			encoded, err := jsstring.AppendMarshalJSON((*buffer)[:0], extension.MessageUpdateEvent{Type: "message_update", Message: update.Message, AssistantMessageEvent: update.AssistantMessageEvent})
+			if err != nil {
+				return
+			}
+			*buffer = encoded
+			listener(encoded)
+			return
+		}
 		frames, err := rpcAgentEvent(event)
 		if err != nil {
 			// The session's own conversion failure: the event cannot cross the wire, and the run goes on.
 			return
 		}
-		buffer := childEventBuffers.Get().(*[]byte)
-		defer childEventBuffers.Put(buffer)
 		for _, frame := range frames {
 			encoded, err := jsstring.AppendMarshalJSON((*buffer)[:0], frame)
 			if err != nil {

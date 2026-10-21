@@ -152,7 +152,9 @@ type ChildSessionQueue struct {
 type ChildSessionEvent struct {
 	ID    string          `json:"id"`
 	Seq   uint64          `json:"seq"`
-	Event json.RawMessage `json:"event"`
+	Event json.RawMessage `json:"event,omitempty"`
+	// Stream numbers a message_update's payload in the session's sequence (EventStream): with Event it is a keyframe the extension keeps; without, it carries Ops that turn the payload numbered Base into the event, and the extension hands its listeners the full event either way. Seq is the event's number, so Base is the number of the previous message_update of the session. Absent, the event travels whole and leaves the extension's copy as it is.
+	Stream *EventStream `json:"stream,omitempty"`
 }
 
 // ChildSessionState is the CallChildSessionState result.

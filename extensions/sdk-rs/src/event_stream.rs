@@ -50,7 +50,7 @@ impl EventReplicas {
     }
 }
 
-fn apply_ops(root: &mut Value, ops: &Value) -> Result<(), String> {
+pub(crate) fn apply_ops(root: &mut Value, ops: &Value) -> Result<(), String> {
     let list = ops.as_array().ok_or("event stream: ops are not an array")?;
     for op in list {
         let name = op.get("op").and_then(Value::as_str).ok_or("event stream: operation without a name")?;

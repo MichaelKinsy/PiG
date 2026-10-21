@@ -3,6 +3,7 @@ package subprocess
 // Ports packages/coding-agent/src/core/sdk.ts createAgentSession for the Go, Python and Rust SDKs, with the lifetime the Node runtime gives Pi's own implementation (runtime-node/shims/independent-session.mjs, independent-session-owner.mjs): an independent Session belongs to its extension connection, not to the command that created it, and it ends with the connection.
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -71,6 +72,8 @@ type childSessionEntry struct {
 	// eventMu orders the numbering with the write: the frame of event n is queued before the frame of event n+1.
 	eventMu sync.Mutex
 	seq     atomic.Uint64
+	// updates is the message_update payload the extension last received (child_session_delta.go).
+	updates childUpdateStream
 	// disposed stops the forwarding of events once the session is disposed.
 	disposed atomic.Bool
 }
@@ -85,14 +88,48 @@ func (e *childSessionEntry) forward(event json.RawMessage) {
 	e.eventMu.Lock()
 	defer e.eventMu.Unlock()
 	seq := e.seq.Add(1)
-	args := make([]byte, 0, len(e.prefix)+20+9+len(event)+1)
-	args = append(args, e.prefix...)
-	args = strconv.AppendUint(args, seq, 10)
-	args = append(args, `,"event":`...)
-	args = append(args, event...)
-	args = append(args, '}')
+	var args []byte
+	if bytes.HasPrefix(event, messageUpdatePrefix) {
+		if base, ops, ok := e.updates.frame(event, seq); ok {
+			args = e.updateFrame(seq, base, ops, event)
+		}
+	}
+	if args == nil {
+		args = make([]byte, 0, len(e.prefix)+20+9+len(event)+1)
+		args = append(args, e.prefix...)
+		args = strconv.AppendUint(args, seq, 10)
+		args = append(args, `,"event":`...)
+		args = append(args, event...)
+		args = append(args, '}')
+	}
 	// The connection is gone when Send fails; its close disposes the session.
 	_ = e.conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyChildSessionEvent, Args: args}})
+}
+
+// updateFrame is the notification of a message_update that travels in the stream: a keyframe carries the event, a patch (base set) the operations that turn the payload numbered base into it.
+func (e *childSessionEntry) updateFrame(seq, base uint64, ops, event []byte) []byte {
+	size := len(e.prefix) + 80 + len(ops)
+	if ops == nil {
+		size += len(event)
+	}
+	args := make([]byte, 0, size)
+	args = append(args, e.prefix...)
+	args = strconv.AppendUint(args, seq, 10)
+	if ops == nil {
+		args = append(args, `,"event":`...)
+		args = append(args, event...)
+		args = append(args, `,"stream":{"seq":`...)
+	} else {
+		args = append(args, `,"stream":{"seq":`...)
+	}
+	args = strconv.AppendUint(args, seq, 10)
+	if ops != nil {
+		args = append(args, `,"base":`...)
+		args = strconv.AppendUint(args, base, 10)
+		args = append(args, `,"ops":`...)
+		args = append(args, ops...)
+	}
+	return append(args, '}', '}')
 }
 
 // childSessionFactory is the host's factory, or nil when no mode bound one.
