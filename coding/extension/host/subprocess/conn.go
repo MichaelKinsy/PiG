@@ -1156,6 +1156,11 @@ func (c *Conn) readLoop(ctx context.Context) {
 				}
 				continue
 			}
+			if c.holdsNoStartWindow(*env.RequestState) {
+				// A tool call outside the dispatcher's parallel batch (a sequential batch, a direct Execute) holds no start window, so no edit or write call waits for it: the runtime holds the tool's next
+				// fileMutation.enter after this report until the host says the waiting calls registered (NotifyToolWindowSettled), and with none waiting it says so now.
+				c.sendToolWindowSettled(env.RequestState.RequestID)
+			}
 			c.deliverRequestState(*env.RequestState)
 			continue
 		}
@@ -1417,6 +1422,20 @@ func (c *Conn) endsStartWindow(state RequestStatePayload) bool {
 	return ok
 }
 
+// holdsNoStartWindow reports whether state is the report of endsStartWindow from a pending tool_call request that holds no start window.
+func (c *Conn) holdsNoStartWindow(state RequestStatePayload) bool {
+	if state.State != "blocked" || state.Reason != "external_io" {
+		return false
+	}
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	if _, tool := c.toolRequests[state.RequestID]; !tool {
+		return false
+	}
+	_, windowed := c.startWindows[state.RequestID]
+	return !windowed
+}
+
 // closeRequestWindow closes the start window of the request requestID, when it holds one: the request's handler has run to its first await.
 func (c *Conn) closeRequestWindow(requestID string) {
 	if requestID == "" {
@@ -1438,8 +1457,6 @@ func (c *Conn) endRequestWindowByReport(requestID string) {
 	window := c.startWindows[requestID]
 	c.pendingMu.Unlock()
 	if window == nil {
-		// A call that holds no start window (a tool outside the dispatcher's parallel batch) has no write waiting for one: the runtime's next fileMutation.enter holds until it hears so.
-		c.sendToolWindowSettled(requestID)
 		return
 	}
 	window.Close()
