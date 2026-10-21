@@ -69,7 +69,7 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 	configDir := icodingagent.ConfigDirName()
 	args := map[string]any{
 		"cwd": filepath.Join(root, "project"), "dir": filepath.Join(root, "sessions"), "otherDir": filepath.Join(root, "other"), "junk": filepath.Join(root, "junk.jsonl"),
-		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "loaderAgentDir": filepath.Join(root, "agent-loader"), "brokenCwd": filepath.Join(root, "broken"),
+		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "pmCwd": filepath.Join(root, "pm-project"), "pmAgentDir": filepath.Join(root, "pm-agent"), "loaderAgentDir": filepath.Join(root, "agent-loader"), "brokenCwd": filepath.Join(root, "broken"),
 	}
 	files := map[string]string{
 		filepath.Join(root, "agent", "settings.json"):                            sessionGraphGlobalSettings,
@@ -87,6 +87,10 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 		filepath.Join(root, "project", configDir, "APPEND_SYSTEM.md"):            "project append\n",
 		filepath.Join(root, "extra-skills", "beta", "SKILL.md"):                  "---\nname: beta\ndescription: The beta skill\n---\nBeta body\n",
 		filepath.Join(root, "extra-prompts", "bye.md"):                           "---\ndescription: Say bye\n---\nBye $1\n",
+		filepath.Join(root, "pm-project", ".keep"):                               "",
+		filepath.Join(root, "pm-agent", ".keep"):                                 "",
+		filepath.Join(root, "pkgs", "localpkg", "package.json"):                  `{"name":"localpkg","version":"1.0.0","pi":{"skills":["./skills"]}}`,
+		filepath.Join(root, "pkgs", "localpkg", "skills", "gamma", "SKILL.md"):   "---\nname: gamma\ndescription: The gamma skill\n---\nGamma body\n",
 		filepath.Join(root, "agent-loader", ".keep"):                             "",
 		filepath.Join(root, "bare", ".keep"):                                     "",
 		filepath.Join(root, "agent-array", "trust.json"):                         "[1]",
@@ -334,3 +338,22 @@ func TestSessionGraphDefaultResourceLoaderAcrossSDKs(t *testing.T) {
 //
 //go:embed testdata/session-graph-default-resource-loader.json
 var sessionGraphDefaultResourceLoaderWant string
+
+// package-manager.ts DefaultPackageManager (settings sources, listing, resolve with a missing-source callback, install and remove of a local package with progress events, temporary sources, updates) for every SDK.
+func TestSessionGraphDefaultPackageManagerAcrossSDKs(t *testing.T) {
+	t.Parallel()
+	eachSessionGraphSDK(t, func(t *testing.T, r *sessionGraphRig, _ string) {
+		report, root := r.script("package_manager")
+		got := normalizeSessionGraph(t, report, root)
+		if path := os.Getenv("SESSION_GRAPH_PRINT"); path != "" {
+			encoded, _ := json.MarshalIndent(got, "", "\t")
+			_ = os.WriteFile(path, encoded, 0o600)
+		}
+		requireSessionGraphReport(t, got, sessionGraphDefaultPackageManagerWant)
+	})
+}
+
+// sessionGraphDefaultPackageManagerWant is the report of Pi's own DefaultPackageManager (the Node row).
+//
+//go:embed testdata/session-graph-default-package-manager.json
+var sessionGraphDefaultPackageManagerWant string

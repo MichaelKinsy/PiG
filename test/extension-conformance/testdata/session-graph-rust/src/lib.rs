@@ -1,6 +1,6 @@
 //! Fixture for the session graph conformance rows (test/extension-conformance/session_graph_test.go): the script of testfixture/sessiongraph (Go), testdata/session-graph.mjs (Node, Pi's own classes) and testdata/session_graph_python.py.
 
-use pig_sdk::{DefaultResourceLoader, DefaultResourceLoaderOptions, empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
+use pig_sdk::{DefaultPackageManager, PackageManagerOptions, DefaultResourceLoader, DefaultResourceLoaderOptions, empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 use serde_json::{json, Value};
 use std::io;
 use std::path::Path;
@@ -485,6 +485,47 @@ fn loader_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     Ok(Value::Object(r))
 }
 
+fn resolved_report(paths: &Value) -> Value {
+    let skills: Vec<Value> = paths["skills"].as_array().map(|list| list.iter().map(|skill| json!({
+        "file": base_name(&skill["path"]), "enabled": skill["enabled"], "source": skill["metadata"]["source"], "scope": skill["metadata"]["scope"], "origin": skill["metadata"]["origin"],
+    })).collect()).unwrap_or_default();
+    json!({"extensions": paths["extensions"].as_array().map_or(0, Vec::len), "skills": skills, "prompts": paths["prompts"].as_array().map_or(0, Vec::len), "themes": paths["themes"].as_array().map_or(0, Vec::len)})
+}
+
+fn packages_script(ctx: &Context, args: &Value) -> io::Result<Value> {
+    let (root, cwd, agent_dir) = (text(&args["root"]), text(&args["pmCwd"]), text(&args["pmAgentDir"]));
+    let pkg = Path::new(root).join("pkgs").join("localpkg").to_string_lossy().into_owned();
+    let mut r = serde_json::Map::new();
+    let settings = SettingsManager::create(ctx, cwd, Some(agent_dir), None)?;
+    let pm = DefaultPackageManager::new(ctx, PackageManagerOptions { cwd: cwd.into(), agent_dir: agent_dir.into(), settings_manager: &settings, builtin_extensions: vec![] })?;
+    r.insert("initial".into(), json!({"list": pm.list_configured_packages()?.as_array().map_or(0, Vec::len), "installed": pm.get_installed_path(&pkg, "user")?}));
+    let added = pm.add_source_to_settings(&pkg, false)?;
+    let again = pm.add_source_to_settings(&pkg, false)?;
+    r.insert("added".into(), json!({"first": added, "again": again, "list": pm.list_configured_packages()?, "packages": settings.get_packages()?, "installed": pm.get_installed_path(&pkg, "user")?}));
+    r.insert("resolved".into(), resolved_report(&pm.resolve(None)?));
+
+    let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let sink = events.clone();
+    pm.set_progress_callback(Some(std::sync::Arc::new(move |event| sink.lock().unwrap().push(format!("{}:{}", text(&event["type"]), text(&event["action"]))))))?;
+    pm.install_and_persist(&pkg, true)?;
+    r.insert("installed".into(), json!({"list": pm.list_configured_packages()?, "events": events.lock().unwrap().clone()}));
+    r.insert("removed".into(), json!({
+        "project": pm.remove_and_persist(&pkg, true)?, "list": pm.list_configured_packages()?.as_array().map_or(0, Vec::len),
+        "settings": pm.remove_source_from_settings(&pkg, false)?, "settingsAgain": pm.remove_source_from_settings(&pkg, false)?,
+    }));
+
+    pm.set_progress_callback(None)?;
+    r.insert("temporary".into(), resolved_report(&pm.resolve_extension_sources(&[&pkg], false, true)?));
+    r.insert("updates".into(), json!(pm.check_for_available_updates()?.as_array().map_or(0, Vec::len)));
+
+    let missing = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let sink = missing.clone();
+    pm.add_source_to_settings("npm:not-installed-pkg", false)?;
+    let skipped = pm.resolve(Some(std::sync::Arc::new(move |source| { sink.lock().unwrap().push(source); "skip".to_string() })))?;
+    r.insert("missing".into(), json!({"calls": missing.lock().unwrap().clone(), "skills": skipped["skills"].as_array().map_or(0, Vec::len)}));
+    Ok(Value::Object(r))
+}
+
 pub fn new_extension() -> Extension {
     let mut ext = Extension::new("session-graph");
     ext.tool("session_manager", "Runs the SessionManager script.", empty_schema(), |ctx, args| match script(ctx, &args) {
@@ -500,6 +541,10 @@ pub fn new_extension() -> Extension {
         Err(error) => ToolResult::Error(error.to_string()),
     });
     ext.tool("resource_loader", "Runs the DefaultResourceLoader script.", empty_schema(), |ctx, args| match loader_script(ctx, &args) {
+        Ok(report) => ToolResult::text(report.to_string()),
+        Err(error) => ToolResult::Error(error.to_string()),
+    });
+    ext.tool("package_manager", "Runs the DefaultPackageManager script.", empty_schema(), |ctx, args| match packages_script(ctx, &args) {
         Ok(report) => ToolResult::text(report.to_string()),
         Err(error) => ToolResult::Error(error.to_string()),
     });

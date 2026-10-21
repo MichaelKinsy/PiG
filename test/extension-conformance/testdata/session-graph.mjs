@@ -1,5 +1,5 @@
 // The Node fixture of the session graph conformance rows (session_graph_test.go). It runs the script of testfixture/sessiongraph (Go), testdata/session-graph-rust and the inline Python fixture with Pi's own SessionManager, so the report it makes is Pi's.
-import { DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
+import { DefaultPackageManager, DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -418,6 +418,43 @@ async function loaderScript({ root, cwd, loaderAgentDir: agentDir }) {
   return r;
 }
 
+const resolvedReport = (paths) => ({
+  extensions: paths.extensions.length,
+  skills: paths.skills.map((skill) => ({ file: basename(skill.path), enabled: skill.enabled, source: skill.metadata.source, scope: skill.metadata.scope, origin: skill.metadata.origin })),
+  prompts: paths.prompts.length, themes: paths.themes.length,
+});
+
+async function packagesScript({ root, pmCwd: cwd, pmAgentDir: agentDir }) {
+  const pkg = join(root, "pkgs", "localpkg");
+  const r = {};
+  const settings = SettingsManager.create(cwd, agentDir);
+  const pm = new DefaultPackageManager({ cwd, agentDir, settingsManager: settings });
+  r.initial = { list: pm.listConfiguredPackages().length, installed: orNull(pm.getInstalledPath(pkg, "user")) };
+  const added = pm.addSourceToSettings(pkg);
+  const again = pm.addSourceToSettings(pkg);
+  r.added = { first: added, again, list: pm.listConfiguredPackages(), packages: settings.getPackages(), installed: orNull(pm.getInstalledPath(pkg, "user")) };
+  r.resolved = resolvedReport(await pm.resolve());
+
+  const events = [];
+  pm.setProgressCallback((event) => events.push(event.type + ":" + event.action));
+  await pm.installAndPersist(pkg, { local: true });
+  r.installed = { list: pm.listConfiguredPackages(), events };
+  r.removed = {
+    project: await pm.removeAndPersist(pkg, { local: true }), list: pm.listConfiguredPackages().length,
+    settings: pm.removeSourceFromSettings(pkg), settingsAgain: pm.removeSourceFromSettings(pkg),
+  };
+
+  pm.setProgressCallback(undefined);
+  r.temporary = resolvedReport(await pm.resolveExtensionSources([pkg], { temporary: true }));
+  r.updates = (await pm.checkForAvailableUpdates()).length;
+
+  const missing = [];
+  pm.addSourceToSettings("npm:not-installed-pkg");
+  const skipped = await pm.resolve(async (source) => { missing.push(source); return "skip"; });
+  r.missing = { calls: missing, skills: skipped.skills.length };
+  return r;
+}
+
 export default function (pi) {
   pi.registerTool({
     name: "session_manager", label: "session_manager", description: "Runs the SessionManager script.", parameters: { type: "object" },
@@ -434,5 +471,9 @@ export default function (pi) {
   pi.registerTool({
     name: "resource_loader", label: "resource_loader", description: "Runs the DefaultResourceLoader script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await loaderScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "package_manager", label: "package_manager", description: "Runs the DefaultPackageManager script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await packagesScript(params)) }] }),
   });
 }

@@ -3,7 +3,7 @@ import json
 import os
 
 import pig_sdk
-from pig_sdk import DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
+from pig_sdk import DefaultPackageManager, DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
 
 
 def shape(entries):
@@ -455,10 +455,60 @@ def loader_tool(ctx, params):
     return json.dumps(loader_script(ctx, params))
 
 
+def resolved_report(paths):
+    return {
+        "extensions": len(paths["extensions"]),
+        "skills": [{"file": os.path.basename(skill["path"]), "enabled": skill["enabled"], "source": skill["metadata"]["source"], "scope": skill["metadata"]["scope"], "origin": skill["metadata"]["origin"]} for skill in paths["skills"]],
+        "prompts": len(paths["prompts"]), "themes": len(paths["themes"]),
+    }
+
+
+def packages_script(ctx, args):
+    root, cwd, agent_dir = args["root"], args["pmCwd"], args["pmAgentDir"]
+    pkg = os.path.join(root, "pkgs", "localpkg")
+    r = {}
+    settings = SettingsManager.create(ctx, cwd, agent_dir)
+    pm = DefaultPackageManager(ctx, cwd=cwd, agent_dir=agent_dir, settings_manager=settings)
+    r["initial"] = {"list": len(pm.list_configured_packages()), "installed": pm.get_installed_path(pkg, "user")}
+    added = pm.add_source_to_settings(pkg)
+    again = pm.add_source_to_settings(pkg)
+    r["added"] = {"first": added, "again": again, "list": pm.list_configured_packages(), "packages": settings.get_packages(), "installed": pm.get_installed_path(pkg, "user")}
+    r["resolved"] = resolved_report(pm.resolve())
+
+    events = []
+    pm.set_progress_callback(lambda event: events.append(event["type"] + ":" + event["action"]))
+    pm.install_and_persist(pkg, True)
+    r["installed"] = {"list": pm.list_configured_packages(), "events": events}
+    r["removed"] = {
+        "project": pm.remove_and_persist(pkg, True), "list": len(pm.list_configured_packages()),
+        "settings": pm.remove_source_from_settings(pkg), "settingsAgain": pm.remove_source_from_settings(pkg),
+    }
+
+    pm.set_progress_callback(None)
+    r["temporary"] = resolved_report(pm.resolve_extension_sources([pkg], False, True))
+    r["updates"] = len(pm.check_for_available_updates())
+
+    missing = []
+    pm.add_source_to_settings("npm:not-installed-pkg")
+
+    def on_missing(source):
+        missing.append(source)
+        return "skip"
+
+    skipped = pm.resolve(on_missing)
+    r["missing"] = {"calls": missing, "skills": len(skipped["skills"])}
+    return r
+
+
+def packages_tool(ctx, params):
+    return json.dumps(packages_script(ctx, params))
+
+
 def new_extension():
     ext = pig_sdk.Extension("session-graph")
     ext.register_tool(pig_sdk.ToolDefinition(name="session_manager", label="session_manager", description="Runs the SessionManager script.", parameters={"type": "object"}, execute=session_manager_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="settings_manager", label="settings_manager", description="Runs the SettingsManager script.", parameters={"type": "object"}, execute=settings_manager_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="project_trust_store", label="project_trust_store", description="Runs the ProjectTrustStore script.", parameters={"type": "object"}, execute=trust_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="resource_loader", label="resource_loader", description="Runs the DefaultResourceLoader script.", parameters={"type": "object"}, execute=loader_tool))
+    ext.register_tool(pig_sdk.ToolDefinition(name="package_manager", label="package_manager", description="Runs the DefaultPackageManager script.", parameters={"type": "object"}, execute=packages_tool))
     return ext
