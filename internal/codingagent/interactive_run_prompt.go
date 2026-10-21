@@ -102,7 +102,7 @@ func (m *InteractiveMode) applyRunToolLoadout(names []string) {
 	m.selectActiveToolsByName(mergeUniqueStrings(nil, names...))
 }
 
-// beginRunPrompt installs the run's prompt inputs and forces the rendered prompt on the agent.
+// beginRunPrompt installs the run's prompt inputs and projects the rendered prompt when the run forces one.
 func (m *InteractiveMode) beginRunPrompt(gen uint64, run BeforeAgentStartRun) error {
 	m.runPromptMu.Lock()
 	defer m.runPromptMu.Unlock()
@@ -113,9 +113,7 @@ func (m *InteractiveMode) beginRunPrompt(gen uint64, run BeforeAgentStartRun) er
 	}
 	m.runPrompt = state
 	m.setTurnSystemPrompt(text)
-	if m.agent != nil {
-		m.agent.SetSystemPrompt(text)
-	}
+	m.projectRunPrompt(text, run.SystemPrompt != nil)
 	m.publishRunPrompt(&run)
 	return nil
 }
@@ -129,7 +127,30 @@ func (m *InteractiveMode) publishRunPrompt(run *BeforeAgentStartRun) {
 	}
 }
 
-// endRunPrompt clears the inputs of the run gen installed and forces the base prompt again, as agent-session.ts:1485 clears _runSystemPromptOptions before agent_settled. The loadout stays, as Pi keeps agent.state.tools. A newer run's inputs are left alone.
+// sessionRecordsPrompt reports whether a Session records the request's system prompt and its changes in the transcript (agent-session.ts:1743-1755). A mode without one has nowhere to record them, so its agent carries every prompt.
+func (m *InteractiveMode) sessionRecordsPrompt() bool {
+	_, ok := m.opts.SessionHandle.(interface{ SetRunPrompt(*BeforeAgentStartRun) })
+	return ok
+}
+
+// projectRunPrompt sets the system prompt the agent projects onto every request, or removes the projection. Pi projects a prompt only for the forceSystemPrompt a before_agent_start handler returned (agent-session.ts:1792-1807); every other prompt reaches the request as the transcript's sections and patch messages. A mode without a Session projects every prompt.
+func (m *InteractiveMode) projectRunPrompt(text string, forced bool) {
+	m.projectRunPromptOn(m.agent, text, forced)
+}
+
+// projectRunPromptOn is projectRunPrompt for target, the agent a turn hook runs on.
+func (m *InteractiveMode) projectRunPromptOn(target *agent.Agent, text string, forced bool) {
+	if target == nil {
+		return
+	}
+	if forced || !m.sessionRecordsPrompt() {
+		target.SetSystemPrompt(text)
+		return
+	}
+	target.ClearSystemPrompt()
+}
+
+// endRunPrompt clears the inputs of the run gen installed and ends the run's forced prompt, as agent-session.ts:1485 clears _runSystemPromptOptions before agent_settled. The loadout stays, as Pi keeps agent.state.tools. A newer run's inputs are left alone.
 func (m *InteractiveMode) endRunPrompt(gen uint64) {
 	m.runPromptMu.Lock()
 	defer m.runPromptMu.Unlock()
@@ -139,12 +160,10 @@ func (m *InteractiveMode) endRunPrompt(gen uint64) {
 	m.runPrompt = nil
 	m.publishRunPrompt(nil)
 	m.clearTurnSystemPrompt()
-	if m.agent != nil {
-		m.agent.SetSystemPrompt(m.baseSystemPrompt())
-	}
+	m.projectRunPrompt(m.baseSystemPrompt(), false)
 }
 
-// refreshForcedPrompt re-renders the prompt forced on the agent after the live tools change. During a run it rebuilds the run's prompt with the live tools, as agent-session.ts:700-709 does before the next turn; outside a run it forces the rebuilt base prompt.
+// refreshForcedPrompt re-renders the prompt the agent projects after the live tools change. During a run it rebuilds the run's prompt with the live tools, as agent-session.ts:700-709 does before the next turn; outside a run it rebuilds the base prompt. Only a forced prompt is projected unless the mode has no Session.
 func (m *InteractiveMode) refreshForcedPrompt() {
 	if m.agent == nil {
 		return
@@ -161,7 +180,7 @@ func (m *InteractiveMode) refreshForcedPrompt() {
 		text = rendered
 		m.setTurnSystemPrompt(text)
 	}
-	m.agent.SetSystemPrompt(text)
+	m.projectRunPrompt(text, m.runPrompt != nil && m.runPrompt.run.SystemPrompt != nil)
 }
 
 // installRunPromptTurnRefresh wraps the agent's next-turn hook once per agent. After the Session's hook has compacted, each later turn of a run refreshes the run's options and forces the re-rendered prompt, as agent-session.ts:864-883 (_installAgentNextTurnRefresh) rebuilds the run options before every later turn. A failing earlier hook stops the turn before the refresh, as there.
@@ -198,7 +217,7 @@ func (m *InteractiveMode) refreshRunPromptForNextTurn(target *agent.Agent) {
 		return
 	}
 	m.setTurnSystemPrompt(text)
-	target.SetSystemPrompt(text)
+	m.projectRunPromptOn(target, text, m.runPrompt.run.SystemPrompt != nil)
 }
 
 // renderRunPrompt renders the run's prompt with the live active tools through the builder every mode shares (BeforeAgentStartRun.PromptSections, agent-session.ts:1669-1683). A returned systemPrompt is exact. An opaque caller prompt is the preamble of the run's sections.

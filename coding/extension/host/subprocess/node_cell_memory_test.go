@@ -59,9 +59,10 @@ export default function (pi: any) {
       const gc = runInNewContext("gc");
       gc();
       gc();
+      const memory = process.memoryUsage();
       const shared = libraries.every(([type, agentDir]) => type === libraries[0][0] && agentDir === libraries[0][1]);
       const report = process.report.getReport() as any;
-      const text = JSON.stringify({ members: libraries.length, shared, workers: report.workers.length, rss: process.memoryUsage().rss, heap: process.memoryUsage().heapUsed, peak: peakRSS() });
+      const text = JSON.stringify({ members: libraries.length, shared, workers: report.workers.length, rss: memory.rss, heap: memory.heapUsed, external: memory.external, peak: peakRSS() });
       return { content: [{ type: "text", text }], details: {} };
     },
   });
@@ -69,12 +70,13 @@ export default function (pi: any) {
 `
 
 type nodeCellCost struct {
-	Members int   `json:"members"`
-	Shared  bool  `json:"shared"`
-	Workers int   `json:"workers"`
-	RSS     int64 `json:"rss"`
-	Heap    int64 `json:"heap"`
-	Peak    int64 `json:"peak"`
+	Members  int   `json:"members"`
+	Shared   bool  `json:"shared"`
+	Workers  int   `json:"workers"`
+	RSS      int64 `json:"rss"`
+	Heap     int64 `json:"heap"`
+	External int64 `json:"external"`
+	Peak     int64 `json:"peak"`
 }
 
 // nodeCellCatalog is shaped like the host's model catalog: 1,500 models of 25 providers, about 1.2 MB of JSON.
@@ -193,9 +195,9 @@ func TestNodeCellMembersShareOneIOWorker(t *testing.T) {
 	}
 }
 
-// Members two to five import the Pi SDK as the first does and evaluate no second copy of it: they add only their own module and runtime state. The base adds about 10.5 MiB per member, one IO Worker each.
+// Members two to five import the Pi SDK as the first does and evaluate no second copy of it: they add only their own module and runtime state. The Worker a member would add for its own IO is counted by TestNodeCellMembersShareOneIOWorker, not here.
 //
-// Under a load average of about 250 this branch measured 1.5 to 3.6 MiB per added member and the base 8.4 to 12.8 MiB; the budget sits between them.
+// The probe measures what the process retains after a forced full collection: V8's heapUsed plus the external memory it accounts. A second copy of the SDK's modules lives in that heap. The process's RSS is not that measure and cannot hold a budget of a few MiB: it also holds whatever of the startup transients was still resident when it was read. In 19 runs (8 unloaded, 11 under a load average of 160 to 235) one member read 131.8 to 152.2 MiB of RSS, 6.4 to 27.5 MiB below its peak, and five members 149.7 to 160.8 MiB, so RSS gave 0.8 to 7.2 MiB per added member and failed the 6 MiB budget once. The retained heap and external memory gave 0.20 to 0.25 MiB per added member in every one of those runs and in 46 more (8 unloaded, 38 loaded); a member that retains 8,000 small objects reads 0.79 MiB and one that retains 60,000 reads 4.35 MiB.
 func TestNodeCellAddedMembersStayWithinTheirOwnState(t *testing.T) {
 	t.Parallel()
 	one := nodeCellCostOf(t, 1, "", false)
@@ -203,11 +205,11 @@ func TestNodeCellAddedMembersStayWithinTheirOwnState(t *testing.T) {
 	if !five.Shared {
 		t.Fatal("cell members evaluated separate copies of the Pi library")
 	}
-	const budget = 6 << 20
-	added := (five.RSS - one.RSS) / 4
-	t.Logf("each added Node cell member costs %.1f MiB of RSS (1 member %.1f MiB, 5 members %.1f MiB)", float64(added)/(1<<20), float64(one.RSS)/(1<<20), float64(five.RSS)/(1<<20))
+	const budget = 2 << 20
+	added := ((five.Heap + five.External) - (one.Heap + one.External)) / 4
+	t.Logf("each added Node cell member retains %.2f MiB of heap and external memory (1 member %.1f MiB, 5 members %.1f MiB; RSS %.1f and %.1f MiB, not asserted)", float64(added)/(1<<20), float64(one.Heap+one.External)/(1<<20), float64(five.Heap+five.External)/(1<<20), float64(one.RSS)/(1<<20), float64(five.RSS)/(1<<20))
 	if added > budget {
-		t.Errorf("each added Node cell member costs %.1f MiB of RSS, want at most %d MiB", float64(added)/(1<<20), budget>>20)
+		t.Errorf("each added Node cell member retains %.2f MiB of heap and external memory, want at most %d MiB", float64(added)/(1<<20), budget>>20)
 	}
 }
 

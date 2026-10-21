@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+#
+# The status checks the repository ruleset "Default" (id 23613133) requires on main, from
+# gh api repos/MichaelKinsy/PiG/rulesets/23613133 (rule required_status_checks, GitHub Actions app).
+# Each is the aggregate job of a workflow. test/ci-images/merge_queue_test.go checks that every
+# one runs on merge_group, so a merge queue never waits for a check that no run reports.
+CI result
+Security result

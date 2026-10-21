@@ -242,8 +242,8 @@ func TestInstallVerifyRemove(t *testing.T) {
 	if fmt.Sprint(fields) != fmt.Sprint(want) {
 		t.Fatalf("runtime.json = %v, want %v", fields, want)
 	}
-	if entries, _ := os.ReadDir(root); len(entries) != 1 {
-		t.Fatalf("slot root holds %d entries, want only bun", len(entries))
+	if entries, _ := os.ReadDir(root); len(entries) != 2 || entries[0].Name() != installLockName || entries[1].Name() != "bun" {
+		t.Fatalf("slot root holds %v, want bun and the install lock", entries)
 	}
 	if message, err := runAction(t.Context(), "verify", root, "linux-x64", in); err != nil || !strings.Contains(message, "matches its pinned digest") {
 		t.Fatalf("verify = %q, %v", message, err)

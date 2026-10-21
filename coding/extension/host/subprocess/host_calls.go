@@ -11,10 +11,10 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // Upstream extensions call the host in process, so every synchronous host API
@@ -35,6 +35,9 @@ import (
 func startsAsync(method string) bool {
 	switch method {
 	case "facet.host":
+		return true
+	case CallFileMutationEnter:
+		// The call takes its place in the queue and then waits for the earlier mutations of the file: the lane advances once it is registered (CallInitiated), so a call made after it is not held behind another extension's long mutation.
 		return true
 	case "ui.addAutocompleteProvider", "ui.autocomplete.invoke":
 		// The public call remains synchronous in its SDK. A reverse factory/provider callback can reenter the host, so release its call lane at callback initiation.
@@ -246,6 +249,26 @@ func (h *Host) runSlotCall(slot string, through *slotCall) {
 	}
 }
 
+// outputOrderedCalls are the fire-and-forget calls whose effect an RPC client reads from the output stream, where its place among the command responses is part of the protocol.
+var outputOrderedCalls = map[string]bool{"ui.notify": true, "ui.setStatus": true, "ui.setWidget": true, "ui.setTitle": true, "ui.setEditorText": true}
+
+// awaitBackgroundGate holds a call that no request started while the embedder's gate is closed. The Node runtime sends such a call from a timer or I/O callback, which on Pi's one event loop cannot run in the middle of a chain of awaited handlers, only after the chain ends. The wait ends when the gate opens or the call's context ends.
+func (h *Host) awaitBackgroundGate(ctx context.Context, call *CallPayload) {
+	if call.ParentRequestID != "" || !outputOrderedCalls[call.Method] {
+		return
+	}
+	gate := h.backgroundGate.Load()
+	if gate == nil {
+		return
+	}
+	if open := (*gate)(); open != nil {
+		select {
+		case <-open:
+		case <-ctx.Done():
+		}
+	}
+}
+
 // runCall executes one extension→host call and sends its result on conn, the connection that delivered the call, even after an adoption replaces the
 // member's current connection. mark, when non-nil, is the call's initiation mark.
 func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func()) {
@@ -259,6 +282,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		defer h.uiBridge.releaseAutocompleteCall(conn, call)
 	}
 	defer releaseCall()
+	h.awaitBackgroundGate(callCtx, call)
 	// A dropped or refused call delivers none of the cross-process references it carried.
 	refuseReferences := func() {
 		if call.Method == "registerProvider" || call.Method == callProviderConfigRef {
@@ -322,7 +346,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	// upstream: a dialog's promise resolves on the line that answers it, so dialogs answered back to back continue, and the extension
 	// receives their results, in the order of the answers. A UI mode that reads the answers records that order through the settle
 	// function (extension.WithDialogSettle); the replies of the connection's dialogs are sent in it.
-	var dialogSlot *agent.SettleSlot
+	var dialogSlot *jsloop.SettleSlot
 	if callID != "" && takesInteractiveFocus(call.Method) {
 		dialogSlot = conn.dialogOrder.NewSlot()
 		defer dialogSlot.Close()
@@ -352,6 +376,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleParseFrontmatter(call)
 	case call.Method == CallParseDate:
 		result, err = h.handleParseDate(call)
+	case call.Method == CallFileMutationEnter:
+		result, err = h.handleFileMutationEnter(callCtx, conn, call)
+	case call.Method == CallFileMutationExit:
+		result, err = h.handleFileMutationExit(conn, call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:
@@ -360,6 +388,14 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleVirtualModelCall(callCtx, me, call)
 	case call.Method == CallExecuteTool || call.Method == CallExecuteToolCancel:
 		result, err = h.handleExecuteToolCall(callCtx, conn, call)
+	case call.Method == CallUICancelDialog:
+		var cancel UICancelDialog
+		if err = json.Unmarshal(call.Args, &cancel); err != nil {
+			err = fmt.Errorf("decode %s: %w", call.Method, err)
+			break
+		}
+		h.nested.cancel(conn, dialogSignalKey(cancel.DialogID))
+		result = &CallResultPayload{}
 	case call.Method == "provider.retain" || call.Method == "provider.release":
 		result, err = h.handleProviderReference(conn, call)
 	case call.Method == CallProviderObject:
@@ -378,7 +414,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		// The render is a pure function of the options the call carries, so a Host with no UI bridge (an SDK session) answers it too.
 		result, err = renderSystemPromptCall(call.Args)
 	case h.uiBridge != nil:
-		result, err = h.uiBridge.handleCall(callCtx, me.config.Name, conn, call)
+		dialogCtx := callCtx
+		// The extension's options.signal dismisses its own dialog, and only that one.
+		if id := dialogIDOf(call); id != "" {
+			if signal := h.nested.signal(conn, dialogSignalKey(id)); signal != nil {
+				var cancel context.CancelFunc
+				dialogCtx, cancel = context.WithCancel(callCtx)
+				defer cancel()
+				defer context.AfterFunc(signal, cancel)()
+			}
+		}
+		result, err = h.uiBridge.handleCall(dialogCtx, me.config.Name, conn, call)
 	case h.onCall != nil:
 		result, err = h.onCall(me.config.Name, call)
 	case isEarlyModelStreamCall(call.Method) && earlyModelStream.Load() != nil:

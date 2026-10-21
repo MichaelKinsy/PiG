@@ -2,8 +2,11 @@
 
 name: Security and supply chain
 
+# Security result is a required check, so every event that can land a change
+# reports it: a pull request, and the merge queue's merge_group run.
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
   schedule:
@@ -33,11 +36,11 @@ jobs:
         id: classify
         env:
           EVENT: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         shell: bash
-        # Source analysis skips pull requests that change only project prose
-        # and repository metadata. Secret scanning always runs.
+        # Source analysis skips pull requests and merge groups that change only
+        # project prose and repository metadata. Secret scanning always runs.
         run: automation/ci/classify-changes.sh "$EVENT" "$BASE_SHA" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
 
   source-assurance:
@@ -55,7 +58,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -113,14 +116,14 @@ jobs:
       - name: Analyze shell scripts
         run: find automation docs/site/public -type f -name '*.sh' -print0 | xargs -0 shellcheck
       - name: Generate source SBOMs
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: .
           format: spdx-json
           output-file: evidence/source.spdx.json
           upload-artifact: false
       - name: Generate source CycloneDX inventory
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: .
           format: cyclonedx-json
@@ -144,7 +147,7 @@ jobs:
             --out evidence/inventory-validation.json
       - name: Upload source evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: source-assurance-evidence
           path: evidence/
@@ -159,14 +162,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # gitleaks-action supports only push, pull_request, workflow_dispatch and schedule; on merge_group it exits with an
+      # error. The commits a merge group adds are the queued pull request's own, which the pull_request run scanned.
       - name: Gitleaks
+        if: github.event_name != 'merge_group'
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # base and head are empty outside a merge group, which keeps the action's per-event range there; in a merge group
+      # they scan the commits the queue added to the base branch.
       - name: TruffleHog verified findings
-        uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
+        uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
         with:
           path: ./
+          base: ${{ github.event.merge_group.base_sha }}
+          head: ${{ github.event.merge_group.head_sha }}
           extra_args: --only-verified
 
   dependency-review:
@@ -233,14 +243,14 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           config: ${{ matrix.config }}
       - if: matrix.build-mode == 'manual'
         run: go build ./...
-      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+      - uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           category: /language:${{ matrix.language }}
 

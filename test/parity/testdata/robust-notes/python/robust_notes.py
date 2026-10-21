@@ -66,11 +66,20 @@ def new_extension() -> pig_sdk.Extension:
         notes = [entry for entry in ctx.get_entries() if entry.get("type") == "custom" and entry.get("customType") == "robust-note"]
         ctx.notify(f"robust note {len(notes)}: {args}", "info")
 
+    def widgets(ctx, _args):
+        ctx.set_widget("robust-w", ["w-one"])
+        ctx.notify("w-n1", "info")
+        ctx.set_widget("robust-w", ["w-one"])
+        ctx.set_widget("robust-w", None)
+        ctx.set_widget("robust-w", ["w-two"])
+        ctx.notify("w-n2", "info")
+
     def pick(ctx, _args):
         choice = ctx.custom(Picker(), {"overlay": True})
         ctx.notify(f"robust picked: {choice if choice is not None else 'nothing'}", "info")
 
     ext.command("robust-settings", "Show the robust-notes settings", show_settings)
     ext.command("robust-note", "Save a note", save_note)
+    ext.command("robust-widgets", "Set, repeat, clear and reset a widget around notifications", widgets)
     ext.command("robust-pick", "Pick an item in an overlay", pick)
     return ext

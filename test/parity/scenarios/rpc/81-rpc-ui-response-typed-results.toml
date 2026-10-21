@@ -1,0 +1,113 @@
+# Behavior family: rpc
+# Surface: the answer to an RPC extension dialog. rpc-mode.ts:137-150 and 254-266 resolve a dialog with whatever JSON the client's extension_ui_response carries and check no
+# type: `"value" in r ? r.value : undefined` for select, input and editor (so 5, null, an object and an array reach the extension; an absent `value` is undefined),
+# `"confirmed" in r ? r.confirmed : false` for confirm (so "yes", null and 0 reach the extension), and `"cancelled" in r && r.cancelled` by JavaScript truthiness.
+# PiG decoded `value` into a string, `confirmed` into a bool and `cancelled` into a bool, so a wrong-typed response was dropped and the dialog stayed pending.
+# ui.custom() resolves undefined in RPC mode without a request.
+
+name = "81-rpc-ui-response-typed-results"
+description = "RPC: an extension dialog resolves with the JSON type the client's extension_ui_response sent, as Pi's does."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 2
+
+[[rpc.steps]]
+line = '{"id":"t","type":"prompt","message":"/typed"}'
+wait_contains = ['"title":"select-number"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:select-number}}","value":5}'
+wait_contains = ['"title":"select-null"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:select-null}}","value":null}'
+wait_contains = ['"title":"select-object"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:select-object}}","value":{"a":[1,"x"]}}'
+wait_contains = ['"title":"select-absent"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:select-absent}}","confirmed":true}'
+wait_contains = ['"title":"select-cancelled-truthy"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:select-cancelled-truthy}}","cancelled":"no","value":"kept"}'
+wait_contains = ['"title":"select-cancelled-falsy"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:select-cancelled-falsy}}","cancelled":0,"value":"kept"}'
+wait_contains = ['"title":"confirm-string"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:confirm-string}}","confirmed":"yes"}'
+wait_contains = ['"title":"confirm-null"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:confirm-null}}","confirmed":null}'
+wait_contains = ['"title":"confirm-zero"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:confirm-zero}}","confirmed":0}'
+wait_contains = ['"title":"confirm-absent"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:confirm-absent}}","value":"x"}'
+wait_contains = ['"title":"input-array"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:input-array}}","value":[1,2]}'
+wait_contains = ['"title":"editor-number"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:editor-number}}","value":7.5}'
+wait_contains = ['"message":"results:']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/ui-typed-results.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/ui-typed-results.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"t","type":"response","command":"prompt","success":true',
+  '"message":"results:{\"select-number\":5,\"select-null\":null,\"select-object\":{\"a\":[1,\"x\"]},\"select-absent\":\"<undefined>\",\"select-cancelled-truthy\":\"<undefined>\",\"select-cancelled-falsy\":\"kept\",\"confirm-string\":\"yes\",\"confirm-null\":null,\"confirm-zero\":0,\"confirm-absent\":false,\"input-array\":[1,2],\"editor-number\":7.5,\"custom\":\"<undefined>\"}',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 10
+json_output_equal = true
+stderr_equal = true
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."

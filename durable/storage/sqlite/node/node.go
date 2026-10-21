@@ -6,7 +6,10 @@ package node
 // Ports packages/durable/src/storage/sqlite/node.ts
 
 import (
+	"context"
+
 	chordnode "github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/durable/internal/schemabackup"
 	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
 )
 
@@ -48,12 +51,17 @@ type NodeSqliteStorageOptions struct {
 }
 
 // OpenNodeSqliteStorage opens or creates file-backed durable storage, optionally under a table prefix. An invalid
-// prefix fails before the database or its directory is created.
+// prefix fails before the database or its directory is created. A store at an older schema version is copied to
+// <path>.schema-<N>.bak before it is upgraded (D188).
 func OpenNodeSqliteStorage(path string, options NodeSqliteStorageOptions) (*durablesqlite.SqliteStorage, error) {
-	if options.Prefix != nil {
-		if err := durablesqlite.ValidateSqliteSchemaPrefix(*options.Prefix); err != nil {
-			return nil, err
-		}
+	schema, err := durablesqlite.CreateSqliteSchema(options.Prefix)
+	if err != nil {
+		return nil, err
+	}
+	// pig divergence (D188): a store an older Pi release wrote is copied before the migrations upgrade it.
+	//portlint:allow ctxbackground Pi's openNodeSqliteStorage takes no abort signal and the open cannot be cancelled by a caller; the copy is a bounded local VACUUM INTO
+	if _, err := schemabackup.BeforeUpgrade(context.Background(), path, schema.Tables.DurableSchema, durablesqlite.CurrentSqliteSchemaVersion); err != nil {
+		return nil, err
 	}
 	database, err := chordnode.OpenNodeSqliteDatabase(path, options.NodeSqliteDatabaseOptions)
 	if err != nil {

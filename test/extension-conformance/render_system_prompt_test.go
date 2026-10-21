@@ -269,36 +269,35 @@ def new_extension():
 `, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
-		// Rust reads Pi's event.systemPrompt with ctx.current_system_prompt(data): the handler holds data mutably, so ctx
-		// cannot read it. ctx.get_system_prompt() then returns the prompt that read rendered.
-		source = fmt.Sprintf(`use pig_sdk::{Context,Extension,Schema};
+		// A Rust handler edits and reads the emission's options through the BeforeAgentStartEvent it receives, which shares them with ctx.
+		source = fmt.Sprintf(`use pig_sdk::{BeforeAgentStartEvent,Context,Extension,Schema};
 use std::sync::{Arc,Mutex};
-fn read(ctx:&Context,data:&Schema)->Result<String,String> {
- let event=ctx.current_system_prompt(data).map_err(|e| e.to_string())?;
+fn read(ctx:&Context,event:&BeforeAgentStartEvent)->Result<String,String> {
+ let from_event=event.system_prompt().map_err(|e| e.to_string())?;
  let current=ctx.get_system_prompt().map_err(|e| e.to_string())?;
- Ok(format!("event={} ctx={}",event,current))
+ Ok(format!("event={} ctx={}",from_event,current))
 }
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
  let seen=Arc::new(Mutex::new(Vec::<String>::new()));
  let record=seen.clone();
- e.on_event_result("before_agent_start",move |ctx,data| {
-  let first=read(ctx,data)?;
-  data["systemPromptOptions"]["appendSystemPrompt"]=Schema::String("APPENDED-BY-FIRST".into());
-  let edited=read(ctx,data)?;
+ e.on_before_agent_start(move |ctx,event| {
+  let first=read(ctx,event)?;
+  event.edit_system_prompt_options(|options| options["appendSystemPrompt"]=Schema::String("APPENDED-BY-FIRST".into()));
+  let edited=read(ctx,event)?;
   *record.lock().unwrap_or_else(|p| p.into_inner())=vec![format!("first {}",first),format!("first after-edit {}",edited)];
   Ok(None)
  });
  let record=seen.clone();
- e.on_event_result("before_agent_start",move |ctx,data| {
-  let second=read(ctx,data)?;
+ e.on_before_agent_start(move |ctx,event| {
+  let second=read(ctx,event)?;
   record.lock().unwrap_or_else(|p| p.into_inner()).push(format!("second {}",second));
   let mut result=Schema::Object(Default::default());
   result["systemPrompt"]=Schema::String("FORCED-BY-SECOND".into());
   Ok(Some(result))
  });
- e.on_event_result("before_agent_start",move |ctx,data| {
-  let third=read(ctx,data)?;
+ e.on_before_agent_start(move |ctx,event| {
+  let third=read(ctx,event)?;
   let mut seen=seen.lock().unwrap_or_else(|p| p.into_inner());
   seen.push(format!("third {}",third));
   let mut message=Schema::Object(Default::default());

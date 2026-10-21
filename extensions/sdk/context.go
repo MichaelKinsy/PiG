@@ -368,13 +368,18 @@ func (c Context) Notify(message, level string) {
 	})
 }
 
-// SetStatus sets a status text in the footer/status bar.
-// Empty text clears the entry for this key.
+// SetStatus sets a status text in the footer/status bar. An empty text is a text, as in Pi (RPC mode writes it); [Context.ClearStatus] removes the entry, as
+// Pi's setStatus(key, undefined) does.
 func (c Context) SetStatus(key, text string) {
 	_, _ = c.callHost("ui.setStatus", map[string]string{
 		"key":  key,
 		"text": text,
 	})
+}
+
+// ClearStatus removes the status entry for this key: Pi's setStatus(key, undefined).
+func (c Context) ClearStatus(key string) {
+	_, _ = c.callHost("ui.setStatus", map[string]string{"key": key})
 }
 
 // SetWorkingMessage sets the message shown during LLM streaming. An empty string is a message, shown as an empty label, as in Pi
@@ -428,8 +433,12 @@ func (c Context) SetTitle(title string) {
 // ── User Interaction (blocking) ──────────────────────────────────────────────
 
 // Select shows a selector and returns the user's choice.
-// Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
-func (c Context) Select(title string, options []string) (string, bool, error) {
+// Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails.
+//
+// The result is the JSON value the user's client answered with, as Pi's select() resolves it: a string for every client that follows Pi's protocol, and in RPC mode
+// whatever JSON the client sent (a number, `null`, a boolean, an object or an array). It is decoded as [encoding/json] decodes into an any: string, float64, bool, nil,
+// map[string]any or []any. ok is false when Pi's result is undefined: cancelled, timed out, or an answer without a value; a `null` value is (nil, true).
+func (c Context) Select(title string, options []string) (any, bool, error) {
 	return c.selectDialog(map[string]any{"title": title, "options": options})
 }
 
@@ -446,89 +455,86 @@ type DialogOptions struct {
 }
 
 // SelectWithOptions is [Context.Select] with upstream's dialog options.
-func (c Context) SelectWithOptions(title string, options []string, opts DialogOptions) (string, bool, error) {
+func (c Context) SelectWithOptions(title string, options []string, opts DialogOptions) (any, bool, error) {
 	return c.selectDialog(map[string]any{"title": title, "options": options, "opts": opts})
 }
 
 // ConfirmWithOptions is [Context.Confirm] with upstream's dialog options.
-func (c Context) ConfirmWithOptions(title, message string, opts DialogOptions) (bool, error) {
+func (c Context) ConfirmWithOptions(title, message string, opts DialogOptions) (any, error) {
 	return c.confirmDialog(map[string]any{"title": title, "message": message, "opts": opts})
 }
 
 // InputWithOptions is [Context.Input] with upstream's dialog options.
-func (c Context) InputWithOptions(title, placeholder string, opts DialogOptions) (string, bool, error) {
-	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder, "opts": opts})
+func (c Context) InputWithOptions(title, placeholder string, opts DialogOptions) (any, bool, error) {
+	return c.inputDialog(withNonEmpty(map[string]any{"title": title, "opts": opts}, "placeholder", placeholder))
 }
 
-func (c Context) selectDialog(args map[string]any) (string, bool, error) {
+// withNonEmpty sets args[key] to value unless it is empty. An optional dialog member (Pi's `placeholder?`, `prefill?`) is undefined when the extension passes
+// none, and a Go string cannot be undefined: an empty one is the unset member, as in every native SDK. The host then writes no such member to an RPC client,
+// as Pi does, where it writes `placeholder: ""` for the empty string a Node extension can pass.
+func withNonEmpty(args map[string]any, key, value string) map[string]any {
+	if value != "" {
+		args[key] = value
+	}
+	return args
+}
+
+func (c Context) selectDialog(args map[string]any) (any, bool, error) {
+	return c.valueDialog("ui.select", "selected", args)
+}
+
+// valueDialog calls a select, input or editor dialog and returns the member the host replies with as decoded JSON; ok is false for Pi's undefined result.
+func (c Context) valueDialog(method, member string, args map[string]any) (any, bool, error) {
 	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.select", args)
+	result, err := c.callHost(method, args)
 	if err := callResultError(result, err); err != nil {
-		return "", false, err
+		return nil, false, err
 	}
-	var resp struct {
-		Selected string `json:"selected"`
-		Ok       bool   `json:"ok"`
-	}
+	var resp map[string]json.RawMessage
 	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Selected, resp.Ok, nil
+	if string(resp["ok"]) != "true" {
+		return nil, false, nil
+	}
+	var value any
+	_ = json.Unmarshal(resp[member], &value)
+	return value, true, nil
 }
 
 // Confirm shows a yes/no confirmation dialog and surfaces host UI failures.
-func (c Context) Confirm(title, message string) (bool, error) {
+// The result is the JSON value the client answered with, as Pi's confirm() resolves it: a bool for every client that follows Pi's protocol, false when cancelled or
+// unanswered, and in RPC mode whatever JSON the client sent in `confirmed` (`null` and non-booleans included), decoded as for [Context.Select].
+func (c Context) Confirm(title, message string) (any, error) {
 	return c.confirmDialog(map[string]any{"title": title, "message": message})
 }
 
-func (c Context) confirmDialog(args map[string]any) (bool, error) {
+func (c Context) confirmDialog(args map[string]any) (any, error) {
 	c.reportRequestState("blocked", "user")
 	result, err := c.callHost("ui.confirm", args)
 	if err := callResultError(result, err); err != nil {
 		return false, err
 	}
 	var resp struct {
-		Confirmed bool `json:"confirmed"`
+		Confirmed any `json:"confirmed"`
 	}
+	resp.Confirmed = false
 	_ = json.Unmarshal(result.Result, &resp)
 	return resp.Confirmed, nil
 }
 
 // Input shows a text input dialog.
-// Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
-func (c Context) Input(title, placeholder string) (string, bool, error) {
-	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder})
+// Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails. The result is typed as for [Context.Select].
+func (c Context) Input(title, placeholder string) (any, bool, error) {
+	return c.inputDialog(withNonEmpty(map[string]any{"title": title}, "placeholder", placeholder))
 }
 
-func (c Context) inputDialog(args map[string]any) (string, bool, error) {
-	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.input", args)
-	if err := callResultError(result, err); err != nil {
-		return "", false, err
-	}
-	var resp struct {
-		Text string `json:"text"`
-		Ok   bool   `json:"ok"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Text, resp.Ok, nil
+func (c Context) inputDialog(args map[string]any) (any, bool, error) {
+	return c.valueDialog("ui.input", "text", args)
 }
 
 // Editor opens a multi-line editor.
-// Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
-func (c Context) Editor(title, prefill string) (string, bool, error) {
-	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.editor", map[string]any{
-		"title":   title,
-		"prefill": prefill,
-	})
-	if err := callResultError(result, err); err != nil {
-		return "", false, err
-	}
-	var resp struct {
-		Text string `json:"text"`
-		Ok   bool   `json:"ok"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Text, resp.Ok, nil
+// Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails. The result is typed as for [Context.Select].
+func (c Context) Editor(title, prefill string) (any, bool, error) {
+	return c.valueDialog("ui.editor", "text", withNonEmpty(map[string]any{"title": title}, "prefill", prefill))
 }
 
 // ── Message Injection ────────────────────────────────────────────────────────
@@ -1651,8 +1657,10 @@ func (c Context) SetTheme(name string) (bool, string) {
 // A non-nil []string with no options goes out as a widget_push frame without a
 // width, which the host applies in arrival order and never answers: Pi's
 // setWidget returns void, so it may be called from an [Context.OnWidthChange]
-// handler, and the error reports only a failure to send. Every other shape
-// waits for the host.
+// handler, and the error reports only a failure to send. In RPC mode, where
+// the width never changes and Pi writes one request per call, in call order and
+// before the handler's response, the list waits for the host like every other
+// shape: an unanswered frame has no place in that order.
 //
 // A [kit.View] is the kit form of a widget component factory (D107): the host
 // renders it at the widget's width every frame. Without options it goes out
@@ -1663,7 +1671,7 @@ func (c Context) SetWidget(key string, content any, options ...WidgetOptions) er
 		return c.setWidgetView(key, view, options)
 	}
 	c.ext.replaceViewSurface(widgetViewSurfaceID(key), nil)
-	if lines, ok := content.([]string); ok && lines != nil && len(options) == 0 {
+	if lines, ok := content.([]string); ok && lines != nil && len(options) == 0 && !c.rpcMode() {
 		return c.ext.conn.pushWidget(key, lines)
 	}
 	var opts WidgetOptions
@@ -1727,10 +1735,16 @@ func (c Context) SetHeader(lines []string) error {
 // an equivalent JSON object) as options. Other factory values retain the
 // explicit unsupported error because live host TUI component objects cannot
 // cross a subprocess boundary. With no UI, Custom returns nil without invoking
-// component callbacks.
+// component callbacks. In RPC mode it also returns nil without invoking them,
+// as Pi's rpc-mode.ts custom() resolves undefined; the host call keeps the
+// dialog scope, as the Node runtime's does.
 func (c Context) Custom(factory any, options any) (any, error) {
 	if !c.HasUI() {
 		return nil, nil
+	}
+	if c.Mode() == "rpc" {
+		result, err := c.callHost("ui.custom", map[string]any{"key": fmt.Sprintf("custom-%d", c.ext.overlaySeq.Add(1))})
+		return nil, callResultError(result, err)
 	}
 	c.reportRequestState("blocked", "user")
 	var component overlayComponent

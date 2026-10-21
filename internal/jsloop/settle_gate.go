@@ -1,11 +1,6 @@
-package agent
+package jsloop
 
-import (
-	"context"
-	"strconv"
-	"sync"
-	"sync/atomic"
-)
+import "sync"
 
 // SettleGate orders actions that several goroutines run after waiting on an
 // event loop's answers, in the order the answers arrived. Pi runs everything
@@ -52,6 +47,9 @@ const (
 
 // NewSlot returns a slot that holds no place until it settles.
 func (g *SettleGate) NewSlot() *SettleSlot { return &SettleSlot{gate: g} }
+
+// Gate returns the gate the slot belongs to.
+func (s *SettleSlot) Gate() *SettleGate { return s.gate }
 
 // Settle gives the slot its place after every slot that already settled. The
 // goroutine that reads the answer calls it before it hands the answer to the
@@ -112,47 +110,4 @@ func (s *SettleSlot) Close() {
 		g.turn.Broadcast()
 	}
 	s.state = slotFinished
-}
-
-type toolSettleKey struct{}
-
-type toolSettle struct {
-	slot       *SettleSlot
-	toolCallID string
-	batch      uint64
-}
-
-// toolBatches numbers the parallel batches of the process.
-var toolBatches atomic.Uint64
-
-// withToolSettle carries the slot of one call of a parallel batch, and the batch's number, to its tool.
-func withToolSettle(ctx context.Context, slot *SettleSlot, toolCallID string, batch uint64) context.Context {
-	return context.WithValue(ctx, toolSettleKey{}, toolSettle{slot: slot, toolCallID: toolCallID, batch: batch})
-}
-
-// ToolBatchFromContext returns the identifier of the parallel batch the call toolCallID belongs to, "" for a call outside one (a sequential batch, or a call
-// another tool makes inside its own). It is the same for every call of a batch and differs between batches. A runtime that executes the batch's calls on
-// threads of its own uses it to order only the calls of one batch, as Pi's single thread orders them.
-func ToolBatchFromContext(ctx context.Context, toolCallID string) string {
-	settle, ok := ctx.Value(toolSettleKey{}).(toolSettle)
-	if !ok || settle.toolCallID != toolCallID {
-		return ""
-	}
-	return strconv.FormatUint(settle.batch, 10)
-}
-
-// ToolSettleFromContext returns the slot of the call toolCallID of a parallel
-// batch. A tool whose result arrives from outside this process settles it from
-// the goroutine that reads the result, so the batch emits the calls'
-// tool_execution_end events in the order the results arrived (agent-loop.ts
-// executeToolCallsParallel: each call's end follows its own settle). A tool
-// that never settles it settles it when its Execute returns. The slot belongs
-// to one call: a call another tool makes inside its own (a different
-// toolCallID) gets none.
-func ToolSettleFromContext(ctx context.Context, toolCallID string) *SettleSlot {
-	settle, ok := ctx.Value(toolSettleKey{}).(toolSettle)
-	if !ok || settle.toolCallID != toolCallID {
-		return nil
-	}
-	return settle.slot
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
 // fusedServes maps an extension name to its in-process serve func. Populated by
@@ -56,8 +57,8 @@ func Register() {
 	sdk.SetHostHelpers(HostHelpers())
 }
 
-// HostHelpers are the host's parsers for a fused extension. Its factory runs in this process, before any connection to the host exists, so the SDK's
-// frontmatter and Date.parse helpers call them directly.
+// HostHelpers are the host's parsers and file mutation queue for a fused extension. Its factory runs in this process, before any connection to the host exists, so
+// the SDK's frontmatter and Date.parse helpers call them directly, and its withFileMutationQueue is the process-wide queue the built-in edit and write tools use.
 func HostHelpers() *sdk.HostHelpers {
 	return &sdk.HostHelpers{
 		ParseFrontmatter: func(content string) (sdk.ParsedFrontmatter, error) {
@@ -65,6 +66,10 @@ func HostHelpers() *sdk.HostHelpers {
 			return sdk.ParsedFrontmatter{Frontmatter: frontmatter, Body: body}, err
 		},
 		ParseDate: subprocess.ParseDateMs,
+		WithFileMutationQueue: func(filePath string, fn func() error) error {
+			_, err := tools.WithFileMutationQueue(filePath, func() (struct{}, error) { return struct{}{}, fn() })
+			return err
+		},
 	}
 }
 

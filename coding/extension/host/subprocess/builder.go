@@ -149,8 +149,8 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 			return nil, err
 		}
 
-		// Compute content hash of source files.
-		hash, err := hashSourceDir(srcDir, buildType)
+		// Compute content hash of source files, and the stamp that lets the build prove they did not change.
+		hash, stamp, err := hashSourceDirStamped(srcDir, buildType)
 		if err != nil {
 			return nil, fmt.Errorf("hash source: %w", err)
 		}
@@ -215,6 +215,14 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 					return "", fmt.Errorf("node launcher: %w", err)
 				}
 			}
+			// The compiler read the sources after the hash, past the wait for a peer's build and through its own compile. A
+			// source edited since is compiled into an artifact its digest does not describe, which the cache would serve for
+			// the original source once the edit is reverted. A Node launcher bakes no source.
+			if buildType != "node" {
+				if err := sourceUnchanged(srcDir, buildType, stamp); err != nil {
+					return "", err
+				}
+			}
 			return out, nil
 		}, keepAlso...)
 		if err != nil {
@@ -230,8 +238,7 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 		// keying only on stagedSDK would leave every such build unfingerprinted and
 		// indistinguishable from one of unknown provenance.
 		if fp, err := b.buildSDKFingerprint(srcDir, stagedSDK, buildType); err == nil && fp != "" {
-			marker := filepath.Join(filepath.Dir(entry.ArtifactPath), sdkFingerprintFile)
-			_ = os.WriteFile(marker, []byte(fp), 0o644)
+			recordSDKFingerprint(filepath.Dir(entry.ArtifactPath), fp)
 		}
 
 		return &BuildResult{BinaryPath: entry.ArtifactPath, Cached: entry.Reused, Hash: hash, Language: buildType}, nil
@@ -285,31 +292,54 @@ func detectBuildType(src string) (string, error) {
 	return "", fmt.Errorf("cannot detect build type in %s: need go.mod, Cargo.toml, package.json, or a .ts/.js entrypoint", src)
 }
 
+// sourceUnchanged reports an error when the source files of srcDir no longer hash to the stamp read before the build. Nothing is
+// cached for a build that raced an edit; the next start hashes the edited source and builds it.
+func sourceUnchanged(srcDir, buildType, stamp string) error {
+	_, now, err := hashSourceDirStamped(srcDir, buildType)
+	if err != nil {
+		return fmt.Errorf("hash %s after its build: %w", srcDir, err)
+	}
+	if now != stamp {
+		return fmt.Errorf("the source of %s changed while it was being built, so nothing was cached; start again to build the current source", srcDir)
+	}
+	return nil
+}
+
 // hashSourceDir computes a SHA-256 hash of all relevant source files.
 func hashSourceDir(src, buildType string) (string, error) {
+	digest, _, err := hashSourceDirStamped(src, buildType)
+	return digest, err
+}
+
+// hashSourceDirStamped is hashSourceDir that also returns the stamp of the same inputs: their hash without the lock files a compiler
+// writes into the source directory (cargo creates or rewrites Cargo.lock there). A stamp read before a build and one read after it
+// are equal unless a source file changed in between, which the digests cannot say for a crate that has no Cargo.lock yet.
+func hashSourceDirStamped(src, buildType string) (digest, stamp string, err error) {
 	lexicalRoot, err := filepath.Abs(src)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	physicalRoot, err := filepath.EvalSymlinks(lexicalRoot)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	src = physicalRoot
 	h := sha256.New()
-	h.Write([]byte(buildType))
+	s := sha256.New()
+	mix := func(b []byte) { h.Write(b); s.Write(b) }
+	mix([]byte(buildType))
 	if buildType == "node" {
 		// Node launchers embed the absolute entrypoint path. Include the
 		// lexical source path so a moved checkout cannot reuse a stale
 		// wrapper that points at the previous location. Source bytes and
 		// relative dependencies are read from the resolved physical root.
-		h.Write([]byte(lexicalRoot))
-		h.Write([]byte(nodeRuntimeVersion))
-		h.Write([]byte(nodeLauncherFormat))
+		mix([]byte(lexicalRoot))
+		mix([]byte(nodeRuntimeVersion))
+		mix([]byte(nodeLauncherFormat))
 		// The embedded runtime's digest: changes to runtime.mjs, cli.mjs,
 		// the loader, or any shim invalidate cached launchers without
 		// requiring a manual nodeRuntimeVersion bump.
-		h.Write(nodeRuntimeDigest())
+		mix(nodeRuntimeDigest())
 	}
 
 	var exts []string
@@ -324,20 +354,21 @@ func hashSourceDir(src, buildType string) (string, error) {
 
 	info, err := os.Stat(src)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if !info.IsDir() {
 		data, err := os.ReadFile(src)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
-		h.Write([]byte(filepath.Base(src)))
-		h.Write(data)
-		return hex.EncodeToString(h.Sum(nil)), nil
+		mix([]byte(filepath.Base(src)))
+		mix(data)
+		digest = hex.EncodeToString(h.Sum(nil))
+		return digest, digest, nil
 	}
 
-	if err := hashDirSources(h, src, exts); err != nil {
-		return "", err
+	if err := hashDirSourcesStamped(h, s, src, exts); err != nil {
+		return "", "", err
 	}
 
 	// Go extensions resolve the pig SDK (and any other local dependency)
@@ -353,18 +384,18 @@ func hashSourceDir(src, buildType string) (string, error) {
 	if buildType == "go" {
 		dirs, err := goLocalReplaceDirs(src)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		for _, dir := range dirs {
-			h.Write([]byte("\x00replace\x00"))
-			h.Write([]byte(dir))
-			if err := hashDirSources(h, dir, exts); err != nil {
-				return "", err
+			mix([]byte("\x00replace\x00"))
+			mix([]byte(dir))
+			if err := hashDirSourcesStamped(h, s, dir, exts); err != nil {
+				return "", "", err
 			}
 		}
 	}
 
-	return hex.EncodeToString(h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), hex.EncodeToString(s.Sum(nil)), nil
 }
 
 // hashDirSources walks root and mixes every source file whose name ends in one
@@ -372,6 +403,12 @@ func hashSourceDir(src, buildType string) (string, error) {
 // filepath.WalkDir order. Hidden, vendor, build-output, and dependency
 // directories are skipped to match what the compiler actually reads.
 func hashDirSources(h hash.Hash, root string, exts []string) error {
+	return hashDirSourcesStamped(h, nil, root, exts)
+}
+
+// hashDirSourcesStamped is hashDirSources that mixes the same files into stamp too, except the lock files a compiler writes into the
+// source directory. A nil stamp is skipped.
+func hashDirSourcesStamped(h, stamp hash.Hash, root string, exts []string) error {
 	return walkDirSources(root, exts, func(path, rel string) error {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -379,6 +416,10 @@ func hashDirSources(h hash.Hash, root string, exts []string) error {
 		}
 		h.Write([]byte(rel))
 		h.Write(data)
+		if stamp != nil && !strings.HasSuffix(path, ".lock") {
+			stamp.Write([]byte(rel))
+			stamp.Write(data)
+		}
 		return nil
 	})
 }

@@ -3,7 +3,7 @@ import { access as fsAccess, readFile as fsReadFile, writeFile as fsWriteFile } 
 import { Type } from "../../../../typebox.mjs";
 import { splitBom } from "../../utils/text.js";
 import { applyEditsToNormalizedContent, detectLineEnding, generateDiffString, generateUnifiedPatch, normalizeToLF, restoreLineEndings, } from "./edit-diff.js";
-import { withFileMutationQueue } from "./file-mutation-queue.js";
+import { withFileMutationQueue } from "../../../../file-mutation-queue-bridge.mjs";
 import { resolveToCwd } from "./path-utils.js";
 import { editRenderers } from "./renderers/edit.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";

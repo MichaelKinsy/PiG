@@ -37,6 +37,9 @@ func TestBundledFilesIncludeEveryCrateSource(t *testing.T) {
 			return err
 		}
 		name := filepath.ToSlash(path)
+		if isTestModule(name) {
+			return nil
+		}
 		if !slices.Contains(BundledFiles(), name) {
 			t.Errorf("BundledFiles is missing crate source %s", name)
 		}

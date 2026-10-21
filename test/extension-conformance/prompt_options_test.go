@@ -173,12 +173,14 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
- e.on_event_result("before_agent_start",|_,data| {
-  let appended=format!("{} + edited append",data["systemPromptOptions"]["appendSystemPrompt"].as_str().unwrap_or(""));
-  data["systemPromptOptions"]["toolSnippets"]["read"]=Schema::String("edited read snippet".into());
-  data["systemPromptOptions"]["toolGuidelines"]["read"]=Schema::Array(vec![Schema::String("edited guideline".into())]);
-  data["systemPromptOptions"]["appendSystemPrompt"]=Schema::String(appended);
-  if data["prompt"]=="error" {return Err("options failure".into())}
+ e.on_before_agent_start(|_,event| {
+  event.edit_system_prompt_options(|options| {
+   let appended=format!("{} + edited append",options["appendSystemPrompt"].as_str().unwrap_or(""));
+   options["toolSnippets"]["read"]=Schema::String("edited read snippet".into());
+   options["toolGuidelines"]["read"]=Schema::Array(vec![Schema::String("edited guideline".into())]);
+   options["appendSystemPrompt"]=Schema::String(appended);
+  });
+  if event.payload()["prompt"]=="error" {return Err("options failure".into())}
   Ok(None)
  });
  e

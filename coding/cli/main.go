@@ -588,7 +588,12 @@ func Main(args []string, options *MainOptions) {
 	}
 	commandRuntime := packageCommandRuntimeOptions{extensionFactories: slices.Concat(builtInExtensions, programExtensions)}
 	// PIG_PROFILE (internal/profiling) is read once here. Unset, it costs one lookup.
-	stopProfiles = profiling.Start()
+	stopMetrics := profiling.Start()
+	// pig additive (D22): the session's documentation lease lives until exit; give it back before the exit record counts the process's descriptors.
+	stopProfiles = func() {
+		releaseDocsLeases()
+		stopMetrics()
+	}
 	// Pi's process 'exit' handler also runs when Node exits on an uncaught exception or the event loop drains (tui.ts exitRestoreHandler, 9df819de, #11170).
 	// Deferred first, so it runs last: after the other cleanups, on return and on a panic unwinding through Main, before the runtime prints the panic.
 	defer tui.RestoreTerminalOnExit()

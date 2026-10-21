@@ -218,6 +218,11 @@ def conformance_sprite_definition() -> pig_sdk.SpriteDefinition:
     )
 
 
+def dialog_text(value) -> str:
+    """A dialog's string answer: select, input and editor results are whatever JSON the client sent, and undefined is None."""
+    return value if isinstance(value, str) else ""
+
+
 def new_extension() -> pig_sdk.Extension:
     # factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
     try:
@@ -278,6 +283,41 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("editor-install-eager", "Install a custom editor that calls super in its factory", eager_editor)
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", lambda ctx, _args: ctx.set_editor_component(EmbeddingEditor))
     ext.command("editor-install", "Install a custom editor component", lambda ctx, _args: ctx.set_editor_component(ConformanceEditor))
+
+    # headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
+    def headless_ui_probe(ctx, path):
+        def mark(line):
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write(line + "\n")
+
+        def footer(_width):
+            mark("python:footer")
+            return ["python:footer"]
+
+        def header(_width):
+            mark("python:header")
+            return ["python:header"]
+
+        class HeadlessComponent:
+            def render(self, _width):
+                mark("python:custom")
+                return ["python:custom"]
+
+            def handle_input(self, _data):
+                mark("python:custom")
+                return pig_sdk.RemoteComponentResult(done=True, value="closed")
+
+        ctx.set_footer_renderer(footer)
+        ctx.set_header_renderer(header)
+        ctx.custom(HeadlessComponent())
+        # Options only, no component: Pi's RPC and no-op UIs resolve undefined, the TUI SDK reports it unsupported.
+        try:
+            value = ctx.custom({})
+            mark("python:custom-opaque:" + ("undefined" if value is None else "value"))
+        except Exception:  # noqa: BLE001
+            mark("python:custom-opaque:error")
+
+    ext.command("headless-ui-probe", "Hand the SDK footer, header and custom component closures", headless_ui_probe)
 
     def editor_get_probe(ctx, _args):
         got = ctx.get_editor_component()
@@ -384,6 +424,24 @@ def new_extension() -> pig_sdk.Extension:
             "host_info:" + json.dumps({"agentDir": pig_sdk.get_agent_dir(), "configDirName": pig_sdk.get_config_dir_name(), "version": pig_sdk.get_version(), "factoryAgentDir": factory_agent_dir}) + ":end", "info"
         ),
     )
+    # ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+    def ui_dialog_values_probe(ctx, _args):
+        def report(name, value, ok):
+            text = json.dumps(value, separators=(",", ":")) if ok else "<undefined>"
+            ctx.notify(f"{name}={text}", "info")
+        for title in ("S1", "S2", "S3", "S4"):
+            value, ok = ctx.select(title, ["a", "b"])
+            report(title, value, ok)
+        for title in ("C1", "C2", "C3", "C4"):
+            report(title, ctx.confirm(title, "m"), True)
+        for title in ("I1", "I2"):
+            value, ok = ctx.input(title, "p")
+            report(title, value, ok)
+        for title in ("E1", "E2"):
+            value, ok = ctx.editor(title, "p")
+            report(title, value, ok)
+
+    ext.command("ui_dialog_values_probe", "Report the typed result of each dialog", ui_dialog_values_probe)
     # ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
     def ui_forward_probe(ctx, _args):
         ctx.set_working_message("Thinking hard")
@@ -432,6 +490,25 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("stack done", "info")
 
     ext.command("dialog-stack-probe", "Open concurrent dialogs from one command", dialog_stack_probe)
+
+    # ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+    def ui_wire_empties_probe(ctx, _args):
+        ctx.set_status("k", "")
+        ctx.clear_status("k")
+        ctx.notify("", "")
+        ctx.notify("typed", "warning")
+        ctx.set_title("")
+        ctx.set_editor_text("")
+        ctx.select("T", [])
+        ctx.confirm("", "")
+        ctx.input("T1")
+        ctx.input("T2", "")
+        ctx.input("T3", "ph")
+        ctx.editor("E1")
+        ctx.editor("E2", "")
+        ctx.editor("E3", "pre")
+
+    ext.command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", ui_wire_empties_probe)
     # tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
     def tool_call_guard_probe(ctx, args):
         names = ["bash", "read", "probe", "other"]
@@ -1145,6 +1222,39 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("host_state_probe", "Report the thinking level and the session commands", host_state_probe)
 
+    def rw_prompt_state(ctx: pig_sdk.Context, _args: str) -> None:
+        def tool(name: str) -> pig_sdk.ToolDefinition:
+            return pig_sdk.ToolDefinition(name=name, label=name, description=name, prompt_snippet=name + "-snippet", parameters={"type": "object"}, execute=lambda c, a: "ok")
+
+        ctx.register_tool(tool("rw-alpha"))
+        ctx.register_tool(tool("rw-beta"))
+        registered = ctx.get_system_prompt_options()
+        ctx.set_active_tools(["rw-beta"])
+        options = ctx.get_system_prompt_options()
+        prompt = ctx.get_system_prompt()
+        ctx.notify("rw_prompt_state=registered:%s;selected:%s;beta:%s;alpha:%s" % ((registered.get("toolSnippets") or {}).get("rw-alpha", ""), ",".join(options.get("selectedTools") or []), str("rw-beta-snippet" in prompt).lower(), str("rw-alpha-snippet" in prompt).lower()), "info")
+
+    ext.command("rw_prompt_state", "Read the system prompt state after registering and activating tools", rw_prompt_state)
+
+    def rw_idle_after_trigger(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        ctx.notify("rw_idle_after_trigger=%s" % str(ctx.is_idle()).lower(), "info")
+
+    ext.command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", rw_idle_after_trigger)
+    rw_settled_once = []
+
+    def rw_idle_in_settled(ctx: pig_sdk.Context, _args: str) -> None:
+        def settled(hctx, _data):
+            if rw_settled_once:
+                return
+            rw_settled_once.append(True)
+            hctx.send_message("rw-trigger", "rw-trigger", True, True)
+            hctx.notify("rw_idle_in_settled=%s" % str(hctx.is_idle()).lower(), "info")
+
+        ext.on_event("agent_settled", settled)
+
+    ext.command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", rw_idle_in_settled)
+
     def set_model(ctx: pig_sdk.Context, args: str) -> None:
         ok, error = ctx.set_model(args)
         if error:
@@ -1250,10 +1360,11 @@ def new_extension() -> pig_sdk.Extension:
 
     def ui_availability(ctx: pig_sdk.Context, args: str) -> None:
         selected, _ = ctx.select("Pick", ["first", "second"])
+        selected = dialog_text(selected)
         ctx.notify("availability-notify", "info")
         if not ctx.has_ui():
-            assert ctx.input("Input", "placeholder") == ("", False)
-            assert ctx.editor("Editor", "prefill") == ("", False)
+            assert ctx.input("Input", "placeholder") == (None, False)
+            assert ctx.editor("Editor", "prefill") == (None, False)
             assert ctx.confirm("Confirm", "message") is False
             class NoUIComponent:
                 def render(self, width):
@@ -1281,6 +1392,7 @@ def new_extension() -> pig_sdk.Extension:
 
     def ui_state_barrier(ctx, args):
         selected, _ = ctx.select("expand", ["chosen"])
+        selected = dialog_text(selected)
         named = ctx.get_theme("light")
         missing = ctx.get_theme("missing")
         success, message = ctx.set_theme("missing")
@@ -1412,10 +1524,10 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", context_probe)
 
     def dialog_probe(ctx: pig_sdk.Context, args: str) -> None:
-        selected, _ = ctx.select("Pick", ["first", "second"])
-        input_value, _ = ctx.input("Input", "placeholder")
-        edited, _ = ctx.editor("Editor", "prefill")
-        confirmed = ctx.confirm("Confirm", "message")
+        selected = dialog_text(ctx.select("Pick", ["first", "second"])[0])
+        input_value = dialog_text(ctx.input("Input", "placeholder")[0])
+        edited = dialog_text(ctx.editor("Editor", "prefill")[0])
+        confirmed = ctx.confirm("Confirm", "message") is True
         ctx.notify(
             "select=%s input=%s editor=%s confirm=%s"
             % (selected, input_value, edited, str(confirmed).lower()),

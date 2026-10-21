@@ -2,6 +2,7 @@ package cellpack
 
 import (
 	"bytes"
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/fsretry"
 )
 
 // cells holds this binary's embedded packed-cell binaries and their manifest.
@@ -108,12 +110,17 @@ func loadManifest(fsys fs.FS) (Manifest, error) {
 }
 
 // extract writes each embedded cell binary (addressed under cells/<Binary>) to
-// dest/<Binary> with the executable bit set. Each write is atomic (temp file in
-// the destination directory, then rename), so parallel Piglet Binary instances
-// sharing the per-user extraction directory never observe a half-written binary
-// and never corrupt each other's cell: the paths are content-addressed, so
-// concurrent writers produce identical bytes. A Node cell's archive is checked
-// against its digest and unpacked into the directory nodeSourcesDir names.
+// dest/<Binary> with the executable bit set, unless the file already holds
+// exactly those bytes. A cell binary that is already in place is left alone:
+// another Piglet Binary instance may be executing it, and Windows refuses to
+// replace the file of a running image ("Access is denied"), so rewriting an
+// identical file at every start would stop a second instance from starting.
+// A file that differs is replaced through a temp file in the destination
+// directory and a rename, so a reader never observes a half-written binary;
+// only a transient lock on the rename is retried (internal/fsretry), and a
+// rename that fails while a peer has meanwhile published the same bytes
+// succeeds. A Node cell's archive is checked against its digest and unpacked
+// into the directory nodeSourcesDir names.
 func extract(fsys fs.FS, m Manifest, dest string) error {
 	for _, c := range m.Cells {
 		data, err := fs.ReadFile(fsys, path.Join("cells", c.Binary))
@@ -130,7 +137,7 @@ func extract(fsys fs.FS, m Manifest, dest string) error {
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			return err
 		}
-		if err := atomicWriteFile(out, data, 0o755); err != nil {
+		if err := writeCellBinary(out, data, 0o755); err != nil {
 			return fmt.Errorf("extract cell %s: %w", c.Binary, err)
 		}
 	}
@@ -148,9 +155,61 @@ func extractedBinaryPath(dest, binary string) string {
 	return out
 }
 
+// renameFile publishes a written temp file; a test replaces it to make the rename fail.
+var renameFile = func(oldpath, newpath string) error {
+	//portlint:allow ctxbackground extraction runs in Register at startup, before any session or context exists; the retry is bounded by fsretry.RenameBudget
+	return fsretry.Rename(context.Background(), oldpath, newpath, nil)
+}
+
+// writeCellBinary leaves path alone when it already holds data with the
+// wanted executable bits, and otherwise publishes data there.
+func writeCellBinary(path string, data []byte, mode os.FileMode) error {
+	if holdsExactly(path, data, mode) {
+		return nil
+	}
+	err := atomicWriteFile(path, data, mode)
+	if err != nil && holdsExactly(path, data, mode) {
+		// A peer published the same bytes while this write was refused.
+		return nil
+	}
+	return err
+}
+
+// holdsExactly reports whether path is a regular file with data's bytes and, off Windows, the execute bits of mode.
+func holdsExactly(path string, data []byte, mode os.FileMode) bool {
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = file.Close() }()
+	info, err := file.Stat() //perf:ok once per embedded cell binary at startup
+	if err != nil || !info.Mode().IsRegular() || info.Size() != int64(len(data)) {
+		return false
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&mode&0o111 != mode&0o111 {
+		return false
+	}
+	var chunk [64 << 10]byte
+	for len(data) > 0 {
+		n, err := file.Read(chunk[:min(len(chunk), len(data))])
+		if n > 0 {
+			if !bytes.Equal(chunk[:n], data[:n]) {
+				return false
+			}
+			data = data[n:]
+		}
+		if err != nil {
+			return len(data) == 0
+		}
+	}
+	return true
+}
+
 // atomicWriteFile publishes data at path via a temp file in the same directory
 // followed by a rename, so a reader never sees a partial file and concurrent
-// writers of identical content resolve to one complete file.
+// writers of identical content resolve to one complete file. A POSIX rename
+// replaces a file that a process is executing; Windows refuses it, which is why
+// writeCellBinary does not call this for a file that is already right.
 func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".extract-*")
 	if err != nil {
@@ -169,7 +228,7 @@ func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmpName, path)
+	return renameFile(tmpName, path)
 }
 
 // extractDir is the absolute piglet-binary-cells directory under the PiG configuration root ($PIG_HOME, else $XDG_CONFIG_HOME/pig, else ~/.pig). It is absolute because the host starts a cell binary in the session's working directory, which a relative path would be resolved against.
