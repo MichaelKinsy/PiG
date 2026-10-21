@@ -39,14 +39,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Rust | 31 | 0 | 0 |
 | Python | 31 | 0 | 0 |
 
-1569 package exports and class members, Node runtime:
+1572 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
 | `pi-coding-agent` | 901 | 9 | 0 | 10 |
-| `pi-tui` | 361 | 1 | 0 | 1 |
-| `pi-ai` | 85 | 1 | 0 | 0 |
-| `pi-ai/compat` | 136 | 9 | 0 | 0 |
+| `pi-tui` | 362 | 1 | 0 | 1 |
+| `pi-ai` | 86 | 1 | 0 | 0 |
+| `pi-ai/compat` | 137 | 9 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
 | `pi-agent-core` | 43 | 0 | 0 | 0 |
 
@@ -2445,6 +2445,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: Markdown.invalidate` | `Markdown.invalidate` | Pi's own code |
 | `pi-tui: Markdown.render` | `Markdown.render` | Pi's own code |
 | `pi-tui: Markdown.setText` | `Markdown.setText` | Pi's own code |
+| `pi-tui: Marked` | `external Marked` | Pi's own code |
 | `pi-tui: MouseRegion` | `class MouseRegion` | Pi's own code |
 | `pi-tui: MouseRegion.handleMouse` | `MouseRegion.handleMouse` | Pi's own code |
 | `pi-tui: MouseRegion.invalidate` | `MouseRegion.invalidate` | Pi's own code |
@@ -2733,6 +2734,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: ModelsError.name` | `ModelsError.name` | Pi's own code |
 | `pi-ai: ModelsError.stack` | `ModelsError.stack` | Pi's own code |
 | `pi-ai: StringEnum` | `function StringEnum` | Pi's own code |
+| `pi-ai: Type` | `external Type` | Pi's own code |
 | `pi-ai: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai: calculateCost` | `function calculateCost` | Pi's own code |
 | `pi-ai: clampThinkingLevel` | `function clampThinkingLevel` | Pi's own code |
@@ -2832,6 +2834,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: ModelsError.name` | `ModelsError.name` | Pi's own code |
 | `pi-ai/compat: ModelsError.stack` | `ModelsError.stack` | Pi's own code |
 | `pi-ai/compat: StringEnum` | `function StringEnum` | Pi's own code |
+| `pi-ai/compat: Type` | `external Type` | Pi's own code |
 | `pi-ai/compat: anthropicMessagesApi` | `variable anthropicMessagesApi` | Pi's own code |
 | `pi-ai/compat: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai/compat: azureOpenAIResponsesApi` | `variable azureOpenAIResponsesApi` | Pi's own code |

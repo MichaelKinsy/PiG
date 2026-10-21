@@ -134,6 +134,7 @@ type matrix struct {
 	rows       []matrixRow
 	exceptions []exceptionSpec
 	unused     []string // map keys naming no surface
+	syms       *sdkSymbols
 }
 
 // sdkSymbols holds every runtime's detected symbols and the host's decoding
@@ -278,7 +279,7 @@ func buildMatrix(root string) (*matrix, error) {
 		}
 		specs[s.Key] = s
 	}
-	m := &matrix{exceptions: ef.Exceptions}
+	m := &matrix{exceptions: ef.Exceptions, syms: syms}
 	known := map[string]bool{}
 	for _, r := range surface {
 		if known[r.Key] {
