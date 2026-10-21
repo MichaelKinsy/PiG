@@ -118,6 +118,32 @@ KIT_WIDGET_CASES[_BRANCH + "outputPad 0 collapsed"] = lambda: _kit_branch_view(o
 KIT_WIDGET_CASES[_BRANCH + "outputPad 0 expanded"] = lambda: _kit_branch_view(expanded=True, output_pad=0)
 KIT_WIDGET_CASES[_BRANCH + "empty summary expanded"] = _kit_branch_empty
 
+KIT_COMPACTION_SUMMARY = "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending."
+
+
+def _kit_compaction_view(tokens: int = 123456, expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.CompactionSummary(KIT_COMPACTION_SUMMARY, tokens, output_pad=output_pad, id="c")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+def _kit_compaction_empty() -> kit.View:
+    node = kit.CompactionSummary("", 0)
+    node.set_expanded(True)
+    return kit.View(node)
+
+
+_COMPACTION = "pi-coding-agent/CompactionSummaryMessageComponent/"
+KIT_WIDGET_CASES[_COMPACTION + "collapsed"] = lambda: _kit_compaction_view()
+KIT_WIDGET_CASES[_COMPACTION + "click toggles"] = lambda: _kit_compaction_view()
+KIT_WIDGET_CASES[_COMPACTION + "right click ignored"] = lambda: _kit_compaction_view()
+KIT_WIDGET_CASES[_COMPACTION + "expanded"] = lambda: _kit_compaction_view(expanded=True)
+KIT_WIDGET_CASES[_COMPACTION + "outputPad 0 collapsed"] = lambda: _kit_compaction_view(output_pad=0)
+KIT_WIDGET_CASES[_COMPACTION + "outputPad 0 expanded"] = lambda: _kit_compaction_view(expanded=True, output_pad=0)
+KIT_WIDGET_CASES[_COMPACTION + "tokens 999"] = lambda: _kit_compaction_view(tokens=999)
+KIT_WIDGET_CASES[_COMPACTION + "tokens 1234567 expanded"] = lambda: _kit_compaction_view(tokens=1234567, expanded=True)
+KIT_WIDGET_CASES[_COMPACTION + "empty summary tokens 0 expanded"] = _kit_compaction_empty
+
 # kit-widget-cases
 
 

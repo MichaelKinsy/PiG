@@ -307,6 +307,15 @@ fn kit_branch_view(set: impl FnOnce(&mut kit::BranchSummary)) -> kit::View {
 }
 
 
+const KIT_COMPACTION_SUMMARY: &str = "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending.";
+
+fn kit_compaction_view(tokens: u64, set: impl FnOnce(&mut kit::CompactionSummary)) -> kit::View {
+    let mut node = kit::CompactionSummary::new(KIT_COMPACTION_SUMMARY, tokens).id("c");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
 /// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 /// §10), built with the SDK's own constructors; the key is
 /// "<module>/<export>/<case name>" and the case's wire node is its vector's
@@ -324,6 +333,22 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
         }),
         "pi-coding-agent/BranchSummaryMessageComponent/empty summary expanded" => {
             let mut node = kit::BranchSummary::new("");
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/CompactionSummaryMessageComponent/collapsed"
+        | "pi-coding-agent/CompactionSummaryMessageComponent/click toggles"
+        | "pi-coding-agent/CompactionSummaryMessageComponent/right click ignored" => kit_compaction_view(123456, |_| {}),
+        "pi-coding-agent/CompactionSummaryMessageComponent/expanded" => kit_compaction_view(123456, |n| n.set_expanded(true)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/outputPad 0 collapsed" => kit_compaction_view(123456, |n| n.set_output_pad(0)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/outputPad 0 expanded" => kit_compaction_view(123456, |n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/CompactionSummaryMessageComponent/tokens 999" => kit_compaction_view(999, |_| {}),
+        "pi-coding-agent/CompactionSummaryMessageComponent/tokens 1234567 expanded" => kit_compaction_view(1234567, |n| n.set_expanded(true)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/empty summary tokens 0 expanded" => {
+            let mut node = kit::CompactionSummary::new("", 0);
             node.set_expanded(true);
             kit::View::new(node)
         }
