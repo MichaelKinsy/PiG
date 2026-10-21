@@ -31950,8 +31950,7 @@
         }
       ],
       "tests": [
-        "internal/codingagent/scoped_models_runtime_bound_259_test.go::TestScopedSelectionKeepsRuntimeBoundModelsForCycling259",
-        "test/parity/scenarios/model-resolver-selector/27-scoped-models-refresh-prompt-after-cycle.toml"
+        "internal/codingagent/scoped_models_runtime_bound_259_test.go::TestScopedSelectionKeepsRuntimeBoundModelsForCycling259"
       ]
     }
   ],

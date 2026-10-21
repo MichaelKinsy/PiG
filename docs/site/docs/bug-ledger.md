@@ -14165,7 +14165,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `d81ace2962` (2026-10-21, #259)
-- **Tests:** `internal/codingagent/scoped_models_runtime_bound_259_test.go::TestScopedSelectionKeepsRuntimeBoundModelsForCycling259`, `test/parity/scenarios/model-resolver-selector/27-scoped-models-refresh-prompt-after-cycle.toml`
+- **Tests:** `internal/codingagent/scoped_models_runtime_bound_259_test.go::TestScopedSelectionKeepsRuntimeBoundModelsForCycling259`
 - **Release note:** Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer fail with "No model selected". The scope update installed catalog descriptors that carry no backend; it now installs the Session's runtime-bound models, as Pi does.
 
 ## Divergences from Pi added in this release
