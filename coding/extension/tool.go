@@ -191,6 +191,9 @@ type ToolDefinition struct {
 	// synchronous prefix in call order, which Go goroutines do not give; this restores it for tools whose request order is
 	// observable, such as MCP tool calls to one server.
 	ReserveCallOrder func(params json.RawMessage) *CallOrder `json:"-"`
+	// MayTakeFileMutationQueue is set for a tool whose code runs in an extension that can register in the host's file mutation queue (withFileMutationQueue),
+	// so the dispatcher holds the edit and write calls that follow it in a parallel batch behind the end of its synchronous prefix (agent.MayTakeFileMutationQueue).
+	MayTakeFileMutationQueue bool `json:"-"`
 	// ReachesTools is for tools that reach other tools (such as codemode, which calls them, and tool_search, which loads
 	// them): which tools a call with the given input may reach. Extensions that register tools late, such as MCP servers
 	// that are still connecting, use it from their tool_call handler to finish registering those tools before the call runs.

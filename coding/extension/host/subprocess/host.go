@@ -3696,6 +3696,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 			definition.PrepareArguments = h.makeToolPrepareArguments(me, tool.Name)
 		}
 		definition.ReserveCallOrder = toolCallOrder(me)
+		definition.MayTakeFileMutationQueue = true
 		if tool.RendersCall {
 			definition.RenderCall = h.makeToolRenderCall(me, tool.Name)
 		}
@@ -3869,6 +3870,13 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		// upstream: agent-loop.ts executeToolCallsParallel: a call's tool_execution_end follows its own execute promise, which settles in the order the extension's runtime answers. The read loop reads the answers in that order, so it records the call's place before the goroutine that waits for the answer runs.
 		if slot := agent.ToolSettleFromContext(ctx, toolCallID); slot != nil {
 			reqCtx = withRequestArrived(reqCtx, slot.Settle)
+		}
+		// upstream: agent-loop.ts:619-647: the edit and write calls after this one in the batch register in the file mutation queue once this tool's synchronous
+		// prefix is over, which the extension may spend taking the queue itself (withFileMutationQueue). The host sees the end of the prefix when it applies the
+		// request's first host call that returns a Promise in Pi, or when the runtime reports the handler blocked on something else, and the call's end closes the window.
+		if closeWindow := agent.ToolStartWindowFromContext(ctx, toolCallID); closeWindow != nil {
+			defer closeWindow()
+			reqCtx = withRequestWindow(reqCtx, closeWindow)
 		}
 		if err := h.pushStateTo(reqCtx, me, conn); err != nil {
 			return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
@@ -4479,7 +4487,12 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 				go func() {
 					lanes.barrier()
 					conn.deliverRequestState(state)
-					conn.settleSuspension(state.RequestID)
+					if state.State == "suspended" {
+						conn.settleSuspension(state.RequestID)
+					} else {
+						// The handler of a tool_call request awaited something that is not a host call: Pi's next call starts (conn.endsStartWindow).
+						conn.closeRequestWindow(state.RequestID)
+					}
 				}()
 			}
 

@@ -208,6 +208,9 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 		case <-initiated:
 		case <-finished:
 		}
+		// The call returns a Promise in Pi, so its caller is past its first await: when the caller is a tool_call request that holds a start window, the call
+		// has applied its synchronous part, such as taking a place in the file mutation queue, and the calls behind the tool in its batch may register.
+		conn.closeRequestWindow(call.ParentRequestID)
 	})
 }
 

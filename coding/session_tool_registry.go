@@ -108,6 +108,18 @@ func (tool *sessionBoundTool) ReserveMutationOrder(args json.RawMessage) (*agent
 	return nil, false
 }
 
+// MayTakeFileMutationQueue and RegistersInFileMutationQueue pass the tool's own answers on: the parallel dispatcher orders an extension tool's registration in
+// the file mutation queue against the edit and write calls of its batch through the tool it was given, which is this one.
+func (tool *sessionBoundTool) MayTakeFileMutationQueue() bool {
+	mayTake, ok := tool.AgentTool.(agent.MayTakeFileMutationQueue)
+	return ok && mayTake.MayTakeFileMutationQueue()
+}
+
+func (tool *sessionBoundTool) RegistersInFileMutationQueue() bool {
+	registers, ok := tool.AgentTool.(agent.RegistersInFileMutationQueue)
+	return ok && registers.RegistersInFileMutationQueue()
+}
+
 type sessionToolEntry struct {
 	tool         agent.AgentTool
 	registration extension.RegisteredTool

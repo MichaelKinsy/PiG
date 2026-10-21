@@ -177,6 +177,8 @@ type Conn struct {
 	updates         map[string]func(json.RawMessage)
 	// toolRequests holds the pending tool_call requests; guarded by pendingMu.
 	toolRequests map[string]struct{}
+	// startWindows closes the start window of a pending tool_call request that holds one (withRequestWindow); guarded by pendingMu.
+	startWindows map[string]func()
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
@@ -292,6 +294,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
 		toolRequests:       make(map[string]struct{}),
+		startWindows:       make(map[string]func()),
 		toolUpdates:        newCallLanes(),
 		answered:           make(map[string]func()),
 		arrived:            make(map[string]func()),
@@ -755,6 +758,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if fn := requestHostCalls(ctx); fn != nil {
 		c.hostCallCounts[env.ID] = fn
 	}
+	if fn := requestWindow(ctx); fn != nil {
+		c.startWindows[env.ID] = fn
+	}
 	if fn := requestDrained(ctx); fn != nil {
 		c.drainable[env.ID] = &drainableRequest{drained: fn}
 	}
@@ -776,6 +782,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.answered, env.ID)
 		delete(c.arrived, env.ID)
 		delete(c.hostCallCounts, env.ID)
+		delete(c.startWindows, env.ID)
 		delete(c.drainable, env.ID)
 		c.pendingMu.Unlock()
 		c.stateMu.Lock()
@@ -1131,6 +1138,15 @@ func (c *Conn) readLoop(ctx context.Context) {
 			if env.RequestState.State == "started" {
 				c.markRequestStarted(env.RequestState.RequestID)
 			}
+			if c.endsStartWindow(*env.RequestState) {
+				// The handler's synchronous prefix is over. The host loop delivers the report after the calls received before it applied their synchronous parts, so the prefix's registration in the file mutation queue precedes the window's end.
+				select {
+				case c.inCh <- &env:
+				case <-ctx.Done():
+					return
+				}
+				continue
+			}
 			c.deliverRequestState(*env.RequestState)
 			continue
 		}
@@ -1370,6 +1386,32 @@ func (c *Conn) deliverRequestState(state RequestStatePayload) {
 	select {
 	case sink.ch <- state:
 	default:
+	}
+}
+
+// endsStartWindow reports whether state tells that the synchronous prefix of a tool_call request that holds a start window is over: the Node runtime reports
+// the handler blocked on something that is not a host call (external_io), or on the user, after the tool's execute returned its Promise. A handler of another SDK
+// is not reported this way: a native handler that waits does so in a host call, which closes the window when the host applies it.
+func (c *Conn) endsStartWindow(state RequestStatePayload) bool {
+	if state.State != "blocked" || (state.Reason != "external_io" && state.Reason != "user") {
+		return false
+	}
+	c.pendingMu.Lock()
+	_, ok := c.startWindows[state.RequestID]
+	c.pendingMu.Unlock()
+	return ok
+}
+
+// closeRequestWindow closes the start window of the request requestID, when it holds one: the request's handler has run to its first await.
+func (c *Conn) closeRequestWindow(requestID string) {
+	if requestID == "" {
+		return
+	}
+	c.pendingMu.Lock()
+	closeWindow := c.startWindows[requestID]
+	c.pendingMu.Unlock()
+	if closeWindow != nil {
+		closeWindow()
 	}
 }
 
@@ -2059,6 +2101,20 @@ func withRequestIssued(ctx context.Context, fn func()) context.Context {
 
 func requestIssued(ctx context.Context) func() {
 	fn, _ := ctx.Value(requestIssuedKey{}).(func())
+	return fn
+}
+
+type requestWindowKey struct{}
+
+// withRequestWindow has a tool_call request close the start window its call holds (agent.ToolStartWindowFromContext) once the request's handler ran to its first
+// await: when the host applied a host call the request made that returns a Promise in Pi (startsAsync), or the runtime reported the handler blocked on something
+// else. The window ends with the request in any case. fn must be idempotent.
+func withRequestWindow(ctx context.Context, fn func()) context.Context {
+	return context.WithValue(ctx, requestWindowKey{}, fn)
+}
+
+func requestWindow(ctx context.Context) func() {
+	fn, _ := ctx.Value(requestWindowKey{}).(func())
 	return fn
 }
 

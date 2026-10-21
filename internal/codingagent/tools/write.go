@@ -91,6 +91,10 @@ func (t *WriteTool) Schema() ai.ToolSchema {
 // executionMode, and the file mutation queue serialises writes to one file.
 func (t *WriteTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }
 
+// RegistersInFileMutationQueue implements agent.RegistersInFileMutationQueue: the parallel dispatcher registers this call in the queue after the extension
+// tools before it in the batch started, as Pi runs their synchronous prefixes first.
+func (t *WriteTool) RegistersInFileMutationQueue() bool { return true }
+
 // ReserveMutationOrder implements agent.QueueOrderable: the parallel
 // dispatcher calls this synchronously, in tool-call order, before spawning
 // this call's goroutine, so this write's place in the shared file mutation

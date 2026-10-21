@@ -4286,7 +4286,10 @@ export class Runtime {
           };
           let result;
           try {
-            result = await tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id));
+            const pending = tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id));
+            // Calling an async execute runs its synchronous prefix before it returns its Promise (agent-loop.ts:619-647: Pi starts the next call of the batch only then). A prefix that took a place in the host's file mutation queue (withFileMutationQueue) sent that call before this point, so the host registers the edit and write calls behind this tool after it. A Promise that settles in the microtasks that follow needs no report: its answer ends the wait.
+            this.reportToolPrefixOver(id, pending);
+            result = await pending;
           } finally {
             done = true;
           }
@@ -5000,6 +5003,15 @@ export class Runtime {
       owner?.pendingHostCalls.delete(operation);
     });
     owner?.pendingHostCalls.add(operation);
+  }
+
+  // reportToolPrefixOver tells the host that the tool_call request id awaits something, once the microtasks that follow the call to execute ran and left its Promise pending.
+  reportToolPrefixOver(id, pending) {
+    let settled = false;
+    Promise.resolve(pending).then(() => { settled = true; }, () => { settled = true; });
+    queueMicrotask(() => {
+      if (!settled && !this.conn.closed) this.conn.requestState(id, "blocked", "external_io");
+    });
   }
 
   // reportCommandYield follows a send from an RPC command's handler. The host holds the run the send starts while the handler runs, as Pi's run starts only once the handler that sent it awaits or returns (agent-session.ts:2129, 2293 sendCustomMessage); a handler still unsettled at the next event-loop turn has awaited, so the command reports its suspension then.

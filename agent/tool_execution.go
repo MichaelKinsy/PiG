@@ -115,14 +115,30 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingToolCall) executedToolCallBatch {
 	outcomes := make([]toolCallOutcome, 0, len(calls))
 	callCtxs := make([]context.Context, 0, len(calls))
+	var registration registrationOrder
 	for _, call := range calls {
 		r.h.emitToolExecutionStart(call)
 		outcome := r.h.prepareToolCall(ctx, call)
 		callCtx := ctx
 		if outcome.prepared != nil {
-			if orderer, ok := outcome.prepared.tool.(QueueOrderable); ok {
-				if ticket, has := orderer.ReserveMutationOrder(outcome.prepared.args); has {
-					callCtx = WithMutationTicket(ctx, ticket)
+			tool := outcome.prepared.tool
+			if mayTake, ok := tool.(MayTakeFileMutationQueue); ok && mayTake.MayTakeFileMutationQueue() {
+				callCtx = registration.extensionTool(callCtx, call.id)
+			}
+			if orderer, ok := tool.(QueueOrderable); ok {
+				registers, _ := tool.(RegistersInFileMutationQueue)
+				if registers != nil && registers.RegistersInFileMutationQueue() {
+					// An extension tool before this call may take the queue in its first statement: the call registers after that tool's start window
+					// (registrationOrder), on its own goroutine.
+					var late bool
+					if callCtx, late = registration.registersLate(callCtx, call.id, orderer, outcome.prepared.args); late {
+						orderer = nil
+					}
+				}
+				if orderer != nil {
+					if ticket, has := orderer.ReserveMutationOrder(outcome.prepared.args); has {
+						callCtx = WithMutationTicket(callCtx, ticket)
+					}
 				}
 			}
 		}
@@ -167,6 +183,11 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 			wg.Go(func() {
 				defer slot.Close()
 				stackprime.Prime()
+				if closeWindow := ToolStartWindowFromContext(callCtx, outcome.prepared.call.id); closeWindow != nil {
+					// The call's start window closes when the call ends at the latest, whether or not the extension reported its prefix over.
+					defer closeWindow()
+				}
+				callCtx := enterRegistrationOrder(callCtx, outcome.prepared.call.id)
 				var err error
 				finalized[i], err = r.h.runPreparedToolCall(callCtx, *outcome.prepared)
 				if err != nil {
