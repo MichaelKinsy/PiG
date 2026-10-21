@@ -92,7 +92,7 @@ from ._color import color_ansi, parse_color, style_text_with_ansi
 from . import kit as kit
 from .kit import ViewComponent as ViewComponent
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
-from .user_bash import BashExecOptions as BashExecOptions, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
+from .user_bash import BashExecOptions as BashExecOptions, BashOperations as BashOperations, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
 from .provider import (
     Provider, ProviderSignal,
     ProviderAuth as ProviderAuth, APIKeyAuth as APIKeyAuth, OAuthAuth as OAuthAuth,
@@ -2001,6 +2001,22 @@ class _NestedCallEvent(threading.Event):
     def set(self) -> None:
         super().set()
         self._nested.finish()
+
+
+from .builtin_tool import (  # noqa: E402 - after the classes it builds on
+    BashToolOptions as BashToolOptions, BuiltinTool as BuiltinTool, BuiltinToolDefinition as BuiltinToolDefinition, EditOperations as EditOperations, EditToolOptions as EditToolOptions,
+    FindOperations as FindOperations, FindToolOptions as FindToolOptions, GrepOperations as GrepOperations, GrepToolOptions as GrepToolOptions, LsOperations as LsOperations,
+    LsStat as LsStat, LsToolOptions as LsToolOptions, ModelImageResizeOptions as ModelImageResizeOptions, PowerShellToolOptions as PowerShellToolOptions,
+    ReadOperations as ReadOperations, ReadToolOptions as ReadToolOptions, ToolsOptions as ToolsOptions, WriteOperations as WriteOperations, WriteToolOptions as WriteToolOptions,
+    create_bash_tool as create_bash_tool, create_bash_tool_definition as create_bash_tool_definition, create_coding_tools as create_coding_tools,
+    create_edit_tool as create_edit_tool, create_edit_tool_definition as create_edit_tool_definition, create_find_tool as create_find_tool,
+    create_find_tool_definition as create_find_tool_definition, create_grep_tool as create_grep_tool, create_grep_tool_definition as create_grep_tool_definition,
+    create_local_bash_operations as create_local_bash_operations, create_local_powershell_operations as create_local_powershell_operations,
+    create_ls_tool as create_ls_tool, create_ls_tool_definition as create_ls_tool_definition, create_powershell_tool as create_powershell_tool,
+    create_powershell_tool_definition as create_powershell_tool_definition, create_read_only_tools as create_read_only_tools, create_read_tool as create_read_tool,
+    create_read_tool_definition as create_read_tool_definition, create_write_tool as create_write_tool, create_write_tool_definition as create_write_tool_definition,
+    dispatch_callback as _dispatch_builtin_callback, dispatch_exec_data as _dispatch_builtin_exec_data,
+)
 
 
 # pig additive (D19): normal completion retires the request parent while retained Contexts keep the same socket generation.
@@ -5056,6 +5072,15 @@ class Extension:
                 if changes is not None and not isinstance(changes, dict):
                     raise TypeError("prepare_loadout must return a mapping or None")
                 self._respond(req_id, changes, None)
+            elif method == "builtin_tool_callback":
+                self._respond(req_id, _dispatch_builtin_callback(req.get("args") or {}), None)
+            elif method == "builtin_tool_exec_data":
+                try:
+                    _dispatch_builtin_exec_data(req.get("args") or {})
+                except Exception as failure:  # noqa: BLE001 - the callback's throw is the answer to its request
+                    self._respond(req_id, None, {"message": str(failure)})
+                else:
+                    self._respond(req_id, None, None)
             elif method == "execute_tool_update":
                 # The host waits for this answer before it sends the next partial result or the call's outcome; an exception from on_update is the answer.
                 args = req.get("args") or {}

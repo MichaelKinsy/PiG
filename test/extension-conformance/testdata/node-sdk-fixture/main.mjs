@@ -670,6 +670,72 @@ export default function (pi) {
     else result = { text: formatSize(c.bytes) };
     ctx.ui.notify(`truncate:${JSON.stringify(result)}:end`, "info");
   } });
+  // builtin_probe: see the Go fixture (testfixture/builtin_tool.go). Pi's own create<Tool>ToolDefinition, create<Tool>Tool and createLocalBashOperations are the reference.
+  const builtinReport = (result) => {
+    const report = { content: result.content.map((block) => block.type === "text" ? { type: "text", text: block.text } : { type: block.type, mimeType: block.mimeType }), isError: !!result.isError };
+    if (result.details !== undefined && result.details !== null) { report.details = result.details; report.detailsJSON = JSON.stringify(result.details); }
+    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent); report.exitCode = result.structuredContent.exit_code; }
+    return report;
+  };
+  const builtinOptions = (c, log) => {
+    const hook = c.hook ? (spawn) => { log.push(`spawnHook:${spawn.command}`); return { command: "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", cwd: spawn.cwd, env: { ...spawn.env, HOOK_VAR: "hook-env" } }; } : undefined;
+    const custom = c.ops === "custom";
+    switch (c.tool) {
+      case "read": return { autoResizeImages: c.autoResizeImages ?? undefined, operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from(`OPS:${p}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
+      case "write": return { operations: custom ? { writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, mkdir: async (d) => { log.push(`mkdir:${d}`); } } : undefined };
+      case "edit": return { operations: custom ? { readFile: async (p) => { log.push(`readFile:${p}`); return Buffer.from("hello world\n"); }, writeFile: async (p, content) => { log.push(`writeFile:${p}:${content}`); }, access: async (p) => { log.push(`access:${p}`); } } : undefined };
+      case "ls": return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return true; }, stat: async (p) => { log.push(`stat:${p}`); return { isDirectory: () => !p.includes(".") }; }, readdir: async (p) => { log.push(`readdir:${p}`); return ["b.txt", "a.txt", "sub"]; } } : undefined };
+      case "grep": return { operations: custom ? { isDirectory: async (p) => { log.push(`isDirectory:${p}`); throw new Error("no such path for the probe"); } } : undefined };
+      case "find": return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return false; }, glob: async (pattern) => { log.push(`glob:${pattern}`); return []; } } : undefined };
+      case "powershell": return { exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined };
+      default: return { commandPrefix: c.commandPrefix || undefined, exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined, spawnHook: hook, operations: custom ? { exec: async (command, cwd, o) => { log.push(`exec:${command}|cwd=${cwd}`); o.onData(Buffer.from(`custom:${command}`)); return { exitCode: 0 }; } } : undefined };
+    }
+  };
+  const builtinFactories = { read: [piCodingAgent.createReadToolDefinition, piCodingAgent.createReadTool], write: [piCodingAgent.createWriteToolDefinition, piCodingAgent.createWriteTool], edit: [piCodingAgent.createEditToolDefinition, piCodingAgent.createEditTool], bash: [piCodingAgent.createBashToolDefinition, piCodingAgent.createBashTool], grep: [piCodingAgent.createGrepToolDefinition, piCodingAgent.createGrepTool], find: [piCodingAgent.createFindToolDefinition, piCodingAgent.createFindTool], ls: [piCodingAgent.createLsToolDefinition, piCodingAgent.createLsTool], powershell: [piCodingAgent.createPowerShellToolDefinition, piCodingAgent.createPowerShellTool] };
+  pi.registerCommand("builtin_probe", { description: "Delegate to a built-in tool through the SDK and report what it returned", handler: async (args, ctx) => {
+    const c = JSON.parse(args);
+    const emit = (report) => ctx.ui.notify(`builtin:${JSON.stringify(report)}:end`, "info");
+    if (c.kind === "cwd") return emit({ cwd: ctx.cwd });
+    if (c.kind === "register") {
+      const read = createReadToolDefinition(c.factoryCwd);
+      pi.registerTool({ ...read, async execute(...a) { const r = await read.execute(...a); r.content = r.content.map((b, i) => i === 0 ? { ...b, text: `«delegated:${b.text}»` } : b); r.details = { delegated: true }; return r; } });
+      const bash = createBashToolDefinition(c.factoryCwd);
+      pi.registerTool({ ...bash, async execute(...a) { const r = await bash.execute(...a); r.content = r.content.map((b, i) => i === 0 ? { ...b, text: `«${b.text}»` } : b); return r; } });
+      return emit({ registered: [read.name, bash.name] });
+    }
+    if (c.kind === "sets") return emit({ coding: piCodingAgent.createCodingTools(c.factoryCwd).map((t) => t.name), readOnly: piCodingAgent.createReadOnlyTools(c.factoryCwd).map((t) => t.name) });
+    if (c.kind === "local") {
+      const operations = c.shell === "powershell" ? piCodingAgent.createLocalPowerShellOperations() : piCodingAgent.createLocalBashOperations();
+      const controller = new AbortController();
+      const chunks = [];
+      const report = {};
+      try {
+        const result = await operations.exec(c.command, c.factoryCwd, { onData: (data) => { chunks.push(Buffer.from(data).toString("utf8")); if (c.abortOnOutput) controller.abort(); }, signal: controller.signal, timeout: c.timeout ?? undefined, env: c.env ?? undefined });
+        report.exitCode = result.exitCode;
+      } catch (error) { report.error = error.message; }
+      report.output = chunks.join("");
+      return emit(report);
+    }
+    const log = [];
+    const [createDefinition, createTool] = builtinFactories[c.tool];
+    const options = builtinOptions(c, log);
+    if (c.kind === "definition") {
+      const def = createDefinition(c.factoryCwd, options);
+      return emit({ definition: { name: def.name, label: def.label, description: def.description, promptSnippet: def.promptSnippet ?? "", promptGuidelines: def.promptGuidelines ?? null, parameters: JSON.parse(JSON.stringify(def.parameters)), outputSchema: def.outputSchema ? JSON.parse(JSON.stringify(def.outputSchema)) : null, constrainedSampling: def.constrainedSampling ?? null, executionMode: def.executionMode ?? "", renderShell: def.renderShell ?? "" } });
+    }
+    const controller = new AbortController();
+    if (c.preAborted) controller.abort();
+    const updates = [];
+    const onUpdate = c.updates || c.abortOnOutput ? (partial) => { const text = partial.content.filter((b) => b.type === "text").map((b) => b.text).join("\n"); updates.push(text); if (c.abortOnOutput && text !== "") controller.abort(); } : undefined;
+    const report = {};
+    try {
+      const result = c.noContext ? await createTool(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate) : await createDefinition(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate, ctx);
+      report.result = builtinReport(result);
+    } catch (error) { report.error = error.message; }
+    if (c.updates) report.updates = updates;
+    report.calls = log;
+    emit(report);
+  } });
   // message_probe: see the Go fixture.
   pi.registerCommand("message_probe", { description: "Report messageRole and messageText of a JSON event payload", handler: async (args, ctx) => {
     const data = JSON.parse(args);

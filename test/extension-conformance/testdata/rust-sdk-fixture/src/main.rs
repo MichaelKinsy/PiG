@@ -556,6 +556,20 @@ fn main() {
         ctx.notify(&format!("truncate:{result}:end"), "info");
         CommandResult::Ok
     });
+    // builtin_probe: see the Go fixture (testfixture/builtin_tool.go).
+    ext.command("builtin_probe", "Delegate to a built-in tool through the SDK and report what it returned", |ctx, args| {
+        let case: Value = match serde_json::from_str(&args) {
+            Ok(case) => case,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        match builtin_probe(ctx, &case) {
+            Ok(report) => {
+                ctx.notify(&format!("builtin:{report}:end"), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err),
+        }
+    });
     // message_probe reads the event payload in its JSON argument with the SDK's message_role and message_text helpers (TestConformance_MessageHelpersAgreeAcrossSDKs).
     ext.command("message_probe", "Report message_role and message_text of a JSON event payload", |ctx, args| {
         let data: Value = match serde_json::from_str(&args) {
@@ -3319,4 +3333,280 @@ fn decode_base64(text: &str) -> Vec<u8> {
         }
     }
     out
+// ── builtin_probe (TestConformance_BuiltinToolDelegationAcrossSDKs) ──────────────────────────────────────────────────────────────────────────────────────────
+
+type CallLog = Arc<Mutex<Vec<String>>>;
+
+fn log_call(log: &CallLog, entry: String) {
+    log.lock().unwrap().push(entry);
+}
+
+fn builtin_report(result: &pig_sdk::AgentToolResult) -> Value {
+    let blocks: Vec<Value> = result
+        .content
+        .iter()
+        .map(|block| match block["type"].as_str() {
+            Some("text") => json!({"type": "text", "text": block["text"].as_str().unwrap_or("")}),
+            other => json!({"type": other, "mimeType": block["mimeType"]}),
+        })
+        .collect();
+    let mut report = json!({"content": blocks, "isError": result.is_error});
+    if !result.details.is_null() {
+        report["details"] = result.details.clone();
+        report["detailsJSON"] = json!(serde_json::to_string(&result.details).unwrap_or_default());
+    }
+    if let Some(structured) = result.structured_content.as_ref().and_then(Value::as_object) {
+        let keys: Vec<&String> = structured.keys().collect();
+        report["structuredKeys"] = json!(keys);
+        report["exitCode"] = structured.get("exit_code").cloned().unwrap_or(Value::Null);
+    }
+    report
+}
+
+fn path_op<R: 'static>(log: &CallLog, label: &'static str, result: impl Fn(&str) -> Result<R, String> + Send + Sync + 'static) -> pig_sdk::PathOperation<R> {
+    let log = log.clone();
+    Arc::new(move |path| {
+        log_call(&log, format!("{label}:{path}"));
+        result(path)
+    })
+}
+
+fn write_op(log: &CallLog) -> pig_sdk::WriteOperation {
+    let log = log.clone();
+    Arc::new(move |path, content| {
+        log_call(&log, format!("writeFile:{path}:{content}"));
+        Ok(())
+    })
+}
+
+/// The options of the case for `tool`, with callbacks that log into `log`; one value per tool kind so the factories take the right type.
+struct ProbeOptions {
+    read: pig_sdk::ReadToolOptions,
+    write: pig_sdk::WriteToolOptions,
+    edit: pig_sdk::EditToolOptions,
+    ls: pig_sdk::LsToolOptions,
+    grep: pig_sdk::GrepToolOptions,
+    find: pig_sdk::FindToolOptions,
+    bash: pig_sdk::BashToolOptions,
+    powershell: pig_sdk::PowerShellToolOptions,
+}
+
+fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
+    let custom = case["ops"].as_str() == Some("custom");
+    let expose = case["exposeSessionEnvironment"].as_bool();
+    let mut options = ProbeOptions {
+        read: pig_sdk::ReadToolOptions { auto_resize_images: case["autoResizeImages"].as_bool(), ..Default::default() },
+        write: Default::default(),
+        edit: Default::default(),
+        ls: Default::default(),
+        grep: Default::default(),
+        find: Default::default(),
+        bash: pig_sdk::BashToolOptions {
+            command_prefix: case["commandPrefix"].as_str().filter(|prefix| !prefix.is_empty()).map(str::to_string),
+            expose_session_environment: expose,
+            ..Default::default()
+        },
+        powershell: pig_sdk::PowerShellToolOptions { expose_session_environment: expose, ..Default::default() },
+    };
+    if case["hook"].as_bool() == Some(true) {
+        let hook_log = log.clone();
+        options.bash.spawn_hook = Some(Arc::new(move |spawn: pig_sdk::BashSpawnContext| {
+            log_call(&hook_log, format!("spawnHook:{}", spawn.command));
+            let mut env = spawn.env.clone();
+            env.insert("HOOK_VAR".to_string(), "hook-env".to_string());
+            Ok(pig_sdk::BashSpawnContext { command: "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"".to_string(), cwd: spawn.cwd, env })
+        }));
+    }
+    if !custom {
+        return options;
+    }
+    options.read.operations = Some(pig_sdk::ReadOperations {
+        read_file: path_op(log, "readFile", |path| Ok(format!("OPS:{path}").into_bytes())),
+        access: path_op(log, "access", |_| Ok(())),
+        detect_image_mime_type: None,
+    });
+    options.write.operations = Some(pig_sdk::WriteOperations { write_file: write_op(log), mkdir: path_op(log, "mkdir", |_| Ok(())) });
+    options.edit.operations = Some(pig_sdk::EditOperations {
+        read_file: path_op(log, "readFile", |_| Ok(b"hello world\n".to_vec())),
+        write_file: write_op(log),
+        access: path_op(log, "access", |_| Ok(())),
+    });
+    options.ls.operations = Some(pig_sdk::LsOperations {
+        exists: path_op(log, "exists", |_| Ok(true)),
+        stat: path_op(log, "stat", |path| Ok(pig_sdk::LsStat { is_directory: !path.contains('.') })),
+        readdir: path_op(log, "readdir", |_| Ok(vec!["b.txt".to_string(), "a.txt".to_string(), "sub".to_string()])),
+    });
+    options.grep.operations = Some(pig_sdk::GrepOperations {
+        is_directory: path_op(log, "isDirectory", |_| Err("no such path for the probe".to_string())),
+        read_file: None,
+    });
+    let glob_log = log.clone();
+    options.find.operations = Some(pig_sdk::FindOperations {
+        exists: path_op(log, "exists", |_| Ok(false)),
+        glob: Arc::new(move |pattern, _cwd, _options| {
+            log_call(&glob_log, format!("glob:{pattern}"));
+            Ok(Vec::new())
+        }),
+    });
+    let exec_log = log.clone();
+    options.bash.operations = Some(pig_sdk::BashOperations {
+        exec: Arc::new(move |command, cwd, exec_options| {
+            log_call(&exec_log, format!("exec:{command}|cwd={cwd}"));
+            (exec_options.on_data)(format!("custom:{command}").as_bytes());
+            Ok(Some(0))
+        }),
+    });
+    options
+}
+
+fn builtin_probe(ctx: &pig_sdk::Context, case: &Value) -> Result<Value, String> {
+    let kind = case["kind"].as_str().unwrap_or("");
+    let factory_cwd = case["factoryCwd"].as_str().unwrap_or("").to_string();
+    match kind {
+        "cwd" => return Ok(json!({"cwd": ctx.cwd()})),
+        "register" => return builtin_register(ctx, &factory_cwd),
+        "local" => return Ok(builtin_local(case)),
+        "sets" => {
+            let names = |tools: Vec<pig_sdk::BuiltinTool>| tools.into_iter().map(|tool| tool.name).collect::<Vec<_>>();
+            let coding = names(pig_sdk::create_coding_tools(&factory_cwd, None).map_err(|e| e.to_string())?);
+            let read_only = names(pig_sdk::create_read_only_tools(&factory_cwd, None).map_err(|e| e.to_string())?);
+            return Ok(json!({"coding": coding, "readOnly": read_only}));
+        }
+        _ => {}
+    }
+    let log: CallLog = Arc::new(Mutex::new(Vec::new()));
+    let options = builtin_options(case, &log);
+    let tool = case["tool"].as_str().unwrap_or("bash");
+    macro_rules! create {
+        ($definition:ident, $tool:ident, $options:expr) => {
+            if kind == "definition" { Created::Definition(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else if case["noContext"].as_bool() == Some(true) { Created::Tool(pig_sdk::$tool(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else { Created::Executor(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) }
+        };
+    }
+    let created = match tool {
+        "read" => create!(create_read_tool_definition, create_read_tool, options.read),
+        "write" => create!(create_write_tool_definition, create_write_tool, options.write),
+        "edit" => create!(create_edit_tool_definition, create_edit_tool, options.edit),
+        "ls" => create!(create_ls_tool_definition, create_ls_tool, options.ls),
+        "grep" => create!(create_grep_tool_definition, create_grep_tool, options.grep),
+        "find" => create!(create_find_tool_definition, create_find_tool, options.find),
+        "powershell" => create!(create_powershell_tool_definition, create_powershell_tool, options.powershell),
+        _ => create!(create_bash_tool_definition, create_bash_tool, options.bash),
+    };
+    if kind == "definition" {
+        let Created::Definition(built) = created else { unreachable!() };
+        let d = &built.definition;
+        let sampling = d.constrained_sampling.as_ref().map(|sampling| match sampling {
+            pig_sdk::ToolConstrainedSampling::Config(config) => serde_json::to_value(config).unwrap_or(Value::Null),
+            pig_sdk::ToolConstrainedSampling::Disabled => json!(false),
+        });
+        return Ok(json!({"definition": {
+            "name": d.name, "label": d.label, "description": d.description, "promptSnippet": d.prompt_snippet.clone().unwrap_or_default(),
+            "promptGuidelines": if d.prompt_guidelines.is_empty() { Value::Null } else { json!(d.prompt_guidelines) }, "parameters": d.parameters,
+            "outputSchema": d.output_schema.clone().unwrap_or(Value::Null), "constrainedSampling": sampling.unwrap_or(Value::Null),
+            "executionMode": d.execution_mode.clone().unwrap_or_default(), "renderShell": if d.render_shell == ToolRenderShell::SelfShell { "self" } else { "" },
+        }}));
+    }
+    let signal = pig_sdk::ProviderSignal::new();
+    if case["preAborted"].as_bool() == Some(true) {
+        signal.cancel();
+    }
+    let updates: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let abort_on_output = case["abortOnOutput"].as_bool() == Some(true);
+    let on_update: Option<pig_sdk::ExecuteToolUpdate> = (case["updates"].as_bool() == Some(true) || abort_on_output).then(|| {
+        let updates = updates.clone();
+        let signal = signal.clone();
+        Arc::new(move |partial: pig_sdk::AgentToolResult| {
+            let text = partial.text();
+            if abort_on_output && !text.is_empty() {
+                signal.cancel();
+            }
+            updates.lock().unwrap().push(text);
+        }) as pig_sdk::ExecuteToolUpdate
+    });
+    let params = case.get("params").cloned().unwrap_or_else(|| json!({}));
+    let outcome = match created {
+        Created::Tool(tool) => tool.execute("probe-call", params, Some(&signal), on_update),
+        Created::Executor(built) => built.executor().execute_with(ctx, "probe-call", params, Some(&signal), on_update),
+        Created::Definition(_) => unreachable!(),
+    };
+    let mut report = json!({});
+    match outcome {
+        Ok(result) => report["result"] = builtin_report(&result),
+        Err(error) => report["error"] = json!(error.to_string()),
+    }
+    if case["updates"].as_bool() == Some(true) {
+        report["updates"] = json!(updates.lock().unwrap().clone());
+    }
+    report["calls"] = json!(log.lock().unwrap().clone());
+    Ok(report)
+}
+
+enum Created {
+    Definition(pig_sdk::BuiltinToolDefinition),
+    Executor(pig_sdk::BuiltinToolDefinition),
+    Tool(pig_sdk::BuiltinTool),
+}
+
+fn wrap_first_text(result: &mut pig_sdk::AgentToolResult, wrap: impl Fn(&str) -> String) {
+    if let Some(block) = result.content.first_mut() {
+        let text = block["text"].as_str().unwrap_or("").to_string();
+        block["text"] = json!(wrap(&text));
+    }
+}
+
+/// Overrides the read and bash tools with wrapped built-ins, as Pi's `pi.registerTool({ ...definition, execute })` does: the wrapper runs the built-in through
+/// the SDK and post-processes its result, so only a tool that really ran on the host can produce the sentinel text.
+fn builtin_register(ctx: &pig_sdk::Context, factory_cwd: &str) -> Result<Value, String> {
+    let mut read = pig_sdk::create_read_tool_definition(factory_cwd, None).map_err(|e| e.to_string())?;
+    let run_read = read.executor();
+    read.definition.execute = Box::new(move |ctx, params| match run_read.execute(ctx, params) {
+        Ok(mut result) => {
+            wrap_first_text(&mut result, |text| format!("«delegated:{text}»"));
+            result.details = json!({"delegated": true});
+            result.into_tool_result()
+        }
+        Err(error) => ToolResult::error(error.to_string()),
+    });
+    let read_name = read.definition.name.clone();
+    ctx.register_tool(read.definition).map_err(|e| e.to_string())?;
+    let mut bash = pig_sdk::create_bash_tool_definition(factory_cwd, None).map_err(|e| e.to_string())?;
+    let run_bash = bash.executor();
+    bash.definition.execute = Box::new(move |ctx, params| match run_bash.execute(ctx, params) {
+        Ok(mut result) => {
+            wrap_first_text(&mut result, |text| format!("«{text}»"));
+            result.into_tool_result()
+        }
+        Err(error) => ToolResult::error(error.to_string()),
+    });
+    let bash_name = bash.definition.name.clone();
+    ctx.register_tool(bash.definition).map_err(|e| e.to_string())?;
+    Ok(json!({"registered": [read_name, bash_name]}))
+}
+
+fn builtin_local(case: &Value) -> Value {
+    let operations = if case["shell"].as_str() == Some("powershell") { pig_sdk::create_local_powershell_operations() } else { pig_sdk::create_local_bash_operations(None) };
+    let signal = pig_sdk::ProviderSignal::new();
+    let chunks: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink = chunks.clone();
+    let abort_signal = signal.clone();
+    let abort_on_output = case["abortOnOutput"].as_bool() == Some(true);
+    let env = case["env"].as_object().map(|object| object.iter().map(|(name, value)| (name.clone(), value.as_str().unwrap_or("").to_string())).collect());
+    let options = pig_sdk::BashExecOptions {
+        on_data: Arc::new(move |data| {
+            sink.lock().unwrap().push(String::from_utf8_lossy(data).into_owned());
+            if abort_on_output {
+                abort_signal.cancel();
+            }
+        }),
+        signal,
+        timeout: case["timeout"].as_f64(),
+        env,
+    };
+    let mut report = json!({});
+    match (operations.exec)(case["command"].as_str().unwrap_or(""), case["factoryCwd"].as_str().unwrap_or(""), options) {
+        Ok(code) => report["exitCode"] = json!(code),
+        Err(message) => report["error"] = json!(message),
+    }
+    report["output"] = json!(chunks.lock().unwrap().join(""));
+    report
 }

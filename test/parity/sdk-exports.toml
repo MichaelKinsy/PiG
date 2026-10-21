@@ -38,11 +38,6 @@ owner = "C2Sessions lane (createAgentSession family, E1/E6)"
 opened = "0.5.2"
 closing = "Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions)"
 
-[lane.SdkBuiltinToolDelegate]
-owner = "SdkBuiltinToolDelegate lane (built-in tool delegation, E7)"
-opened = "0.5.2"
-closing = "TestConformance_BuiltinToolDelegationAcrossSDKs"
-
 [lane.SdkExportsLedger]
 owner = "SdkExportsLedger lane (Pi application internals no extension scan imports)"
 opened = "0.5.2"
@@ -887,32 +882,32 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: createAgentSessionFromServices" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: createAgentSessionRuntime" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: createAgentSessionServices" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: createBashTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createBashToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
+"pi-coding-agent: createBashTool" = { go = "native:CreateBashTool", rust = "native:create_bash_tool", python = "native:create_bash_tool" }
+"pi-coding-agent: createBashToolDefinition" = { go = "native:CreateBashToolDefinition", rust = "native:create_bash_tool_definition", python = "native:create_bash_tool_definition" }
 "pi-coding-agent: createCodemodeExtension" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: createCodingTools" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createEditTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createEditToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
+"pi-coding-agent: createCodingTools" = { go = "native:CreateCodingTools", rust = "native:create_coding_tools", python = "native:create_coding_tools" }
+"pi-coding-agent: createEditTool" = { go = "native:CreateEditTool", rust = "native:create_edit_tool", python = "native:create_edit_tool" }
+"pi-coding-agent: createEditToolDefinition" = { go = "native:CreateEditToolDefinition", rust = "native:create_edit_tool_definition", python = "native:create_edit_tool_definition" }
 "pi-coding-agent: createEventBus" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-coding-agent: createExtensionRuntime" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: createFindTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createFindToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createGrepTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createGrepToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createLocalBashOperations" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createLocalPowerShellOperations" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createLsTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createLsToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
+"pi-coding-agent: createFindTool" = { go = "native:CreateFindTool", rust = "native:create_find_tool", python = "native:create_find_tool" }
+"pi-coding-agent: createFindToolDefinition" = { go = "native:CreateFindToolDefinition", rust = "native:create_find_tool_definition", python = "native:create_find_tool_definition" }
+"pi-coding-agent: createGrepTool" = { go = "native:CreateGrepTool", rust = "native:create_grep_tool", python = "native:create_grep_tool" }
+"pi-coding-agent: createGrepToolDefinition" = { go = "native:CreateGrepToolDefinition", rust = "native:create_grep_tool_definition", python = "native:create_grep_tool_definition" }
+"pi-coding-agent: createLocalBashOperations" = { go = "native:CreateLocalBashOperations", rust = "native:create_local_bash_operations", python = "native:create_local_bash_operations" }
+"pi-coding-agent: createLocalPowerShellOperations" = { go = "native:CreateLocalPowerShellOperations", rust = "native:create_local_powershell_operations", python = "native:create_local_powershell_operations" }
+"pi-coding-agent: createLsTool" = { go = "native:CreateLsTool", rust = "native:create_ls_tool", python = "native:create_ls_tool" }
+"pi-coding-agent: createLsToolDefinition" = { go = "native:CreateLsToolDefinition", rust = "native:create_ls_tool_definition", python = "native:create_ls_tool_definition" }
 "pi-coding-agent: createMcpExtension" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: createPowerShellTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createPowerShellToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createReadOnlyTools" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createReadTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createReadToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
+"pi-coding-agent: createPowerShellTool" = { go = "native:CreatePowerShellTool", rust = "native:create_powershell_tool", python = "native:create_powershell_tool" }
+"pi-coding-agent: createPowerShellToolDefinition" = { go = "native:CreatePowerShellToolDefinition", rust = "native:create_powershell_tool_definition", python = "native:create_powershell_tool_definition" }
+"pi-coding-agent: createReadOnlyTools" = { go = "native:CreateReadOnlyTools", rust = "native:create_read_only_tools", python = "native:create_read_only_tools" }
+"pi-coding-agent: createReadTool" = { go = "native:CreateReadTool", rust = "native:create_read_tool", python = "native:create_read_tool" }
+"pi-coding-agent: createReadToolDefinition" = { go = "native:CreateReadToolDefinition", rust = "native:create_read_tool_definition", python = "native:create_read_tool_definition" }
 "pi-coding-agent: createSyntheticSourceInfo" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: createToolSearchExtension" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: createWriteTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
-"pi-coding-agent: createWriteToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
+"pi-coding-agent: createWriteTool" = { go = "native:CreateWriteTool", rust = "native:create_write_tool", python = "native:create_write_tool" }
+"pi-coding-agent: createWriteToolDefinition" = { go = "native:CreateWriteToolDefinition", rust = "native:create_write_tool_definition", python = "native:create_write_tool_definition" }
 "pi-coding-agent: defineTool" = { go = "identity", rust = "identity", python = "identity" }
 "pi-coding-agent: detectSupportedImageMimeTypeFromFile" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-coding-agent: discoverAndLoadExtensions" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }

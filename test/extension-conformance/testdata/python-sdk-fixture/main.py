@@ -312,6 +312,194 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("truncate:" + json.dumps(result) + ":end", "info")
 
     ext.command("truncate_probe", "Run a truncation helper on a JSON case and report the result", truncate_probe)
+    # builtin_probe: see the Go fixture (testfixture/builtin_tool.go).
+    def builtin_report(result):
+        blocks = [{"type": "text", "text": b.get("text", "")} if b.get("type") == "text" else {"type": b.get("type"), "mimeType": b.get("mimeType")} for b in result.get("content", [])]
+        report = {"content": blocks, "isError": bool(result.get("is_error"))}
+        if result.get("details") is not None:
+            report["details"] = result["details"]
+            report["detailsJSON"] = json.dumps(result["details"], separators=(",", ":"), ensure_ascii=False)
+        structured = result.get("structured_content")
+        if isinstance(structured, dict):
+            report["structuredKeys"] = list(structured.keys())
+            report["exitCode"] = structured.get("exit_code")
+        return report
+
+    def builtin_options(case, log):
+        custom = case.get("ops") == "custom"
+        tool = case.get("tool")
+        if tool == "read":
+            ops = None
+            if custom:
+                def read_file(path):
+                    log.append("readFile:" + path)
+                    return ("OPS:" + path).encode()
+
+                def access(path):
+                    log.append("access:" + path)
+                ops = pig_sdk.ReadOperations(read_file=read_file, access=access)
+            return pig_sdk.ReadToolOptions(auto_resize_images=case.get("autoResizeImages"), operations=ops)
+        if tool == "write":
+            ops = None
+            if custom:
+                ops = pig_sdk.WriteOperations(write_file=lambda path, content: log.append("writeFile:%s:%s" % (path, content)), mkdir=lambda d: log.append("mkdir:" + d))
+            return pig_sdk.WriteToolOptions(operations=ops)
+        if tool == "edit":
+            ops = None
+            if custom:
+                def edit_read(path):
+                    log.append("readFile:" + path)
+                    return b"hello world\n"
+                ops = pig_sdk.EditOperations(read_file=edit_read, write_file=lambda path, content: log.append("writeFile:%s:%s" % (path, content)), access=lambda path: log.append("access:" + path))
+            return pig_sdk.EditToolOptions(operations=ops)
+        if tool == "ls":
+            ops = None
+            if custom:
+                def exists(path):
+                    log.append("exists:" + path)
+                    return True
+
+                def stat(path):
+                    log.append("stat:" + path)
+                    return pig_sdk.LsStat(is_directory="." not in path)
+
+                def readdir(path):
+                    log.append("readdir:" + path)
+                    return ["b.txt", "a.txt", "sub"]
+                ops = pig_sdk.LsOperations(exists=exists, stat=stat, readdir=readdir)
+            return pig_sdk.LsToolOptions(operations=ops)
+        if tool == "grep":
+            ops = None
+            if custom:
+                def is_directory(path):
+                    log.append("isDirectory:" + path)
+                    raise RuntimeError("no such path for the probe")
+                ops = pig_sdk.GrepOperations(is_directory=is_directory)
+            return pig_sdk.GrepToolOptions(operations=ops)
+        if tool == "find":
+            ops = None
+            if custom:
+                def find_exists(path):
+                    log.append("exists:" + path)
+                    return False
+
+                def glob(pattern, cwd, options):
+                    log.append("glob:" + pattern)
+                    return []
+                ops = pig_sdk.FindOperations(exists=find_exists, glob=glob)
+            return pig_sdk.FindToolOptions(operations=ops)
+        if tool == "powershell":
+            return pig_sdk.PowerShellToolOptions(expose_session_environment=case.get("exposeSessionEnvironment"))
+        hook = None
+        if case.get("hook"):
+            def hook(spawn):
+                log.append("spawnHook:" + spawn["command"])
+                return {"command": "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", "cwd": spawn["cwd"], "env": {**spawn["env"], "HOOK_VAR": "hook-env"}}
+        ops = None
+        if custom:
+            def exec_(command, cwd, options):
+                log.append("exec:%s|cwd=%s" % (command, cwd))
+                options.on_data(("custom:" + command).encode())
+                return {"exitCode": 0}
+            ops = pig_sdk.BashOperations(exec=exec_)
+        return pig_sdk.BashToolOptions(command_prefix=case.get("commandPrefix") or None, expose_session_environment=case.get("exposeSessionEnvironment"), spawn_hook=hook, operations=ops)
+
+    factories = {
+        "read": (pig_sdk.create_read_tool_definition, pig_sdk.create_read_tool), "write": (pig_sdk.create_write_tool_definition, pig_sdk.create_write_tool),
+        "edit": (pig_sdk.create_edit_tool_definition, pig_sdk.create_edit_tool), "bash": (pig_sdk.create_bash_tool_definition, pig_sdk.create_bash_tool),
+        "grep": (pig_sdk.create_grep_tool_definition, pig_sdk.create_grep_tool), "find": (pig_sdk.create_find_tool_definition, pig_sdk.create_find_tool),
+        "ls": (pig_sdk.create_ls_tool_definition, pig_sdk.create_ls_tool), "powershell": (pig_sdk.create_powershell_tool_definition, pig_sdk.create_powershell_tool),
+    }
+
+    def register_overrides(ctx, factory_cwd):
+        read = pig_sdk.create_read_tool_definition(factory_cwd)
+        run_read = read.execute
+
+        def read_execute(ctx, params):
+            result = run_read(ctx, params)
+            blocks = [{**b, "text": "«delegated:" + b["text"] + "»"} if i == 0 else b for i, b in enumerate(result["content"])]
+            return {**result, "content": blocks, "details": {"delegated": True}}
+
+        ctx.register_tool(dataclasses.replace(read, execute=read_execute))
+        bash = pig_sdk.create_bash_tool_definition(factory_cwd)
+        run_bash = bash.execute
+
+        def bash_execute(ctx, params):
+            result = run_bash(ctx, params)
+            blocks = [{**b, "text": "«" + b["text"] + "»"} if i == 0 else b for i, b in enumerate(result["content"])]
+            return {**result, "content": blocks}
+
+        ctx.register_tool(dataclasses.replace(bash, execute=bash_execute))
+        return [read.name, bash.name]
+
+    def local_probe(case):
+        operations = pig_sdk.create_local_powershell_operations() if case.get("shell") == "powershell" else pig_sdk.create_local_bash_operations()
+        signal = pig_sdk.ProviderSignal()
+        chunks = []
+
+        def on_data(data):
+            chunks.append(bytes(data).decode("utf-8"))
+            if case.get("abortOnOutput"):
+                signal.set()
+
+        options = pig_sdk.BashExecOptions(on_data=on_data, signal=signal, timeout=case.get("timeout"), env=case.get("env"))
+        report = {}
+        try:
+            result = operations.exec(case["command"], case["factoryCwd"], options)
+            report["exitCode"] = result["exitCode"]
+        except Exception as error:  # noqa: BLE001
+            report["error"] = str(error)
+        report["output"] = "".join(chunks)
+        return report
+
+    def builtin_probe(ctx, args):
+        case = json.loads(args)
+        kind = case["kind"]
+        if kind == "cwd":
+            report = {"cwd": ctx.cwd}
+        elif kind == "register":
+            report = {"registered": register_overrides(ctx, case["factoryCwd"])}
+        elif kind == "local":
+            report = local_probe(case)
+        elif kind == "sets":
+            report = {"coding": [t.name for t in pig_sdk.create_coding_tools(case["factoryCwd"])], "readOnly": [t.name for t in pig_sdk.create_read_only_tools(case["factoryCwd"])]}
+        else:
+            log = []
+            create_definition, create_tool = factories[case["tool"]]
+            options = builtin_options(case, log)
+            if kind == "definition":
+                d = create_definition(case["factoryCwd"], options)
+                report = {"definition": {"name": d.name, "label": d.label, "description": d.description, "promptSnippet": d.prompt_snippet or "", "promptGuidelines": d.prompt_guidelines,
+                                         "parameters": d.parameters, "outputSchema": d.output_schema, "constrainedSampling": d.constrained_sampling, "executionMode": d.execution_mode or "",
+                                         "renderShell": "self" if d.render_shell == "self" else ""}}
+            else:
+                signal = pig_sdk.ProviderSignal()
+                if case.get("preAborted"):
+                    signal.set()
+                updates = []
+
+                def collect(partial):
+                    text = "\n".join(b.get("text", "") for b in partial.get("content", []) if b.get("type") == "text")
+                    updates.append(text)
+                    if case.get("abortOnOutput") and text != "":
+                        signal.set()
+
+                on_update = collect if case.get("updates") or case.get("abortOnOutput") else None
+                report = {}
+                try:
+                    if case.get("noContext"):
+                        result = create_tool(case["factoryCwd"], options).execute("probe-call", case.get("params") or {}, signal, on_update)
+                    else:
+                        result = create_definition(case["factoryCwd"], options).execute_with(ctx, "probe-call", case.get("params") or {}, signal, on_update)
+                    report["result"] = builtin_report(result)
+                except Exception as error:  # noqa: BLE001
+                    report["error"] = str(error)
+                if case.get("updates"):
+                    report["updates"] = updates
+                report["calls"] = log
+        ctx.notify("builtin:" + json.dumps(report) + ":end", "info")
+
+    ext.command("builtin_probe", "Delegate to a built-in tool through the SDK and report what it returned", builtin_probe)
     # message_probe reads the event payload in its JSON argument with the SDK's message_role and message_text helpers (TestConformance_MessageHelpersAgreeAcrossSDKs).
     def message_probe(ctx, args):
         data = json.loads(args)

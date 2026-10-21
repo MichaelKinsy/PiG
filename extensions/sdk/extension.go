@@ -1081,7 +1081,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 	if started == nil {
 		conn.start()
 	}
-	adoptHelperConn(conn, sockPath)
+	adoptHelperConn(conn, sockPath, e)
 	defer releaseHelperConn(conn)
 	defer e.resetEventBus()
 	// A node factory's pi.events.on runs before its runtime registers; a native listener subscribed before Run does the same.
@@ -1332,6 +1332,13 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 
 	case requestExecuteToolUpdate:
 		_ = e.conn.respond(id, nil, e.dispatchExecuteToolUpdate(req.Args))
+
+	case requestBuiltinToolCallback:
+		result, err := e.dispatchBuiltinToolCallback(req.Args)
+		_ = e.conn.respond(id, result, err)
+
+	case requestBuiltinToolExecData:
+		_ = e.conn.respond(id, nil, e.dispatchBuiltinExecData(req.Args))
 
 	case "tool_prepare_loadout":
 		result, err := e.dispatchPrepareLoadout(req.Tool, req.Args)

@@ -2183,6 +2183,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify("truncate:"+string(wire)+":end", "info")
 		return nil
 	})
+	registerBuiltinToolProbe(ext)
 	// message_probe reads the event payload in its JSON argument with the SDK's messageRole and messageText helpers
 	// (TestConformance_MessageHelpersAgreeAcrossSDKs).
 	ext.Command("message_probe", "Report messageRole and messageText of a JSON event payload", func(ctx sdk.Context, args string) error {

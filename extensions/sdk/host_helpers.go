@@ -50,6 +50,8 @@ type HostHelpers struct {
 	ConvertToPng func(data, mimeType string) (ConvertedImage, bool)
 	// ResizeImage is the host's resizeImage: false is Pi's null.
 	ResizeImage func(input []byte, mimeType string, options *ImageResizeOptions) (ResizedImage, bool, error)
+	// BuiltinToolDefinition answers builtinTool.definition: the JSON of its arguments in, the JSON of its reply out.
+	BuiltinToolDefinition func(args []byte) ([]byte, error)
 }
 
 var helpers struct {
@@ -156,6 +158,8 @@ func installedHelpers() *HostHelpers {
 type runningConn struct {
 	c    *conn
 	path string
+	// ext is the running extension, for a helper that reaches the host through it.
+	ext *Extension
 }
 
 // helperConnection is the connection a helper called outside a handler uses: the running extension's, the one an earlier helper opened to this socket, or a
@@ -205,10 +209,10 @@ func takeHelperConn(sockPath string) *conn {
 
 // adoptHelperConn makes the connection of a running extension the one helpers use when they run outside a factory and a Context, so such a helper does not
 // dial a socket the host already accepted.
-func adoptHelperConn(c *conn, path string) {
+func adoptHelperConn(c *conn, path string, ext *Extension) {
 	helpers.mu.Lock()
 	defer helpers.mu.Unlock()
-	helpers.running = append(helpers.running, runningConn{c: c, path: path})
+	helpers.running = append(helpers.running, runningConn{c: c, path: path, ext: ext})
 }
 
 // releaseHelperConn forgets c when its extension stopped running.

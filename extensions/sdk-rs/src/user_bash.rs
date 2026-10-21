@@ -55,6 +55,10 @@ impl BashOperationsTable {
         handle
     }
 
+    pub(crate) fn register_as(&self, handle: &str, operations: BashOperations) {
+        self.inner.lock().unwrap().1.insert(handle.to_string(), operations.exec);
+    }
+
     pub(crate) fn get(&self, handle: &str) -> Option<BashExecFn> {
         self.inner.lock().unwrap().1.get(handle).cloned()
     }

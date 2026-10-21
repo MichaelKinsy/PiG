@@ -138,6 +138,15 @@ mod tool_start_order;
 mod transport;
 mod user_bash;
 pub use user_bash::{BashExecFn, BashExecOptions, BashOperations};
+mod builtin_tool;
+pub use builtin_tool::{
+    BashSpawnContext, BashSpawnHook, BashToolOptions, BuiltinTool, BuiltinToolDefinition, BuiltinToolExecutor, EditOperations, EditToolOptions, FindGlobOptions, FindOperations,
+    FindToolOptions, GrepOperations, GrepToolOptions, LocalBashOperationsOptions, LsOperations, LsStat, LsToolOptions, ModelImageResizeOptions, OperationResult, PathOperation,
+    PowerShellToolOptions, ReadOperations, ReadToolOptions, ToolsOptions, WriteOperation, WriteOperations, WriteToolOptions, create_bash_tool, create_bash_tool_definition,
+    create_coding_tools, create_edit_tool, create_edit_tool_definition, create_find_tool, create_find_tool_definition, create_grep_tool, create_grep_tool_definition,
+    create_local_bash_operations, create_local_powershell_operations, create_ls_tool, create_ls_tool_definition, create_powershell_tool, create_powershell_tool_definition,
+    create_read_only_tools, create_read_tool, create_read_tool_definition, create_write_tool, create_write_tool_definition,
+};
 
 mod js_string;
 pub use js_string::JsString;

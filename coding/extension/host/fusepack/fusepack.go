@@ -96,6 +96,7 @@ func HostHelpers() *sdk.HostHelpers {
 			image := result.Image
 			return sdk.ResizedImage{Data: image.Data, MimeType: image.MimeType, OriginalWidth: float64(*image.OriginalWidth), OriginalHeight: float64(*image.OriginalHeight), Width: float64(*image.Width), Height: float64(*image.Height), WasResized: *image.WasResized}, true, nil
 		},
+		BuiltinToolDefinition: subprocess.BuiltinToolDefinitionJSON,
 	}
 }
 

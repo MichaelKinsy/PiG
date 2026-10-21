@@ -38,9 +38,9 @@ type nestedCall struct {
 	cancel context.CancelFunc
 }
 
-// reserveNestedCall reserves call when it is an executeTool call and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op.
+// reserveNestedCall reserves call when it is an executeTool, builtinTool.execute or builtinTool.localExec call and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op.
 func (h *Host) reserveNestedCall(conn *Conn, call *CallPayload) (release func()) {
-	if call.Method != CallExecuteTool {
+	if call.Method != CallExecuteTool && call.Method != CallBuiltinToolExecute && call.Method != CallBuiltinToolLocalExec {
 		return func() {}
 	}
 	var named struct {
