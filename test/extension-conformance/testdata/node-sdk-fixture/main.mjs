@@ -1204,6 +1204,7 @@ export default function (pi) {
   const kitScrollMarkdown = "# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`";
   const kitScrollChild = (kind) => {
     if (kind === "md") return new piTui.Markdown(kitScrollMarkdown, 1, 0, piCodingAgent.getMarkdownTheme());
+    if (kind === "region") return new piTui.Text("Region content\nsecond row", 1, 0);
     if (kind === "empty") return new Container();
     if (kind === "branch") return new piCodingAgent.BranchSummaryMessageComponent({ summary: "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`." }, undefined, 1);
     return new piTui.Text(kitScrollLines, 1, 0);
@@ -1260,15 +1261,15 @@ export default function (pi) {
       return { root };
     };
     const m = "pi-tui/MouseRegion/";
-    kitWidgetCases[m + "renders its child"] = region({}, "text", undefined);
-    kitWidgetCases[m + "every type by default"] = region({}, "text", undefined);
-    kitWidgetCases[m + "types filter"] = region({"types": ["click"]}, "text", undefined);
-    kitWidgetCases[m + "not handled"] = region({"handled": false}, "text", undefined);
-    kitWidgetCases[m + "capture"] = region({"capture": true}, "text", undefined);
-    kitWidgetCases[m + "focus and render"] = region({"focus": true, "render": false}, "text", undefined);
-    kitWidgetCases[m + "local coordinates"] = region({}, "text", "ab");
+    kitWidgetCases[m + "renders its child"] = region({}, "region", undefined);
+    kitWidgetCases[m + "every type by default"] = region({}, "region", undefined);
+    kitWidgetCases[m + "types filter"] = region({"types": ["click"]}, "region", undefined);
+    kitWidgetCases[m + "not handled"] = region({"handled": false}, "region", undefined);
+    kitWidgetCases[m + "capture"] = region({"capture": true}, "region", undefined);
+    kitWidgetCases[m + "focus and render"] = region({"focus": true, "render": false}, "region", undefined);
+    kitWidgetCases[m + "local coordinates"] = region({}, "region", "ab");
     kitWidgetCases[m + "the child takes the event first"] = region({}, "branch", undefined);
-    kitWidgetCases[m + "right button"] = region({}, "text", undefined);
+    kitWidgetCases[m + "right button"] = region({}, "region", undefined);
   }
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
@@ -1285,7 +1286,8 @@ export default function (pi) {
         const note = (entry, callback = true) => {
           log.push(entry);
           if (callback) count++;
-          if (want > 0 && count >= want) done(log.join(","));
+          // Closes after the frame the callback changed is drawn (an editor clears itself on submit).
+          if (want > 0 && count >= want) setTimeout(() => done(log.join(",")), 150);
         };
         // build returns the root component and, when a node of it holds the focus, that node.
         const { root, focus } = build({ tui, theme, keys, note, log });
