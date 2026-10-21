@@ -3933,7 +3933,8 @@ func toolCallOrder(me *managedExt) func(json.RawMessage) *extension.CallOrder {
 		if conn == nil {
 			return nil
 		}
-		return conn.toolOrder.Reserve()
+		place := conn.toolOrder.Reserve()
+		return &extension.CallOrder{Wait: place.Wait, Release: place.Release}
 	}
 }
 

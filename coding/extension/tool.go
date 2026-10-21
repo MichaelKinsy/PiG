@@ -3,7 +3,6 @@ package extension
 import (
 	"context"
 	"encoding/json"
-	"sync"
 )
 
 // ToolRenderResultOptions mirrors upstream ToolRenderResultOptions.
@@ -257,38 +256,14 @@ type RegisteredTool struct {
 	Revision uint64 `json:"-"`
 }
 
-// CallOrder is a reserved place in a tool's call order. Wait returns when every earlier reservation was released;
-// Release, which is idempotent, hands the place on and must run however the call ends.
+// CallOrder is a reserved place in a tool's call order. Pi runs each call's synchronous prefix in call order, so
+// `Promise.all([tools.a(), tools.b()])` issues `a` first; Go's goroutines give no such order, so the host reserves each call's
+// place in call order (ToolDefinition.ReserveCallOrder) and a call issues its request only after every earlier reservation
+// released. Wait returns when every earlier reservation was released; Release, which is idempotent, hands the place on and must
+// run however the call ends.
 type CallOrder struct {
 	Wait    func()
 	Release func()
-}
-
-// CallLane keeps the calls of one destination in call order up to the point their requests are issued. Pi runs each call's
-// synchronous prefix in call order, so `Promise.all([tools.a(), tools.b()])` issues `a` first; Go's goroutines give no such order,
-// so the host reserves each call's place in call order (ToolDefinition.ReserveCallOrder) and a call issues its request only after
-// every earlier reservation released. The zero value is ready to use.
-type CallLane struct {
-	mu   sync.Mutex
-	tail chan struct{}
-}
-
-// Reserve takes the next place in the lane. It must run in call order, before any of the calls runs.
-func (l *CallLane) Reserve() *CallOrder {
-	done := make(chan struct{})
-	l.mu.Lock()
-	previous := l.tail
-	l.tail = done
-	l.mu.Unlock()
-	var once sync.Once
-	return &CallOrder{
-		Wait: func() {
-			if previous != nil {
-				<-previous
-			}
-		},
-		Release: func() { once.Do(func() { close(done) }) },
-	}
 }
 
 type callOrderKey struct{}

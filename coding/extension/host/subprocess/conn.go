@@ -16,7 +16,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
-	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
@@ -118,7 +117,7 @@ func (e *TransportError) Unwrap() error { return e.Err }
 // pig-specific: no upstream equivalent.
 type Conn struct {
 	// toolOrder keeps the tool_call requests of one batch in source order on the wire.
-	toolOrder extension.CallLane
+	toolOrder jsloop.Lane
 	// onDispatch records the owner before a request can run in a shared process.
 	onDispatch func()
 	// beforeCancel runs before the cancel frame of a cancelled request is queued. The Host uses it to send the run signal's abort first, so a handler the run's abort cancels finds ctx.signal aborted when it sees its own cancellation: upstream aborts one signal for both.
