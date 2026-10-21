@@ -438,7 +438,18 @@ func (m *InteractiveMode) settleTurn(ctx context.Context, err error) error {
 
 func (m *InteractiveMode) settleTurnWithPrompt(ctx context.Context, err error, finishPrompt func()) error {
 	for {
+		// Custom messages deferred to the end of a turn are appended when the run ends (upstream _flushPendingCustomMessages in the finally of
+		// _runAgentPrompt). The flush runs outside queueMu because it publishes events the owner loop consumes; a message deferred after it is seen
+		// by the check below, which keeps the run open to flush again.
+		if session := m.opts.SessionHandle; session != nil {
+			err = errors.Join(err, session.FlushDeferredCustomMessages())
+		}
 		m.queueMu.Lock()
+		deferred := m.opts.SessionHandle != nil && m.opts.SessionHandle.HasDeferredCustomMessages()
+		if deferred {
+			m.queueMu.Unlock()
+			continue
+		}
 		if err != nil || ctx.Err() != nil || !m.agent.HasQueuedMessages() {
 			// Clear the outgoing prompt before publishing idle or releasing replacement waiters.
 			if finishPrompt != nil {
