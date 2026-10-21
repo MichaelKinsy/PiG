@@ -23,6 +23,7 @@ import (
 // raw call frames as the extension would.
 type callOrderFixture struct {
 	t      *testing.T
+	host   *Host
 	conn   *Conn
 	ext    net.Conn
 	writeM sync.Mutex
@@ -56,7 +57,7 @@ func startCallOrderFixture(t *testing.T, h *Host) *callOrderFixture {
 	me := withConn(&managedExt{config: ExtConfig{Name: "order"}, host: h}, conn)
 	me.shuttingDown.Store(true)
 	go h.handleIncoming(me, me.connection())
-	f := &callOrderFixture{t: t, ext: extSide, conn: conn, results: map[string]*CallResultPayload{}, resultCh: make(chan struct{}, 1)}
+	f := &callOrderFixture{t: t, host: h, ext: extSide, conn: conn, results: map[string]*CallResultPayload{}, resultCh: make(chan struct{}, 1)}
 	go f.readFrames()
 	t.Cleanup(func() {
 		cancel()

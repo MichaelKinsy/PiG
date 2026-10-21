@@ -1137,6 +1137,14 @@ function awaitHostStep(conn) {
   }
 }
 
+// awaitsWaitForIdle reports whether the request's handler waits on a waitForIdle host call. Pi's returns at once while the Session is idle (agent-session.ts waitForIdle: `if (this.isIdle) return`), so the handler goes on in microtasks and is not suspended; the host knows whether the call waits and reports the suspension then (Conn.settleBlockedCall).
+function awaitsWaitForIdle(conn, requestId) {
+  for (const pending of conn.pending.values()) {
+    if (pending.parentRequestId === requestId && pending.method === "waitForIdle") return true;
+  }
+  return false;
+}
+
 export class Connection {
   constructor(socket) {
     this.socket = socket;
@@ -1503,7 +1511,18 @@ class RuntimeContext {
   getSystemPrompt() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPrompt; }
   getSystemPromptOptions() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPromptOptions ?? {}; }
   // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
-  waitForIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("waitForIdle", {}); }
+  waitForIdle() {
+    this.runtime.extensionRuntime.assertActive();
+    const operation = this.runtime.call("waitForIdle", {});
+    // The command's acknowledgment waits for the call like any other host call of the handler, so a handler that goes on in microtasks once it returned is not taken for suspended (acknowledgeInvocation).
+    const owner = this.runtime.activeRequest();
+    if (owner) {
+      const tracked = operation.then(() => {}, () => {});
+      owner.pendingHostCalls.add(tracked);
+      void tracked.then(() => owner.pendingHostCalls.delete(tracked));
+    }
+    return operation;
+  }
   newSession(options = {}) {
     this.runtime.extensionRuntime.assertActive();
     const { withSession, setup, ...rest } = options ?? {};
@@ -5022,7 +5041,7 @@ export class Runtime {
     await Promise.resolve();
     const owner = this.requestContext.getStore();
     while (owner?.pendingHostCalls.size) await Promise.all([...owner.pendingHostCalls]);
-    if (!settled) this.conn.requestState(id, "blocked", "external_io");
+    if (!settled && !awaitsWaitForIdle(this.conn, id)) this.conn.requestState(id, "blocked", "external_io");
   }
 
   // writeSync is a synchronous host write whose events may start nested in the wait (Connection.nestedEvent).
@@ -5080,7 +5099,8 @@ export class Runtime {
     const conn = this.conn;
     if (!owner?.command || this.contextValues.mode !== "rpc" || !conn) return;
     setImmediate(() => {
-      if (!owner.handlerSettled && !owner.settled && !conn.closed) conn.requestState(owner.id, "blocked", "external_io");
+      if (owner.handlerSettled || owner.settled || conn.closed || awaitsWaitForIdle(conn, owner.id)) return;
+      conn.requestState(owner.id, "blocked", "external_io");
     });
   }
 
