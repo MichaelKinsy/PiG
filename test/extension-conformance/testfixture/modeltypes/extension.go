@@ -236,9 +236,17 @@ func Extension() *sdk.Extension {
 			if err := registry.RegisterVirtualModel(sdk.VirtualModel{Provider: "router", ID: "seen", Name: "Seen", ContextWindow: 1000, Route: route}); err != nil {
 				return nil, err
 			}
-			registered, isListed := registry.Find("router", "seen") != nil, listed()
+			found, err := registry.Find("router", "seen")
+			if err != nil {
+				return nil, err
+			}
+			registered, isListed := found != nil, listed()
 			registry.UnregisterVirtualModel("router", "seen")
-			return text(map[string]any{"registered": registered, "listed": isListed, "gone": registry.Find("router", "seen") == nil, "unlisted": !listed()})
+			gone, err := registry.Find("router", "seen")
+			if err != nil {
+				return nil, err
+			}
+			return text(map[string]any{"registered": registered, "listed": isListed, "gone": gone == nil, "unlisted": !listed()})
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{

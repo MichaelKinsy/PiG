@@ -215,9 +215,9 @@ pub fn new_extension() -> Extension {
             return ToolResult::text(json!({"error": error.to_string()}).to_string());
         }
         let listed = || registry.get_all().ok().and_then(|models| models.as_array().map(|models| models.iter().any(|m| m["provider"] == "router" && m["id"] == "seen"))).unwrap_or(false);
-        let (registered, is_listed) = (registry.find("router", "seen").is_some(), listed());
+        let (registered, is_listed) = (registry.find("router", "seen").ok().flatten().is_some(), listed());
         let _ = registry.unregister_virtual_model("router", "seen");
-        ToolResult::text(json!({"registered": registered, "listed": is_listed, "gone": registry.find("router", "seen").is_none(), "unlisted": !listed()}).to_string())
+        ToolResult::text(json!({"registered": registered, "listed": is_listed, "gone": registry.find("router", "seen").ok().flatten().is_none(), "unlisted": !listed()}).to_string())
     });
     ext.tool("theme_probe", "Reads the host's theme through ctx.ui.theme.", empty_schema(), |ctx, args| {
         let theme = ctx.theme();
