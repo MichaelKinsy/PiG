@@ -113,6 +113,21 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("robust note %d: %s", notes, args), "info")
 		return nil
 	})
+	ext.Command("robust-widgets", "Set, repeat, clear and reset a widget around notifications", func(ctx sdk.Context, _ string) error {
+		for _, step := range []func() error{
+			func() error { return ctx.SetWidget("robust-w", []string{"w-one"}) },
+			func() error { ctx.Notify("w-n1", "info"); return nil },
+			func() error { return ctx.SetWidget("robust-w", []string{"w-one"}) },
+			func() error { return ctx.SetWidget("robust-w", nil) },
+			func() error { return ctx.SetWidget("robust-w", []string{"w-two"}) },
+			func() error { ctx.Notify("w-n2", "info"); return nil },
+		} {
+			if err := step(); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	ext.Command("robust-pick", "Pick an item in an overlay", func(ctx sdk.Context, _ string) error {
 		choice, err := ctx.Custom(&picker{items: []string{"alpha", "beta", "gamma"}}, sdk.RemoteOverlayOptions{Overlay: true})
 		if err != nil {
