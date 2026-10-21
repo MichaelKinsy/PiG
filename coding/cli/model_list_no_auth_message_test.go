@@ -42,7 +42,7 @@ func TestPrintModelList_NoAuth_PrintsLoginGuidance(t *testing.T) {
 	dir := t.TempDir()
 	reg := codingagent.NewModelRegistry(dir)
 
-	out := captureStdout(func() { printModelList(reg, dir, "") })
+	out := captureStdout(func() { printModelList(reg, "") })
 
 	if !strings.Contains(out, "No models available. Use /login to log into a provider via OAuth or API key.") {
 		t.Fatalf("printModelList no-auth output = %q, want upstream login guidance", out)
