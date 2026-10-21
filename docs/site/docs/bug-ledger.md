@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-937 bugs. 887 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 143 bugs have no recorded test.
+939 bugs. 889 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 143 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -953,9 +953,11 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-1886fff](#bf-1886fff) | The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the… | PiG's own defect | All platforms | Unreleased |
 | [BF-f172d67](#bf-f172d67) | Extension tools of one parallel batch reach the host in Pi's order | PiG's own defect | All platforms | Unreleased |
 | [BF-f172d67-2](#bf-f172d67-2) | The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its… | PiG's own defect | All platforms | Unreleased |
+| [BF-dca5763](#bf-dca5763) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a… | PiG's own defect | All platforms | Unreleased |
 | [BF-536efd5](#bf-536efd5) | An edit or write call of a parallel batch registers in the file mutation queue after the extension tools… | PiG's own defect | All platforms | Unreleased |
 | [BF-d9ec956](#bf-d9ec956) | The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes… | PiG's own defect | All platforms | Unreleased |
 | [BF-ee65aea](#bf-ee65aea) | A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the… | PiG's own defect | All platforms | Unreleased |
+| [BF-d6aaf72](#bf-d6aaf72) | A `setTimeout(0)` or `setImmediate` callback that an extension queues while an RPC stdin command runs (a… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13976,6 +13978,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/tool_settle_test.go::TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook`
 - **Release note:** The `tool_result` handlers of a parallel batch start in the order the tools settled, each running to its first await before the next one starts, and a tool's `onUpdate` reaches the listeners in the order the tools called it, across tools; before, both followed goroutine wake order.
 
+### BF-dca5763
+
+**A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as Pi's loop does, instead of before `tool_execution_end`.
+- **Root cause:** The Node runtime ran them as soon as the tool answered, because it is another process, and its host calls arrived mid-run.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `38901751db` (2026-10-21), `dca5763ac5` (2026-10-21)
+- **Tests:** `coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape`
+- **Release note:** A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as Pi's loop does, instead of before `tool_execution_end`. Pi runs those callbacks when its event loop turns, which a run's chain of microtasks never gives it. The Node runtime ran them as soon as the tool answered, because it is another process, and its host calls arrived mid-run. The host now holds such calls while the RPC run chains microtasks and runs them in arrival order at the next real wait: a model response's I/O, a built-in tool's run, a dialog, a compaction or an auto-retry delay, or the end of `agent_settled`. A `process.nextTick` callback's notification follows the `tool_execution_end` of the tool that queued it, as in Pi, and the callbacks of a tool that returns while a sibling tool of its batch still runs reach the client right after its `tool_execution_end`.
+
 ### BF-536efd5
 
 **An edit or write call of a parallel batch registers in the file mutation queue after the extension tools…**
@@ -14017,6 +14033,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `ee65aead9a` (2026-10-21)
 - **Tests:** None recorded.
 - **Release note:** A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the edit or write call behind it, as in Pi; before, the two raced and the extension won every round. The runtime holds the tool's next `fileMutation.enter` until the host reports the writes behind the tool registered.
+
+### BF-d6aaf72
+
+**A `setTimeout(0)` or `setImmediate` callback that an extension queues while an RPC stdin command runs (a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A call that a Go, Rust or Python extension makes through a context whose request returned runs on arrival while another request of the extension is in flight, instead of waiting for a loop turn that waits for that request: a handler that kept an earlier request's context and awaited a call through it used to hang the run.
+- **Root cause:** A handler that is still awaiting real I/O (a child process, a dialog) is not held back, because Pi's loop turns while it waits and runs the timer.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `463879414a` (2026-10-21), `58563ba284` (2026-10-21), `5a182154fc` (2026-10-21), `7a4ddb3733` (2026-10-21), `8506081bd3` (2026-10-21), `d6aaf72307` (2026-10-21)
+- **Tests:** `extensions/sdk/request_lifetime_race_test.go::TestNormalCompletionPublishedBeforeResponseIsVisible`, `extensions/sdk/request_lifetime_race_test.go::TestRetainedContextParentSelectionRacesNormalResponse`, `internal/jsloop/turns_test.go::TestReleaseRunsOnlyTheCallbacksHeldForItsOwner`, `test/extension-conformance/timer_calls_test.go::TestHostCallAwaitedByARunningHandlerIsNotHeldForTheLoopTurn`, `test/parity/scenarios/rpc/70-rpc-command-chain-timer-send.toml`, `test/parity/scenarios/rpc/71-rpc-command-chain-timer-dialog.toml`
+- **Release note:** A `setTimeout(0)` or `setImmediate` callback that an extension queues while an RPC stdin command runs (a `model_select` handler during `set_model`, say) now reaches the client after the command's response, as in Pi, instead of before it in about one run in ten. Pi runs the command's microtasks and writes its response before its loop runs a timer, so the Node runtime now holds its timer callbacks from the moment the host reads the command until the host has written the response, and the host waits for the runtime's acknowledgement of that hold before it sends the command's first event. A handler that is still awaiting real I/O (a child process, a dialog) is not held back, because Pi's loop turns while it waits and runs the timer. A call that a Go, Rust or Python extension makes through a context whose request returned runs on arrival while another request of the extension is in flight, instead of waiting for a loop turn that waits for that request: a handler that kept an earlier request's context and awaited a call through it used to hang the run.
 
 ## Divergences from Pi added in this release
 
