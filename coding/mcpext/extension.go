@@ -559,19 +559,19 @@ func (e *Extension) registerTools(connection *Connection) {
 	current := newToolSet()
 	// Like Codex, all tools whose names sanitize to the same name get the hash suffix, so which one would keep the plain
 	// name does not depend on the order of the list.
-	var plain []string
+	plainCount := map[string]int{}
 	seen := map[string]bool{}
 	for _, tool := range connection.Tools() {
 		if !seen[tool.Name] {
 			seen[tool.Name] = true
-			plain = append(plain, CreateMcpToolName(name, tool.Name, nil))
+			plainCount[CreateMcpToolName(name, tool.Name, nil)]++
 		}
 	}
 	assignName := func(tool, owner string) string {
 		toolName := CreateMcpToolName(name, tool, func(candidate string) bool {
 			existing, taken := e.toolOwners[candidate]
 			return (taken && existing != owner) || current.has(candidate) ||
-				countOf(plain, candidate) > 1
+				plainCount[candidate] > 1
 		})
 		e.toolOwners[toolName] = owner
 		current.add(toolName)
@@ -1872,17 +1872,6 @@ func (e *Extension) sessionShutdown(ctx context.Context) {
 	}
 	wg.Wait()
 	e.background.Wait()
-}
-
-// countOf is the number of times value occurs in list.
-func countOf(list []string, value string) int {
-	n := 0
-	for _, item := range list {
-		if item == value {
-			n++
-		}
-	}
-	return n
 }
 
 // lane returns the call lane of a server. The caller holds toolMu.

@@ -1200,3 +1200,58 @@ func TestAgentSessionMCPZeroStartupWaitDoesNotNotifyForAConnectedServer(t *testi
 		}
 	}
 }
+
+// Pi: extensions/mcp/index.ts registerTools: names that sanitize to the same name all get the hash suffix, whatever
+// their order, and a raw name the server lists twice counts once in the collision count (`new Set(connection.tools.map(...))`).
+func TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog(t *testing.T) {
+	tool := func(name, description string) map[string]any {
+		return map[string]any{"name": name, "description": description, "inputSchema": map[string]any{"type": "object"}}
+	}
+	listed := []map[string]any{tool("a-b", "dash"), tool("plain", "first"), tool("a_b", "under"), tool("plain", "second"), tool("a.b", "dot"), tool("solo", "solo")}
+	h := setupSession(t, extension.McpExposureCodemode, func() []map[string]any { return listed }, setupOptions{})
+	h.start()
+	names := map[string]string{}
+	for _, info := range h.host.GetAllTools() {
+		if strings.HasPrefix(info.Name, "mcp__docs__") {
+			names[info.Description] = info.Name
+		}
+	}
+	suffixed := regexp.MustCompile(`^mcp__docs__a_b_[0-9a-f]{8}$`)
+	seen := map[string]bool{}
+	for _, description := range []string{"dash", "under", "dot"} {
+		if !suffixed.MatchString(names[description]) || seen[names[description]] {
+			t.Errorf("%s = %q, want a distinct hash-suffixed name", description, names[description])
+		}
+		seen[names[description]] = true
+	}
+	// The second listing of a raw name finds the plain name taken by the first, so it takes the hash suffix.
+	if names["first"] != "mcp__docs__plain" || !regexp.MustCompile(`^mcp__docs__plain_[0-9a-f]{8}$`).MatchString(names["second"]) || names["solo"] != "mcp__docs__solo" {
+		t.Errorf("names = %q, %q, %q, want the plain name, a suffixed name, and the plain name", names["first"], names["second"], names["solo"])
+	}
+}
+
+// Invariant: registering a server's tools is linear in the catalog. Assigning each name by rescanning every other
+// name is quadratic: 24 times more tools cost about 576 times more; linear growth costs about 24 times more.
+func TestAgentSessionMCPRegistrationIsLinearInTheCatalogSize(t *testing.T) {
+	register := func(n, runs int) time.Duration {
+		listed := make([]map[string]any, n)
+		for i := range listed {
+			listed[i] = map[string]any{"name": fmt.Sprintf("tool_%06d", i), "inputSchema": map[string]any{"type": "object"}}
+		}
+		best := time.Duration(1<<63 - 1)
+		for range runs {
+			h := setupSession(t, extension.McpExposureDeferred, func() []map[string]any { return listed }, setupOptions{})
+			start := time.Now()
+			h.start()
+			best = min(best, time.Since(start))
+			if got := len(h.host.GetAllTools()); got < n {
+				t.Fatalf("%d tools registered, want at least %d", got, n)
+			}
+		}
+		return best
+	}
+	small, large := max(register(2_000, 3), time.Millisecond), register(48_000, 1)
+	if ratio := float64(large) / float64(small); ratio > 150 {
+		t.Fatalf("48000 tools took %s and 2000 took %s: %.0fx for 24x the tools, want linear growth", large, small, ratio)
+	}
+}
