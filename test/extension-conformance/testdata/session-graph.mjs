@@ -1,5 +1,5 @@
 // The Node fixture of the session graph conformance rows (session_graph_test.go). It runs the script of testfixture/sessiongraph (Go), testdata/session-graph-rust and the inline Python fixture with Pi's own SessionManager, so the report it makes is Pi's.
-import { SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
+import { ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -317,6 +317,32 @@ async function settingsScript({ cwd, agentDir, configDir, brokenCwd }) {
   return r;
 }
 
+const trustEntry = (entry) => (entry === null || entry === undefined ? null : { path: entry.path, decision: entry.decision });
+
+async function trustScript({ root, cwd, agentDir, otherDir }) {
+  const sub = join(cwd, "sub");
+  const anc = join(root, "anc");
+  const ancProject = join(root, "anc", "proj");
+  const bare = join(root, "bare");
+  const r = {};
+  const store = new ProjectTrustStore(agentDir);
+  r.initial = { get: store.get(cwd), entry: trustEntry(store.getEntry(cwd)) };
+  store.set(cwd, true);
+  store.set(otherDir, false);
+  r.saved = { get: store.get(cwd), entry: trustEntry(store.getEntry(sub)), otherGet: store.get(otherDir), file: readJson(join(agentDir, "trust.json")) };
+  store.setMany([{ path: cwd, decision: null }, { path: anc, decision: true }]);
+  r.many = { cwd: store.get(cwd), anc: store.get(ancProject), entryAnc: trustEntry(store.getEntry(ancProject)), file: readJson(join(agentDir, "trust.json")) };
+  store.set(sub, false);
+  r.nested = { sub: store.get(sub), parent: store.get(cwd), file: readJson(join(agentDir, "trust.json")) };
+  const failureOfGet = (dir, contains) => failureOf(() => new ProjectTrustStore(join(root, dir)).get(cwd), contains);
+  r.errors = {
+    notObject: failureOfGet("agent-array", "Invalid trust store"), unreadable: failureOfGet("agent-bad-json", "Failed to read trust store"),
+    badValue: failureOfGet("agent-bad-value", "must be true, false, or null"),
+  };
+  r.resources = { config: hasTrustRequiringProjectResources(cwd), bare: hasTrustRequiringProjectResources(bare), ancestor: hasTrustRequiringProjectResources(ancProject) };
+  return r;
+}
+
 export default function (pi) {
   pi.registerTool({
     name: "session_manager", label: "session_manager", description: "Runs the SessionManager script.", parameters: { type: "object" },
@@ -325,5 +351,9 @@ export default function (pi) {
   pi.registerTool({
     name: "settings_manager", label: "settings_manager", description: "Runs the SettingsManager script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await settingsScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "project_trust_store", label: "project_trust_store", description: "Runs the ProjectTrustStore script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await trustScript(params)) }] }),
   });
 }

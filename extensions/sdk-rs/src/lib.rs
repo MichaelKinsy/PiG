@@ -91,6 +91,8 @@ mod session_manager_class;
 pub use session_manager_class::{NewSessionOptions, SessionInfo, SessionManager};
 mod settings_manager;
 pub use settings_manager::{SettingsError, SettingsManager, SettingsManagerCreateOptions};
+mod project_trust;
+pub use project_trust::{has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 mod host_info;
 pub use host_info::{get_agent_dir, get_config_dir_name, get_version};
 mod file_mutation_queue;

@@ -1,6 +1,6 @@
 //! Fixture for the session graph conformance rows (test/extension-conformance/session_graph_test.go): the script of testfixture/sessiongraph (Go), testdata/session-graph.mjs (Node, Pi's own classes) and testdata/session_graph_python.py.
 
-use pig_sdk::{empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult};
+use pig_sdk::{empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 use serde_json::{json, Value};
 use std::io;
 use std::path::Path;
@@ -362,6 +362,41 @@ fn settings_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     Ok(Value::Object(r))
 }
 
+fn entry_value(entry: Option<ProjectTrustStoreEntry>) -> Value {
+    entry.map_or(Value::Null, |entry| json!({"path": entry.path, "decision": entry.decision}))
+}
+
+fn trust_script(ctx: &Context, args: &Value) -> io::Result<Value> {
+    let (root, cwd, agent_dir, other) = (text(&args["root"]), text(&args["cwd"]), text(&args["agentDir"]), text(&args["otherDir"]));
+    let sub = Path::new(cwd).join("sub").to_string_lossy().into_owned();
+    let anc = Path::new(root).join("anc").to_string_lossy().into_owned();
+    let anc_project = Path::new(root).join("anc").join("proj").to_string_lossy().into_owned();
+    let bare = Path::new(root).join("bare").to_string_lossy().into_owned();
+    let trust_file = Path::new(agent_dir).join("trust.json");
+    let mut r = serde_json::Map::new();
+    let store = ProjectTrustStore::new(ctx, agent_dir)?;
+    r.insert("initial".into(), json!({"get": store.get(cwd)?, "entry": entry_value(store.get_entry(cwd)?)}));
+    store.set(cwd, Some(true))?;
+    store.set(other, Some(false))?;
+    r.insert("saved".into(), json!({"get": store.get(cwd)?, "entry": entry_value(store.get_entry(&sub)?), "otherGet": store.get(other)?, "file": read_json(&trust_file)?}));
+    store.set_many(&[ProjectTrustUpdate { path: cwd.into(), decision: None }, ProjectTrustUpdate { path: anc.clone(), decision: Some(true) }])?;
+    r.insert("many".into(), json!({"cwd": store.get(cwd)?, "anc": store.get(&anc_project)?, "entryAnc": entry_value(store.get_entry(&anc_project)?), "file": read_json(&trust_file)?}));
+    store.set(&sub, Some(false))?;
+    r.insert("nested".into(), json!({"sub": store.get(&sub)?, "parent": store.get(cwd)?, "file": read_json(&trust_file)?}));
+    let failure_of_get = |dir: &str, contains: &str| -> io::Result<String> {
+        let broken = ProjectTrustStore::new(ctx, &Path::new(root).join(dir).to_string_lossy())?;
+        Ok(failure(broken.get(cwd), contains))
+    };
+    r.insert("errors".into(), json!({
+        "notObject": failure_of_get("agent-array", "Invalid trust store")?, "unreadable": failure_of_get("agent-bad-json", "Failed to read trust store")?,
+        "badValue": failure_of_get("agent-bad-value", "must be true, false, or null")?,
+    }));
+    r.insert("resources".into(), json!({
+        "config": has_trust_requiring_project_resources(ctx, cwd)?, "bare": has_trust_requiring_project_resources(ctx, &bare)?, "ancestor": has_trust_requiring_project_resources(ctx, &anc_project)?,
+    }));
+    Ok(Value::Object(r))
+}
+
 pub fn new_extension() -> Extension {
     let mut ext = Extension::new("session-graph");
     ext.tool("session_manager", "Runs the SessionManager script.", empty_schema(), |ctx, args| match script(ctx, &args) {
@@ -369,6 +404,10 @@ pub fn new_extension() -> Extension {
         Err(error) => ToolResult::Error(error.to_string()),
     });
     ext.tool("settings_manager", "Runs the SettingsManager script.", empty_schema(), |ctx, args| match settings_script(ctx, &args) {
+        Ok(report) => ToolResult::text(report.to_string()),
+        Err(error) => ToolResult::Error(error.to_string()),
+    });
+    ext.tool("project_trust_store", "Runs the ProjectTrustStore script.", empty_schema(), |ctx, args| match trust_script(ctx, &args) {
         Ok(report) => ToolResult::text(report.to_string()),
         Err(error) => ToolResult::Error(error.to_string()),
     });

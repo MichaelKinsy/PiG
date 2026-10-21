@@ -207,5 +207,17 @@ func Extension() *sdk.Extension {
 			return string(encoded), err
 		},
 	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "project_trust_store", Label: "project_trust_store", Description: "Runs the ProjectTrustStore script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(trustScript(ctx, args))
+			return string(encoded), err
+		},
+	})
 	return e
 }

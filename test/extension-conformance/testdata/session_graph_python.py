@@ -3,7 +3,7 @@ import json
 import os
 
 import pig_sdk
-from pig_sdk import SessionManager, SettingsManager
+from pig_sdk import ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
 
 
 def shape(entries):
@@ -326,8 +326,40 @@ def settings_manager_tool(ctx, params):
     return json.dumps(settings_script(ctx, params))
 
 
+def trust_script(ctx, args):
+    root, cwd, agent_dir, other = args["root"], args["cwd"], args["agentDir"], args["otherDir"]
+    sub, anc, anc_project, bare = os.path.join(cwd, "sub"), os.path.join(root, "anc"), os.path.join(root, "anc", "proj"), os.path.join(root, "bare")
+    r = {}
+    store = ProjectTrustStore(ctx, agent_dir)
+    r["initial"] = {"get": store.get(cwd), "entry": store.get_entry(cwd)}
+    store.set(cwd, True)
+    store.set(other, False)
+    r["saved"] = {"get": store.get(cwd), "entry": store.get_entry(sub), "otherGet": store.get(other), "file": read_json(os.path.join(agent_dir, "trust.json"))}
+    store.set_many([{"path": cwd, "decision": None}, {"path": anc, "decision": True}])
+    r["many"] = {"cwd": store.get(cwd), "anc": store.get(anc_project), "entryAnc": store.get_entry(anc_project), "file": read_json(os.path.join(agent_dir, "trust.json"))}
+    store.set(sub, False)
+    r["nested"] = {"sub": store.get(sub), "parent": store.get(cwd), "file": read_json(os.path.join(agent_dir, "trust.json"))}
+
+    def failure_of_get(directory, contains):
+        return failure(lambda: ProjectTrustStore(ctx, os.path.join(root, directory)).get(cwd), contains)
+
+    r["errors"] = {
+        "notObject": failure_of_get("agent-array", "Invalid trust store"), "unreadable": failure_of_get("agent-bad-json", "Failed to read trust store"),
+        "badValue": failure_of_get("agent-bad-value", "must be true, false, or null"),
+    }
+    r["resources"] = {
+        "config": has_trust_requiring_project_resources(ctx, cwd), "bare": has_trust_requiring_project_resources(ctx, bare), "ancestor": has_trust_requiring_project_resources(ctx, anc_project),
+    }
+    return r
+
+
+def trust_tool(ctx, params):
+    return json.dumps(trust_script(ctx, params))
+
+
 def new_extension():
     ext = pig_sdk.Extension("session-graph")
     ext.register_tool(pig_sdk.ToolDefinition(name="session_manager", label="session_manager", description="Runs the SessionManager script.", parameters={"type": "object"}, execute=session_manager_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="settings_manager", label="settings_manager", description="Runs the SettingsManager script.", parameters={"type": "object"}, execute=settings_manager_tool))
+    ext.register_tool(pig_sdk.ToolDefinition(name="project_trust_store", label="project_trust_store", description="Runs the ProjectTrustStore script.", parameters={"type": "object"}, execute=trust_tool))
     return ext

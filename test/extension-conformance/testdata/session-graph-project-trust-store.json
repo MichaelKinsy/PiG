@@ -1,0 +1,49 @@
+{
+	"errors": {
+		"badValue": "error: must be true, false, or null",
+		"notObject": "error: Invalid trust store",
+		"unreadable": "error: Failed to read trust store"
+	},
+	"initial": {
+		"entry": null,
+		"get": null
+	},
+	"many": {
+		"anc": true,
+		"cwd": null,
+		"entryAnc": {
+			"decision": true,
+			"path": "\u003croot\u003e/anc"
+		},
+		"file": {
+			"\u003croot\u003e/anc": true,
+			"\u003croot\u003e/other": false
+		}
+	},
+	"nested": {
+		"file": {
+			"\u003croot\u003e/anc": true,
+			"\u003croot\u003e/other": false,
+			"\u003croot\u003e/project/sub": false
+		},
+		"parent": null,
+		"sub": false
+	},
+	"resources": {
+		"ancestor": true,
+		"bare": false,
+		"config": true
+	},
+	"saved": {
+		"entry": {
+			"decision": true,
+			"path": "\u003croot\u003e/project"
+		},
+		"file": {
+			"\u003croot\u003e/other": false,
+			"\u003croot\u003e/project": true
+		},
+		"get": true,
+		"otherGet": false
+	}
+}

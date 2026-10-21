@@ -69,13 +69,21 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 	configDir := icodingagent.ConfigDirName()
 	args := map[string]any{
 		"cwd": filepath.Join(root, "project"), "dir": filepath.Join(root, "sessions"), "otherDir": filepath.Join(root, "other"), "junk": filepath.Join(root, "junk.jsonl"),
-		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "brokenCwd": filepath.Join(root, "broken"),
+		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "brokenCwd": filepath.Join(root, "broken"),
 	}
 	files := map[string]string{
-		filepath.Join(root, "agent", "settings.json"):              sessionGraphGlobalSettings,
-		filepath.Join(root, "project", configDir, "settings.json"): sessionGraphProjectSettings,
-		filepath.Join(root, "broken", configDir, "settings.json"):  "{bad",
-		filepath.Join(root, "other", ".keep"):                      "",
+		filepath.Join(root, "agent", "settings.json"):                sessionGraphGlobalSettings,
+		filepath.Join(root, "project", configDir, "settings.json"):   sessionGraphProjectSettings,
+		filepath.Join(root, "broken", configDir, "settings.json"):    "{bad",
+		filepath.Join(root, "other", ".keep"):                        "",
+		filepath.Join(root, "project", "sub", ".keep"):               "",
+		filepath.Join(root, "project", configDir, "skills", ".keep"): "",
+		filepath.Join(root, "anc", ".agents", "skills", ".keep"):     "",
+		filepath.Join(root, "anc", "proj", ".keep"):                  "",
+		filepath.Join(root, "bare", ".keep"):                         "",
+		filepath.Join(root, "agent-array", "trust.json"):             "[1]",
+		filepath.Join(root, "agent-bad-json", "trust.json"):          "{bad",
+		filepath.Join(root, "agent-bad-value", "trust.json"):         `{"/x":"yes"}`,
 	}
 	for path, content := range files {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -280,3 +288,22 @@ func TestSessionGraphSettingsManagerAcrossSDKs(t *testing.T) {
 //
 //go:embed testdata/session-graph-settings-manager.json
 var sessionGraphSettingsManagerWant string
+
+// trust-manager.ts ProjectTrustStore (get, getEntry, set, setMany, the store's file and its errors) and hasTrustRequiringProjectResources for every SDK.
+func TestSessionGraphProjectTrustStoreAcrossSDKs(t *testing.T) {
+	t.Parallel()
+	eachSessionGraphSDK(t, func(t *testing.T, r *sessionGraphRig, _ string) {
+		report, root := r.script("project_trust_store")
+		got := normalizeSessionGraph(t, report, root)
+		if path := os.Getenv("SESSION_GRAPH_PRINT"); path != "" {
+			encoded, _ := json.MarshalIndent(got, "", "\t")
+			_ = os.WriteFile(path, encoded, 0o600)
+		}
+		requireSessionGraphReport(t, got, sessionGraphProjectTrustStoreWant)
+	})
+}
+
+// sessionGraphProjectTrustStoreWant is the report of Pi's own ProjectTrustStore (the Node row).
+//
+//go:embed testdata/session-graph-project-trust-store.json
+var sessionGraphProjectTrustStoreWant string

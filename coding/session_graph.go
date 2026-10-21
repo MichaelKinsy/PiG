@@ -26,6 +26,8 @@ func (*SessionGraph) New(_ context.Context, kind, op string, args json.RawMessag
 		return icodingagent.NewGraphSessionManager(op, args)
 	case subprocess.SessionGraphSettingsManager:
 		return icodingagent.NewGraphSettingsManager(op, args)
+	case subprocess.SessionGraphProjectTrustStore:
+		return icodingagent.NewGraphProjectTrustStore(op, args)
 	}
 	return nil, fmt.Errorf("the host does not construct %s", kind)
 }
@@ -35,6 +37,8 @@ func (*SessionGraph) Static(ctx context.Context, kind, method string, args json.
 	switch kind {
 	case subprocess.SessionGraphSessionManager:
 		return icodingagent.GraphSessionManagerStatic(ctx, method, args)
+	case subprocess.SessionGraphProjectTrustStore:
+		return icodingagent.GraphProjectTrustStoreStatic(ctx, method, args)
 	}
 	return nil, fmt.Errorf("%s has no static function %s", kind, method)
 }
