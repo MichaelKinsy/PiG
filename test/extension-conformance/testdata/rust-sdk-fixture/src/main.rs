@@ -1051,6 +1051,39 @@ fn main() {
             ToolResult::text(format!("start#{number} n={}", params.get("n").map(Value::to_string).unwrap_or_default()))
         },
     );
+    // A tool that notifies inline and, from a thread timer_release releases, after its handler returned (D5).
+    static TIMER_GATE: (std::sync::Mutex<usize>, std::sync::Condvar) = (std::sync::Mutex::new(0), std::sync::Condvar::new());
+    ext.tool(
+        "timer_defer",
+        "Notify inline and from deferred work",
+        json!({"type": "object"}),
+        |ctx, _params: Value| {
+            ctx.notify("inline:sync", "info");
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let (released, signal) = &TIMER_GATE;
+                let mut count = released.lock().unwrap();
+                while *count == 0 {
+                    count = signal.wait(count).unwrap();
+                }
+                *count -= 1;
+                drop(count);
+                ctx.notify("deferred:thread", "info");
+            });
+            ToolResult::text("queued")
+        },
+    );
+    ext.tool(
+        "timer_release",
+        "Release the deferred work",
+        json!({"type": "object"}),
+        |_ctx, _params: Value| {
+            let (released, signal) = &TIMER_GATE;
+            *released.lock().unwrap() += 1;
+            signal.notify_one();
+            ToolResult::text("released")
+        },
+    );
     ext.tool(
         "throw_probe",
         "Throw a value of the requested kind",

@@ -779,6 +779,25 @@ def new_extension() -> pig_sdk.Extension:
             number = started_calls[0]
         return {"content": f"start#{number} n={params.get('n')}"}
 
+    # A tool that notifies inline and, from a thread released by timer_release, after its handler returned (D5).
+    timer_gate = threading.Semaphore(0)
+
+    def timer_defer(ctx, _params):
+        ctx.notify("inline:sync", "info")
+
+        def deferred():
+            timer_gate.acquire()
+            ctx.notify("deferred:thread", "info")
+
+        threading.Thread(target=deferred, daemon=True).start()
+        return {"content": "queued"}
+
+    def timer_release(_ctx, _params):
+        timer_gate.release()
+        return {"content": "released"}
+
+    ext.tool("timer_defer", "Notify inline and from deferred work", {"type": "object"}, timer_defer)
+    ext.tool("timer_release", "Release the deferred work", {"type": "object"}, timer_release)
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
     ext.tool("tool_error", "Return a thrown tool error", {"type": "object"}, tool_error)
     ext.tool("tool_is_error", "Return a structured tool error result", {"type": "object"}, tool_is_error)

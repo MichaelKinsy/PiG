@@ -259,6 +259,26 @@ export default function (pi) {
     parameters: { type: "object", properties: { n: { type: "number" } } },
     async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
   });
+  // Notifies inline (before the handler returns, and from a microtask and a promise continuation) and from a setImmediate and a setTimeout(0) callback; the callbacks run once the handler returned (D5).
+  pi.registerTool({
+    name: "timer_defer",
+    description: "Notify inline and from deferred callbacks",
+    parameters: { type: "object" },
+    async execute(_id, _params, _signal, _onUpdate, ctx) {
+      ctx.ui.notify("inline:sync", "info");
+      queueMicrotask(() => ctx.ui.notify("inline:microtask", "info"));
+      Promise.resolve().then(() => ctx.ui.notify("inline:promise", "info"));
+      setImmediate(() => ctx.ui.notify("deferred:immediate", "info"));
+      setTimeout(() => ctx.ui.notify("deferred:timeout", "info"), 0);
+      return { content: [{ type: "text", text: "queued" }] };
+    },
+  });
+  pi.registerTool({
+    name: "timer_release",
+    description: "Nothing: Node's callbacks need no release",
+    parameters: { type: "object" },
+    async execute() { return { content: [{ type: "text", text: "released" }] }; },
+  });
   pi.registerTool({
     name: "throw_probe",
     description: "Throw a value of the requested kind",

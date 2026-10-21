@@ -659,6 +659,21 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": fmt.Sprintf("start#%d n=%v", number, params["n"])}, nil
 	})
 
+	// A tool that notifies inline and, from a goroutine timer_release releases, after its handler returned (D5).
+	timerGate := make(chan struct{}, 16)
+	ext.Tool("timer_defer", "Notify inline and from deferred work", sdk.Schema{"type": "object"}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		ctx.Notify("inline:sync", "info")
+		go func() {
+			<-timerGate
+			ctx.Notify("deferred:goroutine", "info")
+		}()
+		return map[string]string{"content": "queued"}, nil
+	})
+	ext.Tool("timer_release", "Release the deferred work", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		timerGate <- struct{}{}
+		return map[string]string{"content": "released"}, nil
+	})
+
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		switch params["kind"] {
 		case "unicode":
