@@ -588,7 +588,12 @@ func Main(args []string, options *MainOptions) {
 	}
 	commandRuntime := packageCommandRuntimeOptions{extensionFactories: slices.Concat(builtInExtensions, programExtensions)}
 	// PIG_PROFILE (internal/profiling) is read once here. Unset, it costs one lookup.
-	stopProfiles = profiling.Start()
+	stopMetrics := profiling.Start()
+	// pig additive (D22): the session's documentation lease lives until exit; give it back before the exit record counts the process's descriptors.
+	stopProfiles = func() {
+		releaseDocsLeases()
+		stopMetrics()
+	}
 	defer stopProfiles()
 	defer nativeplatform.ShutdownClipboard()
 	defer exitOnRenderOverflow()
