@@ -135,7 +135,7 @@ mod tests {
             handler_id: 0,
             tool_call_id: None,
             args,
-            terminal_input: None,
+            child_session: None, terminal_input: None,
             stream: Some(EventStream { seq, base, ops, key: String::new(), evict: Vec::new() }),
             stream_error: None,
         }

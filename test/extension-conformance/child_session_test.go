@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/cli"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture/childsession"
 )
 
 // Pi core/sdk.ts createAgentSession as a Go extension calls it: a child session over the host's model runtime, prompted, observed through subscribe, served a custom tool by the extension, aborted and disposed. The sentinel provider answers from the transcript, so only a session that really ran the extension's tool and returned its result reaches the final text.
@@ -80,59 +79,28 @@ func newChildSessionHost(t *testing.T) (*subprocess.Host, *coding.AgentSessionSe
 	return host, services
 }
 
-// childRun is the scenario every SDK's fixture runs; its observation is JSON.
-func childRunGo() *sdk.Extension {
-	e := sdk.New("child-session")
-	e.RegisterTool(sdk.ToolDefinition{
-		Name: "child_run", Label: "child_run", Description: "child_run", Parameters: sdk.Schema{"type": "object"},
-		Execute: func(ctx sdk.Context, args map[string]any) (any, error) {
-			var seen []string
-			session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
-				Model: "sentinel/echo", Tools: []string{"sentinel_tool"}, InMemory: true,
-				Settings:  map[string]any{"compaction": map[string]any{"enabled": false}},
-				Resources: sdk.ResourceOptions{NoExtensions: true, NoSkills: true, NoPromptTemplates: true, NoThemes: true, NoContextFiles: true, AppendSystemPrompt: []string{"Child appendix"}},
-				CustomTools: []sdk.ToolDefinition{{
-					Name: "sentinel_tool", Label: "sentinel", Description: "uppercases x", Parameters: sdk.Schema{"type": "object", "properties": map[string]any{"x": map[string]any{"type": "string"}}, "required": []string{"x"}},
-					Execute: func(_ sdk.Context, params map[string]any) (any, error) {
-						return strings.ToUpper(params["x"].(string)) + "!", nil
-					},
-				}},
-			})
-			if err != nil {
-				return nil, err
+// TestChildAgentSessionGoPlacements runs the Go fixture isolated and packed with a sibling; the fused realization is TestChildAgentSessionGoFused.
+func TestChildAgentSessionGoPlacements(t *testing.T) {
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			host, _ := newChildSessionHost(t)
+			root := findModuleRoot(t)
+			cfg := subprocess.ExtConfig{
+				Name: childsession.Name, Source: filepath.Join(root, "test/extension-conformance/testdata/child-session-go"), Enabled: true, Isolation: isolation,
+				RuntimeKind: "subprocess", RuntimeLanguage: "go", EntrypointKind: "factory", Factory: "Extension",
+				SDKName: "github.com/MichaelKinsy/PiG/extensions/sdk", ModulePath: "example.com/child-session-go", Package: "example.com/child-session-go",
 			}
-			defer session.Dispose()
-			session.Subscribe(func(event map[string]any) {
-				name := event["type"].(string)
-				if message, ok := event["message"].(map[string]any); ok && strings.HasPrefix(name, "message_") {
-					name += ":" + message["role"].(string)
-				}
-				seen = append(seen, name)
-			})
-			if err := session.Prompt(context.Background(), args["prompt"].(string)); err != nil {
-				return nil, err
+			configs := []subprocess.ExtConfig{cfg}
+			if isolation == "shared-ok" {
+				configs = append(configs, providerPeer(t, root, cfg))
 			}
-			messages, err := session.Messages()
-			if err != nil {
-				return nil, err
+			loaded, failures := host.LoadAll(t.Context(), configs)
+			if len(failures) != 0 || len(loaded) != len(configs) {
+				t.Fatalf("load: %v", failures)
 			}
-			roles := []string{}
-			for _, message := range messages {
-				roles = append(roles, message["role"].(string))
-			}
-			state, err := session.State()
-			if err != nil {
-				return nil, err
-			}
-			final := ""
-			if state.LastAssistantText != nil {
-				final = *state.LastAssistantText
-			}
-			out, err := json.Marshal(map[string]any{"events": seen, "roles": roles, "final": final, "model": state.Model["id"], "activeTools": state.ActiveTools, "file": state.SessionFile, "appendix": strings.Contains(state.SystemPrompt, "Child appendix")})
-			return string(out), err
-		},
-	})
-	return e
+			checkChildSession(t, loaded[0])
+		})
+	}
 }
 
 // childSessionWant is the observation every SDK must produce: the events in the order the session emitted them (message events carry their role), the transcript's roles, and the text only the extension's tool can have produced. The Go host's golden is what PiG's Session emits; the Node row (Pi's own createAgentSession) must produce the same lists, which is the Pi evidence (see the PR body).
@@ -174,7 +142,7 @@ func checkChildSession(t *testing.T, ext extension.Extension) {
 
 func TestChildAgentSessionGoFused(t *testing.T) {
 	host, _ := newChildSessionHost(t)
-	ext, err := host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "child-session", Path: "/ext/child-session.go", Enabled: true}, childRunGo().RunWithConn)
+	ext, err := host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: childsession.Name, Path: "/ext/child-session.go", Enabled: true}, childsession.Extension().RunWithConn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,4 +211,87 @@ func TestChildAgentSessionPython(t *testing.T) {
 func quoteJSON(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
+}
+
+const childSessionRust = `use pig_sdk::{CreateAgentSessionOptions, Extension, ResourceOptions, ToolDefinition, ToolResult};
+use serde_json::{json, Value};
+use std::sync::{Arc, Mutex};
+
+pub fn new_extension() -> Extension {
+    let mut e = Extension::new("child-session");
+    e.register_tool(ToolDefinition::new("child_run", "child_run", "child_run", json!({"type": "object"}), |ctx, args: Value| {
+        let seen: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let sentinel = ToolDefinition::new(
+            "sentinel_tool", "sentinel", "uppercases x",
+            json!({"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]}),
+            |_ctx, params: Value| ToolResult::text(format!("{}!", params["x"].as_str().unwrap_or("").to_uppercase())),
+        );
+        let session = match ctx.create_agent_session(CreateAgentSessionOptions {
+            model: Some(json!("sentinel/echo")),
+            tools: Some(vec!["sentinel_tool".to_string()]),
+            in_memory: true,
+            settings: Some(json!({"compaction": {"enabled": false}})),
+            resources: Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, append_system_prompt: Some(vec!["Child appendix".to_string()]), ..Default::default() }),
+            custom_tools: vec![sentinel],
+            ..Default::default()
+        }) {
+            Ok(session) => session,
+            Err(error) => return ToolResult::Error(error.to_string()),
+        };
+        let sink = seen.clone();
+        let _subscription = session.subscribe(move |event| {
+            let mut name = event["type"].as_str().unwrap_or("").to_string();
+            if name.starts_with("message_") {
+                name = format!("{}:{}", name, event["message"]["role"].as_str().unwrap_or(""));
+            }
+            sink.lock().unwrap().push(name);
+        });
+        let outcome = (|| -> std::io::Result<Value> {
+            session.prompt(args["prompt"].as_str().unwrap_or(""))?;
+            let roles: Vec<Value> = session.messages()?.iter().map(|m| m["role"].clone()).collect();
+            let state = session.state()?;
+            Ok(json!({
+                "events": *seen.lock().unwrap(), "roles": roles, "final": state["lastAssistantText"].as_str().unwrap_or(""),
+                "model": state["model"]["id"], "activeTools": state["activeTools"], "file": state["sessionFile"].as_str().unwrap_or(""),
+                "appendix": state["systemPrompt"].as_str().unwrap_or("").contains("Child appendix"),
+            }))
+        })();
+        session.dispose();
+        match outcome {
+            Ok(value) => ToolResult::text(value.to_string()),
+            Err(error) => ToolResult::Error(error.to_string()),
+        }
+    }));
+    e
+}
+`
+
+func TestChildAgentSessionRust(t *testing.T) {
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			host, _ := newChildSessionHost(t)
+			root := findModuleRoot(t)
+			cfg := packedFlagFactory(t, root, "rust", "child-session", false)
+			cfg.Isolation = isolation
+			cfg.ContentHash = "rust-child-session-" + fmt.Sprint(len(childSessionRust))
+			if err := os.WriteFile(filepath.Join(cfg.Source, "src", "lib.rs"), []byte(childSessionRust), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			manifest := fmt.Sprintf("[package]\nname=\"child-session\"\nversion=\"0.0.0\"\nedition=\"2024\"\n[dependencies]\npig-sdk={path=%q}\nserde_json={version=\"1\",features=[\"preserve_order\"]}\n", filepath.ToSlash(filepath.Join(root, "extensions", "sdk-rs")))
+			if err := os.WriteFile(filepath.Join(cfg.Source, "Cargo.toml"), []byte(manifest), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			configs := []subprocess.ExtConfig{cfg}
+			if isolation == "shared-ok" {
+				peer := packedFlagFactory(t, root, "rust", "child-session-peer", false)
+				peer.Isolation = isolation
+				configs = append(configs, peer)
+			}
+			loaded, failures := host.LoadAll(t.Context(), configs)
+			if len(failures) != 0 || len(loaded) != len(configs) {
+				t.Fatalf("load: %v", failures)
+			}
+			checkChildSession(t, loaded[0])
+		})
+	}
 }
