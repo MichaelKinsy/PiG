@@ -496,6 +496,13 @@ any-trap: ## Fail on JSON decodes into interface values the baseline does not li
 perf-lint: ## Fail on performance antipatterns the baseline does not list (ratchet)
 	@./automation/ci/cached-gate.sh perf-lint -- go run ./automation/ci/perflint
 
+# race-coverage fails when a package that starts goroutines or timers and has tests is in no nightly -race group of automation/ci/race-packages.txt (and is not exempt there with a reason).
+race-coverage: ## Fail on a concurrency package that no nightly -race group runs
+	@python3 -B -m unittest discover -s automation/ci -p test_race_coverage.py
+	@./automation/ci/race-coverage.sh
+
+.PHONY: race-coverage
+
 # alloc-baseline ratchets allocs/op of the benchmarks of the hot packages (automation/ci/allocbase). It runs them all at
 # -benchtime=5x with GOMAXPROCS=1, which takes about an hour, so it belongs in a nightly job, not in `make check`.
 alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls from the committed baseline (slow; nightly)
@@ -545,7 +552,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard port-lint any-trap perf-lint check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
