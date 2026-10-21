@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -37,8 +38,9 @@ func TestCustomMessageFirstRunCarriesTheSessionSystemPrompt(t *testing.T) {
 		if err := start(h.session); err != nil {
 			t.Fatal(err)
 		}
-		// The prompt names the harness's own temp cwd and the docs bundle under its home.
-		return strings.ReplaceAll(strings.ReplaceAll(prompt, h.session.CWD(), "<cwd>"), os.Getenv("PIG_HOME"), "<home>")
+		// The prompt names the harness's own temp cwd (with forward slashes, as Pi's buildSystemPrompt writes it on Windows) and the docs bundle under its home.
+		cwd := h.session.CWD()
+		return strings.NewReplacer(cwd, "<cwd>", filepath.ToSlash(cwd), "<cwd>", os.Getenv("PIG_HOME"), "<home>").Replace(prompt)
 	}
 	fromPrompt := firstRequestPrompt(t, func(s *Session) error { return s.Prompt(t.Context(), "hello") })
 	fromMessage := firstRequestPrompt(t, func(s *Session) error {
