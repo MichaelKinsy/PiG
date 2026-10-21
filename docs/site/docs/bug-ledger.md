@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-946 bugs. 896 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+949 bugs. 899 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -965,6 +965,9 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
 | [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
+| [BF-be21e9a](#bf-be21e9a) | Fixed the chord host keeping a disposed object reachable until its ready timeout (a minute by default) had… | PiG's own defect | All platforms | Unreleased |
+| [BF-735c36c](#bf-735c36c) | Fixed a chord host root failing with `superseded: code version N is not retained` although it was started in… | PiG's own defect | All platforms | Unreleased |
+| [BF-ea96559](#bf-ea96559) | Fixed the chord host manager letting other code read it as stopped, or start the child again, before the… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14152,6 +14155,48 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f6e6b97f00` (2026-10-21)
 - **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
 - **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+
+### BF-be21e9a
+
+**Fixed the chord host keeping a disposed object reachable until its ready timeout (a minute by default) had…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed the chord host keeping a disposed object reachable until its ready timeout (a minute by default) had passed: a stopped host timer stayed in the runtime's timer heap with its callback, and the callback captured the object.
+- **Root cause:** loop.after returned a stop that called Timer.Stop, but a stopped Go timer stays in its P's timer heap as a zombie until the runtime purges it, and the heap entry still holds the callback the timer was created with. An object's ready timeout (a minute, captured: the object) therefore kept a disposed object reachable: TestGenerationGCDisposedObjectsAreNotKeptOnceTheirDisposalFinished failed about once in 400 runs of the whole chord/host package with 'alive objects = [N]' (heap dump of a failing run: runtime.allp -> timer heap -> timer with state 0x07 (heaped|modified|zombie) -> loop.after.func1 -> withinReadyTimeout.func1 -> the object; the event log of the object shows its ready timer armed…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `be21e9adc1` (2026-10-21)
+- **Tests:** `chord/host/generations_upstream_test.go::TestGenerationGCDisposedObjectsAreNotKeptOnceTheirDisposalFinished`, `chord/host/loop_after_test.go::TestAfterRunsACallbackOnceAndNotAfterStop`
+- **Release note:** Fixed the chord host keeping a disposed object reachable until its ready timeout (a minute by default) had passed: a stopped host timer stayed in the runtime's timer heap with its callback, and the callback captured the object. A stopped timer now releases its callback at once.
+
+### BF-735c36c
+
+**Fixed a chord host root failing with `superseded: code version N is not retained` although it was started in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed a chord host root failing with `superseded: code version N is not retained` although it was started in the current code version: the host picked the current code version and counted the root in it in two separate steps, and a reload's retirement of that code version could fall between them.
+- **Root cause:** Host.Root picked the root's id and the current code version in one section of the loop and entered the root in another (joinRoot). A retirement that fell between them, such as the commit of a reload that moves the host to the next code version and the retire of the previous one while no root runs in it, left the root with a code version the host no longer retained, and it failed with "superseded: code version N is not retained by <host>" although it was started in the current one. Upstream's root is synchronous up to its first await, so the choice and the entry cannot be separated there.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `735c36cdbf` (2026-10-21)
+- **Tests:** `chord/host/requests_upstream_test.go::TestRequests5RootsOfAChildThatConnectedBehindTheServerAreAdmittedInTheServersCodeVersion`, `chord/host/root_code_version_test.go::TestRootIsCountedInItsCodeVersionBeforeAQueuedCallbackCanRetireIt`
+- **Release note:** Fixed a chord host root failing with `superseded: code version N is not retained` although it was started in the current code version: the host picked the current code version and counted the root in it in two separate steps, and a reload's retirement of that code version could fall between them. The root now starts in one step, as upstream's does.
+
+### BF-ea96559
+
+**Fixed the chord host manager letting other code read it as stopped, or start the child again, before the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed the chord host manager letting other code read it as stopped, or start the child again, before the `onExit` callback for the child that just exited had run: upstream sets the status and calls `onExit` in one step, so the manager now keeps other goroutines waiting until `onExit` returns, while `onExit` itself sees it stopped and may start the child again.
+- **Root cause:** manager.ts sets the status to stopped, clears the instance and calls onExit in one callback (`current.exited.then`), so no other code sees the manager stopped before the exit has been reported, and onExit itself sees it stopped. The Go manager flipped the status under its lock and called onExit after releasing it, so any other goroutine could read it stopped, or start the child again, ahead of the report of the child that just exited: a status poll that then looked for the report found none (TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo failed with `exits = []` about once in 2000 package iterations).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ea96559132` (2026-10-21)
+- **Tests:** `chord/host/manager_upstream_test.go::TestHostManagerOnExitMayStartTheChildAgain`, `chord/host/manager_upstream_test.go::TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns`, `chord/host/manager_upstream_test.go::TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo`
+- **Release note:** Fixed the chord host manager letting other code read it as stopped, or start the child again, before the `onExit` callback for the child that just exited had run: upstream sets the status and calls `onExit` in one step, so the manager now keeps other goroutines waiting until `onExit` returns, while `onExit` itself sees it stopped and may start the child again.
 
 ## Divergences from Pi added in this release
 
