@@ -25,7 +25,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 475 | 32 | 11 |
+| Node runtime | 476 | 31 | 11 |
 | Go | 480 | 27 | 11 |
 | Rust | 480 | 27 | 11 |
 | Python | 480 | 27 | 11 |
@@ -960,7 +960,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.model` | `ExtensionContext.model` | stand-in/partial `RuntimeContext.model`: the current model's metadata from the host's model registry | stand-in/partial `Context.GetModelInfo`: the current model's metadata from the host's model registry | stand-in/partial `Context::get_model_info`: the current model's metadata from the host's model registry | stand-in/partial `Context.get_model_info`: the current model's metadata from the host's model registry |
+| `ctx.model` | `ExtensionContext.model` | implemented `RuntimeContext.model` | stand-in/partial `Context.Model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo | stand-in/partial `Context::model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info | stand-in/partial `Context.model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info |
 | `ctx.scopedModels` | `ExtensionContext.scopedModels` | implemented `RuntimeContext.scopedModels` | implemented `Context.ScopedModels` | implemented `Context::scoped_models` | implemented `Context.scoped_models` |
 | `ctx.thinkingLevel` | `ExtensionContext.thinkingLevel` | implemented `RuntimeContext.thinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` |
 | `ctx.isIdle` | `ExtensionContext.isIdle` | implemented `RuntimeContext.isIdle` | implemented `Context.IsIdle` | implemented `Context::is_idle` | implemented `Context.is_idle` |
