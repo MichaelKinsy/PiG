@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-943 bugs. 893 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+959 bugs. 909 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 141 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -955,13 +955,29 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-d988f58](#bf-d988f58) | `pig update --extensions` no longer fails when two Git Packages come from one repository | PiG's own defect | All platforms | Unreleased |
 | [BF-6b381a3](#bf-6b381a3) | The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit | PiG's own defect | All platforms | Unreleased |
 | [BF-f086ba5](#bf-f086ba5) | fix(extension/node): load the virtual-model routing modules of the ModelRuntime on first use | PiG's own defect | All platforms | Unreleased |
+| [BF-d99a513](#bf-d99a513) | In RPC mode, a toast an extension deferred with `setTimeout(0)` from a `model_select` or `session_start`… | PiG's own defect | All platforms | Unreleased |
+| [BF-d99a513-2](#bf-d99a513-2) | In RPC mode, a message an extension's `session_start` listener sent while a command replaced the Session was… | PiG's own defect | All platforms | Unreleased |
+| [BF-d99a513-3](#bf-d99a513-3) | In RPC mode, an extension command that sends a user message and then awaits `ctx.waitForIdle()` (the init… | PiG's own defect | All platforms | Unreleased |
+| [BF-b856354](#bf-b856354) | A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached… | PiG's own defect | All platforms | Unreleased |
+| [BF-fd51f36](#bf-fd51f36) | A Go or Rust extension edited while it was being built could be cached under the hash of the source from… | PiG's own defect | All platforms | Unreleased |
+| [BF-d68f60e](#bf-d68f60e) | On a file system that refuses file locks (an NFS mount without a lock manager, a FUSE or SMB share), starting… | PiG's own defect | All platforms | Unreleased |
+| [BF-0275c62](#bf-0275c62) | Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every… | PiG's own defect | All platforms | Unreleased |
 | [BF-3853a96](#bf-3853a96) | `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again | PiG's own defect | All platforms | Unreleased |
 | [BF-6811585](#bf-6811585) | CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary… | PiG's own defect | Windows | Unreleased |
 | [BF-aca002e](#bf-aca002e) | CI: `make interface-gaps` passes on main again | PiG's own defect | All platforms | Unreleased |
 | [BF-626f830](#bf-626f830) | `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path… | PiG's own defect | Windows | Unreleased |
+| [BF-785bb1b](#bf-785bb1b) | Forking a session from a file no longer overwrites a session file that already has the new session's… | PiG's own defect | All platforms | Unreleased |
+| [BF-784709c](#bf-784709c) | Shutting down a host while a crashed extension waits out its restart backoff no longer leaves a goroutine… | PiG's own defect | All platforms | Unreleased |
+| [BF-2b5038a](#bf-2b5038a) | Starting a second Piglet Binary instance no longer fails on Windows while the first is running | PiG's own defect | Windows | Unreleased |
+| [BF-dcb0a11](#bf-dcb0a11) | A slow toolchain version check no longer blocks other starts without limit | PiG's own defect | All platforms | Unreleased |
+| [BF-da81152](#bf-da81152) | Two Bun runtime installs, or an install and a status check, in different processes no longer leave a moment… | PiG's own defect | All platforms | Unreleased |
+| [BF-63d1bf0](#bf-63d1bf0) | A pig session on another machine or container that shares your `~/.pig` (an NFS home, a bind mount) is no… | PiG's own defect | All platforms | Unreleased |
+| [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
+| [BF-2f7af8b](#bf-2f7af8b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
+| [BF-5d1af78](#bf-5d1af78) | CI: the nightly `-race` run now covers the packages that own most of PiG's goroutines | PiG's own defect | All platforms | Unreleased |
 | [BF-df5e91e](#bf-df5e91e) | A Go, Python or Rust extension tool that awaits a host call such as `exec` before its first dialog no longer… | PiG's own defect | All platforms | Unreleased |
-| [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
-| [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
+| [BF-1e8ec25](#bf-1e8ec25) | Extension API parity ledger: removed the stale `ctx.ui.custom(options.onHandle)` exception (Go, Rust and… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14010,6 +14026,104 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f086ba5ce8` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/node_cold_start_test.go::TestNodeColdStartLoadsSDKOnlyOnImport`, `coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies`
 
+### BF-d99a513
+
+**In RPC mode, a toast an extension deferred with `setTimeout(0)` from a `model_select` or `session_start`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In RPC mode, a toast an extension deferred with `setTimeout(0)` from a `model_select` or `session_start` listener reached the output before the response of the `new_session`, `fork`, `clone`, `switch_session`, `set_model` or `cycle_model` command that ran the listener, or of the prompt whose extension command started the new Session.
+- **Root cause:** An extension listener that defers work with setTimeout(0) runs it after Pi's command response, because the response follows the listener in microtasks and the timer needs a later turn of the event loop. PiG's Node runtime is another process: the timer fired while the host's next dispatch crossed the process boundary, so a toast reached the output before the response of new_session, fork, clone, switch_session, set_model, cycle_model and of a prompt whose extension command started the new Session.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d99a513b55` (2026-10-20)
+- **Tests:** `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateClosesForAReplacementUntilItsResponse`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateHoldsForCommandsUntilTheyAnswer`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateStaysClosedUntilEveryHoldEnds`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateHoldsRequestlessUICalls`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateLeavesOtherRequestlessCallsAlone`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportIgnoresAnotherRequestsCall`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportWaitsForTheCallThatFollows`, `test/extension-conformance/rpc_nested_events_test.go::TestRPCNestedEventsCompleteInEverySDK`
+- **Release note:** In RPC mode, a toast an extension deferred with `setTimeout(0)` from a `model_select` or `session_start` listener reached the output before the response of the `new_session`, `fork`, `clone`, `switch_session`, `set_model` or `cycle_model` command that ran the listener, or of the prompt whose extension command started the new Session. Pi writes the response first, because its response follows the listeners in microtasks and the timer needs a later turn of the event loop. The host now holds such UI calls (`ui.notify`, `ui.setStatus`, `ui.setWidget`, `ui.setTitle`, `ui.setEditorText`) until the command's response is written. Seen with `@liyu1981/pi-tweaks`' remember-model extension.
+
+### BF-d99a513-2
+
+**In RPC mode, a message an extension's `session_start` listener sent while a command replaced the Session was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In RPC mode, a message an extension's `session_start` listener sent while a command replaced the Session was written to the output.
+- **Root cause:** An extension listener that defers work with setTimeout(0) runs it after Pi's command response, because the response follows the listener in microtasks and the timer needs a later turn of the event loop. PiG's Node runtime is another process: the timer fired while the host's next dispatch crossed the process boundary, so a toast reached the output before the response of new_session, fork, clone, switch_session, set_model, cycle_model and of a prompt whose extension command started the new Session.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d99a513b55` (2026-10-20)
+- **Tests:** `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateClosesForAReplacementUntilItsResponse`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateHoldsForCommandsUntilTheyAnswer`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateStaysClosedUntilEveryHoldEnds`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateHoldsRequestlessUICalls`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateLeavesOtherRequestlessCallsAlone`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportIgnoresAnotherRequestsCall`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportWaitsForTheCallThatFollows`, `test/extension-conformance/rpc_nested_events_test.go::TestRPCNestedEventsCompleteInEverySDK`
+- **Release note:** In RPC mode, a message an extension's `session_start` listener sent while a command replaced the Session was written to the output. Pi subscribes its output writer after `session_start`, so it writes nothing for it; PiG now publishes the new Session's events after `session_start` too.
+
+### BF-d99a513-3
+
+**In RPC mode, an extension command that sends a user message and then awaits `ctx.waitForIdle()` (the init…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In RPC mode, an extension command that sends a user message and then awaits `ctx.waitForIdle()` (the init command of a Pigpen warden) had the run's `agent_start` written before the prompt's response, for the Go, Python, Rust and Node SDKs alike.
+- **Root cause:** An extension listener that defers work with setTimeout(0) runs it after Pi's command response, because the response follows the listener in microtasks and the timer needs a later turn of the event loop. PiG's Node runtime is another process: the timer fired while the host's next dispatch crossed the process boundary, so a toast reached the output before the response of new_session, fork, clone, switch_session, set_model, cycle_model and of a prompt whose extension command started the new Session.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d99a513b55` (2026-10-20)
+- **Tests:** `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateClosesForAReplacementUntilItsResponse`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateHoldsForCommandsUntilTheyAnswer`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateStaysClosedUntilEveryHoldEnds`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateHoldsRequestlessUICalls`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateLeavesOtherRequestlessCallsAlone`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportIgnoresAnotherRequestsCall`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportWaitsForTheCallThatFollows`, `test/extension-conformance/rpc_nested_events_test.go::TestRPCNestedEventsCompleteInEverySDK`
+- **Release note:** In RPC mode, an extension command that sends a user message and then awaits `ctx.waitForIdle()` (the init command of a Pigpen warden) had the run's `agent_start` written before the prompt's response, for the Go, Python, Rust and Node SDKs alike. Pi's `waitForIdle` returns at once while the run the command started has not begun, so the command returns, the response is written, and `agent_start` follows. The host now settles such a wait at once and no longer counts the handler as suspended.
+
+### BF-b856354
+
+**A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached extension build it had just reused.
+- **Root cause:** A collection classified every entry and later renamed the expired ones without reading them again. A start that reuses an old entry refreshes its usage record but holds no lease until its extension process spawns, so a collection that classified the entry before the reuse removed it: the later lease returned no lease and no error, the install-change tracking was skipped, and the spawn failed on a missing file.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b856354834` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/sdk_fingerprint_record_test.go::TestRecordSDKFingerprintLeavesAMarkerThatAlreadyHoldsItAlone`
+- **Release note:** A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached extension build it had just reused. The collection (the daily automatic one, or `pig extensions cache prune`) decides which entries are expired and removes them a moment later. A start that reuses an old entry in between refreshed its use time but holds no lease until its extension process spawns, so the entry was removed under it, the lease then came back empty instead of failing, and the spawn reported a missing file. The collection now reads each entry again under its exclusive lock and skips one that another `pig` used since, counting it as in use. A reuse takes the entry's lock while it checks and records the entry, so it never reuses an entry that is being removed and builds it again instead. A lease for an entry that is gone fails with `cache_lease_failed` and says the entry was removed. The SDK fingerprint file of a published entry is replaced through a rename and written only when it changes, so a collection can no longer read it half written and expire a build that a start is using.
+
+### BF-fd51f36
+
+**A Go or Rust extension edited while it was being built could be cached under the hash of the source from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go or Rust extension edited while it was being built could be cached under the hash of the source from before the edit.
+- **Root cause:** A source-mode build now compares the stamp of its source files with the one read with the hash when the compiler returns. A packed cell hashes its SDK tree, workspace modules, toolchain and generated runner again and runs the Verify check of each extension whose Hash the caller derived from the source files (ExtConfig.ContentHash filled by this package). Nothing is published when any of them differ and the build fails with 'changed while it was being built'; the next start hashes the edited source and builds it. The stamp is the hash without lock files, because cargo writes Cargo.lock into the source directory during the build. A Python runner and a Node launcher bake no extension source…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fd51f36b79` (2026-10-20)
+- **Tests:** `coding/extension/host/runtimecell/go_packed_verify_test.go::TestBuildGoPackedCellPublishesNothingWhenAMembersSourceChangesDuringTheBuild`, `coding/extension/host/subprocess/content_hash_test.go::TestFillContentHashChecksOnlyWhatItHashedAndIgnoresALockfileTheBuildWrites`, `coding/extension/host/subprocess/content_hash_test.go::TestFillContentHashGivesCellBuildsACheckOfTheSourceTheyHashed`
+- **Release note:** A Go or Rust extension edited while it was being built could be cached under the hash of the source from before the edit. The compiler reads the source after the build hashed it, past the wait for another `pig`'s build of the same extension and through its own compile, and nothing read it again, so an edit saved in that time was compiled into a build stored under the original source's hash. Putting the original source back then ran the build of the edit. A build now reads its inputs again when the compiler returns (the extension source, the SDK, workspace modules and toolchain) and caches nothing when they changed: it fails with `changed while it was being built`, and the next start builds the current source. A Rust crate's `Cargo.lock`, which `cargo` writes during the build, does not count as an edit.
+
+### BF-d68f60e
+
+**On a file system that refuses file locks (an NFS mount without a lock manager, a FUSE or SMB share), starting…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On a file system that refuses file locks (an NFS mount without a lock manager, a FUSE or SMB share), starting an extension failed with `wait for cell build lock: flock: no locks available`, or with a bare lock error from the lease of a cached build, the cache collector or the SDK staging, and nothing named the cause.
+- **Root cause:** On a file system that refuses them (an NFS mount without a lock manager, a FUSE or SMB share) the lock call fails with ENOLCK, ENOSYS or EOPNOTSUPP, and the failure reached the user as 'wait for cell build lock: flock: no locks available', or as a bare errno on a start, with nothing that names the cause or the way out.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d68f60ece2` (2026-10-20)
+- **Tests:** `internal/filelock/filelock_test.go::TestExplainNamesTheDirectoryAndTheRemedyOnlyForUnsupportedLocks`, `internal/filelock/filelock_test.go::TestUnsupportedRecognisesAFileSystemThatRefusesFileLocks`
+- **Release note:** On a file system that refuses file locks (an NFS mount without a lock manager, a FUSE or SMB share), starting an extension failed with `wait for cell build lock: flock: no locks available`, or with a bare lock error from the lease of a cached build, the cache collector or the SDK staging, and nothing named the cause. The error now names the directory, says the file system does not support file locks, and names the remedy: point `PIG_HOME` at a directory on a file system that does. The cache still needs its locks, so a file system without them cannot hold it.
+
+### BF-0275c62
+
+**Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update.
+- **Root cause:** Pi has one module-level withFileMutationQueue shared by the built-in edit and write tools and every extension. PiG kept a queue per extension process, so an extension tool and a built-in tool on one file, or two extensions, could lose an update.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0275c62f29` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationCallsAreRoutedLikeThePureHelperCalls`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterFailsForAnUnresolvablePath`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterHoldsTheHostQueueUntilExit`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterRegistersInCallOrderAndInitiatesBeforeItWaits`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationExitOfAnotherConnectionsTicketFails`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses`, `extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueHostErrorAndTaskFailures` and 3 more in docs/bug-ledger.json
+- **Release note:** Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every extension process, as in Pi. Before, each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update. The SDKs ask the host's queue for the file's turn (`fileMutation.enter`, `fileMutation.exit`); the turn is released if the extension's connection closes.
+
 ### BF-3853a96
 
 **`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again**
@@ -14066,6 +14180,143 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform`
 - **Release note:** `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path that holds a backslash. Before, the backslash printed bare and the shell read it as an escape, so the command named a different path. A backslash stays plain in a Windows path, where it separates elements.
 
+### BF-785bb1b
+
+**Forking a session from a file no longer overwrites a session file that already has the new session's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Forking a session from a file no longer overwrites a session file that already has the new session's timestamp and id.
+- **Root cause:** Pi writes the fork's header with writeFileSync(..., { flag: "wx" }) (session-manager.ts forkFrom), so a file that already holds the same timestamp and id fails with EEXIST and is left as it was. ForkFromFile used os.Create and truncated it. It now opens the file O_EXCL and reports the error in Node's EEXIST shape, as createSessionFile does.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `785bb1bd53` (2026-10-20)
+- **Tests:** `internal/codingagent/session_fork_exclusive_test.go::TestForkFromFileDoesNotOverwriteAnExistingFile`, `internal/codingagent/session_fork_exclusive_test.go::TestSessionForkFromFileExistingTargetMatchesPiOracle`
+- **Release note:** Forking a session from a file no longer overwrites a session file that already has the new session's timestamp and id. The fork now fails with `EEXIST: file already exists` and leaves the file untouched, as Pi does, instead of truncating it.
+
+### BF-784709c
+
+**Shutting down a host while a crashed extension waits out its restart backoff no longer leaves a goroutine…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Shutting down a host while a crashed extension waits out its restart backoff no longer leaves a goroutine sleeping for up to 30 seconds.
+- **Root cause:** The backoff before a crashed extension's restart was a naked goroutine that slept up to 30 s regardless of Host shutdown. It is now a drain task: Shutdown cancels the recovery context, which ends the wait, and joins it, so no goroutine outlives the Host. A restart scheduled once Shutdown waits does not run.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `784709c9f8` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/restart_backoff_owned_test.go::TestShutdownJoinsTheCrashRestartBackoff`
+- **Release note:** Shutting down a host while a crashed extension waits out its restart backoff no longer leaves a goroutine sleeping for up to 30 seconds. Shutdown ends the wait and waits for it, so embedders and tests see no goroutine after the host is shut down.
+
+### BF-2b5038a
+
+**Starting a second Piglet Binary instance no longer fails on Windows while the first is running**
+
+- **Source:** PiG's own defect
+- **Symptom:** Starting a second Piglet Binary instance no longer fails on Windows while the first is running.
+- **Root cause:** Every start of a Piglet Binary rewrote each embedded Go, Rust or Python cell binary with a temp file and a rename over the live path. Windows refuses to replace the file of a running image (Access is denied), so a second instance could not start while the first ran. Extraction now compares the file with the embedded bytes and execute bit and leaves an identical file alone; a different one is replaced through fsretry.Rename, which retries only a transient lock, and a rename refused while a peer has published the same bytes succeeds.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `2b5038a6a0` (2026-10-20)
+- **Tests:** `coding/extension/host/cellpack/extract_present_test.go::TestExtractLeavesAnIdenticalCellBinaryInPlace`, `coding/extension/host/cellpack/extract_present_test.go::TestExtractReplacesADifferentCellBinary`, `coding/extension/host/cellpack/extract_present_test.go::TestExtractSucceedsWhenTheIdenticalBinaryCannotBeReplaced`, `coding/extension/host/cellpack/extract_rename_seam_test.go::TestExtractRenameRefusal`
+- **Release note:** Starting a second Piglet Binary instance no longer fails on Windows while the first is running. Extraction left the embedded Go, Rust and Python cell binaries rewritten at every start, and Windows refuses to replace the executable of a running process (`Access is denied`); a cell binary that already holds the embedded bytes is now left in place, and only a different one is replaced, with a retry on a transient lock.
+
+### BF-dcb0a11
+
+**A slow toolchain version check no longer blocks other starts without limit**
+
+- **Source:** PiG's own defect
+- **Symptom:** A slow toolchain version check no longer blocks other starts without limit.
+- **Root cause:** The cache also kept one record per command while the fingerprint folds in the cwd selectors, so two projects re-probed on every alternate start.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dcb0a11e16` (2026-10-20)
+- **Tests:** `coding/extension/host/runtimecell/hash_inputs_test.go::TestCommandVersionProbeHelper`, `coding/extension/host/runtimecell/toolchain_version_cache_test.go::TestCommandVersionDoesNotWaitForAPeerProbeWithoutBound`, `coding/extension/host/runtimecell/toolchain_version_cache_test.go::TestCommandVersionEndsAProbeThatDoesNotAnswer`, `coding/extension/host/runtimecell/toolchain_version_cache_test.go::TestCommandVersionKeepsOneRecordPerSelectorState`, `coding/extension/host/runtimecell/toolchain_version_cache_test.go::TestCommandVersionPrunesOldRecords`
+- **Release note:** A slow toolchain version check no longer blocks other starts without limit. Go, Rust and Python extension builds probe `go version`, `rustc --version` and the like; the probe is now ended after two minutes, a start that finds another start probing the same tool waits at most five minutes before probing for itself, and two projects with different `go.mod` or `rust-toolchain.toml` selectors each keep their own cached version instead of probing again on every alternate start.
+
+### BF-da81152
+
+**Two Bun runtime installs, or an install and a status check, in different processes no longer leave a moment…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Two Bun runtime installs, or an install and a status check, in different processes no longer leave a moment where `<agent dir>/runtimes/typescript/bun` does not exist: `/bun-runtime` install, remove, verify and status take a lock on the slot, and an install removes the `bun.old-*` directory that a killed install left behind.
+- **Root cause:** replaceDir renames <root>/bun aside and the new directory in with no cross-process lock, where the AOT runtime guards its install with flock. A status or verify of another process between the two renames reported the runtime missing, and a killed install left bun.old-*. Install, remove, verify and status now take an advisory lock (.bun-install.lock in the slot root; flock on Unix, LockFileEx on Windows, both waiting under the request context), and an install removes a stale bun.old-* while it holds the lock.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `da811523f5` (2026-10-20)
+- **Tests:** `piglets/standard/extensions/bunruntime/extension_test.go::TestInstallVerifyRemove`, `piglets/standard/extensions/bunruntime/install_lock_test.go::TestConcurrentInstallsLeaveOneRuntime`, `piglets/standard/extensions/bunruntime/install_lock_test.go::TestInstallRemovesAStaleReplacement`, `piglets/standard/extensions/bunruntime/install_lock_test.go::TestVerifyDoesNotObserveTheWindowBetweenTheReplacementRenames`
+- **Release note:** Two Bun runtime installs, or an install and a status check, in different processes no longer leave a moment where `<agent dir>/runtimes/typescript/bun` does not exist: `/bun-runtime` install, remove, verify and status take a lock on the slot, and an install removes the `bun.old-*` directory that a killed install left behind.
+
+### BF-63d1bf0
+
+**A pig session on another machine or container that shares your `~/.pig` (an NFS home, a bind mount) is no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A pig session on another machine or container that shares your `~/.pig` (an NFS home, a bind mount) is no longer reported as crashed by the next pig you start.
+- **Root cause:** ReconcileSessionMarkers judged every crash-output marker by processAlive(pid), so a live session on another host or in another PID namespace that shares the agent directory (NFS home, container bind mount) looked dead: its marker was renamed away and deleted and a false 'ended without recording an exit' line was written. The marker header now carries the host name and, on Linux, the PID namespace, and a marker from another host or namespace is left alone. A marker without a host (written before the header named one) is judged by its PID as before.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `63d1bf067f` (2026-10-20)
+- **Tests:** `internal/codingagent/exit_record_header_test.go::TestSessionMarkerHeaderNamesTheHost`, `internal/codingagent/exit_record_host_test.go::TestReconcileLeavesAMarkerOfAnotherHostAlone`, `internal/codingagent/exit_record_pidns_linux_test.go::TestReconcileLeavesAMarkerOfAnotherPIDNamespaceAlone`
+- **Release note:** A pig session on another machine or container that shares your `~/.pig` (an NFS home, a bind mount) is no longer reported as crashed by the next pig you start. Session markers in `crash-output/` record the host and PID namespace, and a marker from another one is left alone instead of being removed with a false "ended without recording an exit" line.
+
+### BF-b2c219f
+
+**fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b2c219f432` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/sdk_fingerprint_marker_test.go::TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker`
+
+### BF-2f7af8b
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Regenerated by automation/gen/vendor-pi-dist.sh and go generate: the vendored edit, write and tools index load the bridge module, the sdk-bundle chunks and manifest follow, and the embedded runtime archive, the Go interface inventory and the SDK surface matrix (withFileMutationQueue is bridged) are updated. Also satisfy errorlint and staticcheck in the SDK and the host tests.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f7af8b96d` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn`
+
+### BF-16f8d39
+
+**fix(codingagent): keep the clock allowance on the marker header's time.Now line**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): keep the clock allowance on the marker header's time.Now line
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `16f8d392cc` (2026-10-20)
+- **Tests:** None recorded.
+
+### BF-5d1af78
+
+**CI: the nightly `-race` run now covers the packages that own most of PiG's goroutines**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: the nightly `-race` run now covers the packages that own most of PiG's goroutines.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5d1af78002` (2026-10-20)
+- **Tests:** `automation/ci/test_race_coverage.py`
+- **Release note:** CI: the nightly `-race` run now covers the packages that own most of PiG's goroutines. `coding`, `coding/cli` (run as four shards), `coding/extension`, the extension hosts (`inproc`, `runtimecell`, `cellpack`), `internal/packagemanager`, `internal/pilock`, `internal/pigsdklock`, `coding/mcpext`, `coding/rpcclient`, the `extensions/sdk` Go module, `internal/codingagent/tools` and the concurrency libraries were in no `-race` job before. `make race-coverage` (part of `check-core` and `ci-drift`) fails when a package that starts goroutines or timers and has tests is in no nightly group of `automation/ci/race-packages.txt` and not exempt with a reason. The first `-race` run of all of them found no data race.
+
 ### BF-df5e91e
 
 **A Go, Python or Rust extension tool that awaits a host call such as `exec` before its first dialog no longer…**
@@ -14080,33 +14331,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `extensions/sdk/tool_dialog_order_test.go::TestToolBatchOrdersAreIndependentAcrossBatches`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogOrderPassesAnEndedRequest`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogsOpenInCallOrder`, `extensions/sdk/tool_dialog_order_test.go::TestToolFirstHostCallOfAnyKindPassesTheDialogPlace`, `extensions/sdk/tool_dialog_order_test.go::TestToolResponsesFollowTheOrderTheAnswersWereRead`, `extensions/sdk/tool_dialog_order_test.go::TestToolRetainedContextDialogAfterTheRequestEndedLeavesNoSlot`
 - **Release note:** A Go, Python or Rust extension tool that awaits a host call such as `exec` before its first dialog no longer holds the first dialogs of the later calls of its parallel batch: the SDK passes the call's dialog place at its first host call of any kind, so the later calls' dialogs open while the `exec` runs and the call's own dialog opens after it, as Pi's single thread does (D187). A handler that blocks on something other than a host call before its first host call still holds them.
 
-### BF-f6e6b97
+### BF-1e8ec25
 
-**Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
-- **Root cause:** Stdin end while a signal-triggered dispose is still running exits 0 at once in Pi (rpc-mode.ts:728-731). Pig's exit stops the extension processes before os.Exit, which completes the pending dispose, and the signal path's own exit (128+SIGTERM) then raced the first one's os.Exit: macOS cli-2 TestRPCInputEndDuringSignalShutdownExitsZero got 143. flushAndExit now lets only the first exit that starts run, as the first process.exit does. TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus forces the interleaving.
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `f6e6b97f00` (2026-10-21)
-- **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
-- **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
-
-### BF-d084d86
-
-**Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object…**
+**Extension API parity ledger: removed the stale `ctx.ui.custom(options.onHandle)` exception (Go, Rust and…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object after `Close` had taken its snapshot of the host's objects: that object's resource open kept waiting for an abort that nothing raised.
-- **Root cause:** Host.Close took one snapshot of the host's objects, disposed them, and closed the links. An object created after the snapshot by a hold a link was still delivering was never disposed, so a resource open waiting on its abort signal kept waitTasks blocked for good: the portmap-3 chord/host evidence run timed out after 10 minutes in the cleanup of TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference, and the same hang fails main (three of three runs of go test -count=1000 -cpu 2,4 -run Awaiting time out on; none of the same runs, nor a 3000-iteration loop of that test, hang with the sweep). Close now disposes what is left, holders first, once the links are…
-- **User impact:** Behavior differed from Pi
+- **Symptom:** Extension API parity ledger: removed the stale `ctx.ui.custom(options.onHandle)` exception (Go, Rust and Python implement the overlay handle; `TestCustomOverlayHandleSDKsMatch` runs it on every SDK), reworded the keybinding-hint, highlight and `createAgentSession` rows that said "Node runtime only", and added a "Native package-export gaps" table naming the closing lane for every export Node serves and the native SDKs lack.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `d084d8683e` (2026-10-21)
-- **Tests:** `chord/host/awaiting_upstream_test.go::TestAwaitingACtxGetStillWaitingWhenItsCallSettlesRejectsAbortedAndReleasesItsReference`
-- **Release note:** Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object after `Close` had taken its snapshot of the host's objects: that object's resource open kept waiting for an abort that nothing raised. `Close` now disposes what is left once the links are closed.
+- **Fix commits:** `1e8ec257e1` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** Extension API parity ledger: removed the stale `ctx.ui.custom(options.onHandle)` exception (Go, Rust and Python implement the overlay handle; `TestCustomOverlayHandleSDKsMatch` runs it on every SDK), reworded the keybinding-hint, highlight and `createAgentSession` rows that said "Node runtime only", and added a "Native package-export gaps" table naming the closing lane for every export Node serves and the native SDKs lack.
 
 ## Divergences from Pi added in this release
 
