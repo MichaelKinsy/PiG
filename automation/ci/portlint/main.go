@@ -30,9 +30,9 @@ func main() {
 	printBaseline := flag.Bool("print", false, "print every finding as a baseline entry")
 	tags := flag.String("tags", "integration,live,parity", "build tags for a second pass over tagged files, as make lint builds them; empty scans only the default build")
 	flag.Parse()
-	patterns := flag.Args()
-	if len(patterns) == 0 {
-		patterns = []string{"./..."}
+	specs := defaultSpecs()
+	if patterns := flag.Args(); len(patterns) > 0 {
+		specs = []scanSpec{{patterns: patterns, analyzers: allAnalyzers()}}
 	}
 	abs, err := filepath.Abs(*root)
 	if err != nil {
@@ -42,5 +42,5 @@ func main() {
 	if *baselinePath == "" {
 		*baselinePath = filepath.Join(abs, "automation", "ci", "portlint", "baseline.toml")
 	}
-	os.Exit(run(abs, *baselinePath, *tags, patterns, *report, *printBaseline))
+	os.Exit(run(abs, *baselinePath, *tags, specs, *report, *printBaseline))
 }

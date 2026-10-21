@@ -28,6 +28,17 @@ var classedChecks = map[string]bool{}
 //	pig divergence (D<N>): <reason>     a numbered divergence owns the order
 var markerClassRe = regexp.MustCompile(`^(?:(?:executor|joined|lifecycle):\s*\S|upstream:\s*[^\s:]+:\S|pig divergence \(D\d+\))`)
 
+// Ordering returns the ordering checks in report order.
+func Ordering() []Check {
+	var ordering []Check
+	for _, c := range registry {
+		if classedChecks[c.Analyzer.Name] {
+			ordering = append(ordering, c)
+		}
+	}
+	return ordering
+}
+
 // newOrderingCheck registers an ordering analyzer, whose markers need a class.
 func newOrderingCheck(name, doc string, sev Severity, incident string, fn func(*Pass)) *analysis.Analyzer {
 	classedChecks[name] = true

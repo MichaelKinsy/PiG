@@ -24,6 +24,8 @@ Allow one finding at its line, or the line above, with a reason. A marker with n
 //portlint:allow mapkeyorder writeTrustFile sorts the keys before stringifying (trust-manager.ts:126-135)
 ```
 
+The Go SDK (`extensions/sdk`) is a separate module that `./...` does not load. With no package arguments the driver also loads `./extensions/sdk/...` and runs only the ordering checks on it; the other checks' baselines were measured without it. A run that names packages reads only those.
+
 The passes skip `/test/`, `/automation/`, `/examples/`, `/internal/evals`, `/durable/harness` and `/internal/modelgen`, which never feed Pi-facing output. The test-hygiene passes (`hardtmp`, `rawsymlink`, `unixsocketpath`, `testisolation`) scan them. The driver runs the default build and a second pass with the `integration`, `live` and `parity` tags, as `make lint` builds them.
 
 ## Checks

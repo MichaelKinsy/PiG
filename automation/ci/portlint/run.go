@@ -31,8 +31,8 @@ type Hit struct {
 // Key identifies a hit independent of its line number.
 func (h Hit) Key() string { return h.Check + "|" + h.File + "|" + h.Func + "|" + h.Snippet }
 
-func run(root, baselinePath, tags string, patterns []string, report, printBaseline bool) int {
-	hits, err := scanAll(root, tags, patterns)
+func run(root, baselinePath, tags string, specs []scanSpec, report, printBaseline bool) int {
+	hits, err := scanAll(root, tags, specs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "port-lint:", err)
 		return 2
@@ -70,24 +70,58 @@ func run(root, baselinePath, tags string, patterns []string, report, printBaseli
 	return 1
 }
 
-// scanAll scans the default build and, when tags is set, the build with those tags, and merges the findings.
-func scanAll(root, tags string, patterns []string) ([]Hit, error) {
-	hits, err := scan(root, "", patterns)
-	if err != nil || tags == "" {
-		return hits, err
+// scanSpec is a set of package patterns and the analyzers that read them.
+type scanSpec struct {
+	patterns  []string
+	analyzers []*analysis.Analyzer
+}
+
+// sdkPattern is the Go SDK, a separate module (extensions/sdk) that `./...` from the repository root does not load. Only the ordering checks read it: its 9 non-test go statements and its writers are the extension boundary's SDK side, and the other checks' baselines were measured without it.
+const sdkPattern = "./extensions/sdk/..."
+
+// defaultSpecs reads the whole root module with every check and the Go SDK with the ordering checks.
+func defaultSpecs() []scanSpec {
+	var ordering []*analysis.Analyzer
+	for _, c := range checks.Ordering() {
+		ordering = append(ordering, c.Analyzer)
 	}
-	tagged, err := scan(root, tags, patterns)
-	if err != nil {
-		return nil, err
+	return []scanSpec{{patterns: []string{"./..."}, analyzers: allAnalyzers()}, {patterns: []string{sdkPattern}, analyzers: ordering}}
+}
+
+func allAnalyzers() []*analysis.Analyzer {
+	var analyzers []*analysis.Analyzer
+	for _, c := range checks.All() {
+		analyzers = append(analyzers, c.Analyzer)
 	}
+	return analyzers
+}
+
+// scanAll scans each spec's default build and, when tags is set, its build with those tags, and merges the findings.
+func scanAll(root, tags string, specs []scanSpec) ([]Hit, error) {
+	var hits []Hit
 	seen := map[string]bool{}
-	for _, h := range hits {
-		seen[fmt.Sprintf("%s|%s:%d|%s", h.Check, h.File, h.Line, h.Message)] = true
-	}
-	for _, h := range tagged {
-		if id := fmt.Sprintf("%s|%s:%d|%s", h.Check, h.File, h.Line, h.Message); !seen[id] {
-			hits = append(hits, h)
+	add := func(more []Hit) {
+		for _, h := range more {
+			if id := fmt.Sprintf("%s|%s:%d|%s", h.Check, h.File, h.Line, h.Message); !seen[id] {
+				seen[id] = true
+				hits = append(hits, h)
+			}
 		}
+	}
+	for _, spec := range specs {
+		found, err := scan(root, "", spec.patterns, spec.analyzers)
+		if err != nil {
+			return nil, err
+		}
+		add(found)
+		if tags == "" {
+			continue
+		}
+		tagged, err := scan(root, tags, spec.patterns, spec.analyzers)
+		if err != nil {
+			return nil, err
+		}
+		add(tagged)
 	}
 	slices.SortFunc(hits, func(a, b Hit) int {
 		return strings.Compare(fmt.Sprintf("%s|%s|%08d|%s", a.Check, a.File, a.Line, a.Message), fmt.Sprintf("%s|%s|%08d|%s", b.Check, b.File, b.Line, b.Message))
@@ -95,8 +129,8 @@ func scanAll(root, tags string, patterns []string) ([]Hit, error) {
 	return hits, nil
 }
 
-// scan loads the packages with their tests and runs every analyzer.
-func scan(root, tags string, patterns []string) ([]Hit, error) {
+// scan loads the packages with their tests and runs the analyzers.
+func scan(root, tags string, patterns []string, analyzers []*analysis.Analyzer) ([]Hit, error) {
 	cfg := &packages.Config{
 		Mode:  packages.LoadAllSyntax,
 		Dir:   root,
@@ -124,10 +158,6 @@ func scan(root, tags string, patterns []string) ([]Hit, error) {
 		return nil, fmt.Errorf("load: %s", strings.Join(loadErrs[:min(5, len(loadErrs))], "; "))
 	}
 	pkgs = clean
-	var analyzers []*analysis.Analyzer
-	for _, c := range checks.All() {
-		analyzers = append(analyzers, c.Analyzer)
-	}
 	graph, err := checker.Analyze(analyzers, pkgs, nil)
 	if err != nil {
 		return nil, err

@@ -73,11 +73,30 @@ var bad = regexp.MustCompile("(?i)x")
 //portlint:allow regexfold ASCII-only pattern
 var ok = regexp.MustCompile("(?i)y")
 `)
-	hits, err := scan(dir, "", []string{"./..."})
+	hits, err := scan(dir, "", []string{"./..."}, allAnalyzers())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(hits) != 1 || hits[0].Check != "regexfold" || hits[0].Line != 5 || hits[0].Func != "(decl)" {
 		t.Fatalf("hits = %+v, want one regexfold hit on line 5", hits)
+	}
+}
+
+// The Go SDK is a separate module that ./... does not load: the default run reads it with the ordering checks only, so no other check's baseline grows.
+func TestDefaultSpecsReadTheSDKWithTheOrderingChecks(t *testing.T) {
+	specs := defaultSpecs()
+	if len(specs) != 2 || specs[1].patterns[0] != sdkPattern {
+		t.Fatalf("specs = %+v, want the root module and %s", specs, sdkPattern)
+	}
+	got := map[string]bool{}
+	for _, a := range specs[1].analyzers {
+		got[a.Name] = true
+	}
+	want := map[string]bool{"boundarygoroutine": true, "unorderedfanin": true, "rpcwriteroutsidesink": true}
+	if len(got) != len(want) || !got["boundarygoroutine"] || !got["unorderedfanin"] || !got["rpcwriteroutsidesink"] {
+		t.Fatalf("SDK analyzers = %v, want %v", got, want)
+	}
+	if len(specs[0].analyzers) != len(allAnalyzers()) {
+		t.Fatalf("root analyzers = %d, want every check", len(specs[0].analyzers))
 	}
 }
