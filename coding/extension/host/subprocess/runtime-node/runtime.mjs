@@ -1507,6 +1507,8 @@ class RuntimeUI {
     if (typeof handler !== "function") {
       throw new TypeError("onTerminalInput requires a handler function");
     }
+    // rpc-mode.ts onTerminalInput: raw terminal input is not supported in RPC mode; nothing is registered and no host call is made.
+    if (this.runtime.contextValues.mode === "rpc") return () => {};
     return this.runtime.addTerminalInputHandler(handler);
   }
   // Upstream Pi installs headers and footers as component factories whose
@@ -1534,10 +1536,11 @@ class RuntimeUI {
     this.runtime.fireAndForget("ui.setStatus", { key, text });
     if (this.runtime.footerFactory) this.runtime.renderSpecialSurface("footer");
   }
-  setWorkingMessage(message) { this.runtime.fireAndForget("ui.setWorkingMessage", { message }); }
-  setWorkingIndicator(options = {}) { this.runtime.fireAndForget("ui.setWorkingIndicator", options); }
-  setWorkingVisible(visible) { this.runtime.fireAndForget("ui.setWorkingVisible", { visible }); }
-  setHiddenThinkingLabel(label) { this.runtime.fireAndForget("ui.setHiddenThinkingLabel", { label }); }
+  // rpc-mode.ts: working message, indicator, visibility and the hidden thinking label need the TUI loader and message rendering, so RPC mode makes no host call.
+  setWorkingMessage(message) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setWorkingMessage", { message }); }
+  setWorkingIndicator(options = {}) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setWorkingIndicator", options); }
+  setWorkingVisible(visible) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setWorkingVisible", { visible }); }
+  setHiddenThinkingLabel(label) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setHiddenThinkingLabel", { label }); }
   setWidget(key, content, options = {}) {
     if (content === undefined || content === null) {
       this.runtime.clearWidget(key);
@@ -1558,7 +1561,9 @@ class RuntimeUI {
     }
     throw new Error("setWidget content must be a component factory, string array, or undefined");
   }
+  // rpc-mode.ts setFooter/setHeader: a custom footer or header needs the TUI, so RPC mode ignores the factory without calling or keeping it.
   setFooter(factory) {
+    if (this.runtime.contextValues.mode === "rpc") return;
     this.runtime.specialSurfaceComponents.get("footer")?.component?.dispose?.();
     this.runtime.footerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("footer");
@@ -1566,6 +1571,7 @@ class RuntimeUI {
     else this.runtime.fireAndForget("ui.setFooter", { clear: true });
   }
   setHeader(factory) {
+    if (this.runtime.contextValues.mode === "rpc") return;
     this.runtime.specialSurfaceComponents.get("header")?.component?.dispose?.();
     this.runtime.headerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("header");
@@ -1599,7 +1605,9 @@ class RuntimeUI {
   // 0.3.0: replaced by Pi runner wiring
   // Pi's setEditorComponent: the factory's editor replaces the host's editor
   // (editor-component.mjs); undefined restores it.
+  // rpc-mode.ts: RPC mode has no custom editor, so setEditorComponent is a no-op and getEditorComponent answers undefined.
   setEditorComponent(factory) {
+    if (this.runtime.contextValues.mode === "rpc") return;
     if (typeof factory !== "function") {
       this.runtime.editorFactory = undefined;
       this.runtime.editorHost.clear();
@@ -1608,12 +1616,14 @@ class RuntimeUI {
     this.runtime.editorFactory = factory;
     this.runtime.editorHost.install(factory);
   }
-  getEditorComponent() { return this.runtime.editorFactory; }
+  getEditorComponent() { return this.runtime.contextValues.mode === "rpc" ? undefined : this.runtime.editorFactory; }
   getAllThemes() { return this.runtime.state.allThemes ?? []; }
   getTheme(name) {
     return themeFromPalette(this.runtime.callSync("ui.getTheme", { name })?.theme);
   }
   setTheme(name) {
+    // rpc-mode.ts setTheme: RPC mode cannot switch themes, for a name or a Theme object alike, and never throws.
+    if (this.runtime.contextValues.mode === "rpc") return { success: false, error: "Theme switching not supported in RPC mode" };
     const result = this.runtime.callSync("ui.setTheme", { theme: name });
     const palette = this.runtime.callSync("ui.theme")?.theme;
     if (palette) this.theme.setPalette(palette);

@@ -1727,10 +1727,16 @@ func (c Context) SetHeader(lines []string) error {
 // an equivalent JSON object) as options. Other factory values retain the
 // explicit unsupported error because live host TUI component objects cannot
 // cross a subprocess boundary. With no UI, Custom returns nil without invoking
-// component callbacks.
+// component callbacks. In RPC mode it also returns nil without invoking them,
+// as Pi's rpc-mode.ts custom() resolves undefined; the host call keeps the
+// dialog scope, as the Node runtime's does.
 func (c Context) Custom(factory any, options any) (any, error) {
 	if !c.HasUI() {
 		return nil, nil
+	}
+	if c.Mode() == "rpc" {
+		result, err := c.callHost("ui.custom", map[string]any{"key": fmt.Sprintf("custom-%d", c.ext.overlaySeq.Add(1))})
+		return nil, callResultError(result, err)
 	}
 	c.reportRequestState("blocked", "user")
 	var component overlayComponent

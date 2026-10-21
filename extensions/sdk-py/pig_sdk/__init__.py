@@ -2919,6 +2919,9 @@ class Context:
         if render is None:
             self._set_surface(method, None)
             return
+        # upstream: rpc-mode.ts setFooter/setHeader ignore the factory and runner.ts noOpUIContext does too: Pi calls a footer or header factory only in the TUI.
+        if not self.has_ui() or self.mode == "rpc":
+            return
         if not callable(render):
             raise TypeError("a surface renderer must be callable")
         surface = _SurfaceRenderer(method, render)
@@ -2965,9 +2968,17 @@ class Context:
         order with the input.
 
         Passing the legacy options-only shape retains the host's explicit
-        unsupported response because it has no serializable component.
+        unsupported response because it has no serializable component. With no UI, or in
+        RPC mode, nothing runs and the result is None, as Pi's no-op and RPC UIs resolve undefined.
         """
         if not self.has_ui():
+            return None
+        if self.mode == "rpc":
+            # upstream: rpc-mode.ts custom() resolves undefined and never runs the component. The host call keeps the dialog scope, as the Node runtime's does.
+            with self.extension._overlay_lock:
+                self.extension._overlay_seq += 1
+                key = f"custom-{self.extension._overlay_seq}"
+            self._call("ui.custom", {"key": key})
             return None
         self._block_for_user()
         if component is None or isinstance(component, dict):
