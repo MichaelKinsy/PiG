@@ -44,6 +44,8 @@ type rpcShutdown struct {
 
 	// dying is set when a termination signal's default action begins.
 	dying atomic.Bool
+	// exiting is set when an exit starts; a later exit does nothing.
+	exiting atomic.Bool
 
 	mu        sync.Mutex
 	started   bool
@@ -64,16 +66,19 @@ func (s *rpcShutdown) forceDie(sig os.Signal) {
 	s.die(sig)
 }
 
-// flushAndExit ends the process with code after an optional stdout flush, unless a termination signal's default action has begun: the process then ends by that signal and no exit status may replace it.
+// flushAndExit ends the process with code after an optional stdout flush, unless a termination signal's default action has begun: the process then ends by that signal and no exit status may replace it. The first exit that starts decides the status, as the first process.exit does (rpc-mode.ts:728-744): stopping the extension processes inside an exit completes a pending dispose, whose own exit would otherwise race the first one's os.Exit.
 func (s *rpcShutdown) flushAndExit(flush bool, code int) {
-	if s.dying.Load() {
+	if s.dying.Load() || s.exiting.Load() {
 		return
 	}
 	if flush {
 		s.flush()
-		if s.dying.Load() {
+		if s.dying.Load() || s.exiting.Load() {
 			return
 		}
+	}
+	if !s.exiting.CompareAndSwap(false, true) {
+		return
 	}
 	s.exit(code)
 }

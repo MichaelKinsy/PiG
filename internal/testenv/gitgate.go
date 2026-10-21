@@ -226,6 +226,11 @@ func (o SubdirectoryOrigin) CloneAt(t testing.TB, dest, commit string) {
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	RunGit(t, filepath.Dir(dest), "clone", "-q", o.URL, dest)
+	repo := o.URL
+	if runtime.GOOS == "windows" {
+		// Git for Windows reads file://localhost/C:/... as the UNC path //localhost/C:/...; the Package manager clones the same repository as file:///C:/... (packagemanager.GitCloneRepo).
+		repo = strings.Replace(repo, "file://localhost/", "file:///", 1)
+	}
+	RunGit(t, filepath.Dir(dest), "clone", "-q", repo, dest)
 	RunGit(t, dest, "checkout", "-q", "--detach", commit)
 }
