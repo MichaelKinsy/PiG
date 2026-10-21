@@ -12,7 +12,7 @@ import (
 
 // The Node row: a Node extension calls Pi's own createAgentSession (served by the runtime's independent-session shim) with the sentinel scenarios of the other SDKs' fixtures, and must produce the golden those rows assert. The Node child builds its model runtime itself, as a Node extension does in Pi; the host's does not matter to it.
 const childSessionNode = `
-import { createAgentSession, ModelRuntime, SessionManager, SettingsManager, createExtensionRuntime } from "@earendil-works/pi-coding-agent";
+import { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager, createExtensionRuntime } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -106,6 +106,18 @@ export default function (pi) {
       result.afterDispose = "resolved";
       try { await session.prompt("after dispose"); } catch (e) { result.afterDispose = e.message; }
       return result;
+    } finally { session.dispose(); }
+  })) });
+
+  pi.registerTool({ name: "child_events", label: "child_events", description: "child_events", parameters: object, execute: async (_id, args) => reply(await world(async ({ runtime, create }) => {
+    const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false } });
+    const resourceLoader = new DefaultResourceLoader({ cwd: args.cwd, agentDir: args.agentDir, settingsManager, noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true, additionalExtensionPaths: [args.probe] });
+    await resourceLoader.reload();
+    const { session } = await create({ model: runtime.getModel("sentinel", "echo"), settingsManager, resourceLoader, scopedModels: [{ model: runtime.getModel("sentinel", "echo"), thinkingLevel: "high" }, { model: runtime.getModel("nokey", "locked"), thinkingLevel: "low" }] });
+    try {
+      await session.bindExtensions({});
+      await session.prompt("stream:3");
+      return "done";
     } finally { session.dispose(); }
   })) });
 

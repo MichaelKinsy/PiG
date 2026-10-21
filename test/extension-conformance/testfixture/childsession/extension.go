@@ -102,5 +102,6 @@ func Extension() *sdk.Extension {
 		},
 	})
 	registerLifecycle(e)
+	registerEvents(e)
 	return e
 }

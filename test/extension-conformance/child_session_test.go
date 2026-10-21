@@ -202,6 +202,7 @@ func checkChildSession(t *testing.T, ext extension.Extension) {
 	if !reflect.DeepEqual(tool["events"], childSessionWant["tool-events"]) {
 		t.Fatalf("tool events = %v, want %v", tool["events"], childSessionWant["tool-events"])
 	}
+	checkChildExtensionEvents(t, ext)
 }
 
 func TestChildAgentSessionGoFused(t *testing.T) {
@@ -342,7 +343,25 @@ def new_extension():
             out[name] = {"fallback": norm(session.model_fallback_message), "model": (state.get("model") or {}).get("id"), "promptError": norm(prompt_error)}
         return json.dumps(out)
 
-    for name, fn in (("child_lifecycle", lifecycle), ("child_hold", hold), ("child_errors", errors)):
+    def events(ctx, args):
+        scope = [{"model": {"provider": "sentinel", "id": "echo"}, "thinkingLevel": "high"}, {"model": {"provider": "nokey", "id": "locked"}, "thinkingLevel": "low"}]
+        probe = dict(no_extensions=True, no_skills=True, no_prompt_templates=True, no_themes=True, no_context_files=True)
+        options = dict(model={"provider": "sentinel", "id": "echo"}, in_memory=True, settings={"compaction": {"enabled": False}}, scoped_models=scope)
+        if args.get("via") == "loader":
+            loader = pig_sdk.DefaultResourceLoader(ctx, cwd=args["cwd"], agent_dir=args["agentDir"], additional_extension_paths=[args["probe"]], **probe)
+            loader.reload()
+            options["resource_loader"] = loader
+        else:
+            options["resources"] = pig_sdk.ResourceOptions(additional_extension_paths=[args["probe"]], **probe)
+        session = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(**options))
+        try:
+            session.bind_extensions()
+            session.prompt("stream:3")
+        finally:
+            session.dispose()
+        return "done"
+
+    for name, fn in (("child_lifecycle", lifecycle), ("child_hold", hold), ("child_errors", errors), ("child_events", events)):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=fn))
     return ext
 `
@@ -378,7 +397,7 @@ func quoteJSON(s string) string {
 	return string(b)
 }
 
-const childSessionRust = `use pig_sdk::{CreateAgentSessionOptions, Extension, ResourceOptions, ToolDefinition, ToolResult};
+const childSessionRust = `use pig_sdk::{CreateAgentSessionOptions, DefaultResourceLoader, DefaultResourceLoaderOptions, Extension, ResourceOptions, ToolDefinition, ToolResult};
 use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
 
@@ -527,6 +546,37 @@ pub fn new_extension() -> Extension {
         let guard = started.0.lock().unwrap();
         let _ = started.1.wait_timeout_while(guard, std::time::Duration::from_secs(10), |began| !*began).unwrap();
         ToolResult::text(json!({"held": true}).to_string())
+    }));
+
+    e.register_tool(ToolDefinition::new("child_events", "child_events", "child_events", json!({"type": "object"}), |ctx, args: Value| {
+        let probe = args["probe"].as_str().unwrap_or("").to_string();
+        let scope = json!([{"model": {"provider": "sentinel", "id": "echo"}, "thinkingLevel": "high"}, {"model": {"provider": "nokey", "id": "locked"}, "thinkingLevel": "low"}]);
+        let mut options = CreateAgentSessionOptions {
+            model: Some(json!({"provider": "sentinel", "id": "echo"})), in_memory: true, settings: Some(json!({"compaction": {"enabled": false}})), scoped_models: Some(scope), ..Default::default()
+        };
+        let loader;
+        if args["via"].as_str() == Some("loader") {
+            loader = match DefaultResourceLoader::new(ctx, DefaultResourceLoaderOptions {
+                cwd: args["cwd"].as_str().unwrap_or("").to_string(), agent_dir: args["agentDir"].as_str().unwrap_or("").to_string(),
+                no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, additional_extension_paths: vec![probe], ..Default::default()
+            }) {
+                Ok(loader) => loader,
+                Err(error) => return ToolResult::Error(error.to_string()),
+            };
+            if let Err(error) = loader.reload(None) {
+                return ToolResult::Error(error.to_string());
+            }
+            options.resource_loader = Some(loader.handle().to_string());
+        } else {
+            options.resources = Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, additional_extension_paths: Some(vec![probe]), ..Default::default() });
+        }
+        let session = match ctx.create_agent_session(options) {
+            Ok(session) => session,
+            Err(error) => return ToolResult::Error(error.to_string()),
+        };
+        let outcome = session.bind_extensions().and_then(|()| session.prompt("stream:3"));
+        session.dispose();
+        match outcome { Ok(()) => ToolResult::text("done".to_string()), Err(error) => ToolResult::Error(error.to_string()) }
     }));
 
     e.register_tool(ToolDefinition::new("child_errors", "child_errors", "child_errors", json!({"type": "object"}), |ctx, _args: Value| {
