@@ -85,9 +85,9 @@ func (s *Session) prepareRun(ctx context.Context, trigger extension.BeforeAgentS
 	return p, nil
 }
 
-// NormalizeImages applies the current model's image profile after before_agent_start has completed.
+// NormalizeImages applies the image profile of the limits model (the physical model of the latest virtual-selection response, else the selected model) after before_agent_start has completed (agent-session.ts:2037).
 func (p *PreparedPrompt) NormalizeImages() {
-	p.content = icodingagent.NormalizePromptContent(p.content, p.session.SettingsManager().GetImageAutoResize(), p.session.agent.Model(), p.session.processImage)
+	p.content = icodingagent.NormalizePromptContent(p.content, p.session.SettingsManager().GetImageAutoResize(), p.session.limitsModel(), p.session.processImage)
 }
 
 // PreparedPromptRun owns an admitted Session prompt across its first event and the remainder of execution.
