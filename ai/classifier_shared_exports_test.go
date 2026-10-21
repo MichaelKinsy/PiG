@@ -265,7 +265,7 @@ func TestClassifySystemOneRejectsAnotherAPIAndImagesWithoutSending(t *testing.T)
 	withImages := typesafeTestContext()
 	withImages.Images = []ImageContent{{Data: "aGk=", MimeType: "image/png"}}
 	result = ClassifySystemOne(t.Context(), transport, typesafeTestModel(), withImages, options)
-	if result.StopReason != "error" || result.ErrorMessage != "Acme One does not support image input" {
+	if result.StopReason != "error" || result.ErrorMessage != "Acme One does not support image input for jev-latest" {
 		t.Fatalf("result = %+v, want the image error", result)
 	}
 	if called {

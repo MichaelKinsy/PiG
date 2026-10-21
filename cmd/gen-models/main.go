@@ -106,6 +106,9 @@ type ModelCompat struct {
 	SupportsMidConvoToolAdditions               *bool                      `json:"supportsMidConvoToolAdditions,omitempty"`
 	SupportsMidConvoToolChanges                 *bool                      `json:"supportsMidConvoToolChanges,omitempty"`
 	AllowedFallbackModels                       []jsonAllowedFallbackModel `json:"allowedFallbackModels,omitempty"`
+	// ImageInput and SendImageOptInHeader are the System One settings of classifier models (SystemOneCompatSchema).
+	ImageInput           string `json:"imageInput,omitempty"`
+	SendImageOptInHeader *bool  `json:"sendImageOptInHeader,omitempty"`
 }
 
 var (
@@ -826,7 +829,7 @@ func unsupportedFields(row modelRow) []string {
 	if row.Type == "chat" {
 		return fields
 	}
-	add(row.Compat != nil, "compat")
+	add(row.Compat != nil && (row.Type != "classifier" || hasChatCompat(row.Compat)), "compat")
 	add(len(row.ThinkingLevelMap) > 0, "thinkingLevelMap")
 	add(len(row.SamplingParams) > 0, "samplingParams")
 	add(len(row.PromptCache) > 0, "promptCache")
@@ -839,6 +842,26 @@ func unsupportedFields(row modelRow) []string {
 		add(row.ContextWindow != 0, "contextWindow")
 	}
 	return fields
+}
+
+// hasChatCompat reports whether compat carries a field other than the System One settings a classifier model may hold.
+func hasChatCompat(compat *ModelCompat) bool {
+	rest := *compat
+	rest.ImageInput, rest.SendImageOptInHeader = "", nil
+	encoded, err := json.Marshal(rest)
+	return err != nil || string(encoded) != "{}"
+}
+
+// systemOneCompatLiteral is the Go literal of a classifier model's System One compat.
+func systemOneCompatLiteral(compat *ModelCompat) string {
+	var fields []string
+	if compat.ImageInput != "" {
+		fields = append(fields, fmt.Sprintf("ImageInput: SystemOneImageInput(%q)", compat.ImageInput))
+	}
+	if compat.SendImageOptInHeader != nil {
+		fields = append(fields, fmt.Sprintf("SendImageOptInHeader: new(%t)", *compat.SendImageOptInHeader))
+	}
+	return "&SystemOneCompat{" + strings.Join(fields, ", ") + "}"
 }
 
 func emitImages(path, src string, rows []modelRow) error {
@@ -886,7 +909,11 @@ func emitClassifiers(path, src string, rows []modelRow) error {
 	for _, row := range rows {
 		fmt.Fprintf(&b, "\t{ID: %q, Name: %q, API: ClassifierAPI(%q), Provider: %q, BaseURL: %q,", row.ID, row.Name, row.API, row.Provider, row.BaseURL)
 		writeBaseModelFields(&b, row)
-		fmt.Fprintf(&b, " Cost: %s, ContextWindow: %d},\n", modelCostLiteral(row), row.ContextWindow)
+		fmt.Fprintf(&b, " Cost: %s, ContextWindow: %d,", modelCostLiteral(row), row.ContextWindow)
+		if row.Compat != nil {
+			fmt.Fprintf(&b, " Compat: %s,", systemOneCompatLiteral(row.Compat))
+		}
+		b.WriteString("},\n")
 	}
 	b.WriteString("}\n")
 	return writeGoSource(path, b.String())

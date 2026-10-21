@@ -32,6 +32,14 @@ func MistralConversationsCompatSchema() *Schema {
 	}, D("Compatibility settings for the Mistral chat API."), Opt{"additionalProperties", true})
 }
 
+// SystemOneCompatSchema is compat-schema.ts SystemOneCompatSchema.
+func SystemOneCompatSchema() *Schema {
+	return Object([]Prop{
+		Optional("imageInput", Union([]*Schema{Literal("assets"), Literal("images"), Literal("state-image-urls")}, D(`How the service takes classifier images. "assets" sends TypeSafe's assets map (PNG and JPEG) and references the images from the state, as TypeSafe and Jev on Workers AI expect. "images" sends Clef's images list of data URLs (PNG, JPEG, and WebP, at most four), as Clef on Workers AI expects. "state-image-urls" places image_url parts before the state, as OpenRouter expects; OpenRouter drops assets without an error. Auto-detected from the provider, baseUrl, and model ID. Classifier models read it from the provider-level compat; models and modelOverrides entries apply to chat models only.`))),
+		optionalCompatBoolean("sendImageOptInHeader", D("Whether requests with images send the TypeSafe-Danger-Zone-Images: true header, which TypeSafe's own API requires for its experimental image input. Defaults to true for the typesafe-system-one API unless the model is detected as OpenRouter.")),
+	}, D("Compatibility settings for System One classifier APIs."), Opt{"additionalProperties", true})
+}
+
 // ProviderCompatSchema is mergeCompatProperties: a property keeps the position of its first schema, and an override replaces its value.
 func ProviderCompatSchema() *Schema {
 	overrides := []Prop{
@@ -119,6 +127,8 @@ func CompatSchemasByApi() []CompatSchemaEntry {
 		{"anthropic-messages", "AnthropicMessagesCompatSchema"},
 		{"bedrock-converse-stream", "BedrockCompatSchema"},
 		{"mistral-conversations", "MistralConversationsCompatSchema"},
+		{"typesafe-system-one", "SystemOneCompatSchema"},
+		{"cloudflare-workers-ai-system-one", "SystemOneCompatSchema"},
 	}
 }
 
@@ -134,6 +144,8 @@ func compatSchemaNamed(name string) *Schema {
 		return BedrockCompatSchema()
 	case "MistralConversationsCompatSchema":
 		return MistralConversationsCompatSchema()
+	case "SystemOneCompatSchema":
+		return SystemOneCompatSchema()
 	}
 	panic("configschema: no compat schema " + name)
 }

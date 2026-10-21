@@ -127,15 +127,14 @@ func TestTypesafeSystemOneUpstream(t *testing.T) {
 			t.Errorf("result=%+v", result)
 		}
 	})
-	// .upstream/v1.1.0/packages/ai/test/typesafe-system-one.test.ts:123
-	t.Run("rejects image input before sending", func(t *testing.T) {
+	// .upstream/v1.3.0+7f225f25/packages/ai/test/typesafe-system-one.test.ts:123
+	t.Run("rejects image input for text-only models before sending", func(t *testing.T) {
 		calls := 0
 		fetch := clsClient(func(*http.Request) (*http.Response, error) {
 			calls++
 			return clsJSON(200, `{"answers":`+typesafeWireAnswers+`}`), nil
 		})
 		model := typesafeTestModel()
-		model.Input = []string{"text", "image"}
 		request := typesafeTestContext()
 		request.Images = []ImageContent{{Data: "aW1hZ2U=", MimeType: "image/png"}}
 
@@ -144,12 +143,141 @@ func TestTypesafeSystemOneUpstream(t *testing.T) {
 		cloudflareModel.API = ClassifierAPICloudflareWorkersAISystemOne
 		cloudflare := ClassifyCloudflareWorkersAISystemOne(t.Context(), cloudflareModel, request, ClassifierOptions{APIKey: "secret", Fetch: fetch})
 
-		if calls != 0 || result.StopReason != "error" || result.ErrorMessage != "System One API does not support image input" {
+		if calls != 0 || result.StopReason != "error" || result.ErrorMessage != "System One API does not support image input for jev-latest" {
 			t.Errorf("calls=%d result=%+v", calls, result)
 		}
 		// The shared System One path rejects images for every System One service.
-		if cloudflare.ErrorMessage != "Cloudflare Workers AI does not support image input" {
+		if cloudflare.ErrorMessage != "Cloudflare Workers AI does not support image input for jev-latest" {
 			t.Errorf("cloudflare=%+v", cloudflare)
+		}
+	})
+	type recordedRequest struct {
+		body    map[string]any
+		headers http.Header
+	}
+	recordingFetch := func(t *testing.T, requests *[]recordedRequest) *http.Client {
+		return clsClient(func(r *http.Request) (*http.Response, error) {
+			*requests = append(*requests, recordedRequest{body: clsBody(t, r), headers: r.Header.Clone()})
+			return clsJSON(200, `{"answers":`+typesafeWireAnswers+`}`), nil
+		})
+	}
+	pngImage := ImageContent{Data: "cG5n", MimeType: "image/png"}
+	imageURLState := func(state any) []any {
+		return []any{map[string]any{"type": "image_url", "image_url": map[string]any{"url": "data:image/png;base64,cG5n"}}, state}
+	}
+	// .upstream/v1.3.0+7f225f25/packages/ai/test/typesafe-system-one.test.ts:136
+	t.Run("sends images to TypeSafe as assets with the opt-in header", func(t *testing.T) {
+		var requests []recordedRequest
+		fetch := recordingFetch(t, &requests)
+		imageModel := typesafeTestModel()
+		imageModel.Input = []string{"text", "image"}
+		request := typesafeTestContext()
+		withImages := request
+		withImages.Images = []ImageContent{pngImage, {Data: "anBlZw==", MimeType: "image/jpeg"}}
+
+		result := ClassifyTypesafeSystemOne(t.Context(), imageModel, withImages, ClassifierOptions{APIKey: "secret", Fetch: fetch})
+		without := ClassifyTypesafeSystemOne(t.Context(), imageModel, request, ClassifierOptions{APIKey: "secret", Fetch: fetch})
+
+		if result.StopReason != "stop" || without.StopReason != "stop" || len(requests) != 2 {
+			t.Fatalf("result=%+v without=%+v requests=%d", result, without, len(requests))
+		}
+		wantState := []any{"<image-1>", "<image-2>", map[string]any{"text": "The deployment succeeded, thank you."}}
+		wantAssets := map[string]any{
+			"<image-1>": map[string]any{"type": "image", "format": "png", "data_base64": "cG5n"},
+			"<image-2>": map[string]any{"type": "image", "format": "jpeg", "data_base64": "anBlZw=="},
+		}
+		if !reflect.DeepEqual(requests[0].body["state"], wantState) || !reflect.DeepEqual(requests[0].body["assets"], wantAssets) {
+			t.Errorf("body=%v", requests[0].body)
+		}
+		if requests[0].headers.Get("typesafe-danger-zone-images") != "true" {
+			t.Errorf("headers=%v", requests[0].headers)
+		}
+		// Requests without images keep the plain state and send no opt-in header.
+		if !reflect.DeepEqual(requests[1].body["state"], map[string]any{"text": "The deployment succeeded, thank you."}) || requests[1].body["assets"] != nil || requests[1].headers.Get("typesafe-danger-zone-images") != "" {
+			t.Errorf("without images: %v %v", requests[1].body, requests[1].headers)
+		}
+	})
+	// .upstream/v1.3.0+7f225f25/packages/ai/test/typesafe-system-one.test.ts:179
+	t.Run("rejects image formats TypeSafe does not accept before sending", func(t *testing.T) {
+		calls := 0
+		fetch := clsClient(func(*http.Request) (*http.Response, error) {
+			calls++
+			return clsJSON(200, `{"answers":`+typesafeWireAnswers+`}`), nil
+		})
+		model := typesafeTestModel()
+		model.Input = []string{"text", "image"}
+		request := typesafeTestContext()
+		request.Images = []ImageContent{{Data: "d2VicA==", MimeType: "image/webp"}}
+
+		result := ClassifyTypesafeSystemOne(t.Context(), model, request, ClassifierOptions{APIKey: "secret", Fetch: fetch})
+
+		if calls != 0 || result.StopReason != "error" || result.ErrorMessage != "System One API accepts PNG and JPEG images for jev-latest, got image/webp" {
+			t.Errorf("calls=%d result=%+v", calls, result)
+		}
+	})
+	// .upstream/v1.3.0+7f225f25/packages/ai/test/typesafe-system-one.test.ts:192
+	t.Run("sends images to OpenRouter as image_url parts in the state", func(t *testing.T) {
+		var requests []recordedRequest
+		model := typesafeTestModel()
+		model.ID, model.Provider, model.BaseURL, model.Input = "typesafe/jev-1.14", "openrouter", "https://openrouter.ai/api/v1", []string{"text", "image"}
+		request := typesafeTestContext()
+		request.Images = []ImageContent{pngImage}
+
+		result := ClassifyTypesafeSystemOne(t.Context(), model, request, ClassifierOptions{APIKey: "secret", Fetch: recordingFetch(t, &requests)})
+
+		if result.StopReason != "stop" || len(requests) != 1 {
+			t.Fatalf("result=%+v requests=%d", result, len(requests))
+		}
+		// OpenRouter answers 200 for assets but drops them, and rejects a top-level images list.
+		body := requests[0].body
+		if body["model"] != "typesafe/jev-1.14" || !reflect.DeepEqual(body["state"], imageURLState(map[string]any{"text": "The deployment succeeded, thank you."})) || body["questions"] == nil || len(body) != 3 {
+			t.Errorf("body=%v", body)
+		}
+		if requests[0].headers.Get("typesafe-danger-zone-images") != "" {
+			t.Errorf("headers=%v", requests[0].headers)
+		}
+	})
+	// .upstream/v1.3.0+7f225f25/packages/ai/test/typesafe-system-one.test.ts:225
+	for _, tc := range []struct {
+		name     string
+		provider string
+		baseURL  string
+		compat   *SystemOneCompat
+	}{
+		{"OpenRouter behind a proxy", "openrouter", "https://proxy.example.com/v1", nil},
+		{"a regional OpenRouter endpoint", "custom", "https://us.openrouter.ai/api/v1", nil},
+		{"a proxy declared through compat", "custom", "https://proxy.example.com/v1", &SystemOneCompat{ImageInput: SystemOneImageInputStateImageURLs, SendImageOptInHeader: new(false)}},
+	} {
+		t.Run("sends OpenRouter's image form to "+tc.name, func(t *testing.T) {
+			var requests []recordedRequest
+			model := typesafeTestModel()
+			model.ID, model.Provider, model.BaseURL, model.Input, model.Compat = "typesafe/jev-1.14", tc.provider, tc.baseURL, []string{"text", "image"}, tc.compat
+			request := typesafeTestContext()
+			request.Images = []ImageContent{pngImage}
+
+			result := ClassifyTypesafeSystemOne(t.Context(), model, request, ClassifierOptions{APIKey: "secret", Fetch: recordingFetch(t, &requests)})
+
+			if result.StopReason != "stop" || len(requests) != 1 {
+				t.Fatalf("result=%+v requests=%d", result, len(requests))
+			}
+			if !reflect.DeepEqual(requests[0].body["state"], imageURLState(map[string]any{"text": "The deployment succeeded, thank you."})) || requests[0].body["assets"] != nil || requests[0].headers.Get("typesafe-danger-zone-images") != "" {
+				t.Errorf("body=%v headers=%v", requests[0].body, requests[0].headers)
+			}
+		})
+	}
+	// .upstream/v1.3.0+7f225f25/packages/ai/test/typesafe-system-one.test.ts:262
+	t.Run("lets compat override detected image settings per field", func(t *testing.T) {
+		var requests []recordedRequest
+		model := typesafeTestModel()
+		model.Input, model.Compat = []string{"text", "image"}, &SystemOneCompat{SendImageOptInHeader: new(false)}
+		request := typesafeTestContext()
+		request.Images = []ImageContent{pngImage}
+
+		ClassifyTypesafeSystemOne(t.Context(), model, request, ClassifierOptions{APIKey: "secret", Fetch: recordingFetch(t, &requests)})
+
+		// Only the header is overridden; the detected assets form stays.
+		if len(requests) != 1 || requests[0].body["assets"] == nil || requests[0].headers.Get("typesafe-danger-zone-images") != "" {
+			t.Errorf("requests=%v", requests)
 		}
 	})
 	// .upstream/v0.99.1/packages/ai/test/typesafe-system-one.test.ts:123

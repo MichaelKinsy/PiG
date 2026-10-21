@@ -63,6 +63,7 @@ type classifierModelRecord struct {
 	Cost          ModelCost         `json:"cost"`
 	Headers       map[string]string `json:"headers,omitempty"`
 	ContextWindow int               `json:"contextWindow"`
+	Compat        *SystemOneCompat  `json:"compat,omitempty"`
 }
 
 // catalogShape remembers the persisted record a model was decoded from, so that re-encoding it is lossless: fields the typed model has no member for
@@ -122,7 +123,7 @@ func anyModelRecord(model AnyModel) (record any, shape **catalogShape, err error
 	case *ImageModel:
 		return imageModelRecord{Type: ModelTypeImage, ID: typed.ID, Name: typed.Name, API: typed.API, Provider: typed.Provider, BaseURL: typed.BaseURL, Input: typed.Input, InputLimits: typed.InputLimits, Cost: typed.Cost, Headers: typed.Headers, Output: typed.Output}, &typed.catalog, nil
 	case *ClassifierModel:
-		return classifierModelRecord{Type: ModelTypeClassifier, ID: typed.ID, Name: typed.Name, API: typed.API, Provider: typed.Provider, BaseURL: typed.BaseURL, Input: typed.Input, InputLimits: typed.InputLimits, Cost: typed.Cost, Headers: typed.Headers, ContextWindow: typed.ContextWindow}, &typed.catalog, nil
+		return classifierModelRecord{Type: ModelTypeClassifier, ID: typed.ID, Name: typed.Name, API: typed.API, Provider: typed.Provider, BaseURL: typed.BaseURL, Input: typed.Input, InputLimits: typed.InputLimits, Cost: typed.Cost, Headers: typed.Headers, ContextWindow: typed.ContextWindow, Compat: typed.Compat}, &typed.catalog, nil
 	}
 	return nil, nil, fmt.Errorf("encode model: unsupported model %T", model)
 }
@@ -450,7 +451,7 @@ func decodeCatalogTyped(data []byte) (model AnyModel, known bool, err error) {
 		if err := json.Unmarshal(typed, &record); err != nil {
 			return nil, false, fmt.Errorf("decode stored model: %w", err)
 		}
-		model = &ClassifierModel{ID: record.ID, Name: record.Name, API: record.API, Provider: record.Provider, BaseURL: record.BaseURL, Headers: record.Headers, Input: record.Input, InputLimits: record.InputLimits, Cost: record.Cost, ContextWindow: record.ContextWindow}
+		model = &ClassifierModel{ID: record.ID, Name: record.Name, API: record.API, Provider: record.Provider, BaseURL: record.BaseURL, Headers: record.Headers, Input: record.Input, InputLimits: record.InputLimits, Cost: record.Cost, ContextWindow: record.ContextWindow, Compat: record.Compat}
 	default:
 		return nil, false, nil
 	}
