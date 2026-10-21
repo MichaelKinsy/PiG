@@ -490,10 +490,10 @@ JSON nested deeper than 128 levels is also taken: Pi's `JSON.parse`, Go and Pyth
 | custom tool call renderers | declarative renderer protocol or accepted divergence | as the `renderCall` row | complete |
 | custom tool result renderers | declarative renderer protocol or accepted divergence | as the `renderResult` row | complete |
 | fallback renderer behavior | host fallback renderer | `TestDefinitionCardFallbacksAndExpansion`, `TestCustomMessageFallbackOutputPadProduction` | complete |
-| keybinding hints | SDK utility or host formatting API | `TestPiThemeHelpersMatchThePinnedPackage` (`keyHint`, `rawKeyHint`) | partial: Node runtime only; Go/Rust/Python have no key-hint helpers |
+| keybinding hints | SDK utility or host formatting API | `TestPiThemeHelpersMatchThePinnedPackage` (`keyHint`, `rawKeyHint`) | partial: Node serves Pi's own `keyHint`/`keyText`/`rawKeyHint`; the Go, Rust and Python cells are `gap:SdkTuiHelpers` in `docs/extension-sdk-exports.md` |
 | theme color helpers | declarative theme tokens | `TestPiThemeHelpersMatchThePinnedPackage`, `TestHasUIAndUIThemeFollowReplicatedState`, `test_has_ui_and_theme_follow_host_state`, Rust `applies_the_palette_like_the_node_theme_shim` | complete |
 | theme appearance, colors and style (`ctx.ui.theme.appearance`, `.colors`, `.style`) | the host resolves the appearance and every token's concrete color with the palette (`internal/codingagent.ExtensionThemePalette`); each SDK renders `style` over the palette's escape sequences in the theme's color mode | `TestExtensionThemePaletteCarriesAppearanceColorsAndMode`, `TestThemeAcrossSDKs`, `TestThemeFaintForegroundAcrossSDKs` (fg closes a faint token with SGR 22;39), `TestUIThemeStyle`, `test_theme_style.py`, Rust `style_renders_tokens_attributes_and_colors`, `TestNodeThemeAppearanceColorsAndStyle` | complete |
-| syntax highlight helpers | host utility or SDK utility | `TestPiThemeHelpersMatchThePinnedPackage` (`highlightCode`) | partial: Node runtime only; Go/Rust/Python have no highlight helpers |
+| syntax highlight helpers | host utility or SDK utility | `TestPiThemeHelpersMatchThePinnedPackage` (`highlightCode`) | partial: Node serves Pi's own `highlightCode`; the Go, Rust and Python cells are `gap:SdkTuiHelpers` in `docs/extension-sdk-exports.md` |
 
 ## Performance and resource contract
 

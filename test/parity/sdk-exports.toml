@@ -45,12 +45,7 @@ closing = "TestConformance_BuiltinToolDelegationAcrossSDKs"
 [lane.SdkExportsLedger]
 owner = "SdkExportsLedger lane (Pi application internals no extension scan imports)"
 opened = "0.5.2"
-closing = "Per export: a port with a conformance row, or an owner-approved numbered divergence recorded in docs/parity/DIVERGENCES.md; the owner decides the divergence"
-
-[lane.SdkLedgerHygiene]
-owner = "SdkLedgerHygiene lane (ledger hygiene)"
-opened = "0.5.2"
-closing = "A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does"
+closing = "Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row"
 
 [lane.SdkPiAiHelpers]
 owner = "SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22)"
@@ -66,150 +61,6 @@ closing = "Host calls for session open/list/inMemory, scoped settings, standalon
 owner = "SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16)"
 opened = "0.5.2"
 closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK"
-
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.addToHistory"
-sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls EditorComponent.AddToHistory"
-
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.getCursor"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetCursor"
-
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.getExpandedText"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText"
-
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.insertTextAtCursor"
-sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls EditorComponent.InsertTextAtCursor"
-
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.isShowingAutocomplete"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete"
-
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.setAutocompleteMaxVisible"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible"
-
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.setPaddingX"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX"
-
-[[unreached]]
-key = "pi-coding-agent: DEFAULT_MAX_BYTES"
-sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxBytes"
-
-[[unreached]]
-key = "pi-coding-agent: DEFAULT_MAX_LINES"
-sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.buildSessionContext"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.BuildSessionContext"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.getChildren"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.GetChildren"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.isPersisted"
-sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.IsPersisted"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.usesDefaultSessionDir"
-sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.UsesDefaultSessionDir"
-
-[[unreached]]
-key = "pi-coding-agent: serializeConversation"
-sdks = ["rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls serialize_conversation"
-
-[[unreached]]
-key = "pi-coding-agent: stripFrontmatter"
-sdks = ["python"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls strip_frontmatter"
-
-[[unreached]]
-key = "pi-tui: Editor.addToHistory"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.AddToHistory"
-
-[[unreached]]
-key = "pi-tui: Editor.getCursor"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetCursor"
-
-[[unreached]]
-key = "pi-tui: Editor.getExpandedText"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText"
-
-[[unreached]]
-key = "pi-tui: Editor.insertTextAtCursor"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.InsertTextAtCursor"
-
-[[unreached]]
-key = "pi-tui: Editor.isShowingAutocomplete"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete"
-
-[[unreached]]
-key = "pi-tui: Editor.setAutocompleteMaxVisible"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible"
-
-[[unreached]]
-key = "pi-tui: Editor.setPaddingX"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX"
-
-[[unreached]]
-key = "pi-tui: parseColor"
-sdks = ["python"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls parse_color"
-
-[[unreached]]
-key = "pi-tui: styleTextWithAnsi"
-sdks = ["python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls style_text_with_ansi"
 
 [export]
 "pi-coding-agent: AgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -1032,9 +883,9 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: convertToPng" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-coding-agent: copyToClipboard" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-coding-agent: createAgentSession" = { go = "host:Context.CreateAgentSession", rust = "host:Context::create_agent_session", python = "host:Context.create_agent_session" }
-"pi-coding-agent: createAgentSessionFromServices" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: createAgentSessionRuntime" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: createAgentSessionServices" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-coding-agent: createAgentSessionFromServices" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: createAgentSessionRuntime" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: createAgentSessionServices" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: createBashTool" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
 "pi-coding-agent: createBashToolDefinition" = { go = "gap:SdkBuiltinToolDelegate", rust = "gap:SdkBuiltinToolDelegate", python = "gap:SdkBuiltinToolDelegate" }
 "pi-coding-agent: createCodemodeExtension" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -1129,7 +980,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: truncateLine" = { go = "native:TruncateLine", rust = "native:truncate_line", python = "native:truncate_line" }
 "pi-coding-agent: truncateTail" = { go = "native:TruncateTail", rust = "native:truncate_tail", python = "native:truncate_tail" }
 "pi-coding-agent: truncateToVisualLines" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
-"pi-coding-agent: withFileMutationQueue" = { go = "native:WithFileMutationQueue", rust = "gap:SdkExportsLedger", python = "native:with_file_mutation_queue" }
+"pi-coding-agent: withFileMutationQueue" = { go = "native:WithFileMutationQueue", rust = "native:with_file_mutation_queue", python = "native:with_file_mutation_queue" }
 "pi-coding-agent: wrapRegisteredTool" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: wrapRegisteredTools" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-tui: Box" = { go = "kit:Box", rust = "kit:Box", python = "kit:Box" }
@@ -1475,7 +1326,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-tui: okhslColor" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: oklabToOkhslLightness" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: oklchColor" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
-"pi-tui: parseColor" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "native:parse_color" }
+"pi-tui: parseColor" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: parseKey" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: parseTerminalColorSchemeReport" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-tui: renderFakeCursor" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1492,7 +1343,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-tui: sliceByColumn" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: stripTerminalSequences" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: styleText" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
-"pi-tui: styleTextWithAnsi" = { go = "gap:SdkTuiHelpers", rust = "native:style_text_with_ansi", python = "native:style_text_with_ansi" }
+"pi-tui: styleTextWithAnsi" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: truncateToWidth" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: visibleWidth" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-tui: wrapTextWithAnsi" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
