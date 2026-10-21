@@ -148,6 +148,8 @@ type sessionGraphTable struct {
 	mu    sync.Mutex
 	next  uint64
 	conns map[*Conn]*connSessionGraph
+	// closing counts the connections whose objects are being dropped, so closeAll can wait for a drop a connection's watcher began. Add runs under mu, when the connection leaves conns.
+	closing sync.WaitGroup
 }
 
 type connSessionGraph struct {
@@ -176,19 +178,55 @@ func (t *sessionGraphTable) add(conn *Conn, object SessionGraphObject) (string, 
 		t.conns[conn] = owned
 		go func() {
 			<-conn.Done()
-			t.mu.Lock()
-			holds := owned.objects
-			delete(t.conns, conn)
-			t.mu.Unlock()
-			for _, hold := range holds {
-				t.drop(hold)
-			}
+			t.closeConn(conn)
 		}()
 	}
 	t.next++
 	handle := "sg" + strconv.FormatUint(t.next, 10)
 	owned.objects[handle] = &graphHold{object: object, holders: 1}
 	return handle, nil
+}
+
+// closeConn lets go of the extension's handles on conn.
+func (t *sessionGraphTable) closeConn(conn *Conn) {
+	t.mu.Lock()
+	owned := t.conns[conn]
+	delete(t.conns, conn)
+	if owned != nil {
+		t.closing.Add(1)
+	}
+	t.mu.Unlock()
+	if owned != nil {
+		t.dropAll(owned)
+	}
+}
+
+// closeAll lets go of the handles of every connection and returns when no drop is still running, including one a connection's watcher began. Host.Shutdown calls it, after the child sessions closed: an object that held a process releases it when its last holder lets go.
+func (t *sessionGraphTable) closeAll() {
+	t.mu.Lock()
+	var all []*connSessionGraph
+	for conn, owned := range t.conns {
+		delete(t.conns, conn)
+		t.closing.Add(1)
+		all = append(all, owned)
+	}
+	t.mu.Unlock()
+	for _, owned := range all {
+		t.dropAll(owned)
+	}
+	t.closing.Wait()
+}
+
+// dropAll ends the extension's hold of every object of owned, and its count in t.closing.
+func (t *sessionGraphTable) dropAll(owned *connSessionGraph) {
+	defer t.closing.Done()
+	t.mu.Lock()
+	holds := owned.objects
+	owned.objects = nil
+	t.mu.Unlock()
+	for _, hold := range holds {
+		t.drop(hold)
+	}
 }
 
 func (t *sessionGraphTable) lookup(conn *Conn, handle string) (SessionGraphObject, bool) {

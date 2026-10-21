@@ -2547,6 +2547,9 @@ func (h *Host) Shutdown(reason string) {
 	h.drainTasksClosed = true
 	h.drainTasksMu.Unlock()
 	h.drainTasks.Wait()
+	// A child session outlives the extension's dispose of it, and the objects it was created over outlive the extension's handles. Pi's child AgentSession runs in the host's own process and ends with it; here its extension host is a process of its own, so Shutdown closes the sessions and releases the objects, and no process they started outlives it.
+	h.childSessions.closeAll()
+	h.sessionGraphObjects.closeAll()
 	if h.uiBridge != nil {
 		h.uiBridge.StopFrontendPushes()
 	}
