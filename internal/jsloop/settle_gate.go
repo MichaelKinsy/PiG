@@ -10,7 +10,11 @@ import "sync"
 // a sender that wakes two goroutines in a row runs the second first, so the
 // answers' order is lost between the arrival and the continuation unless the
 // order is recorded where the answers arrive and kept where the continuations
-// act (SettleSlot).
+// act (SettleSlot). A continuation acts in two steps: it starts, and runs to
+// its first await (Begin), and it finishes (Run). Pi starts the continuations
+// of promises that settle back to back in settle order and lets each run on
+// after its first await while the next starts, so a slot's start waits only
+// for the earlier slots' starts, and its action waits for their actions.
 //
 // The zero value is ready to use.
 type SettleGate struct {
@@ -18,6 +22,8 @@ type SettleGate struct {
 	turn sync.Cond
 	// settled holds the slots that settled and whose action has not finished, in settle order.
 	settled []*SettleSlot
+	// starts holds one place per settled slot, in settle order: a slot's Begin returns when every earlier place was released.
+	starts Lane
 	// parked, when set, runs each time a Run starts to wait for an earlier slot.
 	parked func()
 }
@@ -33,8 +39,10 @@ func (g *SettleGate) SetParkedHook(fn func()) {
 // SettleSlot is one waiter's place in a SettleGate.
 type SettleSlot struct {
 	gate *SettleGate
-	// state is guarded by gate.mu.
+	// state and start are guarded by gate.mu.
 	state slotState
+	// start is the slot's place in gate.starts, taken when the slot settles.
+	start *Place
 }
 
 type slotState uint8
@@ -64,6 +72,21 @@ func (s *SettleSlot) Settle() {
 	}
 	s.state = slotSettled
 	g.settled = append(g.settled, s)
+	s.start = g.starts.Reserve()
+}
+
+// Begin returns when every slot that settled before this one began, and the function that reports this slot begun, which lets the slots behind it
+// begin. The caller starts its continuation between the two, as Pi runs a continuation to its first await before the next one starts, and calls
+// began when that point is reached. began is idempotent, and Close calls it, so a slot that never begins cannot hold the ones behind it. A slot
+// that no reader settled settles when Begin starts.
+func (s *SettleSlot) Begin() (began func()) {
+	s.Settle()
+	g := s.gate
+	g.mu.Lock()
+	start := s.start
+	g.mu.Unlock()
+	start.Wait()
+	return start.Release
 }
 
 // Run runs action once every slot that settled before this one finished. A
@@ -98,6 +121,7 @@ func (s *SettleSlot) Close() {
 		return
 	}
 	if s.state == slotSettled {
+		s.start.Release()
 		for i, held := range g.settled {
 			if held == s {
 				g.settled = append(g.settled[:i], g.settled[i+1:]...)

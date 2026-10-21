@@ -46,6 +46,7 @@ func loadingBusCall(method string) bool {
 func (h *Host) observeXref(conn *Conn) {
 	conn.onLoopTurned = func(args json.RawMessage) { h.forwardLoopTurned(conn, args) }
 	conn.onLoopTurnTaken = func(args json.RawMessage) { h.loopTurns.take(conn, args) }
+	conn.onTimerDeferAck = func(args json.RawMessage) { conn.timerDefer.ack(args) }
 	conn.reportView = func(surface string, err error) { h.reportViewRejection(conn, surface, err) }
 	conn.terminalRows = h.terminalHeight
 	if outbound := h.outboundObserver; outbound != nil {

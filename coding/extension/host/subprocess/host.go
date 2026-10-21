@@ -27,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/boundarywire"
 	"github.com/MichaelKinsy/PiG/internal/eventwire"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
@@ -286,6 +287,8 @@ type Host struct {
 	loopTurns loopTurns
 	// childSessions holds the child agent sessions each connection created (child_session.go).
 	childSessions childSessionTable
+	// timerTurns holds the calls an extension runtime marks as made by a timer or an immediate until Pi's loop would run them (SetTimerTurns); nil holds nothing.
+	timerTurns atomic.Pointer[jsloop.Turns]
 	// nested tracks executeTool calls in flight (host_extension_api.go).
 	nested nestedCalls
 	// sessionGraphObjects holds the session graph objects each connection built; sessionGraphBackend serves them (session_graph.go).
@@ -2387,6 +2390,44 @@ func (h *Host) SetCommandWindowHandler(fn func(suspended int)) {
 	h.commandFlightMu.Unlock()
 }
 
+// SetTimerTurns gives the host the owner's model of Pi's event loop (D5). A host call that the runtime marks Timer runs when the loop would run the timer or immediate that made it: while the agent's run chains microtasks it waits (jsloop.Turns). Without it such a call runs on arrival.
+func (h *Host) SetTimerTurns(turns *jsloop.Turns) {
+	if previous := h.timerTurns.Swap(turns); previous != turns && turns != nil {
+		turns.ObserveDefer(h.sendTimerDefer, h.awaitTimerDefer)
+	}
+}
+
+// timerDeferConns returns the connections of every Node runtime of the host.
+func (h *Host) timerDeferConns() []*Conn {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	conns := make([]*Conn, 0, len(h.exts))
+	for _, me := range h.exts {
+		if conn := me.connection(); conn != nil && me.hostsNodeRuntime() {
+			conns = append(conns, conn)
+		}
+	}
+	return conns
+}
+
+// sendTimerDefer tells every Node runtime of the host whether it must hold its timer and immediate callbacks (NotifyTimerDefer). The frames of one host keep the order of the changes, and each precedes the requests the host sends after the change.
+func (h *Host) sendTimerDefer(deferring bool) {
+	for _, conn := range h.timerDeferConns() {
+		args, err := json.Marshal(TimerDeferArgs{On: deferring, Seq: conn.timerDefer.next()})
+		if err != nil {
+			continue
+		}
+		_ = conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyTimerDefer, Args: args}})
+	}
+}
+
+// awaitTimerDefer returns once every Node runtime applied the frames sendTimerDefer sent (NotifyTimerDeferAck), or ended, or ctx ended.
+func (h *Host) awaitTimerDefer(ctx context.Context) {
+	for _, conn := range h.timerDeferConns() {
+		conn.timerDefer.await(ctx, conn.Done())
+	}
+}
+
 // FlushCommands is the stdout-flush checkpoint of an RPC shutdown. Pi's flush follows stdin's end within microtasks and one tick, so a runtime with no microtask continuation has nothing that can still settle: its command still running counts as suspended. A Node runtime reports its own commands as their windows close. A command that settled or answered before the checkpoint responds normally. It does not cancel requests or synthesize responses.
 func (h *Host) FlushCommands() {
 	// pig additive (D19): only the host can apply Pi's flushRawStdout boundary (output-guard.ts:105-108) to a runtime that reports no event-loop window.
@@ -3536,6 +3577,10 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				}
 				return nil, errors.New("connection closed before register")
 			}
+			if env.barrier != nil {
+				env.barrier.release()
+				continue
+			}
 			if env.Type == MsgRegister && env.Register != nil {
 				return env.Register, nil
 			}
@@ -3759,6 +3804,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 			definition.PrepareArguments = h.makeToolPrepareArguments(me, tool.Name)
 		}
 		definition.ReserveCallOrder = toolCallOrder(me)
+		definition.MayTakeFileMutationQueue = true
 		if tool.RendersCall {
 			definition.RenderCall = h.makeToolRenderCall(me, tool.Name)
 		}
@@ -3944,8 +3990,19 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 		reqCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		// upstream: agent-loop.ts executeToolCallsParallel: a call's tool_execution_end follows its own execute promise, which settles in the order the extension's runtime answers. The read loop reads the answers in that order, so it records the call's place before the goroutine that waits for the answer runs.
+		// The calls the extension made before it answered are dispatched before the result continues: a held call is then in the hold when the agent moves on to tool_execution_end, as its position in Pi's chain requires (jsloop.Turns).
+		var dispatched <-chan struct{}
+		arrived := func() { dispatched = conn.dispatchBarrier(reqCtx) }
 		if slot := agent.ToolSettleFromContext(ctx, toolCallID); slot != nil {
-			reqCtx = withRequestArrived(reqCtx, slot.Settle)
+			arrived = func() { dispatched = conn.dispatchBarrier(reqCtx); slot.Settle() }
+		}
+		reqCtx = withRequestArrived(reqCtx, arrived)
+		// upstream: agent-loop.ts:619-647: the edit and write calls after this one in the batch register in the file mutation queue once this tool's synchronous
+		// prefix is over, which the extension may spend taking the queue itself (withFileMutationQueue). The host sees the end of the prefix when it applies the
+		// request's first host call that returns a Promise in Pi, or when the runtime reports the handler blocked on something else, and the call's end closes the window.
+		if window := agent.ToolStartWindowFromContext(ctx, toolCallID); window != nil {
+			defer window.Close()
+			reqCtx = withRequestWindow(reqCtx, window)
 		}
 		if target.syncState != nil {
 			if err := target.syncState(reqCtx, conn); err != nil {
@@ -3972,6 +4029,12 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 				ChildSession:  target.childSession,
 			},
 		}, toolUpdateSink(onUpdate))
+		if dispatched != nil {
+			select {
+			case <-dispatched:
+			case <-conn.Done():
+			}
+		}
 		if errors.Is(err, ErrToolAborted) {
 			return extension.AgentToolResult{}, err
 		}
@@ -4045,7 +4108,8 @@ func toolCallOrder(me *managedExt) func(json.RawMessage) *extension.CallOrder {
 		if conn == nil {
 			return nil
 		}
-		return conn.toolOrder.Reserve()
+		place := conn.toolOrder.Reserve()
+		return &extension.CallOrder{Wait: place.Wait, Release: place.Release}
 	}
 }
 
@@ -4420,7 +4484,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			case toolUpdate != nil:
 				resp, err = conn.requestOrdered(parent, envelope, me.toolUpdates.order(conn, *toolUpdate, payload, args[0], boundaryWire))
 			default:
-				resp, err = conn.Request(parent, envelope)
+				requestCtx := parent
+				if started := extension.DispatchStartedFromContext(parent); started != nil {
+					// The request is the handler's start: the process runs requests in the order they arrive.
+					requestCtx = withRequestIssued(parent, started)
+				}
+				resp, err = conn.Request(requestCtx, envelope)
 			}
 			return nil
 		}
@@ -4542,7 +4611,16 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 		}
 	}()
 	lanes := newCallLanes()
+	if !me.hostsNodeRuntime() {
+		// A request's handler in a Go, Rust or Python extension may await a call the host holds for the loop's turn; it runs before the request does (Turns.Release).
+		release := func() { h.timerTurns.Load().Release(conn) }
+		conn.onRequestStart.Store(&release)
+	}
 	for env := range conn.Incoming() {
+		if env.barrier != nil {
+			env.barrier.release()
+			continue
+		}
 		if !h.acceptsNodeGeneration(me) {
 			// A reload's replaced generation still runs its command; runCall answers each of its calls with Pi's stale error instead of leaving a synchronous call blocked.
 			if env.Type == MsgCall && env.Call != nil && me.replaced.Load() {
@@ -4572,10 +4650,21 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// pig additive (D19): Pi applies a command's calls, such as writing a dialog request, before the process can exit, so the command counts as suspended only after the calls received before its report applied their synchronous parts. The wait runs off the read loop because those calls can need later frames.
 			if env.RequestState != nil {
 				state := *env.RequestState
+				// A report that ends a tool's start window waits for the calls the extension sent before it, not for the call its handler sends after it: the calls
+				// are marked now, in the order the frames were read.
+				applied := lanes.barrier
+				if state.State != "suspended" {
+					applied = lanes.barrierMark()
+				}
 				go func() {
-					lanes.barrier()
+					applied()
 					conn.deliverRequestState(state)
-					conn.settleSuspension(state.RequestID)
+					if state.State == "suspended" {
+						conn.settleSuspension(state.RequestID)
+					} else {
+						// The handler of a tool_call request awaited something that is not a host call: Pi's next call starts (conn.endsStartWindow).
+						conn.endRequestWindowByReport(state.RequestID)
+					}
 				}()
 			}
 
@@ -4593,6 +4682,25 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// Calls apply in arrival order per lane off the read loop, so the
 			// host keeps receiving notifications, widget pushes, and nested
 			// calls the same extension sends while an earlier call runs.
+			if call.Timer {
+				if turns := h.timerTurns.Load(); turns != nil {
+					// A Go, Rust or Python extension marks every call made through a context whose request returned, whoever makes it. A request of the connection that is still in flight may be awaiting this very call (a handler that keeps an earlier request's context), and the loop turn the hold waits for waits for that handler, so such a call runs on arrival: while a handler is pending, Pi's loop is turning. Only a Node runtime knows a callback from a handler's own call (timer-origin.mjs).
+					native := !me.hostsNodeRuntime()
+					if holdsForLoopTurn(call.Method) && !(native && conn.requestsInFlight()) {
+						switch {
+						case call.Tick:
+							turns.Tick(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+						case native:
+							turns.MacrotaskDoneFor(conn, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+						default:
+							turns.MacrotaskDone(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+						}
+						continue
+					}
+					// The caller waits for the answer, so the call cannot wait; it runs behind the calls held before it.
+					turns.Turn()
+				}
+			}
 			h.queueCall(me, conn, lanes, env.ID, call)
 
 		case MsgWidgetPush:

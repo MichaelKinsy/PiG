@@ -305,6 +305,65 @@ export default function (pi) {
     parameters: { type: "object", properties: { n: { type: "number" } } },
     async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
   });
+  // Notifies inline (before the handler returns, and from a microtask and a promise continuation) and from a setImmediate and a setTimeout(0) callback; the callbacks run once the handler returned (D5).
+  let staleCtx;
+  pi.registerTool({
+    name: "timer_defer",
+    description: "Notify inline and from deferred callbacks",
+    parameters: { type: "object" },
+    async execute(_id, _params, _signal, _onUpdate, ctx) {
+      staleCtx = ctx;
+      ctx.ui.notify("inline:sync", "info");
+      queueMicrotask(() => ctx.ui.notify("inline:microtask", "info"));
+      Promise.resolve().then(() => ctx.ui.notify("inline:promise", "info"));
+      process.nextTick(() => ctx.ui.notify("tick:nextTick", "info"));
+      setImmediate(() => ctx.ui.notify("deferred:immediate", "info"));
+      setTimeout(() => ctx.ui.notify("deferred:timeout", "info"), 0);
+      return { content: [{ type: "text", text: "queued" }] };
+    },
+  });
+  // Awaits a host call made through the context of the earlier timer_defer request, from a timer callback it waits for (Pi-port extensions keep such a context); the call must not wait for a loop turn that waits for this handler.
+  pi.registerTool({
+    name: "timer_stale",
+    description: "Await a host call made through an earlier request's context",
+    parameters: { type: "object" },
+    async execute() {
+      await new Promise((resolve) => setTimeout(() => { staleCtx.ui.notify("stale:awaited", "info"); resolve(); }, 0));
+      return { content: [{ type: "text", text: "applied" }] };
+    },
+  });
+  pi.registerTool({
+    name: "timer_release",
+    description: "Nothing: Node's callbacks need no release",
+    parameters: { type: "object" },
+    async execute() { return { content: [{ type: "text", text: "released" }] }; },
+  });
+  // order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+  pi.registerTool({
+    name: "order_probe",
+    description: "Make a host call and an update in the first tick",
+    parameters: { type: "object", properties: { n: { type: "number" } } },
+    async execute(_id, params, _signal, onUpdate, ctx) {
+      ctx.ui.notify(`order-call=${params.n}`, "info");
+      ctx.ui.notify(`order-then=${params.n}`, "info");
+      onUpdate({ content: [{ type: "text", text: `order-update=${params.n}` }] });
+      return { content: [{ type: "text", text: `order-done n=${params.n}` }] };
+    },
+  });
+  // mutation_order_probe takes the file mutation queue in its first statement (late: "loop" awaits the event loop first) and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+  pi.registerTool({
+    name: "mutation_order_probe",
+    description: "Take the file mutation queue and append a tag to the file",
+    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" }, late: { type: "string" } } },
+    async execute(_id, params) {
+      if (params.late === "loop") await new Promise((resolve) => setImmediate(resolve));
+      await withFileMutationQueue(params.file, async () => {
+        const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
+        fs.writeFileSync(params.file, `${before}${params.tag}\n`);
+      });
+      return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
+    },
+  });
   pi.registerTool({
     name: "dialog_order",
     description: "Open a select dialog titled by the call and report the answer",
@@ -1832,6 +1891,7 @@ export default function (pi) {
     if (event.input?.command === "blocked-command") return { block: true, reason: `blocked ${event.toolName}` };
   });
   pi.on("tool_result", async (event, ctx) => {
+    if (event.toolName === "order_probe") { ctx.ui.notify(`order-result=${event.toolCallId}`, "info"); return; }
     const held = [["bash", isBashToolResult], ["powershell", isPowerShellToolResult], ["read", isReadToolResult], ["edit", isEditToolResult], ["write", isWriteToolResult], ["grep", isGrepToolResult], ["find", isFindToolResult], ["ls", isLsToolResult]].filter(([, is]) => is(event)).map(([name]) => name);
     ctx.ui.notify(`tool-result-guards=${held.join(",")}`, "info");
     if (event.toolName !== "powershell" && event.toolName !== "bash") return;

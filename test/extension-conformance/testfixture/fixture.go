@@ -717,6 +717,62 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": fmt.Sprintf("dialog:%v=%s", params["title"], selected)}, nil
 	})
 
+	// A tool that notifies inline and, from a goroutine timer_release releases, after its handler returned (D5).
+	timerGate := make(chan struct{}, 16)
+	var staleMu sync.Mutex
+	var stale *sdk.Context
+	ext.Tool("timer_defer", "Notify inline and from deferred work", sdk.Schema{"type": "object"}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		staleMu.Lock()
+		stale = &ctx
+		staleMu.Unlock()
+		ctx.Notify("inline:sync", "info")
+		go func() {
+			<-timerGate
+			ctx.Notify("deferred:goroutine", "info")
+		}()
+		return map[string]string{"content": "queued"}, nil
+	})
+	// timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+	ext.Tool("timer_stale", "Await a host call made through an earlier request's context", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		staleMu.Lock()
+		earlier := stale
+		staleMu.Unlock()
+		if earlier == nil {
+			return nil, fmt.Errorf("timer_defer has not run")
+		}
+		earlier.Notify("stale:awaited", "info")
+		return map[string]string{"content": "applied"}, nil
+	})
+	ext.Tool("timer_release", "Release the deferred work", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		timerGate <- struct{}{}
+		return map[string]string{"content": "released"}, nil
+	})
+
+	// order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+	ext.Tool("order_probe", "Make a host call and an update in the first tick", sdk.Schema{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		ctx.Notify(fmt.Sprintf("order-call=%v", params["n"]), "info")
+		ctx.Notify(fmt.Sprintf("order-then=%v", params["n"]), "info")
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: fmt.Sprintf("order-update=%v", params["n"])}); err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": fmt.Sprintf("order-done n=%v", params["n"])}, nil
+	})
+
+	// mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs): Pi registers it in the queue
+	// before the edit or write call that follows it in a batch.
+	ext.Tool("mutation_order_probe", "Take the file mutation queue in the first statement and append a tag to the file", sdk.Schema{"type": "object", "properties": map[string]any{"file": map[string]any{"type": "string"}, "tag": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		file, _ := params["file"].(string)
+		tag, _ := params["tag"].(string)
+		_, err := sdk.WithFileMutationQueue(file, func() (struct{}, error) {
+			before, _ := os.ReadFile(file)
+			return struct{}{}, os.WriteFile(file, append(before, tag+"\n"...), 0o600)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "mutated " + tag}, nil
+	})
+
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		switch params["kind"] {
 		case "unicode":
@@ -2791,6 +2847,10 @@ func Extension() *sdk.Extension {
 		return nil, nil
 	})
 	ext.OnEvent("tool_result", func(ctx sdk.Context, event map[string]any) (any, error) {
+		if event["toolName"] == "order_probe" {
+			ctx.Notify(fmt.Sprintf("order-result=%v", event["toolCallId"]), "info")
+			return nil, nil
+		}
 		var held []string
 		for _, guard := range []struct {
 			name string

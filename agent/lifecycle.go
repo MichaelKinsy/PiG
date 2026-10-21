@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // Ports packages/agent/src/agent.ts.
@@ -113,6 +114,13 @@ func (a *Agent) ObserveRunSignal(observe func()) func() {
 		defer a.stateMu.Unlock()
 		a.runSignalWatchers = slices.DeleteFunc(a.runSignalWatchers, func(w *runSignalWatcher) bool { return w == watcher })
 	}
+}
+
+// SetLoopTurns gives the agent the owner's model of Pi's event loop. The runs that start afterwards tell it when real work completes (a model response's I/O) and when a tool runs, so the owner can run the timer callbacks Pi's loop would run then. Pass nil to remove it.
+func (a *Agent) SetLoopTurns(turns *jsloop.Turns) {
+	a.stateMu.Lock()
+	a.loopTurns = turns
+	a.stateMu.Unlock()
 }
 
 // notifyRunSignalObservers runs the observers registered when the run changed, in registration order, skipping one removed meanwhile.

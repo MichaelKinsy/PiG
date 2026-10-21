@@ -1592,6 +1592,7 @@ impl Extension {
             }
         }
         let tool_batches = crate::tool_start_order::ToolBatches::default();
+        let request_starts = crate::request_start_order::RequestStartOrder::default();
         let stop_requests = |reason: &str| -> io::Result<()> {
             width_deliveries.stop();
             base_ctx.host_subs.stop();
@@ -1657,7 +1658,10 @@ impl Extension {
                         let ext = ext.clone();
                         // agent-loop.ts:619-647: the handlers of a parallel batch start in source order. A call that names no batch is in no order.
                         let start = if req.method == "tool_call" { tool_batches.reserve(req.batch.as_deref()) } else { None };
+                        // agent-loop.ts:619-647, runner.ts:1096-1125: the handlers of a batch and of concurrent emits start in arrival order.
+                        let request_start = crate::request_start_order::starts_in_arrival_order(&req.method).then(|| request_starts.reserve());
                         let failed_start = start.clone();
+                        let failed_request_start = request_start.clone();
                         // The request's host calls find its place in the orders through the parent they carry.
                         if let (Some(start), Some(parent)) = (&start, &base.request_parent) {
                             parent.attach_start(start.clone());
@@ -1675,7 +1679,7 @@ impl Extension {
                                     loaded_gate.wait();
                                 }
                                 let handled = catch_unwind(AssertUnwindSafe(|| {
-                                    ext.handle_request(&base, &conn, &id, &mut req, cancel, start.as_deref())
+                                    ext.handle_request(&base, &conn, &id, &mut req, cancel, start.as_deref(), request_start.as_deref())
                                 }));
                                 if let Err(payload) = handled {
                                     // The panic value reaches the caller, as a thrown Error's message does in Pi (the stale-context message is raised this way).
@@ -1705,6 +1709,9 @@ impl Extension {
                                 if let Some(start) = &start {
                                     start.end();
                                 }
+                                if let Some(request_start) = &request_start {
+                                    request_start.end();
+                                }
                                 active.lock().unwrap().remove(&id);
                                 threads.finish();
                             })
@@ -1713,6 +1720,9 @@ impl Extension {
                             failed_threads.finish();
                             if let Some(start) = &failed_start {
                                 start.release();
+                            }
+                            if let Some(request_start) = &failed_request_start {
+                                request_start.release();
                             }
                             let _ = failed_conn.respond(
                                 &failed_id,
@@ -2132,6 +2142,7 @@ impl Extension {
         req: &mut RequestMsg,
         cancel: RequestCancel,
         start: Option<&crate::tool_start_order::ToolStart>,
+        request_start: Option<&crate::request_start_order::RequestStart>,
     ) {
         match req.method.as_str() {
             "autocomplete.sync" | "autocomplete.suggest" => {
@@ -2465,6 +2476,9 @@ impl Extension {
                         .args
                         .clone()
                         .unwrap_or(Value::Object(Default::default()));
+                    if let Some(request_start) = request_start {
+                        request_start.begin();
+                    }
                     if let Some(start) = start {
                         start.begin();
                     }
@@ -2526,6 +2540,9 @@ impl Extension {
                 if let Some(handler) = late.as_deref().or_else(|| self.command_fns.get(cmd_name)) {
                     let args_str = req.args.as_ref().and_then(|v| v.as_str()).unwrap_or("");
                     let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                    if let Some(request_start) = request_start {
+                        request_start.begin();
+                    }
                     match handler(&ctx, args_str) {
                         CommandResult::Ok => {
                             let _ = conn.respond(id, None, None);
@@ -2588,6 +2605,9 @@ impl Extension {
                     if req.event.as_deref() == Some("before_agent_start") {
                         prompt_state = Some(Arc::new(crate::context::SystemPromptState::new(&data)));
                         ctx.system_prompt = prompt_state.clone();
+                    }
+                    if let Some(request_start) = request_start {
+                        request_start.begin();
                     }
                     match catch_unwind(AssertUnwindSafe(|| handler(&ctx, &mut data))) {
                         Ok(result) => result,
@@ -4118,3 +4138,7 @@ mod handler_dispatch_tests;
 #[cfg(all(test, unix))]
 #[path = "provider_superseded_tests.rs"]
 mod provider_superseded_tests;
+
+#[cfg(all(test, unix))]
+#[path = "request_start_wire_tests.rs"]
+mod request_start_wire_tests;

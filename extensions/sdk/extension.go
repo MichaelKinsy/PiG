@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/kitwire"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
@@ -153,6 +154,8 @@ type Extension struct {
 	toolFuncs        map[string]ToolFunc
 	toolPrepareFuncs map[string]ToolPrepareArgumentsFunc
 	toolBatches      toolBatchOrders
+	// requestStarts keeps the handlers of the requests that run extension code (startsInArrivalOrder) starting in the order the requests arrive: the tool_call requests of a parallel batch (agent-loop.ts:619-647, 820-837) and the event and command requests of concurrent emits (runner.ts:1096-1125).
+	requestStarts jsloop.Lane
 	// children are the child agent sessions this extension created and has not disposed (child_session.go).
 	children           childSessions
 	commandFuncs       map[string]CommandFunc
@@ -1227,9 +1230,13 @@ func (e *Extension) loop() error {
 			if env.Request != nil && env.Request.Method == "tool_call" {
 				ctx.start = e.toolBatches.reserve(env.Request.Batch)
 			}
+			if startsInArrivalOrder(env.Request) {
+				ctx.place = e.requestStarts.Reserve()
+			}
 			e.requestWG.Go(func() {
 				defer finish()
 				defer ctx.start.release()
+				defer ctx.place.Pass()
 				// A loop that was not started by Run (a test serving requests on its own connection) has no loaded gate.
 				if e.loadedDone != nil && (env.Request == nil || env.Request.Method != methodEventsDispatch) {
 					<-e.loadedDone
@@ -1249,6 +1256,18 @@ func (e *Extension) loop() error {
 		}
 	}
 	return e.stopRequests()
+}
+
+// startsInArrivalOrder reports whether a request runs extension code whose start Pi orders by call order: a tool_call, an event or a command. Pi runs the handlers of concurrent emits and of a `Promise.all` batch on one thread, so the one that was asked first starts first (runner.ts:1096-1125, agent-loop.ts:619-647). Other requests (renders, provider streams, completions) hold no place, so a long one never holds a handler back.
+func startsInArrivalOrder(req *requestMsg) bool {
+	if req == nil {
+		return false
+	}
+	switch req.Method {
+	case "tool_call", "event", "command":
+		return true
+	}
+	return false
 }
 
 func (e *Extension) stopRequests() error {
@@ -1414,6 +1433,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 		}
 		// agent-loop.ts:619-647: the handlers of a batch start in source order.
+		ctx.place.Pass()
 		ctx.start.begin()
 		result, err := handler(ctx, params)
 		// A handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers.
@@ -1458,6 +1478,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		if len(req.Args) > 0 {
 			_ = json.Unmarshal(req.Args, &args)
 		}
+		// runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
+		ctx.place.Pass()
 		err := handler(ctx, args)
 		_ = e.conn.respond(id, nil, err)
 
@@ -1509,6 +1531,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			data["systemPrompt"] = ctx.systemPrompt
 		}
 		snapshot := snapshotContextMessages(req.Event, data)
+		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
+		ctx.place.Pass()
 		result, err := handler(ctx, data)
 		if req.Event == "user_bash" && err == nil {
 			result, err = e.userBashEventResult(result)

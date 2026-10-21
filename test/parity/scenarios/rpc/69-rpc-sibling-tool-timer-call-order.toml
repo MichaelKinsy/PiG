@@ -1,0 +1,66 @@
+# Behavior family: rpc
+# Surface: one assistant message with two calls of an extension tool. The first awaits a 300 ms timer, so Pi's event loop keeps turning while it is pending. The second notifies synchronously, queues notifications on process.nextTick, setImmediate and setTimeout(0), and returns. Pi runs the second call's callbacks while the first still awaits: its tool_execution_end, then the nextTick, immediate and timeout0 notifications, then the first call's own notification and its tool_execution_end. Probed against the pinned Pi build (1402973a); the same order when the first call awaits a dialog.
+#
+# PiG held the callbacks of a runtime until the run ended, or let them through before the second call's tool_execution_end. The runtime now marks a timer callback that fires while a sibling tool still runs as Tick, and the host releases a Tick call after the tool_execution_end it wrote.
+
+name = "69-rpc-sibling-tool-timer-call-order"
+description = "RPC: while one tool of a batch awaits, the timer callbacks of a sibling that returned reach the client right after the sibling's tool_execution_end."
+covers = [
+  "packages/agent/src/agent-loop.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"batch","type":"prompt","message":"Run: two dialog tools"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/sibling-timer-order.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC sibling timer probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_extensions = ["testdata/sibling-timer-order.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC sibling timer probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"message":"sibling:sync"',
+  '"message":"sibling:nextTick"',
+  '"message":"sibling:immediate"',
+  '"message":"sibling:timeout0"',
+  '"message":"sibling:first-done"',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 10
+json_output_equal = true
+stderr_equal = true
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."

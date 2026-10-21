@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
 )
@@ -250,7 +251,8 @@ type Context struct {
 	ctx       context.Context
 	// loading is the connection of a Context made for a listener of this extension that the Host dispatched while the factory runs (the factory pump, serveLoadingEnvelope): the extension has not registered yet, so the Context's host calls use the connection the factory opened.
 	loading *conn
-	start   *toolStart // set for a tool_call request: its place in the order the handlers start
+	start   *toolStart    // set for a tool_call request: its place in the order the handlers start
+	place   *jsloop.Place // set for a tool_call, event or command request (startsInArrivalOrder): its place in the order the handlers start
 	// systemPrompt is set for a before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
 	systemPrompt *SystemPrompt
 	// replacement is set for a withSession context: the replacement Session's locally answered values.

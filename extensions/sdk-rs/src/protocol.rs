@@ -526,6 +526,9 @@ pub struct CallMsg {
     pub args: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_request_id: Option<String>,
+    /// Set on a call made through a request's scope after its handler returned: deferred work, which the host runs once Pi's loop turns.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub timer: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1025,6 +1028,8 @@ impl Connection {
         if self.is_closed() || scope.is_some_and(RequestParent::cancelled) {
             return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "host call owner is cancelled or closed"));
         }
+        // pig additive (D5): a call made through a request's scope after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
+        let timer = scope.is_some_and(RequestParent::completed);
         let parent_request_id = match scope {
             Some(parent) if parent.completed() => None,
             Some(parent) => Some(parent.id.as_str()),
@@ -1046,10 +1051,10 @@ impl Connection {
         );
         drop(pending_calls);
         #[derive(Serialize)]
-        struct Call<'a, A> { method: &'a str, #[serde(skip_serializing_if = "Option::is_none")] args: Option<A>, #[serde(skip_serializing_if = "Option::is_none")] parent_request_id: Option<&'a str> }
+        struct Call<'a, A> { method: &'a str, #[serde(skip_serializing_if = "Option::is_none")] args: Option<A>, #[serde(skip_serializing_if = "Option::is_none")] parent_request_id: Option<&'a str>, #[serde(skip_serializing_if = "std::ops::Not::not")] timer: bool }
         #[derive(Serialize)]
         struct Request<'a, A> { #[serde(rename = "type")] kind: &'static str, id: &'a str, call: Call<'a, A> }
-        if let Err(err) = Self::write_envelope_to(&mut writer, &Request { kind: "call", id: &id, call: Call { method, args, parent_request_id } }) {
+        if let Err(err) = Self::write_envelope_to(&mut writer, &Request { kind: "call", id: &id, call: Call { method, args, parent_request_id, timer } }) {
             self.pending_calls.lock().unwrap().remove(&id);
             return Err(err);
         }
