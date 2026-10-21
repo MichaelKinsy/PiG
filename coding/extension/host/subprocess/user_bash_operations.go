@@ -48,6 +48,8 @@ func releaseBashOperations(conn *Conn, handle string) {
 // Exec runs the command through the extension's operations.exec. Cancellation is the exec's AbortSignal: Exec keeps delivering onData chunks and returns when the extension's exec settles, as Pi's executeBashWithOperations awaits it (bash-executor.ts:120-128). A connection that fails after the cancellation reports Pi's "aborted" error.
 // upstream: packages/coding-agent/src/core/tools/bash.ts BashOperations.exec
 func (o *remoteBashOperations) Exec(ctx context.Context, command, cwd string, options extension.BashOperationsExecOptions) (extension.BashOperationsResult, error) {
+	// The cleanup registered in userBashOperationsResult releases the extension's handle once o is unreachable. The request below holds only the handle string, so without this o could be collected, and its handle released, while the extension's exec still runs.
+	defer runtime.KeepAlive(o)
 	args := UserBashExecArgs{Command: command, Cwd: cwd, Timeout: options.Timeout}
 	if options.Env != nil {
 		env := make(map[string]string, len(options.Env))
