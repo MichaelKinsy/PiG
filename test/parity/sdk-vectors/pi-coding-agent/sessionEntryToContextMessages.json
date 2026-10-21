@@ -226,9 +226,6 @@
      "customType": "note",
      "content": "text",
      "display": true,
-     "details": {
-      "$": "undefined"
-     },
      "timestamp": 1767323045678
     }
    ]
@@ -296,9 +293,6 @@
      "customType": "note",
      "content": [],
      "display": true,
-     "details": {
-      "$": "undefined"
-     },
      "timestamp": 1767323045678
     }
    ]
@@ -347,12 +341,7 @@
      "customType": "note",
      "content": "x",
      "display": true,
-     "details": {
-      "$": "undefined"
-     },
-     "timestamp": {
-      "$": "NaN"
-     }
+     "timestamp": null
     }
    ]
   },
@@ -375,9 +364,6 @@
      "customType": "note",
      "content": "x",
      "display": true,
-     "details": {
-      "$": "undefined"
-     },
      "timestamp": 1767312000000
     }
    ]
@@ -401,9 +387,6 @@
      "customType": "note",
      "content": "x",
      "display": true,
-     "details": {
-      "$": "undefined"
-     },
      "timestamp": 1767340800000
     }
    ]
