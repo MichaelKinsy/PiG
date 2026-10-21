@@ -1562,6 +1562,53 @@ def new_extension() -> pig_sdk.Extension:
             number = started_calls[0]
         return {"content": f"start#{number} n={params.get('n')}"}
 
+    # A tool that notifies inline and, from a thread released by timer_release, after its handler returned (D5).
+    timer_gate = threading.Semaphore(0)
+
+    stale_contexts = []
+
+    def timer_defer(ctx, _params):
+        stale_contexts.append(ctx)
+        ctx.notify("inline:sync", "info")
+
+        def deferred():
+            timer_gate.acquire()
+            ctx.notify("deferred:thread", "info")
+
+        threading.Thread(target=deferred, daemon=True).start()
+        return {"content": "queued"}
+
+    # timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+    def timer_stale(_ctx, _params):
+        stale_contexts[0].notify("stale:awaited", "info")
+        return {"content": "applied"}
+
+    def timer_release(_ctx, _params):
+        timer_gate.release()
+        return {"content": "released"}
+
+    ext.tool("timer_defer", "Notify inline and from deferred work", {"type": "object"}, timer_defer)
+    ext.tool("timer_release", "Release the deferred work", {"type": "object"}, timer_release)
+    ext.tool("timer_stale", "Await a host call made through an earlier request's context", {"type": "object"}, timer_stale)
+    # order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+    def order_probe(ctx, params):
+        ctx.notify(f"order-call={params.get('n')}", "info")
+        ctx.notify(f"order-then={params.get('n')}", "info")
+        ctx.on_update({"content": [{"type": "text", "text": f"order-update={params.get('n')}"}]})
+        return {"content": f"order-done n={params.get('n')}"}
+
+    ext.tool("order_probe", "Make a host call and an update in the first tick", {"type": "object", "properties": {"n": {"type": "number"}}}, order_probe)
+    # mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+    def mutation_order_probe(ctx, params):
+        def body():
+            path = pathlib.Path(params["file"])
+            before = path.read_text() if path.exists() else ""
+            path.write_text(before + params["tag"] + "\n")
+
+        pig_sdk.with_file_mutation_queue(params["file"], body)
+        return {"content": "mutated " + params["tag"]}
+
+    ext.tool("mutation_order_probe", "Take the file mutation queue and append a tag to the file", {"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}, mutation_order_probe)
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
 
     def dialog_order(ctx, params):
@@ -2521,6 +2568,9 @@ def new_extension() -> pig_sdk.Extension:
         return None
 
     def tool_result(ctx: pig_sdk.Context, data: dict[str, Any]) -> dict[str, Any] | None:
+        if data.get("toolName") == "order_probe":
+            ctx.notify("order-result=%s" % data.get("toolCallId"), "info")
+            return None
         guards = (
             ("bash", pig_sdk.is_bash_tool_result),
             ("powershell", pig_sdk.is_powershell_tool_result),

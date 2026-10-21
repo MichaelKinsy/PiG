@@ -16,6 +16,7 @@ import { randomUUID } from "node:crypto";
 import { inspect } from "node:util";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
+import { installTimerOrigin, originKind, outsideTimer, setHandlersRunning, setTimerDefer } from "./timer-origin.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
 import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
 import { EditorComponentHost } from "./editor-component.mjs";
@@ -33,11 +34,31 @@ import { deriveView, surfaceTheme, VIEW_THEME_TOKENS } from "./view-walk.mjs";
 import { dispatchOverlayMouse, takesMouse } from "./mouse.mjs";
 import { EventReplicas } from "./event-stream.mjs";
 
+installTimerOrigin();
+setHandlersRunning(() => {
+  for (const runtime of liveRuntimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (!request.settled) return true;
+    }
+  }
+  return false;
+});
+
 // Pi hands every extension one shared event bus (resource-loader.ts creates
 // one per loader and passes it to each extension). Every Node realm of this
 // Host shares it: this process's listeners stay in its own heap, and
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
+
+// siblingToolPending reports whether a tool call is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does.
+function siblingToolPending() {
+  for (const runtime of liveRuntimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (request.toolCall && !request.settled) return true;
+    }
+  }
+  return false;
+}
 const xrefRealm = new Realm(() => {
   const preferred = currentRuntime();
   for (const runtime of preferred ? [preferred, ...liveRuntimes] : liveRuntimes) {
@@ -1316,12 +1337,17 @@ export class Connection {
   call(method, args = {}, parentRequestId = "") {
     if (this.closed) return Promise.reject(new Error("extension connection closed"));
     const id = uuid();
+    // pig additive (D5): a call made by a timer's or an immediate's callback after its request's handler returned (the call has no parent) says so, and the host holds it until Pi's loop would have run the callback. A callback that runs while the handler still awaits is a turn of Pi's loop already.
+    const kind = parentRequestId ? undefined : originKind();
+    // Pi's loop turns while a sibling tool awaits real work, so a timer callback runs right after the tool that queued it ends, with its process.nextTick callbacks; the host releases a "tick" call there.
+    const timer = kind !== undefined;
+    const tick = kind === "tick" || (timer && siblingToolPending());
     return new Promise((resolve, reject) => {
       this.touchRequest(parentRequestId);
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain();
       try {
-        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}) } });
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}) } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -2476,6 +2502,12 @@ export class Runtime {
 
   // pig additive (D19): a file mutation queue call (shims/file-mutation-queue-bridge.mjs). Pi's queue is a module-level map every extension shares, so a factory may use it while it loads: like exec, the call opens the loading connection and is applied when its reply arrives. The call is detached from the request that makes it: an aborted request does not end the wait for the file or the release of its turn, as Pi's queue does not.
   fileMutation(method, args) {
+    const owner = method === "fileMutation.enter" ? this.activeRequest() : undefined;
+    if (owner?.windowSettled) {
+      const settled = owner.windowSettled;
+      owner.windowSettled = undefined;
+      return settled.then(() => this.fileMutation(method, args));
+    }
     if (this.conn) return this.call(method, args, { detached: true });
     if (this.loadState === "loading") {
       this.ensureConnectionSync();
@@ -2784,7 +2816,7 @@ export class Runtime {
     let emission;
     try {
       conn.requestState(env.id, "started");
-      runWithRuntime(this, () => this.requestContext.run(request, () => {
+      runWithRuntime(this, () => this.requestContext.run(request, outsideTimer(() => {
         try {
           const args = env.request.args ?? {};
           if (env.request.method === "xref.op") result = xrefRealm.serve(args);
@@ -2796,7 +2828,7 @@ export class Runtime {
         } catch (error) {
           failure = error;
         }
-      }));
+      })));
     } finally {
       request.settled = true;
     }
@@ -2951,13 +2983,13 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
+    const request = { id: env.id, toolCall: env.request?.method === "tool_call", controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain();
     refreshQuitDrain();
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
-    const task = this.requestContext.run(request, async () => {
+    const task = this.requestContext.run(request, outsideTimer(async () => {
       try {
         if (this.loadedPromise && env.request?.method !== "events.dispatch") await this.loadedPromise;
         await this.handleRequest(env.id, env.request || {}, requestCtx);
@@ -2971,7 +3003,7 @@ export class Runtime {
         refreshQuitDrain();
       }
       if (request.responded && endsPrompt(env.request, this.ready?.mode, this.runSignal !== undefined)) awaitHostStep(request.connection);
-    });
+    }));
     this.requestTasks.add(task);
     void task.then(
       () => this.requestTasks.delete(task),
@@ -4234,6 +4266,16 @@ export class Runtime {
       return;
     }
     switch (notify.method) {
+      case "tool_window_settled": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        this.requestRecords.get(args?.request_id)?.settleWindow?.();
+        return;
+      }
       case "bash_operations_release": {
         let args = notify.args;
         try {
@@ -4242,6 +4284,18 @@ export class Runtime {
           return;
         }
         this.bashOperations.delete(args?.handle);
+        return;
+      }
+      case "timer_defer": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        setTimerDefer(args?.on === true);
+        // The host waits for this ack before it dispatches the command's first event (Turns.Arm): every call this runtime made before the hold is on the wire ahead of it.
+        this.conn?.notify("timer_defer_ack", { seq: args?.seq ?? 0 });
         return;
       }
       case "run_signal": {
@@ -4705,7 +4759,10 @@ export class Runtime {
           };
           let result;
           try {
-            result = await tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id, request.tool_call_index, params));
+            const pending = tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id, request.tool_call_index, params));
+            // Calling an async execute runs its synchronous prefix before it returns its Promise (agent-loop.ts:619-647: Pi starts the next call of the batch only then). A prefix that took a place in the host's file mutation queue (withFileMutationQueue) sent that call before this point, so the host registers the edit and write calls behind this tool after it. A Promise that settles in the microtasks that follow needs no report: its answer ends the wait.
+            this.reportToolPrefixOver(id, pending);
+            result = await pending;
           } finally {
             done = true;
           }
@@ -5489,6 +5546,19 @@ export class Runtime {
     });
     owner?.pendingHostCalls.add(operation);
     return operation;
+  }
+
+  // reportToolPrefixOver tells the host that the tool_call request id awaits something, once the microtasks that follow the call to execute ran and left its Promise pending.
+  reportToolPrefixOver(id, pending) {
+    let settled = false;
+    Promise.resolve(pending).then(() => { settled = true; }, () => { settled = true; });
+    queueMicrotask(() => {
+      if (settled || this.conn.closed) return;
+      // Pi registers the edit and write calls behind this tool in the file mutation queue before the tool's next call: the host says when it has, and the tool's next fileMutation.enter waits for it.
+      const request = this.requestRecords.get(id);
+      if (request) request.windowSettled = new Promise((resolve) => { request.settleWindow = resolve; });
+      this.conn.requestState(id, "blocked", "external_io");
+    });
   }
 
   // reportCommandYield follows a send from an RPC command's handler. The host holds the run the send starts while the handler runs, as Pi's run starts only once the handler that sent it awaits or returns (agent-session.ts:2129, 2293 sendCustomMessage); a handler still unsettled at the next event-loop turn has awaited, so the command reports its suspension then.

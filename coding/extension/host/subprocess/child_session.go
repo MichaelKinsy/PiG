@@ -404,7 +404,10 @@ func (h *Host) childSessionTools(conn *Conn, create ChildSessionCreate) ([]exten
 			Namespace:            tool.Namespace,
 			Annotations:          tool.Annotations,
 			DefaultActive:        tool.DefaultActive,
-			ReserveCallOrder:     func(json.RawMessage) *extension.CallOrder { return conn.toolOrder.Reserve() },
+			ReserveCallOrder: func(json.RawMessage) *extension.CallOrder {
+				place := conn.toolOrder.Reserve()
+				return &extension.CallOrder{Wait: place.Wait, Release: place.Release}
+			},
 		}
 		if tool.PreparesArguments {
 			definition.PrepareArguments = childToolPrepareArguments(conn, create.ID, tool.Name)

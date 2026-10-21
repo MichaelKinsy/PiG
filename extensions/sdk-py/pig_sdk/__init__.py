@@ -2300,6 +2300,55 @@ class _ToolStart:
             slot.run(send)
 
 
+class _RequestStart:
+    """One request's place in the order the handlers start (``_starts_in_arrival_order``). ``begin`` returns when every earlier request began its handler or ended without one."""
+
+    def __init__(self, previous: threading.Event | None) -> None:
+        self._previous = previous
+        self.done = threading.Event()
+
+    def begin(self) -> None:
+        if self._previous is not None:
+            self._previous.wait()
+        self.done.set()
+
+    def end(self) -> None:
+        """Hand the place on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
+        self.begin()
+
+    def release(self) -> None:
+        """Hand the place on at once, for a request whose thread never started. The reader calls it, so it must not wait for the earlier requests. Idempotent."""
+        self.done.set()
+
+
+def _starts_in_arrival_order(request: dict[str, Any] | None) -> bool:
+    """Whether a request runs a handler whose start Pi orders by call order: a tool_call, an event or a command. Other requests (renders, provider streams, completions) hold no place, so a long one never holds a handler back."""
+    return (request or {}).get("method") in ("tool_call", "event", "command")
+
+
+class _RequestStartOrder:
+    """Starts the handlers of the requests that run extension code in the order the requests arrive (``_starts_in_arrival_order``).
+
+    Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837); concurrent emits, such as the tool_result hooks of that batch, start their handlers in call order too (runner.ts:1096-1125). The host writes the requests in that order, but each request runs on its own thread, and the scheduler is free to run a later thread first.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._tail: threading.Event | None = None
+
+    def reserve(self) -> _RequestStart:
+        """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
+        with self._lock:
+            start = _RequestStart(self._tail)
+            self._tail = start.done
+            return start
+
+
+@dataclass
+class _ReplacementState:
+    """The values a withSession context answers locally, from the replacement Session's ready payload."""
+
+
 class _ToolStartOrder:
     """Orders the calls of one tool batch the way Pi's single thread does.
 
@@ -2325,7 +2374,7 @@ class _ToolStartOrder:
         self._batch = batch
         self._live = 0
 
-    def reserve(self) -> _ToolStart:
+    def reserve(self) -> _RequestStart:
         """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
             start = _ToolStart(self._tail, self)
@@ -2602,6 +2651,8 @@ class Context:
     _tool_context: bool = False
     # A tool_call request: its place in the order the handlers start.
     _tool_start: "_ToolStart | None" = None
+    # A tool_call, event or command request: its place in the order the handlers start.
+    _request_start: "_RequestStart | None" = None
     # A tool_call request: the call's position in its assistant message's batch, and the JSON text of its arguments as the host sent it.
     _tool_index: int | None = None
     _tool_args: Any = None
@@ -4021,6 +4072,7 @@ class Extension:
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
         self._children = _ChildSessions()
         self._tool_batches = _ToolBatches()
+        self._request_starts = _RequestStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
         self._with_sessions = _WithSessionRegistry()
         self._setups = _WithSessionRegistry()
@@ -4910,9 +4962,11 @@ class Extension:
         ctx = self._arm_request(env)
         req = env.get("request") or {}
         batch = req.get("batch")
-        # Only the calls of one parallel batch (the host's `batch` member, the same on each of them) take part in the orders; any other tool_call is never gated.
+        # Only the calls of one parallel batch (the host's `batch` member, the same on each of them) take part in the dialog and continuation orders; any other tool_call is never gated.
         if req.get("method") == "tool_call" and isinstance(batch, str) and batch:
             ctx._tool_start = self._tool_batches.reserve(batch)
+        if _starts_in_arrival_order(req):
+            ctx._request_start = self._request_starts.reserve()
         self._request_state(env.get("id", ""), "started")
         worker = threading.Thread(
             target=self._handle_request_thread,
@@ -4927,6 +4981,8 @@ class Extension:
         except Exception as exc:
             with self._request_threads_lock:
                 self._request_threads.discard(worker)
+            if ctx._request_start is not None:
+                ctx._request_start.release()
             if ctx._tool_start is not None:
                 ctx._tool_start.release()
             self._respond(
@@ -5372,6 +5428,8 @@ class Extension:
                 params = req.get("args") or {}
                 handler = self._tool_handler(req, name)
                 # agent-loop.ts:619-647: the handlers of a batch start in source order.
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 if ctx._tool_start is not None:
                     ctx._tool_start.begin()
                 result = handler(ctx, params)
@@ -5485,6 +5543,9 @@ class Extension:
             elif method == "command":
                 name = req.get("tool", "")
                 args = req.get("args") or ""
+                # runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 self._command_handlers[name](ctx, args if isinstance(args, str) else json.dumps(args))
                 self._respond(req_id, None, None)
             elif method == "command_argument_completions":
@@ -5530,6 +5591,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
@@ -5542,6 +5605,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve input edits before reporting the handler error.
                         error = {"message": str(exc)}
@@ -5565,6 +5630,8 @@ class Extension:
                     result = None
                     error = None
                     try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve section mutations before reporting the handler error.
                         error = {"message": str(exc)}
@@ -5578,6 +5645,8 @@ class Extension:
                 snapshot = list(messages) if isinstance(messages, list) else None
                 # A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
                 encoded_before = _context_messages_encoding(messages) if snapshot is not None and req.get("event") in {"context", "context_with_system"} else None
+                if ctx._request_start is not None:
+                    ctx._request_start.begin()
                 result = handler(ctx, data)
                 if req.get("event") == "user_bash":
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
@@ -5636,6 +5705,8 @@ class Extension:
             else:
                 self._respond(req_id, None, error)
         finally:
+            if ctx._request_start is not None:
+                ctx._request_start.end()
             if ctx._tool_start is not None:
                 ctx._tool_start.end()
             with self._state_lock:
@@ -5791,6 +5862,7 @@ class Extension:
 
     def _write_call(self, method: str, args: Any, parent_request_id: str, parent: _RequestParent | None, event: threading.Event | None, slot: _SettleSlot | None) -> tuple[str, threading.Event]:
         event = event if event is not None else threading.Event()
+        timer = False
         with self._write_lock:
             with self._state_lock:
                 if self._shutdown.is_set() or (parent is not None and parent.socket is not self._sock):
@@ -5799,6 +5871,8 @@ class Extension:
                     if parent.state == "cancelled":
                         raise RuntimeError("host call cancelled with its parent request")
                     parent_request_id = "" if parent.state == "completed" else parent.request_id
+                    # pig additive (D5): a call made through a request's context after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
+                    timer = parent.state == "completed"
                 self._call_id += 1
                 call_id = f"c{self._call_id}"
                 self._pending[call_id] = event
@@ -5811,6 +5885,8 @@ class Extension:
             call = {"method": method, "args": args}
             if parent_request_id:
                 call["parent_request_id"] = parent_request_id
+            if timer:
+                call["timer"] = True
             try:
                 self._send_locked({"type": "call", "id": call_id, "call": call})
             except Exception:

@@ -8,16 +8,10 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/entered"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
-
-// signal notes that a goroutine parked, without ever blocking the gate's lock when the note is already pending.
-func signal(ch chan struct{}) {
-	select {
-	case ch <- struct{}{}:
-	default:
-	}
-}
 
 // A parallel batch emits each call's tool_execution_end in the order the calls' tools settled, which a tool that learns its
 // result from outside the process reports from the goroutine that reads the result (ToolSettleFromContext). The second call
@@ -29,8 +23,8 @@ func TestParallelToolEndsFollowTheOrderTheToolsSettle(t *testing.T) {
 	returned := map[string]chan struct{}{"call-1": make(chan struct{}), "call-2": make(chan struct{})}
 	var mu sync.Mutex
 	slots := map[string]*jsloop.SettleSlot{}
+	goroutines := map[string]uint64{}
 	executing := make(chan struct{}, len(ids))
-	parked := make(chan struct{}, len(ids))
 	tool := &scriptTool{name: "p", mode: ToolModeParallel, params: map[string]any{"type": "object"},
 		execute: func(ctx context.Context, id string, _ json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
 			slot := ToolSettleFromContext(ctx, id)
@@ -40,8 +34,8 @@ func TestParallelToolEndsFollowTheOrderTheToolsSettle(t *testing.T) {
 			}
 			mu.Lock()
 			slots[id] = slot
+			goroutines[id] = goroutineid.Current()
 			mu.Unlock()
-			slot.Gate().SetParkedHook(func() { signal(parked) })
 			executing <- struct{}{}
 			awaitSignal(t, release[id], "release of "+id)
 			close(returned[id])
@@ -68,8 +62,11 @@ func TestParallelToolEndsFollowTheOrderTheToolsSettle(t *testing.T) {
 	mu.Unlock()
 	close(release["call-2"])
 	awaitSignal(t, returned["call-2"], "call-2 returns from Execute")
-	// call-2 has returned and is held behind call-1, which settled before it.
-	awaitSignal(t, parked, "call-2 waits for call-1")
+	// call-2 has returned and is held behind call-1, which settled before it: its goroutine parks before its hooks.
+	mu.Lock()
+	second := goroutines["call-2"]
+	mu.Unlock()
+	entered.Await(second, nil)
 	close(release["call-1"])
 	waitSignal(t, done, "the run")
 
@@ -124,5 +121,142 @@ func TestToolBatchFromContextNamesTheParallelBatch(t *testing.T) {
 	}
 	if nested != "" {
 		t.Fatalf("a call under another call's id has batch %q, want none", nested)
+	}
+}
+
+// settledBatch runs a batch of the calls in ids whose tools settle in ids order (the reader answers them in that order) and wake in wake order.
+// Each call's after-tool-call hook is hook(ctx, id). It returns after the run.
+type settledBatch struct {
+	t      *testing.T
+	ids    []string
+	wake   []string
+	hook   func(ctx context.Context, id string)
+	events *eventRecorder
+}
+
+func (b *settledBatch) run() {
+	t := b.t
+	release := map[string]chan struct{}{}
+	for _, id := range b.ids {
+		release[id] = make(chan struct{})
+	}
+	var mu sync.Mutex
+	slots := map[string]*jsloop.SettleSlot{}
+	goroutines := map[string]uint64{}
+	executing := make(chan struct{}, len(b.ids))
+	tool := &scriptTool{name: "p", mode: ToolModeParallel, params: map[string]any{"type": "object"},
+		execute: func(ctx context.Context, id string, _ json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
+			mu.Lock()
+			slots[id] = ToolSettleFromContext(ctx, id)
+			goroutines[id] = goroutineid.Current()
+			mu.Unlock()
+			executing <- struct{}{}
+			awaitSignal(t, release[id], "release of "+id)
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: id}}}, nil
+		}}
+	b.events = newEventRecorder(nil)
+	calls := make([]ai.ToolCall, len(b.ids))
+	for i, id := range b.ids {
+		calls[i] = toolCall(id, "p", nil)
+	}
+	a := mustNewAgent(AgentOptions{
+		Model:   scriptedModel(&scriptedProvider{respond: toolCallsThenText(calls...)}),
+		Tools:   []AgentTool{tool},
+		EventCh: b.events.ch,
+		AfterToolCallHooks: []AfterToolCallHook{func(ctx context.Context, id, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
+			b.hook(ctx, id)
+			return AfterToolCallResult{}
+		}},
+	})
+	done := sendAsync(t, a, "run")
+	for range b.ids {
+		awaitSignal(t, executing, "every call executing")
+	}
+	// The reader answers the calls in ids order before it wakes any goroutine.
+	mu.Lock()
+	for _, id := range b.ids {
+		slots[id].Settle()
+	}
+	mu.Unlock()
+	// Each woken goroutine runs up to its next wait before the next is woken, as the runtime may run them in any order: with the gate the later
+	// call parks before its hooks, without it the hooks have started.
+	for _, id := range b.wake {
+		close(release[id])
+		mu.Lock()
+		goroutine := goroutines[id]
+		mu.Unlock()
+		entered.Await(goroutine, nil)
+	}
+	waitSignal(t, done, "the run")
+}
+
+// agent-loop.ts:619-647: each call continues from its own execute promise, so the afterToolCall hooks of a parallel batch start in the order the
+// tools settled. The reader answers call-1, call-2, call-3 in that order and the goroutines wake in the reverse order: call-3 and call-2 must
+// not start their hooks before call-1's.
+func TestParallelToolHooksStartInTheOrderTheToolsSettle(t *testing.T) {
+	ids := []string{"call-1", "call-2", "call-3"}
+	var mu sync.Mutex
+	var started []string
+	batch := &settledBatch{t: t, ids: ids, wake: []string{"call-3", "call-2", "call-1"}, hook: func(_ context.Context, id string) {
+		mu.Lock()
+		started = append(started, id)
+		mu.Unlock()
+	}}
+	batch.run()
+	mu.Lock()
+	defer mu.Unlock()
+	if !reflect.DeepEqual(started, ids) {
+		t.Fatalf("after-tool-call hooks started as %v, want the settle order %v", started, ids)
+	}
+	var ends []string
+	for _, ev := range batch.events.stop() {
+		if end, ok := ev.(ToolExecutionEndEvent); ok {
+			ends = append(ends, end.ToolCallID)
+		}
+	}
+	if !reflect.DeepEqual(ends, ids) {
+		t.Fatalf("tool_execution_end order = %v, want the settle order %v", ends, ids)
+	}
+}
+
+// Pi starts the next call's hooks when the previous call's hooks reach their first await, not when they finish: a hook that reports it started
+// (ToolHookStartedFromContext, which the extension dispatch calls) and then waits must not hold the next call's hook back.
+func TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook(t *testing.T) {
+	ids := []string{"call-1", "call-2"}
+	secondStarted := make(chan struct{})
+	batch := &settledBatch{t: t, ids: ids, wake: ids, hook: func(ctx context.Context, id string) {
+		switch id {
+		case "call-1":
+			started := ToolHookStartedFromContext(ctx)
+			if started == nil {
+				t.Error("a call of a parallel batch has no hook start report")
+				return
+			}
+			started()
+			awaitSignal(t, secondStarted, "the second call's hook to start while the first waits")
+		case "call-2":
+			close(secondStarted)
+		}
+	}}
+	batch.run()
+	batch.events.stop()
+}
+
+// A call whose hooks invoke no extension handler never reports a start; it must not hold the later calls' hooks back once its hooks returned.
+func TestAToolHookThatReportsNoStartDoesNotHoldBackTheNextCallsHook(t *testing.T) {
+	ids := []string{"call-1", "call-2"}
+	var mu sync.Mutex
+	var started []string
+	batch := &settledBatch{t: t, ids: ids, wake: ids, hook: func(_ context.Context, id string) {
+		mu.Lock()
+		started = append(started, id)
+		mu.Unlock()
+	}}
+	batch.run()
+	batch.events.stop()
+	mu.Lock()
+	defer mu.Unlock()
+	if !reflect.DeepEqual(started, ids) {
+		t.Fatalf("hooks started as %v, want %v", started, ids)
 	}
 }

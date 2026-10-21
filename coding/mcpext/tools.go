@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -458,7 +459,7 @@ type McpToolOptions struct {
 	Timeout   int // milliseconds
 	GetClient func(ctx context.Context) (McpToolCaller, error)
 	// Lane orders the calls to the server; nil leaves them unordered.
-	Lane *extension.CallLane
+	Lane *jsloop.Lane
 	// ReadableResources says whether `read_mcp_resource` can read the server's resources.
 	ReadableResources func() bool
 	// Renderers draws the call and the result in the terminal; nil leaves the tool without renderers (headless).
@@ -503,7 +504,8 @@ func CreateMcpToolDefinition(options McpToolOptions) extension.ToolDefinition {
 			if options.Lane == nil {
 				return nil
 			}
-			return options.Lane.Reserve()
+			place := options.Lane.Reserve()
+			return &extension.CallOrder{Wait: place.Wait, Release: place.Release}
 		},
 		Execute: func(ctx context.Context, _ string, params json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 			requestOptions := mcp.RequestOptions{TimeoutMs: options.Timeout}

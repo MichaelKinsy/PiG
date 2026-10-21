@@ -138,6 +138,10 @@ func (b *bridgeTool) Execute(
 		return agent.AgentToolResult{}, fmt.Errorf("bridge tool %q: Execute is nil", b.def.Name)
 	}
 
+	if window := agent.ToolStartWindowFromContext(ctx, toolCallID); window != nil {
+		// The call's synchronous prefix is over when the tool returns at the latest.
+		defer window.Close()
+	}
 	if ticket, ok := agent.MutationTicketFromContext(ctx); ok && b.def.ReserveCallOrder != nil {
 		order := &extension.CallOrder{Wait: ticket.Wait, Release: ticket.Release}
 		ctx = extension.WithCallOrder(ctx, order)
@@ -153,6 +157,9 @@ func (b *bridgeTool) Execute(
 
 	return raw, nil
 }
+
+// MayTakeFileMutationQueue implements agent.MayTakeFileMutationQueue: an extension tool may call withFileMutationQueue in its first statement.
+func (b *bridgeTool) MayTakeFileMutationQueue() bool { return b.def.MayTakeFileMutationQueue }
 
 // ReserveMutationOrder reserves the call's place in the order the definition keeps (ToolDefinition.ReserveCallOrder).
 func (b *bridgeTool) ReserveMutationOrder(params json.RawMessage) (*agent.MutationTicket, bool) {
@@ -173,6 +180,9 @@ func (b *bridgeTool) ExecutionMode() agent.ToolExecutionMode {
 	}
 	return agent.ToolModeParallel
 }
+
+// RunsInExtension marks the tool as running in an extension (agent.ExtensionTool).
+func (b *bridgeTool) RunsInExtension() bool { return true }
 
 // WrapRegisteredTool wraps a registered tool into an AgentTool whose every call gets runner's tool context for its call id, as wrapper.ts wrapRegisteredTool
 // does through wrapToolDefinition. A schema that fails to parse is an error.

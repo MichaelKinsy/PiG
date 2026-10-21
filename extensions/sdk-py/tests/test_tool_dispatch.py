@@ -77,7 +77,7 @@ def test_tool_call_handlers_start_in_arrival_order():
 
 def test_a_tool_call_that_ends_without_its_handler_keeps_the_earlier_ones_ahead():
     # agent-loop.ts:619-647: handlers start in source order. A request that ends before its handler hands its place on only after the requests ahead of it began, so a later handler cannot overtake an earlier one.
-    order = pig_sdk._ToolStartOrder()
+    order = pig_sdk._RequestStartOrder()
     ahead, skipped, after = order.reserve(), order.reserve(), order.reserve()
     skipped_ended = threading.Event()
     after_began = threading.Event()
@@ -98,3 +98,70 @@ def test_a_tool_call_that_ends_without_its_handler_keeps_the_earlier_ones_ahead(
     ahead.begin()
     assert skipped_ended.wait(5)
     assert after_began.wait(5)
+
+
+def test_event_and_command_handlers_start_in_arrival_order():
+    # runner.ts:1096-1125 and agent-loop.ts:619-647: concurrent emits (the tool_result hooks of a parallel batch) and the calls of a batch start their handlers in call order. The host writes the requests in that order, so handlers must start in the order the requests arrive, whichever the request kind.
+    batch, rounds = 18, 24
+    started = []
+    lock = threading.Lock()
+
+    def record(n):
+        with lock:
+            started.append(n)
+
+    ext = pig_sdk.Extension("py-request-start-order")
+    ext.tool("probe", "Record the start order", {"type": "object"}, lambda ctx, args: record(args["n"]) or "ok")
+    ext.on_event("tool_result", lambda ctx, data: record(data["n"]))
+    ext.command("probe", "Record the start order", lambda ctx, args: record(int(args)))
+    with connected_extension(ext) as (send, receive):
+        for round_number in range(rounds):
+            for n in range(batch):
+                req_id = f"r{round_number}-{n}"
+                if n % 3 == 0:
+                    send(request(req_id, "tool_call", "probe", {"n": n}, "c"))
+                elif n % 3 == 1:
+                    send({"type": "request", "id": req_id, "request": {"method": "event", "event": "tool_result", "handler_id": 1, "args": {"n": n}}})
+                else:
+                    send(request(req_id, "command", "probe", str(n)))
+            for _ in range(batch):
+                assert receive("response")["response"]["error"] is None
+            with lock:
+                got, started[:] = list(started), []
+            assert got == list(range(batch)), f"round {round_number}: handlers started as {got}"
+
+
+def test_a_request_thread_that_runs_late_does_not_let_a_later_handler_start_first():
+    # runner.ts:1096-1125, agent-loop.ts:619-647: concurrent emits and the calls of a batch start their handlers in call order. A scheduler that runs
+    # the first request's thread only after the later requests' threads entered must not reorder the handlers: each request holds a place from the
+    # arrival of its frame, and a handler starts only after the handlers of the earlier requests did.
+    started = []
+    lock = threading.Lock()
+
+    def record(n):
+        with lock:
+            started.append(n)
+
+    ext = pig_sdk.Extension("py-late-thread")
+    ext.tool("probe", "Record the start order", {"type": "object"}, lambda ctx, args: record(args["n"]) or "ok")
+    ext.on_event("tool_result", lambda ctx, data: record(data["n"]))
+    ext.command("probe", "Record the start order", lambda ctx, args: record(int(args)))
+    entered = {1: threading.Event(), 2: threading.Event()}
+    handle = ext._handle_request_thread
+
+    def late_first(env, ctx):
+        number = int(env["id"][1:])
+        if number == 0:
+            assert entered[1].wait(10) and entered[2].wait(10), "the later requests' threads never ran"
+        else:
+            entered[number].set()
+        return handle(env, ctx)
+
+    ext._handle_request_thread = late_first
+    with connected_extension(ext) as (send, receive):
+        send(request("r0", "tool_call", "probe", {"n": 0}, "c"))
+        send({"type": "request", "id": "r1", "request": {"method": "event", "event": "tool_result", "handler_id": 1, "args": {"n": 1}}})
+        send(request("r2", "command", "probe", "2"))
+        for _ in range(3):
+            assert receive("response")["response"]["error"] is None
+    assert started == [0, 1, 2]

@@ -1633,6 +1633,83 @@ fn main() {
             ToolResult::text(format!("start#{number} n={}", params.get("n").map(Value::to_string).unwrap_or_default()))
         },
     );
+    // A tool that notifies inline and, from a thread timer_release releases, after its handler returned (D5).
+    static TIMER_GATE: (std::sync::Mutex<usize>, std::sync::Condvar) = (std::sync::Mutex::new(0), std::sync::Condvar::new());
+    static STALE_CTX: std::sync::Mutex<Option<pig_sdk::Context>> = std::sync::Mutex::new(None);
+    ext.tool(
+        "timer_defer",
+        "Notify inline and from deferred work",
+        json!({"type": "object"}),
+        |ctx, _params: Value| {
+            ctx.notify("inline:sync", "info");
+            *STALE_CTX.lock().unwrap() = Some(ctx.clone());
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let (released, signal) = &TIMER_GATE;
+                let mut count = released.lock().unwrap();
+                while *count == 0 {
+                    count = signal.wait(count).unwrap();
+                }
+                *count -= 1;
+                drop(count);
+                ctx.notify("deferred:thread", "info");
+            });
+            ToolResult::text("queued")
+        },
+    );
+    // timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+    ext.tool(
+        "timer_stale",
+        "Await a host call made through an earlier request's context",
+        json!({"type": "object"}),
+        |_ctx, _params: Value| {
+            let earlier = STALE_CTX.lock().unwrap().clone().expect("timer_defer has not run");
+            earlier.notify("stale:awaited", "info");
+            ToolResult::text("applied")
+        },
+    );
+    ext.tool(
+        "timer_release",
+        "Release the deferred work",
+        json!({"type": "object"}),
+        |_ctx, _params: Value| {
+            let (released, signal) = &TIMER_GATE;
+            *released.lock().unwrap() += 1;
+            signal.notify_one();
+            ToolResult::text("released")
+        },
+    );
+    // order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+    ext.tool(
+        "order_probe",
+        "Make a host call and an update in the first tick",
+        json!({"type": "object", "properties": {"n": {"type": "number"}}}),
+        |ctx, params: Value| {
+            let n = params.get("n").map(Value::to_string).unwrap_or_default();
+            ctx.notify(&format!("order-call={n}"), "info");
+            ctx.notify(&format!("order-then={n}"), "info");
+            let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": format!("order-update={n}")}]})));
+            ToolResult::text(format!("order-done n={n}"))
+        },
+    );
+    // mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+    ext.tool(
+        "mutation_order_probe",
+        "Take the file mutation queue and append a tag to the file",
+        json!({"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}),
+        |_, params: Value| {
+            let file = params["file"].as_str().unwrap_or_default().to_string();
+            let tag = params["tag"].as_str().unwrap_or_default().to_string();
+            let result = pig_sdk::with_file_mutation_queue(&file, || {
+                let before = std::fs::read_to_string(&file).unwrap_or_default();
+                std::fs::write(&file, format!("{before}{tag}\n"))
+            });
+            match result {
+                Ok(Ok(())) => ToolResult::text(format!("mutated {tag}")),
+                Ok(Err(err)) | Err(err) => ToolResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.tool(
         "dialog_order",
         "Open a select dialog titled by the call and report the answer",
@@ -3153,6 +3230,10 @@ fn main() {
         None
     });
     ext.on_event("tool_result", |ctx, data| {
+        if data["toolName"] == "order_probe" {
+            ctx.notify(&format!("order-result={}", data["toolCallId"].as_str().unwrap_or_default()), "info");
+            return None;
+        }
         let held: Vec<&str> = [
             ("bash", pig_sdk::is_bash_tool_result as fn(&Value) -> bool),
             ("powershell", pig_sdk::is_powershell_tool_result),

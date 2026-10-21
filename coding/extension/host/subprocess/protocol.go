@@ -3,6 +3,7 @@ package subprocess
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
@@ -77,6 +78,9 @@ const (
 // wire because upstream Pi loads only in-process TypeScript extensions.
 type Envelope struct {
 	Type string `json:"type"`
+
+	// barrier, when set, is a host-side marker, not a frame: the dispatcher closes it when it reaches it, so everything the read loop read before the marker is dispatched.
+	barrier *dispatchMark
 
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
@@ -648,6 +652,23 @@ type InvalidateArgs struct {
 // NotifyReloadStarted (host→ext) tells a running generation that Host.Reload has begun, before the host writes the replacement generations' admissions to the process's control channel. In print and JSON mode a Node runtime that answered a prompt's last call or session_shutdown waits in place for the host's next step (Pi's print mode continues without an event-loop turn); this notification is that step for a reload, so the runtime returns to its event loop, which reads the admissions. It carries no arguments and changes no state. The host sends it only to a Node runtime: the Go, Rust and Python SDKs have no such wait.
 const NotifyReloadStarted = "reload_started"
 
+// NotifyTimerDefer (host→Node runtime) says whether the runtime must hold the timer and immediate callbacks it would run (D5): Pi runs the microtasks of a stdin command and its response before any timer, so a callback that fires while a command runs waits for the response, and the host cannot hold such a callback's calls because the runtime may wait for their answers. The args are TimerDeferArgs. The frame precedes every request the host sends for the command, so the runtime holds the callbacks before its handlers run.
+const NotifyTimerDefer = "timer_defer"
+
+// TimerDeferArgs carries NotifyTimerDefer. Seq numbers the frames of one connection; the runtime answers each with NotifyTimerDeferAck.
+type TimerDeferArgs struct {
+	On  bool   `json:"on"`
+	Seq uint64 `json:"seq"`
+}
+
+// NotifyTimerDeferAck (Node runtime→host) says the runtime applied the NotifyTimerDefer frame numbered Seq: its timer and immediate callbacks follow the hold from here on, and every call it made before the ack is already on the wire ahead of it. The host arms a stdin command's hold and waits for this ack before it dispatches the command's first event, so no extension code of the command runs before the hold (Turns.Arm). The args are TimerDeferAckArgs.
+const NotifyTimerDeferAck = "timer_defer_ack"
+
+// TimerDeferAckArgs carries NotifyTimerDeferAck.
+type TimerDeferAckArgs struct {
+	Seq uint64 `json:"seq"`
+}
+
 // NotifyLoopTurned (Node runtime→host, then host→ext) tells the host that a handler yielded to its process's event loop, and the host tells every other Node process. Pi runs every extension on one event loop, so while one extension's handler awaits a timer, I/O or a child process, the callbacks another extension queued run, with a live ctx, before that handler resumes. In print and JSON mode a Node runtime sends it when a request's turn window closes with the request unanswered: after the handler's synchronous run and microtasks, once the short host calls Pi settles in microtasks have settled. The Conn read loop hands it to the host before it reads any later frame of the connection, such as that handler's response, and the host queues it on every connection of every other Node process, so each one reads it before anything the host sends after that response, such as invalidate. A Node runtime waiting for the host's next step after a prompt's last call or session_shutdown takes it as that step, and delivers the frames that follow it only after the immediates it had queued have run. Its LoopTurnArgs number the turn: the sender numbers its own, and the host numbers each turn it forwards. From the closing phase of the event-loop iteration that sent it, the sender's process stays in the turn until the host answers NotifyLoopTurnTaken, so a handler that awaits a timer or I/O resumes only after the other processes ran what Pi's loop runs first, however the OS schedules them. It changes no state; the Go, Rust and Python SDKs, which have no such wait, ignore it.
 const NotifyLoopTurned = "loop_turned"
 
@@ -664,6 +685,11 @@ const RequestEventLoopTurn = "event_loop_turn"
 
 // NotifyEventLoopTurned (Node runtime→host) reports that the process took the turn RequestEventLoopTurn asked for. The host applies the calls the connection sent before it, as it does for a request_state report, before the turn counts as taken.
 const NotifyEventLoopTurned = "event_loop_turned"
+
+// NotifyToolWindowSettled (host→Node runtime) tells a runtime that reported a tool_call request's handler blocked on something that is not a host call (RequestStatePayload
+// blocked, external_io) that the edit and write calls waiting for the request's start window registered in the file mutation queue. Pi registers them before the handler's next
+// call, so the runtime holds that request's next fileMutation.enter until it arrives. Args carry {"request_id": ...}. The host sends it only to a runtime that sent the report.
+const NotifyToolWindowSettled = "tool_window_settled"
 
 // TerminalInputArgs carries an ordered input and the UI values visible before its listener runs. Data and EditorText preserve UTF-16 units using WTF-8 in Go and surrogate escapes in JSON. Runtimes with synchronous local UI getters refresh those values before invoking the listener; host-query SDKs read the same live UI through their existing calls.
 type TerminalInputArgs struct {
@@ -1312,6 +1338,10 @@ type CallPayload struct {
 	Method          string          `json:"method"` // e.g. "ui.notify", "ui.setStatus", "sendMessage"
 	Args            json.RawMessage `json:"args,omitempty"`
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
+	// Timer marks a call made by deferred work: from a callback of a timer or an immediate (setTimeout, setInterval, setImmediate) or from work such a callback started, and in the Go, Python and Rust SDKs from a context whose request already returned. The host runs such a call when Pi's loop would run the callback: not while the agent's run chains microtasks (jsloop.Turns, D5).
+	Timer bool `json:"timer,omitempty"`
+	// Tick marks a Timer call that Pi runs right after the tool_execution_end of the tool that queued it: the call of a process.nextTick callback, or of deferred work that makes the call while a sibling tool call still runs, so Pi's loop is turning (a timer callback in the Node runtime, a call through a request's context after its handler returned in the Go, Python and Rust SDKs).
+	Tick bool `json:"tick,omitempty"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────
@@ -1637,3 +1667,11 @@ const NotifyBashOperationsRelease = "bash_operations_release"
 type BashOperationsRelease struct {
 	Handle string `json:"handle"`
 }
+
+// dispatchMark is the marker Conn.dispatchBarrier queues: released once, by the dispatcher that reached it or by the sender that gave up.
+type dispatchMark struct {
+	done chan struct{}
+	once sync.Once
+}
+
+func (m *dispatchMark) release() { m.once.Do(func() { close(m.done) }) }

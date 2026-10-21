@@ -50,3 +50,19 @@ func ToolSettleFromContext(ctx context.Context, toolCallID string) *jsloop.Settl
 	}
 	return settle.slot
 }
+
+type toolHookStartKey struct{}
+
+// withToolHookStart carries to the after-tool-call hooks of a parallel batch's call the function that reports the call's hooks started.
+func withToolHookStart(ctx context.Context, started func()) context.Context {
+	return context.WithValue(ctx, toolHookStartKey{}, started)
+}
+
+// ToolHookStartedFromContext returns the function a call's after-tool-call hooks call once their first extension handler has been invoked, or
+// nil for a call outside a parallel batch. Calling it lets the batch start the hooks of the calls that settled after this one (agent-loop.ts:619-647:
+// the hooks start in settle order and each runs to its first await before the next starts). It is idempotent, and the batch calls it when the hooks
+// return.
+func ToolHookStartedFromContext(ctx context.Context) func() {
+	started, _ := ctx.Value(toolHookStartKey{}).(func())
+	return started
+}
