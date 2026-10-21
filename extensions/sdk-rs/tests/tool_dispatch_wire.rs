@@ -159,7 +159,7 @@ fn dialog_order_extension() -> Extension {
         |ctx, params| {
             let title = params["title"].as_str().unwrap_or("").to_string();
             let answer = match ctx.select(&title, &["a", "b"]) {
-                Ok((selected, _)) => selected,
+                Ok((selected, _)) => selected.as_str().unwrap_or("").to_string(),
                 Err(error) => return ToolResult::Error(error.to_string()),
             };
             if params["then"] == "host_call" {
