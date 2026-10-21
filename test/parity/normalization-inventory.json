@@ -87,7 +87,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "e297df37948e40119982dd2a554ab7b55504d543400ab83c74c6a3b959eb233e",
+      "sha256": "60ee89b311cc0b0b3d5f036e60ce01f0429fcb0ac083e4ac781eb03a1036b9c7",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -7848,6 +7848,204 @@
           "pig": "Always read pig .md files",
           "pi": "Always read pi .md files",
           "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/71-rpc-deferred-ui-after-response.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notify request UUIDs vary per process. The comparator preserves one-to-one identity correspondence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/72-rpc-deferred-ui-packed-extensions.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notify request UUIDs vary per process. The comparator preserves one-to-one identity correspondence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/73-rpc-session-start-message-after-response.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notify request UUIDs vary per process. The comparator preserves one-to-one identity correspondence."
+        },
+        {
+          "kind": "canonical_json",
+          "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/74-rpc-command-send-wait-idle.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/75-rpc-command-send-wait-idle-go.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/76-rpc-command-send-wait-idle-python.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/77-rpc-command-send-wait-idle-rust.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },

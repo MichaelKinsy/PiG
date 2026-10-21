@@ -200017,16 +200017,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
+        "call:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
       ],
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
-        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestWithFileMutationQueueReturnsTheResultAndReleasesOnFailure",
-        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueReturnsResultsAndReleasesOnFailure"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
+        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -200040,16 +200040,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
+        "call:internal/codingagent/tools/mutation_queue.go#WithFileMutationQueue"
       ],
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
-        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestWithFileMutationQueueReturnsTheResultAndReleasesOnFailure",
-        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueReturnsResultsAndReleasesOnFailure"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
+        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
