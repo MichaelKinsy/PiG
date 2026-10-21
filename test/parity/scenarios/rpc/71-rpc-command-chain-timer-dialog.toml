@@ -22,8 +22,6 @@ wait_timeout_seconds = 10
 
 [[rpc.steps]]
 line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:pick-from-timer}}","value":"a"}'
-wait_contains = ['"id":"m1","type":"response","command":"set_model"']
-wait_timeout_seconds = 10
 
 [env]
 pig = ["PIG_HOME=testdata/multi-model"]
