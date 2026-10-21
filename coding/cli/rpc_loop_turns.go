@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"context"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -77,6 +78,19 @@ func (c *rpcLoopChain) reset() {
 		if end != nil {
 			end()
 		}
+	}
+}
+
+// arm opens the Turns command of the stdin iteration the loop is about to begin, and returns once every extension runtime holds its timer callbacks, before the command's first event reaches any of them. The loop is not held yet, so a runtime that waits for it is not blocked. observeCommands finds the command open and ends it with the iteration.
+func (c *rpcLoopChain) arm(ctx context.Context) {
+	end := c.turns.Arm(ctx)
+	c.mu.Lock()
+	if c.command == nil {
+		c.command, end = end, nil
+	}
+	c.mu.Unlock()
+	if end != nil {
+		end()
 	}
 }
 

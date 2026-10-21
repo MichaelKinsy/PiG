@@ -2331,26 +2331,38 @@ func (h *Host) SetCommandWindowHandler(fn func(suspended int)) {
 // SetTimerTurns gives the host the owner's model of Pi's event loop (D5). A host call that the runtime marks Timer runs when the loop would run the timer or immediate that made it: while the agent's run chains microtasks it waits (jsloop.Turns). Without it such a call runs on arrival.
 func (h *Host) SetTimerTurns(turns *jsloop.Turns) {
 	if previous := h.timerTurns.Swap(turns); previous != turns && turns != nil {
-		turns.ObserveDefer(h.sendTimerDefer)
+		turns.ObserveDefer(h.sendTimerDefer, h.awaitTimerDefer)
 	}
 }
 
-// sendTimerDefer tells every Node runtime of the host whether it must hold its timer and immediate callbacks (NotifyTimerDefer). The frames of one host keep the order of the changes, and each precedes the requests the host sends after the change.
-func (h *Host) sendTimerDefer(deferring bool) {
-	args, err := json.Marshal(TimerDeferArgs{On: deferring})
-	if err != nil {
-		return
-	}
+// timerDeferConns returns the connections of every Node runtime of the host.
+func (h *Host) timerDeferConns() []*Conn {
 	h.mu.Lock()
+	defer h.mu.Unlock()
 	conns := make([]*Conn, 0, len(h.exts))
 	for _, me := range h.exts {
 		if conn := me.connection(); conn != nil && me.hostsNodeRuntime() {
 			conns = append(conns, conn)
 		}
 	}
-	h.mu.Unlock()
-	for _, conn := range conns {
+	return conns
+}
+
+// sendTimerDefer tells every Node runtime of the host whether it must hold its timer and immediate callbacks (NotifyTimerDefer). The frames of one host keep the order of the changes, and each precedes the requests the host sends after the change.
+func (h *Host) sendTimerDefer(deferring bool) {
+	for _, conn := range h.timerDeferConns() {
+		args, err := json.Marshal(TimerDeferArgs{On: deferring, Seq: conn.timerDefer.next()})
+		if err != nil {
+			continue
+		}
 		_ = conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyTimerDefer, Args: args}})
+	}
+}
+
+// awaitTimerDefer returns once every Node runtime applied the frames sendTimerDefer sent (NotifyTimerDeferAck), or ended, or ctx ended.
+func (h *Host) awaitTimerDefer(ctx context.Context) {
+	for _, conn := range h.timerDeferConns() {
+		conn.timerDefer.await(ctx, conn.Done())
 	}
 }
 

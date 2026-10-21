@@ -19,6 +19,8 @@ type Turns struct {
 	held      []func(done func())
 	commands  int
 	observers []func(deferring bool)
+	// appliedWaits wait for the runtimes to apply the changes the observers made.
+	appliedWaits []func(ctx context.Context)
 	deferring bool
 	notifyMu  sync.Mutex
 	ticks     []func(done func())
@@ -61,14 +63,32 @@ func (t *Turns) Command() (end func()) {
 	}
 }
 
-// ObserveDefer registers fn, which runs with true when the timer callbacks of an extension runtime must wait (a command runs and no wait is open) and with false when they may run. fn runs in the order of the changes.
-func (t *Turns) ObserveDefer(fn func(deferring bool)) {
+// ObserveDefer registers fn, which runs with true when the timer callbacks of an extension runtime must wait (a command runs and no wait is open) and with false when they may run. fn runs in the order of the changes. applied, when it is not nil, returns once every runtime applied the changes fn made (Arm waits for it).
+func (t *Turns) ObserveDefer(fn func(deferring bool), applied func(ctx context.Context)) {
 	if t == nil {
 		return
 	}
 	t.mu.Lock()
 	t.observers = append(t.observers, fn)
+	if applied != nil {
+		t.appliedWaits = append(t.appliedWaits, applied)
+	}
 	t.mu.Unlock()
+}
+
+// Arm opens the Turns command of a stdin command and returns once every extension runtime applied the hold, so the command's first event reaches no runtime that still runs its timer callbacks: Pi's loop runs nothing between reading the command and the end of its microtasks, and the runtimes are other processes. The caller must not hold the loop that runs the command, since a runtime may be waiting for it. A runtime that ended, or ctx's end, stops the wait. end is the function Command returns.
+func (t *Turns) Arm(ctx context.Context) (end func()) {
+	end = t.Command()
+	if t == nil {
+		return end
+	}
+	t.mu.Lock()
+	waits := append([]func(context.Context){}, t.appliedWaits...)
+	t.mu.Unlock()
+	for _, applied := range waits {
+		applied(ctx)
+	}
+	return end
 }
 
 // syncDeferLocked tells the observers when the deferring state changed, and unlocks.

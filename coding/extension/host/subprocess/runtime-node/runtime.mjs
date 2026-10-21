@@ -3860,6 +3860,8 @@ export class Runtime {
           return;
         }
         setTimerDefer(args?.on === true);
+        // The host waits for this ack before it dispatches the command's first event (Turns.Arm): every call this runtime made before the hold is on the wire ahead of it.
+        this.conn?.notify("timer_defer_ack", { seq: args?.seq ?? 0 });
         return;
       }
       case "run_signal": {

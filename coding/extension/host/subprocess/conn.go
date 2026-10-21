@@ -134,6 +134,10 @@ type Conn struct {
 	onLoopTurned func(args json.RawMessage)
 	// onLoopTurnTaken runs on the read loop for each NotifyLoopTurnTaken frame, with its arguments.
 	onLoopTurnTaken func(args json.RawMessage)
+	// onTimerDeferAck runs on the read loop for each NotifyTimerDeferAck frame, with its arguments.
+	onTimerDeferAck func(args json.RawMessage)
+	// timerDefer numbers the NotifyTimerDefer frames sent on this connection and records the acks (timer_defer.go).
+	timerDefer timerDeferState
 	// loopTurnsClosed is set under the Host's loopTurns mutex once the read loop ended, so the connection is no recipient a forwarded turn waits for.
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
@@ -1164,6 +1168,12 @@ func (c *Conn) readLoop(ctx context.Context) {
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoopTurnTaken {
 			if c.onLoopTurnTaken != nil {
 				c.onLoopTurnTaken(env.Notify.Args)
+			}
+			continue
+		}
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyTimerDeferAck {
+			if c.onTimerDeferAck != nil {
+				c.onTimerDeferAck(env.Notify.Args)
 			}
 			continue
 		}

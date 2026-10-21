@@ -573,6 +573,16 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	// Preflight is not an agent run. Admission marks the Session streaming only after before_agent_start and image normalization finish.
 	streaming := func() bool { return sess().IsStreaming() }
 
+	// goCommand runs the completion of a command off the executor (a model change's handlers) as part of the command: the extension runtimes hold their timer callbacks until the work ended and the response it publishes was written. Pi runs these handlers and the response in the command's own microtasks, so a callback queued meanwhile runs after the response.
+	goCommand := func(turn *rpcResponseTurn, work func()) {
+		end := host.turns.Command()
+		commandWG.Go(func() {
+			work()
+			<-turn.Idle()
+			end()
+		})
+	}
+
 	handleCycleModel := func(id rpcRequestID, currentSession *coding.Session, turn *rpcResponseTurn) {
 		result, complete, err := currentSession.BeginModelCycle(ctx, "forward")
 		if err != nil {
@@ -595,7 +605,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		if complete == nil {
 			turn.Microtask(publish)
 		} else {
-			commandWG.Go(func() { complete(); turn.Microtask(publish) })
+			goCommand(turn, func() { complete(); turn.Microtask(publish) })
 		}
 	}
 
@@ -891,6 +901,8 @@ commandLoop:
 			}
 			// Pi reads a stdin chunk in an iteration of its own, after any microtask tail that agent_end started.
 			host.settle.wait(ctx, rpcUI.PendingRequest, shutdown.Started())
+			// pig divergence (D5): the extension runtimes hold their timer callbacks before the command's first event, which the loop's Begin below lets run.
+			host.loop.arm(ctx)
 			responses.Begin()
 			inputTurn = responses
 		}
@@ -1065,7 +1077,7 @@ commandLoop:
 					close(applied)
 					return
 				}
-				commandWG.Go(func() { complete(); close(applied); turn.Microtask(publish) })
+				goCommand(turn, func() { complete(); close(applied); turn.Microtask(publish) })
 			})
 
 		case RPCCommandCycleModel:
