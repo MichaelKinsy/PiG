@@ -4633,6 +4633,40 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/json/13-json-session-start-writer-order.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
+          "with": "\"$1\":\"<ID>\"",
+          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"cwd\":\"[^\"]*\"",
+          "with": "\"cwd\":\"<CWD>\"",
+          "reason": "D2: each binary runs in its own isolated cwd."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json starts its stream at the prompt: nothing a session_start handler emits is written, a command's appends are",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/model-resolver-selector/03-model-invalid.toml",
       "transforms": [
         {
@@ -7656,6 +7690,29 @@
             "/**/sections/cwd"
           ],
           "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/70-rpc-session-start-writer-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{8,36}$",
+          "reason": "Entry, session and UI request IDs vary per run. A bijection preserves distinct identities and every parent reference; the literal command IDs (after, new, state) do not match the pattern and stay unchanged."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent entry wall clocks vary; retain presence, type and valid syntax."
         }
       ]
     },
