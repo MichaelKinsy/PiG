@@ -2984,7 +2984,6 @@
           "pr": "170"
         }
       ],
-      "commitsFrom": "release note",
       "tests": [
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack",
@@ -5346,11 +5345,6 @@
           "pr": "171"
         },
         {
-          "hash": "e2db9318fa",
-          "date": "2026-10-06",
-          "pr": "173"
-        },
-        {
           "hash": "9b63b2bc4e",
           "date": "2026-10-07",
           "pr": "176"
@@ -5364,7 +5358,6 @@
       "tests": [
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/cli/rpc_shutdown_test.go::TestRPCInputEndAfterExtensionCommandComparedWithPi",
-        "coding/extension/exec_tree_test.go::TestExecCommandKeepsOutputWrittenAfterTheLeaderExits",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation",
@@ -5451,8 +5444,6 @@
         "internal/npmpublish/npmpublish_test.go::TestTheExistenceCheckAsksTheRegistryPublishSendsTo",
         "internal/npmpublish/npmpublish_test.go::TestTrustedPublishingAddsProvenance",
         "internal/npmpublish/npmpublish_test.go::TestYesPublishesWithTheRequestedTagAccessAndCode",
-        "internal/pilock/delete_pending_windows_test.go::TestAcquireWithOptionsWaitsOutLockBeingRemovedAtMkdir",
-        "internal/pilock/retry_options_test.go::TestAcquireWithOptionsRetriesEveryAttemptErrorUpstream",
         "test/ci-images/windows_test_packages_test.go::TestWindowsNativeShardChecksALongPackageListWithoutSIGPIPE",
         "test/extension-conformance/node_load_exec_test.go::TestNodeExecBetweenLoadAndRegister",
         "test/extension-conformance/node_load_exec_test.go::TestNodeFactoryExecDuringLoad",
@@ -7859,8 +7850,6 @@
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestIsBusyErrorLooksThroughWrappedJoins",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestRemoveTreeContextContinuesPastBusyFile",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestRemoveTreeContextReportsADirectoryHeldByAnNFSSillyRenameAsBusy",
-        "coding/extension/host/runtimecell/hash_inputs_test.go::TestCommandVersionCachesWarmProbeAndDetectsReplacement",
-        "coding/extension/host/subprocess/node_recovery_test.go::TestNodeUnattributableCrashRestartsWholeGroup",
         "coding/extension/host/subprocess/tool_call_input_reply_test.go::TestToolCallReplyEditsTheEventInputInPlace",
         "durable/harness/await_context_regression_test.go::TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution",
         "durable/harness/harness_lifecycle_test.go::TestHarnessClose",
@@ -31452,6 +31441,84 @@
       "tests": []
     },
     {
+      "id": "BF-0275c62",
+      "title": "Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every…",
+      "symptom": "Each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update.",
+      "rootCause": "Pi has one module-level withFileMutationQueue shared by the built-in edit and write tools and every extension. PiG kept a queue per extension process, so an extension tool and a built-in tool on one file, or two extensions, could lose an update.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every extension process, as in Pi. Before, each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update. The SDKs ask the host's queue for the file's turn (`fileMutation.enter`, `fileMutation.exit`); the turn is released if the extension's connection closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0275c62f29",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationCallsAreRoutedLikeThePureHelperCalls",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterFailsForAnUnresolvablePath",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterHoldsTheHostQueueUntilExit",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterRegistersInCallOrderAndInitiatesBeforeItWaits",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationExitOfAnotherConnectionsTicketFails",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueHostErrorAndTaskFailures",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueKeepsNoQueueOfItsOwn",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueRunsTheTaskBetweenEnterAndExit",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueUsesTheFusedHostHook"
+      ]
+    },
+    {
+      "id": "BF-2f7af8b",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Regenerated by automation/gen/vendor-pi-dist.sh and go generate: the vendored edit, write and tools index load the bridge module, the sdk-bundle chunks and manifest follow, and the embedded runtime archive, the Go interface inventory and the SDK surface matrix (withFileMutationQueue is bridged) are updated. Also satisfy errorlint and staticcheck in the SDK and the host tests.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2f7af8b96d",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+      ]
+    },
+    {
+      "id": "BF-00e1452",
+      "title": "Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file…",
+      "symptom": "Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds.",
+      "rootCause": "The free function withFileMutationQueue has no Context, so in a packed Go, Rust or Python cell its turn rides the first running connection of the process. The task's exit then went to the closed connection and failed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds. The turns of a packed process now belong to the process: they are released by `fileMutation.exit` over any of its connections, or when its last connection closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00e1452222",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses",
+        "coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsOfOneProcessOutliveAConnectionAndEndWithTheLast",
+        "coding/extension/host/subprocess/packed_file_mutation_test.go::TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn",
+        "extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueExitReachesTheHostWhenTheCarryingConnectionStopped"
+      ]
+    },
+    {
       "id": "BF-1886fff",
       "title": "The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the…",
       "symptom": "The Go, Python and Rust SDKs start the handlers of concurrent event and command requests in the order the requests arrive, as they already did for `tool_call`; before, two `tool_result` hooks in flight on one connection could start their handlers out of order (the Go SDK did so in 25 of 3000 probes).",
@@ -31514,6 +31581,66 @@
       "tests": [
         "agent/tool_settle_test.go::TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook"
       ]
+    },
+    {
+      "id": "BF-536efd5",
+      "title": "An edit or write call of a parallel batch registers in the file mutation queue after the extension tools…",
+      "symptom": "The built-in call registered in the dispatcher's loop, a process hop before the extension's registration arrived, so `[extension tool, write]` applied the write first.",
+      "rootCause": "The built-in calls registered in the dispatcher's loop, before any extension request was written, while the extension's fileMutation.enter reached the host a process hop later: [extension tool, write] applied the write first (confirmed against Pi on c5, 3 of 3). A window closes when the host applies a host call of the request that returns a Promise in Pi (startsAsync), when the Node runtime reports the handler blocked on something that is not a host call (the report follows the tool's execute call, which ran its synchronous prefix), when the request is answered, or when the call ends. A batch with no extension tool before the edit or write call registers it in the loop as before.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An edit or write call of a parallel batch registers in the file mutation queue after the extension tools before it in the batch took the queue, as Pi does: Pi registers a call in the queue when it calls `withFileMutationQueue` and runs each call's first statements in call order. Before, the built-in call registered in the dispatcher's loop, a process hop before the extension's registration arrived, so `[extension tool, write]` applied the write first. The Go, Python, Rust and Node SDKs, isolated, packed and fused, now agree. A native tool that waits on something other than a host call before it takes the queue still registers first, and a write behind a native tool that makes no host call waits for the tool; both are recorded in the parity row.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "536efd5e91",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-d9ec956",
+      "title": "The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes…",
+      "symptom": "The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes the tool's start window after the calls the extension sent before the report, not after the call its handler sends next.",
+      "rootCause": "The Node runtime reports a tool whose execute awaited something that is not a host call, and the host closes the tool's start window once the calls the extension sent before the report applied their synchronous parts. The host marked those calls on the goroutine that waited, so a call the handler sent right after the report (its fileMutation.enter after an await of the event loop) could be queued first and be waited for: the window closed after the extension's registration and the write registered second. The calls are marked on the loop that reads the frames, in arrival order. The generated Node runtime pack and its digest follow runtime.mjs.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Node runtime reports a tool whose execute awaits something that is not a host call, and the host closes the tool's start window after the calls the extension sent before the report, not after the call its handler sends next.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d9ec9560dd",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-ee65aea",
+      "title": "A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the…",
+      "symptom": "A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the edit or write call behind it, as in Pi; before, the two raced and the extension won every round.",
+      "rootCause": "Pi registers the write first when the extension tool awaits the event loop before it calls withFileMutationQueue: the tool's prefix ends at the await. The Node runtime reported the await and the host closed the tool's start window, but the tool's registration is the next frame it sends, one event-loop turn later, so the write and the extension registered in a race (the extension won every round). The runtime now holds the tool's next fileMutation.enter after such a report until the host says the writes that waited for the window registered (NotifyToolWindowSettled, host to Node runtime, sent only to a runtime that sent the report); the dispatcher counts the calls that wait for each window…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension tool that awaits the event loop before it takes the file mutation queue registers after the edit or write call behind it, as in Pi; before, the two raced and the extension won every round. The runtime holds the tool's next `fileMutation.enter` until the host reports the writes behind the tool registered.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee65aead9a",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [
