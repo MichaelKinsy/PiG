@@ -98789,8 +98789,8 @@
       ],
       "evidence": [
         "test:chord/host/loader_upstream_test.go#TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelativeImports",
-        "test:chord/host/awaiting_upstream_test.go#TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold",
-        "test:chord/host/awaiting_upstream_test.go#TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers"
+        "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink",
+        "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -98812,8 +98812,8 @@
       ],
       "evidence": [
         "test:chord/host/loader_upstream_test.go#TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelativeImports",
-        "test:chord/host/awaiting_upstream_test.go#TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold",
-        "test:chord/host/awaiting_upstream_test.go#TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers"
+        "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink",
+        "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAtMostCapBindingsLingerTheLeastRecentlyReleasedGoesFirst"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -112902,9 +112902,9 @@
         "call:codemode/declarations.go#RenderToolSample"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116693,9 +116693,9 @@
         "call:codemode/declarations.go#RenderToolSample"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116738,9 +116738,9 @@
         "call:codemode/execution.go#execution.startCall"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -116761,9 +116761,9 @@
         "call:codemode/execution.go#execution.startCall"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ]
     },
     {
@@ -116890,9 +116890,9 @@
         "call:codemode/declarations.go#RenderToolSample"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120545,9 +120545,9 @@
         "call:codemode/declarations.go#RenderToolSample"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120590,9 +120590,9 @@
         "call:codemode/execution.go#execution.startCall"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120613,9 +120613,9 @@
         "call:codemode/execution.go#execution.startCall"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ]
     },
     {
@@ -120742,9 +120742,9 @@
         "call:codemode/declarations.go#RenderToolSample"
       ],
       "evidence": [
-        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange",
-        "test:coding/extension/builtin/codemode/search_entry_order_test.go#TestSearchToolsEntriesKeepPisKeyOrder",
-        "test:codemode/bridge_test.go#TestReportsADuplicateCallIDAsASandboxError"
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "test:coding/extension/builtin/codemode/run_test.go#TestDiscoveryStopsWhenItsContextIsCancelled",
+        "test:coding/extension/builtin/codemode/run_test.go#TestSearchToolsAcceptsALimitBeyondTheIntRange"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
