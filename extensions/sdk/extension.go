@@ -142,10 +142,12 @@ type Extension struct {
 	toolMu             sync.RWMutex
 	toolConn           *conn
 	// footer is the host's footer data (guarded by mu) and footerSubs the onBranchChange callbacks.
-	footer             footerSnapshot
-	footerSubs         footerSubscribers
-	toolFuncs          map[string]ToolFunc
-	toolPrepareFuncs   map[string]ToolPrepareArgumentsFunc
+	footer           footerSnapshot
+	footerSubs       footerSubscribers
+	toolFuncs        map[string]ToolFunc
+	toolPrepareFuncs map[string]ToolPrepareArgumentsFunc
+	// children are the child agent sessions this extension created and has not disposed (child_session.go).
+	children           childSessions
 	toolStarts         toolStartOrder
 	commandFuncs       map[string]CommandFunc
 	eventFuncs         map[int]EventFunc
@@ -1213,6 +1215,8 @@ func (e *Extension) loop() error {
 
 func (e *Extension) stopRequests() error {
 	e.stopWidthDeliveries()
+	// The sessions end with the connection, as the host disposes them: no listener runs after it.
+	e.children.closeAll()
 	if e.runCancel != nil {
 		e.runCancel()
 	}
@@ -1347,9 +1351,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		e.dispatchEventBus(ctx, id, req)
 
 	case "tool_call":
-		e.toolMu.RLock()
-		handler, ok := e.toolFuncs[req.Tool]
-		e.toolMu.RUnlock()
+		handler, ok := e.toolHandler(req)
 		if !ok {
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown tool: %s", req.Tool))
 			return
@@ -1369,9 +1371,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 
 	case "tool_prepare_arguments":
 		// agent-loop.ts:707-716: prepareToolCall runs the hook on the model's arguments and validates what it returns, so the host asks for it before tool_call.
-		e.toolMu.RLock()
-		prepare := e.toolPrepareFuncs[req.Tool]
-		e.toolMu.RUnlock()
+		prepare := e.toolPrepare(req)
 		if prepare == nil {
 			_ = e.conn.respond(id, nil, fmt.Errorf("tool %s has no prepareArguments", req.Tool))
 			return
@@ -1668,6 +1668,8 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		return
 	}
 	switch env.Notify.Method {
+	case notifyChildSessionEvent:
+		e.children.deliver(env.Notify.Args)
 	case notifyRunSignal:
 		e.run.apply(env.Notify.Args)
 	case notifyInvalidate:

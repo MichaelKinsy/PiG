@@ -171,3 +171,7 @@ From the repository root, `make test-sdk-py` runs the same suite in a cached ven
 ## License
 
 MIT: see `LICENSE`.
+
+## Child agent sessions
+
+`ctx.create_agent_session(CreateAgentSessionOptions(...))` is Pi's `createAgentSession`: a child agent session over the host's model runtime that the extension prompts (`prompt`, `steer`, `follow_up`), observes (`subscribe`), aborts (`abort`) and disposes (`dispose`), with `custom_tools` served by this extension. Calls block as Pi's Promises resolve; the session ends with the connection. See [Child agent sessions](../../docs/extension-authoring.md#child-agent-sessions-createagentsession).

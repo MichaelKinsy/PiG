@@ -83,6 +83,9 @@ func newGraphModelRuntime(ctx context.Context, scope subprocess.SessionGraphScop
 	return &GraphModelRuntime{runtime: runtime, scope: scope}, nil
 }
 
+// Runtime is the model runtime the handle names. A session created from it shares it, as Pi's createAgentSession shares the modelRuntime it is given.
+func (g *GraphModelRuntime) Runtime() *ModelRuntime { return g.runtime }
+
 // Release implements subprocess.SessionGraphReleaser.
 func (g *GraphModelRuntime) Release() { g.runtime.Close() }
 

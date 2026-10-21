@@ -53,6 +53,7 @@ from .branch_summary import (
     collect_entries_for_branch_summary as collect_entries_for_branch_summary,
     prepare_branch_entries as prepare_branch_entries,
 )
+from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, _ChildSessions, create_agent_session as _create_agent_session
 from .image_dimension_note import ResizedImage as ResizedImage, format_dimension_note as format_dimension_note
 from .llm_convert import convert_to_llm as convert_to_llm
 from .serialize_conversation import serialize_conversation as serialize_conversation
@@ -2383,6 +2384,13 @@ class Context:
     def call_host(self, method: str, args: Any = None) -> Any:
         return self._call(method, args).get("result")
 
+    def create_agent_session(self, options: CreateAgentSessionOptions | None = None) -> AgentSession:
+        """Pi's ``createAgentSession``: create a child agent session in the host and return once it is ready.
+
+        The session belongs to this extension's connection and is disposed with it; see :mod:`pig_sdk.child_session` for the async contract.
+        """
+        return _create_agent_session(self.extension, self._call, options)
+
     # Upstream 0.99.1 extension API ------------------------------------------
 
     def register_mcp_server(self, name: str, config: dict[str, Any]) -> None:
@@ -3498,6 +3506,7 @@ class Extension:
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
+        self._children = _ChildSessions()
         self._tool_starts = _ToolStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
         self._with_sessions = _WithSessionRegistry()
@@ -3631,6 +3640,31 @@ class Extension:
 
     def register_tool(self, definition: ToolDefinition) -> None:
         """Replace a tool in place and refresh a running Session before returning."""
+        declaration = self._tool_declaration(definition, "tool definition")
+        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result, definition.prepare_loadout, definition.call_view, definition.result_view, definition.reaches_tools)
+
+    def _tool_handler(self, req: dict[str, Any], name: str) -> ToolHandler:
+        """The execute of a tool_call: a registered tool, or a custom tool of the child session the request names."""
+        child = req.get("child_session")
+        if child:
+            session = self._children.lookup(str(child))
+            if session is None or name not in session._tools:
+                raise KeyError(name)
+            return session._tools[name]
+        with self._tool_registration_lock:
+            return self._tool_handlers[name]
+
+    def _tool_prepare_handler(self, req: dict[str, Any], name: str) -> ToolPrepareArguments | None:
+        """The prepare_arguments of a request; see :meth:`_tool_handler`."""
+        child = req.get("child_session")
+        if child:
+            session = self._children.lookup(str(child))
+            return None if session is None else session._prepares.get(name)
+        with self._tool_registration_lock:
+            return self._tool_prepare_handlers.get(name)
+
+    def _tool_declaration(self, definition: ToolDefinition, what: str) -> dict[str, Any]:
+        """The wire declaration of a tool definition, after the checks of Pi's registerTool (loader.ts)."""
         name = definition.name
         if not name:
             raise ValueError("register_tool requires a definition with name")
@@ -3659,8 +3693,8 @@ class Extension:
             "reaches_tools": True if definition.reaches_tools is not None else None,
         }
         declaration = {key: value for key, value in declaration.items() if value is not None}
-        _ensure_jsonable(declaration, f"tool definition for {name}")
-        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result, definition.prepare_loadout, definition.call_view, definition.result_view, definition.reaches_tools)
+        _ensure_jsonable(declaration, f"{what} for {name}")
+        return declaration
 
     def register_mcp_server(self, name: str, config: dict[str, Any]) -> None:
         """Register an MCP server, as ``pi.registerMcpServer`` does (loader.ts:456-465).
@@ -4350,6 +4384,8 @@ class Extension:
 
     def _stop_runtime(self) -> None:
         self._shutdown.set()
+        # The sessions end with the connection, as the host disposes them: no listener runs after it.
+        self._children.close_all()
         with self._state_lock:
             pending = list(self._pending.values())
             active = list(self._active.values())
@@ -4433,6 +4469,9 @@ class Extension:
         if method == "tool_render_release":
             with self._tool_render_lock:
                 self._tool_render_cards.pop(str(args.get("card") or ""), None)
+            return
+        if method == "childSession.event":
+            self._children.deliver(args)
             return
         if method == "bash_operations_release":
             self._bash_operations.release(str(args.get("handle") or ""))
@@ -4723,8 +4762,7 @@ class Extension:
             elif method == "tool_call":
                 name = req.get("tool", "")
                 params = req.get("args") or {}
-                with self._tool_registration_lock:
-                    handler = self._tool_handlers[name]
+                handler = self._tool_handler(req, name)
                 # agent-loop.ts:619-647: the handlers of a batch start in source order.
                 if ctx._tool_start is not None:
                     ctx._tool_start.begin()
@@ -4733,8 +4771,7 @@ class Extension:
                 self._respond(req_id, payload, None)
             elif method == "tool_prepare_arguments":
                 name = req.get("tool", "")
-                with self._tool_registration_lock:
-                    prepare = self._tool_prepare_handlers.get(name)
+                prepare = self._tool_prepare_handler(req, name)
                 if prepare is None:
                     raise RuntimeError(f"tool {name!r} has no prepare_arguments")
                 prepared = prepare(req.get("args") or {})

@@ -82,10 +82,6 @@ func (c ledgerCell) String() string {
 	return c.Kind + ":" + c.Value
 }
 
-func (c ledgerCell) realized() bool {
-	return c.Kind == cellNative || c.Kind == cellKit || c.Kind == cellHost
-}
-
 // ledgerPolicy is the release policy the checks apply.
 type ledgerPolicy struct {
 	// ReleaseTrain is the train being built; Trains lists every train a lane
