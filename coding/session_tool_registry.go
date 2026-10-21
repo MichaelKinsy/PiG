@@ -94,6 +94,12 @@ func (tool *sessionBoundTool) Execute(ctx context.Context, id string, args json.
 	return tool.AgentTool.Execute(ctx, id, args, update)
 }
 
+// RunsInExtension reports whether the wrapped tool runs in an extension (agent.ExtensionTool).
+func (tool *sessionBoundTool) RunsInExtension() bool {
+	wrapped, ok := tool.AgentTool.(agent.ExtensionTool)
+	return ok && wrapped.RunsInExtension()
+}
+
 func (tool *sessionBoundTool) PrepareArguments(args json.RawMessage) (json.RawMessage, error) {
 	if prepare, ok := tool.AgentTool.(agent.ArgumentPreparer); ok {
 		return prepare.PrepareArguments(args)

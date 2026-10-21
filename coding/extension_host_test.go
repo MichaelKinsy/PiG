@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 type recordingExtensionHost struct{ name string }
@@ -14,6 +15,7 @@ func (*recordingExtensionHost) SetRuntimeDrainHandler(func())      {}
 func (*recordingExtensionHost) SetSettleTailHandler(func(int))     {}
 func (*recordingExtensionHost) SetCommandSuspendHandler(func(int)) {}
 func (*recordingExtensionHost) SetCommandWindowHandler(func(int))  {}
+func (*recordingExtensionHost) SetTimerTurns(*jsloop.Turns)        {}
 func (*recordingExtensionHost) EndInput()                          {}
 func (*recordingExtensionHost) HoldRetirements()                   {}
 func (*recordingExtensionHost) TerminateProcesses()                {}

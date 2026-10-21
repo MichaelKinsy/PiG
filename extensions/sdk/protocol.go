@@ -210,6 +210,8 @@ type callMsg struct {
 	Method          string          `json:"method"`
 	Args            json.RawMessage `json:"args,omitempty"`
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
+	// Timer marks a call made through a request's context after the request's handler returned: deferred work, which Pi runs from a timer, an immediate or a later continuation, once the loop turns (D5).
+	Timer bool `json:"timer,omitempty"`
 }
 
 type callResultMsg struct {
@@ -521,6 +523,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		return pendingCall{}, fmt.Errorf("extension connection closed")
 	default:
 	}
+	timer := false
 	if parent != nil {
 		parentRequestID, err = c.parentIDLocked(parent)
 		if err != nil {
@@ -530,6 +533,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		callCtx = parent.request
 		if parent.completed {
 			callCtx = parent.runtime
+			timer = true
 		}
 	}
 	c.pending[id] = ch
@@ -539,7 +543,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	if err := c.sendLocked(envelope{
 		Type: msgCall,
 		ID:   id,
-		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID},
+		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, Timer: timer},
 	}); err != nil {
 		c.pendingMu.Lock()
 		delete(c.pending, id)

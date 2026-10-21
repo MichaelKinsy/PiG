@@ -49,6 +49,18 @@ func startsAsync(method string) bool {
 	}
 }
 
+// holdsForLoopTurn reports whether a call the runtime marks Timer can wait for the loop's next turn: its upstream API returns nothing, so no code waits for its answer. A call whose answer the extension waits for (a dialog, a getter) runs at once.
+func holdsForLoopTurn(method string) bool {
+	switch method {
+	case "ui.notify", "ui.setStatus", "ui.setWorkingMessage", "ui.setWorkingIndicator", "ui.setWorkingVisible", "ui.setHiddenThinkingLabel",
+		"ui.setWidget", "ui.setFooter", "ui.setHeader", "ui.setTitle", "ui.pasteToEditor", "ui.setEditorText", "ui.setToolsExpanded",
+		"appendEntry", "sendMessage", "sendUserMessage", "setThinkingLevel", "setActiveTools", "abort":
+		return true
+	default:
+		return false
+	}
+}
+
 // callLanes runs extension→host calls in arrival order per lane. Each lane
 // drains on a goroutine that exits when the lane is empty.
 type callLanes struct {
@@ -287,6 +299,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		defer conn.countHostCall(call.ParentRequestID, true)()
 	} else if startsAsync(call.Method) {
 		defer conn.countHostCall(call.ParentRequestID, false)()
+	}
+	// A call that awaits real work (a dialog, a child process, a model request) is a stretch in which Pi's loop turns (jsloop.Turns).
+	if startsAsync(call.Method) {
+		defer h.timerTurns.Load().Wait()()
 	}
 	if mark != nil {
 		callCtx = extension.WithCallInitiation(callCtx, mark)

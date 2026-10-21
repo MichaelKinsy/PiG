@@ -27,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/boundarywire"
 	"github.com/MichaelKinsy/PiG/internal/eventwire"
 	"github.com/MichaelKinsy/PiG/internal/installchange"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
@@ -281,6 +282,8 @@ type Host struct {
 	eventBus           hostEventBus
 	// loopTurns holds each forwarded loop turn until every recipient took it (forwardLoopTurned).
 	loopTurns loopTurns
+	// timerTurns holds the calls an extension runtime marks as made by a timer or an immediate until Pi's loop would run them (SetTimerTurns); nil holds nothing.
+	timerTurns atomic.Pointer[jsloop.Turns]
 	// nested tracks executeTool calls in flight (host_extension_api.go).
 	nested nestedCalls
 	// runSignals numbers the active run's signal and watches it for its abort (run_signal.go).
@@ -2324,6 +2327,9 @@ func (h *Host) SetCommandWindowHandler(fn func(suspended int)) {
 	h.commandWindowHandler = fn
 	h.commandFlightMu.Unlock()
 }
+
+// SetTimerTurns gives the host the owner's model of Pi's event loop (D5). A host call that the runtime marks Timer runs when the loop would run the timer or immediate that made it: while the agent's run chains microtasks it waits (jsloop.Turns). Without it such a call runs on arrival.
+func (h *Host) SetTimerTurns(turns *jsloop.Turns) { h.timerTurns.Store(turns) }
 
 // FlushCommands is the stdout-flush checkpoint of an RPC shutdown. Pi's flush follows stdin's end within microtasks and one tick, so a runtime with no microtask continuation has nothing that can still settle: its command still running counts as suspended. A Node runtime reports its own commands as their windows close. A command that settled or answered before the checkpoint responds normally. It does not cancel requests or synthesize responses.
 func (h *Host) FlushCommands() {
@@ -4482,6 +4488,16 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// Calls apply in arrival order per lane off the read loop, so the
 			// host keeps receiving notifications, widget pushes, and nested
 			// calls the same extension sends while an earlier call runs.
+			if call.Timer {
+				if turns := h.timerTurns.Load(); turns != nil {
+					if holdsForLoopTurn(call.Method) {
+						turns.Macrotask(func() { h.queueCall(me, conn, lanes, env.ID, call) })
+						continue
+					}
+					// The caller waits for the answer, so the call cannot wait; it runs behind the calls held before it.
+					turns.Turn()
+				}
+			}
 			h.queueCall(me, conn, lanes, env.ID, call)
 
 		case MsgWidgetPush:

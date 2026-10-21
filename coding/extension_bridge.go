@@ -174,6 +174,9 @@ func (b *bridgeTool) ExecutionMode() agent.ToolExecutionMode {
 	return agent.ToolModeParallel
 }
 
+// RunsInExtension marks the tool as running in an extension (agent.ExtensionTool).
+func (b *bridgeTool) RunsInExtension() bool { return true }
+
 // WrapRegisteredTool wraps a registered tool into an AgentTool whose every call gets runner's tool context for its call id, as wrapper.ts wrapRegisteredTool
 // does through wrapToolDefinition. A schema that fails to parse is an error.
 func WrapRegisteredTool(registeredTool extension.RegisteredTool, runner *inproc.Runner) (agent.AgentTool, error) {

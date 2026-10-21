@@ -1298,6 +1298,8 @@ type CallPayload struct {
 	Method          string          `json:"method"` // e.g. "ui.notify", "ui.setStatus", "sendMessage"
 	Args            json.RawMessage `json:"args,omitempty"`
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
+	// Timer marks a call made by deferred work: from a callback of a timer or an immediate (setTimeout, setInterval, setImmediate) or from work such a callback started, and in the Go, Python and Rust SDKs from a context whose request already returned. The host runs such a call when Pi's loop would run the callback: not while the agent's run chains microtasks (jsloop.Turns, D5).
+	Timer bool `json:"timer,omitempty"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────

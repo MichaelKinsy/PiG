@@ -466,6 +466,10 @@ func executeTool(ctx context.Context, prepared preparedToolCall, onUpdate ToolUp
 			result, err = AgentToolResult{}, errors.New(thrownMessage(recovered))
 		}
 	}()
+	// Pi's loop turns while a tool awaits its I/O, so the timer callbacks an extension queued run (jsloop.Turns). A tool that runs in an extension (ExtensionTool) turns the loop only if its own code awaits, which the extension runtime reports itself: it marks the calls of a timer that fires after the handler returned.
+	if extension, ok := prepared.tool.(ExtensionTool); !ok || !extension.RunsInExtension() {
+		defer jsloop.TurnsFrom(ctx).Wait()()
+	}
 	return prepared.tool.Execute(ctx, prepared.call.id, prepared.args, onUpdate)
 }
 

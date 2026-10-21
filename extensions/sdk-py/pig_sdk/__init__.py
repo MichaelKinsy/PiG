@@ -5104,6 +5104,7 @@ class Extension:
 
     def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None, event: threading.Event | None = None) -> tuple[str, threading.Event]:
         event = event if event is not None else threading.Event()
+        timer = False
         with self._write_lock:
             with self._state_lock:
                 if self._shutdown.is_set() or (parent is not None and parent.socket is not self._sock):
@@ -5112,6 +5113,8 @@ class Extension:
                     if parent.state == "cancelled":
                         raise RuntimeError("host call cancelled with its parent request")
                     parent_request_id = "" if parent.state == "completed" else parent.request_id
+                    # pig additive (D5): a call made through a request's context after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
+                    timer = parent.state == "completed"
                 self._call_id += 1
                 call_id = f"c{self._call_id}"
                 self._pending[call_id] = event
@@ -5122,6 +5125,8 @@ class Extension:
             call = {"method": method, "args": args}
             if parent_request_id:
                 call["parent_request_id"] = parent_request_id
+            if timer:
+                call["timer"] = True
             try:
                 self._send_locked({"type": "call", "id": call_id, "call": call})
             except Exception:

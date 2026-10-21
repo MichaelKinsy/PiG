@@ -17,6 +17,7 @@ import { inspect } from "node:util";
 import { flushCompileCache } from "node:module";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
+import { fromTimer, installTimerOrigin, outsideTimer } from "./timer-origin.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
 import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
 import { EditorComponentHost } from "./editor-component.mjs";
@@ -33,6 +34,8 @@ import { SharedBus } from "./event-bus.mjs";
 import { deriveView, surfaceTheme, VIEW_THEME_TOKENS } from "./view-walk.mjs";
 import { dispatchOverlayMouse, takesMouse } from "./mouse.mjs";
 import { EventReplicas } from "./event-stream.mjs";
+
+installTimerOrigin();
 
 // Pi hands every extension one shared event bus (resource-loader.ts creates
 // one per loader and passes it to each extension). Every Node realm of this
@@ -1200,12 +1203,14 @@ export class Connection {
   call(method, args = {}, parentRequestId = "") {
     if (this.closed) return Promise.reject(new Error("extension connection closed"));
     const id = uuid();
+    // pig additive (D5): a call made by a timer's or an immediate's callback after its request's handler returned (the call has no parent) says so, and the host holds it until Pi's loop would have run the callback. A callback that runs while the handler still awaits is a turn of Pi's loop already.
+    const timer = !parentRequestId && fromTimer();
     return new Promise((resolve, reject) => {
       this.touchRequest(parentRequestId);
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain();
       try {
-        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}) } });
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}) } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -2523,7 +2528,7 @@ export class Runtime {
     let emission;
     try {
       conn.requestState(env.id, "started");
-      runWithRuntime(this, () => this.requestContext.run(request, () => {
+      runWithRuntime(this, () => this.requestContext.run(request, outsideTimer(() => {
         try {
           const args = env.request.args ?? {};
           if (env.request.method === "xref.op") result = xrefRealm.serve(args);
@@ -2535,7 +2540,7 @@ export class Runtime {
         } catch (error) {
           failure = error;
         }
-      }));
+      })));
     } finally {
       request.settled = true;
     }
@@ -2696,7 +2701,7 @@ export class Runtime {
     if (quitting) enterQuitDrain();
     refreshQuitDrain();
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
-    const task = this.requestContext.run(request, async () => {
+    const task = this.requestContext.run(request, outsideTimer(async () => {
       try {
         await this.handleRequest(env.id, env.request || {}, requestCtx);
       } finally {
@@ -2709,7 +2714,7 @@ export class Runtime {
         refreshQuitDrain();
       }
       if (request.responded && endsPrompt(env.request, this.ready?.mode, this.runSignal !== undefined)) awaitHostStep(request.connection);
-    });
+    }));
     this.requestTasks.add(task);
     void task.then(
       () => this.requestTasks.delete(task),

@@ -701,6 +701,17 @@
       "shapeHash": "sha256:fb970ecc9f4eaa84d3de13e3a0bb1c444c5d9c938150c280530d6d26a5cb1163"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.SetLoopTurns",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "Agent.SetLoopTurns",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(turns *github.com/MichaelKinsy/PiG/internal/jsloop.Turns)"
+      },
+      "shapeHash": "sha256:36f43116af568da26b02eb08bf52be55bc95bdd1026015e6b2544e52bbebde1b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.SetMaxRetryDelayMs",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "Agent.SetMaxRetryDelayMs",
@@ -2690,6 +2701,17 @@
         "type": "func(event AgentEvent) *github.com/MichaelKinsy/PiG/ai.StreamObservation"
       },
       "shapeHash": "sha256:7ad50fc2bf9b2c1a62f6477c26b11c4b3a694711c78f2942614bfef00349e759"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#ExtensionTool",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "ExtensionTool",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ExtensionTool"
+      },
+      "shapeHash": "sha256:925911d00c4854384844b5332ba9cdab67f7d7a75c74e4e0725b94e02684994c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/agent#FinishTurn",
@@ -74247,6 +74269,17 @@
       "shapeHash": "sha256:1a3c7bdde029eb27197f4ebdee545f851d1ff62cc488996ef4a92f8aac4e194d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#bridgeTool.RunsInExtension",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "bridgeTool.RunsInExtension",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#bridgeTool.Schema",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "bridgeTool.Schema",
@@ -76535,6 +76568,17 @@
       "shapeHash": "sha256:9e56c223ab63e0afc52a9d6cb16c32a220c5629e34d5d7e2fa168b9f24102a24"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#sessionBoundArgumentTool.RunsInExtension",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "sessionBoundArgumentTool.RunsInExtension",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#sessionBoundArgumentTool.Schema",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "sessionBoundArgumentTool.Schema",
@@ -76621,6 +76665,17 @@
         "type": "func(args encoding/json.RawMessage) (*github.com/MichaelKinsy/PiG/agent.MutationTicket, bool)"
       },
       "shapeHash": "sha256:9e56c223ab63e0afc52a9d6cb16c32a220c5629e34d5d7e2fa168b9f24102a24"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#sessionBoundTool.RunsInExtension",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "sessionBoundTool.RunsInExtension",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#sessionBoundTool.Schema",
@@ -81208,6 +81263,17 @@
         "type": "func(fn func(suspended int))"
       },
       "shapeHash": "sha256:dc7c7832706b0182fe90b72df4cf138b3aa6d18997b7dd5339dde1974aa43a30"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliExtensionHost.SetTimerTurns",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "cliExtensionHost.SetTimerTurns",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(turns *github.com/MichaelKinsy/PiG/internal/jsloop.Turns)"
+      },
+      "shapeHash": "sha256:36f43116af568da26b02eb08bf52be55bc95bdd1026015e6b2544e52bbebde1b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliExtensionHost.TerminateProcesses",
@@ -88369,6 +88435,50 @@
         "type": "func() bool"
       },
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcLoopChain",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "rpcLoopChain"
+      },
+      "shapeHash": "sha256:b8ec0299b65cb435496be05c7f6673633cb03afde6c33915c50a7d45d6864a08"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain.after",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcLoopChain.after",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event github.com/MichaelKinsy/PiG/agent.AgentEvent)"
+      },
+      "shapeHash": "sha256:46dec2e301794c37d6e191aad8969106461c823c3cdfbc7a6cd92eb732c0697c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain.before",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcLoopChain.before",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event github.com/MichaelKinsy/PiG/agent.AgentEvent)"
+      },
+      "shapeHash": "sha256:46dec2e301794c37d6e191aad8969106461c823c3cdfbc7a6cd92eb732c0697c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain.reset",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcLoopChain.reset",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcMemberSpan",
@@ -116102,6 +116212,17 @@
       "shapeHash": "sha256:34a7a99d4e89dd0f4086c5228646e2a94476df04d4bfa06f0c5fa0b4eb92134b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.SetTimerTurns",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.SetTimerTurns",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(turns *github.com/MichaelKinsy/PiG/internal/jsloop.Turns)"
+      },
+      "shapeHash": "sha256:36f43116af568da26b02eb08bf52be55bc95bdd1026015e6b2544e52bbebde1b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.SetToolRenderersResolvedFunc",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.SetToolRenderersResolvedFunc",
@@ -128057,6 +128178,17 @@
         "type": "func(baseHash string, sdkDir string, buildType string) (string, error)"
       },
       "shapeHash": "sha256:3256cd9d624a3952183589f933fad9957634566e3dd77b9b9a549fc51e214d05"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#holdsForLoopTurn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "holdsForLoopTurn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(method string) bool"
+      },
+      "shapeHash": "sha256:d60ece4b65b59f6c1c650107e0968b4f85db0c9923a48e6c67869ebcdc977bf9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hostEventBus",

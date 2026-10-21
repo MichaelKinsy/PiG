@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // rpcModeSession is RPC mode's own state for one Session it serves (rpc-mode.ts keeps it in runRpcMode's closure).
@@ -106,6 +107,9 @@ type rpcHost struct {
 	commandDone     func()
 	// settle holds stdin between a published agent_end and agent_settled.
 	settle rpcSettleGate
+	// turns models where Pi's event loop turns (D5); loop reports the run's chain to it.
+	turns jsloop.Turns
+	loop  rpcLoopChain
 	// drain is the process-owner callback for a Node event-loop drain after input end.
 	drain func()
 	// stdoutWait waits for the raw-stdout tail, the barrier of Pi's waitForRawStdoutBackpressure.
@@ -276,6 +280,7 @@ func (h *rpcHost) announce(ctx context.Context, session *coding.Session, st *rpc
 	if extensionHost, bridge := rpcExtensionHost(session); bridge != nil {
 		join = attachRPCCommandJoin(extensionHost)
 		extensionHost.SetSettleTailHandler(h.settle.tailHandlerReporter())
+		extensionHost.SetTimerTurns(&h.turns)
 	}
 	st.join.Store(join)
 	h.commandJoin.Store(join)
@@ -350,8 +355,11 @@ func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, c
 func (h *rpcHost) forward(session *coding.Session) {
 	// A replaced Session's unsettled tail is over: its run was joined before the replacement.
 	h.settle.reset()
+	h.loop.turns = &h.turns
+	h.loop.reset()
+	session.Agent().SetLoopTurns(&h.turns)
 	// The gate sees an event ahead of its writer (agent_end) or after it (agent_settled), so a held command answers after the event that releases it.
-	gateBefore := session.Subscribe(h.settle.before)
+	gateBefore := session.Subscribe(func(event agent.AgentEvent) { h.settle.before(event); h.loop.before(event) })
 	// Upstream shutdown() unsubscribes the stdout forwarder, so nothing is written after detach.
 	unsubscribe := subscribeRPCEvents(session, func(v any) {
 		if !h.detached.Load() {
@@ -362,7 +370,7 @@ func (h *rpcHost) forward(session *coding.Session) {
 		h.writeRPC(RPCErrorEvent{Type: "error", Message: "event conversion error: " + err.Error()})
 		h.cancel()
 	})
-	gateAfter := session.Subscribe(h.settle.after)
+	gateAfter := session.Subscribe(func(event agent.AgentEvent) { h.settle.after(event); h.loop.after(event) })
 	backpressure := subscribeStdoutBackpressure(session.Agent(), func() { h.stdoutWait(h.ctx) })
 	h.mu.Lock()
 	h.unsubscribeEvents = append(h.unsubscribeEvents, gateBefore, unsubscribe, gateAfter, backpressure)
