@@ -57,8 +57,8 @@ type BuiltinToolOptions struct {
 	// ExposeSessionEnvironment is BashToolOptions.exposeSessionEnvironment and PowerShellToolOptions.exposeSessionEnvironment.
 	ExposeSessionEnvironment *bool `json:"exposeSessionEnvironment,omitempty"`
 	// Operations names the members of the tool's `operations` object the extension supplied.
-	//portlint:allow emptydrop Operations only names the supplied members of the operations object: an empty list is the absent one
-	Operations []string `json:"operations,omitempty"`
+	// An empty list is an operations object with no member, which the host tells from an absent one (newBuiltinTool).
+	Operations []string `json:"operations"`
 	// SpawnHook reports the extension supplied `spawnHook`.
 	SpawnHook bool `json:"spawnHook,omitempty"`
 }

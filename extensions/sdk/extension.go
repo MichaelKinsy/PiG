@@ -1226,15 +1226,15 @@ func (e *Extension) loop() error {
 			if env.Request != nil && env.Request.Stream != nil {
 				e.applyEventStream(env.Request)
 			}
-			ctx, finish := e.armRequest(env.ID)
+			ctx, scope := e.armRequestScope(env.ID)
 			if env.Request != nil && env.Request.Method == "tool_call" {
 				ctx.start = e.toolBatches.reserve(env.Request.Batch)
 			}
 			if startsInArrivalOrder(env.Request) {
-				ctx.place = e.requestStarts.Reserve()
+				ctx.place = e.requestStarts.ReserveInto(&scope.place)
 			}
 			e.requestWG.Go(func() {
-				defer finish()
+				defer scope.end()
 				defer ctx.start.release()
 				defer ctx.place.Pass()
 				// A loop that was not started by Run (a test serving requests on its own connection) has no loaded gate.
@@ -1301,7 +1301,27 @@ func (e *Extension) stopRequests() error {
 	}
 }
 
+// requestScope is one request's lifetime: how to end it and, for a request that starts in arrival order, its place in requestStarts, held here so the place costs no allocation of its own.
+type requestScope struct {
+	e      *Extension
+	id     string
+	cancel context.CancelCauseFunc
+	place  jsloop.Place
+}
+
+func (s *requestScope) end() {
+	s.e.requestsMu.Lock()
+	delete(s.e.requests, s.id)
+	s.e.requestsMu.Unlock()
+	s.cancel(nil)
+}
+
 func (e *Extension) armRequest(id string) (Context, func()) {
+	ctx, scope := e.armRequestScope(id)
+	return ctx, scope.end
+}
+
+func (e *Extension) armRequestScope(id string) (Context, *requestScope) {
 	requestRoot := e.runCtx
 	if requestRoot == nil {
 		requestRoot = context.Background()
@@ -1311,12 +1331,7 @@ func (e *Extension) armRequest(id string) (Context, func()) {
 	e.requestsMu.Lock()
 	e.requests[id] = cancel
 	e.requestsMu.Unlock()
-	return Context{ext: e, requestID: id, parent: parent, ctx: reqCtx}, func() {
-		e.requestsMu.Lock()
-		delete(e.requests, id)
-		e.requestsMu.Unlock()
-		cancel(nil)
-	}
+	return Context{ext: e, requestID: id, parent: parent, ctx: reqCtx}, &requestScope{e: e, id: id, cancel: cancel}
 }
 
 func (e *Extension) handleRequest(id string, req *requestMsg) {
