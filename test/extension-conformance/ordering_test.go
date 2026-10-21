@@ -62,6 +62,14 @@ type orderingRow struct {
 
 func everyRealization(string) bool { return true }
 
+// firstStatementOrder reports whether the realization's extension runs in one thread, so its handlers' first statements run in the order Pi's one
+// thread gives them. A Go, Rust or Python handler runs on a thread of its own, and a thread that the operating system preempts between its hand-off
+// and its first statement can be overtaken (D187), so a row about first statements cannot pin those SDKs; the Go and Python SDK tests and the
+// Rust places pin their invocation order.
+func firstStatementOrder(name string) bool {
+	return name == "subprocess-node" || name == "subprocess-node-packed"
+}
+
 var orderingRows = []orderingRow{
 	{
 		name:     "host-calls-apply-in-wire-order",
@@ -75,7 +83,7 @@ var orderingRows = []orderingRow{
 	{
 		name:     "host-calls-follow-call-order",
 		upstream: "agent-loop.ts:646-648: the tools' handlers start in call order, so their first calls reach the host in call order",
-		applies:  startOrderStrict,
+		applies:  firstStatementOrder,
 		observe: func(r orderingRound) ([]string, []string) {
 			return r.frames.notifies("order-call="), r.calls
 		},
@@ -91,7 +99,7 @@ var orderingRows = []orderingRow{
 	{
 		name:     "tool-result-handlers-start-in-request-order",
 		upstream: "runner.ts:1096-1125: concurrent emits start their handlers in call order on one thread",
-		applies:  startOrderStrict,
+		applies:  firstStatementOrder,
 		observe: func(r orderingRound) ([]string, []string) {
 			return r.frames.notifies("order-result="), r.frames.tools("hook")
 		},
