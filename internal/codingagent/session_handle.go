@@ -134,6 +134,12 @@ type InteractiveSessionHandle interface {
 	SetCacheWarmingMode(CacheWarmingMode) error
 	// OnAgentSettled tells the cache warmer that an agent run settled.
 	OnAgentSettled()
+	// DeferCustomMessage holds a custom message an extension sent with triggerTurn false while a run streams, until the turn's tool results are complete. It reports false when no run is active.
+	DeferCustomMessage(agent.AgentMessage) bool
+	// HasDeferredCustomMessages reports whether a custom message waits for the end of its turn.
+	HasDeferredCustomMessages() bool
+	// FlushDeferredCustomMessages appends the custom messages held for the end of a turn.
+	FlushDeferredCustomMessages() error
 }
 
 // eventBarrier is the Session's FlushEvents marker on the Events channel.

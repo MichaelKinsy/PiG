@@ -1589,6 +1589,9 @@ type recordingCompactHandle struct {
 	cycled, switched     []*ai.Model
 	scopedModels         []extension.ScopedModel
 	compacted            []*extension.CompactOptions
+	streaming            bool
+	deferred             []agent.AgentMessage
+	flushedDeferred      []agent.AgentMessage
 }
 
 func (h *recordingCompactHandle) CycleModel(direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
@@ -1643,6 +1646,20 @@ func (h *recordingCompactHandle) SetCacheWarmingMode(mode CacheWarmingMode) erro
 	return nil
 }
 func (h *recordingCompactHandle) OnAgentSettled() { h.agentSettledCount++ }
+
+func (h *recordingCompactHandle) DeferCustomMessage(message agent.AgentMessage) bool {
+	if !h.streaming {
+		return false
+	}
+	h.deferred = append(h.deferred, message)
+	return true
+}
+func (h *recordingCompactHandle) HasDeferredCustomMessages() bool { return len(h.deferred) > 0 }
+func (h *recordingCompactHandle) FlushDeferredCustomMessages() error {
+	h.flushedDeferred = append(h.flushedDeferred, h.deferred...)
+	h.deferred = nil
+	return nil
+}
 
 func (h *recordingCompactHandle) Agent() *agent.Agent             { return h.agent }
 func (h *recordingCompactHandle) Inner() *Session                 { return h.inner }
