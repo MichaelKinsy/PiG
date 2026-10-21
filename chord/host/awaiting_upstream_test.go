@@ -55,16 +55,60 @@ type getResult struct {
 	err error
 }
 
-// getAsync is `host.get(...)` without its await: the call has run up to its first await, as upstream's synchronous part
-// does, when it returns. A bare `go host.Get(...)` has no such order: the next call, or an abort that follows, can run
-// before it has taken its reference.
+// getAsync is `host.get(...)` without its await. Upstream's get takes its reference synchronously (host.ts get: acquire,
+// then awaitReady), so the reference is held when get returns its promise, whatever the caller does next. Hold is that
+// synchronous part and the task started here is the await. goEntered around a whole Get is not that order: a Get whose
+// first step waits for a busy host loop counts as entered before it has acquired, and an abort that follows can release
+// the binding the get was about to share.
 func getAsync(host *HostImpl, options *GetOptions) <-chan getResult {
 	done := make(chan getResult, 1)
+	ref, err := host.Hold(awaitingSlow, map[string]any{}, options)
+	if err != nil {
+		done <- getResult{err: err}
+		return done
+	}
+	var signals []context.Context
+	if options != nil && options.Signal != nil {
+		signals = append(signals, options.Signal)
+	}
 	<-host.goEntered(func() {
-		ref, err := host.Get(awaitingSlow, map[string]any{}, options)
-		done <- getResult{ref, err}
+		if err := awaitReady(host, ref.(RefCore), signals, host.readyTimeout); err != nil {
+			done <- getResult{err: err}
+			return
+		}
+		done <- getResult{ref: ref}
 	})
 	return done
+}
+
+// getAsync holds its reference when it returns, even while the host loop is busy: the loop is blocked, getAsync must
+// not return before its acquire ran, and the hold frame goes out only after the loop is free again. (Before, a Get
+// that waited for the loop counted as entered at once: the abort test in this file lost 8 of 24000 runs to the reference
+// not being held yet when the first get was aborted.)
+func TestAwaitingGetAsyncHoldsItsReferenceWhenItReturns(t *testing.T) {
+	_, browser, link, open := awaitingSetup(t, nil)
+	inLoop, freeLoop := make(chan struct{}), make(chan struct{})
+	go browser.run(func() {
+		close(inLoop)
+		<-freeLoop
+	})
+	<-inLoop
+	returned := make(chan (<-chan getResult), 1)
+	go func() { returned <- getAsync(browser, nil) }()
+	select {
+	case <-returned:
+		close(freeLoop)
+		open() // the get it started would otherwise wait for its ready timeout before the cleanup can close the host
+		t.Fatal("getAsync returned while the host loop was busy: its reference was not held yet")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(freeLoop)
+	second := <-returned
+	waitFor(t, "the hold", func() bool { return link.countSent("hold") == 1 })
+	open()
+	if got := <-second; got.err != nil {
+		t.Fatal(got.err)
+	}
 }
 
 // awaiting.test.ts:44-62 "an aborted get rejects and releases only its reference; the binding stays for the others"
