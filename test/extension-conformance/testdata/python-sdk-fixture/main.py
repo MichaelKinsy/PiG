@@ -309,9 +309,10 @@ def new_extension() -> pig_sdk.Extension:
         report = {"content": blocks, "isError": bool(result.get("is_error"))}
         if result.get("details") is not None:
             report["details"] = result["details"]
+            report["detailsJSON"] = json.dumps(result["details"], separators=(",", ":"), ensure_ascii=False)
         structured = result.get("structured_content")
         if isinstance(structured, dict):
-            report["structuredKeys"] = sorted(structured.keys())
+            report["structuredKeys"] = list(structured.keys())
             report["exitCode"] = structured.get("exit_code")
         return report
 

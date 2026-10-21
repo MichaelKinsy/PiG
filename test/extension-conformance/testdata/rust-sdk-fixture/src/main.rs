@@ -3063,10 +3063,10 @@ fn builtin_report(result: &pig_sdk::AgentToolResult) -> Value {
     let mut report = json!({"content": blocks, "isError": result.is_error});
     if !result.details.is_null() {
         report["details"] = result.details.clone();
+        report["detailsJSON"] = json!(serde_json::to_string(&result.details).unwrap_or_default());
     }
     if let Some(structured) = result.structured_content.as_ref().and_then(Value::as_object) {
-        let mut keys: Vec<&String> = structured.keys().collect();
-        keys.sort();
+        let keys: Vec<&String> = structured.keys().collect();
         report["structuredKeys"] = json!(keys);
         report["exitCode"] = structured.get("exit_code").cloned().unwrap_or(Value::Null);
     }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"strings"
 	"sync"
 
@@ -66,29 +67,19 @@ func builtinResultReport(r sdk.AgentToolResult) map[string]any {
 	report := map[string]any{"content": blocks, "isError": r.IsError}
 	if r.Details != nil {
 		report["details"] = r.Details
-	}
-	if r.StructuredContent != nil {
-		if structured, ok := r.StructuredContent.(map[string]any); ok {
-			report["structuredKeys"] = sortedKeys(structured)
-			report["exitCode"] = structured["exit_code"]
+		// The text of the details, in member order: a map would sort it.
+		text, err := jsjson.MarshalJS(r.Details)
+		if err != nil {
+			panic(err)
 		}
+		report["detailsJSON"] = string(text)
+	}
+	if structured, ok := r.StructuredContent.(*sdk.OrderedObject); ok {
+		report["structuredKeys"] = structured.Keys()
+		code, _ := structured.Get("exit_code")
+		report["exitCode"] = code
 	}
 	return report
-}
-
-func sortedKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	for i := range keys {
-		for j := i + 1; j < len(keys); j++ {
-			if keys[j] < keys[i] {
-				keys[i], keys[j] = keys[j], keys[i]
-			}
-		}
-	}
-	return keys
 }
 
 // builtinProbeOptions builds Pi's options object for the case, with callbacks that log into log.

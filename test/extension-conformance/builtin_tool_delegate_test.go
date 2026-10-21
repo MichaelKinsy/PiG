@@ -85,6 +85,8 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "local", "shell": "bash", "factoryCwd": hostCwd, "command": "echo begun; exec sleep 30", "abortOnOutput": true},
 			{"kind": "local", "shell": "bash", "factoryCwd": hostCwd, "command": "exec sleep 30", "timeout": 1},
 			{"kind": "local", "shell": "bash", "factoryCwd": filepath.Join(hostCwd, "no-such-dir"), "command": "echo x"},
+			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
+			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
 			// createCodingTools and createReadOnlyTools
 			{"kind": "sets", "factoryCwd": factoryCwd},
 		}
@@ -99,6 +101,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		for path, content := range map[string]string{
 			filepath.Join(hostCwd, "marker.txt"):    "from-H\nline2\n",
 			filepath.Join(hostCwd, "multi.txt"):     multi.String(),
+			filepath.Join(hostCwd, "big.txt"):       strings.Repeat("a line of the big file\n", 2500),
 			filepath.Join(factoryCwd, "marker.txt"): "from-X\n",
 			filepath.Join(factoryCwd, "multi.txt"):  "x1\nx2\n",
 		} {
@@ -253,6 +256,15 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 	}
 	if got, _ := json.Marshal(reference[len(reference)-1]); string(got) != `{"coding":["read","bash","edit","write"],"readOnly":["read","grep","find","ls"]}` {
 		t.Fatalf("Pi's own createCodingTools and createReadOnlyTools reported %s", got)
+	}
+	// Pi writes a truncated read's details with the members of its truncation in the order the tool built them, which JSON.stringify keeps and a map does not:
+	// the text of the details, in member order, is the same in every SDK (the comparison below) and is not the sorted order.
+	if details, _ := reference[len(reference)-2]["detailsJSON"].(string); !strings.HasPrefix(details, `{"truncation":{"content":`) {
+		t.Fatalf("Pi's own details = %q", details)
+	}
+	// bash's structured content lists its members in insertion order
+	if keys, _ := reference[16]["result"].(map[string]any)["structuredKeys"].([]any); fmt.Sprint(keys) != "[output truncated exit_code wall_time_seconds]" {
+		t.Fatalf("Pi's own structuredContent keys = %v", keys)
 	}
 	for _, e := range expectations {
 		if got := e.check(reference[e.index]); !strings.Contains(got, e.want) {

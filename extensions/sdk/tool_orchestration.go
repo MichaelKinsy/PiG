@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -214,6 +215,40 @@ type AgentToolResult struct {
 	Usage             map[string]any      `json:"usage,omitempty"`
 	IsError           bool                `json:"isError,omitempty"`
 	Terminate         bool                `json:"terminate,omitempty"`
+}
+
+// UnmarshalJSON reads a result in Pi's shape. Details and StructuredContent keep the member order of their objects, as JavaScript objects do: every object in
+// them is an *OrderedObject (a Go map has no order), which marshals back in the order it was read, so a result a tool returned reaches the host with its
+// members where the tool wrote them.
+func (r *AgentToolResult) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Content           []ToolResultContent `json:"content"`
+		Details           json.RawMessage     `json:"details"`
+		StructuredContent json.RawMessage     `json:"structuredContent"`
+		Usage             map[string]any      `json:"usage"`
+		IsError           bool                `json:"isError"`
+		Terminate         bool                `json:"terminate"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*r = AgentToolResult{Content: raw.Content, Usage: raw.Usage, IsError: raw.IsError, Terminate: raw.Terminate}
+	var err error
+	if r.Details, err = decodeOrderedRaw(raw.Details); err != nil {
+		return err
+	}
+	r.StructuredContent, err = decodeOrderedRaw(raw.StructuredContent)
+	return err
+}
+
+// decodeOrderedRaw reads an optional member as an ordered value: nil for an absent member or JSON null.
+func decodeOrderedRaw(raw json.RawMessage) (any, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	return decodeOrderedValue(decoder)
 }
 
 // MarshalJSON writes the result as a tool hands it to the host: `content` as the block array (a text block always carries its text, empty or not),

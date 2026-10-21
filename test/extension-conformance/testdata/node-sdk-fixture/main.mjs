@@ -659,8 +659,8 @@ export default function (pi) {
   // builtin_probe: see the Go fixture (testfixture/builtin_tool.go). Pi's own create<Tool>ToolDefinition, create<Tool>Tool and createLocalBashOperations are the reference.
   const builtinReport = (result) => {
     const report = { content: result.content.map((block) => block.type === "text" ? { type: "text", text: block.text } : { type: block.type, mimeType: block.mimeType }), isError: !!result.isError };
-    if (result.details !== undefined && result.details !== null) report.details = result.details;
-    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent).sort(); report.exitCode = result.structuredContent.exit_code; }
+    if (result.details !== undefined && result.details !== null) { report.details = result.details; report.detailsJSON = JSON.stringify(result.details); }
+    if (result.structuredContent && typeof result.structuredContent === "object") { report.structuredKeys = Object.keys(result.structuredContent); report.exitCode = result.structuredContent.exit_code; }
     return report;
   };
   const builtinOptions = (c, log) => {
