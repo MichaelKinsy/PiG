@@ -215,6 +215,33 @@ func Extension() *sdk.Extension {
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{
+		Name: "virtual_visible", Label: "virtual_visible", Description: "Registers a virtual model and reads the registry on the next line.", Parameters: object,
+		Execute: func(ctx sdk.Context, _ map[string]any) (any, error) {
+			registry := ctx.ModelRegistry()
+			route := func(sdk.Context, sdk.ModelRouteRequest) (sdk.ModelRoute, error) {
+				return sdk.ModelRoute{Model: map[string]any{"provider": "p", "id": "m"}, ThinkingLevel: "off"}, nil
+			}
+			listed := func() bool {
+				models, err := registry.GetAll()
+				if err != nil {
+					return false
+				}
+				for _, model := range models {
+					if model["provider"] == "router" && model["id"] == "seen" {
+						return true
+					}
+				}
+				return false
+			}
+			if err := registry.RegisterVirtualModel(sdk.VirtualModel{Provider: "router", ID: "seen", Name: "Seen", ContextWindow: 1000, Route: route}); err != nil {
+				return nil, err
+			}
+			registered, isListed := registry.Find("router", "seen") != nil, listed()
+			registry.UnregisterVirtualModel("router", "seen")
+			return text(map[string]any{"registered": registered, "listed": isListed, "gone": registry.Find("router", "seen") == nil, "unlisted": !listed()})
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
 		Name: "ops_status", Label: "ops_status", Description: "Reports what the host's provider requests did in the extension.", Parameters: object,
 		Execute: func(sdk.Context, map[string]any) (any, error) {
 			return text(map[string]any{"cancelled": cancelled.Load()})
