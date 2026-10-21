@@ -31519,6 +31519,30 @@
         "test/extension-conformance/tui_theme_test.go::TestSelectListThemeAcrossSDKs",
         "test/extension-conformance/tui_theme_test.go::TestSettingsListThemeAcrossSDKs"
       ]
+    },
+    {
+      "id": "BF-de13d72",
+      "title": "Extensions: `ctx.ui.setTheme(theme)` with a theme object makes that object the active theme as it is, as Pi's…",
+      "symptom": "Extensions: `ctx.ui.setTheme(theme)` with a theme object makes that object the active theme as it is, as Pi's `setThemeInstance` does.",
+      "rootCause": "That left a 256-color dark theme active after any test that installs a palette and puts back the theme it found. In a container without COLORTERM a full ./test/extension-conformance run then compared Pi's truecolor widget goldens with 256-color rows in all nine TestConformance_ComponentKitWidgetsMatchPi cells; each theme test that installs a palette left the state behind, and restoring a pristine theme through SetThemeInstance could not undo it, because it converted it again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: `ctx.ui.setTheme(theme)` with a theme object makes that object the active theme as it is, as Pi's `setThemeInstance` does. PiG re-created the object in the terminal's color depth, so a truecolor theme set on a terminal without truecolor became a 256-color copy (and the other way round).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "de13d72467",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/component_kit_widgets_test.go::TestConformance_ComponentKitWidgetsMatchPi",
+        "test/extension-conformance/tui_theme_test.go::TestInstalledThemeIsPutBackAsFound",
+        "tui/theme_color_mode_test.go::TestSetThemeInstanceKeepsTheInstance"
+      ]
     }
   ],
   "divergences": [

@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-930 bugs. 880 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+931 bugs. 881 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -949,6 +949,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 | [BF-94e69a9](#bf-94e69a9) | Conformance fixtures now reach the realized SDK export cells the export ledger listed as unreached: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-9278c54](#bf-9278c54) | Extension SDKs: `formatKeyText`/`keyDisplayText` upper-cased the first rune of a part, where Pi's… | PiG's own defect | All platforms | Unreleased |
+| [BF-de13d72](#bf-de13d72) | Extensions: `ctx.ui.setTheme(theme)` with a theme object makes that object the active theme as it is, as Pi's… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13913,6 +13914,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `9278c54ab3` (2026-10-21)
 - **Tests:** `coding/extension/host/subprocess/host_helpers_highlight_test.go::TestHighlightCodeLinesMatchPiUnderThePalette`, `coding/extension/host/subprocess/host_helpers_highlight_test.go::TestHighlightCodeLinesRejectsAPaletteMissingAToken`, `coding/extension/host/subprocess/host_helpers_highlight_test.go::TestMarkdownHighlightCodeLinesMatchPi`, `extensions/sdk-py/tests/test_pi_coding_agent_vectors.py`, `extensions/sdk/keybinding_hints_test.go::TestKeyHintsMatchPi`, `extensions/sdk/pi_vectors_test.go::TestGetMarkdownThemeMatchesPi`, `extensions/sdk/pi_vectors_test.go::TestGetSelectListThemeMatchesPi`, `extensions/sdk/pi_vectors_test.go::TestGetSettingsListThemeMatchesPi` and 15 more in docs/bug-ledger.json
 - **Release note:** Extension SDKs: `formatKeyText`/`keyDisplayText` upper-cased the first rune of a part, where Pi's `charAt(0).toUpperCase()` leaves a character beyond the Basic Multilingual Plane (half a surrogate pair) as it is.
+
+### BF-de13d72
+
+**Extensions: `ctx.ui.setTheme(theme)` with a theme object makes that object the active theme as it is, as Pi's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extensions: `ctx.ui.setTheme(theme)` with a theme object makes that object the active theme as it is, as Pi's `setThemeInstance` does.
+- **Root cause:** That left a 256-color dark theme active after any test that installs a palette and puts back the theme it found. In a container without COLORTERM a full ./test/extension-conformance run then compared Pi's truecolor widget goldens with 256-color rows in all nine TestConformance_ComponentKitWidgetsMatchPi cells; each theme test that installs a palette left the state behind, and restoring a pristine theme through SetThemeInstance could not undo it, because it converted it again.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `de13d72467` (2026-10-21)
+- **Tests:** `test/extension-conformance/component_kit_widgets_test.go::TestConformance_ComponentKitWidgetsMatchPi`, `test/extension-conformance/tui_theme_test.go::TestInstalledThemeIsPutBackAsFound`, `tui/theme_color_mode_test.go::TestSetThemeInstanceKeepsTheInstance`
+- **Release note:** Extensions: `ctx.ui.setTheme(theme)` with a theme object makes that object the active theme as it is, as Pi's `setThemeInstance` does. PiG re-created the object in the terminal's color depth, so a truecolor theme set on a terminal without truecolor became a 256-color copy (and the other way round).
 
 ## Divergences from Pi added in this release
 
