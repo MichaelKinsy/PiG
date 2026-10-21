@@ -189,7 +189,9 @@ type requestMsg struct {
 	HandlerID  int             `json:"handler_id,omitempty"`
 	ToolCallID string          `json:"tool_call_id,omitempty"`
 	Args       json.RawMessage `json:"args,omitempty"`
-	Stream     *eventStreamMsg `json:"stream,omitempty"`
+	// ChildSession names the child agent session whose customTools define Tool (tool_call, tool_prepare_arguments).
+	ChildSession string          `json:"child_session,omitempty"`
+	Stream       *eventStreamMsg `json:"stream,omitempty"`
 
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any

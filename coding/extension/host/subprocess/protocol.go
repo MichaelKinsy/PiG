@@ -589,6 +589,8 @@ type RequestPayload struct {
 	HandlerID  int             `json:"handler_id,omitempty"`
 	ToolCallID string          `json:"tool_call_id,omitempty"` // For tool_call: unique ID
 	Args       json.RawMessage `json:"args,omitempty"`         // Tool args or event payload
+	// ChildSession, on tool_call and tool_prepare_arguments, names the child agent session (CallChildSessionCreate) whose customTools define Tool: the tool is the one that session was created with, not one the extension registered. Absent, Tool is a registered tool.
+	ChildSession string `json:"child_session,omitempty"`
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.

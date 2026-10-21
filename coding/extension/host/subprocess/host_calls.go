@@ -42,6 +42,7 @@ func startsAsync(method string) bool {
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
 		"setModel", "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
 		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool,
+		CallChildSessionCreate, CallChildSessionPrompt, CallChildSessionQueue, CallChildSessionAbort, CallChildSessionBindExtensions,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
 		return true
 	default:
@@ -360,6 +361,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleVirtualModelCall(callCtx, me, call)
 	case call.Method == CallExecuteTool || call.Method == CallExecuteToolCancel:
 		result, err = h.handleExecuteToolCall(callCtx, conn, call)
+	case strings.HasPrefix(call.Method, "childSession."):
+		result, err = h.handleChildSessionCall(callCtx, conn, call)
 	case call.Method == "provider.retain" || call.Method == "provider.release":
 		result, err = h.handleProviderReference(conn, call)
 	case call.Method == CallProviderObject:
