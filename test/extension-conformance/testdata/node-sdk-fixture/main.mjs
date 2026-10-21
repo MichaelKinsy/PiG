@@ -712,6 +712,23 @@ export default function (pi) {
     ctx.ui.setEditorText("draft");
     ctx.ui.setToolsExpanded(true);
   } });
+  // ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+  pi.registerCommand("ui_wire_empties_probe", { description: "Call the UI members with empty and unset arguments", handler: async (_args, ctx) => {
+    ctx.ui.setStatus("k", "");
+    ctx.ui.setStatus("k", undefined);
+    ctx.ui.notify("");
+    ctx.ui.notify("typed", "warning");
+    ctx.ui.setTitle("");
+    ctx.ui.setEditorText("");
+    await ctx.ui.select("T", []);
+    await ctx.ui.confirm("", "");
+    await ctx.ui.input("T1");
+    await ctx.ui.input("T2", "");
+    await ctx.ui.input("T3", "ph");
+    await ctx.ui.editor("E1");
+    await ctx.ui.editor("E2", "");
+    await ctx.ui.editor("E3", "pre");
+  } });
   pi.registerCommand("tool_call_guard_probe", { description: "Report the tool names the tool_call guard accepts", handler: async () => {
     pi.on("tool_call", async (event, ctx) => { ctx.ui.notify(`tool_call_guard:${["bash", "read", "probe", "other"].filter((name) => isToolCallEventType(name, event)).join(",")}:end`, "info"); });
   } });

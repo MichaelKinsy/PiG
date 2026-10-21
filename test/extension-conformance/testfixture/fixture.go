@@ -2315,6 +2315,22 @@ func Extension() *sdk.Extension {
 		ctx.SetToolsExpanded(true)
 		return nil
 	})
+	// ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of
+	// each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+	ext.Command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", func(ctx sdk.Context, args string) error {
+		ctx.SetStatus("k", "")
+		ctx.Notify("", "")
+		ctx.Notify("typed", "warning")
+		ctx.SetTitle("")
+		ctx.SetEditorText("")
+		_, _, _ = ctx.Select("T", []string{})
+		_, _ = ctx.Confirm("", "")
+		_, _, _ = ctx.Input("T1", "")
+		_, _, _ = ctx.Input("T3", "ph")
+		_, _, _ = ctx.Editor("E1", "")
+		_, _, _ = ctx.Editor("E3", "pre")
+		return nil
+	})
 	// tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
 	ext.Command("tool_call_guard_probe", "Report the tool names the tool_call guard accepts", func(ctx sdk.Context, args string) error {
 		ext.OnEvent("tool_call", func(hctx sdk.Context, data map[string]any) (any, error) {
