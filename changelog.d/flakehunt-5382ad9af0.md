@@ -1,0 +1,3 @@
+### Fixed
+
+- CI: a Node extension no longer holds a request the host sends it behind the highlight.js language load. In TUI mode the runtime loads Pi's complete grammar set after the startup events, and `lib/index.js` evaluates its ~190 grammars in one synchronous pass on the thread that serves requests: 125 ms on an idle machine and more than the five-second renderer inactivity lease (D56) on a starved one, so a Markdown transform, render or mouse event sent meanwhile was abandoned while the extension was healthy and the proxy returned its input (`got ""` in `TestMarkdownContextsAcrossSDKs/subprocess-node-packed`). Each grammar module is now required on its own event-loop turn before that pass, which only registers them as in Pi. <!-- fix: 5382ad9af0 -->
