@@ -1132,7 +1132,7 @@ func Extension() *sdk.Extension {
 				return err
 			}
 		}
-		return ctx.AppendEntry("ui-availability", fmt.Sprintf("hasUI=%t selected=%s", ctx.HasUI(), selected))
+		return ctx.AppendEntry("ui-availability", fmt.Sprintf("hasUI=%t selected=%s", ctx.HasUI(), dialogText(selected)))
 	})
 
 	ext.Command("ui-state-barrier", "Read UI state after a dialog", func(ctx sdk.Context, _ string) error {
@@ -1153,7 +1153,7 @@ func Extension() *sdk.Extension {
 		if err != nil {
 			return err
 		}
-		ctx.Notify(fmt.Sprintf("selected=%s expanded=%t named=%s missing=%t success=%t error=%s", selected, expanded, named.(map[string]any)["name"], missing == nil, success, message), "info")
+		ctx.Notify(fmt.Sprintf("selected=%s expanded=%t named=%s missing=%t success=%t error=%s", dialogText(selected), expanded, named.(map[string]any)["name"], missing == nil, success, message), "info")
 		return nil
 	})
 
@@ -1351,7 +1351,7 @@ func Extension() *sdk.Extension {
 			return errors.Join(selectErr, inputErr, editorErr, confirmErr)
 		}
 		ctx.Notify(fmt.Sprintf("select=%s input=%s editor=%s confirm=%t",
-			selected, input, edited, confirmed), "info")
+			dialogText(selected), dialogText(input), dialogText(edited), confirmed == true), "info")
 		return nil
 	})
 
@@ -2297,6 +2297,46 @@ func Extension() *sdk.Extension {
 		ctx.Notify("host_info:"+string(wire)+":end", "info")
 		return nil
 	})
+	// ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+	ext.Command("ui_dialog_values_probe", "Report the typed result of each dialog", func(ctx sdk.Context, args string) error {
+		report := func(name string, value any, ok bool) {
+			text := "<undefined>"
+			if ok {
+				encoded, _ := json.Marshal(value)
+				text = string(encoded)
+			}
+			ctx.Notify(name+"="+text, "info")
+		}
+		for _, title := range []string{"S1", "S2", "S3", "S4"} {
+			value, ok, err := ctx.Select(title, []string{"a", "b"})
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		for _, title := range []string{"C1", "C2", "C3", "C4"} {
+			value, err := ctx.Confirm(title, "m")
+			if err != nil {
+				return err
+			}
+			report(title, value, true)
+		}
+		for _, title := range []string{"I1", "I2"} {
+			value, ok, err := ctx.Input(title, "p")
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		for _, title := range []string{"E1", "E2"} {
+			value, ok, err := ctx.Editor(title, "p")
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		return nil
+	})
 	// ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
 	ext.Command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", func(ctx sdk.Context, args string) error {
 		ctx.SetWorkingMessage("Thinking hard")
@@ -3005,4 +3045,10 @@ func nonNilMaps(values []map[string]any) []map[string]any {
 		return []map[string]any{}
 	}
 	return values
+}
+
+// dialogText is a dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is nil.
+func dialogText(value any) string {
+	text, _ := value.(string)
+	return text
 }

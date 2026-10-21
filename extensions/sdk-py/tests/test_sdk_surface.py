@@ -14,6 +14,8 @@ from typing import Any
 
 from test_sdk import _read_frame, _start_fake_host, _write_frame
 
+import pytest
+
 import pig_sdk
 
 
@@ -181,6 +183,24 @@ def test_dialog_timeout_sends_opts() -> None:
         ("ui.input", {"title": "Plain", "placeholder": ""}),
     ]
     assert seen == [("b", True), True, ("pi", True), ("pi", True)]
+
+
+@pytest.mark.parametrize("method, call, reply, want", [
+    ("ui.select", lambda ctx: ctx.select("a", ["x"]), {"selected": 5, "ok": True}, (5, True)),
+    ("ui.select", lambda ctx: ctx.select("a", ["x"]), {"selected": None, "ok": True}, (None, True)),
+    ("ui.select", lambda ctx: ctx.select("a", ["x"]), {"selected": "", "ok": False}, (None, False)),
+    ("ui.confirm", lambda ctx: ctx.confirm("a", "m"), {"confirmed": "yes"}, "yes"),
+    ("ui.confirm", lambda ctx: ctx.confirm("a", "m"), {"confirmed": None}, None),
+    ("ui.confirm", lambda ctx: ctx.confirm("a", "m"), {}, False),
+    ("ui.input", lambda ctx: ctx.input("a", "p"), {"text": {"a": [1, "x"]}, "ok": True}, ({"a": [1, "x"]}, True)),
+    ("ui.editor", lambda ctx: ctx.editor("a", "p"), {"text": [1, 2], "ok": True}, ([1, 2], True)),
+])
+def test_dialog_results_carry_the_clients_json_types(method: str, call: Callable[[pig_sdk.Context], Any], reply: dict[str, Any], want: Any) -> None:
+    """Pi's RPC mode resolves a dialog with whatever JSON the client sent: the SDK returns it unchanged, with undefined (ok False) apart from null."""
+    seen: list[Any] = []
+    _run_command(lambda ctx: seen.append(call(ctx)), {method: reply})
+    assert seen == [want]
+    assert type(seen[0]) is type(want)
 
 
 def test_set_footer_and_header_send_lines() -> None:

@@ -699,6 +699,14 @@ export default function (pi) {
   pi.registerCommand("host_info_probe", { description: "Report getAgentDir, CONFIG_DIR_NAME and VERSION", handler: async (_args, ctx) => {
     ctx.ui.notify(`host_info:${JSON.stringify({ agentDir: getAgentDir(), configDirName: CONFIG_DIR_NAME, version: VERSION, factoryAgentDir })}:end`, "info");
   } });
+  // ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+  pi.registerCommand("ui_dialog_values_probe", { description: "Report the typed result of each dialog", handler: async (_args, ctx) => {
+    const report = (name, value) => ctx.ui.notify(`${name}=${value === undefined ? "<undefined>" : JSON.stringify(value)}`, "info");
+    for (const title of ["S1", "S2", "S3", "S4"]) report(title, await ctx.ui.select(title, ["a", "b"]));
+    for (const title of ["C1", "C2", "C3", "C4"]) report(title, await ctx.ui.confirm(title, "m"));
+    for (const title of ["I1", "I2"]) report(title, await ctx.ui.input(title, "p"));
+    for (const title of ["E1", "E2"]) report(title, await ctx.ui.editor(title, "p"));
+  } });
   pi.registerCommand("ui_forward_probe", { description: "Call the working, paste, editor-text and tools-expanded UI members", handler: async (_args, ctx) => {
     ctx.ui.setWorkingMessage("Thinking hard");
     ctx.ui.setWorkingMessage("");
