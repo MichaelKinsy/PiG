@@ -23,7 +23,9 @@ func TestRPCUIResponsePassesTheClientsJSONThroughLikePi(t *testing.T) {
 	inputCall := func(ui *rpcUIContext) (json.RawMessage, error) {
 		return ui.InputValue(context.Background(), "T", ptr("p"), extension.ExtensionUIDialogOptions{})
 	}
-	editorCall := func(ui *rpcUIContext) (json.RawMessage, error) { return ui.EditorValue(context.Background(), "T", ptr("p")) }
+	editorCall := func(ui *rpcUIContext) (json.RawMessage, error) {
+		return ui.EditorValue(context.Background(), "T", ptr("p"))
+	}
 	for _, test := range []struct {
 		name, members string
 		call          call

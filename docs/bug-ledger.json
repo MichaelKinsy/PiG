@@ -31481,6 +31481,26 @@
         "extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire",
         "test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs"
       ]
+    },
+    {
+      "id": "BF-c4bcb66",
+      "title": "RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or…",
+      "symptom": "RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or whose `cancelled` is not a boolean no longer leaves the dialog pending.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or whose `cancelled` is not a boolean no longer leaves the dialog pending. The dialog resolves with the client's JSON as Pi's does: a Node, Go, Python or Rust extension sees a number, `null`, an object or an array from `select`, `input` and `editor`, and the client's `confirmed` from `confirm`; `cancelled` is read by JavaScript truthiness.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c4bcb663a6",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [

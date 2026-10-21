@@ -15,8 +15,10 @@ type unsetMembersUI struct {
 	calls []string
 }
 
-func (u *unsetMembersUI) SetStatus(key, text string) { u.calls = append(u.calls, "status:"+key+":"+text) }
-func (u *unsetMembersUI) ClearStatus(key string)     { u.calls = append(u.calls, "status:"+key+":<unset>") }
+func (u *unsetMembersUI) SetStatus(key, text string) {
+	u.calls = append(u.calls, "status:"+key+":"+text)
+}
+func (u *unsetMembersUI) ClearStatus(key string) { u.calls = append(u.calls, "status:"+key+":<unset>") }
 func (u *unsetMembersUI) Input(_ context.Context, title, placeholder string, _ extension.ExtensionUIDialogOptions) (string, error) {
 	u.calls = append(u.calls, "input:"+title+":"+placeholder)
 	return "", nil

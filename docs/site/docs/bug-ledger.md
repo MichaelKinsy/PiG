@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-929 bugs. 879 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+930 bugs. 880 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 140 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -948,6 +948,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-f35d0a0](#bf-f35d0a0) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | Unreleased |
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ac1eee](#bf-1ac1eee) | RPC mode now writes the members of an `extension_ui_request` that Pi writes empty, as Pi's `JSON.stringify`… | PiG's own defect | All platforms | Unreleased |
+| [BF-c4bcb66](#bf-c4bcb66) | RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13898,6 +13899,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `1ac1eeebec` (2026-10-20)
 - **Tests:** `coding/cli/rpc_ui_set_widget_factory_test.go::TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/cli/rpc_ui_wire_test.go::TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes`, `coding/extension/host/inproc/ui_unset_members_test.go::TestUIPrompt_UnsetMemberFormsReachTheBoundUI`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_HandleCall_DialogsTellAbsentMembersFromEmptyOnes`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_HandleCall_DialogsWithoutOmittersFallBackToEmpty`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_HandleCall_SetStatusTellsUndefinedFromEmpty`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_SetUIContextReplaysStatusesAsSet` and 2 more in docs/bug-ledger.json
 - **Release note:** RPC mode now writes the members of an `extension_ui_request` that Pi writes empty, as Pi's `JSON.stringify` does: `message: ""` of `notify`, `title: ""` of `setTitle`, `text: ""` of `set_editor_text` (how a client clears its editor), `statusText: ""` of `setStatus` and an empty `options` list of `select` were dropped, so a client could not tell empty from absent. `input` and `editor` no longer write `placeholder: ""` / `prefill: ""` when the extension passed none. In the Go, Python and Rust SDKs `SetStatus(key, "")` is now an empty status text (it used to remove the entry), and `ClearStatus` / `clear_status` is Pi's `setStatus(key, undefined)`; an empty placeholder or prefill is the unset member (Python: `None`). The interactive footer is unchanged.
+
+### BF-c4bcb66
+
+**RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or whose `cancelled` is not a boolean no longer leaves the dialog pending.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c4bcb663a6` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or whose `cancelled` is not a boolean no longer leaves the dialog pending. The dialog resolves with the client's JSON as Pi's does: a Node, Go, Python or Rust extension sees a number, `null`, an object or an array from `select`, `input` and `editor`, and the client's `confirmed` from `confirm`; `cancelled` is read by JavaScript truthiness.
 
 ## Divergences from Pi added in this release
 
