@@ -124,6 +124,15 @@ func writeOldShapeExtensions(t *testing.T, dir string) []string {
 	return dirs
 }
 
+// upgradeCommandFor is the command the notice must print for these extension directories: each path as the shell of the platform reads it. A path outside the plain set (a space, or the "~" of a Windows 8.3 temp directory such as RUNNER~1) is quoted, so the printed words are not the raw paths.
+func upgradeCommandFor(dirs []string) string {
+	words := []string{"pig", "extension", "upgrade"}
+	for _, dir := range dirs {
+		words = append(words, commandWord(dir))
+	}
+	return strings.Join(words, " ")
+}
+
 func useRepositorySDK(t *testing.T) string {
 	t.Helper()
 	configRoot := t.TempDir()
@@ -184,7 +193,7 @@ func TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch(t *testing.T) {
 			t.Errorf("notice lacks %s:\n%s", name, notice)
 		}
 	}
-	if !strings.Contains(notice, "Run: pig extension upgrade "+dirs[0]+" "+dirs[1]+" "+dirs[2]+" "+dirs[3]+"\n") {
+	if !strings.Contains(notice, "Run: "+upgradeCommandFor(dirs[:4])+"\n") {
 		t.Errorf("notice lacks the one command:\n%s", notice)
 	}
 }

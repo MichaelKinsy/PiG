@@ -25,7 +25,7 @@ func TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll(t *testing.T
 				t.Errorf("stderr lacks %s:\n%s", name, stderr)
 			}
 		}
-		if !strings.Contains(stderr, "Run: pig extension upgrade "+strings.Join(dirs, " ")+"\n") {
+		if !strings.Contains(stderr, "Run: "+upgradeCommandFor(dirs)+"\n") {
 			t.Errorf("stderr lacks the one command for all four:\n%s", stderr)
 		}
 	})
