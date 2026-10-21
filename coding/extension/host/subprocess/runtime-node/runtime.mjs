@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { inspect } from "node:util";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
-import { installTimerOrigin, originKind, outsideTimer, setHandlersRunning, setTimerDefer } from "./timer-origin.mjs";
+import { installTimerOrigin, originKind, originToolCallId, outsideTimer, setHandlersRunning, setTimerDefer, setToolCallIdSource } from "./timer-origin.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
 import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
 import { EditorComponentHost } from "./editor-component.mjs";
@@ -35,6 +35,13 @@ import { dispatchOverlayMouse, takesMouse } from "./mouse.mjs";
 import { EventReplicas } from "./event-stream.mjs";
 
 installTimerOrigin();
+setToolCallIdSource(() => {
+  for (const runtime of liveRuntimes) {
+    const toolCallId = runtime.requestContext.getStore()?.toolCallId;
+    if (toolCallId !== undefined) return toolCallId;
+  }
+  return undefined;
+});
 setHandlersRunning(() => {
   for (const runtime of liveRuntimes) {
     for (const request of runtime.requestRecords.values()) {
@@ -1389,12 +1396,14 @@ export class Connection {
     // Pi's loop turns while a sibling tool awaits real work, so a timer callback runs right after the tool that queued it ends, with its process.nextTick callbacks; the host releases a "tick" call there.
     const timer = kind !== undefined;
     const tick = kind === "tick" || (timer && siblingToolPending());
+    // The host runs a tick call after the tool_execution_end of the tool call whose handler queued the callback, which this process cannot order against the call: it says which tool call that was.
+    const originTool = tick ? originToolCallId() : undefined;
     return new Promise((resolve, reject) => {
       this.touchRequest(parentRequestId);
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain();
       try {
-        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}) } });
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}), ...(originTool !== undefined ? { origin_tool_call_id: originTool } : {}) } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -3030,7 +3039,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, toolCall: env.request?.method === "tool_call", controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
+    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain();

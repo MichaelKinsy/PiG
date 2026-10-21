@@ -2,8 +2,19 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 // pig additive (D189): Pi runs an extension's timer and immediate callbacks on the thread that runs the agent, so such a callback runs only when the agent's run awaits real work or the loop is idle (agent-loop.ts, rpc-mode.ts). This runtime is another process, whose loop runs the callback at once and writes the host calls it makes. The host holds those calls until Pi's loop would have run the callback, so each call says it came from a timer or an immediate: CallPayload.Timer.
 //
-// A callback runs in a store that every promise continuation and later callback it starts inherits, so the work a callback causes is marked as well. A request the host sends is served outside the store: it starts on the host's step, not on the timer's.
+// A callback runs in a store that every promise continuation and later callback it starts inherits, so the work a callback causes is marked as well. A request the host sends is served outside the store: it starts on the host's step, not on the timer's. The store says which tool call's handler queued the callback, because the host runs the calls of a callback after that call's tool_execution_end (CallPayload.OriginToolCallID).
 const origin = new AsyncLocalStorage();
+
+// The tool call whose handler is running the current code, undefined outside one.
+let currentToolCallId = () => undefined;
+export function setToolCallIdSource(fn) {
+  currentToolCallId = fn;
+}
+
+// toolOfQueuer is the tool call whose handler queues the callback now: the one a callback that queues this one belongs to, else the one whose handler runs.
+function toolOfQueuer() {
+  return originToolCallId() ?? currentToolCallId();
+}
 
 let installed = false;
 
@@ -37,8 +48,9 @@ export function installTimerOrigin() {
     const original = globalThis[name];
     const wrapped = function (callback, ...rest) {
       if (typeof callback !== "function") return Reflect.apply(original, this, [callback, ...rest]);
+      const tool = toolOfQueuer();
       const fromTimer = (...args) => {
-        const run = () => origin.run("timer", callback, ...args);
+        const run = () => origin.run({ kind: "timer", tool }, callback, ...args);
         if (deferring && !handlersRunning()) waiting.push(run);
         else return run();
       };
@@ -56,14 +68,20 @@ export function installTimerOrigin() {
   const nextTick = process.nextTick;
   process.nextTick = function (callback, ...rest) {
     if (typeof callback !== "function") return Reflect.apply(nextTick, this, [callback, ...rest]);
-    return Reflect.apply(nextTick, this, [(...args) => origin.run("tick", callback, ...args), ...rest]);
+    const tool = toolOfQueuer();
+    return Reflect.apply(nextTick, this, [(...args) => origin.run({ kind: "tick", tool }, callback, ...args), ...rest]);
   };
 }
 
 // originKind is "timer" for a timer or immediate callback, or work one started, "tick" for a process.nextTick callback or work one started, and undefined elsewhere. Work started inside a callback of the other kind takes that callback's kind.
 export function originKind() {
-  const store = origin.getStore();
-  return store === "timer" || store === "tick" ? store : undefined;
+  const kind = origin.getStore()?.kind;
+  return kind === "timer" || kind === "tick" ? kind : undefined;
+}
+
+// originToolCallId is the tool call whose handler queued the callback the current code runs in, or work such a callback started: undefined when the callback was queued outside a tool call's handler, and elsewhere.
+export function originToolCallId() {
+  return origin.getStore()?.tool;
 }
 
 // outsideTimer returns fn running outside any timer callback's store.
