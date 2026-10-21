@@ -14,7 +14,6 @@ import { basename } from "node:path";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { inspect } from "node:util";
-import { flushCompileCache } from "node:module";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
@@ -2945,8 +2944,6 @@ export class Runtime {
             this.highlightAfter = new Set(["session_start", "resources_discover"]);
             this.loadHighlightLanguagesAfterStartup();
           }
-          // The host owns process teardown, so flush bytecode when processing ready rather than relying on normal Node exit. Factory/module state is not persisted.
-          flushCompileCache();
           if (this.loadedHandlers.length > 0) this.loadedPromise = this.runLoadedHandlers();
           continue;
         }

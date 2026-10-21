@@ -1,4 +1,5 @@
 import net from "node:net";
+import { flushCompileCache } from "node:module";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { importExtension } from "./jiti-loader.mjs";
@@ -92,6 +93,8 @@ export class Generations {
       else await reportLoadFailure(socket, loadFailure(error, phase));
       return false;
     }
+    // pig additive (D20): the host owns process teardown, so the bytecode this load compiled is flushed here rather than relying on normal Node exit. The flush serializes every module compiled so far on this thread, which takes seconds on a starved machine, so it ends before the member registers: once registered the host sends requests under the renderer inactivity lease (D56), and a flush after the host's ready message held the first request past it. Loading already holds this thread; a registered member never waits on it.
+    flushCompileCache();
     runtime.commitLoad();
     process.env.PIG_EXT_SOCKET = socket;
     this.live++;
