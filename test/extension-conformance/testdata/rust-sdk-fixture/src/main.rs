@@ -316,6 +316,15 @@ fn kit_compaction_view(tokens: u64, set: impl FnOnce(&mut kit::CompactionSummary
 }
 
 
+const KIT_SKILL_CONTENT: &str = "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list.";
+
+fn kit_skill_view(set: impl FnOnce(&mut kit::SkillInvocation)) -> kit::View {
+    let mut node = kit::SkillInvocation::new("code-review", KIT_SKILL_CONTENT).id("s");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
 /// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 /// §10), built with the SDK's own constructors; the key is
 /// "<module>/<export>/<case name>" and the case's wire node is its vector's
@@ -349,6 +358,20 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
         "pi-coding-agent/CompactionSummaryMessageComponent/tokens 1234567 expanded" => kit_compaction_view(1234567, |n| n.set_expanded(true)),
         "pi-coding-agent/CompactionSummaryMessageComponent/empty summary tokens 0 expanded" => {
             let mut node = kit::CompactionSummary::new("", 0);
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/SkillInvocationMessageComponent/collapsed"
+        | "pi-coding-agent/SkillInvocationMessageComponent/click toggles"
+        | "pi-coding-agent/SkillInvocationMessageComponent/right click ignored" => kit_skill_view(|_| {}),
+        "pi-coding-agent/SkillInvocationMessageComponent/expanded" => kit_skill_view(|n| n.set_expanded(true)),
+        "pi-coding-agent/SkillInvocationMessageComponent/outputPad 0 collapsed" => kit_skill_view(|n| n.set_output_pad(0)),
+        "pi-coding-agent/SkillInvocationMessageComponent/outputPad 0 expanded" => kit_skill_view(|n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/SkillInvocationMessageComponent/empty skill expanded" => {
+            let mut node = kit::SkillInvocation::new("", "");
             node.set_expanded(true);
             kit::View::new(node)
         }

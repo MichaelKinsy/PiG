@@ -1327,3 +1327,47 @@ class CompactionSummary(_Node):
 
 
 __all__ += ["CompactionSummary"]
+
+
+class SkillInvocation(_Node):
+    """Coding-agent's ``SkillInvocationMessageComponent(skillBlock,
+    getMarkdownTheme(), outputPad)``: a skill's invocation, one line collapsed
+    and the skill's content behind a click or ``set_expanded``. It draws with
+    the active theme, and a node with an ``id`` keeps its host component
+    across frames, as :class:`BranchSummary` does."""
+
+    kind = "skill-invocation"
+
+    def __init__(self, name: str, content: str, *, output_pad: int = 1, id: str = "") -> None:  # noqa: A002 - upstream's field name
+        self.id = str(id)
+        self.name = str(name)
+        self.content = str(content)
+        self.output_pad = int(output_pad)
+        self.expanded = False
+
+    def set_expanded(self, expanded: bool) -> None:
+        """Upstream ``setExpanded``."""
+        self.expanded = bool(expanded)
+
+    def set_output_pad(self, output_pad: int) -> None:
+        """Upstream ``setOutputPad``."""
+        self.output_pad = int(output_pad)
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.id:
+            out["id"] = self.id
+        if self.output_pad != 1:
+            out["outputPad"] = self.output_pad
+        if self.expanded:
+            out["expanded"] = True
+        skill: dict[str, Any] = {}
+        if self.name:
+            skill["name"] = self.name
+        if self.content:
+            skill["content"] = self.content
+        out["skill"] = skill
+        return out
+
+
+__all__ += ["SkillInvocation"]
