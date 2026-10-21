@@ -12,8 +12,6 @@ import (
 // Pi's no-op UI context answers `ctx.ui.theme` with the global theme (runner.ts noOpUIContext), so an in-process extension running with no UI (print, JSON) reads
 // the palette the TUI would. This package registers the active theme with the shared no-op context at init.
 func TestNoopUIContextThemeIsTheActiveTheme(t *testing.T) {
-	// tui.SetThemeInstance re-resolves the theme to the terminal's color depth (the instance is not kept as loaded); without COLORTERM the palette read back is the 256-color one, not the true-color theme the test loaded.
-	t.Setenv("COLORTERM", "truecolor")
 	previous := tui.ActiveTheme()
 	t.Cleanup(func() { tui.SetThemeInstance(previous) })
 	theme, err := tui.LoadThemeFromPath(filepath.Join("..", "..", "tui", "theme_dark.json"), tui.TerminalColorModeTrueColor)
@@ -22,11 +20,12 @@ func TestNoopUIContextThemeIsTheActiveTheme(t *testing.T) {
 	}
 	tui.SetThemeInstance(theme)
 
+	// SetThemeInstance resolves the instance to the terminal's color depth, so the active theme is the reference, not the instance as loaded.
 	got := extension.NoopUIContext.Theme()
 	if got == nil {
 		t.Fatal("NoopUIContext.Theme() = nil with an active theme, want its palette")
 	}
-	if want := ExtensionThemePalette(theme); !reflect.DeepEqual(got, want) {
+	if want := ExtensionThemePalette(tui.ActiveTheme()); !reflect.DeepEqual(got, want) {
 		t.Fatalf("NoopUIContext.Theme() = %+v, want the active theme's palette %+v", got, want)
 	}
 }
