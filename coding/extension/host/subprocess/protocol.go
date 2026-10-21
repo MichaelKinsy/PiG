@@ -3,6 +3,7 @@ package subprocess
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
@@ -79,7 +80,7 @@ type Envelope struct {
 	Type string `json:"type"`
 
 	// barrier, when set, is a host-side marker, not a frame: the dispatcher closes it when it reaches it, so everything the read loop read before the marker is dispatched.
-	barrier chan struct{}
+	barrier *dispatchMark
 
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
@@ -1630,3 +1631,11 @@ const NotifyBashOperationsRelease = "bash_operations_release"
 type BashOperationsRelease struct {
 	Handle string `json:"handle"`
 }
+
+// dispatchMark is the marker Conn.dispatchBarrier queues: released once, by the dispatcher that reached it or by the sender that gave up.
+type dispatchMark struct {
+	done chan struct{}
+	once sync.Once
+}
+
+func (m *dispatchMark) release() { m.once.Do(func() { close(m.done) }) }

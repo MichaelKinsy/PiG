@@ -3470,7 +3470,7 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				return nil, errors.New("connection closed before register")
 			}
 			if env.barrier != nil {
-				close(env.barrier)
+				env.barrier.release()
 				continue
 			}
 			if env.Type == MsgRegister && env.Register != nil {
@@ -4453,7 +4453,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	lanes := newCallLanes()
 	for env := range conn.Incoming() {
 		if env.barrier != nil {
-			close(env.barrier)
+			env.barrier.release()
 			continue
 		}
 		if !h.acceptsNodeGeneration(me) {
