@@ -815,9 +815,9 @@ key = "ctx.ui.custom(options.onHandle)"
 node = "RuntimeUI.custom"
 node_partial = "mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73"
 wire = "subprocess.RemoteOverlayOpenPayload.hasHandle"
-go = "-"
-rust = "-"
-python = "-"
+go = "RemoteOverlayOptions.OnHandle"
+rust = "Context::custom_component_with_handle"
+python = "_RemoteOverlayState.on_handle"
 
 [[row]]
 key = "ctx.ui.addAutocompleteProvider"
