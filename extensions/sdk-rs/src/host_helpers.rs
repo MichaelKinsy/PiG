@@ -69,34 +69,30 @@ pub(crate) fn decode_date(result: Option<Value>) -> io::Result<Option<f64>> {
 /// The result of a host call made outside a handler: over the running extension's connection, or over the one this call dials, which `run` reuses.
 fn helper_call(method: &str, args: Value) -> io::Result<Option<Value>> {
     let running = running_for(&locked(&RUNNING), socket_path().as_deref());
-    if let Some(conn) = running {
-        let pending = conn.begin_call_for(None, method, Some(args))?;
-        return finish(conn.wait_call(pending)?);
-    }
-    let path = match socket_path() {
-        Some(path) => path,
-        None => return Err(io::Error::new(io::ErrorKind::NotConnected, "not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig")),
+    let conn = match running {
+        Some(conn) => conn,
+        None => dial_loading()?,
     };
-    let conn = {
-        let mut dialled = locked(&DIALLED);
-        match dialled.iter().find(|(dialled_path, _)| *dialled_path == path) {
-            Some((_, conn)) => conn.clone(),
-            None => {
-                let conn = Arc::new(Connection::new(UnixStream::connect(&path)?));
-                dialled.push((path, conn.clone()));
-                conn
-            }
-        }
-    };
-    // No reader thread runs yet: read frames until this call's result, as the extension does for its first events.on.
     let pending = conn.begin_call_for(None, method, Some(args))?;
-    loop {
-        let env = conn.read_envelope()?;
-        if conn.complete_call(&env) {
-            break;
-        }
-    }
     finish(conn.wait_call(pending)?)
+}
+
+/// The connection a factory's host calls use before `run`: the one the first of them dials to this extension's socket, which `run` takes. It is never a running
+/// extension's: the host attributes what a call carries (a `pi.events` listener) to the extension of the connection it arrives on. No reader thread serves it, so
+/// a call on it reads the frames itself ([`Connection::is_loading`]).
+pub(crate) fn dial_loading() -> io::Result<Arc<Connection>> {
+    let path = match socket_path() {
+        Some(path) if !path.is_empty() => path,
+        _ => return Err(io::Error::new(io::ErrorKind::NotConnected, "not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig")),
+    };
+    let mut dialled = locked(&DIALLED);
+    if let Some((_, conn)) = dialled.iter().find(|(dialled_path, _)| *dialled_path == path) {
+        return Ok(conn.clone());
+    }
+    let conn = Arc::new(Connection::new(UnixStream::connect(&path)?));
+    conn.set_loading(true);
+    dialled.push((path, conn.clone()));
+    Ok(conn)
 }
 
 fn finish(result: crate::protocol::CallResultMsg) -> io::Result<Option<Value>> {

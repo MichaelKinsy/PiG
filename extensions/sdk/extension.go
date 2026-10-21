@@ -134,6 +134,8 @@ type Extension struct {
 
 	eventMu     sync.Mutex
 	eventNextID int
+	// loading is the connection the factory's first pi.events call opened before Run (loadingConnection), guarded by eventMu. Run adopts that connection and clears this.
+	loading *conn
 
 	// run is the replicated signal of the run in progress (Context.Signal).
 	run runSignal
@@ -252,7 +254,7 @@ type Extension struct {
 	// loadedMu guards loadedFuncs, the OnLoaded handlers waiting for Run.
 	loadedMu    sync.Mutex
 	loadedFuncs []func(Context)
-	// loadedDone closes when the factory's emits were delivered and the OnLoaded handlers returned; requests wait for it.
+	// loadedDone closes when the OnLoaded handlers returned; requests wait for it.
 	loadedDone <-chan struct{}
 
 	// themeFeed and expandedFeed deliver a change of the replicated theme and tool-expansion state to the handlers of OnThemeChange and OnToolsExpandedChange.
@@ -1099,6 +1101,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		e.conn = newConn(nc)
 	}
 	conn := e.conn
+	e.loading = nil
 	e.eventMu.Unlock()
 	if started == nil {
 		conn.start()
@@ -1220,7 +1223,8 @@ func (e *Extension) loop() error {
 			e.requestWG.Go(func() {
 				defer finish()
 				defer ctx.start.release()
-				if env.Request == nil || env.Request.Method != methodEventsDispatch {
+				// A loop that was not started by Run (a test serving requests on its own connection) has no loaded gate.
+				if e.loadedDone != nil && (env.Request == nil || env.Request.Method != methodEventsDispatch) {
 					<-e.loadedDone
 				}
 				e.handleArmedRequest(env.ID, env.Request, ctx)

@@ -41,15 +41,8 @@ struct BusState {
     conn: Option<Arc<Connection>>,
     // A dispatch can arrive before events.on returns, and after events.off for a listener the Host had already snapshotted, so a listener stays until the Host releases it.
     subs: HashMap<String, Arc<Sub>>,
-    // What the factory did before the extension ran, in the order it did it: a subscription is registered with the Host and an emit is delivered, each in turn, so a listener subscribed before an emit hears it, as with Pi's synchronous EventEmitter.
-    pending: Vec<PendingOp>,
-    // The emits go_live set aside for `take_factory_emits`.
-    factory_emits: Vec<(String, Value)>,
-}
-
-enum PendingOp {
-    On(Arc<Sub>),
-    Emit { channel: String, data: Value },
+    // The listeners subscribed before the extension ran, in subscription order: `go_live` registers them with the Host before the extension registers, and a factory's own emit reaches the ones subscribed before it (`emit_before_run`).
+    pending: Vec<Arc<Sub>>,
 }
 
 /// A listener the extension registers with the Host when it connects.
@@ -72,26 +65,35 @@ impl BusRegistry {
         state.conn = Some(conn.clone());
         let pending = std::mem::take(&mut state.pending);
         let mut out = Vec::new();
-        for op in pending {
-            match op {
-                PendingOp::On(sub) => {
-                    let mut sub_state = sub.state.lock().unwrap();
-                    if sub_state.off {
-                        continue;
-                    }
-                    sub_state.sent = true;
-                    out.push(LiveOp { handler_id: sub.id.clone(), channel: sub.channel.clone() });
-                }
-                // The Host dispatches an emit to this extension's own listeners too, and the extension serves a dispatch only once it is ready.
-                PendingOp::Emit { channel, data } => state.factory_emits.push((channel, data)),
+        for sub in pending {
+            let mut sub_state = sub.state.lock().unwrap();
+            if sub_state.off {
+                continue;
             }
+            sub_state.sent = true;
+            out.push(LiveOp { handler_id: sub.id.clone(), channel: sub.channel.clone() });
         }
         out
     }
 
-    /// The emits the factory made before the extension connected, in the order it made them.
-    pub(crate) fn take_factory_emits(&self) -> Vec<(String, Value)> {
-        std::mem::take(&mut self.state.lock().unwrap().factory_emits)
+    /// Runs the listeners subscribed before the extension ran for `channel`, in subscription order over the snapshot taken now, as EventEmitter clones its listener array for each emit, and returns how many there were. A listener's error or panic is reported and reaches neither the emitter nor the listeners after it (event-bus.ts safeHandler).
+    fn run_factory_listeners(self: &Arc<Self>, conn: &Arc<Connection>, channel: &str, data: &Value) -> usize {
+        let listeners: Vec<Arc<Sub>> =
+            self.state.lock().unwrap().pending.iter().filter(|sub| sub.channel == channel && !sub.state.lock().unwrap().off).cloned().collect();
+        let ctx = Context::for_factory(conn.clone(), self.clone());
+        for sub in &listeners {
+            let outcome = catch_unwind(AssertUnwindSafe(|| (sub.handler)(&ctx, data))).unwrap_or_else(|payload| {
+                Err(payload
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .or_else(|| payload.downcast_ref::<&str>().map(|message| (*message).to_string()))
+                    .unwrap_or_else(|| "extension handler panicked".to_string()))
+            });
+            if let Err(err) = outcome {
+                eprintln!("Event handler error ({channel}): {err}");
+            }
+        }
+        listeners.len()
     }
 
     /// Forgets a finished run's listeners: the Host dropped them when the connection closed.
@@ -186,7 +188,7 @@ impl EventBus {
             let mut state = self.registry.state.lock().unwrap();
             state.subs.insert(sub.id.clone(), sub.clone());
             if !state.live {
-                state.pending.push(PendingOp::On(sub));
+                state.pending.push(sub);
                 return Ok(subscription);
             }
             sub.state.lock().unwrap().sent = true;
@@ -200,17 +202,34 @@ impl EventBus {
 
     /// Delivers `data` to every listener of `channel`, in registration order, and returns when each has finished. Like EventEmitter, an emit on `"error"` with no listener fails.
     ///
-    /// Called through [`Extension::events`](crate::Extension::events) before the extension runs, as a node factory's `pi.events.emit` is, the emit is queued and delivered once the extension is loaded, before `on_loaded` handlers and any request: Pi delivers it at once to the listeners of the extensions loaded before this one and to the factory's own, and the host does the same at that point. It returns `Ok` then; a failure of the delivery, such as an emit on `"error"` that no listener handles, is reported on stderr. Use [`Extension::on_loaded`](crate::Extension::on_loaded) for work that needs the live session.
+    /// Called through [`Extension::events`](crate::Extension::events) while the factory runs (before the extension runs), it does what Pi's synchronous emit does in a factory: the listeners of the extensions loaded before this one hear it at once, then this extension's own listeners subscribed before the emit, each finishing before `emit` returns, and an emit on `"error"` that nobody hears fails. Both need the Host, so the first factory-time bus call connects to it (as `parse_frontmatter` does) and `run` reuses the connection: a factory that runs with no Host (no `PIG_EXT_SOCKET`, as in a unit test) gets an error. A listener of this extension that the factory's emit runs has a [`Context`] with no session state yet (its `cwd` and `mode` are empty), and until the extension registers the only host calls it can make are `pi.events` ones and the parse helpers (`parse_frontmatter`, `parse_date`). Use [`Extension::on_loaded`](crate::Extension::on_loaded) for work that needs the live session.
     pub fn emit(&self, channel: &str, data: Value) -> io::Result<()> {
-        if self.ctx.is_none() {
-            let mut state = self.registry.state.lock().unwrap();
-            if state.conn.is_none() {
-                state.pending.push(PendingOp::Emit { channel: channel.to_string(), data });
-                return Ok(());
-            }
+        let before_run = match &self.ctx {
+            Some(ctx) => ctx.conn.is_loading(),
+            None => self.registry.state.lock().unwrap().conn.is_none(),
+        };
+        if before_run {
+            return self.emit_before_run(channel, data);
         }
         let outcome = self.call("events.emit", json!({"channel": channel, "value": true, "json": data}))?;
         if outcome.is_some_and(|outcome| outcome["unhandledError"] == Value::Bool(true)) {
+            return Err(io::Error::other(format!("pi.events.emit {channel:?}: unhandled error event: {data}")));
+        }
+        Ok(())
+    }
+
+    /// Emit for a factory that has not connected the extension yet. The Host delivers to the listeners it holds, which are those of the extensions loaded before this one: this extension's own listeners are registered with it only when `run` connects. They run here, in the order they were subscribed, after the Host's, as they would in Pi's EventEmitter, where this extension's listeners are the last registered.
+    fn emit_before_run(&self, channel: &str, data: Value) -> io::Result<()> {
+        let conn = crate::host_helpers::dial_loading()?;
+        let result = conn.call_for(None, "events.emit", Some(json!({"channel": channel, "value": true, "json": data})))?;
+        if let Some(err) = result.error {
+            return Err(io::Error::other(crate::context::host_error_message(err)));
+        }
+        let mut unhandled = result.result.is_some_and(|outcome| outcome["unhandledError"] == Value::Bool(true));
+        if self.registry.run_factory_listeners(&conn, channel, &data) > 0 {
+            unhandled = false;
+        }
+        if unhandled {
             return Err(io::Error::other(format!("pi.events.emit {channel:?}: unhandled error event: {data}")));
         }
         Ok(())

@@ -47,7 +47,7 @@ func (c Context) ExtensionSourceInfo() (info SourceInfo, ok bool) {
 	return c.ext.sourceInfo, c.ext.sourceInfoKnown
 }
 
-// OnLoaded registers handler to run once the extension is registered with the host and has received its state, before it serves any request (session_start included) and after the emits its factory made were delivered. It is the place for work a factory cannot do: a [Context] exists, so the handler can read session state, call the host and emit on [Context.Events]. Handlers run in registration order, one at a time, each to completion, on a goroutine of their own so a host call in one is answered; the host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for a request. A handler that panics is recovered and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is session_start. A handler registered after Run has started never runs.
+// OnLoaded registers handler to run once the extension is registered with the host and has received its state, before it serves any request (session_start included). It is the place for work a factory cannot do: a [Context] exists, so the handler can read session state, call the host and emit on [Context.Events]. Handlers run in registration order, one at a time, each to completion, on a goroutine of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that panics is recovered and does not stop the next. Pi has no such hook: its factory runs with no context (its action methods throw until the runner binds) and the extension's first handler is session_start, where an await of any host call works. A handler registered after Run has started never runs.
 func (e *Extension) OnLoaded(handler func(ctx Context)) {
 	if handler == nil {
 		panic("sdk: OnLoaded: handler must not be nil")
@@ -57,23 +57,19 @@ func (e *Extension) OnLoaded(handler func(ctx Context)) {
 	e.loadedMu.Unlock()
 }
 
-// startLoaded delivers the factory's emits and runs the OnLoaded handlers on a goroutine of their own, and returns the channel that closes when they are done; requests other than listener dispatches wait for it.
+// startLoaded runs the OnLoaded handlers on a goroutine of their own, and returns the channel that closes when they are done; requests other than listener dispatches wait for it.
 func (e *Extension) startLoaded() <-chan struct{} {
 	e.loadedMu.Lock()
 	handlers := e.loadedFuncs
 	e.loadedFuncs = nil
 	e.loadedMu.Unlock()
-	e.eventBus.mu.Lock()
-	emits := len(e.eventBus.factoryEmits)
-	e.eventBus.mu.Unlock()
 	done := make(chan struct{})
-	if len(handlers) == 0 && emits == 0 {
+	if len(handlers) == 0 {
 		close(done)
 		return done
 	}
 	e.requestWG.Go(func() {
 		defer close(done)
-		e.flushFactoryEmits()
 		ctx := Context{ext: e}
 		for _, handler := range handlers {
 			func() {

@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"encoding/json"
+	"net"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -12,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -257,6 +259,86 @@ func TestOnLoadedAndFactoryEmitAcrossSDKs(t *testing.T) {
 		want := []any{map[string]any{"n": float64(1), "from": "factory"}}
 		if got, _ := report["factoryHeard"].([]any); !reflect.DeepEqual(got, want) {
 			t.Errorf("factory emit heard %v, want %v", got, want)
+		}
+		// Pi's emit is synchronous (event-bus.ts:13-34): the factory's own listener had run when emit returned, and an emit on "error" that nobody hears threw in the factory. A queued emit would have read 0 and false.
+		if report["heardAtEmit"] != float64(1) {
+			t.Errorf("the factory's listener had heard %v emits when emit returned, want 1", report["heardAtEmit"])
+		}
+		if report["errorEmitFailed"] != true {
+			t.Errorf("an emit on \"error\" that nobody hears did not fail in the factory: errorEmitFailed = %v", report["errorEmitFailed"])
+		}
+	})
+}
+
+// earlierListener is an extension loaded before the fixture, the host's listener a factory-time emit reaches first. Its c3:cross listener takes its time and then stamps the moment, so an emit that returned before the listener finished reads an earlier stamp than the listener's; its "error" listener handles the factory's emit on "error".
+type earlierListener struct {
+	mu         sync.Mutex
+	cross      []any
+	crossAt    int64
+	errorsSeen []any
+}
+
+func loadEarlierListener(t *testing.T, r *modelTypesRig) *earlierListener {
+	t.Helper()
+	earlier := &earlierListener{}
+	// A fused extension serves its factory over the host's pipe, and the pipe is the factory's own connection while it runs.
+	serve := func(conn net.Conn) error {
+		return sdk.ServeFactory(conn, func() *sdk.Extension {
+			e := sdk.New("c3-earlier")
+			if _, err := e.Events().On("c3:cross", func(_ sdk.Context, data any) error {
+				time.Sleep(250 * time.Millisecond)
+				earlier.mu.Lock()
+				earlier.cross = append(earlier.cross, data)
+				earlier.crossAt = time.Now().UnixMilli()
+				earlier.mu.Unlock()
+				return nil
+			}); err != nil {
+				panic(err)
+			}
+			if _, err := e.Events().On("error", func(_ sdk.Context, data any) error {
+				earlier.mu.Lock()
+				earlier.errorsSeen = append(earlier.errorsSeen, data)
+				earlier.mu.Unlock()
+				return nil
+			}); err != nil {
+				panic(err)
+			}
+			return e
+		})
+	}
+	if _, err := r.host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "c3-earlier", Path: "/ext/c3-earlier.go", Enabled: true}, serve); err != nil {
+		t.Fatal(err)
+	}
+	return earlier
+}
+
+// A factory's emit reaches the listeners of the extensions loaded before it, at once and in order: the earlier extension's listener ran and finished before the factory's own listener ran, which ran before emit returned, and the earlier extension's "error" listener handled the factory's emit on "error", which therefore did not fail. The earlier listener sleeps before it stamps the time, so an SDK whose emit is queued or does not wait for the host's listeners reads a return time before the earlier stamp.
+func TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs(t *testing.T) {
+	var earlier *earlierListener
+	eachModelTypesPlacementAfter(t, nil, func(t *testing.T, r *modelTypesRig) {
+		r.keepLoaded = true
+		earlier = loadEarlierListener(t, r)
+	}, func(t *testing.T, r *modelTypesRig) {
+		report := r.tool("c3_loaded")
+		earlier.mu.Lock()
+		defer earlier.mu.Unlock()
+		wantData := []any{map[string]any{"from": "factory"}}
+		if !reflect.DeepEqual(earlier.cross, wantData) {
+			t.Fatalf("the earlier extension heard %v on c3:cross, want %v", earlier.cross, wantData)
+		}
+		if !reflect.DeepEqual(earlier.errorsSeen, wantData) {
+			t.Errorf("the earlier extension heard %v on error, want %v", earlier.errorsSeen, wantData)
+		}
+		if report["errorEmitFailed"] != false {
+			t.Errorf("the factory's emit on \"error\" failed although an earlier extension listens: errorEmitFailed = %v", report["errorEmitFailed"])
+		}
+		own, _ := report["crossOwnAt"].(float64)
+		returned, _ := report["crossReturnedAt"].(float64)
+		if own == 0 || returned == 0 {
+			t.Fatalf("the factory recorded no c3:cross times: %v", report)
+		}
+		if !(float64(earlier.crossAt) <= own && own <= returned) {
+			t.Errorf("order: earlier listener finished at %d, factory's own listener ran at %v, emit returned at %v; want that order", earlier.crossAt, own, returned)
 		}
 	})
 }

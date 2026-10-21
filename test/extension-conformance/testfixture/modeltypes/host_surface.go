@@ -16,9 +16,14 @@ func registerHostSurface(e *sdk.Extension) {
 		themeLog     = []string{}
 		expandedLog  = []bool{}
 		heardFactory = []any{}
-		loaded       any
-		themeOff     func()
-		expandedOff  func()
+		// heardAtEmit is how many emits the factory's own listener had heard when the factory's emit returned; errorEmitFailed whether the factory's emit on "error", which nobody hears, failed.
+		heardAtEmit     int
+		errorEmitFailed bool
+		// crossOwnAt is when the factory's own c3:cross listener ran and crossReturnedAt when the factory's emit on c3:cross returned, in Unix milliseconds: an extension loaded before this one that listens on c3:cross runs first and finishes before emit returns.
+		crossOwnAt, crossReturnedAt int64
+		loaded                      any
+		themeOff                    func()
+		expandedOff                 func()
 	)
 	tool := func(name string, execute func(ctx sdk.Context, args map[string]any) (any, error)) {
 		e.RegisterTool(sdk.ToolDefinition{Name: name, Label: name, Description: name, Parameters: object, Execute: execute})
@@ -36,6 +41,23 @@ func registerHostSurface(e *sdk.Extension) {
 	if err := e.Events().Emit("c3:factory", map[string]any{"n": 1, "from": "factory"}); err != nil {
 		panic(err)
 	}
+	// Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
+	mu.Lock()
+	heardAtEmit = len(heardFactory)
+	mu.Unlock()
+	errorEmitFailed = e.Events().Emit("error", map[string]any{"from": "factory"}) != nil
+	if _, err := e.Events().On("c3:cross", func(sdk.Context, any) error {
+		mu.Lock()
+		crossOwnAt = time.Now().UnixMilli()
+		mu.Unlock()
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+	if err := e.Events().Emit("c3:cross", map[string]any{"from": "factory"}); err != nil {
+		panic(err)
+	}
+	crossReturnedAt = time.Now().UnixMilli()
 	// The handler takes its time; a request that ran before it finished would read nil.
 	e.OnLoaded(func(ctx sdk.Context) {
 		time.Sleep(300 * time.Millisecond)
@@ -149,6 +171,6 @@ func registerHostSurface(e *sdk.Extension) {
 	tool("c3_loaded", func(sdk.Context, map[string]any) (any, error) {
 		mu.Lock()
 		defer mu.Unlock()
-		return text(map[string]any{"loaded": loaded, "factoryHeard": heardFactory})
+		return text(map[string]any{"loaded": loaded, "factoryHeard": heardFactory, "heardAtEmit": heardAtEmit, "errorEmitFailed": errorEmitFailed, "crossOwnAt": crossOwnAt, "crossReturnedAt": crossReturnedAt})
 	})
 }

@@ -562,6 +562,44 @@ impl WidthDeliveries {
 }
 
 impl Context {
+    /// The Context of a listener the factory's own `pi.events` emit runs (event_bus.rs `run_factory_listeners`): the extension has not connected, so it carries the connection the factory opened (a loading one, which answers only the host calls made before the extension registers) and no session state.
+    pub(crate) fn for_factory(conn: Arc<Connection>, bus: Arc<crate::event_bus::BusRegistry>) -> Self {
+        Self {
+            request_parent: None,
+            conn,
+            tool_call_id: None,
+            request_id: String::new(),
+            session_name: String::new(),
+            cwd: String::new(),
+            mode: String::new(),
+            shared_width: Arc::new(AtomicU32::new(0)),
+            shared_height: Arc::new(AtomicU32::new(0)),
+            shared_model: Arc::new(Mutex::new(String::new())),
+            flag_defaults: Arc::new(HashMap::new()),
+            shared_session: Arc::new(Mutex::new(crate::context::SessionMirror::default())),
+            session_sub_lock: Arc::new(Mutex::new(())),
+            cancel_flag: Arc::new(AtomicBool::new(false)),
+            cancel_reason: Arc::new(Mutex::new(None)),
+            overlay_seq: Arc::new(AtomicU64::new(0)),
+            overlays: Arc::new(Mutex::new(HashMap::new())),
+            editor_slot: Arc::new(Mutex::new(None)),
+            terminal_input: Arc::new(Mutex::new(Vec::new())),
+            terminal_input_seq: Arc::new(AtomicU64::new(0)),
+            width_change: Arc::new(Mutex::new(Vec::new())),
+            width_change_seq: Arc::new(AtomicU64::new(0)),
+            model_streams: Arc::new(Mutex::new(HashMap::new())),
+            model_stream_seq: Arc::new(AtomicU64::new(0)),
+            shared_ui: Arc::new(Mutex::new(UiState::default())),
+            bus,
+            host_subs: Arc::new(crate::host_subscriptions::HostSubscriptions::new(Arc::new(RequestThreads::default()))),
+            tool_call_index: None,
+            tool_input: None,
+            surfaces: Arc::new(Mutex::new(HashMap::new())),
+            replacement: false,
+            system_prompt: None,
+        }
+    }
+
     fn clone_for_request(
         &self,
         cancel: RequestCancel,
@@ -677,7 +715,7 @@ impl Extension {
         }
     }
 
-    /// Runs `handler` once the extension is registered with the host and has received its state, before it serves any request (`session_start` included) and after the emits its factory made were delivered. It is the place for work a factory cannot do: a [`Context`] exists, so the handler can read session state, call the host and emit on [`Context::events`]. Handlers run in registration order, one at a time, on a thread of their own so a host call in one is answered; the host's requests wait behind them, so a handler must not wait for one (an emit on a channel the extension itself listens to would never return). A handler that panics is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is `session_start`.
+    /// Runs `handler` once the extension is registered with the host and has received its state, before it serves any request (`session_start` included). It is the place for work a factory cannot do: a [`Context`] exists, so the handler can read session state, call the host and emit on [`Context::events`]. Handlers run in registration order, one at a time, on a thread of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that panics is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is `session_start`.
     pub fn on_loaded(&mut self, handler: impl Fn(&Context) + Send + Sync + 'static) {
         self.loaded_fns.push(Box::new(handler));
     }
@@ -1336,7 +1374,11 @@ impl Extension {
     /// Connect to the host at the given socket path.
     pub fn run_with_socket(self, sock_path: &str) -> io::Result<()> {
         let conn = match crate::host_helpers::take_dialled(sock_path) {
-            Some(conn) => conn,
+            Some(conn) => {
+                // The extension serves the connection from here: its calls go through the reader thread, and every host call is allowed.
+                conn.set_loading(false);
+                conn
+            }
             None => Arc::new(Connection::new(UnixStream::connect(sock_path)?)),
         };
         crate::host_helpers::adopt(&conn, sock_path);
@@ -1488,18 +1530,11 @@ impl Extension {
             Arc::new(Mutex::new(HashMap::new()));
         let request_threads = ext.provider_objects.workers.clone();
         let width_deliveries = Arc::new(WidthDeliveries::default());
-        let factory_emits = bus.take_factory_emits();
-        let loaded_gate = Arc::new(crate::host_subscriptions::LoadedGate::new(ext.loaded_fns.is_empty() && factory_emits.is_empty()));
-        if !ext.loaded_fns.is_empty() || !factory_emits.is_empty() {
+        let loaded_gate = Arc::new(crate::host_subscriptions::LoadedGate::new(ext.loaded_fns.is_empty()));
+        if !ext.loaded_fns.is_empty() {
             request_threads.start();
             let (loaded_ext, loaded_ctx, opening_gate, loaded_threads) = (ext.clone(), base_ctx.clone(), loaded_gate.clone(), request_threads.clone());
-            let loaded_bus = bus.clone();
             let spawned = thread::Builder::new().name("pig-on-loaded".to_string()).spawn(move || {
-                for (channel, data) in factory_emits {
-                    if let Err(err) = crate::EventBus::new(loaded_bus.clone(), None).emit(&channel, data) {
-                        eprintln!("pig: pi.events.emit {channel:?} from the factory: {err}");
-                    }
-                }
                 for handler in &loaded_ext.loaded_fns {
                     if let Err(payload) = catch_unwind(AssertUnwindSafe(|| handler(&loaded_ctx))) {
                         let detail = payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()));

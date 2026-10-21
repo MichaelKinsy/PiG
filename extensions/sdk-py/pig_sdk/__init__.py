@@ -2302,6 +2302,8 @@ class Context:
     _replacement: "_ReplacementState | None" = None
     # A before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
     _system_prompt: _SystemPrompt | None = None
+    # A context the factory's own pi.events emit made for a listener of this extension (event_bus._run_factory_listeners): the extension has not connected yet, so its host calls use the connection the factory opened, and only pi.events calls are answered.
+    _loading: bool = False
 
     @property
     def session_manager(self) -> "SessionManager":
@@ -2360,6 +2362,13 @@ class Context:
         self.extension._request_state(self.request_id, state, reason, self._parent)
 
     def _call(self, method: str, args: Any = None) -> dict[str, Any]:
+        if self._loading and not self.extension._bus._live:
+            # The host answers only the bus before the extension registers, and a call it does not answer would wait for ever.
+            if not method.startswith("events.") and method not in ("frontmatter.parse", "date.parse"):
+                raise RuntimeError(f"{method}: the extension has not registered with the host yet")
+            from . import host_helpers
+
+            return {"result": host_helpers.loading_call(method, args)}
         # An RPC UI effect is no suspension of the handler, as the Node runtime sends it (_RPC_SYNCHRONOUS_UI_EFFECTS).
         reports = bool(self.request_id) and not (method in _RPC_SYNCHRONOUS_UI_EFFECTS and self._rpc_mode())
         if reports and method not in {"ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"}:
@@ -4499,9 +4508,9 @@ class Extension:
             replicas.pop((name, str(evicted)), None)
 
     def on_loaded(self, handler: "Callable[[Context], Any]") -> None:
-        """Run ``handler(ctx)`` once the extension is registered with the host and has received its state, before it serves any request (session_start included) and after the emits its factory made were delivered.
+        """Run ``handler(ctx)`` once the extension is registered with the host and has received its state, before it serves any request (session_start included).
 
-        It is the place for work a factory cannot do: a :class:`Context` exists, so the handler can read session state, call the host and emit on ``ctx.events``. Handlers run in registration order, one at a time on a thread of their own, so a host call in one is answered; the host's requests wait behind them, so a handler must not wait for one (an emit on a channel the extension itself listens to would never return). A handler that raises is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is ``session_start``. A handler registered after the extension started never runs.
+        It is the place for work a factory cannot do: a :class:`Context` exists, so the handler can read session state, call the host and emit on ``ctx.events``. Handlers run in registration order, one at a time on a thread of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that raises is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is ``session_start``. A handler registered after the extension started never runs.
         """
         if not callable(handler):
             raise TypeError("on_loaded requires a callable handler")
@@ -4509,13 +4518,12 @@ class Extension:
 
     def _run_loaded(self) -> None:
         handlers, self._loaded_handlers = self._loaded_handlers, []
-        if not handlers and not self._bus.has_factory_emits():
+        if not handlers:
             return
         self._loaded.clear()
 
         def run() -> None:
             try:
-                self._bus.flush_factory_emits()
                 for handler in handlers:
                     try:
                         handler(Context(self))

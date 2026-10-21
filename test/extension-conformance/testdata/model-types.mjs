@@ -183,10 +183,17 @@ function themeFg(theme, token) {
 
 // The tools of the host-surface rows (host_surface_test.go): onThemeChange, onToolsExpandedChange, a widget component, bell, toolCallIndex, toolInput, extensionSourceInfo, onLoaded and a factory-time events.emit. testfixture/modeltypes (Go), testdata/modeltypes-rust and the inline Python fixture carry the same tools.
 function hostSurface(pi, tool) {
-  const log = { theme: [], expanded: [], heard: [], loaded: null, themeOff: undefined, expandedOff: undefined };
+  const log = { theme: [], expanded: [], heard: [], loaded: null, themeOff: undefined, expandedOff: undefined, heardAtEmit: null, errorEmitFailed: null, crossOwnAt: null, crossReturnedAt: null };
   // A factory's pi.events.emit reaches the listeners subscribed before it, its own included.
   pi.events.on("c3:factory", (data) => { log.heard.push(data); });
   pi.events.emit("c3:factory", { n: 1, from: "factory" });
+  // Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
+  log.heardAtEmit = log.heard.length;
+  try { pi.events.emit("error", { from: "factory" }); log.errorEmitFailed = false; } catch { log.errorEmitFailed = true; }
+  // An extension loaded before this one that listens on c3:cross runs first and finishes before emit returns (milliseconds, as the other fixtures report them).
+  pi.events.on("c3:cross", () => { log.crossOwnAt = Date.now(); });
+  pi.events.emit("c3:cross", { from: "factory" });
+  log.crossReturnedAt = Date.now();
   // The handler takes its time; a request that ran before it finished would read null.
   pi.onLoaded(async (ctx) => {
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -215,5 +222,5 @@ function hostSurface(pi, tool) {
     index: ctx.toolCallIndex ?? null, input: ctx.toolInput ?? null, keys: Object.keys(params), meta: params.meta === undefined ? null : JSON.stringify(params.meta),
   }));
   tool("c3_source", async (_id, _params, _signal, _update, ctx) => reply({ info: ctx.extensionSourceInfo() ?? null }));
-  tool("c3_loaded", async () => reply({ loaded: log.loaded, factoryHeard: log.heard }));
+  tool("c3_loaded", async () => reply({ loaded: log.loaded, factoryHeard: log.heard, heardAtEmit: log.heardAtEmit, errorEmitFailed: log.errorEmitFailed, crossOwnAt: log.crossOwnAt, crossReturnedAt: log.crossReturnedAt }));
 }

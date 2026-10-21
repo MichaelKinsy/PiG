@@ -628,7 +628,16 @@ pub struct Connection {
     pending_calls: Mutex<HashMap<String, PendingCallSender>>,
     request_parents: Mutex<HashMap<String, Arc<RequestParent>>>,
     closed: AtomicBool,
+    /// Set for a connection a factory opened before `run` (host_helpers.rs): no reader thread serves it yet, so a call made on it reads the frames itself, and only the host calls the host answers before the extension registers are sent. `run` clears it when it takes the connection.
+    loading: AtomicBool,
+    // One thread at a time reads frames for a loading connection's calls.
+    pump: Mutex<()>,
     pub(crate) closed_signal: crate::provider::ProviderSignal,
+}
+
+/// The host calls the host answers while a factory runs, before the extension registers: the shared event bus and the helpers that need the host's parsers (Go's loadingBusCall).
+fn loading_host_call(method: &str) -> bool {
+    method.starts_with("events.") || matches!(method, "frontmatter.parse" | "date.parse")
 }
 
 struct PendingCallSender {
@@ -691,6 +700,8 @@ impl Connection {
             pending_calls: Mutex::new(HashMap::new()),
             request_parents: Mutex::new(HashMap::new()),
             closed: AtomicBool::new(false),
+            loading: AtomicBool::new(false),
+            pump: Mutex::new(()),
             closed_signal: crate::provider::ProviderSignal::new(),
             provider_objects: std::sync::OnceLock::new(),
             provider_callbacks: std::sync::OnceLock::new(),
@@ -717,6 +728,30 @@ impl Connection {
         let parent = Arc::new(RequestParent { id: id.to_owned(), state: AtomicU8::new(0), finished: AtomicBool::new(false) });
         self.request_parents.lock().unwrap().insert(id.to_owned(), parent.clone());
         parent
+    }
+
+    /// Marks the connection as one a factory opened, or, with false, as one the extension serves.
+    pub(crate) fn set_loading(&self, loading: bool) {
+        self.loading.store(loading, Ordering::Release);
+    }
+
+    /// Whether the connection is a factory's, not yet taken by `run`.
+    pub(crate) fn is_loading(&self) -> bool {
+        self.loading.load(Ordering::Acquire)
+    }
+
+    /// Reads frames, completing the calls they answer, until `pending`'s reply arrives.
+    fn pump_until(&self, pending: &PendingCall) -> io::Result<CallResultMsg<Box<serde_json::value::RawValue>>> {
+        let _reading = self.pump.lock().unwrap();
+        loop {
+            match pending.receiver.try_recv() {
+                Ok(reply) => return Ok(reply),
+                Err(mpsc::TryRecvError::Disconnected) => return Err(io::Error::new(io::ErrorKind::ConnectionAborted, format!("host call {} cancelled", pending.method))),
+                Err(mpsc::TryRecvError::Empty) => {}
+            }
+            let env = self.read_envelope()?;
+            self.complete_call(&env);
+        }
     }
 
     pub(crate) fn is_closed(&self) -> bool { self.closed.load(Ordering::Acquire) }
@@ -891,6 +926,10 @@ impl Connection {
         method: &str,
         args: Option<A>,
     ) -> io::Result<PendingCall> {
+        // The host answers only a few calls before the extension registers, and a call it does not answer would wait for ever.
+        if self.is_loading() && !loading_host_call(method) {
+            return Err(io::Error::new(io::ErrorKind::NotConnected, format!("{method}: the extension has not registered with the host yet")));
+        }
         let mut writer = self.writer.lock().unwrap();
         let mut pending_calls = self.pending_calls.lock().unwrap();
         if self.is_closed() || scope.is_some_and(RequestParent::cancelled) {
@@ -934,12 +973,16 @@ impl Connection {
     }
 
     pub(crate) fn wait_call_typed<R: serde::de::DeserializeOwned + Send>(&self, pending: PendingCall) -> io::Result<CallResultMsg<R>> {
-        let reply = pending.receiver.recv().map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::ConnectionAborted,
-                format!("host call {} cancelled", pending.method),
-            )
-        })?;
+        let reply = if self.is_loading() {
+            self.pump_until(&pending)?
+        } else {
+            pending.receiver.recv().map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::ConnectionAborted,
+                    format!("host call {} cancelled", pending.method),
+                )
+            })?
+        };
         let result = reply.result.map(|raw| from_json_str(raw.get())).transpose().map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(CallResultMsg { result, error: reply.error })
     }

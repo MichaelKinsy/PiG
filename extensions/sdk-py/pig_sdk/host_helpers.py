@@ -73,6 +73,12 @@ def _helper_call(method: str, args: Any) -> Any:
     running = _running_for(_socket_path())
     if running is not None:
         return running._call(method, args).get("result") or {}
+    return loading_call(method, args)
+
+
+def loading_call(method: str, args: Any) -> Any:
+    """A host call made while a factory runs, over the connection this extension's first such call dials and ``run`` later takes. It never rides a running
+    extension's connection: the host attributes what a call carries (a ``pi.events`` listener) to the extension of the connection it arrives on."""
     with _State.lock:
         path = _socket_path()
         if not path:

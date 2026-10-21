@@ -330,6 +330,15 @@ fn register_host_surface(ext: &mut Extension) {
     static THEME_LOG: Mutex<Vec<String>> = Mutex::new(Vec::new());
     static EXPANDED_LOG: Mutex<Vec<bool>> = Mutex::new(Vec::new());
     static FACTORY_HEARD: Mutex<Vec<Value>> = Mutex::new(Vec::new());
+    // How many emits the factory's own listener had heard when the factory's emit returned, and whether the factory's emit on "error", which nobody hears, failed.
+    static HEARD_AT_EMIT: Mutex<Option<usize>> = Mutex::new(None);
+    static ERROR_EMIT_FAILED: Mutex<Option<bool>> = Mutex::new(None);
+    // When the factory's own c3:cross listener ran and when the factory's emit on c3:cross returned, in Unix milliseconds: an extension loaded before this one that listens on c3:cross runs first and finishes before emit returns.
+    static CROSS_OWN_AT: Mutex<Option<u128>> = Mutex::new(None);
+    static CROSS_RETURNED_AT: Mutex<Option<u128>> = Mutex::new(None);
+    fn now_ms() -> u128 {
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis()
+    }
     static LOADED: Mutex<Option<Value>> = Mutex::new(None);
     static THEME_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
     static EXPANDED_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
@@ -341,6 +350,17 @@ fn register_host_surface(ext: &mut Extension) {
         })
         .expect("subscribe c3:factory");
     ext.events().emit("c3:factory", json!({"n": 1, "from": "factory"})).expect("emit c3:factory");
+    // Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
+    *HEARD_AT_EMIT.lock().unwrap() = Some(FACTORY_HEARD.lock().unwrap().len());
+    *ERROR_EMIT_FAILED.lock().unwrap() = Some(ext.events().emit("error", json!({"from": "factory"})).is_err());
+    ext.events()
+        .on("c3:cross", |_, _| {
+            *CROSS_OWN_AT.lock().unwrap() = Some(now_ms());
+            Ok(())
+        })
+        .expect("subscribe c3:cross");
+    ext.events().emit("c3:cross", json!({"from": "factory"})).expect("emit c3:cross");
+    *CROSS_RETURNED_AT.lock().unwrap() = Some(now_ms());
     // The handler takes its time; a request that ran before it finished would read null.
     ext.on_loaded(|ctx| {
         std::thread::sleep(Duration::from_millis(300));
@@ -400,6 +420,6 @@ fn register_host_surface(ext: &mut Extension) {
     });
     ext.tool("c3_source", "c3_source", empty_schema(), |ctx, _| ToolResult::text(json!({"info": ctx.extension_source_info()}).to_string()));
     ext.tool("c3_loaded", "c3_loaded", empty_schema(), |_, _| {
-        ToolResult::text(json!({"loaded": *LOADED.lock().unwrap(), "factoryHeard": *FACTORY_HEARD.lock().unwrap()}).to_string())
+        ToolResult::text(json!({"loaded": *LOADED.lock().unwrap(), "factoryHeard": *FACTORY_HEARD.lock().unwrap(), "heardAtEmit": *HEARD_AT_EMIT.lock().unwrap(), "errorEmitFailed": *ERROR_EMIT_FAILED.lock().unwrap(), "crossOwnAt": (*CROSS_OWN_AT.lock().unwrap()).map(|ms| ms as u64), "crossReturnedAt": (*CROSS_RETURNED_AT.lock().unwrap()).map(|ms| ms as u64)}).to_string())
     });
 }

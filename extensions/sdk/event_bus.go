@@ -5,6 +5,7 @@ package sdk
 // Ports packages/coding-agent/src/core/event-bus.ts
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -60,21 +61,8 @@ type busRegistry struct {
 	mu   sync.Mutex
 	live bool
 	subs map[string]*busSub
-	// pending holds what the factory did before Run, in the order it did it: a subscription is registered with the Host and an emit is delivered, each in turn, so a listener subscribed before an emit hears it, as with Pi's synchronous EventEmitter.
-	pending []busOp
-	// factoryEmits are the pending emits registerPendingListeners set aside for flushFactoryEmits.
-	factoryEmits []*busEmit
-}
-
-// busOp is a subscription (sub) or an emit (emit) made before the extension ran.
-type busOp struct {
-	sub  *busSub
-	emit *busEmit
-}
-
-type busEmit struct {
-	channel string
-	json    json.RawMessage
+	// pending holds the listeners subscribed before Run, in subscription order. Run registers them with the Host before the extension registers; a factory's own emit reaches the ones subscribed before it (emitBeforeRun).
+	pending []*busSub
 }
 
 type busCallArgs struct {
@@ -114,7 +102,7 @@ func (b EventBus) On(channel string, handler EventBusHandler) (unsubscribe func(
 	}
 	registry.subs[sub.id] = sub
 	if !registry.live {
-		registry.pending = append(registry.pending, busOp{sub: sub})
+		registry.pending = append(registry.pending, sub)
 		registry.mu.Unlock()
 		return b.ext.unsubscribe(sub), nil
 	}
@@ -150,7 +138,7 @@ func (e *Extension) unsubscribe(sub *busSub) func() {
 
 // Emit delivers data to every listener of channel, in registration order, and returns when each has finished. Like EventEmitter, an emit on "error" with no listener fails.
 //
-// Called through [Extension.Events] before the extension runs, as a node factory's pi.events.emit is, the emit is queued and delivered once the extension is loaded, before [Extension.OnLoaded] handlers and any request: Pi delivers it at once to the listeners of the extensions loaded before this one and to the factory's own, and the host does the same at that point. It returns nil then; a failure of the delivery, such as an emit on "error" that no listener handles, is reported on stderr. Use [Extension.OnLoaded] for work that needs the live session.
+// Called through [Extension.Events] while the factory runs (before [Extension.Run]), it does what Pi's synchronous emit does in a factory: the listeners of the extensions loaded before this one hear it at once, then this extension's own listeners subscribed before the emit, each finishing before Emit returns, and an emit on "error" that nobody hears fails. Both need the Host, so the first factory-time bus call connects to it: a factory that runs with no Host (no PIG_EXT_SOCKET, as in a unit test) gets an error. A listener of this extension that the factory's emit runs has a [Context] with no session state yet (its Cwd and Mode are empty), and until the extension registers the only host calls it can make are pi.events ones and the parse helpers (ParseFrontmatter, ParseDate): a nested [Context.Events] Emit reaches the same listeners. Use [Extension.OnLoaded] for work that needs the live session.
 func (b EventBus) Emit(channel string, data any) error {
 	encoded, err := json.MarshalJS(data)
 	if err != nil {
@@ -161,6 +149,9 @@ func (b EventBus) Emit(channel string, data any) error {
 		return err
 	}
 	var result *callResultMsg
+	if b.bound && b.ctx.loadingConn() != nil {
+		return b.ext.emitBeforeRun(channel, encoded, json.RawMessage(args))
+	}
 	if b.bound {
 		result, err = b.ctx.callHost(callEventsEmit, json.RawMessage(args))
 	} else {
@@ -168,11 +159,7 @@ func (b EventBus) Emit(channel string, data any) error {
 		conn := b.ext.conn
 		b.ext.eventMu.Unlock()
 		if conn == nil {
-			registry := &b.ext.eventBus
-			registry.mu.Lock()
-			registry.pending = append(registry.pending, busOp{emit: &busEmit{channel: channel, json: encoded}})
-			registry.mu.Unlock()
-			return nil
+			return b.ext.emitBeforeRun(channel, encoded, json.RawMessage(args))
 		}
 		result, err = conn.call(callEventsEmit, json.RawMessage(args))
 	}
@@ -188,27 +175,94 @@ func (b EventBus) Emit(channel string, data any) error {
 	return nil
 }
 
-// registerPendingListeners sends the listeners subscribed before Run, in subscription order, and makes later subscriptions register at once. The emits the factory made are kept for [Extension.flushFactoryEmits]: the Host dispatches an emit to this extension's own listeners too, and the extension serves a dispatch only once it has registered.
+// loadingConnection is the connection a factory's pi.events calls use before Run, opened by the first of them (factoryConnection); Run adopts it.
+func (e *Extension) loadingConnection() (*conn, error) {
+	e.eventMu.Lock()
+	defer e.eventMu.Unlock()
+	if e.loading != nil {
+		return e.loading, nil
+	}
+	c, err := factoryConnection()
+	if err != nil {
+		return nil, fmt.Errorf("%w (%v)", errBusNotConnected, err)
+	}
+	e.loading = c
+	return c, nil
+}
+
+// emitBeforeRun is Emit for a factory that has not connected the extension yet. The Host delivers to the listeners it holds, which are those of the extensions loaded before this one: this extension's own listeners are registered with it only when Run connects. They run here, in the order they were subscribed, after the Host's, as they would in Pi's EventEmitter, where this extension's listeners are the last registered.
+func (e *Extension) emitBeforeRun(channel string, encoded, args json.RawMessage) error {
+	conn, err := e.loadingConnection()
+	if err != nil {
+		return err
+	}
+	result, err := conn.call(callEventsEmit, args)
+	if err := callResultError(result, err); err != nil {
+		return err
+	}
+	var outcome struct {
+		UnhandledError bool `json:"unhandledError"`
+	}
+	unhandled := len(result.Result) != 0 && json.Unmarshal(result.Result, &outcome) == nil && outcome.UnhandledError
+	if e.runFactoryListeners(channel, encoded, conn) > 0 {
+		unhandled = false
+	}
+	if unhandled {
+		return fmt.Errorf("pi.events.emit %q: unhandled error event: %s", channel, encoded)
+	}
+	return nil
+}
+
+// runFactoryListeners runs the listeners subscribed before Run for channel, in subscription order over the snapshot taken now, as EventEmitter clones its listener array for each emit, and returns how many there were. A listener's error or panic is reported and reaches neither the emitter nor the listeners after it (event-bus.ts safeHandler).
+func (e *Extension) runFactoryListeners(channel string, encoded json.RawMessage, loading *conn) int {
+	registry := &e.eventBus
+	registry.mu.Lock()
+	var listeners []*busSub
+	for _, sub := range registry.pending {
+		if !sub.off && sub.channel == channel {
+			listeners = append(listeners, sub)
+		}
+	}
+	registry.mu.Unlock()
+	ctx := Context{ext: e, ctx: context.Background(), loading: loading}
+	for _, sub := range listeners {
+		var data any
+		var err error
+		if len(encoded) != 0 {
+			err = json.Unmarshal(encoded, &data)
+		}
+		if err == nil {
+			err = callEventListener(sub, ctx, data)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Event handler error (%s): %v\n", channel, err)
+		}
+	}
+	return len(listeners)
+}
+
+// callEventListener runs one listener, treating a panic as the error Pi's safeHandler catches.
+func callEventListener(sub *busSub, ctx Context, data any) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("listener panicked: %v", recovered)
+		}
+	}()
+	return sub.handler(ctx, data)
+}
+
+// registerPendingListeners sends the listeners subscribed before Run, in subscription order, and makes later subscriptions register at once.
 func (e *Extension) registerPendingListeners(conn *conn) error {
 	registry := &e.eventBus
 	registry.mu.Lock()
 	pending := registry.pending
 	registry.pending = nil
 	registry.live = true
-	for _, op := range pending {
-		if op.sub != nil {
-			op.sub.sent = true
-		}
+	for _, sub := range pending {
+		sub.sent = true
 	}
 	registry.mu.Unlock()
-	for _, op := range pending {
-		if op.emit != nil {
-			registry.mu.Lock()
-			registry.factoryEmits = append(registry.factoryEmits, op.emit)
-			registry.mu.Unlock()
-			continue
-		}
-		sub := op.sub
+	for _, sub := range pending {
 		registry.mu.Lock()
 		off := sub.off
 		registry.mu.Unlock()
@@ -221,33 +275,6 @@ func (e *Extension) registerPendingListeners(conn *conn) error {
 		}
 	}
 	return nil
-}
-
-// flushFactoryEmits delivers the emits the factory made before Run, in the order it made them, once the extension serves requests. A failure of a delivery, such as an emit on "error" that no listener handles, is reported on stderr: the extension is already loaded.
-func (e *Extension) flushFactoryEmits() {
-	registry := &e.eventBus
-	registry.mu.Lock()
-	emits := registry.factoryEmits
-	registry.factoryEmits = nil
-	registry.mu.Unlock()
-	for _, emit := range emits {
-		args, err := json.MarshalJS(busCallArgs{Channel: emit.channel, Value: true, JSON: emit.json})
-		if err == nil {
-			var result *callResultMsg
-			result, err = e.conn.call(callEventsEmit, json.RawMessage(args))
-			if err = callResultError(result, err); err == nil {
-				var outcome struct {
-					UnhandledError bool `json:"unhandledError"`
-				}
-				if len(result.Result) != 0 && json.Unmarshal(result.Result, &outcome) == nil && outcome.UnhandledError {
-					err = fmt.Errorf("unhandled error event: %s", emit.json)
-				}
-			}
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "extension: pi.events.emit %q from the factory: %v\n", emit.channel, err)
-		}
-	}
 }
 
 // resetEventBus forgets the listeners of a finished run: the Host dropped them when the connection closed.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -54,6 +55,8 @@ type modelTypesRig struct {
 	bridge *subprocess.UIBridge
 	ext    extension.Extension
 	dir    string
+	// keepLoaded makes a placement that loads its members with a reload (python shared-ok) load them with LoadAll instead, so an extension loaded before the fixture stays: a reload removes the extensions its config loader does not name.
+	keepLoaded bool
 
 	mu        sync.Mutex
 	providers map[string]extension.ProviderConfig
@@ -273,6 +276,12 @@ func eachModelTypesPlacement(t *testing.T, body func(t *testing.T, r *modelTypes
 // eachModelTypesPlacementOf runs body for every placement of the named SDKs, or of every SDK when sdks is empty.
 func eachModelTypesPlacementOf(t *testing.T, sdks []string, body func(t *testing.T, r *modelTypesRig)) {
 	t.Helper()
+	eachModelTypesPlacementAfter(t, sdks, nil, body)
+}
+
+// eachModelTypesPlacementAfter is eachModelTypesPlacementOf with a step that runs on each fresh rig before the fixture loads: it loads the extensions that must be there first.
+func eachModelTypesPlacementAfter(t *testing.T, sdks []string, before func(t *testing.T, r *modelTypesRig), body func(t *testing.T, r *modelTypesRig)) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (starts SDK subprocesses)")
 	}
@@ -283,6 +292,9 @@ func eachModelTypesPlacementOf(t *testing.T, sdks []string, body func(t *testing
 		for placement, load := range kit.placements {
 			t.Run(kit.name+"-"+placement, func(t *testing.T) {
 				r := newModelTypesRig(t)
+				if before != nil {
+					before(t, r)
+				}
 				load(t, r)
 				body(t, r)
 			})
@@ -295,16 +307,16 @@ func loadModelTypesGo(placement string) modelTypesLoader {
 		t.Helper()
 		root := findModuleRoot(t)
 		if placement == "fused" {
-			var factory *sdk.Extension
-			func() {
+			// A fused Piglet Binary serves a factory over the host's pipe, and the pipe is the factory's own connection while it runs (fusepack.registerFactory).
+			serve := func(conn net.Conn) (err error) {
 				defer func() {
 					if recovered := recover(); recovered != nil {
-						t.Fatalf("the fixture factory failed: %v", recovered)
+						err = fmt.Errorf("the fixture factory failed: %v", recovered)
 					}
 				}()
-				factory = modeltypes.Extension()
-			}()
-			ext, err := r.host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: modeltypes.Name, Path: "/ext/" + modeltypes.Name + ".go", Enabled: true, SourceInfo: hostSurfaceSource}, factory.RunWithConn)
+				return sdk.ServeFactory(conn, modeltypes.Extension)
+			}
+			ext, err := r.host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: modeltypes.Name, Path: "/ext/" + modeltypes.Name + ".go", Enabled: true, SourceInfo: hostSurfaceSource}, serve)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -491,10 +503,21 @@ def route(ctx, request):
 
 def register_host_surface(ext):
     # The tools of the host-surface rows (host_surface_test.go): on_theme_change, on_tools_expanded_change, set_widget_renderer, bell, tool_call_index, tool_input and tool_params, extension_source_info, on_loaded and a factory-time events.emit. testfixture/modeltypes (Go), testdata/modeltypes-rust and testdata/model-types.mjs carry the same tools.
-    log = {"theme": [], "expanded": [], "heard": [], "loaded": None, "theme_off": None, "expanded_off": None}
+    log = {"theme": [], "expanded": [], "heard": [], "loaded": None, "theme_off": None, "expanded_off": None, "heard_at_emit": None, "error_emit_failed": None, "cross_own_at": None, "cross_returned_at": None}
     # A factory's pi.events.emit reaches the listeners subscribed before it, its own included.
     ext.events.on("c3:factory", lambda ctx, data: log["heard"].append(data))
     ext.events.emit("c3:factory", {"n": 1, "from": "factory"})
+    # Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
+    log["heard_at_emit"] = len(log["heard"])
+    try:
+        ext.events.emit("error", {"from": "factory"})
+        log["error_emit_failed"] = False
+    except RuntimeError:
+        log["error_emit_failed"] = True
+    # An extension loaded before this one that listens on c3:cross runs first and finishes before emit returns (milliseconds, as the other fixtures report them).
+    ext.events.on("c3:cross", lambda ctx, data: log.__setitem__("cross_own_at", int(time.time() * 1000)))
+    ext.events.emit("c3:cross", {"from": "factory"})
+    log["cross_returned_at"] = int(time.time() * 1000)
 
     def loaded(ctx):
         # The handler takes its time; a request that ran before it finished would read None.
@@ -542,7 +565,7 @@ def register_host_surface(ext):
         "c3_expanded_arm": expanded_arm, "c3_expanded_disarm": expanded_disarm, "c3_expanded_log": lambda ctx, args: json.dumps({"log": log["expanded"]}),
         "c3_widget_arm": widget_arm, "c3_widget_clear": widget_clear, "c3_bell": bell, "c3_tool_call": tool_call,
         "c3_source": lambda ctx, args: json.dumps({"info": ctx.extension_source_info()}),
-        "c3_loaded": lambda ctx, args: json.dumps({"loaded": log["loaded"], "factoryHeard": log["heard"]}),
+        "c3_loaded": lambda ctx, args: json.dumps({"loaded": log["loaded"], "factoryHeard": log["heard"], "heardAtEmit": log["heard_at_emit"], "errorEmitFailed": log["error_emit_failed"], "crossOwnAt": log["cross_own_at"], "crossReturnedAt": log["cross_returned_at"]}),
     }
     for name, handler in handlers.items():
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
@@ -675,6 +698,8 @@ func loadModelTypesPython(isolation string) modelTypesLoader {
 			peer := packedFlagFactory(t, root, "python", "model-types-peer", false)
 			peer.Isolation = isolation
 			configs = append(configs, peer)
+		}
+		if isolation == "shared-ok" && !r.keepLoaded {
 			r.host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })
 			loaded, err := r.host.Reload(t.Context())
 			if err != nil {
@@ -689,7 +714,7 @@ func loadModelTypesPython(isolation string) modelTypesLoader {
 			t.Fatalf("model-types not loaded: %v", loaded)
 		}
 		loaded, failures := r.host.LoadAll(t.Context(), configs)
-		if len(failures) != 0 || len(loaded) != 1 {
+		if len(failures) != 0 || len(loaded) != len(configs) {
 			t.Fatalf("load: %v", failures)
 		}
 		r.finish(loaded[0])
