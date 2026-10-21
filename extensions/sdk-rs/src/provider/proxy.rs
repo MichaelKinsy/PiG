@@ -14,6 +14,7 @@ impl Drop for Lease {
                 args: Some(json!({"handle":self.handle,"token":self.token})),
                 parent_request_id: None,
                 timer: false,
+                tick: false,
             }),
             ..Default::default()
         });
@@ -67,6 +68,7 @@ impl Proxy {
                 args: Some(json!({"streamId":id})),
                 parent_request_id: None,
                 timer: false,
+                tick: false,
             }),
             ..Default::default()
         });
