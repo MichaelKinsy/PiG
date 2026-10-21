@@ -7,7 +7,7 @@
 # then Ctrl+P and submit a prompt twice. Pi answers each prompt with the connection error of the unreachable fixture endpoint; PiG answered
 # "No model selected." and dropped the user message.
 
-name = "27-scoped-models-refresh-prompt-after-cycle"
+name = "28-scoped-models-refresh-prompt-after-cycle"
 description = "Prompts submitted after a /scoped-models refresh and Ctrl+P reach the model's backend instead of failing with No model selected."
 covers = [
   "packages/coding-agent/src/core/agent-session.ts",
