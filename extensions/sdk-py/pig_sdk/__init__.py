@@ -100,6 +100,7 @@ from .truncate import DEFAULT_MAX_BYTES as DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES 
 from ._color import color_ansi, parse_color, style_text_with_ansi
 from . import kit as kit
 from . import _tui_state
+from . import tui as tui  # loaded here with every other module: tests/test_staged_directory_independence.py
 from .kit import ViewComponent as ViewComponent
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
 from .state_feed import StateFeed

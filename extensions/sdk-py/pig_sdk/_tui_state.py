@@ -1,8 +1,10 @@
 """The host's replicated pi-tui state, held until an extension uses the ``pig_sdk.tui`` helpers.
 
 The host publishes its keybinding table and terminal capabilities with every state snapshot. Holding them here, instead of building the
-pi-tui managers when the snapshot arrives, keeps the width tables and key parsers out of an extension that never imports them: the
-``pig_sdk.tui`` helpers (``get_keybindings``, ``get_capabilities``) take what is pending when first used and on every change.
+pi-tui managers when the snapshot arrives, keeps the managers from being built for an extension that never uses them: the
+``pig_sdk.tui`` helpers (``get_keybindings``, ``get_capabilities``) take what is pending when first used and on every change. The
+modules of ``pig_sdk.tui`` are loaded by ``import pig_sdk`` like every other module of the package, so a staged directory evicted
+under a running extension cannot break a later import of them.
 """
 
 from __future__ import annotations
