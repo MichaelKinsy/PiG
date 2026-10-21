@@ -19,14 +19,24 @@ concurrency:
 
 jobs:
   race:
-    name: Race / ${{ matrix.os }} / ${{ matrix.group }}
+    name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
+    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as four shards of its tests (PIG_RACE_SHARD).
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
-        group: [ai, rest]
+        group: [ai, rest, host, coding, libs]
+        include:
+          - {os: ubuntu-24.04, group: cli, shard: 1/4}
+          - {os: ubuntu-24.04, group: cli, shard: 2/4}
+          - {os: ubuntu-24.04, group: cli, shard: 3/4}
+          - {os: ubuntu-24.04, group: cli, shard: 4/4}
+          - {os: macos-15, group: cli, shard: 1/4}
+          - {os: macos-15, group: cli, shard: 2/4}
+          - {os: macos-15, group: cli, shard: 3/4}
+          - {os: macos-15, group: cli, shard: 4/4}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -70,6 +80,7 @@ jobs:
         env:
           CI: '1'
           PIG_RACE_GROUP: ${{ matrix.group }}
+          PIG_RACE_SHARD: ${{ matrix.shard }}
         run: make test-race-nightly
 
   fuzz:
