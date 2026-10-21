@@ -24,6 +24,29 @@ type HiddenThinkingLabelClearer interface {
 	ClearHiddenThinkingLabel()
 }
 
+// StatusClearer is implemented by a [UIContext] that tells an absent status from an empty one. Pi's setStatus(key, text: string | undefined) writes the text
+// it is given and treats `undefined` as the removal of the entry (footer-data-provider.ts setExtensionStatus); RPC mode writes `statusText` for any string,
+// the empty one included, and omits it for `undefined` (rpc-mode.ts setStatus). ClearStatus is the `undefined` form. The extension host calls it when an
+// extension sends no text, and falls back to SetStatus(key, "") for a UIContext that does not implement it. It is a separate interface so existing
+// UIContext implementations keep compiling.
+type StatusClearer interface {
+	ClearStatus(key string)
+}
+
+// PlaceholderOmitter is implemented by a [UIContext] that tells an input dialog opened without a placeholder from one opened with an empty placeholder. Pi's
+// input(title, placeholder?, opts?) leaves `placeholder` undefined when the extension passes none, and RPC mode omits the member then but writes
+// `placeholder: ""` for an empty string (rpc-mode.ts input). InputWithoutPlaceholder is the first form. The extension host calls it when an extension sends no
+// placeholder, and falls back to Input with an empty placeholder for a UIContext that does not implement it.
+type PlaceholderOmitter interface {
+	InputWithoutPlaceholder(ctx context.Context, title string, opts ExtensionUIDialogOptions) (string, error)
+}
+
+// PrefillOmitter is [PlaceholderOmitter] for editor(title, prefill?) (rpc-mode.ts editor): EditorWithoutPrefill opens the editor dialog with no prefill, and the
+// extension host falls back to Editor with an empty prefill for a UIContext that does not implement it.
+type PrefillOmitter interface {
+	EditorWithoutPrefill(ctx context.Context, title string) (string, error)
+}
+
 // UIContext is the per-mode UI surface for extensions.
 //
 // **Upstream alias:** mirrors `ExtensionUIContext` (types.ts:120-269).
@@ -81,8 +104,8 @@ type UIContext interface {
 	// upstream: types.ts:136
 	OnTerminalInput(handler TerminalInputHandler) (unsubscribe func())
 
-	// SetStatus sets status text in the footer/status bar. Empty
-	// text clears the entry.
+	// SetStatus sets status text in the footer/status bar. Empty text clears the entry, except in RPC mode, which writes it: Pi writes the text as given
+	// there and `undefined` removes the entry, so a UIContext that implements [StatusClearer] receives the `undefined` form as ClearStatus.
 	// upstream: types.ts:139
 	SetStatus(key, text string)
 

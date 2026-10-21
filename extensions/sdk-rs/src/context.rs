@@ -2099,12 +2099,28 @@ impl Context {
         );
     }
 
-    /// Set status text in the footer.
+    /// Set status text in the footer. An empty text is a text, as in Pi (RPC mode writes it); [`Context::clear_status`] removes the entry, as Pi's
+    /// `setStatus(key, undefined)` does.
     pub fn set_status(&self, key: &str, text: &str) {
         let _ = self.call_wire(
             "ui.setStatus",
             Some(serde_json::json!({"key": key, "text": text})),
         );
+    }
+
+    /// Remove the status entry for `key`: Pi's `setStatus(key, undefined)`.
+    pub fn clear_status(&self, key: &str) {
+        let _ = self.call_wire("ui.setStatus", Some(serde_json::json!({"key": key})));
+    }
+
+    /// Set `args[key]` to `value` unless it is empty. An optional dialog member (Pi's `placeholder?`, `prefill?`) is undefined when the extension passes
+    /// none, and a Rust `&str` cannot be undefined: an empty one is the unset member, as in every native SDK that has no `None`. The host then writes no
+    /// such member to an RPC client, as Pi does, where it writes `placeholder: ""` for the empty string a Node extension can pass.
+    fn with_non_empty(mut args: serde_json::Value, key: &str, value: &str) -> serde_json::Value {
+        if !value.is_empty() {
+            args[key] = serde_json::Value::from(value);
+        }
+        args
     }
 
     /// Set the working/loading message shown during tool execution. An empty string is a message, shown as an empty label, as in
@@ -2190,7 +2206,11 @@ impl Context {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.input",
-            Some(serde_json::json!({"title": title, "placeholder": placeholder})),
+            Some(Self::with_non_empty(
+                serde_json::json!({"title": title}),
+                "placeholder",
+                placeholder,
+            )),
         )?)?;
         let text = v
             .get("text")
@@ -2207,7 +2227,11 @@ impl Context {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.editor",
-            Some(serde_json::json!({"title": title, "prefill": prefill})),
+            Some(Self::with_non_empty(
+                serde_json::json!({"title": title}),
+                "prefill",
+                prefill,
+            )),
         )?)?;
         let text = v
             .get("text")
@@ -3540,11 +3564,11 @@ impl Context {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.input",
-            Some(serde_json::json!({
-                "title": title,
-                "placeholder": placeholder,
-                "opts": Self::dialog_opts(opts),
-            })),
+            Some(Self::with_non_empty(
+                serde_json::json!({"title": title, "opts": Self::dialog_opts(opts)}),
+                "placeholder",
+                placeholder,
+            )),
         )?)?;
         let text = v
             .get("text")
@@ -5253,6 +5277,43 @@ mod sdk_surface_call_tests {
             json!({"title": "Name", "placeholder": "type", "opts": {"timeout": 1500.0}})
         );
         assert_eq!(result.unwrap(), (String::new(), false));
+    }
+
+    #[test]
+    fn empty_and_unset_ui_members_stay_distinct_on_the_wire() {
+        // Pi's rpc-mode writes "" where an extension passes it and omits `undefined`: set_status("") and clear_status differ, and an empty placeholder or
+        // prefill is the unset member, as no Rust string is undefined.
+        let (call, ()) = roundtrip(|ctx| ctx.set_status("k", ""), ok(None));
+        assert_eq!(call.method, "ui.setStatus");
+        assert_eq!(call.args.unwrap(), json!({"key": "k", "text": ""}));
+
+        let (call, ()) = roundtrip(|ctx| ctx.clear_status("k"), ok(None));
+        assert_eq!(call.method, "ui.setStatus");
+        assert_eq!(call.args.unwrap(), json!({"key": "k"}));
+
+        let (call, result) = roundtrip(
+            |ctx| ctx.input("T", ""),
+            ok(Some(json!({"text": "", "ok": false}))),
+        );
+        result.unwrap();
+        assert_eq!(call.method, "ui.input");
+        assert_eq!(call.args.unwrap(), json!({"title": "T"}));
+
+        let (call, result) = roundtrip(
+            |ctx| ctx.editor("E", ""),
+            ok(Some(json!({"text": "", "ok": false}))),
+        );
+        result.unwrap();
+        assert_eq!(call.method, "ui.editor");
+        assert_eq!(call.args.unwrap(), json!({"title": "E"}));
+
+        let (call, result) = roundtrip(
+            |ctx| ctx.select("T", &[]),
+            ok(Some(json!({"selected": "", "ok": false}))),
+        );
+        result.unwrap();
+        assert_eq!(call.method, "ui.select");
+        assert_eq!(call.args.unwrap(), json!({"title": "T", "options": []}));
     }
 
     #[test]

@@ -96,7 +96,7 @@ type UIBridge struct {
 	uiCtx              extension.UIContext
 	uiReady            bool
 	promptScope        UIPromptScope
-	pendingStatuses    map[string]string
+	pendingStatuses    map[string]*string // nil: the extension sent no text (Pi's undefined)
 	pendingFooterSet   bool
 	pendingFooterClear bool
 	pendingFooter      []string
@@ -783,7 +783,7 @@ func NewUIBridge(invalidateTUI func()) *UIBridge {
 		editorsByConn:   make(map[string]*editorProxy),
 		modelStreams:    make(map[modelStreamKey]context.CancelFunc),
 		uiCtx:           extension.NoopUIContext,
-		pendingStatuses: make(map[string]string),
+		pendingStatuses: make(map[string]*string),
 		invalidateTUI:   invalidateTUI,
 	}
 }
@@ -861,7 +861,7 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 	b.mu.Unlock()
 	if ready {
 		for key, text := range statuses {
-			ctx.SetStatus(key, text)
+			setStatus(ctx, key, text)
 		}
 		if editor := b.activeEditor(); editor != nil {
 			ctx.SetEditorComponent(extension.RemoteEditorFactory(editor))
@@ -2526,10 +2526,32 @@ func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks) (*C
 	return &CallResultPayload{}, nil
 }
 
+func stringOrEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// setStatus applies a status to ui: text nil is the extension's setStatus(key, undefined), which a UIContext with a [extension.StatusClearer] receives as ClearStatus and
+// any other as the empty text.
+func setStatus(ui extension.UIContext, key string, text *string) {
+	if text != nil {
+		ui.SetStatus(key, *text)
+		return
+	}
+	if clearer, ok := ui.(extension.StatusClearer); ok {
+		clearer.ClearStatus(key)
+		return
+	}
+	ui.SetStatus(key, "")
+}
+
 func (b *UIBridge) handleSetStatus(args json.RawMessage) (*CallResultPayload, error) {
+	// An absent or null text is Pi's undefined; an empty string is a text (rpc-mode.ts setStatus writes it).
 	var p struct {
-		Key  string `json:"key"`
-		Text string `json:"text"`
+		Key  string  `json:"key"`
+		Text *string `json:"text"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse setStatus args: %w", err)
@@ -2539,7 +2561,7 @@ func (b *UIBridge) handleSetStatus(args json.RawMessage) (*CallResultPayload, er
 	ui := b.uiCtx
 	onStateChanged := b.OnStateChanged
 	b.mu.Unlock()
-	ui.SetStatus(p.Key, p.Text)
+	setStatus(ui, p.Key, p.Text)
 	// Push the updated status to every connected extension so a footer or
 	// header factory reading footerData.getExtensionStatuses() sees it on
 	// its next render, matching upstream's synchronous requestRender.
@@ -2666,7 +2688,7 @@ func (b *UIBridge) handleConfirm(ctx context.Context, ui extension.UIContext, ar
 func (b *UIBridge) handleInput(ctx context.Context, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		Title       string                             `json:"title"`
-		Placeholder string                             `json:"placeholder"`
+		Placeholder *string                            `json:"placeholder"`
 		Opts        extension.ExtensionUIDialogOptions `json:"opts"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
@@ -2676,7 +2698,14 @@ func (b *UIBridge) handleInput(ctx context.Context, ui extension.UIContext, args
 		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	text, err := ui.Input(ctx, p.Title, p.Placeholder, p.Opts)
+	var text string
+	var err error
+	// An absent or null placeholder is Pi's undefined (the member is omitted from RPC's request); an empty string is a placeholder.
+	if omitter, ok := ui.(extension.PlaceholderOmitter); ok && p.Placeholder == nil {
+		text, err = omitter.InputWithoutPlaceholder(ctx, p.Title, p.Opts)
+	} else {
+		text, err = ui.Input(ctx, p.Title, stringOrEmpty(p.Placeholder), p.Opts)
+	}
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
@@ -2980,8 +3009,8 @@ func updateOverlayView(target extension.RemoteOverlayHandle, view *viewSurface, 
 
 func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
-		Title   string `json:"title"`
-		Prefill string `json:"prefill"`
+		Title   string  `json:"title"`
+		Prefill *string `json:"prefill"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse editor args: %w", err)
@@ -2990,7 +3019,14 @@ func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, arg
 		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	text, err := ui.Editor(ctx, p.Title, p.Prefill)
+	var text string
+	var err error
+	// An absent or null prefill is Pi's undefined (the member is omitted from RPC's request); an empty string is a prefill.
+	if omitter, ok := ui.(extension.PrefillOmitter); ok && p.Prefill == nil {
+		text, err = omitter.EditorWithoutPrefill(ctx, p.Title)
+	} else {
+		text, err = ui.Editor(ctx, p.Title, stringOrEmpty(p.Prefill))
+	}
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil

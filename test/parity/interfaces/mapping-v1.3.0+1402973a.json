@@ -155701,12 +155701,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
+        "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.ClearStatus"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -155723,12 +155723,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
+        "call:coding/extension/host/inproc/ui_prompt.go#uiPromptContext.ClearStatus"
       ],
       "evidence": [
+        "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -156122,7 +156122,7 @@
       "evidence": [
         "test:coding/cli/rpc_ui_test.go#TestRPCUICancelAndTimeout",
         "test:coding/cli/rpc_ui_test.go#TestRPCUIDialogTimeoutIsAJavaScriptNumber",
-        "test:internal/codingagent/extension_dialog_timeout_test.go#TestExtensionDialogAnsweredBeforeTimeoutStopsCountdown"
+        "test:coding/cli/rpc_ui_wire_test.go#TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes"
       ]
     },
     {
@@ -176834,7 +176834,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_ui.go#rpcUIContext.Confirm"
+        "call:coding/cli/rpc_ui.go#rpcUIContext.ClearStatus"
       ],
       "evidence": [
         "test:coding/cli/rpc_closed_unions_test.go#TestRPCClosedUnionConstantsAreTheUpstreamLiterals",
