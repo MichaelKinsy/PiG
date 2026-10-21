@@ -128,7 +128,7 @@ jobs:
           key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
       - name: Build, vet and go fix every package
@@ -192,7 +192,7 @@ jobs:
           restore-keys: |
             portmap-coverage-${{ matrix.shard }}-
             portmap-coverage-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -347,7 +347,7 @@ jobs:
           cache: true
       # Install the oracle with the qualified npm runtime before selecting the
       # test runtime: pinned npm itself requires a newer Node than Pi's floor.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -368,7 +368,7 @@ jobs:
           make upstream-mirror
       # One job runs the suite under each Node version in turn: Pi's engine floor, the qualified build runtime, and current
       # Node. Each version's run starts even when an earlier one failed, so every version reports.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
         with:
           node-version-file: automation/ci/node-minimum.version
@@ -380,7 +380,7 @@ jobs:
           set -euo pipefail
           node --version
           automation/ci/with-isolated-pig-home.sh make ci-node-runtime
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
         with:
           node-version-file: .node-version
@@ -392,7 +392,7 @@ jobs:
           set -euo pipefail
           node --version
           automation/ci/with-isolated-pig-home.sh make ci-node-runtime
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: ${{ !cancelled() && steps.oracle.outcome == 'success' }}
         with:
           node-version-file: automation/ci/node-current.version
@@ -425,13 +425,13 @@ jobs:
           cache: true
       # Exercise PiG's minimum and the current Node major, independently of the qualified default toolchain used by the full
       # suites. One job runs both in turn; the second starts even when the first failed.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: automation/ci/node-loader-minimum.version
       - name: Load TypeScript packages and check runtime preflight on PiG's minimum Node
         shell: bash
         run: automation/ci/node-loader-check.sh
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: ${{ !cancelled() && steps.go.outcome == 'success' }}
         with:
           node-version-file: automation/ci/node-current.version
@@ -454,7 +454,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
       - name: Install pinned npm
@@ -561,7 +561,7 @@ jobs:
         if: matrix.shard == 'native-1'
         shell: bash
         run: automation/ci/gocache-trim.sh age
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -770,7 +770,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
