@@ -72,7 +72,7 @@ func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, err
 	return result, err
 }
 
-// ReserveFileMutation registers filePath's next position in the process-wide queue that WithFileMutationQueue and every edit and write tool share, synchronously, and returns the ticket: Wait (or WaitContext) for the turn, then Release exactly once after the mutation completes. The extension host reserves through it for the mutations an extension process runs under its own withFileMutationQueue, so they queue with the built-in tools and with each other (pig additive plumbing for Pi's single process, D19: each SDK runs in a process of its own).
+// ReserveFileMutation registers filePath's next position in the process-wide queue that WithFileMutationQueue and every edit and write tool share, synchronously, and returns the ticket: Wait (or WaitContext) for the turn, then Release exactly once after the mutation completes. The extension host reserves through it for the mutations an extension process runs under its own withFileMutationQueue, so they queue with the built-in tools and with each other (plumbing for Pi's single process, D19: each SDK runs in a process of its own).
 func ReserveFileMutation(filePath string) (*MutationTicket, error) {
 	return processFileMutationQueue.Reserve(filePath)
 }
