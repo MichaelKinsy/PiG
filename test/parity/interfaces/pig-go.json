@@ -82381,9 +82381,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "*regexp.Regexp"
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
-      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
+      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#configBuiltinExtensionNames",
