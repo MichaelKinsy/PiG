@@ -254,6 +254,9 @@ func retainChild(old, next *childNode) *childNode {
 		if bytes.Equal(old.raw, next.raw) {
 			return old
 		}
+		// The node owns its bytes: a changed token overwrites them in place.
+		old.raw = append(old.raw[:0], next.raw...)
+		return old
 	case deltaBig:
 		if bytes.Equal(old.raw, next.raw) {
 			return old
@@ -262,6 +265,8 @@ func retainChild(old, next *childNode) *childNode {
 			old.raw = append(old.raw[:len(old.raw)-1], next.raw[len(old.raw)-1:]...)
 			return old
 		}
+		old.raw = append(old.raw[:0], next.raw...)
+		return old
 	default:
 		if len(next.items) < len(old.items) {
 			return copyChild(next)
@@ -285,7 +290,6 @@ func retainChild(old, next *childNode) *childNode {
 		}
 		return old
 	}
-	return copyChild(next)
 }
 
 // copyChild returns a node that owns its bytes.
