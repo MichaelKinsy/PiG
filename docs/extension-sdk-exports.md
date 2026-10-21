@@ -11,7 +11,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
 | `pi-coding-agent` | 920 | 305 | 910 | 804 | 793 | 794 |
-| `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
+| `pi-tui` | 364 | 85 | 363 | 264 | 279 | 279 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
 | `pi-agent-core` | 43 | 34 | 43 | 43 | 43 | 43 |
@@ -23,10 +23,9 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 432 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
 | SdkBuiltinToolDelegate | SdkBuiltinToolDelegate lane (built-in tool delegation, E7) | 0.5.2 | 60 | TestConformance_BuiltinToolDelegationAcrossSDKs |
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
-| SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 1041 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
-| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1065 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
+| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1068 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
 
@@ -125,32 +124,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 ## Realized cells no fixture reaches
 
-| Export | Runtimes | Lane | Closing row |
-|---|---|---|---|
-| `pi-coding-agent: CustomEditor.addToHistory` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls EditorComponent.AddToHistory |
-| `pi-coding-agent: CustomEditor.getCursor` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetCursor |
-| `pi-coding-agent: CustomEditor.getExpandedText` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText |
-| `pi-coding-agent: CustomEditor.insertTextAtCursor` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls EditorComponent.InsertTextAtCursor |
-| `pi-coding-agent: CustomEditor.isShowingAutocomplete` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete |
-| `pi-coding-agent: CustomEditor.setAutocompleteMaxVisible` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible |
-| `pi-coding-agent: CustomEditor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
-| `pi-coding-agent: DEFAULT_MAX_BYTES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxBytes |
-| `pi-coding-agent: DEFAULT_MAX_LINES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines |
-| `pi-coding-agent: SessionManager.buildSessionContext` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.BuildSessionContext |
-| `pi-coding-agent: SessionManager.getChildren` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.GetChildren |
-| `pi-coding-agent: SessionManager.isPersisted` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.IsPersisted |
-| `pi-coding-agent: SessionManager.usesDefaultSessionDir` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.UsesDefaultSessionDir |
-| `pi-coding-agent: serializeConversation` | rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls serialize_conversation |
-| `pi-coding-agent: stripFrontmatter` | python | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls strip_frontmatter |
-| `pi-tui: Editor.addToHistory` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.AddToHistory |
-| `pi-tui: Editor.getCursor` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetCursor |
-| `pi-tui: Editor.getExpandedText` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText |
-| `pi-tui: Editor.insertTextAtCursor` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.InsertTextAtCursor |
-| `pi-tui: Editor.isShowingAutocomplete` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete |
-| `pi-tui: Editor.setAutocompleteMaxVisible` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible |
-| `pi-tui: Editor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
-| `pi-tui: parseColor` | python | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls parse_color |
-| `pi-tui: styleTextWithAnsi` | python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls style_text_with_ansi |
+None.
 
 ## pi-coding-agent
 
@@ -1424,7 +1398,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `okhslColor` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `oklabToOkhslLightness` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `oklchColor` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `parseColor` | 2 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | native:parse_color |
+| `parseColor` | 2 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `parseKey` | 7 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `parseTerminalColorSchemeReport` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `renderFakeCursor` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1441,7 +1415,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `sliceByColumn` | 8 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `stripTerminalSequences` | 12 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `styleText` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `styleTextWithAnsi` | 1 | served | gap:SdkTuiHelpers | native:style_text_with_ansi | native:style_text_with_ansi |
+| `styleTextWithAnsi` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `truncateToWidth` | 91 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `visibleWidth` | 75 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `wrapTextWithAnsi` | 45 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |

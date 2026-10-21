@@ -231,7 +231,6 @@ func TestExportLedgerRejectsBadAndNearMissCases(t *testing.T) {
 		{"name only in a longer identifier is not reached", func(in *ledgerInput) { in.Corpus["go"] = "NotTruncateHeadAtAll(); kit.Text(1)" }, false, "go (native:TruncateHead) is reached by no"},
 		{"kit view reached only by a bare word", func(in *ledgerInput) { in.Corpus["python"] = "truncate_head(); print('Text')" }, false, "python (kit:Text) is reached by no"},
 		{"reached hole is stale", func(in *ledgerInput) {
-			in.File.Lane["SdkTuiHelpers"] = in.File.Lane["SdkTuiHelpers"]
 			in.File.Unreached = []unreachedSpec{{Key: "pi-coding-agent: truncateHead", SDKs: []string{"go"}, Lane: "SdkTuiHelpers", Row: "r"}}
 		}, false, "is stale"},
 		{"listed hole passes", func(in *ledgerInput) {
