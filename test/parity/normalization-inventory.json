@@ -2441,6 +2441,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/85-interactive-send-message-routing.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: read parity-read-target.txt",
+            "capture_end_regex": "\\[route-follow-up\\][\\s\\S]*?42"
+          },
+          "reason": "Owned visible surface: A message an extension sends while a run streams is steered, queued as a follow-up, or held until the turn ends, as Pi routes it",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
