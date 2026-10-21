@@ -87810,6 +87810,17 @@
       "shapeHash": "sha256:a8ad9e10d245f510e431453a07a887cd15420f7444b0f66bc26e75703c1bb527"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcAdmission.commandTurn",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcAdmission.commandTurn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (settled func(), abandoned func())"
+      },
+      "shapeHash": "sha256:ec7c9a862223ab81761996383bcb4ec31cac9e0126d11c2396894cccec533d09"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcAdmission.extensionRunStage",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "rpcAdmission.extensionRunStage",
@@ -88756,6 +88767,17 @@
       "shapeHash": "sha256:46dec2e301794c37d6e191aad8969106461c823c3cdfbc7a6cd92eb732c0697c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain.arm",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcLoopChain.arm",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context)"
+      },
+      "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain.before",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "rpcLoopChain.before",
@@ -88765,6 +88787,17 @@
         "type": "func(event github.com/MichaelKinsy/PiG/agent.AgentEvent)"
       },
       "shapeHash": "sha256:46dec2e301794c37d6e191aad8969106461c823c3cdfbc7a6cd92eb732c0697c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain.observeCommands",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcLoopChain.observeCommands",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(responses *github.com/MichaelKinsy/PiG/internal/jsloop.Loop)"
+      },
+      "shapeHash": "sha256:59ca4112db6977fa2fdbb4011561fb649044c09e2192480111a6294de60e725f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcLoopChain.reset",
@@ -89161,6 +89194,17 @@
         "type": "func() (microtasks int, macrotasks int)"
       },
       "shapeHash": "sha256:45af885581ca3a04a8e3dbfff5eba88c90bc811cee56a7da145a227bf11cf639"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.SetBatchObserver",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.SetBatchObserver",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func(open bool))"
+      },
+      "shapeHash": "sha256:c8224296dd3b3f6a5de4f503cbfef7f490aa5afe3037218b988b672023090056"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.complete",
@@ -115266,6 +115310,17 @@
       "shapeHash": "sha256:776b43f6586b83eebad679089383bf20702277be019b4a6e5fe93425c3d05a5a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.requestsInFlight",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.requestsInFlight",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.reserveHostCall",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.reserveHostCall",
@@ -116892,6 +116947,17 @@
         "type": "func(share *processShare, conns []*Conn) error"
       },
       "shapeHash": "sha256:5643c9ae41955736b91216bc49eb39f51b6fecc058b40c4398d4e21545afd4c8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.awaitTimerDefer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.awaitTimerDefer",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context)"
+      },
+      "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.beginCommandFlight",
@@ -118577,6 +118643,17 @@
       "shapeHash": "sha256:70fc993b414c29c7ac04c1dbfd7061b754e8f6058be45db5199b6001646c4972"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.sendTimerDefer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.sendTimerDefer",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(deferring bool)"
+      },
+      "shapeHash": "sha256:7a31b35fb69dc552d5bda235c09c84d34d9d820265f5c0c156052b7158ed6780"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.setCommandAnswered",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.setCommandAnswered",
@@ -119092,6 +119169,17 @@
         "type": "func() int"
       },
       "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.timerDeferConns",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.timerDeferConns",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []*Conn"
+      },
+      "shapeHash": "sha256:57537bf249881e8427352f672f304a26649e07bff83fb57b1f0474299be8cce3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.toolRenderProxyFor",
@@ -120186,6 +120274,28 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyTerminalWrite",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "NotifyTerminalWrite",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyTimerDefer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "NotifyTimerDefer",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyTimerDeferAck",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "NotifyTimerDeferAck",
       "kind": "constant",
       "exported": true,
       "shape": {
@@ -121611,6 +121721,28 @@
         "type": "TerminalInputArgs"
       },
       "shapeHash": "sha256:32bd5aa2c78791ec04a1300c1bbd537ee9d972495d052794c9e7e4cbe2c73ed0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#TimerDeferAckArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "TimerDeferAckArgs",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TimerDeferAckArgs"
+      },
+      "shapeHash": "sha256:3731194ae062652ee6461d359ba7b0f6766490239d650a5c2db4fb678557ec85"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#TimerDeferArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "TimerDeferArgs",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TimerDeferArgs"
+      },
+      "shapeHash": "sha256:7937e55cbc5473f5e2861a442f2dd7e196a569fe8140916f826fae7380f8ce21"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ToolAbortGrace",
@@ -126418,6 +126550,28 @@
         "type": "func(ops []byte, path []byte, old *deltaNode, next *deltaNode) []byte"
       },
       "shapeHash": "sha256:a1f0e5abff6dd402f627ad808a05f74d02bec03de766f47ad17fd684b8b07a88"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#dispatchMark",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "dispatchMark",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "dispatchMark"
+      },
+      "shapeHash": "sha256:47052e9569f1de3f68b1895005140667f706ce2a6cfa73f5c3754b797a442298"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#dispatchMark.release",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "dispatchMark.release",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#drainRequestStates",
@@ -135328,6 +135482,50 @@
         "type": "func(sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection) string"
       },
       "shapeHash": "sha256:e9eb074711f3935060298df95265c54f312fe74553606208aae7d4474196e56a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "timerDeferState",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "timerDeferState"
+      },
+      "shapeHash": "sha256:6bf8f8d9284bd50515bd196dda8d823f73b8d485f99e43391bbf3fd85fdc3f66"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState.ack",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "timerDeferState.ack",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage)"
+      },
+      "shapeHash": "sha256:58921bf8f132f9ca7b9ff0799072bdae79fea971981de215bae1449fc5914a38"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState.await",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "timerDeferState.await",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, done \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:1937b8842c8cc1dfcbeef1958f84955af636dbda7caba6f6f1fa06a9a97b4e7c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#timerDeferState.next",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "timerDeferState.next",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolCallLane",
