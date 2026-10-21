@@ -283,6 +283,10 @@ type Host struct {
 	loopTurns loopTurns
 	// nested tracks executeTool calls in flight (host_extension_api.go).
 	nested nestedCalls
+	// sessionGraphObjects holds the session graph objects each connection built; sessionGraphBackend serves them (session_graph.go).
+	sessionGraphObjects sessionGraphTable
+	sessionGraphMu      sync.Mutex
+	sessionGraphBackend SessionGraphBackend
 	// runSignals numbers the active run's signal and watches it for its abort (run_signal.go).
 	runSignals runSignals
 	// messageUpdateShare is the message_update payload every extension of the host shares while the partial has not published (message_update_delta.go).

@@ -10,7 +10,7 @@ import (
 
 // SetupSessionManager is the SessionManager that Pi hands the setup callback of newSession (types.ts:411, agent-session-runtime.ts:254-257): the replacement Session's manager, with the reads of SessionManager and the appends that seed the new Session. Each call acts on the replacement Session and returns the new entry's id.
 type SetupSessionManager struct {
-	SessionManager
+	ReadonlySessionManager
 }
 
 // SetupFunc is the setup option of NewSession, passed under the "setup" key. It runs after the replacement Session is bound and before the withSession callback; its error fails the call with the same error.
@@ -138,7 +138,7 @@ func (e *Extension) dispatchSetup(ctx Context, args json.RawMessage) error {
 	if entry == nil {
 		return fmt.Errorf("unknown setup callback %s", request.Handle)
 	}
-	err := entry.callback(SetupSessionManager{SessionManager: ctx.SessionManager()})
+	err := entry.callback(SetupSessionManager{ReadonlySessionManager: ctx.SessionManager()})
 	if err != nil {
 		entry.fail(err)
 	}

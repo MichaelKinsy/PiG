@@ -6,7 +6,7 @@ use std::io;
 
 use crate::compaction_estimate::estimate_tokens_with;
 use crate::host_helpers::parse_date;
-use crate::session_manager::SessionManager;
+use crate::session_manager::ReadonlySessionManager;
 
 /// Pi's `FileOperations`: the files tool calls read, wrote and edited. Each is a JavaScript Set kept in insertion order: a value is added once (SameValueZero),
 /// and an element is not always a string, because a branch summary's recorded details can hold any JSON value.
@@ -32,18 +32,18 @@ pub struct CollectEntriesResult {
     pub common_ancestor_id: Option<String>,
 }
 
-/// The part of Pi's `ReadonlySessionManager` that [`collect_entries_for_branch_summary`] reads. [`SessionManager`] is one.
+/// The part of Pi's `ReadonlySessionManager` that [`collect_entries_for_branch_summary`] reads. [`ReadonlySessionManager`] is one.
 pub trait SessionReader {
     fn get_entry(&self, id: &str) -> io::Result<Value>;
     fn get_branch(&self, from_id: Option<&str>) -> io::Result<Value>;
 }
 
-impl SessionReader for SessionManager<'_> {
+impl SessionReader for ReadonlySessionManager<'_> {
     fn get_entry(&self, id: &str) -> io::Result<Value> {
-        SessionManager::get_entry(self, id)
+        ReadonlySessionManager::get_entry(self, id)
     }
     fn get_branch(&self, from_id: Option<&str>) -> io::Result<Value> {
-        SessionManager::get_branch(self, from_id)
+        ReadonlySessionManager::get_branch(self, from_id)
     }
 }
 
