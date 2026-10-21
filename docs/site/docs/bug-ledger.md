@@ -947,6 +947,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-bfd090d](#bf-bfd090d) | Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the… | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab](#bf-96edeab) | `pig extension upgrade` finds and rewrites every changed API of an extension in one run | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab-2](#bf-96edeab-2) | `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and… | PiG's own defect | All platforms | Unreleased |
+| [BF-dca5763](#bf-dca5763) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool n… | PiG's own defect | All platforms | Unreleased |
+| [BF-3890175](#bf-3890175) | fix(extensions): write released timer calls before the chain goes on | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13883,6 +13885,33 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `96edeab595` (2026-10-20)
 - **Tests:** `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_completeness_test.go::TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeRestoreRemovesAFileItAdded`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeWritesNothingWhenTheRewriteWouldAddACompileError` and 13 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form. It exits 1 and reports `partly upgraded` when uses are left. `--dry-run` compiles the rewritten extension in a temporary directory (the go command's overlay, with the staged SDK) and reports `would upgrade` only when it builds; a rewrite that would add a compile error of its own is not written. The load error of a drifted extension names the changed APIs and the exact command. The stale-copy warning also recognises an edited copy by its Go module path.
+
+### BF-dca5763
+
+**A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool n…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool n…
+- **Root cause:** Pi runs a timer or immediate callback on the thread that runs the agent, so it runs only when the run awaits real work or is idle. The Node runtime is another process and ran the callback as soon as the tool answered; the host wrote its host call at once, ahead of the run's own output.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dca5763a` (2026-10-21)
+- **Tests:** `internal/jsloop/turns_test.go::TestTurnsHoldCallbacksOfAChainUntilItTurns`, `internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTimerCallbackCallsWaitForTheLoopTurn`, `test/extension-conformance/timer_calls_test.go::TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs`, `test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun`
+- **Release note:** A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as in Pi, instead of before `tool_execution_end`. Pi runs those callbacks when its event loop turns, which a run's chain of microtasks never gives it. The Node runtime ran them as soon as the tool answered, because it is another process, and its host calls arrived mid-run. The host now holds such calls while the RPC run chains microtasks and runs them in arrival order at the next real wait: a model response's I/O, a built-in tool's run, a dialog, a compaction or an auto-retry delay, or the end of `agent_settled`. A `process.nextTick` callback's notification follows the `tool_execution_end` of the tool that queued it, as in Pi, and the callbacks of a tool that returns while a sibling tool of its batch still runs reach the client right after its `tool_execution_end`.
+
+### BF-3890175
+
+**fix(extensions): write released timer calls before the chain goes on**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): write released timer calls before the chain goes on
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `38901751db` (2026-10-21)
+- **Tests:** None recorded.
 
 ## Divergences from Pi added in this release
 

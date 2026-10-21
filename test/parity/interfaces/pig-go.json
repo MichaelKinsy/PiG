@@ -114562,6 +114562,17 @@
       "shapeHash": "sha256:b9b0fc3ce9da9850cefe7fab075a404883204555e519730c29ea562089b387f3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.dispatchBarrier",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.dispatchBarrier",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:c51e69fcae687343551f11ef3bb93ed4285737bc29c4a4d492a19948bd65dee4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.dropReservedHostCall",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.dropReservedHostCall",
@@ -117640,6 +117651,17 @@
         "type": "func(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload)"
       },
       "shapeHash": "sha256:dbf59dde8897f3e4ef412c1d63305de27a1c0e5f45e0561943a60d1cec756b37"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.queueCallDone",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.queueCallDone",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func())"
+      },
+      "shapeHash": "sha256:4bfd592181e6687d2b537abfa98352f39374e17918d908b99d54f8ac4029b958"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.quitSuspended",
