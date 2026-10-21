@@ -114121,6 +114121,28 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallFileMutationEnter",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CallFileMutationEnter",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallFileMutationExit",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CallFileMutationExit",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallGetCallableTools",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "CallGetCallableTools",
@@ -115892,6 +115914,39 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#FileMutationEnterArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "FileMutationEnterArgs",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FileMutationEnterArgs"
+      },
+      "shapeHash": "sha256:06393209f748d78273a63dca00f860d7c55db7cb903c36cfd7f72e20c9c6e3c2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#FileMutationEnterResult",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "FileMutationEnterResult",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FileMutationEnterResult"
+      },
+      "shapeHash": "sha256:d74468c33c8772be3a3ccc3d524a2d4847b9fef61354b6d4a090f28113d5e1e3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#FileMutationExitArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "FileMutationExitArgs",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "FileMutationExitArgs"
+      },
+      "shapeHash": "sha256:fb6b55d5493ab6ad4900753880a0c60e66f06903aaa88c395b5fbf405c8e2a97"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#FlagDecl",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "FlagDecl",
@@ -117166,6 +117221,28 @@
         "type": "func(ctx context.Context, conn *Conn, call *CallPayload) (*CallResultPayload, error)"
       },
       "shapeHash": "sha256:3fb7723bcac0ac54523006d93762b9da9cffc1fdcd1576c08d9adba31018379d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleFileMutationEnter",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.handleFileMutationEnter",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, conn *Conn, call *CallPayload) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:3fb7723bcac0ac54523006d93762b9da9cffc1fdcd1576c08d9adba31018379d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleFileMutationExit",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.handleFileMutationExit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn, call *CallPayload) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:ab22fb77f27adc25104c55e6ca74f0eff8ba7a5c7893f306c2f44db05d86c772"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleIncoming",
@@ -125515,6 +125592,50 @@
         "type": "compileEntry"
       },
       "shapeHash": "sha256:d41d62c8551485e5a5c014b41a25b2251566f452813345ad93466da5792091bc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connFileMutations",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connFileMutations",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "connFileMutations"
+      },
+      "shapeHash": "sha256:f7c335b2049c00941b2639a058d995da0b6ef8d22fd03013590de2ae5b813c1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connFileMutations.admit",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connFileMutations.admit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ticket *github.com/MichaelKinsy/PiG/internal/codingagent/tools.MutationTicket) (string, bool)"
+      },
+      "shapeHash": "sha256:e00cd90f39186adf9e1b227054e7654d0ba1d2aadf642c3a3a0395eeb45ffab8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connFileMutations.releaseAll",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connFileMutations.releaseAll",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connFileMutations.take",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connFileMutations.take",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) (*github.com/MichaelKinsy/PiG/internal/codingagent/tools.MutationTicket, bool)"
+      },
+      "shapeHash": "sha256:47287cab7e34671e6cd7879ae6789b28901a9ae391d73d5f80ca50c4c12fd84a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connOptions",
@@ -174962,6 +175083,28 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#callFileMutationEnter",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "callFileMutationEnter",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#callFileMutationExit",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "callFileMutationExit",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#callMsg",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "callMsg",
@@ -176194,28 +176337,6 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#fileMutationQueueKey",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "fileMutationQueueKey",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(filePath string) (string, error)"
-      },
-      "shapeHash": "sha256:03e5fb624374169fc71941bec5387acaff554a9f31421ab6e9c6ef7129831035"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#fileMutationQueues",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "fileMutationQueues",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "struct{mu sync.Mutex; chains map[string]chan struct{}}"
-      },
-      "shapeHash": "sha256:528585f5224b0ad622493a8d6541f128b359267f6993f778ad87e52301e22cac"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#findClosest",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "findClosest",
@@ -176621,17 +176742,6 @@
         "type": "func(linear [3]float64) bool"
       },
       "shapeHash": "sha256:e600adb8ac61e54925d1f8fc0ceb0d97c309c5bbc61ae074c20e60127f8b473d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#isMissingPathError",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "isMissingPathError",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(err error) bool"
-      },
-      "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#isNumberZero",
@@ -179888,17 +179998,6 @@
         "type": "widthDelivery"
       },
       "shapeHash": "sha256:62e4857e48a07cd51a98a4224027f04b3fd71c50607257b3ef712640765ee5de"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#windowsMissingPathErrors",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "windowsMissingPathErrors",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "[]syscall.Errno"
-      },
-      "shapeHash": "sha256:0abd4c19ec5c43cbeb1716479c56c0bd6607b5530ae1ddc7f80808e34d3616fd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#withContent",
@@ -260894,6 +260993,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#MutationTicket.WaitContext",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "MutationTicket.WaitContext",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#NewFileMutationQueue",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "NewFileMutationQueue",
@@ -261464,6 +261574,17 @@
         "type": "func(cleanup func())"
       },
       "shapeHash": "sha256:32bfd8f61680902415e5f79888a188d1e2d064e14b09ab91de5157ccc45d633f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReserveFileMutation",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "ReserveFileMutation",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(filePath string) (*MutationTicket, error)"
+      },
+      "shapeHash": "sha256:8a4a4c4aa099d1990ccdb76a16d9ff913dfce64226a845690ef75a8587ba6af4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ResolveReadPath",
