@@ -154,8 +154,8 @@ func TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst(t *testing.T) {
 		turns.Tick(origin, func(written func()) { got = append(got, label); written() })
 	}
 	end := turns.Chain()
-	// Tool 1 awaits real work for the whole run, so the loop turns while tool 2 runs and ends.
-	tool1 := turns.Wait()
+	// A third tool awaits real work for the whole run, so the loop turns while tool-1 and tool-2 run and end.
+	sibling := turns.Wait()
 	tick("tool-2", "early")
 	tick("tool-1", "other-tool")
 	if len(got) != 0 {
@@ -165,17 +165,17 @@ func TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst(t *testing.T) {
 	if want := []string{"early"}; !slices.Equal(got, want) {
 		t.Fatalf("the tick boundary of tool-2 ran %v, want %v: the tick of tool-1 waits for tool-1's end", got, want)
 	}
-	// A call that reaches the host after tool-2's end runs at once, behind what ran before it, as Pi's loop turns while tool-1 awaits.
-	tick("tool-2", "late")
-	turns.Macrotask(func() { got = append(got, "timer") })
-	if want := []string{"early", "late", "timer"}; !slices.Equal(got, want) {
-		t.Fatalf("after the boundary ran %v, want %v", got, want)
-	}
-	tool1()
 	turns.Ticked("tool-1")
-	if want := []string{"early", "late", "timer", "other-tool"}; !slices.Equal(got, want) {
+	if want := []string{"early", "other-tool"}; !slices.Equal(got, want) {
 		t.Fatalf("the tick boundary of tool-1 ran %v, want %v", got, want)
 	}
+	// A call that reaches the host after tool-2's end runs at once, behind what ran before it, as Pi's loop turns while the sibling awaits.
+	tick("tool-2", "late")
+	turns.Macrotask(func() { got = append(got, "timer") })
+	if want := []string{"early", "other-tool", "late", "timer"}; !slices.Equal(got, want) {
+		t.Fatalf("after the boundary ran %v, want %v", got, want)
+	}
+	sibling()
 	end()
 }
 
