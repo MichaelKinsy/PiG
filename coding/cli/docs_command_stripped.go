@@ -32,3 +32,6 @@ func writeDocsBundle() {}
 func writeDocsBundleBeforeToolCall(context.Context, string, string, json.RawMessage) agent.ToolCallHookResult {
 	return agent.ToolCallHookResult{}
 }
+
+// releaseDocsLeases does nothing: this build has no documentation bundle to lease.
+func releaseDocsLeases() {}
