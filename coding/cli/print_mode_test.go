@@ -380,6 +380,63 @@ func TestPrintAndJSONModeRunExtensionCommandsAndExpandTemplates(t *testing.T) {
 	}
 }
 
+// Upstream AgentSession.prompt checks for an extension command on the raw text only (agent-session.ts:2067-2074). Text an input handler produced or a
+// prompt template expanded goes to the model even when it reads as a slash command, so a command is never dispatched a second time.
+func TestPrintAndJSONModeDoNotDispatchCommandsOnTransformedText(t *testing.T) {
+	for _, mode := range []string{"text", "json"} {
+		for _, source := range []string{"input-transform", "template"} {
+			t.Run(mode+"/"+source, func(t *testing.T) {
+				captured := make(chan []ai.Message, 1)
+				provider := ai.NewFauxProvider(ai.FauxConfig{})
+				provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
+					captured <- context.Messages()
+					return fauxTextResponse("sent").AssistantMessage(), nil
+				})})
+				var ran []string
+				ext := extension.Extension{
+					Path: "deploy-probe",
+					Commands: map[string]extension.RegisteredCommand{
+						"deploy": {Name: "deploy", Handler: func(_ context.Context, args string) error {
+							ran = append(ran, args)
+							return nil
+						}},
+					},
+					CommandOrder: []string{"deploy"},
+				}
+				prompt, want := "plain", "/deploy now"
+				host := printModeTestHost(t, provider)
+				switch source {
+				case "input-transform":
+					ext.Handlers = map[string][]extension.HandlerFn{"input": {func(...any) (any, error) {
+						return extension.InputEventResultTransform{Text: "/deploy now"}, nil
+					}}}
+				case "template":
+					resources := newCLIResourceLoader(host.Services.CWD(), host.Services.AgentDir())
+					resources.set([]codingagent.PromptTemplate{{Name: "review", Content: "/deploy $ARGUMENTS"}}, nil, nil)
+					host.Session.ResourceLoader = resources
+					prompt, want = "/review main.go", "/deploy main.go"
+				}
+				host.Extensions = []extension.Extension{ext}
+				result := runPrintModeForTest(t, host, printModeOptions{Mode: mode, InitialMessage: prompt})
+				if result.err != nil || result.stderr != "" {
+					t.Fatalf("run = %v, stderr %q", result.err, result.stderr)
+				}
+				if len(ran) != 0 {
+					t.Fatalf("command ran with %q, want it not run for text the prompt produced", ran)
+				}
+				if calls := provider.CallCount(); calls != 1 {
+					t.Fatalf("provider calls = %d, want 1", calls)
+				}
+				messages := <-captured
+				user, ok := messages[len(messages)-1].(ai.UserMessage)
+				if !ok || userMessageText(user) != want {
+					t.Fatalf("last provider message = %#v, want user text %q", messages[len(messages)-1], want)
+				}
+			})
+		}
+	}
+}
+
 func userMessageText(message ai.UserMessage) string {
 	switch content := message.Content.(type) {
 	case ai.UserText:
