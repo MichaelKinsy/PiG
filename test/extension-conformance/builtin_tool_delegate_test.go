@@ -85,6 +85,8 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "local", "shell": "bash", "factoryCwd": hostCwd, "command": "echo begun; exec sleep 30", "abortOnOutput": true},
 			{"kind": "local", "shell": "bash", "factoryCwd": hostCwd, "command": "exec sleep 30", "timeout": 1},
 			{"kind": "local", "shell": "bash", "factoryCwd": filepath.Join(hostCwd, "no-such-dir"), "command": "echo x"},
+			// createCodingTools and createReadOnlyTools
+			{"kind": "sets", "factoryCwd": factoryCwd},
 		}
 	}
 	// A host file system with the files the cases read, created through the context's working directory once the harness reports it.
@@ -248,6 +250,9 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{31, definitionField("outputSchema"), `"exit_code"`},
 		{32, definitionField("promptGuidelines"), `null`},
 		{33, definitionField("promptSnippet"), `"Search file contents for patterns (respects .gitignore)"`},
+	}
+	if got, _ := json.Marshal(reference[len(reference)-1]); string(got) != `{"coding":["read","bash","edit","write"],"readOnly":["read","grep","find","ls"]}` {
+		t.Fatalf("Pi's own createCodingTools and createReadOnlyTools reported %s", got)
 	}
 	for _, e := range expectations {
 		if got := e.check(reference[e.index]); !strings.Contains(got, e.want) {

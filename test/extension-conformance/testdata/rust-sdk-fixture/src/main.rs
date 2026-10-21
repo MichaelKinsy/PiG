@@ -3176,6 +3176,12 @@ fn builtin_probe(ctx: &pig_sdk::Context, case: &Value) -> Result<Value, String> 
         "cwd" => return Ok(json!({"cwd": ctx.cwd()})),
         "register" => return builtin_register(ctx, &factory_cwd),
         "local" => return Ok(builtin_local(case)),
+        "sets" => {
+            let names = |tools: Vec<pig_sdk::BuiltinTool>| tools.into_iter().map(|tool| tool.name).collect::<Vec<_>>();
+            let coding = names(pig_sdk::create_coding_tools(&factory_cwd, None).map_err(|e| e.to_string())?);
+            let read_only = names(pig_sdk::create_read_only_tools(&factory_cwd, None).map_err(|e| e.to_string())?);
+            return Ok(json!({"coding": coding, "readOnly": read_only}));
+        }
         _ => {}
     }
     let log: CallLog = Arc::new(Mutex::new(Vec::new()));

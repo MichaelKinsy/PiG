@@ -224,6 +224,23 @@ func builtinProbe(ctx sdk.Context, c builtinProbeCase) (map[string]any, error) {
 		return map[string]any{"registered": registerDelegatingOverrides(ctx, c.FactoryCwd)}, nil
 	case "local":
 		return builtinLocalProbe(c)
+	case "sets":
+		coding, err := sdk.CreateCodingTools(c.FactoryCwd, nil)
+		if err != nil {
+			return nil, err
+		}
+		readOnly, err := sdk.CreateReadOnlyTools(c.FactoryCwd, nil)
+		if err != nil {
+			return nil, err
+		}
+		names := func(tools []sdk.BuiltinTool) []string {
+			out := []string{}
+			for _, tool := range tools {
+				out = append(out, tool.Name)
+			}
+			return out
+		}
+		return map[string]any{"coding": names(coding), "readOnly": names(readOnly)}, nil
 	}
 	log := &builtinCallLog{calls: []string{}}
 	definition, tool := builtinProbeSpec(c, log)

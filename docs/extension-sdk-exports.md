@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 804 | 793 | 794 |
+| `pi-coding-agent` | 920 | 305 | 910 | 784 | 773 | 774 |
 | `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -21,7 +21,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 432 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
-| SdkBuiltinToolDelegate | SdkBuiltinToolDelegate lane (built-in tool delegation, E7) | 0.5.2 | 60 | TestConformance_BuiltinToolDelegationAcrossSDKs |
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
@@ -30,7 +29,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 ## High-use gaps (block the release gate)
 
-88 exports imported by 5 or more scanned packages have a gap.
+80 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -57,22 +56,15 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-ai: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: createAssistantMessageEventStream` | 14 | Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-coding-agent: createWriteToolDefinition` | 13 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: keyHint` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: CURSOR_MARKER` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: fuzzyFilter` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: getKeybindings` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: DefaultPackageManager` | 12 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
-| `pi-coding-agent: createBashToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
-| `pi-coding-agent: createEditToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
-| `pi-coding-agent: createGrepToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
-| `pi-coding-agent: createReadToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: highlightCode` | 12 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: stripTerminalSequences` | 12 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: clampThinkingLevel` | 12 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: getSupportedThinkingLevels` | 12 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-coding-agent: createFindToolDefinition` | 10 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
-| `pi-coding-agent: createLsToolDefinition` | 10 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: readStoredCredential` | 10 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: getSupportedThinkingLevels` | 10 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createAgentSessionServices` | 9 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
@@ -97,7 +89,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: ProjectTrustStore` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createAgentSessionRuntime` | 6 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-coding-agent: createExtensionRuntime` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
-| `pi-coding-agent: createLocalBashOperations` | 6 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createMcpExtension` | 6 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-coding-agent: generateUnifiedPatch` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: initTheme` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
@@ -979,32 +970,32 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `createAgentSessionFromServices` | 8 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `createAgentSessionRuntime` | 6 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `createAgentSessionServices` | 9 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `createBashTool` | 2 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createBashToolDefinition` | 12 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
+| `createBashTool` | 2 | served | native:CreateBashTool | native:create_bash_tool | native:create_bash_tool |
+| `createBashToolDefinition` | 12 | served | native:CreateBashToolDefinition | native:create_bash_tool_definition | native:create_bash_tool_definition |
 | `createCodemodeExtension` | 8 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `createCodingTools` | 3 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createEditTool` | 3 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createEditToolDefinition` | 12 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
+| `createCodingTools` | 3 | served | native:CreateCodingTools | native:create_coding_tools | native:create_coding_tools |
+| `createEditTool` | 3 | served | native:CreateEditTool | native:create_edit_tool | native:create_edit_tool |
+| `createEditToolDefinition` | 12 | served | native:CreateEditToolDefinition | native:create_edit_tool_definition | native:create_edit_tool_definition |
 | `createEventBus` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createExtensionRuntime` | 6 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `createFindTool` | 4 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createFindToolDefinition` | 10 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createGrepTool` | 3 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createGrepToolDefinition` | 12 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createLocalBashOperations` | 6 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createLocalPowerShellOperations` | 1 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createLsTool` | 4 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createLsToolDefinition` | 10 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
+| `createFindTool` | 4 | served | native:CreateFindTool | native:create_find_tool | native:create_find_tool |
+| `createFindToolDefinition` | 10 | served | native:CreateFindToolDefinition | native:create_find_tool_definition | native:create_find_tool_definition |
+| `createGrepTool` | 3 | served | native:CreateGrepTool | native:create_grep_tool | native:create_grep_tool |
+| `createGrepToolDefinition` | 12 | served | native:CreateGrepToolDefinition | native:create_grep_tool_definition | native:create_grep_tool_definition |
+| `createLocalBashOperations` | 6 | served | native:CreateLocalBashOperations | native:create_local_bash_operations | native:create_local_bash_operations |
+| `createLocalPowerShellOperations` | 1 | served | native:CreateLocalPowerShellOperations | native:create_local_powershell_operations | native:create_local_powershell_operations |
+| `createLsTool` | 4 | served | native:CreateLsTool | native:create_ls_tool | native:create_ls_tool |
+| `createLsToolDefinition` | 10 | served | native:CreateLsToolDefinition | native:create_ls_tool_definition | native:create_ls_tool_definition |
 | `createMcpExtension` | 6 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `createPowerShellTool` | 0 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createPowerShellToolDefinition` | 1 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createReadOnlyTools` | 3 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createReadTool` | 3 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createReadToolDefinition` | 12 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
+| `createPowerShellTool` | 0 | served | native:CreatePowerShellTool | native:create_powershell_tool | native:create_powershell_tool |
+| `createPowerShellToolDefinition` | 1 | served | native:CreatePowerShellToolDefinition | native:create_powershell_tool_definition | native:create_powershell_tool_definition |
+| `createReadOnlyTools` | 3 | served | native:CreateReadOnlyTools | native:create_read_only_tools | native:create_read_only_tools |
+| `createReadTool` | 3 | served | native:CreateReadTool | native:create_read_tool | native:create_read_tool |
+| `createReadToolDefinition` | 12 | served | native:CreateReadToolDefinition | native:create_read_tool_definition | native:create_read_tool_definition |
 | `createSyntheticSourceInfo` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `createToolSearchExtension` | 7 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `createWriteTool` | 4 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
-| `createWriteToolDefinition` | 13 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
+| `createWriteTool` | 4 | served | native:CreateWriteTool | native:create_write_tool | native:create_write_tool |
+| `createWriteToolDefinition` | 13 | served | native:CreateWriteToolDefinition | native:create_write_tool_definition | native:create_write_tool_definition |
 | `defineTool` | 23 | served | identity | identity | identity |
 | `detectSupportedImageMimeTypeFromFile` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `discoverAndLoadExtensions` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |

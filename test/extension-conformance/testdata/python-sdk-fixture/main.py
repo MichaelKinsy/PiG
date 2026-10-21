@@ -451,6 +451,8 @@ def new_extension() -> pig_sdk.Extension:
             report = {"registered": register_overrides(ctx, case["factoryCwd"])}
         elif kind == "local":
             report = local_probe(case)
+        elif kind == "sets":
+            report = {"coding": [t.name for t in pig_sdk.create_coding_tools(case["factoryCwd"])], "readOnly": [t.name for t in pig_sdk.create_read_only_tools(case["factoryCwd"])]}
         else:
             log = []
             create_definition, create_tool = factories[case["tool"]]
