@@ -1,4 +1,4 @@
-// The credential an auth.json holds for a provider, in the key order of the file: the case writes the file text to a temporary path and passes it.
+// The answer is wrapped so that Pi's undefined is a value of the vector, not a missing result. The credential an auth.json holds for a provider, in the key order of the file: the case writes the file text to a temporary path and passes it.
 export const cases = [
   { name: "explicit", args: ["anthropic", "{\"anthropic\":{\"type\":\"api_key\",\"key\":\"explicit-key\",\"env\":{\"B\":\"2\",\"A\":\"1\"},\"10\":\"x\",\"2\":\"y\",\"nested\":{\"z\":1,\"1\":2,\"é\":\"😀\"},\"list\":[3,{\"b\":1,\"a\":2}]},\"other\":5}"] },
   { name: "byte order mark", args: ["anthropic", "﻿{\"anthropic\":{\"type\":\"api_key\",\"key\":\"explicit-key\",\"env\":{\"B\":\"2\",\"A\":\"1\"},\"10\":\"x\",\"2\":\"y\",\"nested\":{\"z\":1,\"1\":2,\"é\":\"😀\"},\"list\":[3,{\"b\":1,\"a\":2}]}}"] },
@@ -16,5 +16,5 @@ export const call = (fn, providerId, text) => {
   const dir = mkdtempSync(join(tmpdir(), "sdk-vector-"));
   const path = join(dir, "auth.json");
   if (text !== undefined) writeFileSync(path, text);
-  return fn(providerId, path) ?? null;
+  return { credential: fn(providerId, path) ?? null };
 };

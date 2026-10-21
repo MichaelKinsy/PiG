@@ -7,4 +7,5 @@ export const cases = [
   { name: "convert empty", args: ["", "image/jpeg"] },
 ];
 const meta = (image) => (image ? { mimeType: image.mimeType, ...(image.originalWidth === undefined ? {} : { originalWidth: image.originalWidth, originalHeight: image.originalHeight, width: image.width, height: image.height, wasResized: image.wasResized }), decodes: image.data.length > 0 } : null);
-export const call = async (fn, data, mimeType) => meta(await fn(data, mimeType));
+// The answer is wrapped so that Pi's null is a value of the vector, not a missing result.
+export const call = async (fn, data, mimeType) => ({ image: meta(await fn(data, mimeType)) });

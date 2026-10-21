@@ -172,7 +172,11 @@ func piVectorsFile(t *testing.T) string {
 	for _, export := range []string{"convertToPng", "resizeImage"} {
 		op := map[string]string{"convertToPng": "convert", "resizeImage": "resize"}[export]
 		for _, c := range piVectorCases(t, "pi-coding-agent", export) {
-			entry := map[string]any{"op": op, "name": c.Name, "data": c.Args[0], "mimeType": c.Args[1], "result": c.Result}
+			var answer struct {
+				Image json.RawMessage `json:"image"`
+			}
+			_ = json.Unmarshal(c.Result, &answer)
+			entry := map[string]any{"op": op, "name": c.Name, "data": c.Args[0], "mimeType": c.Args[1], "result": answer.Image}
 			if len(c.Args) > 2 {
 				entry["options"] = c.Args[2]
 			}
