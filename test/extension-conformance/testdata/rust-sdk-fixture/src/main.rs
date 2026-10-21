@@ -1051,6 +1051,19 @@ fn main() {
             ToolResult::text(format!("start#{number} n={}", params.get("n").map(Value::to_string).unwrap_or_default()))
         },
     );
+    // order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+    ext.tool(
+        "order_probe",
+        "Make a host call and an update in the first tick",
+        json!({"type": "object", "properties": {"n": {"type": "number"}}}),
+        |ctx, params: Value| {
+            let n = params.get("n").map(Value::to_string).unwrap_or_default();
+            ctx.notify(&format!("order-call={n}"), "info");
+            ctx.notify(&format!("order-then={n}"), "info");
+            let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": format!("order-update={n}")}]})));
+            ToolResult::text(format!("order-done n={n}"))
+        },
+    );
     ext.tool(
         "throw_probe",
         "Throw a value of the requested kind",
@@ -2463,6 +2476,10 @@ fn main() {
         None
     });
     ext.on_event("tool_result", |ctx, data| {
+        if data["toolName"] == "order_probe" {
+            ctx.notify(&format!("order-result={}", data["toolCallId"].as_str().unwrap_or_default()), "info");
+            return None;
+        }
         let held: Vec<&str> = [
             ("bash", pig_sdk::is_bash_tool_result as fn(&Value) -> bool),
             ("powershell", pig_sdk::is_powershell_tool_result),

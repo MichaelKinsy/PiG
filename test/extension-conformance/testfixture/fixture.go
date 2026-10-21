@@ -659,6 +659,16 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": fmt.Sprintf("start#%d n=%v", number, params["n"])}, nil
 	})
 
+	// order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+	ext.Tool("order_probe", "Make a host call and an update in the first tick", sdk.Schema{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		ctx.Notify(fmt.Sprintf("order-call=%v", params["n"]), "info")
+		ctx.Notify(fmt.Sprintf("order-then=%v", params["n"]), "info")
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: fmt.Sprintf("order-update=%v", params["n"])}); err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": fmt.Sprintf("order-done n=%v", params["n"])}, nil
+	})
+
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		switch params["kind"] {
 		case "unicode":
@@ -2594,6 +2604,10 @@ func Extension() *sdk.Extension {
 		return nil, nil
 	})
 	ext.OnEvent("tool_result", func(ctx sdk.Context, event map[string]any) (any, error) {
+		if event["toolName"] == "order_probe" {
+			ctx.Notify(fmt.Sprintf("order-result=%v", event["toolCallId"]), "info")
+			return nil, nil
+		}
 		var held []string
 		for _, guard := range []struct {
 			name string
