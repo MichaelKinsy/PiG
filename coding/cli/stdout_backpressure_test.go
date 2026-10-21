@@ -219,6 +219,31 @@ func TestRPCUsageGoldenMatchesPi(t *testing.T) {
 	}
 }
 
+// The probe has no wall-clock bound: a slow start of Pi is not a result, and one that exits without writing a frame must be an error, not an empty frame list that reads as a stale golden.
+func TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame(t *testing.T) {
+	t.Parallel()
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("node is required for the Pi differential probe: %v", err)
+	}
+	dir := t.TempDir()
+	cli := filepath.Join(dir, "cli.js")
+	if err := os.WriteFile(cli, []byte("process.exit(0)\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(dir, "rpc-usage.json")
+	output, err := exec.CommandContext(t.Context(), node, filepath.Join(rpcUsageProbeDir, "rpc-usage-probe.mjs"), node, cli, out).CombinedOutput()
+	if err == nil {
+		t.Fatalf("the probe succeeded for a CLI that wrote no frame; output:\n%s", output)
+	}
+	if _, statErr := os.Stat(out); statErr == nil {
+		t.Fatal("the probe wrote an output file for a CLI that wrote no frame")
+	}
+	if !strings.Contains(string(output), "wrote no assistant message frame") {
+		t.Fatalf("the probe failed without saying why:\n%s", output)
+	}
+}
+
 // rpc-mode.ts:354-363 serializes each event in the Session subscriber and then, in an Agent listener registered after the Session's, awaits waitForRawStdoutBackpressure (output-guard.ts:95-101). The write callback runs after every promise reaction, so the provider finishes its buffered body before the next event is copied and serialized. Real Pi shows the final usage on the first message_update.
 func TestRPCStdoutBackpressureLetsProviderFinishBufferedBody(t *testing.T) {
 	want := readRPCUsageGolden(t)
