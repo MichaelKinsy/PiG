@@ -7660,6 +7660,20 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/68-rpc-set-widget-per-call-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/selectors/01-config-empty.toml",
       "transforms": [
         {
