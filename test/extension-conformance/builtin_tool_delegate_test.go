@@ -259,7 +259,8 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 	}
 	// Pi writes a truncated read's details with the members of its truncation in the order the tool built them, which JSON.stringify keeps and a map does not:
 	// the text of the details, in member order, is the same in every SDK (the comparison below) and is not the sorted order.
-	if details, _ := reference[len(reference)-2]["detailsJSON"].(string); !strings.HasPrefix(details, `{"truncation":{"content":`) {
+	bigResult, _ := reference[len(reference)-2]["result"].(map[string]any)
+	if details, _ := bigResult["detailsJSON"].(string); !strings.HasPrefix(details, `{"truncation":{"content":`) {
 		t.Fatalf("Pi's own details = %q", details)
 	}
 	// bash's structured content lists its members in insertion order

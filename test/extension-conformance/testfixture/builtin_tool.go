@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
+	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // builtinProbeCase is one case of builtin_probe (TestConformance_BuiltinToolDelegationAcrossSDKs). Every SDK's fixture implements the same cases, so the
@@ -331,11 +331,12 @@ func builtinLocalProbe(c builtinProbeCase) (map[string]any, error) {
 	mu.Lock()
 	report["output"] = strings.Join(chunks, "")
 	mu.Unlock()
-	if err != nil {
+	switch {
+	case err != nil:
 		report["error"] = err.Error()
-	} else if result.ExitCode == nil {
+	case result.ExitCode == nil:
 		report["exitCode"] = nil
-	} else {
+	default:
 		report["exitCode"] = *result.ExitCode
 	}
 	return report, nil
