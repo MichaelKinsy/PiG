@@ -6,7 +6,7 @@
 // so this module imports nothing from it.
 
 // The coding-agent classes the walk loads the coding-agent bundle for.
-export const WIDGET_CODING_AGENT_CLASSES = ["BranchSummaryMessageComponent" , "CompactionSummaryMessageComponent" , "SkillInvocationMessageComponent" , "CustomMessageComponent" /* widget-classes */];
+export const WIDGET_CODING_AGENT_CLASSES = ["BranchSummaryMessageComponent" , "CompactionSummaryMessageComponent" , "SkillInvocationMessageComponent" , "CustomMessageComponent" , "CancellableLoader" /* widget-classes */];
 
 // The pi-tui widget classes by render function: none are drawn by their
 // base class's render alone.
@@ -71,6 +71,28 @@ export function widgetClassHandlers(codingAgent, h) {
     if (text) node.text = text;
     if (c.outputPad !== 1) node.outputPad = c.outputPad;
     if (c._expanded) node.expanded = true;
+    return node;
+  });
+  // The loaders draw as their Loader does; the class names the kind.
+  add(h.tui.CancellableLoader, (walk, c) => {
+    const node = h.walkLoader(walk, c);
+    if (!node) return undefined;
+    node.kind = "cancellable-loader";
+    node.id = h.conversationId(c, "cancellable-loader");
+    return node;
+  });
+  add(codingAgent.BorderedLoader, (walk, c) => {
+    if (typeof c.cancellable !== "boolean" || !c.loader || !Array.isArray(c.children)) return undefined;
+    const border = walk.probe.token(c.children[0]?.color, "fg");
+    const spinner = walk.probe.token(c.loader.spinnerColorFn, "fg");
+    const messageColor = walk.probe.token(c.loader.messageColorFn, "fg");
+    if (border !== "border" || spinner !== "accent" || messageColor !== "muted") return undefined;
+    // The loader is the constructor's: default spinner, and the text its updateDisplay drew.
+    if (c.loader.renderIndicatorVerbatim || !h.isInt(c.loader.currentFrame) || typeof c.loader.message !== "string" || c.loader.intervalMs !== 80) return undefined;
+    const node = { kind: "bordered-loader", id: h.conversationId(c, "bordered-loader") };
+    if (c.loader.message !== "Loading...") node.message = c.loader.message;
+    if (!c.cancellable) node.cancellable = false;
+    if (c.loader.currentFrame !== 0) node.frame = c.loader.currentFrame;
     return node;
   });
   // widget-walkers

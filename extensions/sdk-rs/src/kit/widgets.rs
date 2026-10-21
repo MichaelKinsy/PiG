@@ -14,6 +14,8 @@ pub enum Widget {
     CompactionSummary(CompactionSummary),
     SkillInvocation(SkillInvocation),
     CustomMessage(CustomMessage),
+    CancellableLoader(CancellableLoader),
+    BorderedLoader(BorderedLoader),
     // widget-variants
 }
 
@@ -26,7 +28,7 @@ macro_rules! widget_from {
         }
     )*};
 }
-widget_from!(BranchSummary , CompactionSummary , SkillInvocation , CustomMessage /* widget-from */);
+widget_from!(BranchSummary , CompactionSummary , SkillInvocation , CustomMessage , CancellableLoader , BorderedLoader /* widget-from */);
 
 impl Widget {
     pub(super) fn kind(&self) -> &'static str {
@@ -35,6 +37,8 @@ impl Widget {
             Widget::CompactionSummary(_) => "compaction-summary",
             Widget::SkillInvocation(_) => "skill-invocation",
             Widget::CustomMessage(_) => "custom-message",
+            Widget::CancellableLoader(_) => "cancellable-loader",
+            Widget::BorderedLoader(_) => "bordered-loader",
             // widget-kinds
         }
     }
@@ -78,6 +82,18 @@ impl Widget {
                 }
                 put_nonempty(map, "customType", &n.custom_type);
                 put_nonempty(map, "text", &n.text);
+            }
+            Widget::CancellableLoader(n) => {
+                put(map, "id", n.id.as_str());
+                put_loader(map, &n.loader);
+            }
+            Widget::BorderedLoader(n) => {
+                put(map, "id", n.id.as_str());
+                put(map, "message", n.message.as_str());
+                if !n.cancellable {
+                    put(map, "cancellable", false);
+                }
+                put_opt(map, "frame", &n.frame);
             }
             // widget-encode
         }
@@ -301,6 +317,74 @@ impl CustomMessage {
     /// Upstream `setOutputPad`.
     pub fn set_output_pad(&mut self, output_pad: u32) {
         self.output_pad = output_pad;
+    }
+}
+
+/// Pi-tui's `CancellableLoader(ui, spinnerColorFn, messageColorFn, message,
+/// indicator)`: a [`Loader`](super::Loader) that the focused
+/// `tui.select.cancel` key aborts. The host owns its abort state and
+/// animation; the abort reaches the extension as an [`super::EventKind::Abort`]
+/// event of the node, which the view's focus must name to receive the key.
+/// Any other key goes to the extension, as the loader ignores it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CancellableLoader {
+    id: String,
+    loader: super::Loader,
+}
+
+impl CancellableLoader {
+    /// A cancellable loader named `id` (required, unique within the view) with
+    /// the loader's arguments.
+    pub fn new(id: impl Into<String>, loader: super::Loader) -> Self {
+        Self { id: id.into(), loader }
+    }
+}
+
+/// A loader's wire fields.
+fn put_loader(map: &mut Map<String, Value>, n: &super::Loader) {
+    put(map, "message", n.message.as_str());
+    put_opt(map, "spinnerColor", &n.spinner_color);
+    put_opt(map, "messageColor", &n.message_color);
+    if let Some(indicator) = &n.indicator {
+        let mut i = Map::new();
+        put_opt(&mut i, "frames", &indicator.frames);
+        put_opt(&mut i, "intervalMs", &indicator.interval_ms);
+        put(map, "indicator", Value::Object(i));
+    }
+    put_opt(map, "frame", &n.frame);
+}
+
+
+/// Coding-agent's `BorderedLoader(tui, theme, message, {cancellable})`: a
+/// loader between two borders with, when cancellable (the default), a cancel
+/// key hint that the focused `tui.select.cancel` key aborts
+/// ([`super::EventKind::Abort`]). It draws with the view's theme, the one Pi hands
+/// the factory that builds it. The host owns its abort state and animation.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BorderedLoader {
+    id: String,
+    message: String,
+    cancellable: bool,
+    frame: Option<u32>,
+}
+
+impl BorderedLoader {
+    /// A cancellable loader named `id` (required, unique within the view)
+    /// showing `message`.
+    pub fn new(id: impl Into<String>, message: impl Into<String>) -> Self {
+        Self { id: id.into(), message: message.into(), cancellable: true, frame: None }
+    }
+
+    /// Upstream's `{cancellable}` option.
+    pub fn cancellable(mut self, cancellable: bool) -> Self {
+        self.cancellable = cancellable;
+        self
+    }
+
+    /// The spinner's upstream `currentFrame`; absent starts at 0.
+    pub fn frame(mut self, frame: u32) -> Self {
+        self.frame = Some(frame);
+        self
     }
 }
 

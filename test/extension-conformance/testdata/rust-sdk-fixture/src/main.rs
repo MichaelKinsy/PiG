@@ -332,6 +332,17 @@ fn kit_custom_message_view(text: &str, set: impl FnOnce(&mut kit::CustomMessage)
 }
 
 
+const KIT_WIDE_MESSAGE: &str = "A very long message that wraps around the narrow widths of the table";
+
+fn kit_cancellable_view(loader: kit::Loader) -> kit::View {
+    kit::View::new(Container::new().child(kit::CancellableLoader::new("c", loader))).focus("c")
+}
+
+fn kit_bordered_view(message: &str, set: impl FnOnce(kit::BorderedLoader) -> kit::BorderedLoader) -> kit::View {
+    kit::View::new(Container::new().child(set(kit::BorderedLoader::new("b", message)))).focus("b")
+}
+
+
 /// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 /// §10), built with the SDK's own constructors; the key is
 /// "<module>/<export>/<case name>" and the case's wire node is its vector's
@@ -393,6 +404,34 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
         }
         "pi-coding-agent/CustomMessageComponent/empty text" => kit_custom_message_view("", |_| {}),
         "pi-coding-agent/CustomMessageComponent/no id" => kit::View::new(kit::CustomMessage::new("note", "plain")),
+        "pi-tui/CancellableLoader/default"
+        | "pi-tui/CancellableLoader/escape aborts"
+        | "pi-tui/CancellableLoader/escape twice aborts twice"
+        | "pi-tui/CancellableLoader/other keys are ignored" => kit_cancellable_view(Loader::new("Working")),
+        "pi-tui/CancellableLoader/default message" => kit_cancellable_view(Loader::new("Loading...")),
+        "pi-tui/CancellableLoader/colors" => kit_cancellable_view(Loader::new("Working").spinner_color("accent").message_color("muted")),
+        "pi-tui/CancellableLoader/frame 3" => kit_cancellable_view(Loader::new("Working").frame(3)),
+        "pi-tui/CancellableLoader/indicator frames" => kit_cancellable_view(
+            Loader::new("Working")
+                .indicator(LoaderIndicator { frames: Some(vec!["*".into(), "+".into(), "x".into()]), interval_ms: Some(50) })
+                .frame(1),
+        ),
+        "pi-tui/CancellableLoader/hidden indicator" => {
+            kit_cancellable_view(Loader::new("Working").indicator(LoaderIndicator { frames: Some(vec![]), interval_ms: None }))
+        }
+        "pi-tui/CancellableLoader/wide message" => kit_cancellable_view(Loader::new(KIT_WIDE_MESSAGE).spinner_color("accent")),
+        "pi-coding-agent/BorderedLoader/cancellable"
+        | "pi-coding-agent/BorderedLoader/escape aborts"
+        | "pi-coding-agent/BorderedLoader/escape twice aborts twice"
+        | "pi-coding-agent/BorderedLoader/other keys are ignored" => kit_bordered_view("Fetching models", |l| l),
+        "pi-coding-agent/BorderedLoader/not cancellable" | "pi-coding-agent/BorderedLoader/escape ignored when not cancellable" => {
+            kit_bordered_view("Fetching models", |l| l.cancellable(false))
+        }
+        "pi-coding-agent/BorderedLoader/default message" => kit_bordered_view("Loading...", |l| l),
+        "pi-coding-agent/BorderedLoader/frame 4" => kit_bordered_view("Fetching models", |l| l.frame(4)),
+        "pi-coding-agent/BorderedLoader/wide message" => {
+            kit_bordered_view("Fetching the models of every configured provider, one after another", |l| l)
+        }
         // kit-widget-cases
         _ => return None,
     })
@@ -2328,12 +2367,12 @@ fn main() {
     // kit-widget "<case key> [<callbacks>]" opens a widget kind's Pi vector
     // case in an overlay and notifies "kit-widget=<log>" when it closes.
     ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", |ctx, args| {
-        let (key, count) = args.split_once(' ').unwrap_or((args, ""));
+        let (key, count) = args.split_once('|').unwrap_or((args, ""));
         let Some(view) = kit_widget_case(key) else {
             return CommandResult::Error(format!("kit-widget: unknown case {key:?}"));
         };
         let probe = KitWidgetProbe { view, want: count.parse().unwrap_or(0), count: 0, log: Vec::new() };
-        match ctx.custom_view(probe, json!({"overlay": true})) {
+        match ctx.custom_view(probe, json!({"title": "Kit"})) {
             Ok(result) => {
                 let text = result.map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_string)).unwrap_or_default();
                 ctx.notify(&format!("kit-widget={text}"), "info");

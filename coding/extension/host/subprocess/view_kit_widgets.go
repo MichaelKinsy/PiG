@@ -10,6 +10,7 @@ package subprocess
 import (
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
@@ -151,3 +152,15 @@ func remoteMouse(ev tui.TuiMouseEvent) *extension.RemoteMouseEvent {
 		Width: ev.Width, Height: ev.Height, Shift: ev.Shift, Alt: ev.Alt, Ctrl: ev.Ctrl, WheelDelta: ev.WheelDelta, ClickCount: ev.ClickCount,
 	}
 }
+
+// viewLoaderAnimation is whether the host advances the frames of the loaders
+// it draws (§4.4); it is on unless SetViewLoaderAnimation turns it off.
+var viewLoaderAnimation atomic.Bool
+
+func init() { viewLoaderAnimation.Store(true) }
+
+// SetViewLoaderAnimation turns the host-owned loader animation on or off for
+// the views drawn after the call. A test freezes it to compare a loader's
+// frames with Pi's byte for byte; the frames a view names stay as it named
+// them.
+func SetViewLoaderAnimation(enabled bool) { viewLoaderAnimation.Store(enabled) }

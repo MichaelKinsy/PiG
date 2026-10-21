@@ -20,10 +20,16 @@ export async function loadAll(env, themeName = "dark", colorMode = "truecolor") 
   return { tui, pi, palette };
 }
 
-// A theme token's style function, as the host builds it from the surface's theme.
-export function fg(pi, token) {
-  return token ? (text) => globalThis[Symbol.for("@earendil-works/pi-coding-agent:theme")].fg(token, text) : undefined;
+// The coding-agent theme Pi's global holds.
+export const piTheme = () => globalThis[Symbol.for("@earendil-works/pi-coding-agent:theme")];
+
+// A theme token's style function, as the host builds it from the surface's theme; the identity for no token.
+export function fg(token) {
+  return token ? (text) => piTheme().fg(token, text) : (text) => text;
 }
+
+// A TUI that only counts the renders a component asks for.
+export const fakeTui = (rows = 24) => ({ requestRender() {}, terminal: { rows, columns: 120 } });
 
 // builders maps a node kind to (lib, node, build) => component. Each kind's case source registers its own.
 export const builders = {
@@ -65,16 +71,25 @@ export async function renderCase(env, spec, registry = builders, themeName = "da
   const lib = await loadAll(env, themeName, colorMode);
   const frames = [];
   for (const width of spec.widths ?? WIDTHS) {
+    lib.ids = {};
+    lib.events = [];
+    lib.changes = [];
+    lib.timers = [];
+    lib.focus = spec.focus;
+    lib.probe = undefined;
     const root = buildTree(lib, spec.root, registry);
-    if (spec.focus) root.__focus = root.__ids?.[spec.focus];
+    if (spec.focus) root.__focus = lib.ids[spec.focus];
     let rows = root.render(width);
     const states = [rows];
     for (const step of spec.steps ?? []) {
       applyStep(lib, root, rows, width, step);
       rows = root.render(width);
       states.push(rows);
+      if (lib.probe) lib.changes.push(lib.probe());
     }
-    frames.push({ width, states });
+    // Loaders animate on a timer; the case drives its frames itself.
+    for (const stop of lib.timers) stop();
+    frames.push({ width, states, events: lib.events, changes: lib.changes });
   }
   return { palette: lib.palette, frames };
 }

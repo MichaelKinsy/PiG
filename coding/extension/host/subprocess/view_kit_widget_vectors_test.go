@@ -19,6 +19,8 @@ var widgetVectorExports = []struct{ dir, export string }{
 	{"pi-coding-agent", "CompactionSummaryMessageComponent"},
 	{"pi-coding-agent", "SkillInvocationMessageComponent"},
 	{"pi-coding-agent", "CustomMessageComponent"},
+	{"pi-tui", "CancellableLoader"},
+	{"pi-coding-agent", "BorderedLoader"},
 }
 
 // widgetVectorSpec is a case's argument: the wire node, the steps delivered to the focused node or the pointer, and the
@@ -92,6 +94,8 @@ func viewSurfaceForVector(t *testing.T, spec widgetVectorSpec) (*viewSurface, *[
 
 func TestWidgetVectorsRenderLikePi(t *testing.T) {
 	previous := tui.ActiveTheme()
+	SetViewLoaderAnimation(false)
+	t.Cleanup(func() { SetViewLoaderAnimation(true) })
 	t.Setenv("COLORTERM", "truecolor")
 	tui.ResetCapabilitiesCache()
 	t.Cleanup(func() { tui.ResetCapabilitiesCache(); tui.SetThemeInstance(previous) })

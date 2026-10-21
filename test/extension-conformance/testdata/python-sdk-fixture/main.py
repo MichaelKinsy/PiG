@@ -184,6 +184,35 @@ KIT_WIDGET_CASES[_CUSTOM + "expanded changes nothing"] = lambda: _kit_custom_vie
 KIT_WIDGET_CASES[_CUSTOM + "empty text"] = lambda: _kit_custom_view(text="")
 KIT_WIDGET_CASES[_CUSTOM + "no id"] = lambda: kit.View(kit.CustomMessage("note", "plain"))
 
+KIT_WIDE_MESSAGE = "A very long message that wraps around the narrow widths of the table"
+
+
+def _kit_cancellable(message: str = "Working", **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.CancellableLoader("c", message, **options)]), focus="c")
+
+
+def _kit_bordered(message: str = "Fetching models", **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.BorderedLoader("b", message, **options)]), focus="b")
+
+
+_CANCELLABLE = "pi-tui/CancellableLoader/"
+for _name in ("default", "escape aborts", "escape twice aborts twice", "other keys are ignored"):
+    KIT_WIDGET_CASES[_CANCELLABLE + _name] = lambda: _kit_cancellable()
+KIT_WIDGET_CASES[_CANCELLABLE + "default message"] = lambda: _kit_cancellable("Loading...")
+KIT_WIDGET_CASES[_CANCELLABLE + "colors"] = lambda: _kit_cancellable(spinner_color="accent", message_color="muted")
+KIT_WIDGET_CASES[_CANCELLABLE + "frame 3"] = lambda: _kit_cancellable(frame=3)
+KIT_WIDGET_CASES[_CANCELLABLE + "indicator frames"] = lambda: _kit_cancellable(indicator=kit.LoaderIndicator(frames=["*", "+", "x"], interval_ms=50), frame=1)
+KIT_WIDGET_CASES[_CANCELLABLE + "hidden indicator"] = lambda: _kit_cancellable(indicator=kit.LoaderIndicator(frames=[]))
+KIT_WIDGET_CASES[_CANCELLABLE + "wide message"] = lambda: _kit_cancellable(KIT_WIDE_MESSAGE, spinner_color="accent")
+_BORDERED = "pi-coding-agent/BorderedLoader/"
+for _name in ("cancellable", "escape aborts", "escape twice aborts twice", "other keys are ignored"):
+    KIT_WIDGET_CASES[_BORDERED + _name] = lambda: _kit_bordered()
+for _name in ("not cancellable", "escape ignored when not cancellable"):
+    KIT_WIDGET_CASES[_BORDERED + _name] = lambda: _kit_bordered(cancellable=False)
+KIT_WIDGET_CASES[_BORDERED + "default message"] = lambda: _kit_bordered("Loading...")
+KIT_WIDGET_CASES[_BORDERED + "frame 4"] = lambda: _kit_bordered(frame=4)
+KIT_WIDGET_CASES[_BORDERED + "wide message"] = lambda: _kit_bordered("Fetching the models of every configured provider, one after another")
+
 # kit-widget-cases
 
 
@@ -1551,11 +1580,11 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("kit-probe", "Exercise the component kit (D107)", kit_probe)
 
     def kit_widget(ctx: pig_sdk.Context, args: str) -> None:
-        key, _, count = args.partition(" ")
+        key, _, count = args.partition("|")
         build = KIT_WIDGET_CASES.get(key)
         if build is None:
             raise RuntimeError(f"kit-widget: unknown case {key!r}")
-        result = ctx.custom(KitWidgetProbe(build(), int(count or 0)), {"overlay": True})
+        result = ctx.custom(KitWidgetProbe(build(), int(count or 0)), {"title": "Kit"})
         ctx.notify(f"kit-widget={'' if result is None else result}", "info")
 
     ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", kit_widget)

@@ -62,18 +62,18 @@ func (p *kitWidgetProbe) HandleViewEvent(event kit.Event) (sdk.RemoteComponentRe
 	return sdk.RemoteComponentResult{}, nil
 }
 
-// registerKitWidgets adds kit-widget "<case key> [<callbacks>]": it opens the
+// registerKitWidgets adds kit-widget "<case key>[|<callbacks>]": it opens the
 // case in an overlay and notifies "kit-widget=<log>" when it closes.
 func registerKitWidgets(ext *sdk.Extension) {
 	ext.Command("kit-widget", "Show a widget kind's Pi vector case (D107)", func(ctx sdk.Context, args string) error {
-		key, count, _ := strings.Cut(args, " ")
+		key, count, _ := strings.Cut(args, "|")
 		build, ok := kitWidgetCases[key]
 		if !ok {
 			return fmt.Errorf("kit-widget: unknown case %q", key)
 		}
 		want, _ := strconv.Atoi(count)
 		probe := &kitWidgetProbe{view: build(), want: want}
-		result, err := ctx.Custom(probe, sdk.RemoteOverlayOptions{Overlay: true})
+		result, err := ctx.Custom(probe, sdk.RemoteOverlayOptions{Title: "Kit"})
 		if err != nil {
 			return err
 		}
