@@ -351,6 +351,36 @@ fn write(path: &str, text: &str) -> CommandResult {
     }
 }
 
+/// One scenario event op: what a registered event handler returns for the payload it received.
+fn event_op(op: &str, tag: &str, data: &Value) -> Result<Option<Value>, String> {
+    match op {
+        "throw" => Err("event boom".to_string()),
+        "crash" => panic!("event crash"),
+        "block" => Ok(Some(json!({"block": true, "reason": "event blocked"}))),
+        "set-content" => Ok(Some(json!({"content": [{"type": "text", "text": "patched"}]}))),
+        "set-error" => Ok(Some(json!({"isError": true}))),
+        "record" => {
+            append_line(".events", &format!("{tag}:{data}"));
+            Ok(None)
+        }
+        "record-counted" => {
+            static RECORDED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            let n = RECORDED.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            append_line(".events", &format!("{tag}@{n}:{data}"));
+            Ok(None)
+        }
+        "set-prompt" => Ok(Some(json!({"systemPrompt": "base prompt"}))),
+        "append-prompt" => Ok(Some(json!({"systemPrompt": format!("{}+", data["systemPrompt"].as_str().unwrap_or_default())}))),
+        "note" => Ok(Some(json!({"message": {"customType": "note", "content": "hello", "display": true}}))),
+        "see-prompt" => Ok(Some(json!({"message": {"customType": "saw", "content": data["prompt"], "display": false}}))),
+        "transform" => Ok(Some(json!({"action": "transform", "text": format!("{}!", data["text"].as_str().unwrap_or_default())}))),
+        "handled" => Ok(Some(json!({"action": "handled"}))),
+        "continue" => Ok(Some(json!({"action": "continue"}))),
+        "see-content" => Ok(Some(json!({"details": {"saw": data["content"][0]["text"]}}))),
+        _ => Ok(None),
+    }
+}
+
 pub fn new_extension() -> Extension {
     let spec: Value = parse(&std::fs::read_to_string(".sdk-scenario.json").unwrap()).unwrap();
     let mut extension = Extension::new("scenario-driver-rust");
@@ -371,32 +401,15 @@ pub fn new_extension() -> Extension {
     for event in spec["events"].as_array().cloned().unwrap_or_default() {
         let op = event["op"].as_str().unwrap_or_default().to_string();
         let tag = event["tag"].as_str().unwrap_or_default().to_string();
-        extension.on_event_result(event["name"].as_str().unwrap(), move |_ctx, data| match op.as_str() {
-            "throw" => Err("event boom".to_string()),
-            "crash" => panic!("event crash"),
-            "block" => Ok(Some(json!({"block": true, "reason": "event blocked"}))),
-            "set-content" => Ok(Some(json!({"content": [{"type": "text", "text": "patched"}]}))),
-            "set-error" => Ok(Some(json!({"isError": true}))),
-            "record" => {
-                append_line(".events", &format!("{tag}:{data}"));
-                Ok(None)
-            }
-            "record-counted" => {
-                static RECORDED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-                let n = RECORDED.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-                append_line(".events", &format!("{tag}@{n}:{data}"));
-                Ok(None)
-            }
-            "set-prompt" => Ok(Some(json!({"systemPrompt": "base prompt"}))),
-            "append-prompt" => Ok(Some(json!({"systemPrompt": format!("{}+", data["systemPrompt"].as_str().unwrap_or_default())}))),
-            "note" => Ok(Some(json!({"message": {"customType": "note", "content": "hello", "display": true}}))),
-            "see-prompt" => Ok(Some(json!({"message": {"customType": "saw", "content": data["prompt"], "display": false}}))),
-            "transform" => Ok(Some(json!({"action": "transform", "text": format!("{}!", data["text"].as_str().unwrap_or_default())}))),
-            "handled" => Ok(Some(json!({"action": "handled"}))),
-            "continue" => Ok(Some(json!({"action": "continue"}))),
-            "see-content" => Ok(Some(json!({"details": {"saw": data["content"][0]["text"]}}))),
-            _ => Ok(None),
-        });
+        let name = event["name"].as_str().unwrap().to_string();
+        if name == EVENT_BEFORE_AGENT_START {
+            // The ops read the event as Pi's object, with the prompt and options as they are now.
+            extension.on_before_agent_start(move |_ctx, event| {
+                event_op(&op, &tag, &event.snapshot().map_err(|e| e.to_string())?)
+            });
+        } else {
+            extension.on_event_result(name, move |_ctx, data| event_op(&op, &tag, data));
+        }
     }
     for flag in spec["flags"].as_array().cloned().unwrap_or_default() {
         let description = flag["description"].as_str().unwrap_or("").to_string();
