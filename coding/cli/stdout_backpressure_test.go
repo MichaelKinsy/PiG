@@ -198,8 +198,9 @@ func TestRPCUsageGoldenMatchesPi(t *testing.T) {
 		t.Run(golden, func(t *testing.T) {
 			out := filepath.Join(t.TempDir(), "rpc-usage.json")
 			command := exec.CommandContext(t.Context(), node, filepath.Join(rpcUsageProbeDir, "rpc-usage-probe.mjs"), node, cli, out)
-			command.Env = append(os.Environ(), "PROBE_EXTENSION="+probeExtension)
-			if output, err := command.CombinedOutput(); err != nil {
+			command.Env = append(os.Environ(), "PROBE_EXTENSION="+probeExtension, "PROBE_DEBUG=1")
+			output, err := command.CombinedOutput()
+			if err != nil {
 				t.Fatalf("probe failed: %v\n%s", err, output)
 			}
 			live, err := os.ReadFile(out)
@@ -211,7 +212,8 @@ func TestRPCUsageGoldenMatchesPi(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !bytes.Equal(live, want) {
-				t.Fatalf("%s is stale; regenerate it with the probe.\nlive: %s", golden, live)
+				// The probe waits 20 s for agent_settled and writes whatever frames it has. The nightly -race run of this package saw an empty list once (24 s, nothing else known), which a stale golden does not explain, so the probe's own output (PROBE_DEBUG prints each line it reads) is part of the report.
+				t.Fatalf("%s is stale; regenerate it with the probe.\nlive: %s\nprobe output: %q", golden, live, output)
 			}
 		})
 	}
