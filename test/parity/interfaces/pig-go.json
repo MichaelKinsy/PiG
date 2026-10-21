@@ -64991,6 +64991,17 @@
       "shapeHash": "sha256:7bfb85c4097c56514a6291b0c4adce9f7a8fbf386cc402b918898ae9e28c6ba6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#GraphResourceLoader.Release",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "GraphResourceLoader.Release",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#GraphResourceLoader.decoded",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "GraphResourceLoader.decoded",
@@ -130232,6 +130243,17 @@
       "shapeHash": "sha256:08384688a030efc3a9ab2ea833a5459c8f7214cd3ff3d293856981df04de7220"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#childSessionTable.closeAll",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "childSessionTable.closeAll",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#childSessionTable.closeConn",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "childSessionTable.closeConn",
@@ -130241,6 +130263,17 @@
         "type": "func(conn *Conn)"
       },
       "shapeHash": "sha256:1975adf195a0bdbd37b358df1bc08362c40943a518fc4b1e3aa304a5d285cfc5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#childSessionTable.closeEntries",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "childSessionTable.closeEntries",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(entries []*childSessionEntry, counted bool)"
+      },
+      "shapeHash": "sha256:98c3e08f08cbf066f3062220d736ad9abaf9f561fd97ab41a2a56b3b9a010f06"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#childSessionTable.lookup",
@@ -130296,6 +130329,17 @@
         "type": "func(h *Host, conn *Conn, id string) error"
       },
       "shapeHash": "sha256:07630e08c10c69fa732e2c128637f90d7c9e4133b4b5314a2ee6e77e8dfbb131"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#childSessionTable.sealLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "childSessionTable.sealLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owned *connChildSessions) []*childSessionEntry"
+      },
+      "shapeHash": "sha256:3e1718ea8696df27076d184e81aa28bf71d4195a0533559c92fdc3e9573f3149"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#childToolPrepareArguments",
@@ -139967,6 +140011,28 @@
       "shapeHash": "sha256:140751d4c71a442e8e38e4dd1589656625cf54e883295a9163b9135ec670736d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.closeAll",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "sessionGraphTable.closeAll",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.closeConn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "sessionGraphTable.closeConn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn)"
+      },
+      "shapeHash": "sha256:1975adf195a0bdbd37b358df1bc08362c40943a518fc4b1e3aa304a5d285cfc5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.drop",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "sessionGraphTable.drop",
@@ -139976,6 +140042,17 @@
         "type": "func(hold *graphHold)"
       },
       "shapeHash": "sha256:6290d6a8bcb0cff9a99f1155ef8141900326f125a8c44b92fcc20c6771666d4f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.dropAll",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "sessionGraphTable.dropAll",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owned *connSessionGraph)"
+      },
+      "shapeHash": "sha256:64595a16e2e8647b45a316a3c6ed87a2d5a9139818ea147a413e930035792d57"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.lookup",
@@ -193348,6 +193425,39 @@
         "type": "map[string]string"
       },
       "shapeHash": "sha256:745c198d1e8b89727fedc49d3ee1a081d44e828b69940e1f62928394d51a0f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#lazyAlternation",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "lazyAlternation",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(patterns ...string) func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:9d61a9496d2327288851d987d414dfdaf50b4bbc310733ab7811831a5bc436a8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#lazyEach",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "lazyEach",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(patterns ...string) func() []*regexp.Regexp"
+      },
+      "shapeHash": "sha256:94dd5f9e05be479b118ccf283da49cfa80d40c95b11c9eccab1fa1b036f14bd4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#lazyRegexp",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "lazyRegexp",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(source string) func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:ff8d6594a4ae0e29b85e006f49cd4739342bef92a67af6c3186887eac2e3ea4e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#loadTheme",

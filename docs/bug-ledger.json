@@ -34355,6 +34355,66 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-7fc4ef4",
+      "title": "fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last…",
+      "symptom": "fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last holder lets go",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7fc4ef463d",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-5d24552",
+      "title": "Shutting a host down while a child session is live no longer leaves its extension host running",
+      "symptom": "Shutting a host down while a child session is live no longer leaves its extension host running.",
+      "rootCause": "A session an extension created with `createAgentSession` outlives the extension's `dispose()` of it, and a `DefaultResourceLoader` an extension built outlives the extension's handle while a session uses it; the host closed both only when the extension's connection closed, on a goroutine `Shutdown` did not wait for, and never stopped the loader's extension host.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Shutting a host down while a child session is live no longer leaves its extension host running. A session an extension created with `createAgentSession` outlives the extension's `dispose()` of it, and a `DefaultResourceLoader` an extension built outlives the extension's handle while a session uses it; the host closed both only when the extension's connection closed, on a goroutine `Shutdown` did not wait for, and never stopped the loader's extension host. `Shutdown` now closes every live child session and releases every object it held before it returns, and a released loader stops the extension host it started.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5d24552e79",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-3cb7131",
+      "title": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns…",
+      "symptom": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns gofmt-clean",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3cb7131f3a",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/bundle_test.go::TestEveryPackageSourceIsBundled"
+      ]
     }
   ],
   "divergences": [
