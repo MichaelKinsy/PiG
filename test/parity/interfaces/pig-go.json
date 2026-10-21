@@ -88668,37 +88668,92 @@
       "shapeHash": "sha256:50ebae75e50e80cee38e43a884d3cc3dc4a09ad644cf7b9423fda6a76e4fe031"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.after",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.Begin",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcResponseTurn.after",
+      "name": "rpcResponseTurn.Begin",
       "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(continuation func())"
-      },
-      "shapeHash": "sha256:df27800ad30f8269466973a33fb7fa0a6db8348fad5e8620cced47c2338c36f0"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.afterHops",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcResponseTurn.afterHops",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(n int, continuation func())"
-      },
-      "shapeHash": "sha256:b70901b46b7c3c553c2e0b61877d982dcfe3d4415558a32ba12dd6923c36f9bb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.begin",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcResponseTurn.begin",
-      "kind": "function",
-      "exported": false,
+      "exported": true,
       "shape": {
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.End",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.End",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.Hops",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.Hops",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(n int, fn func())"
+      },
+      "shapeHash": "sha256:2a9e742403b0034d451516a4fdb06537f1c0c54d2e3accff7a7e4f65818e2e77"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.Idle",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.Idle",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:abf75cdd06446e4f2096decc25f9a3b8a701a6dd8afd11fe16223fb0b76991c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.Macrotask",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.Macrotask",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func())"
+      },
+      "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.Microtask",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.Microtask",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func())"
+      },
+      "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.Microtasks",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.Microtasks",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fns ...func())"
+      },
+      "shapeHash": "sha256:d7d26742726725a8a4f32f46da01ce022d8a0c7d05253087b19c0c509418c8cd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.Queued",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcResponseTurn.Queued",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (microtasks int, macrotasks int)"
+      },
+      "shapeHash": "sha256:45af885581ca3a04a8e3dbfff5eba88c90bc811cee56a7da145a227bf11cf639"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.complete",
@@ -88712,59 +88767,15 @@
       "shapeHash": "sha256:3b938e91e41e410e84be649578c0f25f49bc4cb8317cd64bcd7c07ea377c61ae"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.end",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcResponseTurn.end",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.enqueue",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcResponseTurn.enqueue",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(continuations []func())"
-      },
-      "shapeHash": "sha256:9d09185e67f27a84f6ff261f81fa52d36f795fda0692dc9701816058a1aabf22"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.enqueueTasks",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcResponseTurn.enqueueTasks",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(continuations []func())"
-      },
-      "shapeHash": "sha256:9d09185e67f27a84f6ff261f81fa52d36f795fda0692dc9701816058a1aabf22"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.idle",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcResponseTurn.idle",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() \u003c-chan struct{}"
-      },
-      "shapeHash": "sha256:abf75cdd06446e4f2096decc25f9a3b8a701a6dd8afd11fe16223fb0b76991c3"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcResponseTurn.schedule",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "rpcResponseTurn.schedule",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(continuations []func(), task bool)"
+        "type": "func(macrotask bool, fns ...func())"
       },
-      "shapeHash": "sha256:f92686db75cb43b7251058d6fe545b09bdbd1b118c7b7b1da925aefedad3d569"
+      "shapeHash": "sha256:deb8d125c7e1b48fb314b44b5aaca33b4b682da386b2d7c53d92b5f4bf3313a2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcSessionEntryAppendedEvent",
@@ -94034,28 +94045,6 @@
         "type": "func(ctx context.Context)"
       },
       "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#CallLane",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "CallLane",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "CallLane"
-      },
-      "shapeHash": "sha256:3c5c332531838fba86aa576872cc73e843951e30eba7f9219d77aec4b7c3efff"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#CallLane.Reserve",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension",
-      "name": "CallLane.Reserve",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() *CallOrder"
-      },
-      "shapeHash": "sha256:9403b6a70fa4e6c0694bc6d9a4b98ea3dc1a206c664662df73af744cb3262df9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#CallOrder",
@@ -140748,9 +140737,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(server string) *github.com/MichaelKinsy/PiG/coding/extension.CallLane"
+        "type": "func(server string) *github.com/MichaelKinsy/PiG/internal/jsloop.Lane"
       },
-      "shapeHash": "sha256:adb66ec71882649317e8576af3006b652e184729df630d1eaa00ae0faac11ca9"
+      "shapeHash": "sha256:02f9ecab42d30a59549801cd331c39cb22c120c5e2582e0b1109faad67dd4daf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.loadConfig",
@@ -175728,9 +175717,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "struct{mu sync.Mutex; chains map[string]chan struct{}}"
+        "type": "struct{mu sync.Mutex; queues map[string]*mutationQueue}"
       },
-      "shapeHash": "sha256:528585f5224b0ad622493a8d6541f128b359267f6993f778ad87e52301e22cac"
+      "shapeHash": "sha256:ad5b874bf4891bfd2f59f8d2b36760ef78dd47a085ae8d0974ec4805f94b4cee"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#findClosest",
@@ -176798,6 +176787,17 @@
         "type": "func(lease providerLease) encoding/json.RawMessage"
       },
       "shapeHash": "sha256:13c85573075820ca543caef51728f940527785b282421a9316ecaf7cf2086887"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#mutationQueue",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "mutationQueue",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "mutationQueue"
+      },
+      "shapeHash": "sha256:d03fa26df7d9a402368dcc1c8db9a0ffde9d329eb2a8ae55efe3111138db4053"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#newConn",
@@ -178945,61 +178945,6 @@
       "shapeHash": "sha256:4e84e37bcd9529fc3eb96b8f88ab5264607d33a17148b91c33674124086e7a53"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolStart",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "toolStart",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "toolStart"
-      },
-      "shapeHash": "sha256:aaf8b9259d5b5380140cfa8a61cff6949a8f31b4cdd7b7c5a30f3597fea076a8"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolStart.begin",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "toolStart.begin",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolStart.release",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "toolStart.release",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolStartOrder",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "toolStartOrder",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "toolStartOrder"
-      },
-      "shapeHash": "sha256:9a96604ce8293e9f3c4089c20fb954f3135a3d35ada42686bf5fc2495f9f0676"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolStartOrder.reserve",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "toolStartOrder.reserve",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() *toolStart"
-      },
-      "shapeHash": "sha256:dd63a73fdd7ee0fc2910ab16b11cfec4a69e1be05c37e8e560e9a3092dba5ec5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#truncateForSummary",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "truncateForSummary",
@@ -180450,6 +180395,72 @@
         "type": "WorkingKind"
       },
       "shapeHash": "sha256:0ec6e3ab001bda0f58f5f0a15d5f0aa81486fa64205425c05fa997b0cd1c3c72"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Lane",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "Lane",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Lane"
+      },
+      "shapeHash": "sha256:86132135520706cbaffa05a0429c3f1d91457262afe93e70614b5d9dd8456430"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Lane.Reserve",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "Lane.Reserve",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *Place"
+      },
+      "shapeHash": "sha256:9a0389b81f7e171c31ec6a30a183bcce85f54f4eed3aacb86a7603f58543b35c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Place",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "Place",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Place"
+      },
+      "shapeHash": "sha256:d18b371a4747f48e08c70503dd5614ecccbc6a0aabb2529fdbbf92be4bd7d1cb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Place.Pass",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "Place.Pass",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Place.Release",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "Place.Release",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Place.Wait",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "Place.Wait",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleGate",
