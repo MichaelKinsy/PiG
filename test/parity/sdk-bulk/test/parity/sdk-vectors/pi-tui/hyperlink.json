@@ -1,0 +1,56 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "hyperlink",
+ "cases": [
+  {
+   "name": "case 0000",
+   "args": [
+    "",
+    ""
+   ],
+   "result": "\u001b]8;;\u001b\\\u001b]8;;\u001b\\"
+  },
+  {
+   "name": "case 0001",
+   "args": [
+    "text",
+    "http://x"
+   ],
+   "result": "\u001b]8;;http://x\u001b\\text\u001b]8;;\u001b\\"
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    "a\u001b[1mb",
+    "https://e.com/p?q=1&r=2"
+   ],
+   "result": "\u001b]8;;https://e.com/p?q=1&r=2\u001b\\a\u001b[1mb\u001b]8;;\u001b\\"
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    "漢",
+    "file:///tmp/a b"
+   ],
+   "result": "\u001b]8;;file:///tmp/a b\u001b\\漢\u001b]8;;\u001b\\"
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    "x",
+    ""
+   ],
+   "result": "\u001b]8;;\u001b\\x\u001b]8;;\u001b\\"
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    "",
+    "u"
+   ],
+   "result": "\u001b]8;;u\u001b\\\u001b]8;;\u001b\\"
+  }
+ ]
+}
