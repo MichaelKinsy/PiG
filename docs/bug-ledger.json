@@ -31803,6 +31803,37 @@
       "tests": []
     },
     {
+      "id": "BF-1d7c591",
+      "title": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…",
+      "symptom": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1d7c591b61",
+          "date": "2026-10-21"
+        },
+        {
+          "hash": "53385a3d93",
+          "date": "2026-10-21",
+          "pr": "268"
+        }
+      ],
+      "tests": [
+        "codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates",
+        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName",
+        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled",
+        "coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog"
+      ]
+    },
+    {
       "id": "BF-d084d86",
       "title": "Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object…",
       "symptom": "Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object after `Close` had taken its snapshot of the host's objects: that object's resource open kept waiting for an abort that nothing raised.",
@@ -31848,29 +31879,27 @@
       ]
     },
     {
-      "id": "BF-1d7c591",
-      "title": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…",
-      "symptom": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "An operation failed or was rejected",
+      "id": "BF-18022b2",
+      "title": "A Node extension no longer keeps reading an entry the host refused",
+      "symptom": "A Node extension no longer keeps reading an entry the host refused.",
+      "rootCause": "The Node runtime shows pi.appendEntry's entry at once (Pi's log is in process and the append cannot fail), keeps it in pendingEntries and sends the append to the host without waiting. A host that answered with an error left the entry in the mirror: nothing took it back, and every later state push preserved it because the replicated log does not hold it, so getEntries, getBranch, getLeafId and the id index kept presenting an entry that was in no session.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.",
+      "releaseNote": "A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "1d7c591b61",
+          "hash": "18022b2234",
           "date": "2026-10-21"
         }
       ],
       "tests": [
-        "codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates",
-        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
-        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName",
-        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled",
-        "coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog"
+        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds",
+        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused",
+        "test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs"
       ]
     }
   ],
