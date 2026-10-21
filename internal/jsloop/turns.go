@@ -2,6 +2,7 @@ package jsloop
 
 import (
 	"context"
+	"slices"
 	"sync"
 )
 
@@ -23,14 +24,23 @@ type Turns struct {
 	appliedWaits []func(ctx context.Context)
 	deferring    bool
 	notifyMu     sync.Mutex
-	ticks        []func(done func())
-	flushing     bool
+	ticks        []tickCall
+	// ticked holds the tool calls whose tick boundary passed in this chain (Ticked); ToolStarted forgets a call that starts again, and the end of the chain forgets all.
+	ticked   map[string]struct{}
+	flushing bool
 }
 
-// heldCall is a callback that waits for a turn, and the owner it is held for (MacrotaskDoneFor).
+// tickCall is a callback that waits for the tick boundary of the tool call that queued it (origin), or of any tool call when origin is "".
+type tickCall struct {
+	fn     func(done func())
+	origin string
+}
+
+// heldCall is a callback that waits for a turn, and the owner it is held for (MacrotaskDoneFor). turning marks a callback of a loop that already turns (a late tick, see Tick): it runs behind the callbacks held before it as soon as no flush runs, with no wait or tick boundary to await.
 type heldCall struct {
-	fn    func(done func())
-	owner any
+	fn      func(done func())
+	owner   any
+	turning bool
 }
 
 // Chain says the running work is a chain of microtasks, and returns the function that ends it. Callbacks wait while any chain runs and no wait is open.
@@ -46,6 +56,9 @@ func (t *Turns) Chain() (end func()) {
 		once.Do(func() {
 			t.mu.Lock()
 			t.chains--
+			if t.chains == 0 {
+				t.ticked = nil
+			}
 			t.flushLocked(false)
 		})
 	}
@@ -200,15 +213,27 @@ func (t *Turns) Release(owner any) {
 	written.Wait()
 }
 
-// Tick runs fn, which must call done once its effect is written, as the work of a process.nextTick callback, or of a timer callback that runs while a sibling tool awaits, at the next Ticked: Pi runs such a callback right after the tool_execution_end of the tool that queued it, before the chain goes on. It runs at once when no chain runs or a wait is open. A callback that waits for Ticked also runs at the next turn, wait or end of the chain, behind the ticks already held.
-func (t *Turns) Tick(fn func(done func())) {
+// Tick runs fn, which must call done once its effect is written, as the work of a process.nextTick callback, or of a timer callback that runs while a sibling tool awaits, at the next Ticked of origin: Pi runs such a callback right after the tool_execution_end of the tool that queued it, before the chain goes on. origin is the tool call that queued the callback, "" when the callback was not queued by a tool call, which a Ticked of any tool call releases. It runs at once when no chain runs. A callback that waits for Ticked also runs at the next turn, wait or end of the chain, behind the ticks already held.
+//
+// A callback whose tool call's boundary already passed runs at once: the runtime that made the call says the loop turns (a sibling tool awaits, or the tool's own tick queue runs), and the callback ran in Pi right after the tool_execution_end that came before the call. The runtime is another process, so the call can reach the host after that event, and the time it takes decides nothing about the call's place. It runs behind the callbacks held before it, which a turn of the loop runs with it, and it does not wait for the boundary of another tool call.
+func (t *Turns) Tick(origin string, fn func(done func())) {
 	if t == nil {
 		fn(func() {})
 		return
 	}
 	t.mu.Lock()
+	if _, passed := t.ticked[origin]; origin != "" && passed {
+		if t.flushing || len(t.held) > 0 {
+			t.held = append(t.held, heldCall{fn: fn, turning: true})
+			t.flushLocked(false)
+			return
+		}
+		t.mu.Unlock()
+		fn(func() {})
+		return
+	}
 	if t.flushing || len(t.ticks) > 0 || t.chains > 0 {
-		t.ticks = append(t.ticks, fn)
+		t.ticks = append(t.ticks, tickCall{fn: fn, origin: origin})
 		t.flushLocked(false)
 		return
 	}
@@ -216,25 +241,52 @@ func (t *Turns) Tick(fn func(done func())) {
 	fn(func() {})
 }
 
-// Ticked says the tick boundary passed: the held tick callbacks run. The held timer callbacks keep waiting for a turn.
-func (t *Turns) Ticked() {
+// ToolStarted says the tool call toolCallID starts, so a call that reuses its identifier later in the chain has its own tick boundary ahead.
+func (t *Turns) ToolStarted(toolCallID string) {
 	if t == nil {
 		return
 	}
 	t.mu.Lock()
+	delete(t.ticked, toolCallID)
+	t.mu.Unlock()
+}
+
+// Ticked says the tick boundary of the tool call toolCallID passed, which is the written tool_execution_end of the call: the tick callbacks it queued, and those no tool call queued, run. The held timer callbacks keep waiting for a turn, and so do the ticks of a tool call that has not ended.
+func (t *Turns) Ticked(toolCallID string) {
+	if t == nil {
+		return
+	}
+	t.mu.Lock()
+	if toolCallID != "" {
+		if t.ticked == nil {
+			t.ticked = make(map[string]struct{})
+		}
+		t.ticked[toolCallID] = struct{}{}
+	}
 	if t.flushing || len(t.ticks) == 0 {
 		t.mu.Unlock()
 		return
 	}
 	t.flushing = true
-	for len(t.ticks) > 0 {
-		batch := t.ticks
-		t.ticks = nil
+	for {
+		var batch []tickCall
+		kept := t.ticks[:0:0]
+		for _, call := range t.ticks {
+			if call.origin == "" || call.origin == toolCallID {
+				batch = append(batch, call)
+			} else {
+				kept = append(kept, call)
+			}
+		}
+		if len(batch) == 0 {
+			break
+		}
+		t.ticks = kept
 		t.mu.Unlock()
 		var written sync.WaitGroup
-		for _, fn := range batch {
+		for _, call := range batch {
 			written.Add(1)
-			fn(written.Done)
+			call.fn(written.Done)
 		}
 		// The next step of Pi's chain follows the callbacks' output, so the output is written before Ticked returns.
 		written.Wait()
@@ -261,13 +313,15 @@ func (t *Turns) flushLocked(turn bool) {
 		return
 	}
 	for {
-		open := turn || t.chains == 0 || t.waits > 0
+		// A late tick (heldCall.turning) is a turn of the loop: the callbacks held before it run with it.
+		turning := slices.ContainsFunc(t.held, func(call heldCall) bool { return call.turning })
+		open := turn || turning || t.chains == 0 || t.waits > 0
 		ticks := turn || t.chains == 0
-		if !ticks && len(t.ticks) > 0 {
+		if !ticks && !turning && len(t.ticks) > 0 {
 			// A timer callback runs behind the tick callbacks that arrived before it, as Pi's tick queue runs before the next timer.
 			open = false
 		}
-		var runTicks []func(done func())
+		var runTicks []tickCall
 		var runHeld []heldCall
 		if ticks {
 			runTicks, t.ticks = t.ticks, nil
@@ -283,9 +337,9 @@ func (t *Turns) flushLocked(turn bool) {
 		t.flushing = true
 		t.mu.Unlock()
 		var written sync.WaitGroup
-		for _, fn := range runTicks {
+		for _, call := range runTicks {
 			written.Add(1)
-			fn(written.Done)
+			call.fn(written.Done)
 		}
 		for _, call := range runHeld {
 			written.Add(1)

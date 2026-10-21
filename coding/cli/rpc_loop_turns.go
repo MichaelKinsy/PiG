@@ -26,11 +26,13 @@ type rpcLoopChain struct {
 func (c *rpcLoopChain) before(event agent.AgentEvent) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	switch event.(type) {
+	switch event := event.(type) {
 	case agent.AgentStartEvent:
 		if c.end == nil {
 			c.end = c.turns.Chain()
 		}
+	case agent.ToolExecutionStartEvent:
+		c.turns.ToolStarted(event.ToolCallID)
 	case agent.CompactionStartEvent:
 		if c.compaction == nil {
 			c.compaction = c.turns.Wait()
@@ -46,13 +48,13 @@ func (c *rpcLoopChain) before(event agent.AgentEvent) {
 func (c *rpcLoopChain) after(event agent.AgentEvent) {
 	c.mu.Lock()
 	var ends []func()
-	switch event.(type) {
+	switch event := event.(type) {
 	case agent.AgentSettledEvent:
 		ends = append(ends, c.end)
 		c.end = nil
 	case agent.ToolExecutionEndEvent:
-		// Pi runs the process.nextTick callbacks a tool queued between its tool_execution_end and the tool result message.
-		defer c.turns.Ticked()
+		// Pi runs the process.nextTick callbacks a tool queued between its tool_execution_end and the tool result message, and the timer callbacks it queued once its loop turns while a sibling tool awaits; the callbacks of the call that ended run here, whenever their host calls arrived.
+		defer c.turns.Ticked(event.ToolCallID)
 	case agent.CompactionEndEvent:
 		ends = append(ends, c.compaction)
 		c.compaction = nil
