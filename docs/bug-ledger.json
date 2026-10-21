@@ -34107,6 +34107,25 @@
         "coding/extension/host/subprocess/node_highlight_load_test.go::TestNodeHighlightLanguageListMatchesIndex",
         "coding/extension/host/subprocess/node_highlight_load_test.go::TestNodeLoadsHighlightLanguagesWithoutHoldingTheEventLoop"
       ]
+    },
+    {
+      "id": "BF-6debb12",
+      "title": "fix(train): gate repairs after merging train 3 and the ordering stack",
+      "symptom": "fix(train): gate repairs after merging train 3 and the ordering stack",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6debb12f2e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [

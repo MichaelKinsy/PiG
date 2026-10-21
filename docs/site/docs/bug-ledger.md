@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-1035 bugs. 985 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 162 bugs have no recorded test.
+1036 bugs. 986 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 163 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -1054,6 +1054,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
 | [BF-adffe57](#bf-adffe57) | A Node extension tool that awaits real work and then takes the file mutation queue (the upstream `subagent`… | PiG's own defect | All platforms | Unreleased |
 | [BF-5382ad9](#bf-5382ad9) | CI: a Node extension no longer holds a request the host sends it behind the highlight.js language load | PiG's own defect | All platforms | Unreleased |
+| [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -15480,6 +15481,19 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `5382ad9af0` (2026-10-21)
 - **Tests:** `coding/extension/host/subprocess/node_highlight_load_test.go::TestNodeHighlightLanguageListMatchesIndex`, `coding/extension/host/subprocess/node_highlight_load_test.go::TestNodeLoadsHighlightLanguagesWithoutHoldingTheEventLoop`
 - **Release note:** CI: a Node extension no longer holds a request the host sends it behind the highlight.js language load. In TUI mode the runtime loads Pi's complete grammar set after the startup events, and `lib/index.js` evaluates its ~190 grammars in one synchronous pass on the thread that serves requests: 125 ms on an idle machine and more than the five-second renderer inactivity lease (D56) on a starved one, so a Markdown transform, render or mouse event sent meanwhile was abandoned while the extension was healthy and the proxy returned its input (`got ""` in `TestMarkdownContextsAcrossSDKs/subprocess-node-packed`). Each grammar module is now required on its own event-loop turn before that pass, which only registers them as in Pi.
+
+### BF-6debb12
+
+**fix(train): gate repairs after merging train 3 and the ordering stack**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(train): gate repairs after merging train 3 and the ordering stack
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6debb12f2e` (2026-10-21)
+- **Tests:** None recorded.
 
 ## Divergences from Pi added in this release
 
