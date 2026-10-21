@@ -826,6 +826,33 @@ fn main() {
         };
         match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
     });
+    ext.command("registry-edges", "Read the registry answers that depend on the provider state", |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let r = ctx.model_registry();
+            let mut models = r.get_all()?.as_array().cloned().unwrap_or_default();
+            models.push(json!({}));
+            let has_auth = models.iter().map(|model| r.has_configured_auth(model)).collect::<std::io::Result<Vec<_>>>()?;
+            let oauth = models.iter().map(|model| r.is_using_oauth(model)).collect::<std::io::Result<Vec<_>>>()?;
+            let out = json!({
+                "available": r.get_available()?, "hasAuth": has_auth, "oauth": oauth,
+                "found": r.find("registry-probe", "a")?, "foundOff": r.find("registry-off", "d")?,
+                "missing": r.find("registry-probe", "zzz")?, "mismatch": r.find("registry-probe", "c")?
+            });
+            ctx.notify(&out.to_string(), "info");
+            Ok(())
+        };
+        match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
+    ext.command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", |ctx, _| {
+        let report = |read: std::io::Result<Value>| match read {
+            Ok(value) => format!("ok:{value}"),
+            Err(error) => format!("error:{error}"),
+        };
+        let find = report(ctx.model_registry().find("registry-probe", "a").map(|model| model.unwrap_or(Value::Null)));
+        let entries = report(ctx.session_manager().get_entries());
+        ctx.notify(&json!({"find": find, "entries": entries}).to_string(), "info");
+        CommandResult::Ok
+    });
     ext.command("session-order", "Read the session as Pi returns it", |ctx, _| {
         let run = || -> std::io::Result<()> {
             let s = ctx.session_manager();
@@ -992,6 +1019,9 @@ fn main() {
     );
     let abort_observed = Arc::new(AtomicBool::new(false));
     let abort_set = abort_observed.clone();
+    let abort_reason: Arc<std::sync::Mutex<Option<String>>> = Arc::default();
+    let abort_reason_set = abort_reason.clone();
+    let abort_reason_read = abort_reason;
     ext.tool(
         "abort_tool",
         "Wait for the abort signal",
@@ -1001,6 +1031,7 @@ fn main() {
             while !ctx.is_cancelled() {
                 thread::sleep(Duration::from_millis(10));
             }
+            *abort_reason_set.lock().unwrap() = ctx.cancellation_reason();
             abort_set.store(true, Ordering::SeqCst);
             ToolResult::text("aborted")
         },
@@ -1024,6 +1055,10 @@ fn main() {
             CommandResult::Ok
         },
     );
+    ext.command("abort_reason", "Report the cancellation reason abort_tool saw", move |ctx, _args| {
+        ctx.notify(&format!("reason:{}", abort_reason_read.lock().unwrap().clone().unwrap_or_default()), "info");
+        CommandResult::Ok
+    });
     ext.tool(
         "rich_tool",
         "Return text, image, and terminate",
@@ -1150,11 +1185,12 @@ fn main() {
     });
     ext.command("model-stream-probe", "Exercise model streaming", |ctx, _args| {
         let registry = ctx.model_registry();
-        let Some(current) = registry.find("conformance", "current") else { return CommandResult::Error("find current returned no model".into()); };
+        let find = |provider: &str, id: &str| registry.find(provider, id).map_err(|error| CommandResult::Error(format!("find {id}: {error}")));
+        let current = match find("conformance", "current") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find current returned no model".into()), Err(error) => return error };
         if current["id"] != "current" { return CommandResult::Error(format!("find current = {current}")); }
-        let Some(found) = registry.find("conformance", "declared") else { return CommandResult::Error("find declared returned no model".into()); };
+        let found = match find("conformance", "declared") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find declared returned no model".into()), Err(error) => return error };
         if found["id"] != "declared" || found["provider"] != "conformance" { return CommandResult::Error(format!("find declared = {found}")); }
-        let Some(slash) = registry.find("conformance", "org/model/name") else { return CommandResult::Error("find slash returned no model".into()); };
+        let slash = match find("conformance", "org/model/name") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find slash returned no model".into()), Err(error) => return error };
         if slash["id"] != "org/model/name" { return CommandResult::Error(format!("find slash = {slash}")); }
         let expected_limits = json!({"maxRequestBytes":12345,"images":{"maxPerMessage":7,"maxPerRequest":11,"resize":{"maxWidth":321,"maxHeight":123,"maxBytes":45678,"jpegQuality":67}}});
         if slash["inputLimits"] != expected_limits || ctx.get_model_info().unwrap().and_then(|model| model.input_limits) != Some(expected_limits) { return CommandResult::Error(format!("model inputLimits = {slash}")); }
@@ -1162,8 +1198,13 @@ fn main() {
             if slash.get(field).is_none() { return CommandResult::Error(format!("find slash missing {field}: {slash}")); }
         }
         if slash["input"].as_array().map(Vec::len) != Some(0) || slash["cost"]["input"] != 0 || slash["cost"]["tiers"].as_array().map(Vec::len) != Some(1) || slash["compat"]["supportsStrictMode"] != false { return CommandResult::Error(format!("find slash shape = {slash}")); }
-        if registry.find("conformance", "missing").is_some() { return CommandResult::Error("find missing returned a model".into()); }
-        if registry.find("conformance", "override-only").is_some() { return CommandResult::Error("find override-only returned a model".into()); }
+        for missing in ["missing", "override-only"] {
+            match find("conformance", missing) {
+                Ok(None) => {}
+                Ok(Some(_)) => return CommandResult::Error(format!("find {missing} returned a model")),
+                Err(error) => return error,
+            }
+        }
         let auth = match registry.get_api_key_and_headers(&found) {
             Ok(value) => value,
             Err(error) => return CommandResult::Error(format!("get auth: {error}")),

@@ -290,6 +290,22 @@ func (c Context) Err() error {
 	return c.ctx.Err()
 }
 
+// cancelReason is the cause of a request the host cancelled: the reason its cancel frame carried.
+type cancelReason string
+
+func (r cancelReason) Error() string { return string(r) }
+
+// CancellationReason returns the reason the host gave when it cancelled this request, or "" when the request was not cancelled or the host named none. The Python and Rust SDKs return the same string from cancellation_reason and Node aborts the request's signal with it.
+func (c Context) CancellationReason() string {
+	if c.ctx == nil {
+		return ""
+	}
+	if reason, ok := context.Cause(c.ctx).(cancelReason); ok {
+		return string(reason)
+	}
+	return ""
+}
+
 func (c Context) callHost(method string, args any) (*callResultMsg, error) {
 	return c.callHostAfterBegin(method, args, false, nil)
 }
@@ -1442,17 +1458,9 @@ type ModelRegistry struct{ context Context }
 // ModelRegistry returns the current Session model registry facade.
 func (c Context) ModelRegistry() ModelRegistry { return ModelRegistry{context: c} }
 
-// Find resolves a model by exact provider and model ID through the host registry.
-func (r ModelRegistry) Find(providerID, modelID string) map[string]any {
-	result, err := r.context.callHost("getModel", map[string]string{"provider": providerID, "modelId": modelID})
-	if err := callResultError(result, err); err != nil || result == nil || string(result.Result) == "null" {
-		return nil
-	}
-	var model map[string]any
-	if err := json.Unmarshal(result.Result, &model); err != nil {
-		return nil
-	}
-	return model
+// Find resolves a model by exact provider and model ID through the host registry. It returns a nil map and a nil error when no model matches, as Pi's find returns undefined (model-registry.ts:72); a host or transport failure is the error, never a model that is absent.
+func (r ModelRegistry) Find(providerID, modelID string) (map[string]any, error) {
+	return hostValue[map[string]any](r.context, "getModel", map[string]string{"provider": providerID, "modelId": modelID})
 }
 
 // GetApiKeyAndHeaders resolves request authentication through the host.

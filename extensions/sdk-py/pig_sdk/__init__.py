@@ -1554,11 +1554,17 @@ class ModelRegistry:
         """Remove a virtual model (``unregisterVirtualModel``)."""
         self._context.unregister_virtual_model(provider, model_id)
 
+    def _provider_state(self, model: dict[str, Any]) -> dict[str, Any]:
+        """The registry state of the model's provider. A model with no string provider has no provider state: Pi's ``model.provider`` lookup in the configured and OAuth sets misses (model-runtime.ts:543-553)."""
+        providers = self._state()["providers"]
+        provider = model.get("provider")
+        return providers.get(provider, {}) if isinstance(provider, str) else {}
+
     def has_configured_auth(self, model: dict[str, Any]) -> bool:
-        return self._state()["providers"].get(model["provider"], {}).get("configured", False)
+        return self._provider_state(model).get("configured", False)
 
     def is_using_oauth(self, model: dict[str, Any]) -> bool:
-        return self._state()["providers"].get(model["provider"], {}).get("usingOAuth", False)
+        return self._provider_state(model).get("usingOAuth", False)
 
     def get_provider_auth_status(self, provider: str) -> dict[str, Any]:
         return self._state()["providers"].get(provider, {}).get("authStatus", {"configured": False})

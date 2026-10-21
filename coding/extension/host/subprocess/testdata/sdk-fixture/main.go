@@ -457,15 +457,24 @@ func main() {
 
 	ext.Command("model-stream-probe", "Exercise model streaming", func(ctx sdk.Context, _ string) error {
 		registry := ctx.ModelRegistry()
-		current := registry.Find("conformance", "current")
+		current, err := registry.Find("conformance", "current")
+		if err != nil {
+			return err
+		}
 		if current == nil || fmt.Sprint(current["id"]) != "current" {
 			return fmt.Errorf("find current = %#v", current)
 		}
-		found := registry.Find("conformance", "declared")
+		found, err := registry.Find("conformance", "declared")
+		if err != nil {
+			return err
+		}
 		if found == nil || fmt.Sprint(found["id"]) != "declared" || fmt.Sprint(found["provider"]) != "conformance" {
 			return fmt.Errorf("find declared = %#v", found)
 		}
-		slash := registry.Find("conformance", "org/model/name")
+		slash, err := registry.Find("conformance", "org/model/name")
+		if err != nil {
+			return err
+		}
 		if slash == nil || fmt.Sprint(slash["id"]) != "org/model/name" {
 			return fmt.Errorf("find slash = %#v", slash)
 		}
@@ -495,10 +504,18 @@ func main() {
 		if len(input) != 0 || cost["input"] != float64(0) || len(tiers) != 1 || compat["supportsStrictMode"] != false {
 			return fmt.Errorf("find slash shape = %#v", slash)
 		}
-		if missing := registry.Find("conformance", "missing"); missing != nil {
+		missing, err := registry.Find("conformance", "missing")
+		if err != nil {
+			return err
+		}
+		if missing != nil {
 			return fmt.Errorf("find missing = %#v", missing)
 		}
-		if overrideOnly := registry.Find("conformance", "override-only"); overrideOnly != nil {
+		overrideOnly, err := registry.Find("conformance", "override-only")
+		if err != nil {
+			return err
+		}
+		if overrideOnly != nil {
 			return fmt.Errorf("find override-only = %#v", overrideOnly)
 		}
 		auth, err := registry.GetApiKeyAndHeaders(found)

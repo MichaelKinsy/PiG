@@ -3920,8 +3920,9 @@ func (b *UIBridge) handleGetModel(actions *HostCallbacks, args json.RawMessage) 
 	if err := json.Unmarshal(args, &request); err != nil {
 		return nil, fmt.Errorf("parse getModel args: %w", err)
 	}
+	// An unbound lookup is a failure, not "no such model": Pi's registry always answers find, and undefined means the model is absent.
 	if actions == nil || actions.GetModel == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("model lookup is not bound")
 	}
 	result := actions.GetModel(request.Provider, request.ModelID)
 	if result == nil {
@@ -4093,8 +4094,9 @@ func (b *UIBridge) handleSessionRead(actions *HostCallbacks, args json.RawMessag
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse sessionRead args: %w", err)
 	}
+	// An unbound read is a failure, not an empty session: Pi's ReadonlySessionManager always exists, and a null here would be believed as "no entry" or as a list-typed read with nothing in it.
 	if actions == nil || actions.SessionRead == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("session reads are not bound")
 	}
 	value, err := actions.SessionRead(p.Method, p.Args)
 	if err != nil {
