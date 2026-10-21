@@ -300,10 +300,23 @@ func nodeDelay(d time.Duration) time.Duration {
 	return d.Truncate(time.Millisecond)
 }
 
-// after posts fn once d has elapsed (setTimeout(fn, d)); stop cancels it if it has not fired.
+// after posts fn once d has elapsed (setTimeout(fn, d)); stop cancels it if it has not fired. clearTimeout frees what the
+// callback captured at once; a stopped Go timer does not: it stays in its P's timer heap, still holding its callback,
+// until the runtime removes it (a zombie is purged when it reaches the head or outnumbers a quarter of the heap), which
+// can be the timer's whole delay. So the timer holds only a slot that stop empties: a stopped timer retains the callback's
+// captures (an object whose ready timeout is a minute away) for no time at all.
 func (loop *loop) after(d time.Duration, fn func()) (stop func()) {
-	timer := time.AfterFunc(nodeDelay(d), func() { loop.post(fn) })
-	return func() { timer.Stop() }
+	var pending atomic.Pointer[func()]
+	pending.Store(&fn)
+	timer := time.AfterFunc(nodeDelay(d), func() {
+		if due := pending.Swap(nil); due != nil {
+			loop.post(*due)
+		}
+	})
+	return func() {
+		timer.Stop()
+		pending.Store(nil)
+	}
 }
 
 // Promise is a value or error settled once, on a loop. Callbacks registered with then run on the loop, in
