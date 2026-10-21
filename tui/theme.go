@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/source"
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -163,6 +164,7 @@ func currentColorMode() TerminalColorMode {
 // as upstream loadTheme creates the theme when it is set.
 func storeActiveTheme(t *Theme) {
 	activeTheme.Store(t.WithColorMode(currentColorMode()))
+	activeThemeObservers.Notify()
 }
 
 // RefreshActiveThemeColorMode re-activates the active theme in the color mode
@@ -403,6 +405,13 @@ var (
 // path from the main goroutine and background render workers, so stores and
 // loads use an atomic pointer.
 var activeTheme atomic.Pointer[Theme]
+
+// activeThemeObservers run after the active theme is replaced (a selection, a color-mode refresh, the watcher's reload of the theme's file) or the terminal's reported colors change, which the active theme resolves its colors and appearance from.
+var activeThemeObservers changeobservers.Observers
+
+// ObserveActiveTheme registers observe to run after the active theme is replaced, which is what theme.ts reports through onThemeChange (theme.ts:698-731, 780), or after the terminal's reported colors change. Upstream's `ctx.ui.theme` is the global theme, read at every use, so an owner that hands a copy of the palette to a runtime reports each change through this.
+// observe runs on the goroutine that replaced the theme, with the theme mutation lock held: it must return at once and must not select a theme. The returned function removes it and can be called repeatedly.
+func ObserveActiveTheme(observe func()) func() { return activeThemeObservers.Add(observe) }
 
 // ActiveTheme returns the current theme; before any selection it is the built-in dark theme.
 func ActiveTheme() *Theme {

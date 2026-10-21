@@ -9,8 +9,8 @@ type statePushQueue struct {
 	running bool
 }
 
-// hostStateChanged brings every runtime up to date with host state that changed without an extension call or an event to the extension (UIBridge.HostStateChanged): the model, the thinking level, the session name and the settings.
-// Upstream's context getters read the live Session at every call (runner.ts:906, loader.ts:411-414), while a runtime replicates the state, and a state push otherwise precedes only a request, a setModel or appendEntry call, and a status change. A timer or thread that reads between requests therefore saw the state the last request left.
+// hostStateChanged brings every runtime up to date with host state that changed without an extension call or an event to the extension (UIBridge.HostStateChanged): the model, the thinking level, the session name, the settings, the MCP server list and the theme palette.
+// Upstream's context getters read the live Session, the runtime's MCP registry and the global theme at every call (runner.ts:906, loader.ts:411-414 and 495-497, interactive-mode.ts:2665), while a runtime replicates the state, and a state push otherwise precedes only a request, a setModel or appendEntry call, and a status change. A timer or thread that reads between requests therefore saw the state the last request left.
 // The owner reports the change from the goroutine that made it, which can be the UI loop, and the push waits for every runtime's connection. So the caller does one atomic swap and queues a fan-out on a task Shutdown joins; the fan-out queues each extension's push on a task of its own, and pushStateTo sends nothing to a runtime whose state is unchanged.
 func (h *Host) hostStateChanged() {
 	if h.uiBridge == nil || h.hostStatePushQueued.Swap(true) {

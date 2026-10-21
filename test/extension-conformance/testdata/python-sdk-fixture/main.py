@@ -1959,6 +1959,8 @@ def _state_push_reader(ctx, kind):
         read = lambda: ctx.model
     elif kind == "session-name":
         read = lambda: ctx.session_name
+    elif kind == "theme":
+        read = lambda: ctx.theme.name or ""
     elif kind.startswith("settings:"):
         key = kind[len("settings:"):]
         read = lambda: json.dumps(ctx.get_settings().get(key), separators=(",", ":"))
@@ -1977,7 +1979,7 @@ def _state_push_reader(ctx, kind):
 
 
 def _register_state_push_probe(ext: pig_sdk.Extension) -> None:
-    """Register the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>"."""
+    """Register the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>"."""
 
     def probe(ctx, args):
         request = json.loads(args)

@@ -2845,7 +2845,7 @@ fn main() {
 const STATE_PUSH_WINDOW: Duration = Duration::from_secs(5);
 
 /// Registers the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name.
-/// The arguments are {"kind": "model" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+/// The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
 fn register_state_push_probe(ext: &mut Extension) {
     ext.command("state-push-probe", "Read one replicated accessor from a thread between requests", |ctx, args| {
         let request: Value = match serde_json::from_str(args) {
@@ -2876,11 +2876,17 @@ fn register_state_push_probe(ext: &mut Extension) {
     });
 }
 
-/// The read of one replicated accessor as a string, or an error for a kind the Rust SDK does not replicate in a retained context: its session name is a copy made when the context was created, and its thinking level is a host call.
+/// The read of one replicated accessor as a string, or an error for a kind the Rust SDK does not replicate: its thinking level is a host call, which is live.
 fn state_push_reader(ctx: &pig_sdk::Context, kind: &str) -> Result<Box<dyn Fn() -> String + Send>, String> {
     let ctx = ctx.clone();
     if kind == "model" {
         return Ok(Box::new(move || ctx.model()));
+    }
+    if kind == "session-name" {
+        return Ok(Box::new(move || ctx.session_name()));
+    }
+    if kind == "theme" {
+        return Ok(Box::new(move || ctx.theme().name));
     }
     if let Some(key) = kind.strip_prefix("settings:") {
         let key = key.to_string();

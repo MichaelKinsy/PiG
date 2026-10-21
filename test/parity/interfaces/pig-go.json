@@ -93144,6 +93144,17 @@
       "shapeHash": "sha256:b16703b2003b44bb251961a587a9ed489b96a6ec55f0815548531aa3f232c154"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#watchHostState",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "watchHostState",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(bridge *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge, session *github.com/MichaelKinsy/PiG/coding.Session) func()"
+      },
+      "shapeHash": "sha256:17203e291e3d5855013477effff798ee623d4aadc7c286ceb1814806e181a90d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#watchSessionRunSignal",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "watchSessionRunSignal",
@@ -98081,6 +98092,17 @@
         "type": "func() []RegisteredMcpServer"
       },
       "shapeHash": "sha256:b97eef4321f95b0eca8d6780c2736919042041093abf998c0bb77257a563055a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#McpServerRegistry.ObserveChange",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "McpServerRegistry.ObserveChange",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(observe func()) func()"
+      },
+      "shapeHash": "sha256:a843c70fb6d3261ac58d6032ee35268582d4f1e21319238faa27bcb9a6ea4641"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#McpServerRegistry.Register",
@@ -281486,6 +281508,17 @@
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ObserveActiveTheme",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ObserveActiveTheme",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(observe func()) func()"
+      },
+      "shapeHash": "sha256:a843c70fb6d3261ac58d6032ee35268582d4f1e21319238faa27bcb9a6ea4641"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#OkhslChannels",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "OkhslChannels",
@@ -302054,6 +302087,39 @@
         "type": "func(new *Theme) (old *Theme)"
       },
       "shapeHash": "sha256:74dd65532299a3202adb1ddcac07b09d113b0d8df264b544b4ab74899c2ae49b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#activeThemeObservers",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "activeThemeObservers",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "github.com/MichaelKinsy/PiG/internal/changeobservers.Observers"
+      },
+      "shapeHash": "sha256:a738e2af36f5bcee0069ff0d489d74dfe0a937b365a5265eacf6a69d8bd33d59"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#activeThemeObservers.Add",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "activeThemeObservers.Add",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(observe func()) func()"
+      },
+      "shapeHash": "sha256:a843c70fb6d3261ac58d6032ee35268582d4f1e21319238faa27bcb9a6ea4641"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#activeThemeObservers.Notify",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "activeThemeObservers.Notify",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#activeThemeWatcher",
