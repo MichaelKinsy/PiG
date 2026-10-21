@@ -1,4 +1,4 @@
-"""pi-tui helpers against the vectors generated from Pi's own functions (test/parity/sdk-vectors/gen.mjs).
+"""pi-tui helpers against the vectors generated from Pi's own functions (test/parity/sdk-bulk/gen.mjs).
 
 Every SDK reproduces the same vectors, so a helper that returns a constant or ports a different rule fails here.
 """
@@ -16,7 +16,7 @@ import pytest
 from pig_sdk import tui
 from pig_sdk.tui import _colors, _terminal
 
-VECTORS = Path(__file__).resolve().parents[3] / "test" / "parity" / "sdk-vectors"
+VECTORS = Path(__file__).resolve().parents[3] / "test" / "parity" / "sdk-bulk"
 
 
 def load(name: str):

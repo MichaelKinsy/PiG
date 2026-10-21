@@ -5,7 +5,7 @@
 // are given is the one the host publishes (`ExtensionThemePalette`): each token's opening escape sequence as Pi's Theme resolved it.
 //
 // Usage: node gen-coding-agent.mjs <pi-coding-agent package dir (with its node_modules)> <out dir>
-//   e.g. (from test/parity/sdk-vectors) node gen-coding-agent.mjs <node_modules>/@earendil-works/pi-coding-agent .
+//   e.g. (from test/parity/sdk-bulk) node gen-coding-agent.mjs <node_modules>/@earendil-works/pi-coding-agent .
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";

@@ -1,4 +1,4 @@
-//! pi-tui helpers against the vectors generated from Pi's own functions (`test/parity/sdk-vectors/gen.mjs`). Every SDK reproduces the
+//! pi-tui helpers against the vectors generated from Pi's own functions (`test/parity/sdk-bulk/gen.mjs`). Every SDK reproduces the
 //! same vectors, so a helper that returns a constant or ports a different rule fails here.
 
 use std::path::PathBuf;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use super::*;
 
 fn load(name: &str) -> Value {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test/parity/sdk-vectors").join(name);
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test/parity/sdk-bulk").join(name);
     serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap()
 }
 
