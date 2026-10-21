@@ -22,6 +22,7 @@ func TestCompatSchemaExportsMatchPi(t *testing.T) {
 		"AnthropicMessagesCompatSchema":       AnthropicMessagesCompatSchema,
 		"BedrockCompatSchema":                 BedrockCompatSchema,
 		"MistralConversationsCompatSchema":    MistralConversationsCompatSchema,
+		"SystemOneCompatSchema":               SystemOneCompatSchema,
 		"ProviderCompatSchema":                ProviderCompatSchema,
 	}
 	for name, build := range builders {
