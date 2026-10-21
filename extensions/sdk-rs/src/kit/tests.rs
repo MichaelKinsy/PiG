@@ -272,6 +272,8 @@ fn events_decode_each_upstream_callback() {
             item: Some(SelectItem::new("k2", "Two").description("d")),
             id: String::new(),
             value: String::new(),
+            cursor: None,
+            mouse: None,
         }
     );
     let (_, change) =

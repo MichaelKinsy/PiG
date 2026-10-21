@@ -115,6 +115,8 @@ type viewInstance struct {
 	bash      *tui.BashExecutionComponent
 	dispose   func()
 	sent      *ViewNode
+	// widget is the state of a widget kind (view_kit_widgets.go).
+	widget viewWidgetState
 }
 
 type viewLoader struct {
@@ -301,6 +303,9 @@ func (s *viewSurface) HandleViewInput(data string) bool {
 		return false
 	}
 	inst := f.focus
+	if inst.widget != nil {
+		return s.handleWidgetInput(inst, data)
+	}
 	kb := tui.GetTUIKeybindings()
 	bound := kb.Matches(data, tui.KBSelectUp) || kb.Matches(data, tui.KBSelectDown) ||
 		kb.Matches(data, tui.KBSelectConfirm) || kb.Matches(data, tui.KBSelectCancel)
@@ -457,6 +462,10 @@ func cloneViewNode(n frontend.ViewNode) frontend.ViewNode {
 
 // refreshNode copies a list's live state into its frontend node.
 func (inst *viewInstance) refreshNode() {
+	if inst.widget != nil {
+		inst.widget.refresh(inst.node)
+		return
+	}
 	if inst.list == nil && inst.settings == nil {
 		return
 	}
@@ -516,7 +525,7 @@ func validateView(v *ViewPayload, annotated bool) ([]string, error) {
 	}
 	if v.Focus != "" {
 		kind, ok := c.ids[v.Focus]
-		if !ok || (kind != ViewKindSelectList && kind != ViewKindSettingsList) {
+		if !ok || (kind != ViewKindSelectList && kind != ViewKindSettingsList && !viewWidgetFocusable(kind)) {
 			return nil, fmt.Errorf("focus %q is not a list of the view", v.Focus)
 		}
 	}
@@ -649,9 +658,9 @@ func (c *viewChecker) node(n *ViewNode, depth int) {
 			}
 		}
 	default:
-		c.fail("unknown view kind %q", n.Kind)
+		c.checkWidget(n)
 	}
-	if len(n.Children) > 0 && !slices.Contains([]string{ViewKindContainer, ViewKindBox, ViewKindHStack, ViewKindVStack}, n.Kind) {
+	if len(n.Children) > 0 && !slices.Contains([]string{ViewKindContainer, ViewKindBox, ViewKindHStack, ViewKindVStack}, n.Kind) && viewWidgetChildLimit(n.Kind) < len(n.Children) {
 		c.fail("%s node cannot have children", n.Kind)
 	}
 	for i := range n.Children {
@@ -716,6 +725,11 @@ func (s *viewSurface) buildLocked(f *viewFrame, base *tui.Theme) error {
 	f.tree = tree
 	if f.payload.Focus != "" {
 		f.focus = s.instances[f.payload.Focus]
+	}
+	for _, inst := range s.instances {
+		if inst.widget != nil {
+			inst.widget.setFocused(inst == f.focus)
+		}
 	}
 	return nil
 }
@@ -917,7 +931,11 @@ func (b *viewBuilder) build(n *ViewNode, out *frontend.ViewNode) (tui.Component,
 		}
 		c = &viewLines{content: slices.Clone(n.Content)}
 	default:
-		return nil, fmt.Errorf("unknown view kind %q", n.Kind)
+		comp, err := b.buildWidget(n, out)
+		if err != nil {
+			return nil, err
+		}
+		c = comp
 	}
 	return &viewRecorder{Component: c, node: out}, nil
 }

@@ -336,8 +336,24 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 			break
 		}
 		return viewNode{Kind: kindDiff, Diff: n.Diff, FilePath: n.FilePath, PaddingX: new(n.PaddingX), PaddingY: new(n.PaddingY)}, nil
+	case kit.Wired:
+		return e.widget(n, depth)
 	}
 	return viewNode{}, errors.New("kit: nil node")
+}
+
+// widget encodes a widget node (kit.Wired).
+func (e *encoder) widget(n kit.Wired, depth int) (viewNode, error) {
+	form := n.WireNode()
+	out := viewNode{Kind: form.Kind, ID: form.ID}
+	var err error
+	if out.Children, err = e.nodes(form.Children, depth); err != nil {
+		return out, err
+	}
+	if form.Fields != nil {
+		out.extra, err = json.Marshal(form.Fields)
+	}
+	return out, err
 }
 
 // toolExecution encodes a tool card: its constructor arguments always, its

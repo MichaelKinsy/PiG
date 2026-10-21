@@ -1089,6 +1089,9 @@ type ViewNode struct {
 	// Diff and FilePath are a diff node's renderDiff arguments.
 	Diff     string `json:"diff,omitempty"`
 	FilePath string `json:"filePath,omitempty"`
+
+	// ViewWidgetFields are the fields of the widget kinds (view_widget_wire.go).
+	ViewWidgetFields
 }
 
 // viewNodeWire is a ViewNode with its "message" as raw JSON: a loader's
@@ -1278,6 +1281,7 @@ type ViewEventPayload struct {
 	Item  *ViewItem `json:"item,omitempty"`
 	ID    string    `json:"id,omitempty"`
 	Value string    `json:"value,omitempty"`
+	ViewEventExtras
 }
 
 // ViewEvictedPayload is a NotifyUIViewEvicted argument.

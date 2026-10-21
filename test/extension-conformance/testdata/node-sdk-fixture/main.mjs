@@ -972,6 +972,62 @@ export default function (pi) {
       return { handled: true };
     }
   }
+  // kit-widget "<case key> [<callbacks>]": a widget kind's Pi vector case
+  // (D107, docs/plan/extension-component-kit.md §10), built from Pi's own
+  // components; the runtime derives its view while a frontend draws. As
+  // ui.custom's component it logs the keys and mouse events the components
+  // leave to the extension and the callbacks they fire, and closes with the
+  // log after `want` callbacks (never when `want` is 0). The key is
+  // "<module>/<export>/<case name>" and the case's wire node is its vector's
+  // `root`.
+  const kitWidgetCases = {};
+  {
+    const branch = (expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.BranchSummaryMessageComponent({ summary: "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`." }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/BranchSummaryMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = branch(false);
+    kitWidgetCases[`${prefix}click toggles`] = branch(false);
+    kitWidgetCases[`${prefix}right click ignored`] = branch(false);
+    kitWidgetCases[`${prefix}expanded`] = branch(true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = branch(false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = branch(true, 0);
+    kitWidgetCases[`${prefix}empty summary expanded`] = () => {
+      const node = new piCodingAgent.BranchSummaryMessageComponent({ summary: "" }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
+  // kit-widget-cases
+  pi.registerCommand("kit-widget", {
+    description: "Show a widget kind's Pi vector case (D107)",
+    handler: async (args, ctx) => {
+      const space = args.indexOf(" ");
+      const key = space < 0 ? args : args.slice(0, space);
+      const want = space < 0 ? 0 : Number(args.slice(space + 1)) || 0;
+      const build = kitWidgetCases[key];
+      if (!build) throw new Error(`kit-widget: unknown case ${JSON.stringify(key)}`);
+      const log = [];
+      let count = 0;
+      const result = await ctx.ui.custom((_tui, theme, keys, done) => {
+        const note = (entry, callback = true) => {
+          log.push(entry);
+          if (callback) count++;
+          if (want > 0 && count >= want) done(log.join(","));
+        };
+        // build returns the root component and, when a node of it holds the focus, that node.
+        const { root, focus } = build({ theme, keys, note, log });
+        if (focus) root.handleInput = (data) => focus.handleInput(data);
+        else if (!root.handleInput) root.handleInput = (data) => { log.push(`input:${data}`); };
+        return root;
+      }, { overlay: true });
+      ctx.ui.notify(`kit-widget=${result ?? ""}`, "info");
+    },
+  });
   pi.registerCommand("mouse-probe", {
     description: "Exercise extension mouse input",
     handler: async (_args, ctx) => {
