@@ -34,6 +34,15 @@ func runProcessChannelChild() int {
 	if !channel.Connected() {
 		return 2
 	}
+	// The parent writes its init when it forks this process, so on a busy machine the channel's reader has taken it
+	// before the code below registers anything. Wait for that: it is the case the order of registrations has to hold
+	// for, instead of one that a fast registration happens to avoid.
+	if !waitForReadAhead(channel.(*nodeChannel)) {
+		return 5
+	}
+	// ChildControl owns the channel: the messages read before the first "message" listener are given to that listener
+	// (nodeChannel.On), and the init is one of them.
+	control := ChildControl(channel)
 	big := IpcListener(func(message any) {
 		object, ok := message.(*delta.JsonObject)
 		if !ok || object == nil || !object.Has("big") {
@@ -43,7 +52,6 @@ func runProcessChannelChild() int {
 		channel.Send(map[string]any{"bigLength": len(text)}, nil)
 	})
 	channel.On("message", &big)
-	control := ChildControl(channel)
 	init, err := control.Init(context.Background())
 	if err != nil {
 		return 3
@@ -59,6 +67,22 @@ func runProcessChannelChild() int {
 	case <-time.After(30 * time.Second):
 		return 4
 	}
+}
+
+// waitForReadAhead waits until the channel's reader has taken a message that no listener was there to hear, so it waits
+// for the parent's init, which the parent wrote before this process ran. It reports false when none arrives.
+func waitForReadAhead(channel *nodeChannel) bool {
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		channel.mu.Lock()
+		ahead := len(channel.pending) > 0
+		channel.mu.Unlock()
+		if ahead {
+			return true
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return false
 }
 
 func TestProcessChannelIsNodesIPCChannel(t *testing.T) {
