@@ -639,6 +639,32 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         }
     });
+    // ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+    ext.command("ui_dialog_values_probe", "Report the typed result of each dialog", |ctx, _args| {
+        let report = |name: &str, value: Value, ok: bool| {
+            let text = if ok { value.to_string() } else { "<undefined>".to_string() };
+            ctx.notify(&format!("{name}={text}"), "info");
+        };
+        let result = (|| -> std::io::Result<()> {
+            for title in ["S1", "S2", "S3", "S4"] {
+                let (value, ok) = ctx.select(title, &["a", "b"])?;
+                report(title, value, ok);
+            }
+            for title in ["C1", "C2", "C3", "C4"] {
+                report(title, ctx.confirm(title, "m")?, true);
+            }
+            for title in ["I1", "I2"] {
+                let (value, ok) = ctx.input(title, "p")?;
+                report(title, value, ok);
+            }
+            for title in ["E1", "E2"] {
+                let (value, ok) = ctx.editor(title, "p")?;
+                report(title, value, ok);
+            }
+            Ok(())
+        })();
+        match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
+    });
     // ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", |ctx, _args| {
         ctx.set_working_message("Thinking hard");
@@ -1999,11 +2025,12 @@ fn main() {
     ext.command("ui-availability", "Probe bound UI and headless defaults", |ctx, _args| {
         let result = (|| -> std::io::Result<()> {
             let (selected, _) = ctx.select("Pick", &["first", "second"])?;
+            let selected = dialog_text(&selected);
             ctx.notify("availability-notify", "info");
             if !ctx.has_ui() {
-                assert_eq!(ctx.input("Input", "placeholder")?, (String::new(), false));
-                assert_eq!(ctx.editor("Editor", "prefill")?, (String::new(), false));
-                assert!(!ctx.confirm("Confirm", "message")?);
+                assert_eq!(ctx.input("Input", "placeholder")?, (serde_json::Value::Null, false));
+                assert_eq!(ctx.editor("Editor", "prefill")?, (serde_json::Value::Null, false));
+                assert_eq!(ctx.confirm("Confirm", "message")?, json!(false));
                 struct NoUIComponent;
                 impl pig_sdk::RemoteComponent for NoUIComponent {
                     fn render(&self, _: u32) -> Vec<String> { panic!("headless render") }
@@ -2029,6 +2056,7 @@ fn main() {
     ext.command("ui-state-barrier", "Read UI state after a dialog", |ctx, _args| {
         let result = (|| -> std::io::Result<()> {
             let (selected, _) = ctx.select("expand", &["chosen"])?;
+            let selected = dialog_text(&selected);
             let named = ctx.get_theme("light")?.unwrap();
             let missing = ctx.get_theme("missing")?;
             let (success, message) = ctx.set_theme("missing");
@@ -2247,10 +2275,10 @@ fn main() {
         "Exercise interactive dialog responses",
         |ctx, _args| {
             let result = (|| -> std::io::Result<String> {
-                let (selected, _) = ctx.select("Pick", &["first", "second"])?;
-                let (input, _) = ctx.input("Input", "placeholder")?;
-                let (edited, _) = ctx.editor("Editor", "prefill")?;
-                let confirmed = ctx.confirm("Confirm", "message")?;
+                let selected = dialog_text(&ctx.select("Pick", &["first", "second"])?.0);
+                let input = dialog_text(&ctx.input("Input", "placeholder")?.0);
+                let edited = dialog_text(&ctx.editor("Editor", "prefill")?.0);
+                let confirmed = ctx.confirm("Confirm", "message")? == json!(true);
                 Ok(format!(
                     "select={selected} input={input} editor={edited} confirm={confirmed}"
                 ))
@@ -3176,4 +3204,9 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
             other => Err(format!("exec failed: {other}")),
         }),
     }
+}
+
+/// A dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is null.
+fn dialog_text(value: &serde_json::Value) -> String {
+    value.as_str().unwrap_or("").to_string()
 }

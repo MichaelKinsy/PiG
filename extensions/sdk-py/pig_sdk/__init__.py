@@ -2676,35 +2676,46 @@ class Context:
             args["opts"] = {"timeout": timeout}
         return args
 
-    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[str, bool]:
+    # select, input and editor return Pi's result: the JSON value the user's
+    # client answered with (a str for every client that follows Pi's protocol,
+    # and in RPC mode whatever JSON the client sent: number, bool, None, dict or
+    # list) and whether Pi's result was defined. ok is False for undefined
+    # (cancelled, timed out, an answer without a value), with None as the
+    # value; a JSON null answer is (None, True). confirm returns the client's
+    # ``confirmed`` the same way, False when cancelled or unanswered.
+
+    @staticmethod
+    def _dialog_value(result: dict[str, Any], member: str) -> tuple[Any, bool]:
+        if result.get("ok") is not True:
+            return None, False
+        return result.get(member), True
+
+    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[Any, bool]:
         self._block_for_user()
         args = self._dialog_args({"title": title, "options": options}, timeout)
-        result = self._call("ui.select", args).get("result") or {}
-        return str(result.get("selected") or ""), bool(result.get("ok"))
+        return self._dialog_value(self._call("ui.select", args).get("result") or {}, "selected")
 
-    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> bool:
+    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> Any:
         self._block_for_user()
         args = self._dialog_args({"title": title, "message": message}, timeout)
         result = self._call("ui.confirm", args).get("result") or {}
-        return bool(result.get("confirmed"))
+        return result.get("confirmed", False)
 
-    def input(self, title: str, placeholder: str | None = None, *, timeout: float | None = None) -> tuple[str, bool]:
+    def input(self, title: str, placeholder: str | None = None, *, timeout: float | None = None) -> tuple[Any, bool]:
         """``placeholder=None`` is Pi's omitted placeholder (RPC mode writes no placeholder member); an empty string is a placeholder (``placeholder: ""``)."""
         self._block_for_user()
         args: dict[str, Any] = {"title": title}
         if placeholder is not None:
             args["placeholder"] = placeholder
-        result = self._call("ui.input", self._dialog_args(args, timeout)).get("result") or {}
-        return str(result.get("text") or ""), bool(result.get("ok"))
+        return self._dialog_value(self._call("ui.input", self._dialog_args(args, timeout)).get("result") or {}, "text")
 
-    def editor(self, title: str, prefill: str | None = None) -> tuple[str, bool]:
+    def editor(self, title: str, prefill: str | None = None) -> tuple[Any, bool]:
         """``prefill=None`` is Pi's omitted prefill (RPC mode writes no prefill member); an empty string is a prefill (``prefill: ""``)."""
         self._block_for_user()
         args: dict[str, Any] = {"title": title}
         if prefill is not None:
             args["prefill"] = prefill
-        result = self._call("ui.editor", args).get("result") or {}
-        return str(result.get("text") or ""), bool(result.get("ok"))
+        return self._dialog_value(self._call("ui.editor", args).get("result") or {}, "text")
 
     # Message injection ------------------------------------------------------
 
