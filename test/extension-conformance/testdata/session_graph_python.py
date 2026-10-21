@@ -3,7 +3,7 @@ import json
 import os
 
 import pig_sdk
-from pig_sdk import DefaultPackageManager, DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
+from pig_sdk import DefaultPackageManager, DefaultResourceLoader, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
 
 
 def shape(entries):
@@ -504,11 +504,129 @@ def packages_tool(ctx, params):
     return json.dumps(packages_script(ctx, params))
 
 
+def pick_model(model):
+    if model is None:
+        return None
+    return {"id": model["id"], "provider": model["provider"], "api": model["api"], "name": model["name"], "reasoning": bool(model.get("reasoning")), "contextWindow": model["contextWindow"], "maxTokens": model["maxTokens"]}
+
+
+def error_text(fn):
+    try:
+        fn()
+    except Exception as error:
+        return f"error: {error}"
+    return "no error"
+
+
+def message_text(message):
+    return "".join(block.get("text", "") for block in message["content"])
+
+
+def model_runtime_script(ctx, args):
+    r = {}
+    auth, models, store, server = args["mrAuth"], args["mrModels"], args["mrStore"], args["mrServer"]
+    rt = ModelRuntime.create(ctx, auth_path=auth, models_path=models, models_store_path=store)
+    local = rt.get_model("mr-local", "m1")
+    r["catalog"] = {
+        "error": rt.get_error(), "models": [pick_model(m) for m in rt.get_models("mr-local")], "all": len(rt.get_all_models("mr-local")), "one": pick_model(local),
+        "missing": rt.get_model("mr-local", "nope") is None, "builtinListed": any(m["provider"] == "anthropic" for m in rt.get_models()),
+        "ofType": [m["id"] for m in rt.get_models_of_type("chat", "mr-local")], "oneOfType": pick_model(rt.get_model_of_type("chat", "mr-local", "m1")),
+        "imagesOfType": len(rt.get_models_of_type("image", "mr-local")), "physical": pick_model(rt.get_physical_model("mr-local", "m1")),
+        "physicalMissing": rt.get_physical_model("mr-local", "nope") is None,
+    }
+    r["auth"] = {
+        "configured": rt.has_configured_auth("mr-local"), "unconfigured": rt.has_configured_auth("nope-prov"), "oauth": rt.is_using_oauth("mr-local"), "subscription": rt.is_using_subscription("mr-local"),
+        "status": rt.get_provider_auth_status("mr-local"), "storedStatus": rt.get_provider_auth_status("stored-prov"), "unknownStatus": rt.get_provider_auth_status("nope-prov"),
+        "byProvider": rt.get_auth("mr-local"), "byModel": rt.get_auth(local), "unconfiguredAuth": rt.get_auth("nope-prov"),
+        "overridden": rt.get_auth("mr-local", {"apiKey": "override"}),
+        "check": rt.check_auth("mr-local"), "uncheckedProvider": rt.check_auth("nope-prov"), "compat": rt.get_compatibility_request_config(local),
+    }
+    rt.set_runtime_api_key("rt-prov", "rk")
+    with_key = {"status": rt.get_provider_auth_status("rt-prov"), "configured": rt.has_configured_auth("rt-prov"), "auth": rt.get_auth("rt-prov")}
+    rt.remove_runtime_api_key("rt-prov")
+    r["runtimeKey"] = {"withKey": with_key, "removed": rt.get_provider_auth_status("rt-prov"), "configuredAfter": rt.has_configured_auth("rt-prov")}
+    r["credentials"] = sorted(({"providerId": c["providerId"], "type": c["type"]} for c in rt.list_credentials()), key=lambda c: c["providerId"])
+
+    before = rt.get_registered_provider_ids()
+    rt.register_provider("reg-prov", {
+        "baseUrl": server, "apiKey": "regkey", "api": "openai-completions", "headers": {"x-reg": "1"},
+        "models": [{"id": "r1", "name": "Reg One", "reasoning": False, "input": ["text"], "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 4000, "maxTokens": 500}],
+    })
+    rt.register_provider("reg-prov", {"baseUrl": server + "/v2"})
+    config = rt.get_registered_provider_config("reg-prov")
+    r["registered"] = {
+        "before": before, "ids": rt.get_registered_provider_ids(), "models": [pick_model(m) for m in rt.get_models("reg-prov")], "baseUrl": config["baseUrl"], "apiKey": config["apiKey"], "api": config["api"], "headers": config["headers"], "modelIds": [m["id"] for m in config["models"]],
+        "configured": rt.has_configured_auth("reg-prov"), "unregisteredConfig": rt.get_registered_provider_config("nope-prov") is None,
+        "rejected": error_text(lambda: rt.register_provider("bad-prov", {"models": [{"id": "x"}]})),
+    }
+    rt.unregister_provider("reg-prov")
+    r["registered"]["after"] = {"ids": rt.get_registered_provider_ids(), "models": len(rt.get_models("reg-prov")), "config": rt.get_registered_provider_config("reg-prov") is None}
+
+    requests = []
+
+    def route(_ctx, request):
+        requests.append({"model": request["model"]["id"], "thinkingLevel": request["thinkingLevel"], "reason": request["reason"], "messages": len(request["messages"]), "state": request.get("state")})
+        return {"model": rt.get_physical_model("mr-local", "m1"), "thinkingLevel": "off", "state": {"n": len(requests)}}
+
+    rt.register_virtual_model(pig_sdk.VirtualModel(provider="mr-virtual", id="v1", name="Virtual One", route=route, thinking_levels=["off", "high"], context_window=1000, max_tokens=100, input=["text"]))
+    virtual = rt.get_model("mr-virtual", "v1")
+    messages = [{"role": "user", "content": "hi", "timestamp": 1}]
+    routed = rt.resolve_model(virtual, messages, {"reason": "user", "thinkingLevel": "high"})
+    second = rt.resolve_model(virtual, messages, {"reason": "continuation", "thinkingLevel": "off", "state": {"n": 1}})
+    r["virtual"] = {
+        "model": pick_model(virtual), "thinkingLevels": virtual.get("thinkingLevels"), "route": {"model": pick_model(routed["model"]), "thinkingLevel": routed["thinkingLevel"], "state": routed.get("state")}, "second": second.get("state"), "requests": requests,
+        "physicalIsNull": rt.get_physical_model("mr-virtual", "v1") is None, "unknown": error_text(lambda: rt.resolve_model(local, [], {"reason": "user", "thinkingLevel": "off"})),
+    }
+    rt.unregister_virtual_model("mr-virtual", "v1")
+    r["virtual"]["after"] = rt.get_model("mr-virtual", "v1") is None
+
+    refreshed = rt.refresh({"allowNetwork": False})
+    r["refresh"] = {"aborted": refreshed["aborted"], "errors": refreshed["errors"]}
+    r["available"] = {
+        "ofProvider": [m["id"] for m in rt.get_available("mr-local")], "all": [m["id"] for m in rt.get_available() if m["provider"] == "mr-local"], "snapshot": [m["id"] for m in rt.get_available_snapshot() if m["provider"] == "mr-local"],
+        "allOfProvider": [m["id"] for m in rt.get_all_available("mr-local")], "ofType": [m["id"] for m in rt.get_available_of_type("chat", "mr-local")], "unavailableProvider": len(rt.get_available("nope-prov")),
+    }
+
+    conversation = {"systemPrompt": "Be brief.", "messages": [{"role": "user", "content": "say hello", "timestamp": 1}]}
+    options = {"maxTokens": 50}
+    stream = rt.stream_simple(local, conversation, options)
+    events = [event["type"] for event in stream.events()]
+    message = stream.result()
+    completed = rt.complete_simple(local, conversation, options)
+    full = rt.complete(local, conversation, options)
+    r["stream"] = {
+        "events": events, "stopReason": message["stopReason"], "text": message_text(message), "provider": message["provider"], "model": message["model"], "api": message["api"],
+        "completed": message_text(completed), "full": full["stopReason"], "unknownProvider": rt.complete_simple({**local, "provider": "nope-prov"}, conversation, {})["stopReason"],
+    }
+    classified = rt.classify(local, {"state": {}, "questions": {}})
+    imaged = rt.generate_images(local, {"input": [{"type": "text", "text": "a cat"}]})
+    r["typed"] = {"classifyStop": classified["stopReason"], "classifyError": classified.get("errorMessage"), "imagesStop": imaged["stopReason"], "imagesError": imaged.get("errorMessage")}
+
+    seen, events2 = [], []
+
+    def prompt(p):
+        seen.append(p["type"])
+        return "sk-login"
+
+    credential = rt.login("openai", "api_key", prompt, lambda event: events2.append(event["type"]))
+    r["login"] = {"credential": credential, "prompts": seen, "events": events2, "listed": sorted(c["providerId"] for c in rt.list_credentials()), "status": rt.get_provider_auth_status("openai")}
+    rt.logout("openai")
+    r["login"]["afterLogout"] = sorted(c["providerId"] for c in rt.list_credentials())
+    with open(auth) as handle:
+        r["stored"] = json.load(handle)
+    return r
+
+
+def model_runtime_tool(ctx, params):
+    return json.dumps(model_runtime_script(ctx, params))
+
+
 def new_extension():
     ext = pig_sdk.Extension("session-graph")
     ext.register_tool(pig_sdk.ToolDefinition(name="session_manager", label="session_manager", description="Runs the SessionManager script.", parameters={"type": "object"}, execute=session_manager_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="settings_manager", label="settings_manager", description="Runs the SettingsManager script.", parameters={"type": "object"}, execute=settings_manager_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="project_trust_store", label="project_trust_store", description="Runs the ProjectTrustStore script.", parameters={"type": "object"}, execute=trust_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="resource_loader", label="resource_loader", description="Runs the DefaultResourceLoader script.", parameters={"type": "object"}, execute=loader_tool))
+    ext.register_tool(pig_sdk.ToolDefinition(name="model_runtime", label="model_runtime", description="Runs the ModelRuntime script.", parameters={"type": "object"}, execute=model_runtime_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="package_manager", label="package_manager", description="Runs the DefaultPackageManager script.", parameters={"type": "object"}, execute=packages_tool))
     return ext

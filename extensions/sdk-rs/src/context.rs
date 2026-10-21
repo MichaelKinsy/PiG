@@ -1321,7 +1321,7 @@ impl ModelRegistry {
         request: serde_json::Value,
         options: serde_json::Value,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model,request,options,false,ModelStreamCallbacks::default())
+        self.stream_with_method(model,request,options,false,ModelStreamCallbacks::default(),None)
     }
     /// `stream` with Pi's provider request callbacks (`onPayload`, `onResponse`, `transformHeaders`).
     pub fn stream_with_callbacks(
@@ -1331,7 +1331,7 @@ impl ModelRegistry {
         options: serde_json::Value,
         callbacks: ModelStreamCallbacks,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model,request,options,false,callbacks)
+        self.stream_with_method(model,request,options,false,callbacks,None)
     }
     /// `stream_simple` with Pi's provider request callbacks.
     pub fn stream_simple_with_callbacks(
@@ -1341,9 +1341,13 @@ impl ModelRegistry {
         options: serde_json::Value,
         callbacks: ModelStreamCallbacks,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model,request,options,true,callbacks)
+        self.stream_with_method(model,request,options,true,callbacks,None)
     }
-    fn stream_with_method(&self,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool,callbacks:ModelStreamCallbacks)->Arc<ModelEventStream> {
+    /// A stream on the session graph `ModelRuntime` the handle names.
+    pub(crate) fn stream_on_runtime(&self,runtime:&str,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool)->Arc<ModelEventStream> {
+        self.stream_with_method(model,request,options,simple,ModelStreamCallbacks::default(),Some(runtime.to_string()))
+    }
+    fn stream_with_method(&self,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool,callbacks:ModelStreamCallbacks,runtime:Option<String>)->Arc<ModelEventStream> {
         let id = format!(
             "model-stream-{}",
             self.sequence.fetch_add(1, Ordering::Relaxed) + 1
@@ -1376,6 +1380,9 @@ impl ModelRegistry {
                 "modelStream",
                 {
                     let mut call = serde_json::json!({"streamId": id, "model": model, "request": merged, "simple":simple});
+                    if let Some(runtime) = &runtime {
+                        call["runtime"] = serde_json::Value::String(runtime.clone());
+                    }
                     for (set, name) in [(flags.0, "onPayload"), (flags.1, "onResponse"), (flags.2, "transformHeaders"), (flags.3, "fetch")] {
                         if set {
                             call[name] = serde_json::Value::Bool(true);
@@ -1405,7 +1412,7 @@ impl ModelRegistry {
         request: serde_json::Value,
         options: serde_json::Value,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model, request, options,true,ModelStreamCallbacks::default())
+        self.stream_with_method(model, request, options,true,ModelStreamCallbacks::default(),None)
     }
     pub fn complete(
         &self,

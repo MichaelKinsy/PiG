@@ -1,5 +1,5 @@
 // The Node fixture of the session graph conformance rows (session_graph_test.go). It runs the script of testfixture/sessiongraph (Go), testdata/session-graph-rust and the inline Python fixture with Pi's own SessionManager, so the report it makes is Pi's.
-import { DefaultPackageManager, DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
+import { DefaultPackageManager, DefaultResourceLoader, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -455,6 +455,114 @@ async function packagesScript({ root, pmCwd: cwd, pmAgentDir: agentDir }) {
   return r;
 }
 
+const plain = (value) => (value === undefined ? null : JSON.parse(JSON.stringify(value)));
+
+const pickModel = (model) =>
+  model === undefined
+    ? null
+    : { id: model.id, provider: model.provider, api: model.api, name: model.name, reasoning: !!model.reasoning, contextWindow: model.contextWindow, maxTokens: model.maxTokens };
+
+const failed = async (fn) => {
+  try {
+    await fn();
+  } catch (error) {
+    return `error: ${error.message}`;
+  }
+  return "no error";
+};
+
+async function modelRuntimeScript({ mrAuth, mrModels, mrStore, mrServer }) {
+  const r = {};
+  const rt = await ModelRuntime.create({ authPath: mrAuth, modelsPath: mrModels, modelsStorePath: mrStore });
+  const local = rt.getModel("mr-local", "m1");
+  r.catalog = {
+    error: orNull(rt.getError()), models: rt.getModels("mr-local").map(pickModel), all: rt.getAllModels("mr-local").length, one: pickModel(local),
+    missing: rt.getModel("mr-local", "nope") === undefined, builtinListed: rt.getModels().some((model) => model.provider === "anthropic"),
+    ofType: rt.getModelsOfType("chat", "mr-local").map((model) => model.id), oneOfType: pickModel(rt.getModelOfType("chat", "mr-local", "m1")),
+    imagesOfType: rt.getModelsOfType("image", "mr-local").length, physical: pickModel(rt.getPhysicalModel("mr-local", "m1")),
+    physicalMissing: rt.getPhysicalModel("mr-local", "nope") === undefined,
+  };
+  r.auth = {
+    configured: rt.hasConfiguredAuth("mr-local"), unconfigured: rt.hasConfiguredAuth("nope-prov"), oauth: rt.isUsingOAuth("mr-local"), subscription: rt.isUsingSubscription("mr-local"),
+    status: rt.getProviderAuthStatus("mr-local"), storedStatus: rt.getProviderAuthStatus("stored-prov"), unknownStatus: rt.getProviderAuthStatus("nope-prov"),
+    byProvider: plain(await rt.getAuth("mr-local")), byModel: plain(await rt.getAuth(local)), unconfiguredAuth: plain(await rt.getAuth("nope-prov")),
+    overridden: plain(await rt.getAuth("mr-local", { apiKey: "override" })),
+    check: plain(await rt.checkAuth("mr-local")), uncheckedProvider: plain(await rt.checkAuth("nope-prov")), compat: plain(rt.getCompatibilityRequestConfig(local)),
+  };
+  await rt.setRuntimeApiKey("rt-prov", "rk");
+  const withKey = { status: rt.getProviderAuthStatus("rt-prov"), configured: rt.hasConfiguredAuth("rt-prov"), auth: plain(await rt.getAuth("rt-prov")) };
+  await rt.removeRuntimeApiKey("rt-prov");
+  r.runtimeKey = { withKey, removed: rt.getProviderAuthStatus("rt-prov"), configuredAfter: rt.hasConfiguredAuth("rt-prov") };
+  r.credentials = (await rt.listCredentials()).map((credential) => ({ providerId: credential.providerId, type: credential.type })).sort((a, b) => (a.providerId < b.providerId ? -1 : 1));
+
+  const registeredBefore = [...rt.getRegisteredProviderIds()];
+  rt.registerProvider("reg-prov", {
+    baseUrl: mrServer, apiKey: "regkey", api: "openai-completions", headers: { "x-reg": "1" },
+    models: [{ id: "r1", name: "Reg One", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 4000, maxTokens: 500 }],
+  });
+  rt.registerProvider("reg-prov", { baseUrl: `${mrServer}/v2` });
+  const config = rt.getRegisteredProviderConfig("reg-prov");
+  r.registered = {
+    before: registeredBefore, ids: [...rt.getRegisteredProviderIds()], models: rt.getModels("reg-prov").map(pickModel), baseUrl: config.baseUrl, apiKey: config.apiKey, api: config.api, headers: plain(config.headers), modelIds: config.models.map((model) => model.id),
+    configured: rt.hasConfiguredAuth("reg-prov"), unregisteredConfig: rt.getRegisteredProviderConfig("nope-prov") === undefined,
+    rejected: await failed(() => rt.registerProvider("bad-prov", { models: [{ id: "x" }] })),
+  };
+  rt.unregisterProvider("reg-prov");
+  r.registered.after = { ids: [...rt.getRegisteredProviderIds()], models: rt.getModels("reg-prov").length, config: rt.getRegisteredProviderConfig("reg-prov") === undefined };
+
+  const requests = [];
+  rt.registerVirtualModel({
+    provider: "mr-virtual", id: "v1", name: "Virtual One", thinkingLevels: ["off", "high"], contextWindow: 1000, maxTokens: 100, input: ["text"],
+    route: async (request) => {
+      requests.push({ model: request.model.id, thinkingLevel: request.thinkingLevel, reason: request.reason, messages: request.messages.length, state: orNull(request.state) });
+      return { model: rt.getPhysicalModel("mr-local", "m1"), thinkingLevel: "off", state: { n: requests.length } };
+    },
+  });
+  const virtual = rt.getModel("mr-virtual", "v1");
+  const route = await rt.resolveModel(virtual, [{ role: "user", content: "hi", timestamp: 1 }], { reason: "user", thinkingLevel: "high" });
+  const second = await rt.resolveModel(virtual, [{ role: "user", content: "hi", timestamp: 1 }], { reason: "continuation", thinkingLevel: "off", state: { n: 1 } });
+  r.virtual = {
+    model: pickModel(virtual), thinkingLevels: virtual.thinkingLevels ?? null, route: { model: pickModel(route.model), thinkingLevel: route.thinkingLevel, state: plain(route.state) }, second: plain(second.state), requests,
+    physicalIsNull: rt.getPhysicalModel("mr-virtual", "v1") === undefined, unknown: await failed(() => rt.resolveModel(local, [], { reason: "user", thinkingLevel: "off" })),
+  };
+  rt.unregisterVirtualModel("mr-virtual", "v1");
+  r.virtual.after = rt.getModel("mr-virtual", "v1") === undefined;
+
+  const refreshed = await rt.refresh({ allowNetwork: false });
+  r.refresh = { aborted: refreshed.aborted, errors: Object.fromEntries(refreshed.errors) };
+  r.available = {
+    ofProvider: (await rt.getAvailable("mr-local")).map((model) => model.id), all: (await rt.getAvailable()).filter((model) => model.provider === "mr-local").map((model) => model.id),
+    snapshot: rt.getAvailableSnapshot().filter((model) => model.provider === "mr-local").map((model) => model.id),
+    allOfProvider: (await rt.getAllAvailable("mr-local")).map((model) => model.id), ofType: (await rt.getAvailableOfType("chat", "mr-local")).map((model) => model.id),
+    unavailableProvider: (await rt.getAvailable("nope-prov")).length,
+  };
+
+  const conversation = { systemPrompt: "Be brief.", messages: [{ role: "user", content: "say hello", timestamp: 1 }] };
+  const events = [];
+  const stream = rt.streamSimple(local, conversation, { maxTokens: 50 });
+  for await (const event of stream) events.push(event.type);
+  const message = await stream.result();
+  const completed = await rt.completeSimple(local, conversation, { maxTokens: 50 });
+  const full = await rt.complete(local, conversation, { maxTokens: 50 });
+  r.stream = {
+    events, stopReason: message.stopReason, text: message.content.map((block) => block.text ?? "").join(""), provider: message.provider, model: message.model, api: message.api,
+    completed: completed.content.map((block) => block.text ?? "").join(""), full: full.stopReason,
+    unknownProvider: (await rt.completeSimple({ ...local, provider: "nope-prov" }, conversation, {})).stopReason,
+  };
+  const classified = await rt.classify(local, { state: {}, questions: {} });
+  const imaged = await rt.generateImages(local, { input: [{ type: "text", text: "a cat" }] });
+  r.typed = { classifyStop: classified.stopReason, classifyError: classified.errorMessage ?? null, imagesStop: imaged.stopReason, imagesError: imaged.errorMessage ?? null };
+
+  const seen = [];
+  const events2 = [];
+  const credential = await rt.login("openai", "api_key", { prompt: async (prompt) => { seen.push(prompt.type); return "sk-login"; }, notify: (event) => events2.push(event.type) });
+  r.login = { credential: plain(credential), prompts: seen, events: events2, listed: (await rt.listCredentials()).map((entry) => entry.providerId).sort(), status: rt.getProviderAuthStatus("openai") };
+  await rt.logout("openai");
+  r.login.afterLogout = (await rt.listCredentials()).map((entry) => entry.providerId).sort();
+  r.stored = readJson(mrAuth);
+  return r;
+}
+
 export default function (pi) {
   pi.registerTool({
     name: "session_manager", label: "session_manager", description: "Runs the SessionManager script.", parameters: { type: "object" },
@@ -471,6 +579,10 @@ export default function (pi) {
   pi.registerTool({
     name: "resource_loader", label: "resource_loader", description: "Runs the DefaultResourceLoader script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await loaderScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "model_runtime", label: "model_runtime", description: "Runs the ModelRuntime script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await modelRuntimeScript(params)) }] }),
   });
   pi.registerTool({
     name: "package_manager", label: "package_manager", description: "Runs the DefaultPackageManager script.", parameters: { type: "object" },

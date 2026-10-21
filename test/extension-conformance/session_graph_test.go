@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -67,11 +69,15 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 		r.t.Fatal(err)
 	}
 	configDir := icodingagent.ConfigDirName()
+	modelServer := sessionGraphModelServer(r.t)
 	args := map[string]any{
+		"mrAuth": filepath.Join(root, "mr", "auth.json"), "mrModels": filepath.Join(root, "mr", "models.json"), "mrStore": filepath.Join(root, "mr", "models-store.json"), "mrServer": modelServer,
 		"cwd": filepath.Join(root, "project"), "dir": filepath.Join(root, "sessions"), "otherDir": filepath.Join(root, "other"), "junk": filepath.Join(root, "junk.jsonl"),
 		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "pmCwd": filepath.Join(root, "pm-project"), "pmAgentDir": filepath.Join(root, "pm-agent"), "loaderAgentDir": filepath.Join(root, "agent-loader"), "brokenCwd": filepath.Join(root, "broken"),
 	}
 	files := map[string]string{
+		filepath.Join(root, "mr", "auth.json"):   `{"stored-prov":{"type":"api_key","key":"sk-stored"}}`,
+		filepath.Join(root, "mr", "models.json"): `{"providers":{"mr-local":{"baseUrl":"` + modelServer + `","api":"openai-completions","apiKey":"mr-key","models":[{"id":"m1","name":"M One","reasoning":false,"input":["text"],"cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0},"contextWindow":8000,"maxTokens":1000}]}}}`,
 		filepath.Join(root, "agent", "settings.json"):                            sessionGraphGlobalSettings,
 		filepath.Join(root, "project", configDir, "settings.json"):               sessionGraphProjectSettings,
 		filepath.Join(root, "broken", configDir, "settings.json"):                "{bad",
@@ -212,7 +218,10 @@ func eachSessionGraphSDK(t *testing.T, body func(t *testing.T, r *sessionGraphRi
 	}
 }
 
-var sessionGraphUUID = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+var (
+	sessionGraphUUID   = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+	sessionGraphServer = regexp.MustCompile(`http://127\.0\.0\.1:[0-9]+`)
+)
 
 // normalize writes a report the way every SDK must produce it: the directory tree of the run is "<root>" and a generated session id is "<uuid>".
 func normalizeSessionGraph(t *testing.T, report map[string]any, root string) map[string]any {
@@ -221,7 +230,7 @@ func normalizeSessionGraph(t *testing.T, report map[string]any, root string) map
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := sessionGraphUUID.ReplaceAllString(strings.ReplaceAll(string(encoded), root, "<root>"), "<uuid>")
+	text := sessionGraphServer.ReplaceAllString(sessionGraphUUID.ReplaceAllString(strings.ReplaceAll(string(encoded), root, "<root>"), "<uuid>"), "<server>")
 	var out map[string]any
 	if err := json.Unmarshal([]byte(text), &out); err != nil {
 		t.Fatal(err)
@@ -357,3 +366,40 @@ func TestSessionGraphDefaultPackageManagerAcrossSDKs(t *testing.T) {
 //
 //go:embed testdata/session-graph-default-package-manager.json
 var sessionGraphDefaultPackageManagerWant string
+
+// sessionGraphModelServer is an OpenAI-compatible chat completions endpoint that answers every request with the stream "hello".
+func sessionGraphModelServer(t *testing.T) string {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		for _, chunk := range []string{
+			`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"m1","choices":[{"index":0,"delta":{"role":"assistant","content":"hel"},"finish_reason":null}]}`,
+			`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"m1","choices":[{"index":0,"delta":{"content":"lo"},"finish_reason":null}]}`,
+			`{"id":"c1","object":"chat.completion.chunk","created":1,"model":"m1","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}`,
+		} {
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", chunk)
+		}
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+	return server.URL
+}
+
+// model-runtime.ts ModelRuntime (create over its own credential and model files, catalog and auth reads, runtime keys, provider and virtual model registration, refresh, availability, streams, classify, generateImages, login and logout) for every SDK.
+func TestSessionGraphModelRuntimeAcrossSDKs(t *testing.T) {
+	t.Parallel()
+	eachSessionGraphSDK(t, func(t *testing.T, r *sessionGraphRig, _ string) {
+		report, root := r.script("model_runtime")
+		got := normalizeSessionGraph(t, report, root)
+		if path := os.Getenv("SESSION_GRAPH_PRINT"); path != "" {
+			encoded, _ := json.MarshalIndent(got, "", "\t")
+			_ = os.WriteFile(path, encoded, 0o600)
+		}
+		requireSessionGraphReport(t, got, sessionGraphModelRuntimeWant)
+	})
+}
+
+// sessionGraphModelRuntimeWant is the report of Pi's own ModelRuntime (the Node row), with the run's model server as "<server>".
+//
+//go:embed testdata/session-graph-model-runtime.json
+var sessionGraphModelRuntimeWant string

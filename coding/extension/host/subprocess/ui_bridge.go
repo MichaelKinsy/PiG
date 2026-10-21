@@ -4209,8 +4209,17 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	if owner == nil {
 		return nil, errors.New("modelStream requires a live extension connection")
 	}
-	if actions == nil || actions.StreamModel == nil {
+	streamModel := func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error) { return nil, nil }
+	if request.Runtime != "" {
+		streamer, err := graphStreamerOf(ctx, request.Runtime)
+		if err != nil {
+			return nil, err
+		}
+		streamModel = streamer.StreamModel
+	} else if actions == nil || actions.StreamModel == nil {
 		return nil, errors.New("model streaming is not available")
+	} else {
+		streamModel = actions.StreamModel
 	}
 	decodedRequest, err := decodeModelStreamRequest(request.Request)
 	if err != nil {
@@ -4230,7 +4239,7 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	stream, err := actions.StreamModel(providerCtx, request.Model, decodedRequest)
+	stream, err := streamModel(providerCtx, request.Model, decodedRequest)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -31,6 +32,70 @@ type SessionGraphScope interface {
 	Object(handle string) (SessionGraphObject, bool)
 	// Callback runs the function the extension named id (RequestSessionGraphCallback) and answers its result. A closed connection fails it.
 	Callback(ctx context.Context, id string, args json.RawMessage) (json.RawMessage, error)
+}
+
+// SessionGraphStreamer is an object that serves a model stream (ModelRuntime.stream and streamSimple). A modelStream call that names the object's handle in its runtime field runs on it, and the call delivers the events as it does for the Session's runtime.
+type SessionGraphStreamer interface {
+	// StreamModel starts the stream for the model object and request an extension sent. ctx selects streamSimple (extension.ProviderStreamSimpleSelected) and carries the request's callbacks (extension.ModelStreamRequestFromContext).
+	StreamModel(ctx context.Context, model map[string]any, request map[string]any) (*ai.AssistantMessageEventStream, error)
+}
+
+// SessionGraphReleaser is an object that holds resources past its last reference: the table calls Release once, when the extension releases the object or its connection closes.
+type SessionGraphReleaser interface {
+	Release()
+}
+
+type graphResolver struct {
+	host *Host
+	conn *Conn
+}
+
+type graphResolverKey struct{}
+
+// withGraphResolver lets a call's handler find the session graph objects of the connection that made the call.
+func withGraphResolver(ctx context.Context, resolver graphResolver) context.Context {
+	return context.WithValue(ctx, graphResolverKey{}, resolver)
+}
+
+func graphStreamerOf(ctx context.Context, handle string) (SessionGraphStreamer, error) {
+	resolver, _ := ctx.Value(graphResolverKey{}).(graphResolver)
+	if resolver.host == nil {
+		return nil, errors.New(SessionGraphUnavailableMessage)
+	}
+	object, ok := resolver.host.sessionGraphObjects.lookup(resolver.conn, handle)
+	if !ok {
+		return nil, errors.New(SessionGraphUnknownMessage)
+	}
+	streamer, ok := object.(SessionGraphStreamer)
+	if !ok {
+		return nil, fmt.Errorf("session graph object %s does not stream models", handle)
+	}
+	return streamer, nil
+}
+
+// GraphVirtualModelRoute is the route function of a virtual model whose router is the function the extension named callbackID: it runs on the extension's connection through the scope, with Pi's ModelRouteRequest as JSON.
+func GraphVirtualModelRoute(scope SessionGraphScope, callbackID string) extension.ModelRouteFunc {
+	return func(ctx context.Context, request extension.ModelRouteRequest) (extension.ModelRoute, error) {
+		wire, err := virtualModelRouteRequest(request)
+		if err != nil {
+			return extension.ModelRoute{}, err
+		}
+		args, err := json.Marshal([]VirtualModelRouteRequest{wire})
+		if err != nil {
+			return extension.ModelRoute{}, err
+		}
+		raw, err := scope.Callback(ctx, callbackID, args)
+		if err != nil {
+			return extension.ModelRoute{}, err
+		}
+		var routed VirtualModelRouteResult
+		if err := json.Unmarshal(raw, &routed); err != nil || routed.Model == nil {
+			return extension.ModelRoute{}, errors.New("the router returned no route")
+		}
+		provider, _ := routed.Model["provider"].(string)
+		id, _ := routed.Model["id"].(string)
+		return extension.ModelRoute{Model: &ai.Model{ID: id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider}}, ThinkingLevel: ai.ModelThinkingLevel(routed.ThinkingLevel), State: routeState(request.State, routed, false)}, nil
+	}
 }
 
 type graphScope struct {
@@ -106,8 +171,12 @@ func (t *sessionGraphTable) add(conn *Conn, object SessionGraphObject) (string, 
 		go func() {
 			<-conn.Done()
 			t.mu.Lock()
+			objects := owned.objects
 			delete(t.conns, conn)
 			t.mu.Unlock()
+			for _, object := range objects {
+				releaseGraphObject(object)
+			}
 		}()
 	}
 	t.next++
@@ -128,9 +197,18 @@ func (t *sessionGraphTable) lookup(conn *Conn, handle string) (SessionGraphObjec
 
 func (t *sessionGraphTable) remove(conn *Conn, handle string) {
 	t.mu.Lock()
-	defer t.mu.Unlock()
+	var object SessionGraphObject
 	if owned := t.conns[conn]; owned != nil {
+		object = owned.objects[handle]
 		delete(owned.objects, handle)
+	}
+	t.mu.Unlock()
+	releaseGraphObject(object)
+}
+
+func releaseGraphObject(object SessionGraphObject) {
+	if releaser, ok := object.(SessionGraphReleaser); ok {
+		releaser.Release()
 	}
 }
 

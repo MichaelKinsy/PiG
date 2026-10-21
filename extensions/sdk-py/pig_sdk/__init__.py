@@ -38,6 +38,7 @@ from .autocomplete import AutocompleteProvider as AutocompleteProvider, Autocomp
 from .session_manager import ReadonlySessionManager, SessionManager, SetupSessionManager
 from .settings_manager import SettingsManager
 from .resource_loader import DefaultResourceLoader
+from .model_runtime import ModelRuntime
 from .package_manager import DefaultPackageManager
 from .project_trust import ProjectTrustStore, has_trust_requiring_project_resources
 from .host_info import HostInfoUnavailable as HostInfoUnavailable, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_version as get_version
@@ -1646,7 +1647,7 @@ class ModelRegistry:
     def stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> ModelEventStream:
         return self._stream(model, request, options, False)
 
-    def _stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None, simple: bool) -> ModelEventStream:
+    def _stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None, simple: bool, runtime: str | None = None) -> ModelEventStream:
         stream = ModelEventStream()
         extension = self._context.extension
         with extension._model_stream_lock:
@@ -1668,6 +1669,8 @@ class ModelRegistry:
         def run() -> None:
             try:
                 call = {"streamId": stream_id, "model": model, "request": payload, "simple": simple}
+                if runtime:
+                    call["runtime"] = runtime
                 call.update({name: True for name in callbacks})
                 self._context._call("modelStream", call)
             except Exception as exc:  # noqa: BLE001 - transport failure becomes terminal model error

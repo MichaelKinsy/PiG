@@ -236,6 +236,18 @@ func Extension() *sdk.Extension {
 		},
 	})
 	e.RegisterTool(sdk.ToolDefinition{
+		Name: "model_runtime", Label: "model_runtime", Description: "Runs the ModelRuntime script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(modelRuntimeScript(ctx, args))
+			return string(encoded), err
+		},
+	})
+	e.RegisterTool(sdk.ToolDefinition{
 		Name: "package_manager", Label: "package_manager", Description: "Runs the DefaultPackageManager script.", Parameters: sdk.Schema{"type": "object"},
 		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
 			defer func() {

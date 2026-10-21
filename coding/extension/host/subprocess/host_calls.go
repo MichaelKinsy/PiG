@@ -255,6 +255,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		return
 	}
 	callCtx, releaseCall := conn.hostCallContext(call.ParentRequestID, callID)
+	callCtx = withGraphResolver(callCtx, graphResolver{host: h, conn: conn})
 	if h.uiBridge != nil {
 		defer h.uiBridge.releaseAutocompleteCall(conn, call)
 	}
@@ -383,7 +384,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.uiBridge.handleCall(callCtx, me.config.Name, conn, call)
 	case h.onCall != nil:
 		result, err = h.onCall(me.config.Name, call)
-	case isEarlyModelStreamCall(call.Method) && earlyModelStream.Load() != nil:
+	case isEarlyModelStreamCall(call.Method) && (earlyModelStream.Load() != nil || h.sessionGraph() != nil):
 		// A Host with no UI bridge (an SDK session, the validate and login loaders) still runs the pi-ai calls a module makes while it loads.
 		result, err = h.earlyModelBridge().handleCall(callCtx, me.config.Name, conn, call)
 	default:

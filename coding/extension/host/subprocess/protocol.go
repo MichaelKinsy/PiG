@@ -322,6 +322,8 @@ type ModelStreamCall struct {
 	TransformHeaders bool            `json:"transformHeaders,omitempty"`
 	Model            map[string]any  `json:"model"`
 	Request          json.RawMessage `json:"request"`
+	// Runtime names the session graph ModelRuntime the stream runs on (CallSessionGraphNew, kind ModelRuntime); empty is the Session's.
+	Runtime string `json:"runtime,omitempty"`
 }
 
 const MethodModelStreamCallback = "model_stream_callback"
