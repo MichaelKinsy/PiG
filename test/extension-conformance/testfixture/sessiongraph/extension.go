@@ -171,8 +171,12 @@ func script(ctx sdk.Context, args map[string]any) map[string]any {
 
 	r["list"] = infos(ok(sdk.SessionManagerList(ctx, cwd, &dir, nil)))
 	var listProgress, listAllProgress [][2]int
-	r["listAll"] = infos(ok(sdk.SessionManagerListAll(ctx, &dir, func(loaded, total int, _ []sdk.SessionInfo) { listAllProgress = append(listAllProgress, [2]int{loaded, total}) })))
-	infos(ok(sdk.SessionManagerList(ctx, cwd, &dir, func(loaded, total int, _ []sdk.SessionInfo) { listProgress = append(listProgress, [2]int{loaded, total}) })))
+	r["listAll"] = infos(ok(sdk.SessionManagerListAll(ctx, &dir, func(loaded, total int, _ []sdk.SessionInfo) {
+		listAllProgress = append(listAllProgress, [2]int{loaded, total})
+	})))
+	infos(ok(sdk.SessionManagerList(ctx, cwd, &dir, func(loaded, total int, _ []sdk.SessionInfo) {
+		listProgress = append(listProgress, [2]int{loaded, total})
+	})))
 	lastProgress := func(calls [][2]int) map[string]any {
 		var last any
 		if len(calls) > 0 {

@@ -88,7 +88,7 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 		"status": plain(ok(rt.GetProviderAuthStatus("mr-local"))), "storedStatus": plain(ok(rt.GetProviderAuthStatus("stored-prov"))), "unknownStatus": plain(ok(rt.GetProviderAuthStatus("nope-prov"))),
 		"byProvider": plain(ok(rt.GetAuth("mr-local", nil))), "byModel": plain(ok(rt.GetAuth(local, nil))), "unconfiguredAuth": plain(ok(rt.GetAuth("nope-prov", nil))),
 		"overridden": plain(ok(rt.GetAuth("mr-local", &sdk.AuthOverrides{APIKey: &override}))),
-		"check": plain(ok(rt.CheckAuth("mr-local"))), "uncheckedProvider": plain(ok(rt.CheckAuth("nope-prov"))), "compat": plain(ok(rt.GetCompatibilityRequestConfig(local))),
+		"check":      plain(ok(rt.CheckAuth("mr-local"))), "uncheckedProvider": plain(ok(rt.CheckAuth("nope-prov"))), "compat": plain(ok(rt.GetCompatibilityRequestConfig(local))),
 	}
 	check(rt.SetRuntimeAPIKey("rt-prov", "rk"))
 	withKey := map[string]any{"status": plain(ok(rt.GetProviderAuthStatus("rt-prov"))), "configured": ok(rt.HasConfiguredAuth("rt-prov")), "auth": plain(ok(rt.GetAuth("rt-prov", nil)))}
@@ -98,7 +98,9 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 	for _, credential := range ok(rt.ListCredentials()) {
 		credentials = append(credentials, map[string]any{"providerId": credential.ProviderID, "type": credential.Type})
 	}
-	slices.SortFunc(credentials, func(a, b map[string]any) int { return strings.Compare(fmt.Sprint(a["providerId"]), fmt.Sprint(b["providerId"])) })
+	slices.SortFunc(credentials, func(a, b map[string]any) int {
+		return strings.Compare(fmt.Sprint(a["providerId"]), fmt.Sprint(b["providerId"]))
+	})
 	r["credentials"] = credentials
 
 	before := ok(rt.GetRegisteredProviderIDs())
@@ -178,7 +180,10 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 
 	seen, events2 := []any{}, []any{}
 	credential := ok(rt.Login("openai", "api_key", sdk.AuthInteraction{
-		Prompt: func(prompt map[string]any) (string, error) { seen = append(seen, prompt["type"]); return "sk-login", nil },
+		Prompt: func(prompt map[string]any) (string, error) {
+			seen = append(seen, prompt["type"])
+			return "sk-login", nil
+		},
 		Notify: func(event map[string]any) error { events2 = append(events2, event["type"]); return nil },
 	}, nil))
 	listed := func() []string {

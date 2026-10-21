@@ -4209,7 +4209,9 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	if owner == nil {
 		return nil, errors.New("modelStream requires a live extension connection")
 	}
-	streamModel := func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error) { return nil, nil }
+	streamModel := func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error) {
+		return nil, nil
+	}
 	if request.Runtime != "" {
 		streamer, err := graphStreamerOf(ctx, request.Runtime)
 		if err != nil {
