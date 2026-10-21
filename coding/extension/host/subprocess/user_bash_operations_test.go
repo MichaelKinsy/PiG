@@ -145,14 +145,12 @@ func TestUserBashOperationsAreNotReleasedWhileAnExecRuns(t *testing.T) {
 	if !ok {
 		t.Fatal("no operations result")
 	}
-	operations := typed.Operations
-	typed = nil
 	done := make(chan error, 1)
 	go func(operations extension.BashOperations) {
 		_, err := operations.Exec(t.Context(), "sleep", "/work", extension.BashOperationsExecOptions{})
 		done <- err
-	}(operations)
-	operations = nil
+	}(typed.Operations)
+	typed = nil
 	request, err := tryReadFramed(peer)
 	if err != nil || request.Request == nil || request.Request.Method != RequestUserBashExec {
 		t.Fatalf("request = %+v, %v, want user_bash_exec", request, err)

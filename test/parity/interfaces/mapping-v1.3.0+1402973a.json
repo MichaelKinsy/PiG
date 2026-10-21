@@ -129394,8 +129394,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext",
-        "test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort"
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129417,8 +129417,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext",
-        "test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort"
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129440,8 +129440,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext",
-        "test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort"
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -170015,8 +170015,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext",
-        "test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort"
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
       ]
     },
     {
