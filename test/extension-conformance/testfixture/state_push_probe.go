@@ -15,7 +15,7 @@ import (
 const statePushWindow = 5 * time.Second
 
 // registerStatePushProbe registers the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a goroutine that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the goroutine reports the first value that differs from the one it armed on, or the value it still holds after statePushWindow, to a file in the directory the arguments name.
-// The arguments are {"kind": "model" | "settings:<key>" | "mcp", "dir": <directory>}. The report is "<armed>=><read>". Every SDK fixture reads the same state with its own accessor.
+// The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}. The report is "<armed>=><read>". Every SDK fixture reads the same state with its own accessor.
 func registerStatePushProbe(ext *sdk.Extension) {
 	ext.Command("state-push-probe", "Read one replicated accessor from a goroutine between requests", func(ctx sdk.Context, args string) error {
 		var request struct {
@@ -45,11 +45,15 @@ func registerStatePushProbe(ext *sdk.Extension) {
 	})
 }
 
-// statePushReader returns the read of one replicated accessor as a string, or an error for a kind the Go SDK does not replicate: its session name and thinking level are host calls, which are live.
+// statePushReader returns the read of one replicated accessor as a string, or an error for a kind the Go SDK does not replicate: its thinking level is a host call, which is live.
 func statePushReader(ctx sdk.Context, kind string) (func() string, error) {
 	switch {
 	case kind == "model":
 		return func() string { return ctx.Model() }, nil
+	case kind == "session-name":
+		return func() string { return ctx.SessionName() }, nil
+	case kind == "theme":
+		return func() string { return ctx.UITheme().Name }, nil
 	case strings.HasPrefix(kind, "settings:"):
 		key := strings.TrimPrefix(kind, "settings:")
 		return func() string {

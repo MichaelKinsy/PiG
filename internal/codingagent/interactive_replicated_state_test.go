@@ -4,6 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // A footer reads the live git branch and provider count (footer-data-provider.ts getGitBranch, getAvailableProviderCount), and an extension's footer factory reads them through the state the host replicates. The provider reports a change of either, and only a change: a repeated value tells nobody.
@@ -82,12 +84,14 @@ func (b *hostStateBridge) HostStateChanged() { b.reports.Add(1) }
 
 var _ hostStateNotifier = (*hostStateBridge)(nil)
 
-// Pi's ctx.model, pi.getSettings() and pi.getSessionName() read the live Session, and a footer reads the live git branch and provider count: a user's model switch, settings edit or /name, a branch checkout or a login changes them with no extension call. Interactive mode reports each change of the Session's replicated state and of the footer's branch and provider count to the extension host, and stops when its wiring is detached.
+// Pi's ctx.model, pi.getSettings() and pi.getSessionName() read the live Session, ctx.ui.theme is the global theme (interactive-mode.ts:2665), and a footer reads the live git branch and provider count: a user's model switch, settings edit or /name, a theme selection, a branch checkout or a login changes them with no extension call. Interactive mode reports each change of the Session's replicated state, of the active theme and of the footer's branch and provider count to the extension host, and stops when its wiring is detached.
 func TestInteractiveModeReportsReplicatedStateChangesToTheExtensionHost(t *testing.T) {
 	bridge := &hostStateBridge{}
 	handle := &stateObservingHandle{}
 	m := &InteractiveMode{opts: InteractiveModeOptions{SubprocessUIBridge: bridge, SessionHandle: handle}}
 	m.statusLine = NewFooterComponent(nil, "", nil)
+	previousTheme := tui.ActiveTheme()
+	t.Cleanup(func() { tui.SetThemeInstance(previousTheme) })
 	detach := m.wireSubprocessHostCallbacks()
 
 	handle.changed()
@@ -102,11 +106,16 @@ func TestInteractiveModeReportsReplicatedStateChangesToTheExtensionHost(t *testi
 	if got := bridge.reports.Load(); got != 3 {
 		t.Fatalf("a branch change reported %d times in all, want 3", got)
 	}
+	tui.SetTheme("light")
+	if got := bridge.reports.Load(); got != 4 {
+		t.Fatalf("a theme selection reported %d times in all, want 4", got)
+	}
 
 	detach()
 	handle.changed()
 	m.statusLine.SetProviderCount(5)
-	if got := bridge.reports.Load(); got != 3 {
+	tui.SetTheme("dark")
+	if got := bridge.reports.Load(); got != 4 {
 		t.Fatalf("detached wiring still reported: %d reports in all", got)
 	}
 }

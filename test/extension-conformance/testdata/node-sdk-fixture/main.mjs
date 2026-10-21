@@ -1340,12 +1340,13 @@ export default function (pi) {
       ctx.ui.notify(`ui_prompt:${event.type}:${event.reason}:${event.kind}:${"title" in event ? event.title : "(none)"}`, "info");
     });
   }
-  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
   pi.registerCommand("state-push-probe", { description: "Read one replicated accessor from a timer between requests", handler: async (args, ctx) => {
     const { kind, dir } = JSON.parse(args);
     let read;
     if (kind === "model") read = () => ctx.model?.id ?? "";
     else if (kind === "session-name") read = () => pi.getSessionName() ?? "";
+    else if (kind === "theme") read = () => ctx.ui.theme.name ?? "";
     else if (kind === "thinking-level") read = () => pi.getThinkingLevel();
     else if (kind.startsWith("settings:")) read = () => JSON.stringify(pi.getSettings()[kind.slice("settings:".length)] ?? null);
     else if (kind === "mcp") read = () => pi.getMcpServers().map((server) => server.name).join(",");

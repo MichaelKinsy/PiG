@@ -376,7 +376,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		}
 		detachModelRegistry = wireSubprocessModelRegistry(bridge, session, services)
 		stopRunSignal = watchSessionRunSignal(bridge, session)
-		stopSessionState = watchSessionState(bridge, session)
+		stopSessionState = watchHostState(bridge, session)
 		bindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
 		var emitEntryAppended func(RPCEntryAppendedEvent)
 		if opts.Mode == "json" {
