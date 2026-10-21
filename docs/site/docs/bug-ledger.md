@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-946 bugs. 896 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+947 bugs. 897 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -965,6 +965,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
 | [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
+| [BF-d81ace2](#bf-d81ace2) | Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14152,6 +14153,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f6e6b97f00` (2026-10-21)
 - **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
 - **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+
+### BF-d81ace2
+
+**Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer fail with "No model selected".
+- **Root cause:** The selector's scope update installed ModelRegistry catalog descriptors, which carry no backend, so after the catalog refresh a model reached by Ctrl+P failed prompt validation with No model selected. Pi installs this.session.modelRuntime.getAvailableSnapshot() in showModelsSelector (interactive-mode.ts), so the scope entries it later cycles to are runtime-bound.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d81ace2962` (2026-10-21, #259)
+- **Tests:** `internal/codingagent/scoped_models_runtime_bound_259_test.go::TestScopedSelectionKeepsRuntimeBoundModelsForCycling259`, `test/parity/scenarios/model-resolver-selector/27-scoped-models-refresh-prompt-after-cycle.toml`
+- **Release note:** Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer fail with "No model selected". The scope update installed catalog descriptors that carry no backend; it now installs the Session's runtime-bound models, as Pi does.
 
 ## Divergences from Pi added in this release
 

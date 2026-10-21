@@ -31929,6 +31929,30 @@
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
       ]
+    },
+    {
+      "id": "BF-d81ace2",
+      "title": "Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer…",
+      "symptom": "Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer fail with \"No model selected\".",
+      "rootCause": "The selector's scope update installed ModelRegistry catalog descriptors, which carry no backend, so after the catalog refresh a model reached by Ctrl+P failed prompt validation with No model selected. Pi installs this.session.modelRuntime.getAvailableSnapshot() in showModelsSelector (interactive-mode.ts), so the scope entries it later cycles to are runtime-bound.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Prompts submitted after `/scoped-models` refreshed the model catalogs and Ctrl+P switched the model no longer fail with \"No model selected\". The scope update installed catalog descriptors that carry no backend; it now installs the Session's runtime-bound models, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d81ace2962",
+          "date": "2026-10-21",
+          "pr": "259"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/scoped_models_runtime_bound_259_test.go::TestScopedSelectionKeepsRuntimeBoundModelsForCycling259",
+        "test/parity/scenarios/model-resolver-selector/27-scoped-models-refresh-prompt-after-cycle.toml"
+      ]
     }
   ],
   "divergences": [
