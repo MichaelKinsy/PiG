@@ -1,6 +1,6 @@
 // Run the real remote custom-UI host with its owner-loop handoff and modal input leases.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './internal/codingagent', '-run', '^TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream$', '-v', '-count=1'], { encoding: 'utf8' });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./internal/codingagent', '-run', '^TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream$', '-v', '-count=1'], { encoding: 'utf8' });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

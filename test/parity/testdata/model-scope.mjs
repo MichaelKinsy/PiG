@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 if (process.argv[2] === "pig") {
-  process.stdout.write(execFileSync("go", ["run", "./test/parity/testdata/model-scope-go"], { encoding: "utf8" }));
+  process.stdout.write(execFileSync("./test/parity/testdata/prebuilt-go-run.sh", ["./test/parity/testdata/model-scope-go"], { encoding: "utf8" }));
 } else {
   const root = process.env.PI_PACKAGE_ROOT;
   const { createAgentSession, ModelRuntime, SessionManager, SettingsManager } = await import(pathToFileURL(join(root, "dist/index.js")));

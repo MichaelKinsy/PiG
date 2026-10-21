@@ -1,7 +1,7 @@
 // Compare the real ProcessTerminal negotiation after its keyboard protocol query, as terminal-protocol-pi.mjs does.
 // The owning Go test exposes observations because queryAndEnableKittyProtocol is intentionally private, not a public test-only API.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './tui', '-run', '^TestTerminalProtocolParityObservations$', '-v', '-count=1'], { encoding: 'utf8' });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestTerminalProtocolParityObservations$', '-v', '-count=1'], { encoding: 'utf8' });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

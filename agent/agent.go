@@ -1410,6 +1410,16 @@ func (a *Agent) StreamFunction() StreamFn {
 	return a.opts.StreamFn
 }
 
+// EffectiveStreamFunction returns the function every run sends provider requests through: the caller's override, else the default stream. Mirrors upstream Agent.streamFunction (`runtimeOptions.streamFn ?? getDefaultStreamFn()`), which summarization passes to compact and generateBranchSummary so those requests take the same request path as the agent's. Unlike [Agent.StreamFunction], it is never the nil that stands for the stock stream.
+func (a *Agent) EffectiveStreamFunction() StreamFn {
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	if a.opts.StreamFn != nil {
+		return a.opts.StreamFn
+	}
+	return a.opts.DefaultStreamFn
+}
+
 // GetAPIKeyFunc returns the credential resolver the next run uses, or nil. Mirrors upstream Agent.getApiKey.
 func (a *Agent) GetAPIKeyFunc() func(provider string) (string, error) {
 	a.stateMu.RLock()

@@ -654,6 +654,9 @@ func completeSummarization(
 		if streamFn != nil {
 			text, usage, err := streamFn(ctx, model, systemPrompt, messages, requestOptions)
 			if err != nil {
+				if completer, ok := errors.AsType[*completerError](err); ok {
+					return "", nil, completer.err
+				}
 				return "", nil, &summarizationCallError{err}
 			}
 			return text, usage, nil
@@ -704,26 +707,6 @@ func GenerateSummaryWithUsage(
 	sessionID string,
 ) (string, *ai.Usage, error) {
 	return GenerateSummaryWithUsageUsing(ctx, messages, model, reserveTokens, apiKey, headers, customInstructions, previousSummary, thinkingLevel, ProviderCompleter{}, streamFn, env, retry, callbacks, sessionID)
-}
-
-// Compact generates the summaries of a compaction with the model's provider using PrepareCompaction output (compaction.ts:965 compact). thinkingLevel
-// applies to reasoning-capable models; an empty sessionID gives each summary request a fresh routing ID; apiKey, headers and env are the request auth;
-// a nil streamFn uses the provider's own stream.
-func Compact(
-	ctx context.Context,
-	prep CompactionPreparation,
-	model *ai.Model,
-	apiKey string,
-	headers map[string]string,
-	customInstructions string,
-	thinkingLevel ai.ModelThinkingLevel,
-	streamFn StreamFn,
-	env map[string]string,
-	retry *ai.RetryPolicy,
-	callbacks ai.RetryCallbacks,
-	sessionID string,
-) (CompactionResult, error) {
-	return CompactUsing(ctx, prep, model, apiKey, headers, customInstructions, thinkingLevel, ProviderCompleter{}, streamFn, env, retry, callbacks, sessionID)
 }
 
 // GenerateSummaryWithUsageUsing is [GenerateSummaryWithUsage] with the completer that stands in for pi-ai's completeSimple when streamFn is nil.
@@ -943,6 +926,23 @@ func generateTurnPrefixSummary(
 // standalone summarization requests never provide executable tools.
 var ErrSummarizationToolCall = errors.New("summarization attempted to call a tool")
 
+// completerError is an error of a [SimpleCompleter] that [CompleterStreamFn] hands back through a [StreamFn]: it is worded as a failure of the summary request, as a completer's error is, and not returned verbatim as a stream function's own error is.
+type completerError struct{ err error }
+
+func (e *completerError) Error() string { return e.err.Error() }
+func (e *completerError) Unwrap() error { return e.err }
+
+// CompleterStreamFn is the [StreamFn] that sends each summary request through completer, for a caller that has a completer and not a stream function.
+func CompleterStreamFn(completer SimpleCompleter) StreamFn {
+	return func(ctx context.Context, model *ai.Model, systemPrompt string, messages []agent.AgentMessage, options ai.StreamOptions) (string, *ai.Usage, error) {
+		text, usage, err := completer.CompleteSimple(ctx, model, systemPrompt, messages, options)
+		if err != nil {
+			return "", nil, &completerError{err}
+		}
+		return text, usage, nil
+	}
+}
+
 type summarizationCallError struct{ err error }
 
 func (e *summarizationCallError) Error() string { return e.err.Error() }
@@ -964,10 +964,11 @@ func summarizationFailure(operation string, err error) error {
 
 // ─── Main Compaction Function ─────────────────────────────────────────────────
 
-// CompactUsing is [Compact] with the completer that stands in for pi-ai's completeSimple when streamFn is nil: a Session passes its injected completer
-// or the provider completer of its stream override. thinkingLevel applies to reasoning-capable models; an empty sessionID gives each summary request a
-// fresh routing ID. apiKey, headers and env are the request auth.
-func CompactUsing(
+// Compact generates the summaries of a compaction using PrepareCompaction output (compaction.ts:965 compact). thinkingLevel applies to
+// reasoning-capable models; an empty sessionID gives each summary request a fresh routing ID; apiKey, headers and env are the request auth. streamFn
+// sends each summary request, as upstream's streamFn does (agent-session.ts passes this.agent.streamFunction): a [CompleterStreamFn] sends it through a
+// [SimpleCompleter] such as a [ProviderCompleter] holding the Agent's stream function, and a nil streamFn streams with the model's own provider.
+func Compact(
 	ctx context.Context,
 	prep CompactionPreparation,
 	model *ai.Model,
@@ -975,13 +976,14 @@ func CompactUsing(
 	headers map[string]string,
 	customInstructions string,
 	thinkingLevel ai.ModelThinkingLevel,
-	completer SimpleCompleter,
 	streamFn StreamFn,
 	env map[string]string,
 	retry *ai.RetryPolicy,
 	callbacks ai.RetryCallbacks,
 	sessionID string,
 ) (CompactionResult, error) {
+	// completeSimple: the model's own provider, when no streamFn sends the request.
+	completer := ProviderCompleter{}
 	var summary string
 	var usage *ai.Usage
 

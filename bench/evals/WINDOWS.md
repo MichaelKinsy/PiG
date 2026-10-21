@@ -8,7 +8,7 @@ Native Windows x64 runs the recipe below: the unit suite, `lock verify`, `arms`,
 
 ## Native Windows (PowerShell)
 
-Prerequisites: Python 3.12 or newer, Go 1.27.2, Node 24.19, git. High performance power plan, AC power, nothing else running, real-time antivirus scanning excluded for the throwaway directory (`%TEMP%`), no vendor login and no API key in the environment.
+Prerequisites: Python 3.12 or newer, Go 1.27.3, Node 24.19, git. High performance power plan, AC power, nothing else running, real-time antivirus scanning excluded for the throwaway directory (`%TEMP%`), no vendor login and no API key in the environment.
 
 ```powershell
 git clone <repo> pig; cd pig; git checkout <commit>

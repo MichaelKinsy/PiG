@@ -22,7 +22,7 @@
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
-      "sha256": "752be056bd2c6dd12a19a3e1348ca88753edd3d8e346e71aea11101f71a9fa54",
+      "sha256": "7970de354d9b59f85ed5a00c4179dccc53cd05c108d7aaed0acb144e5a4a668d",
       "reason": "canonical_json sorts JSON object keys only and preserves terminal framing. Raw stdout and stderr are retained. wait_contains/wait_event are new-output barriers, not acceptance assertions. A poll_until step resends one read-only query until its response holds the awaited state and then leaves every response to that query out of the compared and raw output, because their count follows timing; every other record, including the commands that prove the settled state, is compared."
     },
     {
@@ -82,12 +82,12 @@
     },
     {
       "source": "test/parity/testdata/session-wire.py",
-      "sha256": "b0910504b3fcbdbd0ca637e1547f866dc227927958445de7ee1cb95a57bc0d3c",
+      "sha256": "884305f39e05b7df7fb5bc6b4aa11a79b4a62ef0d4c556f9e4cdfc508a83ff81",
       "reason": "The Session query probe validates unique eight-hex generated IDs and exact millisecond ISO timestamps before injective substitution. Imported IDs/times remain unchanged; only reconstructed label identities are aliased after collision checks. Complete get_entries records are compared, not unrelated mutation events. Signal probes compare process wait status after real provider/command barriers, not terminal rendering. The session_shutdown signal cases replace the probe's temporary directory with <root> in stderr, because the extension path a handler's error names lives there; the rest of stderr, stdout, the session records and the request count are compared exactly."
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "305d41e77f3653adcee3ca31ca6ac84284f6b5f2af13402ba66b12ac56062cd8",
+      "sha256": "e297df37948e40119982dd2a554ab7b55504d543400ab83c74c6a3b959eb233e",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -7621,6 +7621,41 @@
             "/**/durationMs"
           ],
           "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/62-rpc-parallel-tool-dialog-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain event order, field presence and timestamp type."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the system section."
         }
       ]
     },

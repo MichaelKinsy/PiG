@@ -44,7 +44,10 @@ capture_end = "render-cards-done"
 [[tmux.steps]]
 keys = ["Run: extension render cards", "Enter"]
 # D56 runs tool renderers off-loop. Provider completion alone is not a renderer-completion barrier; await the final call/result frames before comparing the complete escaped transcript.
-wait_contains = ["render-cards-done", "invalidated=true", "done alpha", "self call beta", "self result done beta partial=false", "cannot render delta", "expandedOption=false"]
+# The barrier is the final screen: wait_contains searches everything ever painted, so it was also satisfied by a frame the next update overwrote, and it listed
+# "self call beta", a frame that exists only while the card is partial and that a process stalled past the fixture's 150 ms never paints, which timed the step out.
+wait_visible_contains = ["card alpha invalidated=true", "self result done beta partial=false", "cannot render delta", "expandedOption=false", "render-cards-done"]
+wait_not_contains = ["self call beta", "working on", "invalidated=false"]
 wait_timeout_seconds = 20
 
 [assert]

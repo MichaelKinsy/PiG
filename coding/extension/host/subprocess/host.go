@@ -3856,6 +3856,10 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		}
 		reqCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
+		// upstream: agent-loop.ts executeToolCallsParallel: a call's tool_execution_end follows its own execute promise, which settles in the order the extension's runtime answers. The read loop reads the answers in that order, so it records the call's place before the goroutine that waits for the answer runs.
+		if slot := agent.ToolSettleFromContext(ctx, toolCallID); slot != nil {
+			reqCtx = withRequestArrived(reqCtx, slot.Settle)
+		}
 		if err := h.pushStateTo(reqCtx, me, conn); err != nil {
 			return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
 		}

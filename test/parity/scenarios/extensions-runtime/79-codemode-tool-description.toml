@@ -15,7 +15,9 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["node", "./test/parity/testdata/codemode-description-pig.mjs"]
+pig_go_tests = ["./coding/extension/builtin/codemode"]
 pi_args = ["node", "./test/parity/testdata/codemode-description-pi.mjs"]
+pi_go_tests = ["./coding/extension/builtin/codemode"]
 
 [cli]
 cwd = "../../../.."

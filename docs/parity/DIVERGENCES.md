@@ -2267,11 +2267,11 @@ What: when the messages a compaction summarizes are longer than the model's cont
 
 Pi bug: `generateSummaryWithUsage` (`packages/coding-agent/src/core/compaction/compaction.ts`) serializes every message of `messagesToSummarize` into one request and `serializeConversation` only caps tool results at 2000 characters. A session already longer than the model's window (a smaller-window model after a switch, or a long session on a 1M model) is refused with `prompt is too long: N tokens > W maximum`, and no later `/compact`, automatic compaction or overflow recovery can succeed. Pi (on the previous pin; its `compaction.ts` is unchanged in Pi 1.3.0) and the PiG integrate tip fail identically on the same session against the same mock endpoint (`prompt is too long: 12034 tokens > 6000 maximum`); Pi main has no chunking either. The owner hit it with `prompt is too long: 1,200,311 > 1,000,000`.
 
-Scope: `GenerateSummaryWithUsageUsing` in `internal/codingagent/compaction/compaction.go` and `GenerateBranchSummary` in `internal/codingagent/compaction/branch_summarization.go`, and `CompactUsing` for the turn prefix of a split turn, so manual `/compact`, automatic compaction, overflow recovery and both halves of a split-turn compaction. A turn prefix whose last part the provider still refuses is not halved; the refusal stays the error, as in Pi. A model without a known context window, a history that fits, and a single message longer than the window keep Pi's single request and its provider error. The chunk size is the window minus twice the summary budget and the instructions, times 0.75, by the four-characters-per-token estimate.
+Scope: `GenerateSummaryWithUsageUsing` in `internal/codingagent/compaction/compaction.go` and `GenerateBranchSummary` in `internal/codingagent/compaction/branch_summarization.go`, and `Compact` for the turn prefix of a split turn, so manual `/compact`, automatic compaction, overflow recovery and both halves of a split-turn compaction. A turn prefix whose last part the provider still refuses is not halved; the refusal stays the error, as in Pi. A model without a known context window, a history that fits, and a single message longer than the window keep Pi's single request and its provider error. The chunk size is the window minus twice the summary budget and the instructions, times 0.75, by the four-characters-per-token estimate.
 
 Owner decision: 2026-10-11, owner approved the sign-off entry for the over-window compaction failure (lane fix-pi-bugs-ai); number assigned by the lead. The owner extended it to `/tree` branch summarization.
 
-Call-site markers: `internal/codingagent/compaction/compaction.go` (`GenerateSummaryWithUsageUsing`, `CompactUsing`), `internal/codingagent/compaction/branch_summarization.go` (`GenerateBranchSummary`).
+Call-site markers: `internal/codingagent/compaction/compaction.go` (`GenerateSummaryWithUsageUsing`, `Compact`), `internal/codingagent/compaction/branch_summarization.go` (`GenerateBranchSummary`).
 
 Evidence: `TestGenerateSummaryOfAHistoryLongerThanTheWindowIsChunked`, `TestGenerateSummaryHalvesAChunkTheProviderRefusesAsTooLong` and `TestGenerateSummaryOfOneMessageLongerThanTheWindowKeepsTheProvidersError` (`internal/codingagent/compaction/over_window_history_test.go`; red on the integrate tip with the Pi-identical overflow error), `TestGenerateSummaryOfAHistoryThatFitsTheWindowIsOneRequest`, `TestGenerateBranchSummaryHalvesARequestTheProviderRefusesAsTooLong`, `TestGenerateBranchSummaryOfABranchThatFitsIsOneRequest` and `TestGenerateBranchSummaryOfOneRefusedMessageKeepsTheProvidersError`, `TestCompactionOfASplitTurnLongerThanTheWindowIsChunked`, `TestCompactionOfASplitTurnThatFitsKeepsPisRequests`, `TestGenerateSummaryHalvesThreadTheSummary`, `TestGenerateSummaryChunksPoisonedHistory`, `TestGenerateBranchSummaryHalvingKeepsTheNewestMessage` and `TestGenerateBranchSummaryHalvingWithoutProgressKeepsTheProvidersError` (`internal/codingagent/compaction/over_window_review_test.go`), and the 1500-seed `TestGenerateSummaryMatchesPi`, which still passes. An RPC `compact` of a 60-message session against a mock endpoint with a 6000-token window fails on Pi (previous pin; `compaction.ts` is unchanged in Pi 1.3.0) and on the integrate tip and succeeds with this change in five requests of at most 4008 estimated tokens.
 
@@ -2438,5 +2438,27 @@ Evidence: `TestALaunchedCallEntersBeforeTheNextOneIsLaunched` and `TestAReplayed
 Parity allowance: `holds.runs` of the Pi subtest `aborts a call still running when the script ends` (`durable/codemode/codemode_test.go`), and only there: 0 or 1 is accepted. The other assertions of the subtest (the script's result, the nested hold task exists, and it is `terminal` with outcome `aborted`) are unchanged.
 
 Remove when: the core engine is the default Durable engine and orders the steps of a script's calls as Pi's single thread does, or the nested task runtime links a task to its earlier sibling so the `entered` gate before `execute` can ship; then `holds.runs` of the subtest must be 1 in 12,000 runs at 8 CPUs and 9,000 at 3 CPUs (GOMAXPROCS 2, 6 processes), and the allowance goes.
+
+SCRUTINIZED:approved
+
+## D185 A Kitty CSI-u Shift+letter with no shifted alternate decodes as the uppercase letter, where Pi keeps the base letter
+
+What: a terminal that reports Shift+a as `ESC[97;2u`, with a base codepoint and the Shift modifier but no shifted-key field, types `A` in PiG's editor and input. Pi's `decodeKittyPrintable` types `a`, because it replaces the codepoint only when the sequence carries a shifted key. The same sequence with the shifted key (`ESC[97:65;2u`) types `A` in both, and a Shift+digit with no shifted key (`ESC[49;2u`) types `1` in both.
+
+Why: a terminal that reports Shift+letter without the shifted alternate would otherwise lose every capital letter: the user presses Shift+a and gets `a`. PiG decodes the Shift+letter case as the user pressed it.
+
+Scope: `DecodeKittyPrintable` (`tui/keys_decode.go`), used by `Input` and the `Editor` text path, for a Kitty CSI-u sequence whose modifier carries Shift (and no Alt or Ctrl) with a base codepoint `a` to `z` and no shifted-key field. A sequence with a shifted key, any other codepoint, the modifyOtherKeys form, `matchesKey` and `parseKey` are unchanged.
+
+Workaround: none needed in PiG; in Pi, enable the Kitty alternate-keys report (flag 4) in the terminal so it sends the shifted key.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-20 (choice, not impossibility: PiG keeps the uppercase fallback rather than Pi's lowercase result; user impact: capital letters are typed on terminals that omit the shifted alternate; parity cost: one sequence class differs from Pi).
+
+Call-site markers: `tui/keys_decode.go` (`DecodeKittyPrintable`, the Shift branch with no shifted key).
+
+Evidence: `TestDecodeKittyPrintable_ShiftAndText` and `TestEditor_InsertsCapitalFromKittyCSIu` (`tui/key_csiu_text_test.go`) assert the Pi-compatible path (shifted key present) and the D185 path; `TestDecodePrintableKeyMatchesPi` (`tui/decode_printable_oracle_test.go`) runs the decoder against Pi's module over the whole sequence corpus.
+
+Parity allowance: `TestDecodePrintableKeyMatchesPi` accepts an uppercase letter from PiG where Pi returns the lowercase letter, and only for a Kitty CSI-u sequence with the Shift modifier, no Alt or Ctrl, and no shifted-key field. `TestEditorCharacterJumpMatchesPi` leaves the CSI-u Shift+letter probe out for the same reason. Every other sequence stays byte-equal with Pi.
+
+Remove when: Pi decodes a base-only Shift+letter as the uppercase letter, or the owner reverses the decision; then the branch, the allowance and the D185 test cases go.
 
 SCRUTINIZED:approved

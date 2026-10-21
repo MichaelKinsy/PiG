@@ -145,7 +145,7 @@ jobs:
       fail-fast: false
       matrix:
         # Longest first, so the jobs that bound the run's end start first when the account's job slots are full.
-        shard: [portmap, test-fast-sharded, test-fast, test-conformance, build, test-cli-1, test-cli-2, test-subprocess, parity-2, parity-1, toolchains, checks, contracts]
+        shard: [portmap-1, portmap-2, portmap-3, test-fast-sharded, test-fast, test-conformance, build, test-cli-1, test-cli-2, test-subprocess, parity-2, parity-1, toolchains, checks, contracts]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -179,14 +179,16 @@ jobs:
         shell: bash
         run: automation/ci/gocache-trim.sh age
       # portmap-check runs each proven PORT_MAP row's evidence tests under coverage and keeps the green results in
-      # build/portmap-coverage, keyed by the digest of the cited files and tests; restored here so contracts reruns only changed rows.
+      # build/portmap-coverage, keyed by the digest of the cited files and tests, so a later run reruns only changed rows. A shard
+      # prefers its own previous cache and otherwise takes the newest of any shard: a record is valid for whichever shard holds its row.
       - name: Restore the PORT_MAP coverage cache
-        if: matrix.shard == 'portmap'
+        if: startsWith(matrix.shard, 'portmap-')
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/portmap-coverage
-          key: portmap-coverage-${{ github.sha }}
+          key: portmap-coverage-${{ matrix.shard }}-${{ github.sha }}
           restore-keys: |
+            portmap-coverage-${{ matrix.shard }}-
             portmap-coverage-
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -262,6 +264,20 @@ jobs:
           key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      # The PORT_MAP evidence tests of the extension, CLI and env packages build the Rust SDK cells and Pi's env daemon into the same
+      # targets. A portmap shard only restores them: the test shards own saving the complete set, and a partial save here would pin
+      # an incomplete cache to the key.
+      - name: Restore the Cargo targets of the PORT_MAP evidence tests
+        if: startsWith(matrix.shard, 'portmap-')
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/pig-dev/cargo-target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       - name: Warm the fixture caches
         if: startsWith(matrix.shard, 'test-')
         env:
@@ -296,11 +312,11 @@ jobs:
           path: ~/.cache/golangci-lint
           key: golangci-lint-${{ runner.os }}-${{ hashFiles('.go-version', '.golangci.yml', 'go.mod') }}-${{ steps.lintweek.outputs.week }}
       - name: Save the PORT_MAP coverage cache
-        if: always() && matrix.shard == 'portmap'
+        if: always() && startsWith(matrix.shard, 'portmap-')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/portmap-coverage
-          key: portmap-coverage-${{ github.sha }}
+          key: portmap-coverage-${{ matrix.shard }}-${{ github.sha }}
       # Go's build cache is content-addressed, so a failed run's compile output is as valid as a passing run's.
       - name: Keep only the Go build cache entries this job used
         if: ${{ !cancelled() && steps.age.outcome == 'success' }}

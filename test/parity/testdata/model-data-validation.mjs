@@ -6,9 +6,7 @@ import { createModelDataManifest, validateGeneratedModelData } from "../../../.u
 
 const repository = process.cwd();
 const temp = mkdtempSync(join(tmpdir(), "model-data-parity-"));
-const binary = join(temp, process.platform === "win32" ? "check-model-data.exe" : "check-model-data");
 try {
-  if (process.argv[2] === "pig") execFileSync("go", ["build", "-o", binary, "./cmd/check-model-data"], { cwd: repository });
   for (const name of ["valid", "id", "provider", "api", "api-group", "duplicate", "stale-hash", "schema", "stamp", "timestamp", "legacy-date", "rollover-date", "bad-json", "missing-manifest", "missing-data", "directory-file", "shard"]) {
     const root = join(temp, name);
     const dir = join(root, "src/providers/data");
@@ -37,7 +35,7 @@ try {
     if (name === "directory-file") { rmSync(join(dir, "test-provider.json")); mkdirSync(join(dir, "test-provider.json")); }
     let result;
     if (process.argv[2] === "pig") {
-      try { result = { status: 0, output: execFileSync(binary, ["-root", "."], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
+      try { result = { status: 0, output: execFileSync(repository + "/test/parity/testdata/prebuilt-go-run.sh", ["./cmd/check-model-data", "-root", "."], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) }; }
       catch (error) { result = { status: error.status, output: error.stderr }; }
     } else {
       process.chdir(root);

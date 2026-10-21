@@ -1,6 +1,6 @@
 // Pig's renderImage over the corpus of tui/render_image_oracle_test.go; the owning Go test emits one JSON line of the result per probe.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './tui', '-run', '^TestRenderImageParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestRenderImageParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

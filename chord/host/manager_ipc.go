@@ -23,6 +23,12 @@ type nodeChannel struct {
 	write     sync.Mutex
 	connected bool
 	listeners map[string][]*IpcListener
+	// pending holds the messages that arrived before the first "message" listener (and, while that listener catches up, the
+	// ones behind them). Node starts a channel's messages in the tick that creates it, so its owner always registers
+	// before one is emitted; here the reader is its own goroutine, and a message that beat the registration (the parent's
+	// init, read from the pipe the moment the child opens it) would be lost and its owner would wait for it for good.
+	pending   []any
+	replaying bool
 }
 
 func newNodeChannel(conn io.ReadWriteCloser) *nodeChannel {
@@ -59,6 +65,11 @@ func internalNodeMessage(message any) bool {
 
 func (channel *nodeChannel) emit(event string, message any) {
 	channel.mu.Lock()
+	if event == "message" && (len(channel.listeners[event]) == 0 || channel.replaying) {
+		channel.pending = append(channel.pending, message)
+		channel.mu.Unlock()
+		return
+	}
 	listeners := slices.Clone(channel.listeners[event])
 	channel.mu.Unlock()
 	for _, listener := range listeners {
@@ -123,10 +134,34 @@ func (failure ipcSendFailure) Code() string {
 }
 
 // On adds a "message" or "disconnect" listener.
+//
+// The first "message" listener is given the messages received before it, in order, ahead of any that arrive while it is
+// being caught up: the replay runs here, off the lock, and the reader queues behind it.
 func (channel *nodeChannel) On(event string, listener *IpcListener) {
 	channel.mu.Lock()
-	defer channel.mu.Unlock()
+	first := event == "message" && len(channel.listeners[event]) == 0
 	channel.listeners[event] = append(channel.listeners[event], listener)
+	if !first {
+		channel.mu.Unlock()
+		return
+	}
+	channel.replaying = true
+	channel.mu.Unlock()
+	for {
+		channel.mu.Lock()
+		if len(channel.pending) == 0 {
+			channel.replaying = false
+			channel.mu.Unlock()
+			return
+		}
+		message := channel.pending[0]
+		channel.pending = channel.pending[1:]
+		listeners := slices.Clone(channel.listeners["message"])
+		channel.mu.Unlock()
+		for _, listener := range listeners {
+			(*listener)(message)
+		}
+	}
 }
 
 // Off removes a listener.

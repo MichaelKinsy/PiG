@@ -135990,7 +135990,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "4 normalized-name Pig candidates are ambiguous."
+        "5 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -136003,6 +136003,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#AgentSessionServices.Registry",
         "go:github.com/MichaelKinsy/PiG/coding/extension/installresolver#registry",
         "go:github.com/MichaelKinsy/PiG/coding/piglogin#registry",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.registry",
         "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry"
       ],
       "missingClosure": [
@@ -272818,7 +272819,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "4 normalized-name Pig candidates are ambiguous."
+        "5 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -272831,6 +272832,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#AgentSessionServices.Registry",
         "go:github.com/MichaelKinsy/PiG/coding/extension/installresolver#registry",
         "go:github.com/MichaelKinsy/PiG/coding/piglogin#registry",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.registry",
         "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry"
       ],
       "missingClosure": [

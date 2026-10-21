@@ -1,6 +1,6 @@
 // Pig's CancellableLoader.Dispose over the case of cancellable-loader-dispose-pi.mjs; the owning Go test emits the observation.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './tui', '-run', '^TestCancellableLoaderDisposeParity$', '-v', '-count=1'], { encoding: 'utf8' });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestCancellableLoaderDisposeParity$', '-v', '-count=1'], { encoding: 'utf8' });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

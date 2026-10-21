@@ -14,7 +14,7 @@ The Skill checks only the tools required for the selected task. It asks before i
 
 The qualified verification toolchain is:
 
-- Go 1.27.2;
+- Go 1.27.3;
 - macOS 13 or later for native macOS builds;
 - Git;
 - Node.js 24.19.0;

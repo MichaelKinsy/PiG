@@ -1,7 +1,7 @@
 // Pi 1.1.0 DynamicBorder, ThemedText, IdleStatus and StatusIndicator over the corpus the Go test TestStatusProbeDump prints: one JSON line of results per probe.
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { spawnSync } from 'node:child_process';
-const dump = spawnSync('go', ['test', './tui', '-run', '^TestStatusProbeDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const dump = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestStatusProbeDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
 const line = dump.stdout?.split('\n').find(l => l.startsWith('status-probes:'));
 if (dump.status !== 0 || !line) {
  process.stderr.write(dump.stdout ?? '');

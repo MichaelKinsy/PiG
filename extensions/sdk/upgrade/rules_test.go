@@ -54,12 +54,20 @@ func planSourceRequiring(t *testing.T, version, body string) (*upgrade.Result, s
 	return result, dir
 }
 
+// rewritten is the one extension file a plan rewrites, without the header. A
+// helper file the plan adds beside it is not one of the rewritten files.
 func rewritten(t *testing.T, result *upgrade.Result) string {
 	t.Helper()
-	if len(result.Files) != 1 {
-		t.Fatalf("files = %d, want 1 (skipped %+v, remaining %+v, errors %v)", len(result.Files), result.Skipped, result.Remaining, result.Errors)
+	var source []string
+	for _, change := range result.Files {
+		if !change.Created {
+			source = append(source, strings.TrimPrefix(string(change.After), header))
+		}
 	}
-	return strings.TrimPrefix(string(result.Files[0].After), header)
+	if len(source) != 1 {
+		t.Fatalf("files = %d, want 1 (skipped %+v, remaining %+v, errors %v)", len(source), result.Skipped, result.Remaining, result.Errors)
+	}
+	return source[0]
 }
 
 func TestGetterHoistKeepsOrderAndReturnsTheError(t *testing.T) {
@@ -108,7 +116,8 @@ func TestConfigHomeGetterHoistsTheError(t *testing.T) {
 }
 
 // A getter in a switch statement's init runs before the tag, so it moves out
-// before the switch; a getter in a && operand's right side stays for the author.
+// before the switch; a getter in a && operand's right side cannot move without
+// running when its left operand does not allow it, so it takes a helper.
 func TestGetterMovesOutOfASwitchInit(t *testing.T) {
 	result, _ := planSource(t, `func clean(s string) string { return s }
 
@@ -134,7 +143,7 @@ func handler(ctx sdk.Context) error {
 	case "":
 		return errors.New("no home")
 	}
-	if ctx.HasUI() && ctx.IsIdle() {
+	if ctx.HasUI() && pigUpgradeIsIdle(ctx) {
 		return nil
 	}
 	return nil
@@ -143,8 +152,8 @@ func handler(ctx sdk.Context) error {
 	if got := rewritten(t, result); got != want {
 		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
 	}
-	if len(result.Skipped) != 1 || result.Skipped[0].Symbol != "Context.IsIdle" {
-		t.Fatalf("skipped = %+v", result.Skipped)
+	if len(result.Skipped) != 0 || len(result.Files) != 2 || !result.Files[1].Created {
+		t.Fatalf("skipped = %+v, files = %d", result.Skipped, len(result.Files))
 	}
 }
 
@@ -156,13 +165,19 @@ func TestListedUsesNameTheirLineBeforeTheRewrite(t *testing.T) {
 	return nil
 }
 
-func dir(ctx sdk.Context) string { return fmt.Sprint("dir ", ctx.ConfigHome()) }
+func size(s string) int { return len(s) }
+
+func dir(ctx sdk.Context) int {
+	for i := 0; i < size(ctx.ConfigHome()); i++ {
+	}
+	return 0
+}
 `
 	result, _ := planSource(t, source)
 	if !result.Changed() {
 		t.Fatal("the handler's getter is not rewritten")
 	}
-	want := strings.Count(header, "\n") + 6
+	want := strings.Count(header, "\n") + 9
 	if len(result.Skipped) != 1 || result.Skipped[0].Line != want {
 		t.Fatalf("skipped = %+v, want line %d", result.Skipped, want)
 	}
@@ -216,16 +231,20 @@ func handler(ctx sdk.Context) error {
 }
 
 func banner(ctx sdk.Context) {
-	println(ctx.ConfigHome())
+	configHome2, err := ctx.ConfigHome()
+	if err != nil {
+		ctx.Notify("Context.ConfigHome failed: "+err.Error(), "error")
+		return
+	}
+	println(configHome2)
 	_ = must(ctx.ConfigHome())
 }
 `
 	if got := rewritten(t, result); got != want {
 		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
 	}
-	line := strings.Count(header, "\n") + 13
-	if len(result.Skipped) != 1 || result.Skipped[0].Line != line || result.Skipped[0].Reason != "the function does not return an error, so the error of Context.ConfigHome has nowhere to go" {
-		t.Fatalf("skipped = %+v, want line %d", result.Skipped, line)
+	if len(result.Skipped) != 0 {
+		t.Fatalf("skipped = %+v", result.Skipped)
 	}
 }
 
@@ -313,14 +332,18 @@ func banner(ctx sdk.Context) {
 
 // The old Context.ConfigHome never failed, so dropping its new error would turn a
 // missing home directory into paths relative to the working directory. A use in a
-// function that cannot return the error, or a method value passed where the old
-// signature is wanted, is listed for the author and the file stays as it was.
-func TestConfigHomeWithNowhereForTheErrorIsListedNotDiscarded(t *testing.T) {
+// function that cannot return the error reports it to the user through the
+// call's own Context and returns. A use that cannot do that (a Context that is
+// not a plain variable) and a method value passed where the old signature is
+// wanted are listed for the author, with their line and the form to write.
+func TestConfigHomeWithNowhereForTheErrorIsReportedNotDiscarded(t *testing.T) {
 	source := `func join(dir, name string) string { return dir + "/" + name }
 
 func save(home string) error { return nil }
 
 func resolve(home func() string) string { return home() }
+
+func current() sdk.Context { return sdk.Context{} }
 
 func agentPath(ctx sdk.Context, name string) string {
 	return join(ctx.ConfigHome(), name)
@@ -330,17 +353,29 @@ func persist(ctx sdk.Context) {
 	_ = save(ctx.ConfigHome())
 }
 
+func lookup() string {
+	return join(current().ConfigHome(), "x")
+}
+
 func handler(ctx sdk.Context) error {
 	fmt.Println(resolve(ctx.ConfigHome))
 	return nil
 }
 `
 	result, _ := planSource(t, source)
-	if result.Changed() {
-		t.Fatalf("the plan rewrites a use whose error has nowhere to go:\n%s", result.Files[0].After)
-	}
 	if len(result.Errors) != 0 {
 		t.Fatalf("SDK drift reported as other compile errors: %v", result.Errors)
+	}
+	got := rewritten(t, result)
+	for _, want := range []string{
+		"func agentPath(ctx sdk.Context, name string) string {\n\tconfigHome, err := ctx.ConfigHome()\n\tif err != nil {\n\t\tctx.Notify(\"Context.ConfigHome failed: \"+err.Error(), \"error\")\n\t\treturn \"\"\n\t}\n\treturn join(configHome, name)\n}",
+		"func persist(ctx sdk.Context) {\n\tconfigHome2, err := ctx.ConfigHome()\n\tif err != nil {\n\t\tctx.Notify(\"Context.ConfigHome failed: \"+err.Error(), \"error\")\n\t\treturn\n\t}\n\t_ = save(configHome2)\n}",
+		"return join(current().ConfigHome(), \"x\")",
+		"resolve(ctx.ConfigHome)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("source lacks %q:\n%s", want, got)
+		}
 	}
 	lines := strings.Split(header+source, "\n")
 	at := func(fragment string) int {
@@ -352,21 +387,23 @@ func handler(ctx sdk.Context) error {
 		t.Fatalf("no line holds %q", fragment)
 		return 0
 	}
-	var got []string
+	var listed []string
 	for _, skipped := range result.Skipped {
-		got = append(got, fmt.Sprintf("%d %s: %s", skipped.Line, skipped.Symbol, skipped.Reason))
-	}
-	for _, want := range []string{
-		fmt.Sprintf("%d Context.ConfigHome: the function does not return an error, so the error of Context.ConfigHome has nowhere to go", at("return join(ctx.ConfigHome(), name)")),
-		fmt.Sprintf("%d Context.ConfigHome: the function does not return an error, so the error of Context.ConfigHome has nowhere to go", at("_ = save(ctx.ConfigHome())")),
-		fmt.Sprintf("%d Context.ConfigHome: the method value is func() (string, error) now", at("resolve(ctx.ConfigHome)")),
-	} {
-		if !slices.Contains(got, want) {
-			t.Errorf("missing skip %q in %q", want, got)
+		listed = append(listed, fmt.Sprintf("%d %s: %s", skipped.Line, skipped.Symbol, skipped.Reason))
+		if skipped.Suggest == "" {
+			t.Errorf("no suggested form for %+v", skipped)
 		}
 	}
-	if len(result.Remaining) != 1 || result.Remaining[0].Symbol != "Context.ConfigHome" || result.Remaining[0].Count != 3 {
-		t.Fatalf("remaining = %+v", result.Remaining)
+	for _, want := range []string{
+		fmt.Sprintf("%d Context.ConfigHome: the function does not return an error, so the error of Context.ConfigHome has nowhere to go, and the call's receiver is not a plain variable to report it through", at("return join(current().ConfigHome()")),
+		fmt.Sprintf("%d Context.ConfigHome: the method value is func() (string, error) now", at("resolve(ctx.ConfigHome)")),
+	} {
+		if !slices.Contains(listed, want) {
+			t.Errorf("missing skip %q in %q", want, listed)
+		}
+	}
+	if len(result.Skipped) != 2 || len(result.Remaining) != 1 || result.Remaining[0].Symbol != "Context.ConfigHome" || result.Remaining[0].Count != 2 {
+		t.Fatalf("skipped = %+v, remaining = %+v", result.Skipped, result.Remaining)
 	}
 }
 
@@ -414,21 +451,22 @@ func TestGetterAssignmentToExistingVariable(t *testing.T) {
 	}
 }
 
-// A call that another call's order depends on, or that runs conditionally, is
-// left for the author with the reason.
-func TestGetterSkipsWhereMovingTheCallChangesBehavior(t *testing.T) {
+// A ConfigHome call that another call's order depends on, or that runs
+// conditionally, is left for the author with the reason: no old value of it is
+// safe to use in its place. The other getters take a helper there.
+func TestConfigHomeSkipsWhereMovingTheCallChangesBehavior(t *testing.T) {
 	result, _ := planSource(t, `func handler(ctx sdk.Context, ready bool) error {
-	if ready && ctx.IsIdle() {
+	if ready && ctx.ConfigHome() != "" {
 		return nil
 	}
 	if !ready {
 		return nil
-	} else if ctx.IsProjectTrusted() {
+	} else if ctx.ConfigHome() == "x" {
 		return nil
 	}
-	for ctx.HasPendingMessages() {
+	for ctx.ConfigHome() == "y" {
 	}
-	fmt.Println(os.Getenv("A"), ctx.GetSessionID())
+	fmt.Println(os.Getenv("A"), ctx.ConfigHome())
 	return nil
 }
 `)
@@ -440,10 +478,10 @@ func TestGetterSkipsWhereMovingTheCallChangesBehavior(t *testing.T) {
 		reasons = append(reasons, skipped.Symbol+": "+skipped.Reason)
 	}
 	for _, want := range []string{
-		"Context.IsIdle: the call runs only when an earlier operand allows it",
-		"Context.IsProjectTrusted: the call is not in the if condition",
-		"Context.HasPendingMessages: the statement is not one pig moves a call out of",
-		"Context.GetSessionID: an earlier call in the statement would run after the getter",
+		"Context.ConfigHome: the call runs only when an earlier operand allows it",
+		"Context.ConfigHome: the call is not in the if condition",
+		"Context.ConfigHome: the statement is not one pig moves a call out of",
+		"Context.ConfigHome: an earlier call in the statement would run after the getter",
 	} {
 		if !slices.Contains(reasons, want) {
 			t.Errorf("missing skip %q in %q", want, reasons)

@@ -9,6 +9,7 @@ import (
 )
 
 // The readiness regression holds command completion after the model footer appears and requires one submission only after acknowledgement.
+// It also requires the disconnect probe's extension to keep the session writing, so the hangup always meets a write (an idle Pi exits 0 at EOF).
 func TestModeWireReadiness(t *testing.T) {
 	script, err := filepath.Abs("../../test/parity/testdata/session-wire-readiness-test.py")
 	if err != nil {

@@ -75,7 +75,7 @@ func TestCompactionOfASplitTurnLongerThanTheWindowIsChunked(t *testing.T) {
 		IsSplitTurn:         true,
 		Settings:            CompactionSettings{ReserveTokens: 500},
 	}
-	result, err := CompactUsing(t.Context(), prep, model, "key", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(t.Context(), prep, model, "key", nil, "", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("compaction failed: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestCompactionOfASplitTurnThatFitsKeepsPisRequests(t *testing.T) {
 		IsSplitTurn:         true,
 		Settings:            CompactionSettings{ReserveTokens: 500},
 	}
-	if _, err := CompactUsing(t.Context(), prep, model, "key", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, ""); err != nil {
+	if _, err := Compact(t.Context(), prep, model, "key", nil, "", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if len(completer.requests) != 2 || strings.Contains(completer.requests[0], "p000 ") || !strings.Contains(completer.requests[1], "p000 ") || !strings.Contains(completer.requests[1], "p009 ") {

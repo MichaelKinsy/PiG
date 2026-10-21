@@ -26,7 +26,7 @@ func TestSummaryStreamExceptionsKeepOriginalError(t *testing.T) {
 			stream := func(context.Context, *ai.Model, string, []agent.AgentMessage, ai.StreamOptions) (string, *ai.Usage, error) {
 				return "", nil, failure
 			}
-			_, err := CompactUsing(t.Context(), prep, nil, "", nil, "", "", nil, stream, nil, nil, ai.RetryCallbacks{}, "")
+			_, err := Compact(t.Context(), prep, nil, "", nil, "", "", stream, nil, nil, ai.RetryCallbacks{}, "")
 			if !errors.Is(err, failure) || err.Error() != failure.Error() {
 				t.Fatalf("error=%v; want original %v", err, failure)
 			}

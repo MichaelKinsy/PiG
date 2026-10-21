@@ -179,7 +179,7 @@ func TestPublishWakeOwedAfterSeal(t *testing.T) {
 	mustClose(t, harness)
 	got = nil
 	at := 1e18
-	scheduler.publishWake(nil, &Wake{Active: true, At: &at})
+	scheduler.publishWake(0, &Wake{Active: true, At: &at})
 	if len(got) != 1 || !got[0].Active {
 		t.Fatalf("wakes %+v, want the one taken before the seal", got)
 	}

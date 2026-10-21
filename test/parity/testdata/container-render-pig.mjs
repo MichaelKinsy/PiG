@@ -1,6 +1,6 @@
 // Pig's Container and MouseRegion over the same scripts; the owning Go test emits one JSON line of render frames per script.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './tui', '-run', '^TestContainerRenderParity$', '-v', '-count=1'], { encoding: 'utf8' });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestContainerRenderParity$', '-v', '-count=1'], { encoding: 'utf8' });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 if (process.argv[2] === "pig") {
-  const output = execFileSync("go", ["test", "./ai", "-run", "^TestModelsGenerateImagesAuthThroughOpenRouter$", "-count=1", "-v"], { encoding: "utf8", env: { ...process.env, PIG_PARITY_PROBE: "1" } });
+  const output = execFileSync("./test/parity/testdata/prebuilt-go-test.sh", ["./ai", "-run", "^TestModelsGenerateImagesAuthThroughOpenRouter$", "-count=1", "-v"], { encoding: "utf8", env: { ...process.env, PIG_PARITY_PROBE: "1" } });
   process.stdout.write(output.split("\n").filter(line => line.startsWith("IMAGES_RUNTIME ")).join("\n") + "\n");
 } else {
   const root = join(process.env.PI_PACKAGE_ROOT, "node_modules/@earendil-works/pi-ai/dist");

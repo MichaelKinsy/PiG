@@ -12,7 +12,9 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["node", "./test/parity/testdata/startup-session-metadata.mjs", "pig", "{{TEMP}}"]
+pig_go_programs = ["./cmd/pig"]
 pi_args = ["node", "./test/parity/testdata/startup-session-metadata.mjs", "pi", "{{TEMP}}"]
+pi_go_programs = ["./cmd/pig"]
 
 [cli]
 cwd = "../../../.."

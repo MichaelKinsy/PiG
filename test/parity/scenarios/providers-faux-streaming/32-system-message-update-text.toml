@@ -13,7 +13,9 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["node", "./test/parity/testdata/system-message-pig.mjs"]
+pig_go_tests = ["./ai"]
 pi_args = ["node", "./test/parity/testdata/system-message-pi.mjs"]
+pi_go_tests = ["./ai"]
 
 [cli]
 cwd = "../../../.."

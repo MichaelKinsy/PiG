@@ -320,7 +320,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `project-trust` | 26 | 26 | 0 | 0 | 0 | 19 | not run |
 | `providers-faux-streaming` | 66 | 65 | 0 | 1 | 0 | 49 | not run |
 | `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
-| `rpc` | 70 | 70 | 0 | 0 | 0 | 32 | not run |
+| `rpc` | 71 | 71 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
 | `session` | 42 | 42 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
@@ -560,7 +560,7 @@ Code and interface style:
   an explicit user-owned blocker. Passing unrelated gates does not close it.
 
 Go style:
-- Build, CI, release-candidate, security-analysis, and documented setup commands use Go 1.27.2.
+- Build, CI, release-candidate, security-analysis, and documented setup commands use Go 1.27.3.
 - `.go-version` is the one Go pin. Workflows, scripts, images, the devcontainer, and the `toolchain` lines of `go.mod` and `go.work` name that release and no other. A script reads `.go-version` instead of repeating the number. Moving the pin changes `.go-version` and its recorded copies in one change; `make compliance` and `TestGoVersionPolicy` fail on any other release. Dated measurement records keep the release they ran on.
 - Maintained modules declare Go 1.26 or 1.26.0 as their language floor unless a concrete language requirement is approved. Do not raise a `go` directive merely to match the build toolchain.
 - Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `slices.SortFunc`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`.

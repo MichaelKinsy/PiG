@@ -12,6 +12,7 @@ import (
 	"go/token"
 	"go/types"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -31,11 +32,13 @@ type Rewrite struct {
 	Line   int
 }
 
-// FileChange is one rewritten file.
+// FileChange is one rewritten file, or one the plan adds: Created is set for a
+// file with no Before.
 type FileChange struct {
 	Path          string
 	Before, After []byte
 	Rewrites      []Rewrite
+	Created       bool
 }
 
 // Skipped is a use of a rewritable change that needs a hand edit.
@@ -45,6 +48,8 @@ type Skipped struct {
 	File   string
 	Line   int
 	Reason string
+	// Suggest is the form to write in its place, when the rule has one.
+	Suggest string
 }
 
 // Result is what an upgrade does to an extension's source, and what it leaves
@@ -104,7 +109,7 @@ func Open(ctx context.Context, opts LoadOptions) (*Session, error) {
 			session.sdkVersion = entry.Module.Version
 		}
 	}
-	session.initial, err = session.check(nil)
+	session.initial, err = session.check(nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +117,9 @@ func Open(ctx context.Context, opts LoadOptions) (*Session, error) {
 }
 
 // check type checks every package under the roots in dependency order. A
-// source in overlay replaces the file on disk.
-func (s *Session) check(overlay map[string][]byte) ([]*Package, error) {
+// source in overlay replaces the file on disk, and a file in added joins the
+// package of its directory.
+func (s *Session) check(overlay map[string][]byte, added map[string][]string) ([]*Package, error) {
 	checked := map[string]*types.Package{}
 	var packages []*Package
 	for _, entry := range s.listed {
@@ -124,6 +130,7 @@ func (s *Session) check(overlay map[string][]byte) ([]*Package, error) {
 		for i, name := range entry.GoFiles {
 			paths[i] = filepath.Join(entry.Dir, name)
 		}
+		paths = append(paths, added[entry.Dir]...)
 		goVersion := ""
 		if entry.Module != nil && entry.Module.GoVersion != "" {
 			goVersion = "go" + entry.Module.GoVersion
@@ -147,6 +154,9 @@ func (s *Session) Plan() (*Result, error) {
 	original := map[string][]byte{}
 	rewrites := map[string][]Rewrite{}
 	legacy := map[string]bool{}
+	registries := map[string]*helperRegistry{}
+	added := map[string][]string{}
+	created := map[string]bool{}
 	var skipped []Skipped
 	packages := s.initial
 	for pass := 0; pass < maxPasses; pass++ {
@@ -157,6 +167,7 @@ func (s *Session) Plan() (*Result, error) {
 				planner := newFilePlanner(pkg, file)
 				planner.sdkVersion = s.sdkVersion
 				planner.legacy = legacy[file.Path]
+				planner.registries = registries
 				planner.run()
 				for _, skip := range planner.skipped {
 					if before, edited := original[file.Path]; edited {
@@ -183,14 +194,31 @@ func (s *Session) Plan() (*Result, error) {
 		if !edited {
 			break
 		}
+		for _, key := range slices.Sorted(maps.Keys(registries)) {
+			registry := registries[key]
+			if len(registry.used) == registry.written {
+				continue
+			}
+			if registry.path == "" {
+				registry.choosePath()
+				added[registry.dir] = append(added[registry.dir], registry.path)
+				created[registry.path] = true
+			}
+			source, err := registry.source()
+			if err != nil {
+				return nil, fmt.Errorf("write the getter helpers of %s: %w", registry.dir, err)
+			}
+			overlay[registry.path] = source
+			registry.written = len(registry.used)
+		}
 		var err error
-		if packages, err = s.check(overlay); err != nil {
+		if packages, err = s.check(overlay, added); err != nil {
 			return nil, err
 		}
 	}
 	result := &Result{Skipped: skipped}
 	for path, after := range overlay {
-		result.Files = append(result.Files, FileChange{Path: path, Before: original[path], After: after, Rewrites: rewrites[path]})
+		result.Files = append(result.Files, FileChange{Path: path, Before: original[path], After: after, Rewrites: rewrites[path], Created: created[path]})
 	}
 	slices.SortFunc(result.Files, func(a, b FileChange) int { return strings.Compare(a.Path, b.Path) })
 	read := func(path string) ([]byte, error) {
@@ -244,6 +272,8 @@ type site struct {
 	edits    []edit
 	// legacy is set when the rewrite shows the file predates SDK 0.3.0.
 	legacy bool
+	// helper names the getter whose generated helper the rewrite calls.
+	helper string
 }
 
 // filePlanner plans the rewrites of one file.
@@ -264,6 +294,8 @@ type filePlanner struct {
 	legacy, wroteLegacy bool
 	// sdkVersion is the SDK version the module requires.
 	sdkVersion string
+	// registries are the getter helpers each package needs, by import path.
+	registries map[string]*helperRegistry
 }
 
 func newFilePlanner(pkg *Package, file *File) *filePlanner {
@@ -338,6 +370,9 @@ func (p *filePlanner) accept() {
 		p.accepted = append(p.accepted, candidate)
 		p.rewrites = append(p.rewrites, candidate.rewrites...)
 		p.wroteLegacy = p.wroteLegacy || candidate.legacy
+		if candidate.helper != "" {
+			p.registry().used[candidate.helper] = true
+		}
 	}
 }
 
@@ -431,4 +466,44 @@ func snippet(statements string) ([]string, error) {
 // was.
 func insertion(lines []string, indent string) string {
 	return strings.Join(lines, "\n"+indent) + "\n" + indent
+}
+
+// Drift lists every SDK change the extension uses: those the plan rewrites,
+// those it lists for the author, and those the compiler still rejects. A change
+// is listed once, in symbol order, at its first use.
+func (r *Result) Drift() []Drift {
+	byRule := map[string]Drift{}
+	note := func(rule, symbol, file string, line, count int) {
+		drift, seen := byRule[symbol]
+		if !seen {
+			ruleInfo, _ := RuleByID(rule)
+			change, _ := changeFor(symbol)
+			drift = Drift{Rule: rule, Symbol: symbol, Old: change.Old, New: change.New, Since: change.Since, Rewrites: ruleInfo.Rewrites, File: file, Line: line}
+		}
+		drift.Count += count
+		byRule[symbol] = drift
+	}
+	for _, change := range r.Files {
+		for _, rewrite := range change.Rewrites {
+			note(rewrite.Rule, rewrite.Symbol, change.Path, rewrite.Line, 1)
+		}
+	}
+	remaining := map[string]bool{}
+	for _, drift := range r.Remaining {
+		remaining[drift.Symbol] = true
+		note(drift.Rule, drift.Symbol, drift.File, drift.Line, drift.Count)
+	}
+	for _, skipped := range r.Skipped {
+		if !remaining[skipped.Symbol] {
+			note(skipped.Rule, skipped.Symbol, skipped.File, skipped.Line, 1)
+		}
+		remaining[skipped.Symbol] = true
+	}
+	// A change with a use left for the author needs a manual edit.
+	for symbol := range remaining {
+		drift := byRule[symbol]
+		drift.Rewrites = false
+		byRule[symbol] = drift
+	}
+	return slices.SortedFunc(maps.Values(byRule), func(a, b Drift) int { return strings.Compare(a.Symbol, b.Symbol) })
 }

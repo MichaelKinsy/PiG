@@ -88,6 +88,13 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 		case "test":
 			// CI runs test-fast and test-cli in halves (fast-parallel and fast-sharded; two cmd/pig shard ranges), which together are make test.
 			return []string{"test-fast-parallel", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "test-conformance"}
+		case "portmap-check":
+			// CI runs the PORT_MAP evidence check as PORTMAP_SHARDS shards (PORTMAP_SHARD=N/M), which together are portmap-check.
+			var halves []string
+			for n := 1; n <= portmapShards(t); n++ {
+				halves = append(halves, fmt.Sprintf("portmap-check-%d", n))
+			}
+			return halves
 		case "parity-fast":
 			// CI runs the hermetic parity scenarios as two hash shards (PARITY_SHARD), which together are parity-fast.
 			return []string{"parity-fast-1", "parity-fast-2"}
@@ -157,6 +164,49 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	for shard := 1; shard <= shards; shard++ {
 		if runs[shard] != 1 {
 			t.Errorf("cmd/pig shard %d runs in %d test-cli halves, want exactly one", shard, runs[shard])
+		}
+	}
+}
+
+// portmapShards is the number of PORT_MAP evidence shards the Makefile plans for (PORTMAP_SHARDS).
+func portmapShards(t *testing.T) int {
+	t.Helper()
+	m := regexp.MustCompile(`(?m)^PORTMAP_SHARDS\s*:?=\s*([0-9]+)\s*$`).FindStringSubmatch(readMakeSources(t, repoRoot(t)))
+	if m == nil {
+		t.Fatal("the Makefile does not define PORTMAP_SHARDS")
+	}
+	n, _ := strconv.Atoi(m[1])
+	return n
+}
+
+// TestPortmapShardsAreWiredEndToEnd: every shard the portmapcheck plan splits the rows into is a matrix job that runs its own
+// PORTMAP_SHARD=N/M slice, so no slice of the PORT_MAP rows goes unchecked and none is checked under another shard's number.
+func TestPortmapShardsAreWiredEndToEnd(t *testing.T) {
+	total := portmapShards(t)
+	if total < 2 {
+		t.Fatalf("PORTMAP_SHARDS = %d, want the evidence run split", total)
+	}
+	var matrix []string
+	for _, shard := range verificationJobs(t)["linux"].Strategy.Matrix.Shard {
+		if strings.HasPrefix(shard, "portmap") {
+			matrix = append(matrix, shard)
+		}
+	}
+	var want []string
+	for n := 1; n <= total; n++ {
+		want = append(want, fmt.Sprintf("portmap-%d", n))
+	}
+	if !slices.Equal(matrix, want) {
+		t.Fatalf("matrix portmap shards %v, want %v (PORTMAP_SHARDS = %d)", matrix, want, total)
+	}
+	sources := readMakeSources(t, repoRoot(t))
+	for n := 1; n <= total; n++ {
+		recipe := fmt.Sprintf("portmap-check-%d:\n\t@$(MAKE) -s portmap-check PORTMAP_SHARD=%d/$(PORTMAP_SHARDS)\n", n, n)
+		if !strings.Contains(sources, recipe) {
+			t.Errorf("no recipe %q", recipe)
+		}
+		if !strings.Contains(sources, fmt.Sprintf("ci-portmap-%d: portmap-check-%d\n", n, n)) {
+			t.Errorf("ci-portmap-%d does not run portmap-check-%d", n, n)
 		}
 	}
 }
