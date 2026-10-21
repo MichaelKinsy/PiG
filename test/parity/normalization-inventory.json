@@ -7678,6 +7678,35 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/63-rpc-prepare-loadout-every-turn.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "roots": [
+            "cwd"
+          ],
+          "reason": "D2: alias only the exact isolated cwd in the cwd section; retain the tags and every other character."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Message wall clocks vary per process; retain field presence and type."
+        },
+        {
+          "kind": "duration_ms",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 (#10549) stamps durationMs from a monotonic clock, so two runs differ by whole milliseconds; retain the field's presence, placement and non-negative integer spelling."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/selectors/01-config-empty.toml",
       "transforms": [
         {
