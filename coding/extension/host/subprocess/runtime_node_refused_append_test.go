@@ -217,6 +217,58 @@ const ids = (entries) => entries.map((entry) => entry.id);
   assert.equal(sm.getEntry("l1"), label);
   assert.deepEqual(runtime.pendingEntries, []);
 }
+
+// A refusal patches the cached view and id index in place. After any run of appends, answers, host pages and native messages, every read equals the one a rebuild from the same log and entries in flight gives.
+{
+  const { runtime, sm } = newSession();
+  let seed = 11;
+  const rand = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return (seed >> 8) % n; };
+  const snapshot = (manager) => JSON.stringify({
+    entries: manager.getEntries().map((entry) => [entry.id, entry.parentId]),
+    leaf: manager.getLeafId(),
+    branch: manager.getBranch().map((entry) => entry.id),
+    byId: manager.getEntries().map((entry) => manager.getEntry(entry.id)?.id),
+    children: manager.getChildren("m1").map((entry) => entry.id),
+    tree: manager.getTree().length,
+  });
+  const other = newRuntime();
+  const rebuilt = () => {
+    other.state.session = { ...runtime.state.session, entries: [...runtime.state.session.entries] };
+    other.pendingEntries = [...runtime.pendingEntries];
+    other.ctx.sessionManager._view = undefined;
+    other.ctx.sessionManager._cachedIndex = undefined;
+    other.dropBranchCache();
+    return snapshot(other.ctx.sessionManager);
+  };
+  const unanswered = [], accepted = [];
+  let hostLeaf = "m1", natives = 0;
+  for (let step = 0; step < 400; step++) {
+    const op = rand(10);
+    if (op < 4) {
+      unanswered.push(sm.appendCustomEntry("probe", step, true));
+    } else if (op < 6 && unanswered.length > 0) {
+      const n = rand(unanswered.length);
+      unanswered.splice(n, 1);
+      await refuse(runtime, n);
+    } else if (op < 7 && unanswered.length > 0) {
+      const n = rand(unanswered.length);
+      accepted.push(...unanswered.splice(n, 1));
+      await accept(runtime, n);
+    } else if (op < 9 && accepted.length > 0) {
+      const id = accepted.splice(rand(accepted.length), 1)[0];
+      const held = runtime.pendingEntries.find((entry) => entry.id === id);
+      assert.ok(held, "an accepted entry is held until the host's log has it");
+      push(runtime, [{ ...held, parentId: hostLeaf }], id);
+      hostLeaf = id;
+    } else if (op === 9) {
+      const id = "native-" + natives++;
+      push(runtime, [message(id, hostLeaf)], id);
+      hostLeaf = id;
+    }
+    if (rand(3) === 0) assert.equal(snapshot(sm), rebuilt(), "step " + step);
+  }
+  assert.equal(snapshot(sm), rebuilt(), "the end");
+}
 `, "__RUNTIME__", `"`+(&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String()+`"`, 1)
 	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("node runtime after a refused append: %v\n%s", err, output)

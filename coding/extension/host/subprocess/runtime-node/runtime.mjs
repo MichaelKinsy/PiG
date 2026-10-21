@@ -295,11 +295,17 @@ class RuntimeSessionManager {
     const replicated = new Map();
     entries.forEach((entry, index) => replicated.set(entry?.id, index));
     const unconfirmed = [];
+    let collided = false;
     for (const entry of pending) {
       const index = replicated.get(entry.id);
       const hosted = index === undefined ? undefined : entries[index];
+      if (hosted === undefined) {
+        unconfirmed.push(entry);
+        continue;
+      }
       // A record of another kind under the id is not this entry: the host refuses an id its log holds, and the refusal retracts an append. The entries adoptHostLeafEntry adds (a label, a session name, a custom message) are the host's own records, so their copies match.
-      if (hosted === undefined || hosted.type !== entry.type || hosted.customType !== entry.customType) {
+      if (hosted.type !== entry.type || hosted.customType !== entry.customType) {
+        collided = true;
         unconfirmed.push(entry);
         continue;
       }
@@ -316,7 +322,7 @@ class RuntimeSessionManager {
       return entries;
     }
     const combined = entries.concat(unconfirmed);
-    this._view = { base: entries, baseLength: entries.length, pending: this.runtime.pendingEntries, pendingLength: unconfirmed.length, entries: combined };
+    this._view = { base: entries, baseLength: entries.length, pending: this.runtime.pendingEntries, pendingLength: unconfirmed.length, entries: combined, collided };
     return combined;
   }
 
@@ -457,14 +463,27 @@ class RuntimeSessionManager {
     // Confirm what the replicated log holds first, so the refusal drops only what the host does not have.
     this._entries();
     const pending = this.runtime.pendingEntries;
-    const dropped = pending.find((entry) => entry.id === id);
-    if (dropped === undefined) return;
-    const rest = pending.filter((entry) => entry !== dropped);
-    for (const entry of rest) {
-      if (entry.parentId === dropped.id) entry.parentId = dropped.parentId;
+    const at = pending.findIndex((entry) => entry.id === id);
+    if (at < 0) return;
+    const dropped = pending[at];
+    for (let i = at + 1; i < pending.length; i++) {
+      if (pending[i].parentId === dropped.id) pending[i].parentId = dropped.parentId;
     }
-    this.runtime.pendingEntries = rest;
-    this._view = undefined;
+    pending.splice(at, 1);
+    // The view and the id index follow the removal, so a refusal costs the entries in flight and not the log. A view that does not match, or one that sits beside a host record of the same id, is rebuilt by the next read.
+    const view = this._view;
+    const position = view === undefined ? -1 : view.baseLength + at;
+    if (view === undefined || view.collided || view.pending !== pending || view.pendingLength !== pending.length + 1 || view.entries[position] !== dropped) {
+      this._view = undefined;
+      return;
+    }
+    view.entries.splice(position, 1);
+    view.pendingLength = pending.length;
+    const index = this._cachedIndex;
+    if (index !== undefined && index.entries === view.entries && index.count > position) {
+      index.count--;
+      if (index.byId.get(dropped.id) === dropped) index.byId.delete(dropped.id);
+    }
   }
 }
 
