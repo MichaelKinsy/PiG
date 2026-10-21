@@ -1,6 +1,7 @@
 package extensionconformance
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -38,7 +39,8 @@ func piVectorCases(t *testing.T, module, export string) []piVectorCase {
 }
 
 func piUndefined(raw json.RawMessage) bool {
-	return len(raw) == 0 || strings.ReplaceAll(string(raw), " ", "") == `{"$":"undefined"}`
+	var compact bytes.Buffer
+	return len(raw) == 0 || (json.Compact(&compact, raw) == nil && compact.String() == `{"$":"undefined"}`)
 }
 
 // piNullIfUndefined is an argument as the fixtures read it: undefined is null.

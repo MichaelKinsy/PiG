@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -41,7 +42,8 @@ func readVectors(t *testing.T, module, export string) []vectorCase {
 
 // isUndefinedTag is the vector encoding of JavaScript's undefined, as a value or an argument.
 func isUndefinedTag(raw json.RawMessage) bool {
-	return len(raw) == 0 || strings.ReplaceAll(string(raw), " ", "") == `{"$":"undefined"}`
+	var compact bytes.Buffer
+	return len(raw) == 0 || (json.Compact(&compact, raw) == nil && compact.String() == `{"$":"undefined"}`)
 }
 
 // vectorExports lists the exports under a module directory that have vectors.
