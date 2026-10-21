@@ -340,3 +340,19 @@ func TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest(t *testing.T) {
 		t.Fatal("the safe rewrite was not applied")
 	}
 }
+
+// A compile error the extension already had is listed with its path, and a Windows path holds a colon of its own (the drive), so the message a rewrite build repeats is not the
+// text after the third colon: the build of the rewritten extension must still know it, on every platform.
+func TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath(t *testing.T) {
+	const message = `cannot use "not an int" (untyped string constant) as int value in variable declaration`
+	result := &upgrade.Result{Errors: []string{`C:\Users\runneradmin\Temp\broken\extension.go:14:13: ` + message}}
+	output := []byte("# example.com/ask\n" + `C:\Users\RUNNER~1\Temp\pig-upgrade-check-1\0.go:17:13: ` + message + "\n")
+	check := classifyRewriteBuild(errors.New("exit status 1"), output, t.TempDir(), nil, result)
+	if len(check.Unexpected) != 0 {
+		t.Fatalf("the compile error the extension already had was unexpected: %v", check.Unexpected)
+	}
+	output = append(output, []byte(`C:\Users\RUNNER~1\Temp\pig-upgrade-check-1\0.go:18:2: a new error`+"\n")...)
+	if check = classifyRewriteBuild(errors.New("exit status 1"), output, t.TempDir(), nil, result); len(check.Unexpected) != 1 {
+		t.Fatalf("a new compile error must stay unexpected: %v", check.Unexpected)
+	}
+}
