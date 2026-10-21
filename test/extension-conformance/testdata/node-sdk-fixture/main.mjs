@@ -552,6 +552,39 @@ export default function (pi) {
       ctx.ui.notify(`getThinkingLevel=${pi.getThinkingLevel()};getCommands=${commands.join(",")}`, "info");
     },
   });
+  // rw_prompt_state registers two tools and activates one, reading the system prompt state after each write.
+  pi.registerCommand("rw_prompt_state", {
+    description: "Read the system prompt state after registering and activating tools",
+    handler: async (_args, ctx) => {
+      const tool = (name) => ({ name, label: name, description: name, promptSnippet: `${name}-snippet`, parameters: { type: "object", properties: {} }, execute: async () => ({ content: [{ type: "text", text: "ok" }] }) });
+      pi.registerTool(tool("rw-alpha"));
+      pi.registerTool(tool("rw-beta"));
+      const registered = ctx.getSystemPromptOptions();
+      pi.setActiveTools(["rw-beta"]);
+      const options = ctx.getSystemPromptOptions();
+      const prompt = ctx.getSystemPrompt();
+      ctx.ui.notify(`rw_prompt_state=registered:${registered.toolSnippets?.["rw-alpha"] ?? ""};selected:${(options.selectedTools ?? []).join(",")};beta:${prompt.includes("rw-beta-snippet")};alpha:${prompt.includes("rw-alpha-snippet")}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_after_trigger", {
+    description: "Read isIdle after a message that starts a run",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      ctx.ui.notify(`rw_idle_after_trigger=${ctx.isIdle()}`, "info");
+    },
+  });
+  let rwSettledOnce = false;
+  pi.registerCommand("rw_idle_in_settled", {
+    description: "Read isIdle after a message that starts a run, sent from an agent_settled handler",
+    handler: async () => {
+      pi.on("agent_settled", async (_event, ctx) => {
+        if (rwSettledOnce) return;
+        rwSettledOnce = true;
+        pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+        ctx.ui.notify(`rw_idle_in_settled=${ctx.isIdle()}`, "info");
+      });
+    },
+  });
   pi.registerCommand("set_model", {
     description: "Switch to the model in the arguments",
     handler: async (args, ctx) => {

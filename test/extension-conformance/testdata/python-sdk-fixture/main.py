@@ -1101,6 +1101,39 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("host_state_probe", "Report the thinking level and the session commands", host_state_probe)
 
+    def rw_prompt_state(ctx: pig_sdk.Context, _args: str) -> None:
+        def tool(name: str) -> pig_sdk.ToolDefinition:
+            return pig_sdk.ToolDefinition(name=name, label=name, description=name, prompt_snippet=name + "-snippet", parameters={"type": "object"}, execute=lambda c, a: "ok")
+
+        ctx.register_tool(tool("rw-alpha"))
+        ctx.register_tool(tool("rw-beta"))
+        registered = ctx.get_system_prompt_options()
+        ctx.set_active_tools(["rw-beta"])
+        options = ctx.get_system_prompt_options()
+        prompt = ctx.get_system_prompt()
+        ctx.notify("rw_prompt_state=registered:%s;selected:%s;beta:%s;alpha:%s" % ((registered.get("toolSnippets") or {}).get("rw-alpha", ""), ",".join(options.get("selectedTools") or []), str("rw-beta-snippet" in prompt).lower(), str("rw-alpha-snippet" in prompt).lower()), "info")
+
+    ext.command("rw_prompt_state", "Read the system prompt state after registering and activating tools", rw_prompt_state)
+
+    def rw_idle_after_trigger(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        ctx.notify("rw_idle_after_trigger=%s" % str(ctx.is_idle()).lower(), "info")
+
+    ext.command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", rw_idle_after_trigger)
+    rw_settled_once = []
+
+    def rw_idle_in_settled(ctx: pig_sdk.Context, _args: str) -> None:
+        def settled(hctx, _data):
+            if rw_settled_once:
+                return
+            rw_settled_once.append(True)
+            hctx.send_message("rw-trigger", "rw-trigger", True, True)
+            hctx.notify("rw_idle_in_settled=%s" % str(hctx.is_idle()).lower(), "info")
+
+        ext.on_event("agent_settled", settled)
+
+    ext.command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", rw_idle_in_settled)
+
     def set_model(ctx: pig_sdk.Context, args: str) -> None:
         ok, error = ctx.set_model(args)
         if error:
