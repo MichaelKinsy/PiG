@@ -1454,6 +1454,28 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"timer_defer": {
+				Definition: extension.ToolDefinition{
+					Name:        "timer_defer",
+					Description: "Notify inline and from deferred work",
+					Parameters:  json.RawMessage(`{"type":"object"}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "queued"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"timer_release": {
+				Definition: extension.ToolDefinition{
+					Name:        "timer_release",
+					Description: "Release the deferred work",
+					Parameters:  json.RawMessage(`{"type":"object"}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "released"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"throw_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "throw_probe",
