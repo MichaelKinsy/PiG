@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-928 bugs. 878 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+929 bugs. 879 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -947,6 +947,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-bfd090d](#bf-bfd090d) | Starting a child host could wait out its 30-second ready timeout ("child not ready in time") although the… | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab](#bf-96edeab) | `pig extension upgrade` finds and rewrites every changed API of an extension in one run | PiG's own defect | All platforms | Unreleased |
 | [BF-96edeab-2](#bf-96edeab-2) | `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and… | PiG's own defect | All platforms | Unreleased |
+| [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13883,6 +13884,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `96edeab595` (2026-10-20)
 - **Tests:** `coding/cli/extension_stale_copy_test.go::TestStaleCopyDiagnosticFindsAnEditedCopyByItsModulePath`, `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestDryRunReportsWhatTheRewrittenTreeDoes`, `coding/cli/extension_upgrade_completeness_test.go::TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeRestoreRemovesAFileItAdded`, `coding/cli/extension_upgrade_completeness_test.go::TestUpgradeWritesNothingWhenTheRewriteWouldAddACompileError` and 13 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` applies the rewrites that have one safe form and lists the rest with file, line and the form to write, instead of restoring every file when one use has no mechanical form. It exits 1 and reports `partly upgraded` when uses are left. `--dry-run` compiles the rewritten extension in a temporary directory (the go command's overlay, with the staged SDK) and reports `would upgrade` only when it builds; a rewrite that would add a compile error of its own is not written. The load error of a drifted extension names the changed APIs and the exact command. The stale-copy warning also recognises an edited copy by its Go module path.
+
+### BF-18022b2
+
+**A Node extension no longer keeps reading an entry the host refused**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension no longer keeps reading an entry the host refused.
+- **Root cause:** The Node runtime shows pi.appendEntry's entry at once (Pi's log is in process and the append cannot fail), keeps it in pendingEntries and sends the append to the host without waiting. A host that answered with an error left the entry in the mirror: nothing took it back, and every later state push preserved it because the replicated log does not hold it, so getEntries, getBranch, getLeafId and the id index kept presenting an entry that was in no session.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `18022b2234` (2026-10-21)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds`, `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused`, `test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs`
+- **Release note:** A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.
 
 ## Divergences from Pi added in this release
 
