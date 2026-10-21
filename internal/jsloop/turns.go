@@ -16,7 +16,7 @@ type Turns struct {
 	mu       sync.Mutex
 	chains   int
 	waits    int
-	held     []func()
+	held     []func(done func())
 	ticks    []func(done func())
 	flushing bool
 }
@@ -68,8 +68,13 @@ func (t *Turns) Turn() {
 
 // Macrotask runs fn, the work of a timer or immediate callback, once the loop would run it: at once when no chain runs or a wait is open, and otherwise at the next turn, wait or end of the chain. Callbacks run in the order they arrived. fn must not block: a producer calls Macrotask from the goroutine that read the call.
 func (t *Turns) Macrotask(fn func()) {
+	t.MacrotaskDone(func(done func()) { fn(); done() })
+}
+
+// MacrotaskDone is Macrotask for work whose effect is written after fn returns: fn calls done once it is. The call that releases the callback waits for done before it returns, so the output of the callback precedes whatever Pi's chain does next.
+func (t *Turns) MacrotaskDone(fn func(done func())) {
 	if t == nil {
-		fn()
+		fn(func() {})
 		return
 	}
 	t.mu.Lock()
@@ -80,7 +85,7 @@ func (t *Turns) Macrotask(fn func()) {
 		return
 	}
 	t.mu.Unlock()
-	fn()
+	fn(func() {})
 }
 
 // Tick runs fn, which must call done once its effect is written, as the work of a process.nextTick callback, or of a timer callback that runs while a sibling tool awaits, at the next Ticked: Pi runs such a callback right after the tool_execution_end of the tool that queued it, before the chain goes on. It runs at once when no chain runs or a wait is open. A callback that waits for Ticked also runs at the next turn, wait or end of the chain, behind the ticks already held.
@@ -151,7 +156,7 @@ func (t *Turns) flushLocked(turn bool) {
 			open = false
 		}
 		var runTicks []func(done func())
-		var runHeld []func()
+		var runHeld []func(done func())
 		if ticks {
 			runTicks, t.ticks = t.ticks, nil
 		}
@@ -165,12 +170,16 @@ func (t *Turns) flushLocked(turn bool) {
 		}
 		t.flushing = true
 		t.mu.Unlock()
+		var written sync.WaitGroup
 		for _, fn := range runTicks {
-			fn(func() {})
+			written.Add(1)
+			fn(written.Done)
 		}
 		for _, fn := range runHeld {
-			fn()
+			written.Add(1)
+			fn(written.Done)
 		}
+		written.Wait()
 		t.mu.Lock()
 	}
 }

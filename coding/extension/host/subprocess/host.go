@@ -4512,7 +4512,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 						if call.Tick {
 							turns.Tick(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
 						} else {
-							turns.Macrotask(func() { h.queueCall(me, conn, lanes, env.ID, call) })
+							turns.MacrotaskDone(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
 						}
 						continue
 					}
