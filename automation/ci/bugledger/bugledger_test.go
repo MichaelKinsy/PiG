@@ -1041,3 +1041,80 @@ func TestContributorsCountCoAuthoredByTrailers(t *testing.T) {
 		t.Fatalf("contributors =\n%q\nwant\n%q", b.String(), want)
 	}
 }
+
+// squashOf commits a fix with a test on a side branch and lands the same files on main as one squash commit whose message message(side) builds; it then removes the side commit from the repository, as the host's garbage collection does after a squash merge. It returns the side commit's full sha and the squash commit's.
+func (r testRepo) squashOf(message func(side string) string) (side, squash string) {
+	r.t.Helper()
+	r.run("checkout", "-q", "-b", "side")
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	side = r.commit("a: handle empty input", "a.go", "a_test.go")
+	r.run("checkout", "-q", "main")
+	r.run("branch", "-q", "-D", "side")
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	squash = r.commit(message(side), "a.go", "a_test.go")
+	r.run("reflog", "expire", "--expire=now", "--all")
+	r.run("gc", "-q", "--prune=now")
+	return side, squash
+}
+
+// A marker that names a commit a squash removed resolves through the squash commit's "Fix-Commit: <full sha>" trailer, and the entry takes the tests of the squash commit's diff. Without a trailer, or with one that names another or an abbreviated sha, the marker still names no commit.
+func TestAFixMarkerResolvesThroughTheFixCommitTrailerOfASquash(t *testing.T) {
+	other := strings.Repeat("ab", 20)
+	for _, tc := range []struct {
+		name    string
+		message func(side string) string
+		marker  func(side string) string
+		ok      bool
+	}{
+		{"matching trailer", func(s string) string { return "Squash (#9)\n\nFix-Commit: " + s }, func(s string) string { return s[:10] }, true},
+		{"matching trailer among others, full-length marker", func(s string) string { return "Squash (#9)\n\nFix-Commit: " + other + "\nFix-Commit: " + s }, func(s string) string { return s }, true},
+		{"no trailer", func(string) string { return "Squash (#9)" }, func(s string) string { return s[:10] }, false},
+		{"a trailer naming a different sha", func(string) string { return "Squash (#9)\n\nFix-Commit: " + other }, func(s string) string { return s[:10] }, false},
+		{"an abbreviated trailer", func(s string) string { return "Squash (#9)\n\nFix-Commit: " + s[:12] }, func(s string) string { return s[:10] }, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newFixture(t)
+			side, squash := r.squashOf(tc.message)
+			r.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+tc.marker(side)+" -->\n")
+			r.commit("Note the fix", "changelog.d/a.md")
+			l, err := build(r.root, "0.4.1")
+			if !tc.ok {
+				if err == nil || !strings.Contains(err.Error(), "not a commit") {
+					t.Fatalf("the marker must not resolve, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(l.Entries) != 1 {
+				t.Fatalf("entries = %+v", l.Entries)
+			}
+			e := l.Entries[0]
+			if len(e.Commits) != 1 || !strings.HasPrefix(squash, e.Commits[0].Hash) || !slices.Equal(e.Tests, []string{"a_test.go::TestAFixed"}) {
+				t.Fatalf("entry = %+v, want the squash commit %s and its test", e, squash[:10])
+			}
+		})
+	}
+}
+
+// A marker that names a commit HEAD reaches stays that commit even when a later commit carries a trailer for it.
+func TestAReachableFixMarkerIgnoresFixCommitTrailers(t *testing.T) {
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	fix := r.commit("a: handle empty input", "a.go", "a_test.go")
+	r.write("b.go", "package x\n")
+	r.commit("b: unrelated\n\nFix-Commit: "+fix, "b.go")
+	r.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+fix[:10]+" -->\n")
+	r.commit("Note the fix", "changelog.d/a.md")
+	l, err := build(r.root, "0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e := l.Entries[0]; len(e.Commits) != 1 || !strings.HasPrefix(fix, e.Commits[0].Hash) {
+		t.Fatalf("entry = %+v, want the reachable commit %s", e, fix[:10])
+	}
+}
