@@ -25,6 +25,7 @@ import (
 var kitWidgetExports = []struct{ dir, export string }{
 	{"pi-coding-agent", "BranchSummaryMessageComponent"},
 	{"pi-coding-agent", "CompactionSummaryMessageComponent"},
+	{"pi-coding-agent", "SkillInvocationMessageComponent"},
 }
 
 type kitWidgetCase struct {

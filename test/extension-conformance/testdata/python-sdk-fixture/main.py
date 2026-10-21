@@ -144,6 +144,30 @@ KIT_WIDGET_CASES[_COMPACTION + "tokens 999"] = lambda: _kit_compaction_view(toke
 KIT_WIDGET_CASES[_COMPACTION + "tokens 1234567 expanded"] = lambda: _kit_compaction_view(tokens=1234567, expanded=True)
 KIT_WIDGET_CASES[_COMPACTION + "empty summary tokens 0 expanded"] = _kit_compaction_empty
 
+KIT_SKILL_CONTENT = "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list."
+
+
+def _kit_skill_view(expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.SkillInvocation("code-review", KIT_SKILL_CONTENT, output_pad=output_pad, id="s")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+def _kit_skill_empty() -> kit.View:
+    node = kit.SkillInvocation("", "")
+    node.set_expanded(True)
+    return kit.View(node)
+
+
+_SKILL = "pi-coding-agent/SkillInvocationMessageComponent/"
+KIT_WIDGET_CASES[_SKILL + "collapsed"] = lambda: _kit_skill_view()
+KIT_WIDGET_CASES[_SKILL + "click toggles"] = lambda: _kit_skill_view()
+KIT_WIDGET_CASES[_SKILL + "right click ignored"] = lambda: _kit_skill_view()
+KIT_WIDGET_CASES[_SKILL + "expanded"] = lambda: _kit_skill_view(expanded=True)
+KIT_WIDGET_CASES[_SKILL + "outputPad 0 collapsed"] = lambda: _kit_skill_view(output_pad=0)
+KIT_WIDGET_CASES[_SKILL + "outputPad 0 expanded"] = lambda: _kit_skill_view(expanded=True, output_pad=0)
+KIT_WIDGET_CASES[_SKILL + "empty skill expanded"] = _kit_skill_empty
+
 # kit-widget-cases
 
 

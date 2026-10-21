@@ -12,6 +12,7 @@ use serde_json::{Map, Value};
 pub enum Widget {
     BranchSummary(BranchSummary),
     CompactionSummary(CompactionSummary),
+    SkillInvocation(SkillInvocation),
     // widget-variants
 }
 
@@ -24,13 +25,14 @@ macro_rules! widget_from {
         }
     )*};
 }
-widget_from!(BranchSummary , CompactionSummary /* widget-from */);
+widget_from!(BranchSummary , CompactionSummary , SkillInvocation /* widget-from */);
 
 impl Widget {
     pub(super) fn kind(&self) -> &'static str {
         match self {
             Widget::BranchSummary(_) => "branch-summary",
             Widget::CompactionSummary(_) => "compaction-summary",
+            Widget::SkillInvocation(_) => "skill-invocation",
             // widget-kinds
         }
     }
@@ -54,6 +56,17 @@ impl Widget {
                 }
                 put_nonempty(map, "summary", &n.summary);
                 put(map, "tokensBefore", n.tokens_before);
+            }
+            Widget::SkillInvocation(n) => {
+                put_opt(map, "id", &n.id);
+                put_pad(map, n.output_pad);
+                if n.expanded {
+                    put(map, "expanded", true);
+                }
+                let mut skill = Map::new();
+                put_nonempty(&mut skill, "name", &n.name);
+                put_nonempty(&mut skill, "content", &n.content);
+                put(map, "skill", Value::Object(skill));
             }
             // widget-encode
         }
@@ -183,6 +196,45 @@ impl CompactionSummary {
     /// upstream's outputPad 1.
     pub fn new(summary: impl Into<String>, tokens_before: u64) -> Self {
         Self { id: None, summary: summary.into(), tokens_before, output_pad: 1, expanded: false }
+    }
+
+    /// Keeps the host component across frames.
+    pub fn id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    /// Upstream `setExpanded`.
+    pub fn set_expanded(&mut self, expanded: bool) {
+        self.expanded = expanded;
+    }
+
+    /// Upstream `setOutputPad`.
+    pub fn set_output_pad(&mut self, output_pad: u32) {
+        self.output_pad = output_pad;
+    }
+}
+
+/// Coding-agent's `SkillInvocationMessageComponent(skillBlock,
+/// getMarkdownTheme(), outputPad)`: a skill's invocation, one line collapsed
+/// and the skill's content behind a click or
+/// [`SkillInvocation::set_expanded`]. It draws with the active theme, and a
+/// node with an id keeps its host component across frames, as
+/// [`BranchSummary`] does.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SkillInvocation {
+    id: Option<String>,
+    name: String,
+    content: String,
+    output_pad: u32,
+    expanded: bool,
+}
+
+impl SkillInvocation {
+    /// A collapsed invocation of the skill `name` with `content`, with
+    /// upstream's outputPad 1.
+    pub fn new(name: impl Into<String>, content: impl Into<String>) -> Self {
+        Self { id: None, name: name.into(), content: content.into(), output_pad: 1, expanded: false }
     }
 
     /// Keeps the host component across frames.

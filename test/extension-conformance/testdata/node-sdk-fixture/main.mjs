@@ -1025,6 +1025,27 @@ export default function (pi) {
       return { root: node };
     };
   }
+  {
+    const skill = (expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.SkillInvocationMessageComponent({ name: "code-review", content: "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list." }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/SkillInvocationMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = skill(false);
+    kitWidgetCases[`${prefix}click toggles`] = skill(false);
+    kitWidgetCases[`${prefix}right click ignored`] = skill(false);
+    kitWidgetCases[`${prefix}expanded`] = skill(true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = skill(false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = skill(true, 0);
+    kitWidgetCases[`${prefix}empty skill expanded`] = () => {
+      const node = new piCodingAgent.SkillInvocationMessageComponent({ name: "", content: "" }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
     description: "Show a widget kind's Pi vector case (D107)",
