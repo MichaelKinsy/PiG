@@ -151,7 +151,9 @@ The host paints rows only at the width they carry, so a frame laid out for a
 wider pane never reaches the renderer's overflow check after a resize (public
 issue #104). A string-list widget is sent with no width, as a `widget_push`
 that needs no reply, and the host lays a width-less list out with
-`Text(line, 1, 0)` as Pi does (`interactive-mode.ts:2321-2336`).
+`Text(line, 1, 0)` as Pi does (`interactive-mode.ts:2321-2336`). In RPC mode
+the SDKs send the list as a `ui.setWidget` call instead, so the host writes
+one request per call in call order, as `rpc-mode.ts` does.
 The wire has no independent version or compatibility
 negotiation; it changes atomically with the running Pig binary and staged SDKs.
 
