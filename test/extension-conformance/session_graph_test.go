@@ -76,8 +76,8 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "root": root, "pmCwd": filepath.Join(root, "pm-project"), "pmAgentDir": filepath.Join(root, "pm-agent"), "loaderAgentDir": filepath.Join(root, "agent-loader"), "brokenCwd": filepath.Join(root, "broken"),
 	}
 	files := map[string]string{
-		filepath.Join(root, "mr", "auth.json"):   `{"stored-prov":{"type":"api_key","key":"sk-stored"}}`,
-		filepath.Join(root, "mr", "models.json"): `{"providers":{"mr-local":{"baseUrl":"` + modelServer + `","api":"openai-completions","apiKey":"mr-key","models":[{"id":"m1","name":"M One","reasoning":false,"input":["text"],"cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0},"contextWindow":8000,"maxTokens":1000}]}}}`,
+		filepath.Join(root, "mr", "auth.json"):                                   `{"stored-prov":{"type":"api_key","key":"sk-stored"}}`,
+		filepath.Join(root, "mr", "models.json"):                                 `{"providers":{"mr-local":{"baseUrl":"` + modelServer + `","api":"openai-completions","apiKey":"mr-key","models":[{"id":"m1","name":"M One","reasoning":false,"input":["text"],"cost":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0},"contextWindow":8000,"maxTokens":1000}]}}}`,
 		filepath.Join(root, "agent", "settings.json"):                            sessionGraphGlobalSettings,
 		filepath.Join(root, "project", configDir, "settings.json"):               sessionGraphProjectSettings,
 		filepath.Join(root, "broken", configDir, "settings.json"):                "{bad",

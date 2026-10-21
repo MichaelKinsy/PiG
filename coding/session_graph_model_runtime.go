@@ -655,4 +655,3 @@ func (g *GraphModelRuntime) StreamModel(ctx context.Context, model map[string]an
 	}
 	return g.runtime.Stream(ctx, chat, aiRequest, options), nil
 }
-
