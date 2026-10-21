@@ -147,7 +147,7 @@ class _EventBusHub:
             raise TypeError("event payload must be JSON-serializable") from exc
         with self._lock:
             if not self._live:
-                # Called while the factory runs: delivered when the extension connects, in order with the subscriptions made before it and before the extension registers, as a node factory's pi.events.emit reaches the listeners of the extensions loaded before it. A failure of the delivery fails the load.
+                # Called while the factory runs: queued, and delivered right after the extension is ready (flush_factory_emits), in order with the subscriptions made before it. Pi delivers it at once; see the parity matrix row for on_loaded. A failure of the delivery is reported on stderr.
                 self._pending.append((channel, data))
                 return
         reply = self._call("events.emit", {"channel": channel, "json": data, "value": True}, ctx)

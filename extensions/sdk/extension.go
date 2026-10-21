@@ -1387,7 +1387,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		ctx.toolCallID = req.ToolCallID
 		ctx.toolIndex = req.ToolCallIndex
-		ctx.toolInput = req.Args
+		ctx.toolInput = &req.Args
 		var params map[string]any
 		if len(req.Args) > 0 {
 			if err := json.Unmarshal(req.Args, &params); err != nil {

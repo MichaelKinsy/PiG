@@ -16,10 +16,10 @@ func (c Context) ToolCallIndex() (index int, ok bool) {
 
 // ToolInput is the running tool call's arguments as the JSON text JSON.stringify gives for the object Pi hands execute: members in the order the model wrote them (array-index keys first, ascending, as JavaScript orders them), numbers as JavaScript prints them. The arguments are the ones the host sent the handler, after the tool's prepareArguments. Nil outside a tool handler. A [ToolFunc]'s params map has no order; this is the text to read it from.
 func (c Context) ToolInput() json.RawMessage {
-	if len(c.toolInput) == 0 {
+	if c.toolInput == nil || len(*c.toolInput) == 0 {
 		return nil
 	}
-	value, err := parseOrderedJSON(c.toolInput)
+	value, err := parseOrderedJSON(*c.toolInput)
 	if err != nil {
 		return nil
 	}
@@ -28,10 +28,10 @@ func (c Context) ToolInput() json.RawMessage {
 
 // ToolParams is the running tool call's arguments as a JavaScript object keeps them: every object, at any depth, is an [*OrderedObject] whose members are in the order Object.keys gives (array-index keys ascending, then the others in insertion order), arrays are []any, numbers float64. Pi hands execute that object, and an extension that writes the arguments back out (JSON.stringify(params.metadata)) relies on the order. Nil outside a tool handler or when the arguments are not an object.
 func (c Context) ToolParams() *OrderedObject {
-	if len(c.toolInput) == 0 {
+	if c.toolInput == nil || len(*c.toolInput) == 0 {
 		return nil
 	}
-	value, err := parseOrderedJSON(c.toolInput)
+	value, err := parseOrderedJSON(*c.toolInput)
 	if err != nil {
 		return nil
 	}

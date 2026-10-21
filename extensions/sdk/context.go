@@ -241,9 +241,9 @@ func hostOptionalString(c Context, method, field string) (*string, error) {
 type Context struct {
 	ext        *Extension
 	toolCallID string // set for tool handlers
-	// toolIndex and toolInput are set for tool handlers: the call's place in its batch and its argument text (ToolCallIndex, ToolInput).
+	// toolIndex and toolInput are set for tool handlers: the call's place in its batch and its argument text (ToolCallIndex, ToolInput). toolInput points at the request's Args, so a Context stays comparable, as it was before these fields.
 	toolIndex *int
-	toolInput json.RawMessage
+	toolInput *json.RawMessage
 	requestID string
 	parent    *requestParent
 	ctx       context.Context
