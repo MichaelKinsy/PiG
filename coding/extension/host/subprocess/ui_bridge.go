@@ -1066,8 +1066,8 @@ func (b *UIBridge) RunSignalChanged() {
 	}
 }
 
-// HostStateChanged tells the Host that state the runtimes replicate (the model, the thinking level, the session name, the settings) changed without an extension call or an event to the extension, so every runtime learns it without waiting for its next request.
-// Upstream's `ctx.model`, `pi.getSettings()` and `pi.getSessionName()` read the live Session at every call (runner.ts:906, loader.ts:411-414); a runtime replicates them, so a timer or thread that reads between two requests sees the host's value only when the host pushes it. The owner of the change reports it here, after the state changed. It returns at once: the push runs on a task the Host joins at Shutdown, because the owner may be the UI loop, which never waits for an extension.
+// HostStateChanged tells the Host that state the runtimes replicate (the model, the thinking level, the session name, the settings, the MCP server list, the theme palette) changed without an extension call or an event to the extension, so every runtime learns it without waiting for its next request.
+// Upstream's `ctx.model`, `pi.getSettings()`, `pi.getSessionName()`, `pi.getMcpServers()` and `ctx.ui.theme` read the live Session, the MCP registry and the global theme at every call (runner.ts:906, loader.ts:411-414 and 495-497, interactive-mode.ts:2665); a runtime replicates them, so a timer or thread that reads between two requests sees the host's value only when the host pushes it. The owner of the change reports it here, after the state changed. It returns at once: the push runs on a task the Host joins at Shutdown, because the owner may be the UI loop, which never waits for an extension.
 func (b *UIBridge) HostStateChanged() {
 	b.mu.RLock()
 	changed := b.OnHostStateChanged
