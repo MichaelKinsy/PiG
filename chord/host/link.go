@@ -484,12 +484,8 @@ func (link *baseLink) Close(reason ...string) {
 	if len(reason) > 0 {
 		text = reason[0]
 	}
-	if link.Closed() {
-		return
-	}
 	// The transport may already be gone (link.ts:45-49).
-	_, _ = link.transport.transmit(ByeFrame{Reason: &text})
-	link.ended(text)
+	link.end(text, func() { _, _ = link.transport.transmit(ByeFrame{Reason: &text}) })
 }
 
 // deliver delivers a parsed frame from the transport (link.ts:54-62).
@@ -538,7 +534,14 @@ func (link *baseLink) drain() {
 }
 
 // ended marks the link closed (transport ended) and notifies once (link.ts:65-75).
-func (link *baseLink) ended(reason string) {
+func (link *baseLink) ended(reason string) { link.end(reason, nil) }
+
+// end marks the link closed, runs beforeShutdown (if any), shuts the transport down and calls the close handlers with
+// reason, once. A link ended by Close sends its bye in beforeShutdown: the peer's side of a transport that delivers
+// from its own goroutine can answer the bye, and end this link ("peer closed"), before Close's own step would run, so
+// the link is marked closed first and the answer finds it ended with Close's reason, as upstream's one synchronous block
+// leaves it.
+func (link *baseLink) end(reason string, beforeShutdown func()) {
 	link.mu.Lock()
 	if link.closed {
 		link.mu.Unlock()
@@ -554,6 +557,9 @@ func (link *baseLink) ended(reason string) {
 			handler(reason)
 		}
 	}()
+	if beforeShutdown != nil {
+		beforeShutdown()
+	}
 	link.transport.shutdown()
 }
 
