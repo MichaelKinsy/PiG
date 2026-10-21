@@ -97,7 +97,8 @@ func (g *GraphPackageManager) Call(ctx context.Context, method string, raw json.
 				wire["message"] = *event.Message
 			}
 			encoded, _ := json.Marshal(wire)
-			_, _ = g.scope.Callback(ctx, *id, json.RawMessage("["+string(encoded)+"]"))
+			// The callback outlives the call that set it: it reports to the extension for as long as the connection lives.
+			_, _ = g.scope.Callback(context.Background(), *id, json.RawMessage("["+string(encoded)+"]"))
 		})
 		return nil, nil
 	case "addSourceToSettings", "removeSourceFromSettings":
