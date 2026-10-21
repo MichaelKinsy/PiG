@@ -1,6 +1,12 @@
 package sdk
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"sync"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+)
 
 // SettingsManager is Pi's `SettingsManager` class (core/settings-manager.ts): the global and project settings an extension reads and writes, or in-memory settings it builds for a child session. The host owns the object; a SettingsManager passed to CreateAgentSession is the very settings object the child session reads. Every method is Pi's under its Go name; a nil pointer result is Pi's undefined.
 type SettingsManager struct{ object *graphObject }
@@ -20,6 +26,92 @@ type SettingsError struct {
 // SettingsManagerCreate is `SettingsManager.create(cwd, agentDir = getAgentDir(), options = {})`: settings loaded from the files of agentDir (global) and cwd (project). A nil agentDir is the host's agent directory.
 func SettingsManagerCreate(c Context, cwd string, agentDir *string, options *SettingsManagerCreateOptions) (SettingsManager, error) {
 	object, err := newGraphObject(c, "SettingsManager", "create", cwd, agentDir, options)
+	return SettingsManager{object: object}, err
+}
+
+// SettingsStorage is Pi's SettingsStorage: the backend of [SettingsManagerFromStorage]. WithLock runs fn on the current text of the scope's settings ("global" or "project"; nil when there is none) while it holds its lock. fn returns the text to store, nil to leave it, or an error (a settings file that does not parse); WithLock stores the text and returns the error fn returned.
+type SettingsStorage interface {
+	WithLock(scope string, fn func(current *string) (*string, error)) error
+}
+
+type storageFinish struct {
+	Write bool   `json:"write"`
+	Text  string `json:"text"`
+	Error string `json:"error"`
+}
+
+// pendingLock is one WithLock of the extension's storage that the host drives in two calls (host protocol: graphSettingsStorage).
+type pendingLock struct {
+	current chan *string
+	finish  chan storageFinish
+	done    chan error
+}
+
+// storageCallback is the function the host runs for every WithLock of the storage: ["begin", scope] starts the storage's WithLock and answers its current text, and ["finish", result] gives its fn the host's result and waits for WithLock to return.
+func storageCallback(storage SettingsStorage) graphCallback {
+	var mu sync.Mutex
+	var pending *pendingLock
+	return func(args []json.RawMessage) (any, error) {
+		var op string
+		if len(args) == 0 || json.Unmarshal(args[0], &op) != nil {
+			return nil, errors.New("settings storage callback: no operation")
+		}
+		switch op {
+		case "begin":
+			var scope string
+			if len(args) < 2 || json.Unmarshal(args[1], &scope) != nil {
+				return nil, errors.New("settings storage callback: no scope")
+			}
+			lock := &pendingLock{current: make(chan *string, 1), finish: make(chan storageFinish, 1), done: make(chan error, 1)}
+			go func() {
+				lock.done <- storage.WithLock(scope, func(current *string) (*string, error) {
+					lock.current <- current
+					result := <-lock.finish
+					if result.Error != "" {
+						return nil, errors.New(result.Error)
+					}
+					if result.Write {
+						return &result.Text, nil
+					}
+					return nil, nil
+				})
+			}()
+			select {
+			case current := <-lock.current:
+				mu.Lock()
+				pending = lock
+				mu.Unlock()
+				return map[string]any{"current": current}, nil
+			case err := <-lock.done:
+				if err == nil {
+					err = errors.New("settings storage: WithLock returned without calling fn")
+				}
+				return nil, err
+			}
+		case "finish":
+			mu.Lock()
+			lock := pending
+			pending = nil
+			mu.Unlock()
+			if lock == nil {
+				return nil, errors.New("settings storage callback: finish without begin")
+			}
+			var result storageFinish
+			if len(args) > 1 {
+				if err := json.Unmarshal(args[1], &result); err != nil {
+					return nil, err
+				}
+			}
+			lock.finish <- result
+			return nil, <-lock.done
+		}
+		return nil, fmt.Errorf("settings storage callback: unknown operation %q", op)
+	}
+}
+
+// SettingsManagerFromStorage is `SettingsManager.fromStorage(storage, options = {})`: settings kept by storage, an object of this process the host calls back whenever the manager reads or writes a scope.
+func SettingsManagerFromStorage(c Context, storage SettingsStorage, options *SettingsManagerCreateOptions) (SettingsManager, error) {
+	object, err := newGraphObject(c, "SettingsManager", "fromStorage", map[string]any{"withLock": c.callbackID(storageCallback(storage))}, options)
 	return SettingsManager{object: object}, err
 }
 

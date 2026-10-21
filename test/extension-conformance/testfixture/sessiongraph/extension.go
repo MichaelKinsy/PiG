@@ -169,9 +169,19 @@ func script(ctx sdk.Context, args map[string]any) map[string]any {
 		"inDir": filepath.Dir(forkFile) == forkDir, "shape": shape(ok(forked.GetEntries())),
 	}
 
-	r["list"] = infos(ok(sdk.SessionManagerList(ctx, cwd, &dir)))
-	r["listAll"] = infos(ok(sdk.SessionManagerListAll(ctx, &dir)))
-	r["listFork"] = infos(ok(sdk.SessionManagerList(ctx, otherDir, &forkDir)))
+	r["list"] = infos(ok(sdk.SessionManagerList(ctx, cwd, &dir, nil)))
+	var listProgress, listAllProgress [][2]int
+	r["listAll"] = infos(ok(sdk.SessionManagerListAll(ctx, &dir, func(loaded, total int, _ []sdk.SessionInfo) { listAllProgress = append(listAllProgress, [2]int{loaded, total}) })))
+	infos(ok(sdk.SessionManagerList(ctx, cwd, &dir, func(loaded, total int, _ []sdk.SessionInfo) { listProgress = append(listProgress, [2]int{loaded, total}) })))
+	lastProgress := func(calls [][2]int) map[string]any {
+		var last any
+		if len(calls) > 0 {
+			last = []int{calls[len(calls)-1][0], calls[len(calls)-1][1]}
+		}
+		return map[string]any{"calls": len(calls) > 0, "last": last}
+	}
+	r["progress"] = map[string]any{"list": lastProgress(listProgress), "listAll": lastProgress(listAllProgress)}
+	r["listFork"] = infos(ok(sdk.SessionManagerList(ctx, otherDir, &forkDir, nil)))
 	found := ok(sdk.SessionManagerFindByID(ctx, cwd, fixed, &dir))
 	missing := ok(sdk.SessionManagerFindByID(ctx, cwd, "nope", &dir))
 	r["find"] = map[string]any{"found": found != nil && *found == file, "missing": missing == nil}

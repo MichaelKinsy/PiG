@@ -315,7 +315,7 @@ func openGraphSession(path string, sessionDir, cwdOverride *string) (*GraphSessi
 }
 
 // GraphSessionManagerStatic runs the static function of Pi's SessionManager that constructs no object.
-func GraphSessionManagerStatic(ctx context.Context, method string, raw json.RawMessage) (any, error) {
+func GraphSessionManagerStatic(ctx context.Context, scope subprocess.SessionGraphScope, method string, raw json.RawMessage) (any, error) {
 	args, err := ParseGraphArgs(raw)
 	if err != nil {
 		return nil, err
@@ -357,7 +357,11 @@ func GraphSessionManagerStatic(ctx context.Context, method string, raw json.RawM
 		if err != nil {
 			return nil, err
 		}
-		infos, err := NewSessionManagerWithDir(cwd, dir).ListCurrentSessions(SessionListOptions{Context: ctx})
+		progress, err := graphListProgress(ctx, scope, args, 2)
+		if err != nil {
+			return nil, err
+		}
+		infos, err := NewSessionManagerWithDir(cwd, dir).ListCurrentSessions(SessionListOptions{Context: ctx, OnProgress: progress})
 		if err != nil {
 			return nil, err
 		}
@@ -368,18 +372,22 @@ func GraphSessionManagerStatic(ctx context.Context, method string, raw json.RawM
 		if err != nil {
 			return nil, err
 		}
+		progress, err := graphListProgress(ctx, scope, args, 1)
+		if err != nil {
+			return nil, err
+		}
 		var infos []SessionInfo
 		if sessionDir != nil && *sessionDir != "" {
 			dir, err := ResolvePath(*sessionDir, "")
 			if err != nil {
 				return nil, err
 			}
-			infos, err = listSessionsInDirWithOptions(dir, SessionListOptions{Context: ctx})
+			infos, err = listSessionsInDirWithOptions(dir, SessionListOptions{Context: ctx, OnProgress: progress})
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			infos, err = NewSessionManagerWithDir(".", GetDefaultSessionDirPath(".", AgentDir())).ListAllSessions(SessionListOptions{Context: ctx})
+			infos, err = NewSessionManagerWithDir(".", GetDefaultSessionDirPath(".", AgentDir())).ListAllSessions(SessionListOptions{Context: ctx, OnProgress: progress})
 			if err != nil {
 				return nil, err
 			}
@@ -619,3 +627,21 @@ func graphEntry(entry SessionEntry) (json.RawMessage, error) {
 }
 
 var _ subprocess.SessionGraphObject = (*GraphSessionManager)(nil)
+
+// graphListProgress is the onProgress function the extension named in argument i (SessionListProgress): it reports (loaded, total, partialSessions?) to the extension as the listing runs. A nil result is no function.
+func graphListProgress(ctx context.Context, scope subprocess.SessionGraphScope, args GraphArgs, i int) (SessionListProgress, error) {
+	id, err := args.OptString(i)
+	if err != nil || id == nil {
+		return nil, err
+	}
+	return func(loaded, total int, partial []SessionInfo) {
+		var sessions any
+		if partial != nil {
+			sessions = graphSessionInfos(partial)
+		}
+		encoded, err := json.Marshal([]any{loaded, total, sessions})
+		if err == nil {
+			_, _ = scope.Callback(ctx, *id, encoded)
+		}
+	}, nil
+}

@@ -17,7 +17,7 @@ type SessionGraphBackend interface {
 	// New constructs the object kind's class builds with op (Pi's `new Class(...)` is op "new", a static factory is its name) from the positional JSON arguments. It never retains ctx past the call; scope is the connection's and lives as long as the object does.
 	New(ctx context.Context, scope SessionGraphScope, kind, op string, args json.RawMessage) (SessionGraphObject, error)
 	// Static runs a static function of kind's class that constructs no object, and answers its result in Pi's JSON shape. A nil result is JSON null.
-	Static(ctx context.Context, kind, method string, args json.RawMessage) (any, error)
+	Static(ctx context.Context, scope SessionGraphScope, kind, method string, args json.RawMessage) (any, error)
 }
 
 // SessionGraphObject is one object of the session graph.
@@ -253,7 +253,7 @@ func (h *Host) handleSessionGraphCall(ctx context.Context, conn *Conn, call *Cal
 		var value any
 		var err error
 		if request.Handle == "" {
-			value, err = backend.Static(ctx, request.Kind, request.Method, request.Args)
+			value, err = backend.Static(ctx, graphScope{h, conn}, request.Kind, request.Method, request.Args)
 		} else {
 			object, ok := h.sessionGraphObjects.lookup(conn, request.Handle)
 			if !ok {

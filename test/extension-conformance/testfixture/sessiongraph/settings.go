@@ -2,6 +2,7 @@ package sessiongraph
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -227,5 +228,87 @@ func settingsScript(ctx sdk.Context, args map[string]any) map[string]any {
 	}
 	check(distrust.SetProjectTrusted(true))
 	r["retrusted"] = map[string]any{"trusted": ok(distrust.IsProjectTrusted()), "projectModel": ok(distrust.GetProjectSettings())["defaultModel"]}
+	r["storage"] = storageReport(ctx)
 	return r
+}
+
+type memoryStorage struct {
+	store map[string]*string
+	calls *[]string
+	fail  bool
+}
+
+func (m *memoryStorage) WithLock(scope string, fn func(*string) (*string, error)) error {
+	if m.fail {
+		return errors.New("disk full")
+	}
+	state := "none"
+	if m.store[scope] != nil {
+		state = "text"
+	}
+	*m.calls = append(*m.calls, scope+":"+state)
+	next, err := fn(m.store[scope])
+	if err != nil {
+		return err
+	}
+	if next != nil {
+		*m.calls = append(*m.calls, scope+":write")
+		m.store[scope] = next
+	}
+	return nil
+}
+
+func parsedText(text *string) any {
+	if text == nil {
+		return nil
+	}
+	var out any
+	check(json.Unmarshal([]byte(*text), &out))
+	return out
+}
+
+func storageReport(ctx sdk.Context) map[string]any {
+	global := `{"theme":"dark","quietStartup":true}`
+	store := map[string]*string{"global": &global}
+	calls := []string{}
+	snapshot := func() []string { return append([]string{}, calls...) }
+	storage := &memoryStorage{store: store, calls: &calls}
+	out := map[string]any{}
+	manager := ok(sdk.SettingsManagerFromStorage(ctx, storage, nil))
+	out["loaded"] = map[string]any{"theme": orNil(ok(manager.GetTheme())), "quiet": ok(manager.GetQuietStartup()), "calls": snapshot(), "errors": len(ok(manager.DrainErrors()))}
+	calls = calls[:0]
+	check(manager.SetTheme("light"))
+	check(manager.Flush())
+	out["wrote"] = map[string]any{"calls": snapshot(), "global": parsedText(store["global"]), "project": store["project"] == nil, "theme": orNil(ok(manager.GetTheme()))}
+	solarized := `{"theme":"solarized"}`
+	store["global"] = &solarized
+	calls = calls[:0]
+	check(manager.Reload())
+	out["reloaded"] = map[string]any{"theme": orNil(ok(manager.GetTheme())), "calls": snapshot()}
+	calls = calls[:0]
+	check(manager.SetProjectExtensionPaths([]string{"./e"}))
+	check(manager.Flush())
+	var projectPaths any
+	if extensions, found := ok(manager.GetProjectSettings())["extensions"]; found {
+		projectPaths = extensions
+	}
+	out["projectWrote"] = map[string]any{"project": parsedText(store["project"]), "calls": snapshot(), "paths": projectPaths}
+	calls = calls[:0]
+	untrusted := ok(sdk.SettingsManagerFromStorage(ctx, storage, &sdk.SettingsManagerCreateOptions{ProjectTrusted: ptr(false)}))
+	out["untrusted"] = map[string]any{"calls": snapshot(), "theme": orNil(ok(untrusted.GetTheme())), "trusted": ok(untrusted.IsProjectTrusted())}
+	bad := "{bad"
+	store["global"] = &bad
+	broken := ok(sdk.SettingsManagerFromStorage(ctx, storage, nil))
+	brokenErrors := []any{}
+	for _, entry := range ok(broken.DrainErrors()) {
+		brokenErrors = append(brokenErrors, map[string]any{"scope": entry.Scope, "noPath": entry.Path == nil, "hasMessage": entry.Error != nil && entry.Error.Error() != ""})
+	}
+	out["broken"] = brokenErrors
+	failing := ok(sdk.SettingsManagerFromStorage(ctx, &memoryStorage{store: map[string]*string{}, calls: &[]string{}, fail: true}, nil))
+	failed := []any{}
+	for _, entry := range ok(failing.DrainErrors()) {
+		failed = append(failed, map[string]any{"scope": entry.Scope, "message": entry.Error.Error()})
+	}
+	out["failing"] = failed
+	return out
 }

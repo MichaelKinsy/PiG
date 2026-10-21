@@ -113,7 +113,11 @@ async function script({ cwd, dir, otherDir, junk }) {
   };
 
   r.list = infos(await SessionManager.list(cwd, dir));
-  r.listAll = infos(await SessionManager.listAll(dir));
+  const listProgress = [];
+  const listAllProgress = [];
+  r.listAll = infos(await SessionManager.listAll(dir, (loaded, total) => listAllProgress.push([loaded, total])));
+  infos(await SessionManager.list(cwd, dir, (loaded, total) => listProgress.push([loaded, total])));
+  r.progress = { list: { calls: listProgress.length > 0, last: listProgress.at(-1) ?? null }, listAll: { calls: listAllProgress.length > 0, last: listAllProgress.at(-1) ?? null } };
   r.listFork = infos(await SessionManager.list(otherDir, forkDir));
   const found = SessionManager.findById(cwd, fixed, dir);
   r.find = { found: found === file, missing: SessionManager.findById(cwd, "nope", dir) === undefined };
@@ -204,6 +208,45 @@ const readAll = (s) => ({
     getProjectSettings: orNull(s.getProjectSettings()),
     isProjectTrusted: orNull(s.isProjectTrusted()),
 });
+
+async function storageReport() {
+  const store = { global: '{"theme":"dark","quietStartup":true}', project: undefined };
+  const calls = [];
+  const storage = {
+    withLock(scope, fn) {
+      calls.push(`${scope}:${store[scope] === undefined ? "none" : "text"}`);
+      const next = fn(store[scope]);
+      if (next !== undefined) {
+        calls.push(`${scope}:write`);
+        store[scope] = next;
+      }
+    },
+  };
+  const out = {};
+  const manager = SettingsManager.fromStorage(storage);
+  out.loaded = { theme: orNull(manager.getTheme()), quiet: manager.getQuietStartup(), calls: [...calls], errors: manager.drainErrors().length };
+  calls.length = 0;
+  manager.setTheme("light");
+  await manager.flush();
+  out.wrote = { calls: [...calls], global: JSON.parse(store.global), project: store.project === undefined, theme: manager.getTheme() };
+  store.global = '{"theme":"solarized"}';
+  calls.length = 0;
+  await manager.reload();
+  out.reloaded = { theme: manager.getTheme(), calls: [...calls] };
+  calls.length = 0;
+  manager.setProjectExtensionPaths(["./e"]);
+  await manager.flush();
+  out.projectWrote = { project: JSON.parse(store.project), calls: [...calls], paths: manager.getProjectSettings().extensions ?? null };
+  calls.length = 0;
+  const untrusted = SettingsManager.fromStorage(storage, { projectTrusted: false });
+  out.untrusted = { calls: [...calls], theme: orNull(untrusted.getTheme()), trusted: untrusted.isProjectTrusted() };
+  store.global = "{bad";
+  const broken = SettingsManager.fromStorage(storage);
+  out.broken = broken.drainErrors().map((entry) => ({ scope: entry.scope, noPath: entry.path === undefined, hasMessage: entry.error.message !== "" }));
+  const failing = SettingsManager.fromStorage({ withLock() { throw new Error("disk full"); } });
+  out.failing = failing.drainErrors().map((entry) => ({ scope: entry.scope, message: entry.error.message }));
+  return out;
+}
 
 async function settingsScript({ cwd, agentDir, configDir, brokenCwd }) {
   const r = {};
@@ -321,6 +364,7 @@ async function settingsScript({ cwd, agentDir, configDir, brokenCwd }) {
   };
   distrust.setProjectTrusted(true);
   r.retrusted = { trusted: distrust.isProjectTrusted(), projectModel: distrust.getProjectSettings().defaultModel };
+  r.storage = await storageReport();
   return r;
 }
 

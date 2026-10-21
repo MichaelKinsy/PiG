@@ -178,6 +178,22 @@
 		"cwd": "\u003croot\u003e/other",
 		"id": "fixed-session-1"
 	},
+	"progress": {
+		"list": {
+			"calls": true,
+			"last": [
+				2,
+				2
+			]
+		},
+		"listAll": {
+			"calls": true,
+			"last": [
+				2,
+				2
+			]
+		}
+	},
 	"recent": {
 		"cwd": "\u003croot\u003e/project",
 		"hasEntries": true,

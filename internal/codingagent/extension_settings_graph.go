@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
@@ -27,8 +28,8 @@ type graphSettingsOptions struct {
 	ProjectTrusted *bool `json:"projectTrusted"`
 }
 
-// NewGraphSettingsManager builds the SettingsManager of Pi's static factory op (create, inMemory).
-func NewGraphSettingsManager(op string, raw json.RawMessage) (*GraphSettingsManager, error) {
+// NewGraphSettingsManager builds the SettingsManager of Pi's static factory op (create, inMemory, fromStorage).
+func NewGraphSettingsManager(scope subprocess.SessionGraphScope, op string, raw json.RawMessage) (*GraphSettingsManager, error) {
 	args, err := ParseGraphArgs(raw)
 	if err != nil {
 		return nil, err
@@ -62,6 +63,22 @@ func NewGraphSettingsManager(op string, raw json.RawMessage) (*GraphSettingsMana
 			return nil, err
 		}
 		return &GraphSettingsManager{NewSettingsManagerWithOptions(resolvedCwd, dir, SettingsManagerCreateOptions{ProjectTrusted: options.ProjectTrusted})}, nil
+	case "fromStorage":
+		// fromStorage(storage, options = {}): storage is { withLock } and the extension names it by the callback that runs it.
+		var storage struct {
+			WithLock string `json:"withLock"`
+		}
+		if err := args.Decode(0, &storage); err != nil {
+			return nil, err
+		}
+		if storage.WithLock == "" {
+			return nil, errors.New("SettingsManager.fromStorage needs a storage with withLock")
+		}
+		var options graphSettingsOptions
+		if err := args.Decode(1, &options); err != nil {
+			return nil, err
+		}
+		return &GraphSettingsManager{NewSettingsManagerFromStorage(&graphSettingsStorage{scope: scope, callback: storage.WithLock}, SettingsManagerCreateOptions{ProjectTrusted: options.ProjectTrusted})}, nil
 	case "inMemory":
 		// inMemory(settings = {}, options = {})
 		var settings Settings
@@ -559,3 +576,46 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 }
 
 var _ subprocess.SessionGraphObject = (*GraphSettingsManager)(nil)
+
+// graphSettingsStorage is a SettingsStorage whose withLock the extension implements. Its callback runs in two steps so that Pi's fn, which is the host's, runs between them while the extension's withLock holds its lock: ["begin", scope] answers {"current"} from inside the extension's withLock, and ["finish", {"write", "text", "error"}] hands back what fn returned and lets that withLock return.
+type graphSettingsStorage struct {
+	mu       sync.Mutex
+	scope    subprocess.SessionGraphScope
+	callback string
+}
+
+func (g *graphSettingsStorage) WithLock(scope string, fn func(current *string) (*string, error)) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	ctx := context.Background()
+	begin, err := json.Marshal([]any{"begin", scope})
+	if err != nil {
+		return err
+	}
+	answer, err := g.scope.Callback(ctx, g.callback, begin)
+	if err != nil {
+		return err
+	}
+	var current struct {
+		Current *string `json:"current"`
+	}
+	if err := json.Unmarshal(answer, &current); err != nil {
+		return fmt.Errorf("settings storage answered %s: %w", answer, err)
+	}
+	next, fnErr := fn(current.Current)
+	finish := map[string]any{"write": false}
+	switch {
+	case fnErr != nil:
+		finish = map[string]any{"error": fnErr.Error()}
+	case next != nil:
+		finish = map[string]any{"write": true, "text": *next}
+	}
+	encoded, err := json.Marshal([]any{"finish", finish})
+	if err != nil {
+		return err
+	}
+	if _, err := g.scope.Callback(ctx, g.callback, encoded); err != nil {
+		return err
+	}
+	return fnErr
+}

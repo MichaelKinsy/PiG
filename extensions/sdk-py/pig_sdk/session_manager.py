@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from ._graph import _GraphObject
+from ._graph import _GraphObject, _callback_id
 
 
 class ReadonlySessionManager:
@@ -116,6 +116,12 @@ def _session_info(raw: dict[str, Any]) -> dict[str, Any]:
     return info
 
 
+def _progress_id(context: Any, on_progress: Any) -> Any:
+    if on_progress is None:
+        return None
+    return _callback_id(context, lambda loaded, total, partial: on_progress(loaded, total, None if partial is None else [_session_info(info) for info in partial]))
+
+
 class SessionManager(_GraphObject):
     """Pi's ``SessionManager`` class (core/session-manager.ts): an append-only session log an extension constructs, reads and appends to. The host owns the log; a SessionManager passed to ``create_agent_session`` is the very log the child session appends to. Build one with ``create``, ``open``, ``continue_recent``, ``in_memory`` or ``fork_from``; every method is Pi's under its snake_case name."""
 
@@ -150,14 +156,14 @@ class SessionManager(_GraphObject):
         return _GraphObject._static(context, "SessionManager", "findById", cwd, session_id, session_dir)
 
     @staticmethod
-    def list(context: Any, cwd: str, session_dir: str | None = None) -> list[dict[str, Any]]:
-        """``SessionManager.list(cwd, sessionDir?)``: the sessions of a directory, most recently modified first, as Pi's SessionInfo dicts (``created`` and ``modified`` are datetimes)."""
-        return [_session_info(info) for info in _GraphObject._static_async(context, "SessionManager", "list", cwd, session_dir) or []]
+    def list(context: Any, cwd: str, session_dir: str | None = None, on_progress: Any = None) -> list[dict[str, Any]]:
+        """``SessionManager.list(cwd, sessionDir?, onProgress?)``: the sessions of a directory, most recently modified first, as Pi's SessionInfo dicts (``created`` and ``modified`` are datetimes). ``on_progress(loaded, total, partial)`` is called as session files are read; ``partial`` is the sessions read so far on the updates that carry them and ``None`` on the others."""
+        return [_session_info(info) for info in _GraphObject._static_async(context, "SessionManager", "list", cwd, session_dir, _progress_id(context, on_progress)) or []]
 
     @staticmethod
-    def list_all(context: Any, session_dir: str | None = None) -> list[dict[str, Any]]:
-        """``SessionManager.listAll(sessionDir?)``: the sessions of every project (or of ``session_dir``), most recently modified first."""
-        return [_session_info(info) for info in _GraphObject._static_async(context, "SessionManager", "listAll", session_dir) or []]
+    def list_all(context: Any, session_dir: str | None = None, on_progress: Any = None) -> list[dict[str, Any]]:
+        """``SessionManager.listAll(sessionDir?, onProgress?)``: the sessions of every project (or of ``session_dir``), most recently modified first."""
+        return [_session_info(info) for info in _GraphObject._static_async(context, "SessionManager", "listAll", session_dir, _progress_id(context, on_progress)) or []]
 
     def get_cwd(self) -> str:
         return self._invoke("getCwd")

@@ -1,8 +1,11 @@
 package sdk
 
 import (
+	"errors"
 	"os"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // SessionManager is Pi's `SessionManager` class (core/session-manager.ts): an append-only session log an extension constructs, reads and appends to. The host owns the log; a SessionManager built here and passed to CreateAgentSession is the very log the child session appends to. ctx.SessionManager() is Pi's ReadonlySessionManager, the [ReadonlySessionManager] of the running session.
@@ -69,14 +72,41 @@ func SessionManagerFindByID(c Context, cwd, id string, sessionDir *string) (*str
 	return graphStatic[*string](c, "SessionManager", "findById", cwd, id, sessionDir)
 }
 
-// SessionManagerList is `SessionManager.list(cwd, sessionDir?)`: the sessions of a directory, most recently modified first. Cancelling the context's request cancels the listing, as Pi's AbortSignal does.
-func SessionManagerList(c Context, cwd string, sessionDir *string) ([]SessionInfo, error) {
-	return graphStaticAsync[[]SessionInfo](c, "SessionManager", "list", cwd, sessionDir)
+// SessionListProgress is Pi's SessionListProgress: loaded of total session files are read. partial holds the sessions read so far, sorted by activity, on the periodic updates that carry them and is nil on the others.
+type SessionListProgress func(loaded, total int, partial []SessionInfo)
+
+func (c Context) listProgressID(onProgress SessionListProgress) any {
+	if onProgress == nil {
+		return nil
+	}
+	return c.callbackID(func(args []json.RawMessage) (any, error) {
+		var loaded, total int
+		var partial []SessionInfo
+		if len(args) < 3 {
+			return nil, errors.New("session list progress: expected loaded, total and partialSessions")
+		}
+		if err := json.Unmarshal(args[0], &loaded); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(args[1], &total); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(args[2], &partial); err != nil {
+			return nil, err
+		}
+		onProgress(loaded, total, partial)
+		return nil, nil
+	})
 }
 
-// SessionManagerListAll is `SessionManager.listAll(sessionDir?)`: the sessions of every project (or of sessionDir), most recently modified first.
-func SessionManagerListAll(c Context, sessionDir *string) ([]SessionInfo, error) {
-	return graphStaticAsync[[]SessionInfo](c, "SessionManager", "listAll", sessionDir)
+// SessionManagerList is `SessionManager.list(cwd, sessionDir?, onProgress?)`: the sessions of a directory, most recently modified first. onProgress, when not nil, is called as session files are read. Cancelling the context's request cancels the listing, as Pi's AbortSignal does.
+func SessionManagerList(c Context, cwd string, sessionDir *string, onProgress SessionListProgress) ([]SessionInfo, error) {
+	return graphStaticAsync[[]SessionInfo](c, "SessionManager", "list", cwd, sessionDir, c.listProgressID(onProgress))
+}
+
+// SessionManagerListAll is `SessionManager.listAll(sessionDir?, onProgress?)`: the sessions of every project (or of sessionDir), most recently modified first.
+func SessionManagerListAll(c Context, sessionDir *string, onProgress SessionListProgress) ([]SessionInfo, error) {
+	return graphStaticAsync[[]SessionInfo](c, "SessionManager", "listAll", sessionDir, c.listProgressID(onProgress))
 }
 
 // Handle is the host's name for the log, which CreateAgentSession puts on the wire.

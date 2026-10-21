@@ -1,9 +1,65 @@
 """Pi's ``SettingsManager`` class (core/settings-manager.ts): the global and project settings an extension reads and writes, or in-memory settings it builds for a child session. The host owns the object; a SettingsManager passed to ``create_agent_session`` is the very settings object the child session reads. Every method is Pi's under its snake_case name; ``None`` is Pi's undefined."""
 from __future__ import annotations
 
+import queue
+import threading
 from typing import Any
 
-from ._graph import _GraphObject
+from ._graph import _GraphObject, _callback_id
+
+
+class _StorageCallback:
+    """The function the host runs for every ``with_lock`` of a storage: ``("begin", scope)`` starts the storage's ``with_lock`` and answers its current text, and ``("finish", result)`` gives its ``fn`` the host's result and waits for ``with_lock`` to return."""
+
+    def __init__(self, storage: Any) -> None:
+        self._storage = storage
+        self._pending: tuple[queue.Queue, queue.Queue, queue.Queue] | None = None
+        self._lock = threading.Lock()
+
+    def __call__(self, op: str, argument: Any = None) -> Any:
+        if op == "begin":
+            current: queue.Queue = queue.Queue()
+            finish: queue.Queue = queue.Queue()
+            done: queue.Queue = queue.Queue()
+
+            def fn(text: str | None) -> str | None:
+                current.put(text)
+                result = finish.get()
+                if result.get("error"):
+                    raise RuntimeError(result["error"])
+                return result["text"] if result.get("write") else None
+
+            def run() -> None:
+                try:
+                    self._storage.with_lock(argument, fn)
+                    done.put(None)
+                except BaseException as error:  # noqa: BLE001 - the host reports it as the storage's failure
+                    done.put(error)
+
+            threading.Thread(target=run, daemon=True).start()
+            while True:
+                try:
+                    text = current.get(timeout=0.01)
+                except queue.Empty:
+                    if not done.empty():
+                        error = done.get()
+                        raise error if error is not None else RuntimeError("settings storage: with_lock returned without calling fn")
+                    continue
+                with self._lock:
+                    self._pending = (current, finish, done)
+                return {"current": text}
+        if op == "finish":
+            with self._lock:
+                pending, self._pending = self._pending, None
+            if pending is None:
+                raise RuntimeError("settings storage callback: finish without begin")
+            _, finish, done = pending
+            finish.put(argument or {})
+            error = done.get()
+            if error is not None:
+                raise error
+            return None
+        raise RuntimeError(f"settings storage callback: unknown operation {op!r}")
 
 
 class SettingsManager(_GraphObject):
@@ -11,6 +67,11 @@ class SettingsManager(_GraphObject):
     def create(cls, context: Any, cwd: str, agent_dir: str | None = None, options: dict[str, Any] | None = None) -> "SettingsManager":
         """``SettingsManager.create(cwd, agentDir = getAgentDir(), options = {})``: settings loaded from the files of ``agent_dir`` (global) and ``cwd`` (project). ``options`` is Pi's SettingsManagerCreateOptions (``projectTrusted``). ``None`` for ``agent_dir`` is the host's agent directory."""
         return cls(context, "SettingsManager", "create", cwd, agent_dir, options)
+
+    @classmethod
+    def from_storage(cls, context: Any, storage: Any, options: dict[str, Any] | None = None) -> "SettingsManager":
+        """``SettingsManager.fromStorage(storage, options = {})``: settings kept by ``storage``, an object of this process with ``with_lock(scope, fn)`` that the host calls back whenever the manager reads or writes a scope. ``with_lock`` runs ``fn(current)`` on the scope's current text (``None`` when there is none) while it holds its lock; ``fn`` returns the text to store or ``None``, and raises for a settings file that does not parse, which ``with_lock`` lets propagate."""
+        return cls(context, "SettingsManager", "fromStorage", {"withLock": _callback_id(context, _StorageCallback(storage))}, options)
 
     @classmethod
     def in_memory(cls, context: Any, settings: dict[str, Any] | None = None, options: dict[str, Any] | None = None) -> "SettingsManager":

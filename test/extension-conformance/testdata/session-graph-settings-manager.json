@@ -986,6 +986,74 @@
 		"projectModel": "sonnet",
 		"trusted": true
 	},
+	"storage": {
+		"broken": [
+			{
+				"hasMessage": true,
+				"noPath": true,
+				"scope": "global"
+			}
+		],
+		"failing": [
+			{
+				"message": "disk full",
+				"scope": "global"
+			},
+			{
+				"message": "disk full",
+				"scope": "project"
+			}
+		],
+		"loaded": {
+			"calls": [
+				"global:text",
+				"project:none"
+			],
+			"errors": 0,
+			"quiet": true,
+			"theme": "dark"
+		},
+		"projectWrote": {
+			"calls": [
+				"project:none",
+				"project:write"
+			],
+			"paths": [
+				"./e"
+			],
+			"project": {
+				"extensions": [
+					"./e"
+				]
+			}
+		},
+		"reloaded": {
+			"calls": [
+				"global:text",
+				"project:none"
+			],
+			"theme": "solarized"
+		},
+		"untrusted": {
+			"calls": [
+				"global:text"
+			],
+			"theme": "solarized",
+			"trusted": false
+		},
+		"wrote": {
+			"calls": [
+				"global:text",
+				"global:write"
+			],
+			"global": {
+				"quietStartup": true,
+				"theme": "light"
+			},
+			"project": true,
+			"theme": "light"
+		}
+	},
 	"untrustedMemory": {
 		"trusted": false,
 		"write": "error: refusing to write project settings"

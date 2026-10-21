@@ -148,9 +148,18 @@ fn script(ctx: &Context, args: &Value) -> io::Result<Value> {
         "inDir": dir_of(text(&forked.get_session_file()?)) == fork_dir, "shape": shape(&forked.get_entries()?),
     }));
 
-    r.insert("list".into(), infos(SessionManager::list(ctx, cwd, Some(dir))?));
-    r.insert("listAll".into(), infos(SessionManager::list_all(ctx, Some(dir))?));
-    r.insert("listFork".into(), infos(SessionManager::list(ctx, other_dir, Some(&fork_dir))?));
+    r.insert("list".into(), infos(SessionManager::list(ctx, cwd, Some(dir), None)?));
+    let list_progress = std::sync::Arc::new(std::sync::Mutex::new(Vec::<(u64, u64)>::new()));
+    let list_all_progress = std::sync::Arc::new(std::sync::Mutex::new(Vec::<(u64, u64)>::new()));
+    let (list_sink, list_all_sink) = (list_progress.clone(), list_all_progress.clone());
+    r.insert("listAll".into(), infos(SessionManager::list_all(ctx, Some(dir), Some(std::sync::Arc::new(move |loaded, total, _| list_all_sink.lock().unwrap().push((loaded, total)))))?));
+    infos(SessionManager::list(ctx, cwd, Some(dir), Some(std::sync::Arc::new(move |loaded, total, _| list_sink.lock().unwrap().push((loaded, total)))))?);
+    let last = |calls: &std::sync::Mutex<Vec<(u64, u64)>>| {
+        let calls = calls.lock().unwrap();
+        json!({"calls": !calls.is_empty(), "last": calls.last().map(|(loaded, total)| json!([loaded, total]))})
+    };
+    r.insert("progress".into(), json!({"list": last(&list_progress), "listAll": last(&list_all_progress)}));
+    r.insert("listFork".into(), infos(SessionManager::list(ctx, other_dir, Some(&fork_dir), None)?));
     let found = SessionManager::find_by_id(ctx, cwd, fixed, Some(dir))?;
     r.insert("find".into(), json!({"found": found.as_deref() == Some(file.as_str()), "missing": SessionManager::find_by_id(ctx, cwd, "nope", Some(dir))?.is_none()}));
 
@@ -245,6 +254,62 @@ fn read_all(s: &SettingsManager) -> io::Result<Value> {
         "getProjectSettings" => get_project_settings,
         "isProjectTrusted" => is_project_trusted,
     )
+}
+
+struct MemoryStorage {
+    store: std::sync::Mutex<std::collections::HashMap<String, String>>,
+    calls: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    fail: bool,
+}
+
+impl pig_sdk::SettingsStorage for MemoryStorage {
+    fn with_lock(&self, scope: &str, f: &mut dyn FnMut(Option<String>) -> Result<Option<String>, String>) -> Result<(), String> {
+        if self.fail {
+            return Err("disk full".into());
+        }
+        let current = self.store.lock().unwrap().get(scope).cloned();
+        self.calls.lock().unwrap().push(format!("{scope}:{}", if current.is_none() { "none" } else { "text" }));
+        if let Some(next) = f(current)? {
+            self.calls.lock().unwrap().push(format!("{scope}:write"));
+            self.store.lock().unwrap().insert(scope.to_string(), next);
+        }
+        Ok(())
+    }
+}
+
+fn parsed_text(text: Option<String>) -> Value {
+    text.map_or(Value::Null, |text| serde_json::from_str(&text).unwrap_or(Value::Null))
+}
+
+fn storage_report(ctx: &Context) -> io::Result<Value> {
+    let calls = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let storage = std::sync::Arc::new(MemoryStorage { store: std::sync::Mutex::new([("global".to_string(), r#"{"theme":"dark","quietStartup":true}"#.to_string())].into()), calls: calls.clone(), fail: false });
+    let snapshot = || calls.lock().unwrap().clone();
+    let read = |scope: &str| storage.store.lock().unwrap().get(scope).cloned();
+    let mut out = serde_json::Map::new();
+    let manager = SettingsManager::from_storage(ctx, storage.clone(), None)?;
+    out.insert("loaded".into(), json!({"theme": manager.get_theme()?, "quiet": manager.get_quiet_startup()?, "calls": snapshot(), "errors": manager.drain_errors()?.len()}));
+    calls.lock().unwrap().clear();
+    manager.set_theme("light")?;
+    manager.flush()?;
+    out.insert("wrote".into(), json!({"calls": snapshot(), "global": parsed_text(read("global")), "project": read("project").is_none(), "theme": manager.get_theme()?}));
+    storage.store.lock().unwrap().insert("global".into(), r#"{"theme":"solarized"}"#.into());
+    calls.lock().unwrap().clear();
+    manager.reload()?;
+    out.insert("reloaded".into(), json!({"theme": manager.get_theme()?, "calls": snapshot()}));
+    calls.lock().unwrap().clear();
+    manager.set_project_extension_paths(&["./e"])?;
+    manager.flush()?;
+    out.insert("projectWrote".into(), json!({"project": parsed_text(read("project")), "calls": snapshot(), "paths": manager.get_project_settings()?.get("extensions").cloned().unwrap_or(Value::Null)}));
+    calls.lock().unwrap().clear();
+    let untrusted = SettingsManager::from_storage(ctx, storage.clone(), Some(&SettingsManagerCreateOptions { project_trusted: Some(false) }))?;
+    out.insert("untrusted".into(), json!({"calls": snapshot(), "theme": untrusted.get_theme()?, "trusted": untrusted.is_project_trusted()?}));
+    storage.store.lock().unwrap().insert("global".into(), "{bad".into());
+    let broken = SettingsManager::from_storage(ctx, storage.clone(), None)?;
+    out.insert("broken".into(), json!(broken.drain_errors()?.iter().map(|entry| json!({"scope": entry.scope, "noPath": entry.path.is_none(), "hasMessage": !entry.error.is_empty()})).collect::<Vec<_>>()));
+    let failing = SettingsManager::from_storage(ctx, std::sync::Arc::new(MemoryStorage { store: Default::default(), calls: Default::default(), fail: true }), None)?;
+    out.insert("failing".into(), json!(failing.drain_errors()?.iter().map(|entry| json!({"scope": entry.scope, "message": entry.error})).collect::<Vec<_>>()));
+    Ok(Value::Object(out))
 }
 
 fn settings_script(ctx: &Context, args: &Value) -> io::Result<Value> {
@@ -367,6 +432,7 @@ fn settings_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     }));
     distrust.set_project_trusted(true)?;
     r.insert("retrusted".into(), json!({"trusted": distrust.is_project_trusted()?, "projectModel": distrust.get_project_settings()?["defaultModel"]}));
+    r.insert("storage".into(), storage_report(ctx)?);
     Ok(Value::Object(r))
 }
 

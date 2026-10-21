@@ -115,7 +115,10 @@ def script(ctx, args):
     }
 
     r["list"] = infos(SessionManager.list(ctx, cwd, directory))
-    r["listAll"] = infos(SessionManager.list_all(ctx, directory))
+    list_progress, list_all_progress = [], []
+    r["listAll"] = infos(SessionManager.list_all(ctx, directory, lambda loaded, total, partial: list_all_progress.append([loaded, total])))
+    infos(SessionManager.list(ctx, cwd, directory, lambda loaded, total, partial: list_progress.append([loaded, total])))
+    r["progress"] = {"list": {"calls": len(list_progress) > 0, "last": list_progress[-1] if list_progress else None}, "listAll": {"calls": len(list_all_progress) > 0, "last": list_all_progress[-1] if list_all_progress else None}}
     r["listFork"] = infos(SessionManager.list(ctx, other_dir, fork_dir))
     found = SessionManager.find_by_id(ctx, cwd, fixed, directory)
     r["find"] = {"found": found == file, "missing": SessionManager.find_by_id(ctx, cwd, "nope", directory) is None}
@@ -207,6 +210,54 @@ def read_all(s):
         "isProjectTrusted": s.is_project_trusted(),
     }
 
+
+
+class MemoryStorage:
+    def __init__(self, store, calls, fail=False):
+        self.store, self.calls, self.fail = store, calls, fail
+
+    def with_lock(self, scope, fn):
+        if self.fail:
+            raise RuntimeError("disk full")
+        self.calls.append(f'{scope}:{"none" if self.store.get(scope) is None else "text"}')
+        nxt = fn(self.store.get(scope))
+        if nxt is not None:
+            self.calls.append(f"{scope}:write")
+            self.store[scope] = nxt
+
+
+def parsed_text(text):
+    return None if text is None else json.loads(text)
+
+
+def storage_report(ctx):
+    store = {"global": '{"theme":"dark","quietStartup":true}', "project": None}
+    calls = []
+    storage = MemoryStorage(store, calls)
+    out = {}
+    manager = SettingsManager.from_storage(ctx, storage)
+    out["loaded"] = {"theme": manager.get_theme(), "quiet": manager.get_quiet_startup(), "calls": list(calls), "errors": len(manager.drain_errors())}
+    calls.clear()
+    manager.set_theme("light")
+    manager.flush()
+    out["wrote"] = {"calls": list(calls), "global": parsed_text(store["global"]), "project": store["project"] is None, "theme": manager.get_theme()}
+    store["global"] = '{"theme":"solarized"}'
+    calls.clear()
+    manager.reload()
+    out["reloaded"] = {"theme": manager.get_theme(), "calls": list(calls)}
+    calls.clear()
+    manager.set_project_extension_paths(["./e"])
+    manager.flush()
+    out["projectWrote"] = {"project": parsed_text(store["project"]), "calls": list(calls), "paths": manager.get_project_settings().get("extensions")}
+    calls.clear()
+    untrusted = SettingsManager.from_storage(ctx, storage, {"projectTrusted": False})
+    out["untrusted"] = {"calls": list(calls), "theme": untrusted.get_theme(), "trusted": untrusted.is_project_trusted()}
+    store["global"] = "{bad"
+    broken = SettingsManager.from_storage(ctx, storage)
+    out["broken"] = [{"scope": entry["scope"], "noPath": entry.get("path") is None, "hasMessage": entry["error"] != ""} for entry in broken.drain_errors()]
+    failing = SettingsManager.from_storage(ctx, MemoryStorage({}, [], True))
+    out["failing"] = [{"scope": entry["scope"], "message": entry["error"]} for entry in failing.drain_errors()]
+    return out
 
 def settings_script(ctx, args):
     cwd, agent_dir, config_dir, broken_cwd = args["cwd"], args["agentDir"], args["configDir"], args["brokenCwd"]
@@ -326,6 +377,7 @@ def settings_script(ctx, args):
     }
     distrust.set_project_trusted(True)
     r["retrusted"] = {"trusted": distrust.is_project_trusted(), "projectModel": distrust.get_project_settings().get("defaultModel")}
+    r["storage"] = storage_report(ctx)
     return r
 
 

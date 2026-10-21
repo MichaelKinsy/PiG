@@ -25,7 +25,7 @@ func (*SessionGraph) New(ctx context.Context, scope subprocess.SessionGraphScope
 	case subprocess.SessionGraphSessionManager:
 		return icodingagent.NewGraphSessionManager(op, args)
 	case subprocess.SessionGraphSettingsManager:
-		return icodingagent.NewGraphSettingsManager(op, args)
+		return icodingagent.NewGraphSettingsManager(scope, op, args)
 	case subprocess.SessionGraphProjectTrustStore:
 		return icodingagent.NewGraphProjectTrustStore(op, args)
 	case subprocess.SessionGraphResourceLoader:
@@ -39,10 +39,10 @@ func (*SessionGraph) New(ctx context.Context, scope subprocess.SessionGraphScope
 }
 
 // Static implements subprocess.SessionGraphBackend.
-func (*SessionGraph) Static(ctx context.Context, kind, method string, args json.RawMessage) (any, error) {
+func (*SessionGraph) Static(ctx context.Context, scope subprocess.SessionGraphScope, kind, method string, args json.RawMessage) (any, error) {
 	switch kind {
 	case subprocess.SessionGraphSessionManager:
-		return icodingagent.GraphSessionManagerStatic(ctx, method, args)
+		return icodingagent.GraphSessionManagerStatic(ctx, scope, method, args)
 	case subprocess.SessionGraphProjectTrustStore:
 		return icodingagent.GraphProjectTrustStoreStatic(ctx, method, args)
 	}

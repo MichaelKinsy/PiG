@@ -1,9 +1,10 @@
 //! Pi's `SessionManager` class (core/session-manager.ts): an append-only session log an extension constructs, reads and appends to. The host owns the log; a `SessionManager` passed to `create_agent_session` is the very log the child session appends to. `ctx.session_manager()` is Pi's `ReadonlySessionManager` ([`crate::ReadonlySessionManager`]).
 
 use crate::context::Context;
-use crate::graph::{call_static, call_static_async, GraphObject};
+use crate::graph::{call_static, call_static_async, callback_id, GraphCallback, GraphObject};
 use serde_json::{json, Value};
 use std::io;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Pi's `NewSessionOptions`. `None` is Pi's undefined.
@@ -103,6 +104,19 @@ pub struct SessionManager {
 
 const KIND: &str = "SessionManager";
 
+/// Pi's `SessionListProgress`: `(loaded, total, partial)`.
+pub type ListProgress = Arc<dyn Fn(u64, u64, Value) + Send + Sync>;
+
+fn progress_id(context: &Context, on_progress: Option<ListProgress>) -> Value {
+    let callback: Option<GraphCallback> = on_progress.map(|progress| {
+        Arc::new(move |args: Vec<Value>| {
+            progress(args.first().and_then(Value::as_u64).unwrap_or(0), args.get(1).and_then(Value::as_u64).unwrap_or(0), args.get(2).cloned().unwrap_or(Value::Null));
+            Ok(Value::Null)
+        }) as GraphCallback
+    });
+    callback_id(context, callback)
+}
+
 impl SessionManager {
     fn construct(context: &Context, op: &str, args: Vec<Value>) -> io::Result<SessionManager> {
         Ok(SessionManager { object: GraphObject::construct(context, KIND, op, args)? })
@@ -142,14 +156,14 @@ impl SessionManager {
         Ok(call_static(context, KIND, "findById", vec![json!(cwd), json!(id), opt(session_dir)])?.as_str().map(str::to_string))
     }
 
-    /// `SessionManager.list(cwd, sessionDir?)`: the sessions of a directory, most recently modified first.
-    pub fn list(context: &Context, cwd: &str, session_dir: Option<&str>) -> io::Result<Vec<SessionInfo>> {
-        session_infos(call_static_async(context, KIND, "list", vec![json!(cwd), opt(session_dir)])?)
+    /// `SessionManager.list(cwd, sessionDir?, onProgress?)`: the sessions of a directory, most recently modified first. `on_progress(loaded, total, partial)` is called as session files are read; `partial` is the sessions read so far (Pi's SessionInfo as JSON) on the updates that carry them and `Null` on the others.
+    pub fn list(context: &Context, cwd: &str, session_dir: Option<&str>, on_progress: Option<ListProgress>) -> io::Result<Vec<SessionInfo>> {
+        session_infos(call_static_async(context, KIND, "list", vec![json!(cwd), opt(session_dir), progress_id(context, on_progress)])?)
     }
 
-    /// `SessionManager.listAll(sessionDir?)`: the sessions of every project (or of `session_dir`), most recently modified first.
-    pub fn list_all(context: &Context, session_dir: Option<&str>) -> io::Result<Vec<SessionInfo>> {
-        session_infos(call_static_async(context, KIND, "listAll", vec![opt(session_dir)])?)
+    /// `SessionManager.listAll(sessionDir?, onProgress?)`: the sessions of every project (or of `session_dir`), most recently modified first.
+    pub fn list_all(context: &Context, session_dir: Option<&str>, on_progress: Option<ListProgress>) -> io::Result<Vec<SessionInfo>> {
+        session_infos(call_static_async(context, KIND, "listAll", vec![opt(session_dir), progress_id(context, on_progress)])?)
     }
 
     /// The host's name for the log, which `create_agent_session` puts on the wire.

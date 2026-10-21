@@ -1,9 +1,11 @@
 //! Pi's `SettingsManager` class (core/settings-manager.ts): the global and project settings an extension reads and writes, or in-memory settings it builds for a child session. The host owns the object; a `SettingsManager` passed to `create_agent_session` is the very settings object the child session reads. Every method is Pi's under its snake_case name; `None` is Pi's undefined.
 
 use crate::context::Context;
-use crate::graph::GraphObject;
+use crate::graph::{callback_id, GraphCallback, GraphObject};
 use serde_json::{json, Value};
 use std::io;
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 
 /// Pi's `SettingsManagerCreateOptions`. `None` is Pi's undefined (true).
 #[derive(Debug, Clone, Default)]
@@ -18,6 +20,67 @@ impl SettingsManagerCreateOptions {
             None => json!({}),
         }
     }
+}
+
+/// Pi's `SettingsStorage`: the backend of [`SettingsManager::from_storage`]. `with_lock` runs `f` on the current text of the scope's settings (`"global"` or `"project"`; `None` when there is none) while it holds its lock. `f` returns the text to store, `None` to leave it, or an error (a settings file that does not parse); `with_lock` stores the text and returns the error `f` returned.
+pub trait SettingsStorage: Send + Sync + 'static {
+    fn with_lock(&self, scope: &str, f: &mut dyn FnMut(Option<String>) -> Result<Option<String>, String>) -> Result<(), String>;
+}
+
+/// One `with_lock` of the extension's storage that the host drives in two calls.
+struct PendingLock {
+    finish: mpsc::Sender<Result<Option<String>, String>>,
+    done: mpsc::Receiver<Result<(), String>>,
+}
+
+/// The function the host runs for every `with_lock`: `["begin", scope]` starts the storage's `with_lock` and answers its current text, and `["finish", result]` gives its `f` the host's result and waits for `with_lock` to return.
+fn storage_callback(storage: Arc<dyn SettingsStorage>) -> GraphCallback {
+    let pending: Arc<Mutex<Option<PendingLock>>> = Arc::new(Mutex::new(None));
+    Arc::new(move |args: Vec<Value>| {
+        match args.first().and_then(Value::as_str).unwrap_or_default() {
+            "begin" => {
+                let scope = args.get(1).and_then(Value::as_str).unwrap_or_default().to_string();
+                let (current_tx, current_rx) = mpsc::channel::<Option<String>>();
+                let (finish_tx, finish_rx) = mpsc::channel::<Result<Option<String>, String>>();
+                let (done_tx, done_rx) = mpsc::channel::<Result<(), String>>();
+                let storage = storage.clone();
+                std::thread::spawn(move || {
+                    let outcome = storage.with_lock(&scope, &mut |current| {
+                        let _ = current_tx.send(current);
+                        finish_rx.recv().unwrap_or_else(|_| Err("the host closed the storage lock".into()))
+                    });
+                    let _ = done_tx.send(outcome);
+                });
+                loop {
+                    match current_rx.recv_timeout(std::time::Duration::from_millis(10)) {
+                        Ok(current) => {
+                            *pending.lock().unwrap() = Some(PendingLock { finish: finish_tx, done: done_rx });
+                            return Ok(json!({"current": current}));
+                        }
+                        Err(_) => {
+                            if let Ok(outcome) = done_rx.try_recv() {
+                                return Err(outcome.err().unwrap_or_else(|| "settings storage: with_lock returned without calling f".into()));
+                            }
+                        }
+                    }
+                }
+            }
+            "finish" => {
+                let Some(lock) = pending.lock().unwrap().take() else { return Err("settings storage callback: finish without begin".into()) };
+                let result = args.get(1).cloned().unwrap_or(Value::Null);
+                let message = if let Some(error) = result["error"].as_str().filter(|error| !error.is_empty()) {
+                    Err(error.to_string())
+                } else if result["write"].as_bool() == Some(true) {
+                    Ok(Some(result["text"].as_str().unwrap_or_default().to_string()))
+                } else {
+                    Ok(None)
+                };
+                let _ = lock.finish.send(message);
+                lock.done.recv().unwrap_or_else(|_| Err("settings storage: with_lock ended".into())).map(|_| Value::Null)
+            }
+            other => Err(format!("settings storage callback: unknown operation {other:?}")),
+        }
+    })
 }
 
 /// Pi's `SettingsError`: a failure to load or write one scope's settings file.
@@ -64,6 +127,12 @@ impl SettingsManager {
     pub fn in_memory(context: &Context, settings: Option<Value>, options: Option<&SettingsManagerCreateOptions>) -> io::Result<SettingsManager> {
         let object = GraphObject::construct(context, "SettingsManager", "inMemory", vec![settings.unwrap_or_else(|| json!({})), SettingsManagerCreateOptions::to_value(options)])?;
         Ok(SettingsManager { object })
+    }
+
+    /// `SettingsManager.fromStorage(storage, options = {})`: settings kept by `storage`, an object of this process the host calls back whenever the manager reads or writes a scope.
+    pub fn from_storage(context: &Context, storage: Arc<dyn SettingsStorage>, options: Option<&SettingsManagerCreateOptions>) -> io::Result<SettingsManager> {
+        let with_lock = callback_id(context, Some(storage_callback(storage)));
+        Ok(SettingsManager { object: GraphObject::construct(context, "SettingsManager", "fromStorage", vec![json!({"withLock": with_lock}), SettingsManagerCreateOptions::to_value(options)])? })
     }
 
     /// The host's name for the settings, which `create_agent_session` puts on the wire.
