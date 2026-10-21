@@ -54,7 +54,7 @@ func TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession(t *testing.T) {
 		t.Fatalf("startup load: %v", err)
 	}
 	if refreshes != 0 {
-		t.Fatalf("startup load refreshed the Session %d times, want 0 (refreshTools is a no-op while a factory runs)", refreshes)
+		t.Errorf("startup load refreshed the Session %d times, want 0 (refreshTools is a no-op while a factory runs)", refreshes)
 	}
 
 	// The reload: the same path loads again, which retires the first load's API, then another extension registers a tool.
@@ -69,7 +69,7 @@ func TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession(t *testing.T) {
 		t.Fatalf("reload of second: %v", err)
 	}
 	if refreshes != 0 {
-		t.Fatalf("reload refreshed the bound Session %d times while factories ran, want 0", refreshes)
+		t.Errorf("reload refreshed the bound Session %d times while factories ran, want 0", refreshes)
 	}
 }
 
