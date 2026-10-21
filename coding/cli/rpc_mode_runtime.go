@@ -24,6 +24,8 @@ type rpcModeSession struct {
 	published atomic.Pointer[headlessCommandCatalog]
 	// join counts the extension commands of this Session's extension host whose responses are not written.
 	join atomic.Pointer[rpcCommandJoin]
+	// writing is set once the first session_start of this Session is dispatched. Pi subscribes its stdout writer after `await session.bindExtensions()` (rpc-mode.ts:319-361), so what a session_start handler emits before then (entry_appended, session_info_changed) is not written. The second bind a replacement command runs finds it set, and its events are written.
+	writing atomic.Bool
 }
 
 // rpcStartup carries the startup-only inputs of the first RPC Session.
@@ -237,9 +239,9 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 
 	detach := h.bindExtensionActions(session, st, runner, current)
 
-	// Publish name changes before the setter response, including extension startup calls.
+	// Publish name changes before the setter response. The listener subscribes before session_start to keep its order among the Session's listeners, and writes only once session_start is dispatched (st.writing), as Pi's writer subscribes after bindExtensions.
 	unsubscribeName := session.Subscribe(func(event agent.AgentEvent) {
-		if name, ok := event.(agent.SessionInfoChangedEvent); ok && !h.detached.Load() {
+		if name, ok := event.(agent.SessionInfoChangedEvent); ok && st.writing.Load() && !h.detached.Load() {
 			h.writeRPC(rpcSessionInfoChanged(name.Name))
 		}
 	})
@@ -256,7 +258,11 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 	session.SetRetryContinuationScheduler(h.responses.after)
 	// The forwarder subscribes before session_start so no event of the Session is missed.
 	h.forward(session)
-	return h.announce(ctx, session, st, event)
+	if err := h.announce(ctx, session, st, event); err != nil {
+		return err
+	}
+	st.writing.Store(true)
+	return nil
 }
 
 // announce drives the extension session lifecycle in RPC mode. Upstream fires session_start via session.bindExtensions (rpc-mode.ts:318) after wiring the mode's host-action bindings, then lets extensions add resources.
@@ -470,7 +476,7 @@ func (h *rpcHost) bindExtensionActions(session *coding.Session, st *rpcModeSessi
 					// upstream emits entry_appended for pi.appendEntry alone.
 					return nil
 				}
-				if h.detached.Load() {
+				if h.detached.Load() || !st.writing.Load() {
 					return nil
 				}
 				h.writeRPC(RPCEntryAppendedEvent{
