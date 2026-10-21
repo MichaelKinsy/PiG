@@ -255,6 +255,21 @@ func (m *InteractiveMode) wireInprocContextActions() {
 				}
 				return m.deliverUserMessage(content, deliverAs)
 			},
+			// upstream: agent-session.ts:3416-3426 (_bindExtensionCore sendMessage). The routing is the one the wire sendMessage action runs.
+			SendMessage: func(msg extension.CustomMessageRef, opts *extension.SendMessageOptions) error {
+				var options extension.SendMessageOptions
+				if opts != nil {
+					options = *opts
+				}
+				return m.sendExtensionMessage(msg, options)
+			},
+			// upstream: agent-session.ts:3416-3465 (_bindExtensionCore) binds these in every mode; the mode's bind replaces the Session's.
+			AppendEntry:      m.appendExtensionEntry,
+			SetSessionName:   m.setExtensionSessionName,
+			GetSessionName:   m.extensionSessionName,
+			SetModel:         m.setExtensionModel,
+			GetThinkingLevel: m.extensionThinkingLevel,
+			SetThinkingLevel: m.setExtensionThinkingLevel,
 		},
 		actions,
 		nil,
@@ -538,20 +553,8 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	})
 	b.SetHostAction("setActiveTools", m.setActiveToolsByName)
 	b.SetHostAction("refreshTools", func() error { return m.refreshSessionTools(true) })
-	b.SetHostAction("getThinkingLevel", func() string {
-		return string(m.agent.ThinkingLevel())
-	})
-	b.SetHostAction("setThinkingLevel", func(level string) {
-		if m.opts.SessionHandle != nil {
-			if err := m.opts.SessionHandle.SetThinkingLevel(ai.ModelThinkingLevel(level)); err != nil {
-				m.runOnMain(m.runCtx, func() { m.showError(err.Error()) })
-				return
-			}
-		} else {
-			m.agent.SetThinkingLevel(ai.ClampThinkingLevel(m.agent.Model(), ai.ModelThinkingLevel(level)))
-		}
-		m.runOnMain(m.runCtx, m.refreshThinkingLevel)
-	})
+	b.SetHostAction("getThinkingLevel", func() string { return string(m.extensionThinkingLevel()) })
+	b.SetHostAction("setThinkingLevel", func(level string) { m.setExtensionThinkingLevel(ai.ModelThinkingLevel(level)) })
 	b.SetHostAction("isIdle", m.extensionIsIdle)
 	b.SetHostAction("getSignal", m.extensionSignal)
 	b.SetHostAction("isProjectTrusted", func() bool { return m.projectTrusted() })
@@ -610,29 +613,9 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		if err != nil {
 			return false, err
 		}
-		// A Session answers the action itself: false without configured credentials, and it emits model_select only for a changed model (agent-session.ts:3343-3347, 2372-2384).
-		if m.opts.SessionHandle != nil {
-			switched, err := m.opts.SessionHandle.ExtensionSetModel(ctx, newModel)
-			if err != nil || !switched {
-				return false, err
-			}
-		} else if m.agent != nil {
-			m.agent.SetModel(newModel)
-		}
-		m.opts.Model = newModel
-		if m.statusLine != nil {
-			m.statusLine.SetModel(newModel)
-		}
-		// Host actions run off the owner loop, which owns the editor.
-		m.runOnMain(m.runCtx, m.refreshThinkingLevel)
-		return true, nil
+		return m.switchExtensionModel(ctx, newModel)
 	})
-	b.SetHostAction("getSessionName", func() string {
-		if m.currentSession() != nil {
-			return m.currentSession().GetSessionName()
-		}
-		return ""
-	})
+	b.SetHostAction("getSessionName", m.extensionSessionName)
 	b.SetHostAction("getSessionID", func() string {
 		if m.currentSession() != nil {
 			return m.currentSession().ID()
@@ -696,28 +679,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		}
 		return m.newRunner.Runtime().SetLabel(entryID, value)
 	})
-	b.SetHostAction("setSessionName", func(name string) error {
-		if m.currentSession() == nil {
-			return fmt.Errorf("session not available")
-		}
-		if m.opts.SessionHandle != nil {
-			if err := m.opts.SessionHandle.SetSessionName(name); err != nil {
-				return err
-			}
-		} else {
-			_, current, err := m.currentSession().AppendSessionInfoName(name)
-			if err != nil {
-				return err
-			}
-			emitSessionInfoChanged(m.newRunner, current)
-		}
-		name = m.currentSession().GetSessionName()
-		if m.statusLine != nil {
-			m.statusLine.SetName(name)
-		}
-		tui.SetTerminalTitle(tui.BuildTerminalTitle(name, m.opts.CWD))
-		return nil
-	})
+	b.SetHostAction("setSessionName", m.setExtensionSessionName)
 	b.SetHostAction("sendMessage", func(msg extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
 		return m.sendExtensionMessage(msg, extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)})
 	})
