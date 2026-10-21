@@ -353,6 +353,7 @@ fn main() {
         "frontmatter": frontmatter_report(pig_sdk::parse_frontmatter("---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n")),
         "error": frontmatter_report(pig_sdk::parse_frontmatter("---\na: [\n---\nx")),
         "date": date_report(pig_sdk::parse_date("2020-01-02T03:04:05.678Z")),
+        "strip": match pig_sdk::strip_frontmatter("---\nz: 1\n---\nbody text\n") { Ok(body) => json!({"body": body}), Err(_) => json!({"error": true}) },
     });
     ext.command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", |ctx, args| {
         let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
@@ -373,11 +374,25 @@ fn main() {
         // The messages stay JSON text, so an unpaired surrogate escape reaches serialize_conversation_json as the unit it is.
         let case: std::collections::HashMap<String, Box<serde_json::value::RawValue>> = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
         let messages = case.get("messages").map(|messages| messages.get()).unwrap_or("[]");
-        let out = match pig_sdk::serialize_conversation_json(messages) {
+        // A conversation a serde_json::Value can hold runs through the typed serialize_conversation; one with an unpaired surrogate, which a Value refuses, through the JSON-text form. Both answer Pi's text.
+        let exact = pig_sdk::serialize_conversation_json(messages);
+        // A conversation a serde_json::Value can hold also runs through the typed serialize_conversation: it must fail where the JSON-text form fails and, where both succeed, give the same text with each unpaired unit written as U+FFFD (a String cannot hold one).
+        let out = match (&exact, serde_json::from_str::<Vec<serde_json::Value>>(messages)) {
+            (Ok(text), Ok(typed)) => match pig_sdk::serialize_conversation(&typed) {
+                Ok(lossy) if lossy == text.to_string_lossy() => None,
+                _ => Some("{\"error\":\"typed serialize_conversation differs from serialize_conversation_json\"}".to_string()),
+            },
+            (Err(_), Ok(typed)) => match pig_sdk::serialize_conversation(&typed) {
+                Err(_) => None,
+                Ok(_) => Some("{\"error\":\"typed serialize_conversation succeeded where serialize_conversation_json failed\"}".to_string()),
+            },
+            _ => None,
+        };
+        let out = out.unwrap_or_else(|| match exact {
             // A JsString serializes as a JSON string that keeps an unpaired surrogate as its escape; a serde_json::Value could not hold it.
             Ok(text) => format!("{{\"result\":{}}}", serde_json::to_string(&text).unwrap_or_default()),
             Err(_) => "{\"error\":true}".to_string(),
-        };
+        });
         ctx.notify(&format!("serialize:{out}:end"), "info");
         CommandResult::Ok
     });
@@ -535,6 +550,7 @@ fn main() {
                 let (text, was) = pig_sdk::truncate_line(content, limit("maxChars").unwrap_or(pig_sdk::GREP_MAX_LINE_LENGTH));
                 json!({"text": text, "wasTruncated": was})
             }
+            "limits" => json!({"maxLines": pig_sdk::DEFAULT_MAX_LINES, "maxBytes": pig_sdk::DEFAULT_MAX_BYTES}),
             _ => json!({"text": pig_sdk::format_size(limit("bytes").unwrap_or(0))}),
         };
         ctx.notify(&format!("truncate:{result}:end"), "info");
@@ -833,6 +849,7 @@ fn main() {
                 "entry":s.get_entry("one")?, "missing":s.get_entry("missing")?, "label":s.get_label("one")?,
                 "entries":s.get_entries()?, "branch":s.get_branch(Some("one"))?, "tree":s.get_tree()?,
                 "contextEntries":s.build_context_entries()?, "projection":s.build_session_projection()?,
+                "persisted":s.is_persisted()?, "usesDefaultDir":s.uses_default_session_dir()?, "children":s.get_children(Some("one"))?, "sessionContext":s.build_session_context()?,
                 "models":r.get_all()?, "available":r.get_available()?, "status":r.get_provider_auth_status("registry-probe")?,
                 "display":r.get_provider_display_name("registry-probe")?, "error":r.get_error()?,
                 "config":r.get_registered_provider_config("registry-probe")?, "ids":r.get_registered_provider_ids()?,
@@ -2979,6 +2996,19 @@ impl EditorComponent for ConformanceEditor {
             return self.base.set_text(text).map_err(|e| e.to_string());
         }
         self.base.set_text(&JsString::from(text.to_string_lossy().to_uppercase())).map_err(|e| e.to_string())
+    }
+    // insert_text_at_cursor wraps the host's text in angle brackets and add_to_history prefixes it, unless it starts with "raw:" (TestEditorComponentOverridesReachSuper).
+    fn insert_text_at_cursor(&mut self, text: &JsString) -> Result<(), String> {
+        if text.to_string_lossy().starts_with("raw:") {
+            return self.base.insert_text_at_cursor(text).map_err(|e| e.to_string());
+        }
+        self.base.insert_text_at_cursor(&JsString::from(format!("<{}>", text.to_string_lossy()))).map_err(|e| e.to_string())
+    }
+    fn add_to_history(&mut self, text: &JsString) -> Result<(), String> {
+        if text.to_string_lossy().starts_with("raw:") {
+            return self.base.add_to_history(text).map_err(|e| e.to_string());
+        }
+        self.base.add_to_history(&JsString::from(format!("history:{}", text.to_string_lossy()))).map_err(|e| e.to_string())
     }
     fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
         let mut rows = vec![JsString::from("[custom editor]")];
