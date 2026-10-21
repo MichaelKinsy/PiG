@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 618 | 607 | 608 |
+| `pi-coding-agent` | 920 | 305 | 910 | 580 | 569 | 570 |
 | `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -25,12 +25,12 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
-| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 483 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
+| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 369 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1065 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
 
-83 exports imported by 5 or more scanned packages have a gap.
+82 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -46,7 +46,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: createAgentSession` | 20 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: Editor` | 20 | Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: buildSessionContext` | 19 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
-| `pi-coding-agent: ModelRuntime` | 18 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getSettingsListTheme` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: isKeyRelease` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai/compat: clampThinkingLevel` | 16 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
@@ -130,12 +129,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: CustomEditor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
 | `pi-coding-agent: DEFAULT_MAX_BYTES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxBytes |
 | `pi-coding-agent: DEFAULT_MAX_LINES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines |
-| `pi-coding-agent: DefaultPackageManager.remove` | python | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (the Python package manager fixture calls remove_and_persist only) |
-| `pi-coding-agent: DefaultResourceLoader.loadProjectTrustExtensions` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (it needs a project with trust-gated extensions the loader fixture does not build yet) |
-| `pi-coding-agent: ProjectTrustStore.set` | python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
-| `pi-coding-agent: SessionManager.appendCompaction` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
-| `pi-coding-agent: SessionManager.appendContextEdit` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
-| `pi-coding-agent: SessionManager.setSessionFile` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
 | `pi-coding-agent: serializeConversation` | rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls serialize_conversation |
 | `pi-coding-agent: stripFrontmatter` | python | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls strip_frontmatter |
 | `pi-tui: Editor.addToHistory` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.AddToHistory |
@@ -547,51 +540,51 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `ModelRegistry.streamSimple` | 0 | served | native:ModelRegistry.StreamSimple | native:ModelRegistry::stream_simple | native:ModelRegistry.stream_simple |
 | `ModelRegistry.unregisterProvider` | 0 | served | native:ModelRegistry.UnregisterProvider | native:ModelRegistry::unregister_provider | native:ModelRegistry.unregister_provider |
 | `ModelRegistry.unregisterVirtualModel` | 0 | served | native:ModelRegistry.UnregisterVirtualModel | native:ModelRegistry::unregister_virtual_model | native:ModelRegistry.unregister_virtual_model |
-| `ModelRuntime` | 18 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime` | 18 | served | native:ModelRuntime | native:ModelRuntime | native:ModelRuntime |
 | `ModelRuntime.cancelDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.checkAuth` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.classify` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.complete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.completeSimple` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.checkAuth` | 0 | served | native:ModelRuntime.CheckAuth | native:ModelRuntime::check_auth | native:ModelRuntime.check_auth |
+| `ModelRuntime.classify` | 0 | served | native:ModelRuntime.Classify | native:ModelRuntime::classify | native:ModelRuntime.classify |
+| `ModelRuntime.complete` | 0 | served | native:ModelRuntime.Complete | native:ModelRuntime::complete | native:ModelRuntime.complete |
+| `ModelRuntime.completeSimple` | 0 | served | native:ModelRuntime.CompleteSimple | native:ModelRuntime::complete_simple | native:ModelRuntime.complete_simple |
 | `ModelRuntime.fetchDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.generateImages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getAllAvailable` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getAllModels` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getAuth` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getAvailable` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getAvailableOfType` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getAvailableSnapshot` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getCompatibilityRequestConfig` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getError` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getModel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getModelOfType` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getModels` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getModelsOfType` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getPhysicalModel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.generateImages` | 0 | served | native:ModelRuntime.GenerateImages | native:ModelRuntime::generate_images | native:ModelRuntime.generate_images |
+| `ModelRuntime.getAllAvailable` | 0 | served | native:ModelRuntime.GetAllAvailable | native:ModelRuntime::get_all_available | native:ModelRuntime.get_all_available |
+| `ModelRuntime.getAllModels` | 0 | served | native:ModelRuntime.GetAllModels | native:ModelRuntime::get_all_models | native:ModelRuntime.get_all_models |
+| `ModelRuntime.getAuth` | 0 | served | native:ModelRuntime.GetAuth | native:ModelRuntime::get_auth | native:ModelRuntime.get_auth |
+| `ModelRuntime.getAvailable` | 0 | served | native:ModelRuntime.GetAvailable | native:ModelRuntime::get_available | native:ModelRuntime.get_available |
+| `ModelRuntime.getAvailableOfType` | 0 | served | native:ModelRuntime.GetAvailableOfType | native:ModelRuntime::get_available_of_type | native:ModelRuntime.get_available_of_type |
+| `ModelRuntime.getAvailableSnapshot` | 0 | served | native:ModelRuntime.GetAvailableSnapshot | native:ModelRuntime::get_available_snapshot | native:ModelRuntime.get_available_snapshot |
+| `ModelRuntime.getCompatibilityRequestConfig` | 0 | served | native:ModelRuntime.GetCompatibilityRequestConfig | native:ModelRuntime::get_compatibility_request_config | native:ModelRuntime.get_compatibility_request_config |
+| `ModelRuntime.getError` | 0 | served | native:ModelRuntime.GetError | native:ModelRuntime::get_error | native:ModelRuntime.get_error |
+| `ModelRuntime.getModel` | 0 | served | native:ModelRuntime.GetModel | native:ModelRuntime::get_model | native:ModelRuntime.get_model |
+| `ModelRuntime.getModelOfType` | 0 | served | native:ModelRuntime.GetModelOfType | native:ModelRuntime::get_model_of_type | native:ModelRuntime.get_model_of_type |
+| `ModelRuntime.getModels` | 0 | served | native:ModelRuntime.GetModels | native:ModelRuntime::get_models | native:ModelRuntime.get_models |
+| `ModelRuntime.getModelsOfType` | 0 | served | native:ModelRuntime.GetModelsOfType | native:ModelRuntime::get_models_of_type | native:ModelRuntime.get_models_of_type |
+| `ModelRuntime.getPhysicalModel` | 0 | served | native:ModelRuntime.GetPhysicalModel | native:ModelRuntime::get_physical_model | native:ModelRuntime.get_physical_model |
 | `ModelRuntime.getProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getProviderAuthStatus` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.getProviderAuthStatus` | 0 | served | native:ModelRuntime.GetProviderAuthStatus | native:ModelRuntime::get_provider_auth_status | native:ModelRuntime.get_provider_auth_status |
 | `ModelRuntime.getProviders` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelRuntime.getRegisteredNativeProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getRegisteredProviderConfig` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.getRegisteredProviderIds` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.hasConfiguredAuth` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.isUsingOAuth` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.isUsingSubscription` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.listCredentials` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.login` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.logout` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.refresh` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.getRegisteredProviderConfig` | 0 | served | native:ModelRuntime.GetRegisteredProviderConfig | native:ModelRuntime::get_registered_provider_config | native:ModelRuntime.get_registered_provider_config |
+| `ModelRuntime.getRegisteredProviderIds` | 0 | served | native:ModelRuntime.GetRegisteredProviderIDs | native:ModelRuntime::get_registered_provider_ids | native:ModelRuntime.get_registered_provider_ids |
+| `ModelRuntime.hasConfiguredAuth` | 0 | served | native:ModelRuntime.HasConfiguredAuth | native:ModelRuntime::has_configured_auth | native:ModelRuntime.has_configured_auth |
+| `ModelRuntime.isUsingOAuth` | 0 | served | native:ModelRuntime.IsUsingOAuth | native:ModelRuntime::is_using_oauth | native:ModelRuntime.is_using_oauth |
+| `ModelRuntime.isUsingSubscription` | 0 | served | native:ModelRuntime.IsUsingSubscription | native:ModelRuntime::is_using_subscription | native:ModelRuntime.is_using_subscription |
+| `ModelRuntime.listCredentials` | 0 | served | native:ModelRuntime.ListCredentials | native:ModelRuntime::list_credentials | native:ModelRuntime.list_credentials |
+| `ModelRuntime.login` | 0 | served | native:ModelRuntime.Login | native:ModelRuntime::login | native:ModelRuntime.login |
+| `ModelRuntime.logout` | 0 | served | native:ModelRuntime.Logout | native:ModelRuntime::logout | native:ModelRuntime.logout |
+| `ModelRuntime.refresh` | 0 | served | native:ModelRuntime.Refresh | native:ModelRuntime::refresh | native:ModelRuntime.refresh |
 | `ModelRuntime.registerNativeProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.registerProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.registerVirtualModel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.removeRuntimeApiKey` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.resolveModel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.setRuntimeApiKey` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.stream` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.registerProvider` | 0 | served | native:ModelRuntime.RegisterProvider | native:ModelRuntime::register_provider | native:ModelRuntime.register_provider |
+| `ModelRuntime.registerVirtualModel` | 0 | served | native:ModelRuntime.RegisterVirtualModel | native:ModelRuntime::register_virtual_model | native:ModelRuntime.register_virtual_model |
+| `ModelRuntime.removeRuntimeApiKey` | 0 | served | native:ModelRuntime.RemoveRuntimeAPIKey | native:ModelRuntime::remove_runtime_api_key | native:ModelRuntime.remove_runtime_api_key |
+| `ModelRuntime.resolveModel` | 0 | served | native:ModelRuntime.ResolveModel | native:ModelRuntime::resolve_model | native:ModelRuntime.resolve_model |
+| `ModelRuntime.setRuntimeApiKey` | 0 | served | native:ModelRuntime.SetRuntimeAPIKey | native:ModelRuntime::set_runtime_api_key | native:ModelRuntime.set_runtime_api_key |
+| `ModelRuntime.stream` | 0 | served | native:ModelRuntime.Stream | native:ModelRuntime::stream | native:ModelRuntime.stream |
 | `ModelRuntime.streamDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.streamSimple` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.unregisterProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.unregisterVirtualModel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.streamSimple` | 0 | served | native:ModelRuntime.StreamSimple | native:ModelRuntime::stream_simple | native:ModelRuntime.stream_simple |
+| `ModelRuntime.unregisterProvider` | 0 | served | native:ModelRuntime.UnregisterProvider | native:ModelRuntime::unregister_provider | native:ModelRuntime.unregister_provider |
+| `ModelRuntime.unregisterVirtualModel` | 0 | served | native:ModelRuntime.UnregisterVirtualModel | native:ModelRuntime::unregister_virtual_model | native:ModelRuntime.unregister_virtual_model |
 | `ModelSelectorComponent` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ModelSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ModelSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |

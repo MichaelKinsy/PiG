@@ -123,6 +123,8 @@ func loaderScript(ctx sdk.Context, args map[string]any) map[string]any {
 		return true
 	}}))
 	r["trust"] = map[string]any{"calls": calls, "skills": len(ok(trusting.GetSkills()).Skills)}
+	bootstrap := ok(trusting.LoadProjectTrustExtensions())
+	r["projectTrust"] = map[string]any{"extensions": len(bootstrap.Extensions), "errors": len(bootstrap.Errors)}
 	_ = strings.TrimSpace
 	return r
 }

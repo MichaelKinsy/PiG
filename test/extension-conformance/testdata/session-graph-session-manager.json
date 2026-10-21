@@ -19,6 +19,32 @@
 			"label\u003c1"
 		]
 	},
+	"compaction": {
+		"badReplacement": "error: must be null or contain",
+		"badSwitch": "error: not a valid",
+		"badTarget": "error: not found",
+		"cleared": null,
+		"details": {
+			"k": 1
+		},
+		"editType": "context_edit",
+		"firstKept": true,
+		"fromHook": null,
+		"leaf": true,
+		"replacement": {
+			"content": "edited"
+		},
+		"summary": "sum",
+		"switched": {
+			"count": 11,
+			"file": true,
+			"id": false,
+			"shape": false
+		},
+		"target": true,
+		"tokensBefore": 100,
+		"type": "compaction"
+	},
 	"context": {
 		"messages": 2,
 		"model": {

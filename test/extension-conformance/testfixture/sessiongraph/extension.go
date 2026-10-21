@@ -186,6 +186,27 @@ func script(ctx sdk.Context, args map[string]any) map[string]any {
 	missing := ok(sdk.SessionManagerFindByID(ctx, cwd, "nope", &dir))
 	r["find"] = map[string]any{"found": found != nil && *found == file, "missing": missing == nil}
 
+	compactionID := ok(m.AppendCompaction("sum", first, 100, map[string]any{"k": 1}, nil, nil))
+	compaction := ok(m.GetEntry(compactionID))
+	editID := ok(m.AppendContextEdit(first, map[string]any{"content": "edited"}))
+	edit := ok(m.GetEntry(editID))
+	clearID := ok(m.AppendContextEdit(first, nil))
+	reopened := ok(sdk.SessionManagerCreate(ctx, cwd, &dir, &sdk.NewSessionOptions{ID: ptr("reopen-1")}))
+	check(reopened.SetSessionFile(file))
+	reopenedFile := *ok(reopened.GetSessionFile())
+	_, badTarget := m.AppendContextEdit("nope", nil)
+	_, badReplacement := m.AppendContextEdit(first, map[string]any{"content": 5})
+	finalLeaf := ok(m.GetLeafID())
+	r["compaction"] = map[string]any{
+		"type": compaction["type"], "summary": compaction["summary"], "firstKept": compaction["firstKeptEntryId"] == first, "tokensBefore": compaction["tokensBefore"], "details": compaction["details"], "fromHook": compaction["fromHook"],
+		"editType": edit["type"], "replacement": edit["replacement"], "target": edit["targetId"] == first, "cleared": ok(m.GetEntry(clearID))["replacement"], "leaf": finalLeaf != nil && *finalLeaf == clearID,
+		"badTarget": failure(badTarget, "not found"), "badReplacement": failure(badReplacement, "must be null or contain"),
+		"switched": map[string]any{
+			"id": ok(reopened.GetSessionID()) == ok(m.GetSessionID()), "file": reopenedFile == file, "shape": strings.Join(shape(ok(reopened.GetEntries())), ",") == strings.Join(shape(ok(m.GetEntries())), ","), "count": ok(reopened.GetEntryCount()),
+		},
+		"badSwitch": failure(reopened.SetSessionFile(junk), "not a valid"),
+	}
+
 	bad := "bad id!"
 	_, badID := sdk.SessionManagerCreate(ctx, cwd, &dir, &sdk.NewSessionOptions{ID: &bad})
 	_, notSession := sdk.SessionManagerOpen(ctx, junk, nil, nil)

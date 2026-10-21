@@ -122,6 +122,21 @@ async function script({ cwd, dir, otherDir, junk }) {
   const found = SessionManager.findById(cwd, fixed, dir);
   r.find = { found: found === file, missing: SessionManager.findById(cwd, "nope", dir) === undefined };
 
+  const compactionId = m.appendCompaction("sum", first, 100, { k: 1 });
+  const compaction = m.getEntry(compactionId);
+  const editId = m.appendContextEdit(first, { content: "edited" });
+  const edit = m.getEntry(editId);
+  const clearId = m.appendContextEdit(first, null);
+  const switched = SessionManager.create(cwd, dir, { id: "reopen-1" });
+  switched.setSessionFile(file);
+  r.compaction = {
+    type: compaction.type, summary: compaction.summary, firstKept: compaction.firstKeptEntryId === first, tokensBefore: compaction.tokensBefore, details: orNull(compaction.details), fromHook: orNull(compaction.fromHook),
+    editType: edit.type, replacement: orNull(edit.replacement), target: edit.targetId === first, cleared: orNull(m.getEntry(clearId).replacement), leaf: m.getLeafId() === clearId,
+    badTarget: failure(() => m.appendContextEdit("nope", null), "not found"), badReplacement: failure(() => m.appendContextEdit(first, { content: 5 }), "must be null or contain"),
+    switched: { id: switched.getSessionId() === m.getSessionId(), file: switched.getSessionFile() === file, shape: shape(switched.getEntries()).join(",") === shape(m.getEntries()).join(","), count: switched.getEntries().length },
+    badSwitch: failure(() => switched.setSessionFile(junk), "not a valid"),
+  };
+
   r.errors = {
     badId: failure(() => SessionManager.create(cwd, dir, { id: "bad id!" }), "Session id must be"),
     notSession: failure(() => SessionManager.open(junk), "not a valid"),
@@ -459,6 +474,8 @@ async function loaderScript({ root, cwd, loaderAgentDir: agentDir }) {
   const trusting = new DefaultResourceLoader({ cwd, agentDir });
   await trusting.reload({ resolveProjectTrust: () => { calls++; return true; } });
   r.trust = { calls, skills: trusting.getSkills().skills.length };
+  const bootstrap = await trusting.loadProjectTrustExtensions();
+  r.projectTrust = { extensions: bootstrap.extensions.length, errors: bootstrap.errors.length };
   return r;
 }
 
@@ -482,6 +499,8 @@ async function packagesScript({ root, pmCwd: cwd, pmAgentDir: agentDir }) {
   const events = [];
   pm.setProgressCallback((event) => events.push(event.type + ":" + event.action));
   await pm.installAndPersist(pkg, { local: true });
+  await pm.remove(pkg, { local: true });
+  r.removeOnly = { list: pm.listConfiguredPackages().length };
   r.installed = { list: pm.listConfiguredPackages(), events: [...events] };
   r.removed = {
     project: await pm.removeAndPersist(pkg, { local: true }), list: pm.listConfiguredPackages().length,

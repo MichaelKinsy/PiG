@@ -116,42 +116,6 @@ lane = "SdkLedgerHygiene"
 row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines"
 
 [[unreached]]
-key = "pi-coding-agent: DefaultPackageManager.remove"
-sdks = ["python"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (the Python package manager fixture calls remove_and_persist only)"
-
-[[unreached]]
-key = "pi-coding-agent: DefaultResourceLoader.loadProjectTrustExtensions"
-sdks = ["go", "python", "rust"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (it needs a project with trust-gated extensions the loader fixture does not build yet)"
-
-[[unreached]]
-key = "pi-coding-agent: ProjectTrustStore.set"
-sdks = ["python", "rust"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.appendCompaction"
-sdks = ["go", "python", "rust"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.appendContextEdit"
-sdks = ["go", "python", "rust"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.setSessionFile"
-sdks = ["go", "python", "rust"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
-
-[[unreached]]
 key = "pi-coding-agent: serializeConversation"
 sdks = ["rust"]
 lane = "SdkLedgerHygiene"
@@ -192,6 +156,12 @@ key = "pi-tui: Editor.isShowingAutocomplete"
 sdks = ["go"]
 lane = "SdkLedgerHygiene"
 row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete"
+
+[[unreached]]
+key = "pi-coding-agent: ProjectTrustStore.set"
+sdks = ["python", "rust"]
+lane = "SdkSessionGraph"
+row = "the trust fixtures call ProjectTrustStore.set, but sdksurface's reach corpus does not see the embedded Python/Rust fixture; find why the reach check misses it, then delete this row"
 
 [[unreached]]
 key = "pi-tui: Editor.setPaddingX"

@@ -2,11 +2,11 @@
 	"added": {
 		"again": false,
 		"first": true,
-		"installed": "<root>/pkgs/localpkg",
+		"installed": "\u003croot\u003e/pkgs/localpkg",
 		"list": [
 			{
 				"filtered": false,
-				"installedPath": "<root>/pkgs/localpkg",
+				"installedPath": "\u003croot\u003e/pkgs/localpkg",
 				"scope": "user",
 				"source": "../pkgs/localpkg"
 			}
@@ -16,24 +16,26 @@
 		]
 	},
 	"initial": {
-		"installed": "<root>/pkgs/localpkg",
+		"installed": "\u003croot\u003e/pkgs/localpkg",
 		"list": 0
 	},
 	"installed": {
 		"events": [
 			"start:install",
-			"complete:install"
+			"complete:install",
+			"start:remove",
+			"complete:remove"
 		],
 		"list": [
 			{
 				"filtered": false,
-				"installedPath": "<root>/pkgs/localpkg",
+				"installedPath": "\u003croot\u003e/pkgs/localpkg",
 				"scope": "user",
 				"source": "../pkgs/localpkg"
 			},
 			{
 				"filtered": false,
-				"installedPath": "<root>/pkgs/localpkg",
+				"installedPath": "\u003croot\u003e/pkgs/localpkg",
 				"scope": "project",
 				"source": "../../pkgs/localpkg"
 			}
@@ -44,6 +46,9 @@
 			"npm:not-installed-pkg"
 		],
 		"skills": 0
+	},
+	"removeOnly": {
+		"list": 2
 	},
 	"removed": {
 		"list": 1,
@@ -74,7 +79,7 @@
 				"file": "SKILL.md",
 				"origin": "package",
 				"scope": "temporary",
-				"source": "<root>/pkgs/localpkg"
+				"source": "\u003croot\u003e/pkgs/localpkg"
 			}
 		],
 		"themes": 0

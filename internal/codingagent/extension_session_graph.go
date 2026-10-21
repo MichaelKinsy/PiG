@@ -501,12 +501,16 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 		var details any
 		details = orderedjson.Value(args.Raw(3))
 		fromHook, _ := args.Bool(4)
+		fromHookUndefined := !args.Has(4)
 		var usage *ai.Usage
 		if raw := args.Raw(5); raw != nil {
 			usage = new(ai.Usage)
 			if err := json.Unmarshal(raw, usage); err != nil {
 				return nil, err
 			}
+		}
+		if fromHookUndefined {
+			return session.AppendCompactionHookUndefined(summary, firstKept, tokensBefore, details, usage)
 		}
 		return session.AppendCompaction(summary, firstKept, tokensBefore, details, fromHook, usage)
 	case "appendCustomEntry":
@@ -538,6 +542,10 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 		targetID, err := args.String(0)
 		if err != nil {
 			return nil, err
+		}
+		if !args.Has(1) {
+			// A null replacement removes the content from the model context.
+			return session.AppendContextEdit(targetID, nil)
 		}
 		var replacement ContextEditReplacement
 		if err := args.Decode(1, &replacement); err != nil {

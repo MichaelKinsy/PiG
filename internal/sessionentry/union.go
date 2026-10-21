@@ -154,7 +154,16 @@ func (e CompactionEntry) MarshalJSON() ([]byte, error) {
 		return e.raw, nil
 	}
 	type fields CompactionEntry
-	return encodeFields(e.ParentID, fields(e))
+	out, err := encodeFields(e.ParentID, fields(e))
+	if err != nil || !e.FromHookAbsent {
+		return out, err
+	}
+	object, err := orderedjson.Parse(out)
+	if err != nil {
+		return nil, err
+	}
+	object.Delete("fromHook")
+	return object.MarshalJSON()
 }
 
 func (e BranchSummaryEntry) Base() SessionEntryBase { return e.withoutRecord() }

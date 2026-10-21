@@ -107,6 +107,10 @@
 		"systemPromptSource": "\u003croot\u003e/project/.pig/SYSTEM.md",
 		"themes": 0
 	},
+	"projectTrust": {
+		"errors": 0,
+		"extensions": 0
+	},
 	"trust": {
 		"calls": 1,
 		"skills": 1

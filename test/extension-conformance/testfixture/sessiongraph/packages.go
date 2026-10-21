@@ -29,6 +29,9 @@ func packagesScript(ctx sdk.Context, args map[string]any) map[string]any {
 	events := []string{}
 	check(pm.SetProgressCallback(func(event sdk.ProgressEvent) { events = append(events, event.Type+":"+event.Action) }))
 	check(pm.InstallAndPersist(pkg, true))
+	check(pm.Remove(pkg, true))
+	removeOnly := map[string]any{"list": len(ok(pm.ListConfiguredPackages()))}
+	r["removeOnly"] = removeOnly
 	r["installed"] = map[string]any{"list": ok(pm.ListConfiguredPackages()), "events": events}
 	r["removed"] = map[string]any{"project": ok(pm.RemoveAndPersist(pkg, true)), "list": len(ok(pm.ListConfiguredPackages())), "settings": ok(pm.RemoveSourceFromSettings(pkg, false)), "settingsAgain": ok(pm.RemoveSourceFromSettings(pkg, false))}
 

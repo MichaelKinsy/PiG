@@ -123,6 +123,21 @@ def script(ctx, args):
     found = SessionManager.find_by_id(ctx, cwd, fixed, directory)
     r["find"] = {"found": found == file, "missing": SessionManager.find_by_id(ctx, cwd, "nope", directory) is None}
 
+    compaction_id = m.append_compaction("sum", first, 100, {"k": 1})
+    compaction = m.get_entry(compaction_id)
+    edit_id = m.append_context_edit(first, {"content": "edited"})
+    edit = m.get_entry(edit_id)
+    clear_id = m.append_context_edit(first, None)
+    switched = SessionManager.create(ctx, cwd, directory, {"id": "reopen-1"})
+    switched.set_session_file(file)
+    r["compaction"] = {
+        "type": compaction["type"], "summary": compaction["summary"], "firstKept": compaction["firstKeptEntryId"] == first, "tokensBefore": compaction["tokensBefore"], "details": compaction.get("details"), "fromHook": compaction.get("fromHook"),
+        "editType": edit["type"], "replacement": edit.get("replacement"), "target": edit["targetId"] == first, "cleared": m.get_entry(clear_id).get("replacement"), "leaf": m.get_leaf_id() == clear_id,
+        "badTarget": failure(lambda: m.append_context_edit("nope", None), "not found"), "badReplacement": failure(lambda: m.append_context_edit(first, {"content": 5}), "must be null or contain"),
+        "switched": {"id": switched.get_session_id() == m.get_session_id(), "file": switched.get_session_file() == file, "shape": ",".join(shape(switched.get_entries())) == ",".join(shape(m.get_entries())), "count": len(switched.get_entries())},
+        "badSwitch": failure(lambda: switched.set_session_file(junk), "not a valid"),
+    }
+
     r["errors"] = {
         "badId": failure(lambda: SessionManager.create(ctx, cwd, directory, {"id": "bad id!"}), "Session id must be"),
         "notSession": failure(lambda: SessionManager.open(ctx, junk), "not a valid"),
@@ -391,7 +406,7 @@ def trust_script(ctx, args):
     r = {}
     store = ProjectTrustStore(ctx, agent_dir)
     r["initial"] = {"get": store.get(cwd), "entry": store.get_entry(cwd)}
-    store.set(cwd, True)
+    ProjectTrustStore.set(store, cwd, True)
     store.set(other, False)
     r["saved"] = {"get": store.get(cwd), "entry": store.get_entry(sub), "otherGet": store.get(other), "file": read_json(os.path.join(agent_dir, "trust.json"))}
     store.set_many([{"path": cwd, "decision": None}, {"path": anc, "decision": True}])
@@ -500,6 +515,8 @@ def loader_script(ctx, args):
     trusting = DefaultResourceLoader(ctx, cwd=cwd, agent_dir=agent_dir)
     trusting.reload({"resolveProjectTrust": resolve})
     r["trust"] = {"calls": calls["n"], "skills": len(trusting.get_skills()["skills"])}
+    bootstrap = trusting.load_project_trust_extensions()
+    r["projectTrust"] = {"extensions": len(bootstrap["extensions"]), "errors": len(bootstrap["errors"])}
     return r
 
 
@@ -530,7 +547,9 @@ def packages_script(ctx, args):
     events = []
     pm.set_progress_callback(lambda event: events.append(event["type"] + ":" + event["action"]))
     pm.install_and_persist(pkg, True)
-    r["installed"] = {"list": pm.list_configured_packages(), "events": events}
+    pm.remove(pkg, True)
+    r["removeOnly"] = {"list": len(pm.list_configured_packages())}
+    r["installed"] = {"list": pm.list_configured_packages(), "events": list(events)}
     r["removed"] = {
         "project": pm.remove_and_persist(pkg, True), "list": len(pm.list_configured_packages()),
         "settings": pm.remove_source_from_settings(pkg), "settingsAgain": pm.remove_source_from_settings(pkg),

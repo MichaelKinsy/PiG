@@ -168,6 +168,24 @@ fn script(ctx: &Context, args: &Value) -> io::Result<Value> {
         "notSession": failure(SessionManager::open(ctx, junk, None, None), "not a valid"),
         "noFork": failure(SessionManager::fork_from(ctx, &Path::new(dir).join("missing.jsonl").to_string_lossy(), cwd, Some(&fork_dir), None), "Cannot fork"),
     }));
+    let compaction_id = text(&m.append_compaction("sum", &first, 100, Some(json!({"k": 1})), None, None)?).to_string();
+    let compaction = m.get_entry(&compaction_id)?;
+    let edit_id = text(&m.append_context_edit(&first, json!({"content": "edited"}))?).to_string();
+    let edit = m.get_entry(&edit_id)?;
+    let clear_id = text(&m.append_context_edit(&first, Value::Null)?).to_string();
+    let switched = SessionManager::create(ctx, cwd, Some(dir), Some(&id("reopen-1")))?;
+    switched.set_session_file(&file)?;
+    r.insert("compaction".into(), json!({
+        "type": compaction["type"], "summary": compaction["summary"], "firstKept": compaction["firstKeptEntryId"] == json!(first), "tokensBefore": compaction["tokensBefore"], "details": compaction["details"], "fromHook": compaction["fromHook"],
+        "editType": edit["type"], "replacement": edit["replacement"], "target": edit["targetId"] == json!(first), "cleared": m.get_entry(&clear_id)?["replacement"], "leaf": m.get_leaf_id()? == json!(clear_id),
+        "badTarget": failure(m.append_context_edit("nope", Value::Null), "not found"), "badReplacement": failure(m.append_context_edit(&first, json!({"content": 5})), "must be null or contain"),
+        "switched": {
+            "id": switched.get_session_id()? == m.get_session_id()?, "file": switched.get_session_file()? == json!(file),
+            "shape": shape(&switched.get_entries()?).join(",") == shape(&m.get_entries()?).join(","), "count": switched.get_entry_count()?,
+        },
+        "badSwitch": failure(switched.set_session_file(junk), "not a valid"),
+    }));
+
     Ok(Value::Object(r))
 }
 
@@ -450,7 +468,7 @@ fn trust_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     let mut r = serde_json::Map::new();
     let store = ProjectTrustStore::new(ctx, agent_dir)?;
     r.insert("initial".into(), json!({"get": store.get(cwd)?, "entry": entry_value(store.get_entry(cwd)?)}));
-    store.set(cwd, Some(true))?;
+    ProjectTrustStore::set(&store, cwd, Some(true))?;
     store.set(other, Some(false))?;
     r.insert("saved".into(), json!({"get": store.get(cwd)?, "entry": entry_value(store.get_entry(&sub)?), "otherGet": store.get(other)?, "file": read_json(&trust_file)?}));
     store.set_many(&[ProjectTrustUpdate { path: cwd.into(), decision: None }, ProjectTrustUpdate { path: anc.clone(), decision: Some(true) }])?;
@@ -548,6 +566,8 @@ fn loader_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     let trusting = DefaultResourceLoader::new(ctx, options(cwd, agent_dir))?;
     trusting.reload(Some(std::sync::Arc::new(move |_| { counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst); true })))?;
     r.insert("trust".into(), json!({"calls": calls.load(std::sync::atomic::Ordering::SeqCst), "skills": trusting.get_skills()?["skills"].as_array().map_or(0, Vec::len)}));
+    let bootstrap = trusting.load_project_trust_extensions()?;
+    r.insert("projectTrust".into(), json!({"extensions": bootstrap["extensions"].as_array().map_or(0, Vec::len), "errors": bootstrap["errors"].as_array().map_or(0, Vec::len)}));
     Ok(Value::Object(r))
 }
 
@@ -574,6 +594,8 @@ fn packages_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     let sink = events.clone();
     pm.set_progress_callback(Some(std::sync::Arc::new(move |event| sink.lock().unwrap().push(format!("{}:{}", text(&event["type"]), text(&event["action"]))))))?;
     pm.install_and_persist(&pkg, true)?;
+    pm.remove(&pkg, true)?;
+    r.insert("removeOnly".into(), json!({"list": pm.list_configured_packages()?.as_array().map_or(0, Vec::len)}));
     r.insert("installed".into(), json!({"list": pm.list_configured_packages()?, "events": events.lock().unwrap().clone()}));
     r.insert("removed".into(), json!({
         "project": pm.remove_and_persist(&pkg, true)?, "list": pm.list_configured_packages()?.as_array().map_or(0, Vec::len),
