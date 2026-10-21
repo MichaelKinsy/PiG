@@ -129,7 +129,7 @@ func TestChildAgentSessionEndsWithItsConnection(t *testing.T) {
 	}
 	host.Shutdown("the test closes the extension's connection")
 	deadline := time.Now().Add(20 * time.Second)
-	for !(child.disposed.Load() && child.prompted.Load()) {
+	for !child.disposed.Load() || !child.prompted.Load() {
 		if time.Now().After(deadline) {
 			t.Fatalf("after the connection closed: disposed=%v, prompt returned=%v; the host must end the run and dispose the session", child.disposed.Load(), child.prompted.Load())
 		}
