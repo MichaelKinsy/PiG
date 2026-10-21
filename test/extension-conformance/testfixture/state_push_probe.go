@@ -49,9 +49,9 @@ func registerStatePushProbe(ext *sdk.Extension) {
 func statePushReader(ctx sdk.Context, kind string) (func() string, error) {
 	switch {
 	case kind == "model":
-		return func() string { return ctx.Model() }, nil
+		return ctx.Model, nil
 	case kind == "session-name":
-		return func() string { return ctx.SessionName() }, nil
+		return ctx.SessionName, nil
 	case kind == "theme":
 		return func() string { return ctx.UITheme().Name }, nil
 	case strings.HasPrefix(kind, "settings:"):
