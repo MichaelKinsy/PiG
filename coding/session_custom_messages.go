@@ -180,12 +180,13 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err = s.runPostAgentRuns(ctx, messages, err)
+	// The run's prompt options end before the held messages flush, as in runPreparedPrompt.
+	s.finishRunPrompt(prepared)
 	if flushErr := s.flushPendingBashLocked(); flushErr != nil {
 		err = errors.Join(err, flushErr)
 	} else {
 		err = errors.Join(err, s.flushPendingCustomMessages())
 	}
-	s.finishRunPrompt(prepared)
 	// agent_settled handlers run without the Session lock (see runPreparedPrompt).
 	s.mu.Unlock()
 	defer s.mu.Lock()

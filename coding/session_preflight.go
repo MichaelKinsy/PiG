@@ -202,12 +202,13 @@ func (s *Session) runPreparedPrompt(ctx context.Context, p *PreparedPrompt, run 
 		return run()
 	}()
 	messages, err = s.runPostAgentRuns(ctx, messages, err)
+	// The run's prompt options end before the held bash and custom messages flush, so their handlers read the base prompt (agent-session.ts:1874-1881).
+	s.finishRunPrompt(p)
 	if flushErr := s.flushPendingBashLocked(); flushErr != nil {
 		err = errors.Join(err, flushErr)
 	} else {
 		err = errors.Join(err, s.flushPendingCustomMessages())
 	}
-	s.finishRunPrompt(p)
 	// agent_settled handlers run without the Session lock: Pi awaits them while the Session stays usable, so a handler that awaits ctx.compact()
 	// or another Session operation must not wait on a lock held for the very dispatch that awaits it.
 	s.mu.Unlock()
