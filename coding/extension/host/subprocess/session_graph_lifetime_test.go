@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // lifetimeObject is a session graph object that counts its releases, as the ModelRuntime closes its model tasks when it is released.
@@ -59,8 +60,14 @@ type lifetimeRig struct {
 
 func newLifetimeRig(t *testing.T) *lifetimeRig {
 	t.Helper()
-	r := &lifetimeRig{t: t, host: NewHostWithConfigRoot(t.TempDir(), t.TempDir()), conn: &Conn{}, objects: make(chan SessionGraphObject, 4)}
-	t.Cleanup(func() { r.host.Shutdown("test complete") })
+	// The tables watch the connection's Done channel, and the package's leak gate fails a watcher nothing can end.
+	r := &lifetimeRig{t: t, host: NewHostWithConfigRoot(t.TempDir(), t.TempDir()), conn: &Conn{done: make(chan struct{})}, objects: make(chan SessionGraphObject, 4)}
+	t.Cleanup(func() {
+		close(r.conn.done)
+		r.host.Shutdown("test complete")
+		// The watchers run the closing: let them finish before the leak gate looks.
+		time.Sleep(50 * time.Millisecond)
+	})
 	r.host.SetSessionGraph(lifetimeBackend{objects: r.objects})
 	bridge := NewUIBridge(func() {})
 	r.host.SetUIBridge(bridge)

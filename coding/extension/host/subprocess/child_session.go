@@ -433,19 +433,13 @@ func childToolPrepareArguments(conn *Conn, sessionID, toolName string) extension
 }
 
 // resolveChildSessionObjects looks up the session graph objects a create call names. An object replaces the option that would build its own. The session holds each object it takes until it closes: the returned function ends those holds, and the caller calls it when the creation fails or the session closes. On an error nothing is held.
-func (h *Host) resolveChildSessionObjects(conn *Conn, request *ChildSessionRequest) (unhold func(), err error) {
+func (h *Host) resolveChildSessionObjects(conn *Conn, request *ChildSessionRequest) (func(), error) {
 	var holds []func()
-	unhold = func() {
+	unhold := func() {
 		for _, release := range holds {
 			release()
 		}
 	}
-	defer func() {
-		if err != nil {
-			unhold()
-			unhold = nil
-		}
-	}()
 	create := request.ChildSessionCreate
 	for _, step := range []struct {
 		option, handle string
@@ -461,18 +455,22 @@ func (h *Host) resolveChildSessionObjects(conn *Conn, request *ChildSessionReque
 		}
 		object, release, ok := h.sessionGraphObjects.retain(conn, step.handle)
 		if !ok {
+			unhold()
 			return nil, fmt.Errorf("option %s: %s", step.option, SessionGraphUnknownMessage)
 		}
 		holds = append(holds, release)
 		*step.into = object
 	}
 	if create.SessionManager != "" && create.InMemory {
+		unhold()
 		return nil, errors.New("options sessionManager and inMemory both name the session log")
 	}
 	if create.SettingsManager != "" && len(create.Settings) != 0 {
+		unhold()
 		return nil, errors.New("options settingsManager and settings both name the settings")
 	}
 	if create.ResourceLoader != "" && create.Resources != nil {
+		unhold()
 		return nil, errors.New("options resourceLoader and resources both name the resource loader")
 	}
 	return unhold, nil

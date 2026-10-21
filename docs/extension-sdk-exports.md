@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 580 | 569 | 570 |
+| `pi-coding-agent` | 920 | 305 | 910 | 574 | 563 | 564 |
 | `pi-tui` | 364 | 85 | 363 | 264 | 279 | 279 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -20,16 +20,16 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
-| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 432 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
+| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 405 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
 | SdkBuiltinToolDelegate | SdkBuiltinToolDelegate lane (built-in tool delegation, E7) | 0.5.2 | 60 | TestConformance_BuiltinToolDelegationAcrossSDKs |
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
-| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 369 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
+| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 378 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1068 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
 
-82 exports imported by 5 or more scanned packages have a gap.
+81 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -42,7 +42,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-tui: Input` | 30 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: StringEnum` | 28 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: StringEnum` | 28 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-coding-agent: createAgentSession` | 20 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: Editor` | 20 | Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: buildSessionContext` | 19 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getSettingsListTheme` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
@@ -69,9 +68,9 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: createLsToolDefinition` | 10 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: readStoredCredential` | 10 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: getSupportedThinkingLevels` | 10 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-coding-agent: createAgentSessionServices` | 9 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
+| `pi-coding-agent: createAgentSessionServices` | 9 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: copyToClipboard` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-coding-agent: createAgentSessionFromServices` | 8 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
+| `pi-coding-agent: createAgentSessionFromServices` | 8 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createCodemodeExtension` | 8 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: ScrollView` | 8 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: sliceByColumn` | 8 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
@@ -88,7 +87,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-ai/compat: contentText` | 7 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: AssistantMessageComponent` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: BorderedLoader` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-coding-agent: createAgentSessionRuntime` | 6 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
+| `pi-coding-agent: createAgentSessionRuntime` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createExtensionRuntime` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createLocalBashOperations` | 6 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createMcpExtension` | 6 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
@@ -125,7 +124,7 @@ None.
 | Export | uses | Node | Go | Rust | Python |
 |---|---|---|---|---|---|
 | `AgentSession` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abort` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abort` | 0 | served | native:AgentSession.Abort | native:AgentSession::abort | native:AgentSession.abort |
 | `AgentSession.abortBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.abortBranchSummary` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.abortCompaction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -140,7 +139,7 @@ None.
 | `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.cycleModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.cycleThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.dispose` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.dispose` | 0 | served | native:AgentSession.Dispose | native:AgentSession::dispose | native:AgentSession.dispose |
 | `AgentSession.executeBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.exportToHtml` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.exportToJsonl` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -165,12 +164,12 @@ None.
 | `AgentSession.isIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.isRetrying` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.isStreaming` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.messages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.messages` | 0 | served | native:AgentSession.Messages | native:AgentSession::messages | native:AgentSession.messages |
 | `AgentSession.model` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.modelRuntime` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.navigateTree` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.pendingMessageCount` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.prompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.prompt` | 0 | served | native:AgentSession.Prompt | native:AgentSession::prompt | native:AgentSession.prompt |
 | `AgentSession.promptTemplates` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.recordBashResult` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.refreshContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -199,7 +198,7 @@ None.
 | `AgentSession.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.subscribe` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.subscribe` | 0 | served | native:AgentSession.Subscribe | native:AgentSession::subscribe | native:AgentSession.subscribe |
 | `AgentSession.summarizeForBugReport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.supportsThinking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.systemPrompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -943,10 +942,10 @@ None.
 | `convertToLlm` | 17 | served | native:ConvertToLlm | native:convert_to_llm | native:convert_to_llm |
 | `convertToPng` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `copyToClipboard` | 8 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `createAgentSession` | 20 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `createAgentSessionFromServices` | 8 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `createAgentSessionRuntime` | 6 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `createAgentSessionServices` | 9 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `createAgentSession` | 20 | served | host:Context.CreateAgentSession | host:Context::create_agent_session | host:Context.create_agent_session |
+| `createAgentSessionFromServices` | 8 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `createAgentSessionRuntime` | 6 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `createAgentSessionServices` | 9 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `createBashTool` | 2 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
 | `createBashToolDefinition` | 12 | served | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate | gap:SdkBuiltinToolDelegate |
 | `createCodemodeExtension` | 8 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
