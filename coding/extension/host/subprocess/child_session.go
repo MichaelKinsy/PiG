@@ -57,6 +57,8 @@ type ChildSessionFactory func(ctx context.Context, request ChildSessionRequest) 
 type childSessionTable struct {
 	mu    sync.Mutex
 	conns map[*Conn]*connChildSessions
+	// closing counts the connections whose sessions are being closed, so closeAll can wait for a close a connection's watcher began. Add runs under mu, when the connection leaves conns.
+	closing sync.WaitGroup
 }
 
 // connChildSessions is one connection's sessions. A session being created holds its id with a nil session until the factory returns.
@@ -228,18 +230,49 @@ func (t *childSessionTable) closeConn(conn *Conn) {
 	t.mu.Lock()
 	owned := t.conns[conn]
 	delete(t.conns, conn)
-	var entries []*childSessionEntry
-	if owned != nil {
-		owned.closed = true
-		for _, entry := range owned.sessions {
-			if entry != nil {
-				entries = append(entries, entry)
-			}
-		}
+	entries := t.sealLocked(owned)
+	t.mu.Unlock()
+	t.closeEntries(entries, owned != nil)
+}
+
+// closeAll disposes the sessions of every connection and returns when none is still closing, including a close a connection's watcher began. Host.Shutdown calls it: a session outlives the extension's own dispose, so the processes it started end only when it closes.
+func (t *childSessionTable) closeAll() {
+	t.mu.Lock()
+	var all [][]*childSessionEntry
+	for conn, owned := range t.conns {
+		delete(t.conns, conn)
+		all = append(all, t.sealLocked(owned))
 	}
 	t.mu.Unlock()
+	for _, entries := range all {
+		t.closeEntries(entries, true)
+	}
+	t.closing.Wait()
+}
+
+// sealLocked refuses any later session of owned, counts its close in t.closing, and returns the live sessions. closeEntries ends the count.
+func (t *childSessionTable) sealLocked(owned *connChildSessions) []*childSessionEntry {
+	if owned == nil {
+		return nil
+	}
+	owned.closed = true
+	t.closing.Add(1)
+	var entries []*childSessionEntry
+	for _, entry := range owned.sessions {
+		if entry != nil {
+			entries = append(entries, entry)
+		}
+	}
+	return entries
+}
+
+// closeEntries closes the sessions sealLocked returned; counted says it counted the close.
+func (t *childSessionTable) closeEntries(entries []*childSessionEntry, counted bool) {
 	for _, entry := range entries {
 		entry.close()
+	}
+	if counted {
+		t.closing.Done()
 	}
 }
 
