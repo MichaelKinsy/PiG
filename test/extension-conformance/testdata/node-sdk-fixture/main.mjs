@@ -61,6 +61,21 @@ export default function (pi) {
     const ok = await pi.setModel({ provider: "probe", id: "model" });
     ctx.ui.notify(JSON.stringify([pi.getThinkingLevel(), ok]), "info");
   }});
+  pi.registerCommand("replicated-accessors", { description: "Read the replicated accessors after each write", handler: async (_args, ctx) => {
+    const lastType = () => { const entries = ctx.sessionManager.getEntries(); return entries[entries.length - 1]?.type ?? ""; };
+    const out = { name0: ctx.sessionManager.getSessionName() ?? "", model0: ctx.model?.id ?? "", provider0: ctx.model?.provider ?? "" };
+    pi.setSessionName("renamed");
+    out.name1 = ctx.sessionManager.getSessionName() ?? "";
+    pi.setLabel("one", "lab");
+    out.entryAfterLabel = lastType();
+    pi.sendMessage({ customType: "probe", content: "hi", display: true });
+    out.entryAfterMessage = lastType();
+    await pi.setModel({ provider: "prov-after", id: "id-after" });
+    out.model1 = ctx.model?.id ?? "";
+    out.provider1 = ctx.model?.provider ?? "";
+    out.qualified1 = `${out.provider1}/${out.model1}`;
+    ctx.ui.notify(JSON.stringify(out), "info");
+  }});
   pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
   pi.registerCommand("session_actions_unbound", { description: "Report what unbound session actions answer", handler: async (_args, ctx) => {
     const parts = [];
@@ -96,6 +111,15 @@ export default function (pi) {
     const refresh=await r.refresh({allowNetwork:false});
     out.refresh={aborted:refresh.aborted,errors:Object.fromEntries([...refresh.errors].map(([key,error])=>[key,error.message]))};
     ctx.ui.notify(JSON.stringify(out),"info");
+  }});
+  pi.registerCommand("registry-edges", { description: "Read the registry answers that depend on the provider state", handler: async (_args, ctx) => {
+    const r = ctx.modelRegistry;
+    const models = [...r.getAll(), {}];
+    ctx.ui.notify(JSON.stringify({
+      available: r.getAvailable(), hasAuth: models.map((model) => r.hasConfiguredAuth(model)), oauth: models.map((model) => r.isUsingOAuth(model)),
+      found: r.find("registry-probe", "a") ?? null, foundOff: r.find("registry-off", "d") ?? null,
+      missing: r.find("registry-probe", "zzz") ?? null, mismatch: r.find("registry-probe", "c") ?? null,
+    }), "info");
   }});
   // The session reads of Pi's Pi-order probe (session_read_order_test.go): the answers are written as JSON.stringify writes them.
   pi.registerCommand("session-order", { description: "Read the session as Pi returns it", handler: async (_args, ctx) => {
@@ -1802,12 +1826,13 @@ export default function (pi) {
       ctx.ui.notify(`ui_prompt:${event.type}:${event.reason}:${event.kind}:${"title" in event ? event.title : "(none)"}`, "info");
     });
   }
-  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
   pi.registerCommand("state-push-probe", { description: "Read one replicated accessor from a timer between requests", handler: async (args, ctx) => {
     const { kind, dir } = JSON.parse(args);
     let read;
     if (kind === "model") read = () => ctx.model?.id ?? "";
     else if (kind === "session-name") read = () => pi.getSessionName() ?? "";
+    else if (kind === "theme") read = () => ctx.ui.theme.name ?? "";
     else if (kind === "thinking-level") read = () => pi.getThinkingLevel();
     else if (kind.startsWith("settings:")) read = () => JSON.stringify(pi.getSettings()[kind.slice("settings:".length)] ?? null);
     else if (kind === "mcp") read = () => pi.getMcpServers().map((server) => server.name).join(",");
@@ -1824,6 +1849,7 @@ export default function (pi) {
       renameSync(`${report}.tmp`, report);
     }, 2);
   } });
+  registerSignalAbort(pi);
 }
 
 // The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension).
@@ -1854,4 +1880,17 @@ function conformanceBashOperations() {
       }
     },
   };
+}
+
+// The signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a handler that holds the signal and reads it again right after the abort sees it aborted, in the same turn.
+function registerSignalAbort(pi) {
+  const state = (signal) => (signal === undefined ? "none" : signal.aborted ? "aborted" : "live");
+  pi.registerCommand("signal-abort", {
+    description: "Abort the run and report ctx.signal",
+    handler: (_args, ctx) => {
+      const held = ctx.signal;
+      ctx.abort();
+      ctx.ui.notify(`abort:${state(held)}:${state(ctx.signal)}`, "info");
+    },
+  });
 }

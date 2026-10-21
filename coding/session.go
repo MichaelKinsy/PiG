@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/boundarywire"
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
@@ -93,7 +94,7 @@ type Session struct {
 	nextListenerID    uint64
 	closeDone         chan struct{}
 	closeOnce         sync.Once
-	replicatedState   icodingagent.ChangeObservers
+	replicatedState   changeobservers.Observers
 	// successorOwnsResources makes Close leave the session-ID keyed provider resources alone: the Session that replaced this one carries the same ID and owns them now.
 	successorOwnsResources atomic.Bool
 	// eventsDone ends the Session event executor: the forwarder stops, the

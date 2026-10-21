@@ -296,6 +296,23 @@ func (c Context) Err() error {
 	return c.ctx.Err()
 }
 
+// cancelReason is the cause of a request the host cancelled: the reason its cancel frame carried.
+type cancelReason string
+
+func (r cancelReason) Error() string { return string(r) }
+
+// CancellationReason returns the reason the host gave when it cancelled this request, or "" when the request was not cancelled or the host named none. The Python and Rust SDKs return the same string from cancellation_reason and Node aborts the request's signal with it.
+func (c Context) CancellationReason() string {
+	if c.ctx == nil {
+		return ""
+	}
+	var reason cancelReason
+	if errors.As(context.Cause(c.ctx), &reason) {
+		return string(reason)
+	}
+	return ""
+}
+
 func (c Context) callHost(method string, args any) (*callResultMsg, error) {
 	return c.callHostAfterBegin(method, args, false, nil)
 }
@@ -321,10 +338,22 @@ func (c Context) callHostAfterBegin(method string, args any, detached bool, sent
 		sent()
 	}
 	result, err := c.hostConnection().waitCall(pending)
+	// The host sends the state a publishing call changed before the call's result, and the main loop applies notifies after the read loop routed the result here: wait for those notifies so the caller's next replicated read sees the write.
+	if err == nil && result != nil && statePublishingCalls[method] && c.ext != nil && c.hostConnection() == c.ext.conn {
+		c.ext.waitNotifications(result.notifySeq, nil)
+	}
 	if !effect {
 		c.reportRequestState("progress", "")
 	}
 	return result, err
+}
+
+// statePublishingCalls are the Session writes after which the host pushes its state before the call's result (coding/extension/host/subprocess
+// host_calls.go publishesStateBeforeResult): the calls whose effect an SDK reads from replicated state. Pi's equivalents change the Session
+// synchronously, so a read after the call must see the write (agent-session.ts setModel, setSessionName, sessionManager.appendLabelChange and
+// appendCustomEntry, sendCustomMessage).
+var statePublishingCalls = map[string]bool{
+	"setModel": true, "appendEntry": true, "setLabel": true, "setSessionName": true, "sendMessage": true,
 }
 
 // rpcSynchronousUIEffects are the UI calls Pi's RPC mode applies at once, inside the handler's synchronous part (rpc-mode.ts
@@ -644,14 +673,8 @@ func (c Context) AppendEntry(customType string, data any) error {
 	if err != nil {
 		return err
 	}
-	if err := callResultError(result, nil); err != nil {
-		return err
-	}
-	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. The host sends the state carrying it before the call result, and the main loop applies notifies after the read loop routed the result here, so wait for those notifies: the caller's next session read then sees the entry.
-	if result != nil && c.ext != nil && c.hostConnection() == c.ext.conn {
-		c.ext.waitNotifications(result.notifySeq, nil)
-	}
-	return nil
+	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. callHost waits for the state the host pushed before the result (statePublishingCalls), so the caller's next session read sees the entry.
+	return callResultError(result, nil)
 }
 
 // ── Editor Access ────────────────────────────────────────────────────────────
@@ -1493,17 +1516,9 @@ type ModelRegistry struct{ context Context }
 // ModelRegistry returns the current Session model registry facade.
 func (c Context) ModelRegistry() ModelRegistry { return ModelRegistry{context: c} }
 
-// Find resolves a model by exact provider and model ID through the host registry.
-func (r ModelRegistry) Find(providerID, modelID string) map[string]any {
-	result, err := r.context.callHost("getModel", map[string]string{"provider": providerID, "modelId": modelID})
-	if err := callResultError(result, err); err != nil || result == nil || string(result.Result) == "null" {
-		return nil
-	}
-	var model map[string]any
-	if err := json.Unmarshal(result.Result, &model); err != nil {
-		return nil
-	}
-	return model
+// Find resolves a model by exact provider and model ID through the host registry. It returns a nil map and a nil error when no model matches, as Pi's find returns undefined (model-registry.ts:72); a host or transport failure is the error, never a model that is absent.
+func (r ModelRegistry) Find(providerID, modelID string) (map[string]any, error) {
+	return hostValue[map[string]any](r.context, "getModel", map[string]string{"provider": providerID, "modelId": modelID})
 }
 
 // GetApiKeyAndHeaders resolves request authentication through the host.
@@ -2139,8 +2154,9 @@ func (c Context) Height() int {
 	return c.ext.height
 }
 
-// Model returns the active provider model ID when the host exposes one, falling
-// back to the model name from the ready/state message.
+// Model returns the active model's ID: Pi's ctx.model.id, the identity every SDK reports (Python ctx.model and Rust ctx.model() return the
+// same ID). It is "" while the Session has no model. The host's state updates keep it current, and a model write (SetModel) is visible to the
+// next read.
 func (c Context) Model() string {
 	c.assertActive()
 	if c.replacement != nil {
@@ -2185,6 +2201,24 @@ func (c Context) ModelQualified() string {
 	return c.ext.model
 }
 
+// SessionName returns the session's name, "" while it has none: the replicated value behind Pi's ctx.sessionManager.getSessionName(). The
+// host's state updates keep it current, and SetSessionName is visible to the next read. A replacement Session's name comes from the host.
+func (c Context) SessionName() string {
+	c.assertActive()
+	if c.replacement != nil {
+		if name, err := c.GetSessionName(); err == nil {
+			if name == nil {
+				return ""
+			}
+			return *name
+		}
+		return c.replacement.sessionName
+	}
+	c.ext.mu.RLock()
+	defer c.ext.mu.RUnlock()
+	return c.ext.sessionName
+}
+
 // ToolCallID returns the current tool call ID (only valid inside tool handlers).
 func (c Context) ToolCallID() string {
 	return c.toolCallID
@@ -2219,9 +2253,13 @@ func (c Context) IsIdle() (bool, error) {
 	return hostRequired[bool](c, "isIdle", nil, "idle")
 }
 
-// Abort cancels the current agent operation.
+// Abort cancels the current agent operation. The run's signal is aborted when it returns: Signal reads the aborted run.
 func (c Context) Abort() {
-	_, _ = c.callHost("abort", nil)
+	result, _ := c.callHost("abort", nil)
+	// upstream: agent.ts:340-342 aborts the active run's controller before abort() returns. The host sends the run_signal frame before the call result, and the main loop applies notifies after the read loop routed the result here, so wait for those notifies: the caller's next read of Signal sees the abort.
+	if result != nil && c.ext != nil && c.hostConnection() == c.ext.conn {
+		c.ext.waitNotifications(result.notifySeq, nil)
+	}
 }
 
 // HasPendingMessages returns whether there are queued messages waiting.

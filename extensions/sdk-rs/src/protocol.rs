@@ -306,8 +306,6 @@ pub struct RendererDef {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReadyMsg {
     #[serde(default)]
-    pub session_name: String,
-    #[serde(default)]
     pub cwd: String,
     #[serde(default)]
     pub mode: String,
@@ -315,8 +313,6 @@ pub struct ReadyMsg {
     pub width: u32,
     #[serde(default)]
     pub height: u32,
-    #[serde(default)]
-    pub model: String,
     /// The provenance the loader stamped on this extension (`Context::extension_source_info`).
     #[serde(default, rename = "sourceInfo")]
     pub source_info: Option<SourceInfo>,

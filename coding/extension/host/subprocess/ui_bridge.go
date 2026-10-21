@@ -1069,8 +1069,8 @@ func (b *UIBridge) RunSignalChanged() {
 	}
 }
 
-// HostStateChanged tells the Host that state the runtimes replicate (the model, the thinking level, the session name, the settings) changed without an extension call or an event to the extension, so every runtime learns it without waiting for its next request.
-// Upstream's `ctx.model`, `pi.getSettings()` and `pi.getSessionName()` read the live Session at every call (runner.ts:906, loader.ts:411-414); a runtime replicates them, so a timer or thread that reads between two requests sees the host's value only when the host pushes it. The owner of the change reports it here, after the state changed. It returns at once: the push runs on a task the Host joins at Shutdown, because the owner may be the UI loop, which never waits for an extension.
+// HostStateChanged tells the Host that state the runtimes replicate (the model, the thinking level, the session name, the settings, the MCP server list, the theme palette) changed without an extension call or an event to the extension, so every runtime learns it without waiting for its next request.
+// Upstream's `ctx.model`, `pi.getSettings()`, `pi.getSessionName()`, `pi.getMcpServers()` and `ctx.ui.theme` read the live Session, the MCP registry and the global theme at every call (runner.ts:906, loader.ts:411-414 and 495-497, interactive-mode.ts:2665); a runtime replicates them, so a timer or thread that reads between two requests sees the host's value only when the host pushes it. The owner of the change reports it here, after the state changed. It returns at once: the push runs on a task the Host joins at Shutdown, because the owner may be the UI loop, which never waits for an extension.
 func (b *UIBridge) HostStateChanged() {
 	b.mu.RLock()
 	changed := b.OnHostStateChanged
@@ -3941,8 +3941,9 @@ func (b *UIBridge) handleGetModel(actions *HostCallbacks, args json.RawMessage) 
 	if err := json.Unmarshal(args, &request); err != nil {
 		return nil, fmt.Errorf("parse getModel args: %w", err)
 	}
+	// An unbound lookup is a failure, not "no such model": Pi's registry always answers find, and undefined means the model is absent.
 	if actions == nil || actions.GetModel == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("model lookup is not bound")
 	}
 	result := actions.GetModel(request.Provider, request.ModelID)
 	if result == nil {
@@ -4114,8 +4115,9 @@ func (b *UIBridge) handleSessionRead(actions *HostCallbacks, args json.RawMessag
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse sessionRead args: %w", err)
 	}
+	// An unbound read is a failure, not an empty session: Pi's ReadonlySessionManager always exists, and a null here would be believed as "no entry" or as a list-typed read with nothing in it.
 	if actions == nil || actions.SessionRead == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("session reads are not bound")
 	}
 	value, err := actions.SessionRead(p.Method, p.Args)
 	if err != nil {

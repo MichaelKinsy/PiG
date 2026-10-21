@@ -51,12 +51,10 @@ impl Host {
         host.send(Envelope {
             msg_type: "ready".into(),
             ready: Some(ReadyMsg {
-                session_name: String::new(),
                 cwd: "/tmp".into(),
                 mode: "print".into(),
                 width: 80,
                 height: 24,
-                model: String::new(),
                 source_info: None,
                 state: None,
             }),

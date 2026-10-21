@@ -313,6 +313,13 @@ func (h *Host) handleMcpServerCheck(me *managedExt, call *CallPayload) (*CallRes
 	return &CallResultPayload{}, nil
 }
 
+// publishVirtualModelChange sends every extension that replicates the model registry the catalog with the virtual model a call registered or removed. The registry's change listener does not see it (the model runtime keeps virtual models apart from the registry), and its availability refresh is queued, so without this a Node extension's ctx.modelRegistry would list the model only after an unrelated publication. The frame precedes the call's result on the connection's ordered stream, as a provider registration's does.
+func (h *Host) publishVirtualModelChange() {
+	if h.uiBridge != nil {
+		h.uiBridge.PublishModelCatalog()
+	}
+}
+
 // handleVirtualModelCall serves CallRegisterVirtualModel and CallUnregisterVirtualModel.
 //
 // upstream: loader.ts:480-497
@@ -329,6 +336,7 @@ func (h *Host) handleVirtualModelCall(_ context.Context, me *managedExt, call *C
 			return nil, err
 		}
 		h.trackVirtualModel(me, VirtualModelRef{Provider: decl.Provider, ID: decl.ID})
+		h.publishVirtualModelChange()
 		return &CallResultPayload{}, nil
 	}
 	var ref VirtualModelRef
@@ -337,6 +345,7 @@ func (h *Host) handleVirtualModelCall(_ context.Context, me *managedExt, call *C
 	}
 	h.providerRuntime.UnregisterVirtualModel(ref.Provider, ref.ID)
 	h.untrackVirtualModel(me, ref)
+	h.publishVirtualModelChange()
 	return &CallResultPayload{}, nil
 }
 

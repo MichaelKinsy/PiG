@@ -9,10 +9,12 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Pi's extension context reads the live Session at every call: `ctx.model` is `getModel()` (runner.ts:906), `pi.getSettings()` reads the settings manager (loader.ts:411-414), and `pi.getSessionName()` and `pi.getThinkingLevel()` read the Session (agent-session.ts). The SDKs and the Node runtime replicate that state, so a change the host makes with no extension call and no event to the extension, a user's model switch, a settings edit, the /name command, reaches an extension that reads from a timer, a thread or a goroutine between requests only if the host pushes it when it changes.
+// Pi's extension context reads the live Session at every call: `ctx.model` is `getModel()` (runner.ts:906), `pi.getSettings()` reads the settings manager (loader.ts:411-414), and `pi.getSessionName()` and `pi.getThinkingLevel()` read the Session (agent-session.ts). `pi.getMcpServers()` reads the runtime's registry (loader.ts:495-497) and `ctx.ui.theme` is the global theme (interactive-mode.ts:2665). The SDKs and the Node runtime replicate that state, so a change the host makes with no extension call and no event to the extension, a user's model switch, a settings edit, the /name command, a theme selection, an MCP server another extension registers, reaches an extension that reads from a timer, a thread or a goroutine between requests only if the host pushes it when it changes.
 // The host state is a real Session over a faux provider, bound to the extension host as the binary binds it (Session.ObserveReplicatedState to UIBridge.HostStateChanged). The Session has no extension runner, so no event is emitted to the extension: nothing but the host's own push can bring the new value to the reader. Each fixture's state-push-probe command arms a reader on one accessor, the test then changes the Session, and the reader reports the first value that differs from the one it armed on, or the value it still holds after five seconds. The values are not any SDK's default: an SDK that never reads the replicated state fails as one that reads a stale copy does.
 func TestHostStateChangeReachesABackgroundReaderAcrossSDKs(t *testing.T) {
 	if testing.Short() {
@@ -67,6 +69,7 @@ type statePushKind struct {
 type statePushRig struct {
 	session      *coding.Session
 	services     *coding.AgentSessionServices
+	runtime      *extension.ExtensionRuntime
 	small, large *ai.Model
 }
 
@@ -112,13 +115,17 @@ func newStatePushRig(t *testing.T, h *harness) *statePushRig {
 	h.bridge.SetHostAction("getSessionName", session.SessionName)
 	h.bridge.SetHostAction("getSettingsJSON", services.SettingsManager().ExtensionSettingsJSON)
 	h.bridge.SetHostAction("getThinkingLevel", func() string { return string(session.Agent().ThinkingLevel()) })
-	// The report the binary's modes install (coding/cli watchSessionState, internal/codingagent watchReplicatedState).
+	// The report the binary's modes install (coding/cli watchHostState, internal/codingagent watchReplicatedState).
 	stop := session.ObserveReplicatedState(h.bridge.HostStateChanged)
 	t.Cleanup(stop)
-	return &statePushRig{session: session, services: services, small: small, large: large}
+	// The theme the binary hands its extensions (coding/cli/extensions.go), and the report of its changes.
+	h.bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
+	stopTheme := tui.ObserveActiveTheme(h.bridge.HostStateChanged)
+	t.Cleanup(stopTheme)
+	return &statePushRig{session: session, services: services, runtime: h.host.Runtime(), small: small, large: large}
 }
 
-// kinds are the accessors language's SDK replicates. The Go, Python and Rust session name and thinking level are host calls, which are live; the Node runtime answers both from the replicated state.
+// kinds are the accessors language's SDK replicates. Every SDK replicates the session name; the Go, Python and Rust thinking level is a host call, which is live, and only the Node runtime answers it from the replicated state.
 func (r *statePushRig) kinds(language string) []statePushKind {
 	identity := func(model *ai.Model) func(string) bool {
 		return func(got string) bool { return got == model.ID || got == model.DisplayName }
@@ -145,10 +152,32 @@ func (r *statePushRig) kinds(language string) []statePushKind {
 		change: func(t *testing.T) { mustSucceed(t, r.session.SetThinkingLevel(ai.ThinkingLow)) },
 		armed:  equal("high"), read: equal("low"),
 	}
-	if language == "node" {
-		return []statePushKind{model, settings, sessionName, thinking}
+	// A server another extension, or a native one, registers in the runtime's registry: this extension made no call and handles no mcp_servers_change.
+	const mcpServer = "state-push-mcp"
+	mcp := statePushKind{
+		name: "mcp",
+		change: func(t *testing.T) {
+			config := json.RawMessage(`{"type":"http","url":"https://mcp.example.com/state-push"}`)
+			mustSucceed(t, r.runtime.RegisterMcpServer("state-push-other-extension", mcpServer, config))
+			t.Cleanup(func() { r.runtime.UnregisterMcpServer("state-push-other-extension", mcpServer) })
+		},
+		armed: equal(""), read: equal(mcpServer),
 	}
-	return []statePushKind{model, settings}
+	// The user selects another theme, as /settings does; the process-wide theme is restored afterwards.
+	theme := statePushKind{
+		name: "theme",
+		setup: func(t *testing.T) {
+			previous := tui.ActiveTheme()
+			t.Cleanup(func() { tui.SetThemeInstance(previous) })
+			tui.SetTheme("dark")
+		},
+		change: func(*testing.T) { tui.SetTheme("light") },
+		armed:  equal("dark"), read: equal("light"),
+	}
+	if language == "node" {
+		return []statePushKind{model, settings, sessionName, thinking, mcp, theme}
+	}
+	return []statePushKind{model, settings, sessionName, mcp, theme}
 }
 
 func mustSucceed(t *testing.T, err error) {

@@ -22,11 +22,11 @@ func registerHostSurface(e *sdk.Extension) {
 		// crossOwnAt is when the factory's own c3:cross listener ran and crossReturnedAt when the factory's emit on c3:cross returned, in Unix milliseconds: an extension loaded before this one that listens on c3:cross runs first and finishes before emit returns.
 		crossOwnAt, crossReturnedAt int64
 		// ackHeard are the c3:ack emits the factory's listener heard: an extension loaded before this one answers the factory's c3:cross emit, from inside its listener, with a c3:ack emit, which Pi's shared emitter delivers to the listener this factory subscribed before it emitted. ackAtCross is how many it had heard when the c3:cross emit returned.
-		ackHeard   = []any{}
-		ackAtCross int
-		loaded                      any
-		themeOff                    func()
-		expandedOff                 func()
+		ackHeard    = []any{}
+		ackAtCross  int
+		loaded      any
+		themeOff    func()
+		expandedOff func()
 	)
 	tool := func(name string, execute func(ctx sdk.Context, args map[string]any) (any, error)) {
 		e.RegisterTool(sdk.ToolDefinition{Name: name, Label: name, Description: name, Parameters: object, Execute: execute})

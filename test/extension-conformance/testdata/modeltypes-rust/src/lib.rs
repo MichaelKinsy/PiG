@@ -278,6 +278,19 @@ pub fn new_extension() -> Extension {
         let _ = registry.unregister_virtual_model("router", "late");
         ToolResult::text(json!({"first": first.is_ok(), "refused": refused.err().map(|e| e.to_string()).unwrap_or_default().trim()}).to_string())
     });
+    ext.tool("virtual_visible", "Registers a virtual model and reads the registry on the next line.", empty_schema(), |ctx, _| {
+        let registry = ctx.model_registry();
+        let route = |_: &pig_sdk::Context, _: pig_sdk::ModelRouteRequest| Ok(ModelRoute { model: json!({"provider": "p", "id": "m"}), thinking_level: "off".into(), state: None });
+        let mut seen = VirtualModel::new("router", "seen", "Seen", route);
+        seen.context_window = Some(1000);
+        if let Err(error) = registry.register_virtual_model(seen) {
+            return ToolResult::text(json!({"error": error.to_string()}).to_string());
+        }
+        let listed = || registry.get_all().ok().and_then(|models| models.as_array().map(|models| models.iter().any(|m| m["provider"] == "router" && m["id"] == "seen"))).unwrap_or(false);
+        let (registered, is_listed) = (registry.find("router", "seen").ok().flatten().is_some(), listed());
+        let _ = registry.unregister_virtual_model("router", "seen");
+        ToolResult::text(json!({"registered": registered, "listed": is_listed, "gone": registry.find("router", "seen").ok().flatten().is_none(), "unlisted": !listed()}).to_string())
+    });
     ext.tool("theme_probe", "Reads the host's theme through ctx.ui.theme.", empty_schema(), |ctx, args| {
         let theme = ctx.theme();
         let styles: Vec<Value> = args["cases"].as_array().map(|cases| cases.iter().map(|options| match theme.style("x", &theme_style_from(options)) {

@@ -1151,6 +1151,28 @@ fn main() {
         ctx.notify(&json!([level, ok]).to_string(), "info");
         CommandResult::Ok
     });
+    ext.command("replicated-accessors", "Read the replicated accessors after each write", |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let last_type = || -> std::io::Result<String> { Ok(ctx.get_entries()?.last().and_then(|entry| entry["type"].as_str().map(str::to_string)).unwrap_or_default()) };
+            let mut out = serde_json::Map::new();
+            out.insert("name0".into(), json!(ctx.session_name()));
+            out.insert("model0".into(), json!(ctx.model()));
+            out.insert("provider0".into(), json!(ctx.model_provider()));
+            ctx.set_session_name("renamed")?;
+            out.insert("name1".into(), json!(ctx.session_name()));
+            ctx.set_label("one", "lab")?;
+            out.insert("entryAfterLabel".into(), json!(last_type()?));
+            ctx.send_message("probe", "hi", true, None, None)?;
+            out.insert("entryAfterMessage".into(), json!(last_type()?));
+            ctx.set_model("prov-after/id-after");
+            out.insert("model1".into(), json!(ctx.model()));
+            out.insert("provider1".into(), json!(ctx.model_provider()));
+            out.insert("qualified1".into(), json!(ctx.model_qualified()));
+            ctx.notify(&serde_json::Value::Object(out).to_string(), "info");
+            Ok(())
+        };
+        match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
     ext.command("active_tools_set", "Set the active tools to the comma-separated names", |ctx, args| {
         let names: Vec<&str> = args.trim().split(',').collect();
         ctx.set_active_tools(&names);
@@ -1227,6 +1249,33 @@ fn main() {
             Ok(())
         };
         match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
+    ext.command("registry-edges", "Read the registry answers that depend on the provider state", |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let r = ctx.model_registry();
+            let mut models = r.get_all()?.as_array().cloned().unwrap_or_default();
+            models.push(json!({}));
+            let has_auth = models.iter().map(|model| r.has_configured_auth(model)).collect::<std::io::Result<Vec<_>>>()?;
+            let oauth = models.iter().map(|model| r.is_using_oauth(model)).collect::<std::io::Result<Vec<_>>>()?;
+            let out = json!({
+                "available": r.get_available()?, "hasAuth": has_auth, "oauth": oauth,
+                "found": r.find("registry-probe", "a")?, "foundOff": r.find("registry-off", "d")?,
+                "missing": r.find("registry-probe", "zzz")?, "mismatch": r.find("registry-probe", "c")?
+            });
+            ctx.notify(&out.to_string(), "info");
+            Ok(())
+        };
+        match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
+    ext.command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", |ctx, _| {
+        let report = |read: std::io::Result<Value>| match read {
+            Ok(value) => format!("ok:{value}"),
+            Err(error) => format!("error:{error}"),
+        };
+        let find = report(ctx.model_registry().find("registry-probe", "a").map(|model| model.unwrap_or(Value::Null)));
+        let entries = report(ctx.session_manager().get_entries());
+        ctx.notify(&json!({"find": find, "entries": entries}).to_string(), "info");
+        CommandResult::Ok
     });
     ext.command("session-order", "Read the session as Pi returns it", |ctx, _| {
         let run = || -> std::io::Result<()> {
@@ -1394,6 +1443,9 @@ fn main() {
     );
     let abort_observed = Arc::new(AtomicBool::new(false));
     let abort_set = abort_observed.clone();
+    let abort_reason: Arc<std::sync::Mutex<Option<String>>> = Arc::default();
+    let abort_reason_set = abort_reason.clone();
+    let abort_reason_read = abort_reason;
     ext.tool(
         "abort_tool",
         "Wait for the abort signal",
@@ -1403,6 +1455,7 @@ fn main() {
             while !ctx.is_cancelled() {
                 thread::sleep(Duration::from_millis(10));
             }
+            *abort_reason_set.lock().unwrap() = ctx.cancellation_reason();
             abort_set.store(true, Ordering::SeqCst);
             ToolResult::text("aborted")
         },
@@ -1426,6 +1479,10 @@ fn main() {
             CommandResult::Ok
         },
     );
+    ext.command("abort_reason", "Report the cancellation reason abort_tool saw", move |ctx, _args| {
+        ctx.notify(&format!("reason:{}", abort_reason_read.lock().unwrap().clone().unwrap_or_default()), "info");
+        CommandResult::Ok
+    });
     ext.tool(
         "rich_tool",
         "Return text, image, and terminate",
@@ -1567,11 +1624,12 @@ fn main() {
     });
     ext.command("model-stream-probe", "Exercise model streaming", |ctx, _args| {
         let registry = ctx.model_registry();
-        let Some(current) = registry.find("conformance", "current") else { return CommandResult::Error("find current returned no model".into()); };
+        let find = |provider: &str, id: &str| registry.find(provider, id).map_err(|error| CommandResult::Error(format!("find {id}: {error}")));
+        let current = match find("conformance", "current") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find current returned no model".into()), Err(error) => return error };
         if current["id"] != "current" { return CommandResult::Error(format!("find current = {current}")); }
-        let Some(found) = registry.find("conformance", "declared") else { return CommandResult::Error("find declared returned no model".into()); };
+        let found = match find("conformance", "declared") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find declared returned no model".into()), Err(error) => return error };
         if found["id"] != "declared" || found["provider"] != "conformance" { return CommandResult::Error(format!("find declared = {found}")); }
-        let Some(slash) = registry.find("conformance", "org/model/name") else { return CommandResult::Error("find slash returned no model".into()); };
+        let slash = match find("conformance", "org/model/name") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find slash returned no model".into()), Err(error) => return error };
         if slash["id"] != "org/model/name" { return CommandResult::Error(format!("find slash = {slash}")); }
         let expected_limits = json!({"maxRequestBytes":12345,"images":{"maxPerMessage":7,"maxPerRequest":11,"resize":{"maxWidth":321,"maxHeight":123,"maxBytes":45678,"jpegQuality":67}}});
         if slash["inputLimits"] != expected_limits || ctx.get_model_info().unwrap().and_then(|model| model.input_limits) != Some(expected_limits) { return CommandResult::Error(format!("model inputLimits = {slash}")); }
@@ -1579,8 +1637,13 @@ fn main() {
             if slash.get(field).is_none() { return CommandResult::Error(format!("find slash missing {field}: {slash}")); }
         }
         if slash["input"].as_array().map(Vec::len) != Some(0) || slash["cost"]["input"] != 0 || slash["cost"]["tiers"].as_array().map(Vec::len) != Some(1) || slash["compat"]["supportsStrictMode"] != false { return CommandResult::Error(format!("find slash shape = {slash}")); }
-        if registry.find("conformance", "missing").is_some() { return CommandResult::Error("find missing returned a model".into()); }
-        if registry.find("conformance", "override-only").is_some() { return CommandResult::Error("find override-only returned a model".into()); }
+        for missing in ["missing", "override-only"] {
+            match find("conformance", missing) {
+                Ok(None) => {}
+                Ok(Some(_)) => return CommandResult::Error(format!("find {missing} returned a model")),
+                Err(error) => return error,
+            }
+        }
         let auth = match registry.get_api_key_and_headers(&found) {
             Ok(value) => value,
             Err(error) => return CommandResult::Error(format!("get auth: {error}")),
@@ -3224,6 +3287,7 @@ fn main() {
     register_conformance_oauth_object(&mut ext);
     register_conformance_oauth_large(&mut ext);
     register_state_push_probe(&mut ext);
+    register_signal_abort(&mut ext);
     ext.run().unwrap();
 }
 
@@ -3231,7 +3295,7 @@ fn main() {
 const STATE_PUSH_WINDOW: Duration = Duration::from_secs(5);
 
 /// Registers the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name.
-/// The arguments are {"kind": "model" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+/// The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
 fn register_state_push_probe(ext: &mut Extension) {
     ext.command("state-push-probe", "Read one replicated accessor from a thread between requests", |ctx, args| {
         let request: Value = match serde_json::from_str(args) {
@@ -3262,11 +3326,17 @@ fn register_state_push_probe(ext: &mut Extension) {
     });
 }
 
-/// The read of one replicated accessor as a string, or an error for a kind the Rust SDK does not replicate in a retained context: its session name is a copy made when the context was created, and its thinking level is a host call.
+/// The read of one replicated accessor as a string, or an error for a kind the Rust SDK does not replicate: its thinking level is a host call, which is live.
 fn state_push_reader(ctx: &pig_sdk::Context, kind: &str) -> Result<Box<dyn Fn() -> String + Send>, String> {
     let ctx = ctx.clone();
     if kind == "model" {
         return Ok(Box::new(move || ctx.model()));
+    }
+    if kind == "session-name" {
+        return Ok(Box::new(move || ctx.session_name()));
+    }
+    if kind == "theme" {
+        return Ok(Box::new(move || ctx.theme().name));
     }
     if let Some(key) = kind.strip_prefix("settings:") {
         let key = key.to_string();
@@ -4107,4 +4177,25 @@ fn builtin_local(case: &Value) -> Value {
     }
     report["output"] = json!(chunks.lock().unwrap().join(""));
     report
+}
+
+/// Contributes the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a handler that holds
+/// the signal and reads it again right after the abort sees it aborted, in the same turn.
+fn register_signal_abort(ext: &mut Extension) {
+    ext.command("signal-abort", "Abort the run and report ctx.signal", |ctx, _args| {
+        let state = |cancelled: Option<bool>| match cancelled {
+            None => "none",
+            Some(true) => "aborted",
+            Some(false) => "live",
+        };
+        let held = ctx.signal();
+        ctx.abort();
+        let report = format!(
+            "abort:{}:{}",
+            state(held.map(|signal| signal.is_cancelled())),
+            state(ctx.signal().map(|signal| signal.is_cancelled()))
+        );
+        ctx.notify(&report, "info");
+        CommandResult::Ok
+    });
 }

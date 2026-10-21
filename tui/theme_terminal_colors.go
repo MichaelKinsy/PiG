@@ -36,15 +36,19 @@ func SetTerminalColors(colors TerminalColors) {
 	}
 	terminalColorsState.Store(&copied)
 	terminalColorsPending.Store(false)
+	// The active theme resolves its concrete colors from these, so what an extension reads from it changed (theme.ts:259, 539).
+	activeThemeObservers.Notify()
 }
 
 // SetTerminalColorScheme records the terminal's light/dark report, the fallback for terminals that do not report their background. An empty scheme clears it.
 func SetTerminalColorScheme(scheme TerminalTheme) {
 	if scheme == "" {
 		terminalColorScheme.Store(nil)
-		return
+	} else {
+		terminalColorScheme.Store(&scheme)
 	}
-	terminalColorScheme.Store(&scheme)
+	// The appearance of a theme with no background of its own follows the scheme (theme.ts:640).
+	activeThemeObservers.Notify()
 }
 
 // MarkTerminalColorsPending renders the system theme in grayscale until SetTerminalColors reports the terminal's colors.

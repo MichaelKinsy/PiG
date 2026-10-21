@@ -483,6 +483,8 @@ type Host struct {
 	drainTasksClosed bool
 	// hostStatePushQueued is set while a fan-out of a host state change waits to run (see hostStateChanged); the fan-out clears it before it reads the targets, so a change that arrives while it runs queues the next one.
 	hostStatePushQueued atomic.Bool
+	// stopMcpServersObserver removes the observer that reports each change of the runtime's MCP server registry to hostStateChanged. Guarded by h.mu.
+	stopMcpServersObserver func()
 	// retirements are the stops of replaced generations that a running command deferred (retireGeneration). retirementTasks joins the goroutines that run them; retirementsClosed stops new ones once Shutdown has run the pending stops. Guarded by retirementMu.
 	retirementMu      sync.Mutex
 	retirements       map[*generationRetirement]struct{}
@@ -908,6 +910,13 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.mu.Lock()
 		bridge.mcpServers = h.providerRuntime.McpServers().List
 		bridge.mu.Unlock()
+		// Upstream's getMcpServers reads the registry live (loader.ts:495-497), and an extension with no mcp_servers_change handler gets no event when another extension registers a server, so the registry's own change reports the new list to every runtime.
+		h.mu.Lock()
+		if h.stopMcpServersObserver != nil {
+			h.stopMcpServersObserver()
+		}
+		h.stopMcpServersObserver = h.providerRuntime.McpServers().ObserveChange(h.hostStateChanged)
+		h.mu.Unlock()
 	}
 }
 
@@ -2440,6 +2449,13 @@ func (h *Host) TerminateProcesses() {
 // Shutdown detaches all extension consumers before removing providers, then stops and reaps every managed process. Session owners emit and await session_shutdown before calling it.
 func (h *Host) Shutdown(reason string) {
 	h.shuttingDown.Store(true)
+	h.mu.Lock()
+	stopMcpServersObserver := h.stopMcpServersObserver
+	h.stopMcpServersObserver = nil
+	h.mu.Unlock()
+	if stopMcpServersObserver != nil {
+		stopMcpServersObserver()
+	}
 	h.runSignals.release()
 	if h.recoveryCancel != nil {
 		h.recoveryCancel()

@@ -63,6 +63,7 @@ const (
 	RuleProviderCredential  = "provider-credential-ordered"
 	RuleSystemPromptGetter  = "before-agent-start-system-prompt-getter"
 	RuleReadonlySession     = "context-session-manager-readonly"
+	RuleModelRegistryFind   = "model-registry-find-returns-error"
 )
 
 // getter is one Context method that gained an error result. Params is the
@@ -234,6 +235,14 @@ func Rules() []Rule {
 			Changes: []Change{
 				{Symbol: "SessionManager", Old: "the read-only view of the host's session log (the type of ctx.SessionManager())", New: "Pi's SessionManager class, which an extension constructs", Since: "0.5.2"},
 				{Symbol: "SetupSessionManager.SessionManager", Old: "field of SetupSessionManager", New: "removed", Since: "0.5.2"},
+			},
+		},
+		{
+			ID:      RuleModelRegistryFind,
+			Summary: "ModelRegistry.Find returns an error as its last result",
+			Remedy:  "Receive the error and return it from the handler: `model, err := ctx.ModelRegistry().Find(provider, id)`. A nil model with a nil error means no model matches; a host or transport failure is the error.",
+			Changes: []Change{
+				{Symbol: "ModelRegistry.Find", Old: "func(string, string) map[string]any", New: "func(string, string) (map[string]any, error)", Since: "0.5.2"},
 			},
 		},
 	}

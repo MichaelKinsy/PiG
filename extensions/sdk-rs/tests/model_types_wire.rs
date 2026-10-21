@@ -573,3 +573,82 @@ fn registry_refused_registration_keeps_the_held_operations() {
     assert_eq!(host.response("img-1")["result"]["model"], "flux", "the held implementation answers, not the refused one");
     host.finish();
 }
+
+// model-registry.ts:72: find is a lookup that answers undefined only when no model matches. A host failure is the error, never an absent model.
+#[test]
+fn registry_find_is_absent_only_when_no_model_matches_and_a_host_failure_is_an_error() {
+    let mut ext = Extension::new("find");
+    ext.tool("read", "Read", empty_schema(), |ctx, _| {
+        let registry = ctx.model_registry();
+        let report = |read: std::io::Result<Option<Value>>| match read {
+            Ok(model) => json!({"ok": model}),
+            Err(error) => json!({"err": error.to_string()}),
+        };
+        ToolResult::text(
+            json!({
+                "found": report(registry.find("listed", "a")),
+                "absent": report(registry.find("listed", "zzz")),
+                "failed": report(registry.find("listed", "boom")),
+            })
+            .to_string(),
+        )
+    });
+    let mut host = Host::start(ext, json!({}));
+    let (calls, response) = host.run_tool("read", |call| {
+        assert_eq!(call["method"], "getModel");
+        match call["args"]["modelId"].as_str().unwrap() {
+            "a" => Ok(json!({"id": "a", "provider": "listed"})),
+            "zzz" => Ok(Value::Null),
+            _ => Err("boom".to_string()),
+        }
+    });
+    assert_eq!(calls.len(), 3);
+    let report = text(&response);
+    assert_eq!(report["found"], json!({"ok": {"id": "a", "provider": "listed"}}));
+    assert_eq!(report["absent"], json!({"ok": null}));
+    assert!(report["failed"]["err"].as_str().unwrap().contains("boom"), "{report}");
+    host.finish();
+}
+
+// model-runtime.ts:543-553 and model-registry.ts:68-87, 206-208: the provider's state decides getAvailable, hasConfiguredAuth and
+// isUsingOAuth, and a model with no provider has neither flag.
+#[test]
+fn registry_provider_state_decides_availability_and_flags() {
+    let mut ext = Extension::new("flags");
+    ext.tool("read", "Read", empty_schema(), |ctx, _| {
+        let registry = ctx.model_registry();
+        let report = (|| -> std::io::Result<Value> {
+            let mut models = registry.get_all()?.as_array().unwrap().clone();
+            models.push(json!({}));
+            Ok(json!({
+                "available": ids(&registry.get_available()?),
+                "auth": models.iter().map(|model| registry.has_configured_auth(model)).collect::<std::io::Result<Vec<_>>>()?,
+                "oauth": models.iter().map(|model| registry.is_using_oauth(model)).collect::<std::io::Result<Vec<_>>>()?,
+            }))
+        })();
+        match report {
+            Ok(report) => ToolResult::text(report.to_string()),
+            Err(error) => ToolResult::Error(error.to_string()),
+        }
+    });
+    let state = json!({
+        "models": [
+            {"id": "a", "provider": "listed"}, {"id": "b", "provider": "listed"},
+            {"id": "c", "provider": "open"}, {"id": "d", "provider": "off"}, {"id": "e", "provider": "none"},
+        ],
+        "providers": {
+            "listed": {"configured": true, "usingOAuth": true, "availableModelIds": ["a"]},
+            "open": {"configured": true, "usingOAuth": false},
+            "off": {"configured": false, "usingOAuth": false},
+            "none": {"configured": true, "usingOAuth": true, "availableModelIds": []},
+        },
+        "registered": [],
+    });
+    let mut host = Host::start(ext, json!({}));
+    let (_, response) = host.run_tool("read", |_| Ok(state.clone()));
+    let report = text(&response);
+    assert_eq!(report["available"], json!(["listed/a", "open/c"]));
+    assert_eq!(report["auth"], json!([true, true, true, false, true, false]));
+    assert_eq!(report["oauth"], json!([true, true, false, false, true, false]));
+    host.finish();
+}

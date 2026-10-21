@@ -18,7 +18,7 @@ func (s *Session) bindLoaderExtensionHost(bridge *subprocess.UIBridge) {
 	services := s.services
 	detachModels := BindSessionModelOperations(bridge, s, services)
 	stopRunSignal := WatchSessionRunSignal(bridge, s)
-	stopSessionState := WatchSessionState(bridge, s)
+	stopHostState := WatchHostState(bridge, s)
 	BindSessionReadActions(bridge, current, s.CWD(), s.Inner().GetSessionDir())
 	icodingagent.BindAppendEntryAction(bridge, func() (*icodingagent.Session, error) { return s.Inner(), nil }, nil)
 	flagValues := services.ExtensionFlagValues()
@@ -51,6 +51,6 @@ func (s *Session) bindLoaderExtensionHost(bridge *subprocess.UIBridge) {
 	s.detachExtensionHost = sync.OnceFunc(func() {
 		detachModels()
 		stopRunSignal()
-		stopSessionState()
+		stopHostState()
 	})
 }

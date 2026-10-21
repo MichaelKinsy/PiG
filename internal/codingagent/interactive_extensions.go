@@ -882,7 +882,7 @@ type replicatedStateSession interface {
 	ObserveReplicatedState(observe func()) func()
 }
 
-// watchReplicatedState reports each change of the state the extension runtimes replicate to bridge, and returns the function that stops. Pi's `ctx.model`, `pi.getSettings()` and `pi.getSessionName()` read the live Session (runner.ts:906, loader.ts:411-414), and a footer reads the live git branch and provider count (footer-data-provider.ts); a user's model switch or settings edit, the /name command, a branch checkout or a login changes them with no extension call and no event to an extension without a handler, so the runtimes learn of it when it happens, not at their next request. The report returns at once, so it never waits for an extension on the owner loop.
+// watchReplicatedState reports each change of the state the extension runtimes replicate to bridge, and returns the function that stops. Pi's `ctx.model`, `pi.getSettings()` and `pi.getSessionName()` read the live Session (runner.ts:906, loader.ts:411-414), `ctx.ui.theme` is the global theme (interactive-mode.ts:2665), and a footer reads the live git branch and provider count (footer-data-provider.ts); a user's model switch or settings edit, the /name command, a theme selection, a branch checkout or a login changes them with no extension call and no event to an extension without a handler, so the runtimes learn of it when it happens, not at their next request. The report returns at once, so it never waits for an extension on the owner loop.
 func (m *InteractiveMode) watchReplicatedState(bridge SubprocessUIBridge) func() {
 	notifier, ok := bridge.(hostStateNotifier)
 	if !ok {
@@ -903,6 +903,7 @@ func (m *InteractiveMode) watchReplicatedState(bridge SubprocessUIBridge) func()
 	if m.statusLine != nil {
 		stops = append(stops, m.statusLine.ObserveChange(notifier.HostStateChanged))
 	}
+	stops = append(stops, tui.ObserveActiveTheme(notifier.HostStateChanged))
 	return func() {
 		for _, stop := range stops {
 			stop()

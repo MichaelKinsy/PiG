@@ -566,6 +566,23 @@ func TestManualChangesAreNamedNotRewritten(t *testing.T) {
 	}
 }
 
+// A ModelRegistry.Find use written for the single-result signature is named with its old and new shape; the change has no mechanical rewrite.
+func TestModelRegistryFindChangeIsNamed(t *testing.T) {
+	result, _ := planSource(t, `func handler(ctx sdk.Context) error {
+	model := ctx.ModelRegistry().Find("p", "m")
+	fmt.Println(model)
+	return nil
+}
+`)
+	if result.Changed() || len(result.Remaining) != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	drift := result.Remaining[0]
+	if drift.Rule != upgrade.RuleModelRegistryFind || drift.Symbol != "ModelRegistry.Find" || drift.Rewrites || drift.New != "func(string, string) (map[string]any, error)" {
+		t.Fatalf("drift = %+v", drift)
+	}
+}
+
 // A provider object written for map[string]any credentials names each changed field with its old and new shape; the change has no mechanical rewrite.
 func TestProviderCredentialChangesAreNamed(t *testing.T) {
 	result, _ := planSource(t, `var provider = sdk.Provider{

@@ -1956,6 +1956,34 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					return nil
 				},
 			},
+			"signal-abort": {
+				Name:        "signal-abort",
+				Description: "Abort the run and report ctx.signal",
+				Handler: func(ctx context.Context, _ string) error {
+					state := func(signal context.Context) string {
+						switch {
+						case signal == nil:
+							return "none"
+						case signal.Err() != nil:
+							return "aborted"
+						}
+						return "live"
+					}
+					held, err := extension.FromContext(ctx).Signal()
+					if err != nil {
+						return err
+					}
+					if err := extension.FromContext(ctx).Abort(); err != nil {
+						return err
+					}
+					after, err := extension.FromContext(ctx).Signal()
+					if err != nil {
+						return err
+					}
+					ui.Notify("abort:"+state(held)+":"+state(after), "info")
+					return nil
+				},
+			},
 			"signal-wait": {
 				Name:        "signal-wait",
 				Description: "Wait for ctx.signal to abort",

@@ -46,6 +46,43 @@ func TestMcpServerRegistryKeepsOwnershipOrderAndCopies(t *testing.T) {
 	}
 }
 
+// Not upstream: the registry keeps upstream's one change listener, which the runner owns (runner.ts:465-467), and also tells its observers about every change, so the owner of a runtime that replicates `pi.getMcpServers()` (loader.ts:495-497) learns of a registration the runtime made no call for. A removal of a server another extension owns changes nothing and tells nobody; a stopped observer hears nothing.
+func TestMcpServerRegistryObserversHearEveryChangeAfterTheListener(t *testing.T) {
+	registry := NewMcpServerRegistry()
+	var order []string
+	registry.SetChangeListener(func() { order = append(order, "listener") })
+	stop := registry.ObserveChange(func() { order = append(order, "observer") })
+	registry.Register(RegisteredMcpServer{Name: "a", Config: McpServerConfig{Command: "a"}, ExtensionPath: "one"})
+	registry.Register(RegisteredMcpServer{Name: "a", Config: McpServerConfig{Command: "a2"}, ExtensionPath: "one"})
+	registry.Unregister("a", "two")
+	registry.Unregister("a", "one")
+	if want := "listener,observer,listener,observer,listener,observer"; strings.Join(order, ",") != want {
+		t.Fatalf("order = %v, want %s", order, want)
+	}
+	order = nil
+	stop()
+	stop()
+	registry.Register(RegisteredMcpServer{Name: "b", Config: McpServerConfig{Command: "b"}, ExtensionPath: "one"})
+	if want := "listener"; strings.Join(order, ",") != want {
+		t.Fatalf("after the observer stopped: %v, want %s", order, want)
+	}
+}
+
+// An observer reads the registry it was told about: the lock is released before it runs.
+func TestMcpServerRegistryObserverMayReadTheRegistry(t *testing.T) {
+	registry := NewMcpServerRegistry()
+	var seen []string
+	registry.ObserveChange(func() {
+		for _, server := range registry.List() {
+			seen = append(seen, server.Name)
+		}
+	})
+	registry.Register(RegisteredMcpServer{Name: "a", Config: McpServerConfig{Command: "a"}, ExtensionPath: "one"})
+	if strings.Join(seen, ",") != "a" {
+		t.Fatalf("the observer saw %v, want [a]", seen)
+	}
+}
+
 func TestValidateMcpServerConfigMessages(t *testing.T) {
 	for _, tc := range []struct {
 		name, config, want string

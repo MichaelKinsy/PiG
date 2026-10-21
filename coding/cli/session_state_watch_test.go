@@ -10,10 +10,11 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Pi's ctx.model, pi.getSettings() and pi.getSessionName() read the live Session (runner.ts:906, loader.ts:411-414), so the modes that run extensions report each change of the Session's replicated state to the extension host: a runtime that reads between two requests then holds the new value.
-func TestWatchSessionStateReportsSessionChangesUntilStopped(t *testing.T) {
+// Pi's ctx.model, pi.getSettings(), pi.getSessionName() and ctx.ui.theme read the live Session, settings and global theme (runner.ts:906, loader.ts:411-414, interactive-mode.ts:2665), so the modes that run extensions report each change of the replicated host state to the extension host: a runtime that reads between two requests then holds the new value.
+func TestWatchHostStateReportsSessionAndThemeChangesUntilStopped(t *testing.T) {
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
@@ -23,8 +24,10 @@ func TestWatchSessionStateReportsSessionChangesUntilStopped(t *testing.T) {
 	bridge := subprocess.NewUIBridge(func() {})
 	var reports atomic.Int64
 	bridge.OnHostStateChanged = func() { reports.Add(1) }
+	previousTheme := tui.ActiveTheme()
+	t.Cleanup(func() { tui.SetThemeInstance(previousTheme) })
 
-	stop := coding.WatchSessionState(bridge, session)
+	stop := coding.WatchHostState(bridge, session)
 	for _, step := range []struct {
 		name   string
 		change func() error
@@ -32,6 +35,7 @@ func TestWatchSessionStateReportsSessionChangesUntilStopped(t *testing.T) {
 		{"the session name", func() error { return session.SetSessionName("renamed") }},
 		{"a setting", func() error { return services.SettingsManager().SetEditorPaddingX(2) }},
 		{"the thinking level", func() error { return session.SetThinkingLevel(ai.ThinkingHigh) }},
+		{"the active theme", func() error { tui.SetTheme("light"); return nil }},
 	} {
 		before := reports.Load()
 		if err := step.change(); err != nil {
@@ -49,18 +53,22 @@ func TestWatchSessionStateReportsSessionChangesUntilStopped(t *testing.T) {
 	if reports.Load() != before {
 		t.Fatal("a stopped watch still reported")
 	}
+	tui.SetTheme("dark")
+	if reports.Load() != before {
+		t.Fatal("a stopped watch still reported a theme change")
+	}
 }
 
 // Without an extension host or a Session there is nothing to report to or from, and the stop function is still safe to call.
-func TestWatchSessionStateWithoutABridgeOrSession(t *testing.T) {
+func TestWatchHostStateWithoutABridgeOrSession(t *testing.T) {
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(services.Close)
 	session := newModelRegistryTestSession(t, services)
-	coding.WatchSessionState(nil, session)()
-	coding.WatchSessionState(subprocess.NewUIBridge(func() {}), nil)()
+	coding.WatchHostState(nil, session)()
+	coding.WatchHostState(subprocess.NewUIBridge(func() {}), nil)()
 }
 
 // settingsEditTool edits the settings from inside a run, as a user's /settings edit changes them with no extension call.

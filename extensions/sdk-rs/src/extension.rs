@@ -569,12 +569,11 @@ impl Context {
             conn,
             tool_call_id: None,
             request_id: String::new(),
-            session_name: String::new(),
             cwd: String::new(),
             mode: String::new(),
             shared_width: Arc::new(AtomicU32::new(0)),
             shared_height: Arc::new(AtomicU32::new(0)),
-            shared_model: Arc::new(Mutex::new(String::new())),
+            shared_identity: Arc::new(Mutex::new(crate::context::SessionIdentity::default())),
             flag_defaults: Arc::new(HashMap::new()),
             shared_session: Arc::new(Mutex::new(crate::context::SessionMirror::default())),
             session_sub_lock: Arc::new(Mutex::new(())),
@@ -613,12 +612,11 @@ impl Context {
             request_parent: Some(parent),
             tool_call_id,
             request_id,
-            session_name: self.session_name.clone(),
             cwd: self.cwd.clone(),
             mode: self.mode.clone(),
             shared_width: self.shared_width.clone(),
             shared_height: self.shared_height.clone(),
-            shared_model: self.shared_model.clone(),
+            shared_identity: self.shared_identity.clone(),
             flag_defaults: self.flag_defaults.clone(),
             shared_session: self.shared_session.clone(),
             session_sub_lock: self.session_sub_lock.clone(),
@@ -1456,7 +1454,7 @@ impl Extension {
         // Build base context.
         let shared_width = Arc::new(AtomicU32::new(ready.width));
         let shared_height = Arc::new(AtomicU32::new(ready.height));
-        let shared_model = Arc::new(Mutex::new(ready.model.clone()));
+        let shared_identity = Arc::new(Mutex::new(crate::context::SessionIdentity::default()));
         let shared_session = Arc::new(Mutex::new(crate::context::SessionMirror::default()));
         // Initialize session mirror from the ready payload.
         if let Some(ref state) = ready.state {
@@ -1469,6 +1467,7 @@ impl Extension {
         let shared_ui = Arc::new(Mutex::new(UiState::default()));
         if let Some(state) = ready.state.as_ref().and_then(|state| state.as_object()) {
             shared_ui.lock().unwrap().apply_state(state);
+            shared_identity.lock().unwrap().apply_state(state);
             conn.api_state.lock().unwrap().apply_state(state);
             conn.views.apply_state(state);
         }
@@ -1497,12 +1496,11 @@ impl Extension {
             conn: conn.clone(),
             tool_call_id: None,
             request_id: String::new(),
-            session_name: ready.session_name,
             cwd: ready.cwd,
             mode: ready.mode,
             shared_width,
             shared_height,
-            shared_model,
+            shared_identity,
             flag_defaults: Arc::new(flag_defaults),
             shared_session: shared_session.clone(),
             session_sub_lock: Arc::new(Mutex::new(())),
@@ -1758,6 +1756,7 @@ impl Extension {
                                     {
                                         let change = base_ctx.shared_ui.lock().unwrap().apply_state(state);
                                         base_ctx.host_subs.publish(change);
+                                        base_ctx.shared_identity.lock().unwrap().apply_state(state);
                                         conn.api_state.lock().unwrap().apply_state(state);
                                         conn.views.apply_state(state);
                                         let (footer_changed, branch_changed) = conn.footer.apply(state);
@@ -1774,18 +1773,6 @@ impl Extension {
                                                 .lock()
                                                 .unwrap()
                                                 .apply_update(session);
-                                        }
-                                        if let Some(model) =
-                                            state.get("model").and_then(|m| m.as_object())
-                                        {
-                                            let name =
-                                                model.get("name").and_then(|n| n.as_str()).or_else(
-                                                    || model.get("id").and_then(|i| i.as_str()),
-                                                );
-                                            if let Some(name) = name {
-                                                *base_ctx.shared_model.lock().unwrap() =
-                                                    name.to_string();
-                                            }
                                         }
                                     }
                                 }
@@ -3079,12 +3066,10 @@ mod tests {
             &Envelope {
                 msg_type: "ready".to_string(),
                 ready: Some(ReadyMsg {
-                    session_name: "test".to_string(),
                     cwd: "/tmp".to_string(),
                     mode: "tui".to_string(),
                     width: 80,
                     height: 24,
-                    model: "test-model".to_string(),
                     source_info: None,
                     state: None,
                 }),
@@ -3165,12 +3150,10 @@ mod tests {
             &Envelope {
                 msg_type: "ready".to_string(),
                 ready: Some(ReadyMsg {
-                    session_name: "test".to_string(),
                     cwd: "/tmp".to_string(),
                     mode: "tui".to_string(),
                     width: 80,
                     height: 24,
-                    model: "test-model".to_string(),
                     source_info: None,
                     state: None,
                 }),
@@ -3332,12 +3315,10 @@ mod tests {
             &Envelope {
                 msg_type: "ready".to_string(),
                 ready: Some(ReadyMsg {
-                    session_name: "t".to_string(),
                     cwd: "/tmp".to_string(),
                     mode: "tui".to_string(),
                     width: 80,
                     height: 24,
-                    model: "m".to_string(),
                     source_info: None,
                     state: None,
                 }),
@@ -3562,12 +3543,10 @@ mod tests {
             &Envelope {
                 msg_type: "ready".to_string(),
                 ready: Some(ReadyMsg {
-                    session_name: String::new(),
                     cwd: "/tmp".to_string(),
                     mode: "tui".to_string(),
                     width: 80,
                     height: 24,
-                    model: String::new(),
                     source_info: None,
                     state: None,
                 }),
@@ -3821,12 +3800,10 @@ mod tests {
             &Envelope {
                 msg_type: "ready".to_string(),
                 ready: Some(ReadyMsg {
-                    session_name: String::new(),
                     cwd: "/tmp".to_string(),
                     mode: "tui".to_string(),
                     width: 80,
                     height: 24,
-                    model: String::new(),
                     source_info: None,
                     state: None,
                 }),
@@ -4010,12 +3987,10 @@ mod tests {
             &Envelope {
                 msg_type: "ready".to_string(),
                 ready: Some(ReadyMsg {
-                    session_name: String::new(),
                     cwd: "/tmp".to_string(),
                     mode: "print".to_string(),
                     width: 80,
                     height: 24,
-                    model: String::new(),
                     source_info: None,
                     state: Some(json!({
                         "hasUI": false,

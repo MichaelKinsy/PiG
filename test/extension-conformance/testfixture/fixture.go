@@ -419,6 +419,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify(string(data), "info")
 		return nil
 	})
+	ext.Command("replicated-accessors", "Read the replicated accessors after each write", replicatedAccessorsProbe)
 	ext.Command("active_tools_set", "Set the active tools to the comma-separated names", func(ctx sdk.Context, args string) error {
 		ctx.SetActiveTools(strings.Split(strings.TrimSpace(args), ","))
 		return nil
@@ -513,6 +514,8 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	ext.Command("registry-session", "Read registry and session facades", registrySessionProbe)
+	ext.Command("registry-edges", "Read the registry answers that depend on the provider state", registryEdgesProbe)
+	ext.Command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", registryUnboundReadsProbe)
 	ext.MessageRenderer("conformance-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, width int) ([]string, error) {
 		if message["content"] == "padding-options" {
 			wire, err := json.Marshal(options)
@@ -647,11 +650,14 @@ func Extension() *sdk.Extension {
 	})
 
 	var abortObserved atomic.Bool
+	var abortReason atomic.Value
+	abortReason.Store("")
 	ext.Tool("abort_tool", "Wait for the abort signal", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.OnUpdate("waiting"); err != nil {
 			return nil, err
 		}
 		<-ctx.Done()
+		abortReason.Store(ctx.CancellationReason())
 		abortObserved.Store(true)
 		return "aborted", nil
 	})
@@ -665,6 +671,10 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("abort_probe", "Report whether abort_tool saw its abort signal", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("abort:%t", abortObserved.Load()), "info")
+		return nil
+	})
+	ext.Command("abort_reason", "Report the cancellation reason abort_tool saw", func(ctx sdk.Context, args string) error {
+		ctx.Notify("reason:"+abortReason.Load().(string), "info")
 		return nil
 	})
 
@@ -1621,15 +1631,24 @@ func Extension() *sdk.Extension {
 
 	ext.Command("model-stream-probe", "Exercise model streaming", func(ctx sdk.Context, _ string) error {
 		registry := ctx.ModelRegistry()
-		current := registry.Find("conformance", "current")
+		current, err := registry.Find("conformance", "current")
+		if err != nil {
+			return err
+		}
 		if current == nil || fmt.Sprint(current["id"]) != "current" {
 			return fmt.Errorf("find current = %#v", current)
 		}
-		found := registry.Find("conformance", "declared")
+		found, err := registry.Find("conformance", "declared")
+		if err != nil {
+			return err
+		}
 		if found == nil || fmt.Sprint(found["id"]) != "declared" || fmt.Sprint(found["provider"]) != "conformance" {
 			return fmt.Errorf("find declared = %#v", found)
 		}
-		slash := registry.Find("conformance", "org/model/name")
+		slash, err := registry.Find("conformance", "org/model/name")
+		if err != nil {
+			return err
+		}
 		if slash == nil || fmt.Sprint(slash["id"]) != "org/model/name" {
 			return fmt.Errorf("find slash = %#v", slash)
 		}
@@ -1659,10 +1678,18 @@ func Extension() *sdk.Extension {
 		if len(input) != 0 || cost["input"] != float64(0) || len(tiers) != 1 || compat["supportsStrictMode"] != false {
 			return fmt.Errorf("find slash shape = %#v", slash)
 		}
-		if missing := registry.Find("conformance", "missing"); missing != nil {
+		missing, err := registry.Find("conformance", "missing")
+		if err != nil {
+			return err
+		}
+		if missing != nil {
 			return fmt.Errorf("find missing = %#v", missing)
 		}
-		if overrideOnly := registry.Find("conformance", "override-only"); overrideOnly != nil {
+		overrideOnly, err := registry.Find("conformance", "override-only")
+		if err != nil {
+			return err
+		}
+		if overrideOnly != nil {
 			return fmt.Errorf("find override-only = %#v", overrideOnly)
 		}
 		auth, err := registry.GetApiKeyAndHeaders(found)
@@ -2726,6 +2753,8 @@ func Extension() *sdk.Extension {
 	})
 
 	registerStatePushProbe(ext)
+	registerSignalAbort(ext)
+
 	return ext
 }
 
@@ -3097,4 +3126,24 @@ func nonNilMaps(values []map[string]any) []map[string]any {
 		return []map[string]any{}
 	}
 	return values
+}
+
+// registerSignalAbort contributes the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a
+// handler that holds the signal and reads it again right after the abort sees it aborted, in the same turn.
+func registerSignalAbort(ext *sdk.Extension) {
+	state := func(signal interface{ Err() error }) string {
+		switch {
+		case signal == nil:
+			return "none"
+		case signal.Err() != nil:
+			return "aborted"
+		}
+		return "live"
+	}
+	ext.Command("signal-abort", "Abort the run and report ctx.signal", func(ctx sdk.Context, _ string) error {
+		held := ctx.Signal()
+		ctx.Abort()
+		ctx.Notify("abort:"+state(held)+":"+state(ctx.Signal()), "info")
+		return nil
+	})
 }

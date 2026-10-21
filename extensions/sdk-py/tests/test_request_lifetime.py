@@ -229,7 +229,7 @@ def test_local_context_members_raise_the_stale_message_after_invalidate():
     ext = pig_sdk.Extension("stale-context")
     contexts = []
     ext.command("capture", "Capture", lambda ctx, _: contexts.append(ctx))
-    ready = {"cwd": "/work", "mode": "tui", "model": "m", "state": {"hasUI": True}}
+    ready = {"cwd": "/work", "mode": "tui", "state": {"hasUI": True, "model": {"id": "m", "provider": "p"}}}
     with connected_extension(ext, ready) as (send, receive):
         send({"type": "request", "id": "origin", "request": {"method": "command", "tool": "capture"}})
         assert receive("response")["id"] == "origin"

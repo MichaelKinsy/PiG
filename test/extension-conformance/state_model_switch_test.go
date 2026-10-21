@@ -25,12 +25,12 @@ func TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs(t *testing.T) {
 		t.Fatalf("catalog models %v %v", small, large)
 	}
 	recorders := []string{"chain-a", "chain-c"}
-	// Node reads ctx.model, which is replicated state. The Go, Python and Rust recorders also read their replicated model accessor (Go ctx.Model() replicates the id, Python ctx.model and Rust ctx.model() the name), so a host that pushes a stale model fails in every SDK, not only where the SDK asks the host.
+	// Node reads ctx.model, which is replicated state. The Go, Python and Rust recorders also read their replicated model accessor (Go ctx.Model(), Python ctx.model and Rust ctx.model() all replicate the id, Pi's ctx.model.id), so a host that pushes a stale model fails in every SDK, not only where the SDK asks the host.
 	wants := map[string]string{
 		"node":   "base append|chain-a=" + small.ID + "|chain-c=" + large.ID,
 		"go":     "base append|chain-a=" + small.ID + "/" + small.ID + "|chain-c=" + large.ID + "/" + large.ID,
-		"python": "base append|chain-a=" + small.ID + "/" + small.DisplayName + "|chain-c=" + large.ID + "/" + large.DisplayName,
-		"rust":   "base append|chain-a=" + small.ID + "/" + small.DisplayName + "|chain-c=" + large.ID + "/" + large.DisplayName,
+		"python": "base append|chain-a=" + small.ID + "/" + small.ID + "|chain-c=" + large.ID + "/" + large.ID,
+		"rust":   "base append|chain-a=" + small.ID + "/" + small.ID + "|chain-c=" + large.ID + "/" + large.ID,
 	}
 
 	for _, language := range []string{"go", "python", "rust", "node"} {

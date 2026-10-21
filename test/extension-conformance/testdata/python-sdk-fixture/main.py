@@ -1259,6 +1259,18 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("skills_probe", "Run a session or skill helper on a JSON case and report the result", skills_probe)
     ext.command("exec-reject-probe", "Report exec outcomes", exec_reject_probe)
     ext.command("thinking-model", "Read the thinking level and switch the model", lambda ctx, _args: (ctx.set_thinking_level("high"), ctx.notify(json.dumps([ctx.get_thinking_level(), ctx.set_model("probe/model")[0]], separators=(",", ":")), "info"))[-1])
+    def replicated_accessors(ctx, _args):
+        out = {"name0": ctx.session_name, "model0": ctx.model, "provider0": ctx.model_provider}
+        ctx.set_session_name("renamed")
+        out["name1"] = ctx.session_name
+        ctx.set_label("one", "lab")
+        out["entryAfterLabel"] = ctx.get_entries()[-1]["type"]
+        ctx.send_message("probe", "hi", True)
+        out["entryAfterMessage"] = ctx.get_entries()[-1]["type"]
+        ctx.set_model("prov-after/id-after")
+        out["model1"], out["provider1"], out["qualified1"] = ctx.model, ctx.model_provider, ctx.model_qualified
+        ctx.notify(json.dumps(out), "info")
+    ext.command("replicated-accessors", "Read the replicated accessors after each write", replicated_accessors)
     ext.command("active_tools_set", "Set the active tools to the comma-separated names", lambda ctx, args: ctx.set_active_tools(args.strip().split(",")))
     def session_actions_unbound(ctx, _args):
         parts = []
@@ -1282,6 +1294,27 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("commands-probe", "Read the host's slash commands", lambda ctx, _args: ctx.notify(json.dumps([[c["name"], c["source"], c.get("description", "")] for c in ctx.get_commands() if c["name"] == "conformance-listed"], separators=(",", ":")), "info"))
     ext.command("session-identity", "Read context identity accessors", lambda ctx, _args: ctx.notify(json.dumps([ctx.get_session_id(), ctx.get_session_file(), ctx.get_leaf_id(), ctx.get_session_name()]), "info"))
     ext.command("registry-session", "Read registry and session facades", registry_session)
+
+    def registry_edges(ctx, _args):
+        r = ctx.model_registry
+        models = [*r.get_all(), {}]
+        ctx.notify(json.dumps({
+            "available": r.get_available(),
+            "hasAuth": [r.has_configured_auth(model) for model in models],
+            "oauth": [r.is_using_oauth(model) for model in models],
+            "found": r.find("registry-probe", "a"), "foundOff": r.find("registry-off", "d"),
+            "missing": r.find("registry-probe", "zzz"), "mismatch": r.find("registry-probe", "c"),
+        }), "info")
+    ext.command("registry-edges", "Read the registry answers that depend on the provider state", registry_edges)
+
+    def registry_unbound_reads(ctx, _args):
+        def report(read):
+            try:
+                return "ok:" + json.dumps(read())
+            except Exception as error:  # noqa: BLE001 - the row reports every failure
+                return f"error:{error}"
+        ctx.notify(json.dumps({"find": report(lambda: ctx.model_registry.find("registry-probe", "a")), "entries": report(ctx.session_manager.get_entries)}), "info")
+    ext.command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", registry_unbound_reads)
     ext.message_renderer(
         "conformance-message",
         lambda _ctx, message, options, width: [json.dumps(options)] if message.get("content") == "padding-options" else [
@@ -1380,6 +1413,7 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.tool_renderers("render_probe", render_call=render_probe_call, render_result=render_probe_result, render_shell="self")
     abort_observed = [False]
+    abort_reason = [None]
 
     def update_tool(ctx, _params):
         ctx.on_update({"content": [{"type": "text", "text": "step 1"}]})
@@ -1398,6 +1432,7 @@ def new_extension() -> pig_sdk.Extension:
         ctx.on_update({"content": [{"type": "text", "text": "waiting"}]})
         while not ctx.is_cancelled():
             time.sleep(0.01)
+        abort_reason[0] = ctx.cancellation_reason()
         abort_observed[0] = True
         return {"content": "aborted"}
 
@@ -1420,6 +1455,7 @@ def new_extension() -> pig_sdk.Extension:
         "Report whether abort_tool saw its abort signal",
         lambda ctx, args: ctx.notify("abort:" + ("true" if abort_observed[0] else "false"), "info"),
     )
+    ext.command("abort_reason", "Report the cancellation reason abort_tool saw", lambda ctx, args: ctx.notify("reason:" + (abort_reason[0] or ""), "info"))
     ext.tool(
         "rich_tool",
         "Return text, image, and terminate",
@@ -2511,6 +2547,7 @@ def new_extension() -> pig_sdk.Extension:
     _register_conformance_oauth_object(ext)
     _register_conformance_oauth_large(ext)
     _register_state_push_probe(ext)
+    _register_signal_abort(ext)
     return ext
 
 
@@ -2612,6 +2649,8 @@ def _state_push_reader(ctx, kind):
         read = lambda: ctx.model
     elif kind == "session-name":
         read = lambda: ctx.session_name
+    elif kind == "theme":
+        read = lambda: ctx.theme.name or ""
     elif kind.startswith("settings:"):
         key = kind[len("settings:"):]
         read = lambda: json.dumps(ctx.get_settings().get(key), separators=(",", ":"))
@@ -2630,7 +2669,7 @@ def _state_push_reader(ctx, kind):
 
 
 def _register_state_push_probe(ext: pig_sdk.Extension) -> None:
-    """Register the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>"."""
+    """Register the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>"."""
 
     def probe(ctx, args):
         request = json.loads(args)
@@ -2652,6 +2691,22 @@ def _register_state_push_probe(ext: pig_sdk.Extension) -> None:
         threading.Thread(target=watch, daemon=True).start()
 
     ext.command("state-push-probe", "Read one replicated accessor from a thread between requests", probe)
+
+
+def _register_signal_abort(ext: pig_sdk.Extension) -> None:
+    """Contribute the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the
+    run's signal before it returns (agent.ts:340-342), so a handler that holds the signal and
+    reads it again right after the abort sees it aborted, in the same turn."""
+
+    def state(signal: object) -> str:
+        return "none" if signal is None else "aborted" if signal.is_set() else "live"
+
+    def signal_abort(ctx: pig_sdk.Context, args: str) -> None:
+        held = ctx.signal
+        ctx.abort()
+        ctx.notify("abort:" + state(held) + ":" + state(ctx.signal), "info")
+
+    ext.command("signal-abort", "Abort the run and report ctx.signal", signal_abort)
 
 
 if __name__ == "__main__":

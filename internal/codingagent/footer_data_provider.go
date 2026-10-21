@@ -4,6 +4,8 @@ import (
 	"maps"
 	"slices"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 )
 
 // FooterDataProvider is the data a footer reads about its surroundings (footer-data-provider.ts FooterDataProvider): the working directory and
@@ -17,7 +19,7 @@ type FooterDataProvider struct {
 	extensionStatuses map[string]string
 	providerCount     int
 	// changeObservers run after the git branch or the provider count changed (ObserveChange).
-	changeObservers ChangeObservers
+	changeObservers changeobservers.Observers
 
 	// branchChangeMu guards the OnBranchChange subscribers (footer-data-provider.ts branchChangeCallbacks).
 	branchChangeMu     sync.Mutex

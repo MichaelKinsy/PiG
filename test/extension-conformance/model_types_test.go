@@ -66,6 +66,8 @@ type modelTypesRig struct {
 	classify      []classifyCall
 	images        []classifyCall
 	virtual       []string
+	// virtualModels are the virtual models the host holds, in registration order: the registry's catalog lists them, as Pi's does (virtual-models.ts withVirtualModels).
+	virtualModels []map[string]any
 	available     []string
 	theme         any
 	keybindings   any
@@ -111,10 +113,18 @@ func newModelTypesRig(t *testing.T) *modelTypesRig {
 	})
 	r.bridge.SetActions(&subprocess.HostCallbacks{
 		// The catalog the ready frame carries is the one the registry state publishes; the Node runtime installs it from either.
-		GetModels: func() []json.RawMessage { return modelJSONs(modelTypesChat...) },
+		GetModels: func() []json.RawMessage { return modelJSONs(r.chatModels()...) },
+		GetModel: func(provider, id string) json.RawMessage {
+			for _, model := range r.chatModels() {
+				if model["provider"] == provider && model["id"] == id {
+					return modelJSON(model)
+				}
+			}
+			return nil
+		},
 		GetModelRegistryState: func() map[string]any {
 			return map[string]any{
-				"models": modelTypesChat, "typedModels": modelTypesTyped,
+				"models": r.chatModels(), "typedModels": modelTypesTyped,
 				"providers":  map[string]any{"typesafe": map[string]any{"name": "TypeSafe", "configured": true}},
 				"registered": []any{},
 			}
@@ -184,6 +194,13 @@ func newModelTypesRig(t *testing.T) *modelTypesRig {
 	return r
 }
 
+// chatModels is the catalog the host answers with: the chat models and the virtual models registered so far.
+func (r *modelTypesRig) chatModels() []map[string]any {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append(slices.Clone(modelTypesChat), r.virtualModels...)
+}
+
 // recordProvider is the registry's RegisterProvider: it keeps the config the host applied.
 func (r *modelTypesRig) recordProvider(name string, config extension.ProviderConfig) error {
 	r.mu.Lock()
@@ -228,12 +245,17 @@ func (r *modelTypesRig) finish(ext extension.Extension) {
 			}
 			r.mu.Lock()
 			r.virtual = append(r.virtual, "register "+definition.Provider+"/"+definition.ID)
+			r.virtualModels = slices.DeleteFunc(r.virtualModels, func(model map[string]any) bool {
+				return model["provider"] == definition.Provider && model["id"] == definition.ID
+			})
+			r.virtualModels = append(r.virtualModels, map[string]any{"id": definition.ID, "provider": definition.Provider, "name": definition.Name, "api": "pi-virtual", "baseUrl": "", "reasoning": false, "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": definition.ContextWindow, "maxTokens": definition.MaxTokens})
 			r.mu.Unlock()
 			return nil
 		},
 		UnregisterVirtualModel: func(provider, id string) {
 			r.mu.Lock()
 			r.virtual = append(r.virtual, "unregister "+provider+"/"+id)
+			r.virtualModels = slices.DeleteFunc(r.virtualModels, func(model map[string]any) bool { return model["provider"] == provider && model["id"] == id })
 			r.mu.Unlock()
 		},
 	})
@@ -707,6 +729,15 @@ def new_extension():
         registry.unregister_virtual_model("router", "late")
         return json.dumps({"first": True, "refused": refused})
 
+    def virtual_visible(ctx, args):
+        registry = ctx.model_registry
+        registry.register_virtual_model(pig_sdk.VirtualModel(provider="router", id="seen", name="Seen", route=route, context_window=1000))
+        def listed():
+            return any(model.get("provider") == "router" and model.get("id") == "seen" for model in registry.get_all())
+        registered, is_listed = registry.find("router", "seen") is not None, listed()
+        registry.unregister_virtual_model("router", "seen")
+        return json.dumps({"registered": registered, "listed": is_listed, "gone": registry.find("router", "seen") is None, "unlisted": not listed()})
+
     def theme_probe(ctx, args):
         theme = ctx.theme
         styles = []
@@ -799,7 +830,7 @@ def new_extension():
         report["swapped"] = swapped
         return json.dumps(report)
 
-    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
+    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("virtual_visible", virtual_visible), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
     register_host_surface(ext)
     return ext
@@ -954,6 +985,20 @@ func TestModelTypesVirtualModelsAcrossSDKs(t *testing.T) {
 		defer r.mu.Unlock()
 		if want := []string{"register router/late", "unregister router/late"}; !reflect.DeepEqual(r.virtual, want) {
 			t.Fatalf("registerVirtualModel/unregisterVirtualModel host registrations = %v, want %v", r.virtual, want)
+		}
+	})
+}
+
+// model-runtime.ts:964-992 and model-registry.ts:161-168: registerVirtualModel and unregisterVirtualModel update the model snapshot before they return, so find and getAll, read on the
+// next line of the same handler, see the write. Pi 1.3.0 prints {"registered":true,"listed":true,"gone":true,"unlisted":true} for the same sequence. A realization that answers from
+// a registry older than the call reads false for "registered" and "listed", which the fallback of a stale read never produces for a model it was just given.
+func TestModelTypesVirtualModelIsVisibleInTheSameTurnAcrossSDKs(t *testing.T) {
+	t.Parallel()
+	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+		report := r.tool("virtual_visible")
+		want := map[string]any{"registered": true, "listed": true, "gone": true, "unlisted": true}
+		if !reflect.DeepEqual(report, want) {
+			t.Fatalf("virtual_visible = %v, want %v: the registry read after registerVirtualModel/unregisterVirtualModel must see the write", report, want)
 		}
 	})
 }

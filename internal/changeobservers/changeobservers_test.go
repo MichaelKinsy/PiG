@@ -1,4 +1,4 @@
-package codingagent
+package changeobservers
 
 import (
 	"slices"
@@ -8,8 +8,8 @@ import (
 )
 
 // Observers run in registration order, a removed one is not told again, and a notification never allocates, so an owner can report a change from a lock it holds.
-func TestChangeObserversRunInRegistrationOrderUntilRemoved(t *testing.T) {
-	var observers ChangeObservers
+func TestObserversRunInRegistrationOrderUntilRemoved(t *testing.T) {
+	var observers Observers
 	var order []string
 	stopFirst := observers.Add(func() { order = append(order, "first") })
 	stopSecond := observers.Add(func() { order = append(order, "second") })
@@ -32,8 +32,8 @@ func TestChangeObserversRunInRegistrationOrderUntilRemoved(t *testing.T) {
 }
 
 // A registration while other goroutines notify is safe: run with -race.
-func TestChangeObserversRegisterWhileNotifying(t *testing.T) {
-	var observers ChangeObservers
+func TestObserversRegisterWhileNotifying(t *testing.T) {
+	var observers Observers
 	var calls atomic.Int64
 	stop := make(chan struct{})
 	var notifiers sync.WaitGroup

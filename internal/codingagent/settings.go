@@ -21,6 +21,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
@@ -1710,7 +1711,7 @@ type SettingsManager struct {
 	generation        uint64
 	extensionEncoding atomic.Pointer[extensionSettingsEncoding]
 	// changeObservers run after each change of merged, with sm.mu held for writing.
-	changeObservers ChangeObservers
+	changeObservers changeobservers.Observers
 	// globalObject and projectObject are the settings layers as Pi's SettingsManager holds them: the migrated file object, which a setter
 	// changes in place. mergedObject is their deepMergeSettings with each applied override (settings-manager.ts:195-212). Only their member
 	// order is read: the extension settings encoding lists the members of merged in it, as Pi's getSettings() clone of this.settings does.

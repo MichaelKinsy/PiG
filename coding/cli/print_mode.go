@@ -358,7 +358,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 
 	// currentCommands is the command catalog of the current Session. Prompts read it at the moment they are sent.
 	var currentCommands atomic.Pointer[headlessCommandCatalog]
-	var detachModelRegistry, stopRunSignal, stopSessionState func()
+	var detachModelRegistry, stopRunSignal, stopHostState func()
 	var publishedCommands atomic.Pointer[headlessCommandCatalog]
 	// bind wires the Session to this mode as upstream rebindSession does: extension bindings, command actions, then the event subscription. It emits session_start for the Session's own reason, which is startup for the first Session.
 	// A reload binds the same Session to a replacement runner: the Session has reloaded its resources and rebuilt its system prompt, and the event subscription stays (agent-session.ts:3575-3625).
@@ -371,12 +371,12 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if stopRunSignal != nil {
 			stopRunSignal()
 		}
-		if stopSessionState != nil {
-			stopSessionState()
+		if stopHostState != nil {
+			stopHostState()
 		}
 		detachModelRegistry = coding.BindSessionModelOperations(bridge, session, services)
 		stopRunSignal = coding.WatchSessionRunSignal(bridge, session)
-		stopSessionState = coding.WatchSessionState(bridge, session)
+		stopHostState = coding.WatchHostState(bridge, session)
 		coding.BindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
 		var emitEntryAppended func(RPCEntryAppendedEvent)
 		if opts.Mode == "json" {
@@ -462,8 +462,8 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if stopRunSignal != nil {
 			stopRunSignal()
 		}
-		if stopSessionState != nil {
-			stopSessionState()
+		if stopHostState != nil {
+			stopHostState()
 		}
 	}()
 

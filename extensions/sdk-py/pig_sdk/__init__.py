@@ -1626,11 +1626,17 @@ class ModelRegistry:
         """Remove a virtual model (``unregisterVirtualModel``)."""
         self._context.unregister_virtual_model(provider, model_id)
 
+    def _provider_state(self, model: dict[str, Any]) -> dict[str, Any]:
+        """The registry state of the model's provider. A model with no string provider has no provider state: Pi's ``model.provider`` lookup in the configured and OAuth sets misses (model-runtime.ts:543-553)."""
+        providers = self._state()["providers"]
+        provider = model.get("provider")
+        return providers.get(provider, {}) if isinstance(provider, str) else {}
+
     def has_configured_auth(self, model: dict[str, Any]) -> bool:
-        return self._state()["providers"].get(model["provider"], {}).get("configured", False)
+        return self._provider_state(model).get("configured", False)
 
     def is_using_oauth(self, model: dict[str, Any]) -> bool:
-        return self._state()["providers"].get(model["provider"], {}).get("usingOAuth", False)
+        return self._provider_state(model).get("usingOAuth", False)
 
     def get_provider_auth_status(self, provider: str) -> dict[str, Any]:
         return self._state()["providers"].get(provider, {}).get("authStatus", {"configured": False})
@@ -2359,6 +2365,19 @@ class _ToolBatches:
                     del self._orders[batch]
 
 
+def _model_identity(model: Any) -> tuple[str, str]:
+    """The id (the name when the model has no id) and the provider id of a state snapshot's model, ("", "") for no model: Pi's ``ctx.model.id`` and ``ctx.model.provider``. The Go and Rust SDKs read the same members."""
+    if not isinstance(model, dict):
+        return "", ""
+    identity = model.get("id")
+    if not (isinstance(identity, str) and identity):
+        identity = model.get("name")
+    provider = model.get("provider")
+    if isinstance(provider, dict):
+        provider = provider.get("id")
+    return (identity if isinstance(identity, str) else ""), (provider if isinstance(provider, str) else "")
+
+
 @dataclass
 class _ReplacementState:
     """The values a withSession context answers locally, from the replacement Session's ready payload."""
@@ -2367,6 +2386,8 @@ class _ReplacementState:
     mode: str = ""
     has_ui: bool = False
     model: str = ""
+    model_provider: str = ""
+    session_name: str = ""
 
 
 class _WithSessionEntry:
@@ -2417,12 +2438,15 @@ class _WithSessionRegistry:
             raise RuntimeError(f"unknown withSession callback {handle}")
         ready = args.get("ready") or {}
         state = ready.get("state") or {}
-        model = state.get("model") if isinstance(state.get("model"), dict) else {}
+        model, model_provider = _model_identity(state.get("model"))
+        session = state.get("session") if isinstance(state.get("session"), dict) else {}
         replacement = _ReplacementState(
             cwd=str(ready.get("cwd") or ""),
             mode=str(ready.get("mode") or ""),
             has_ui=state.get("hasUI") is True,
-            model=str(model.get("id") or model.get("name") or ""),
+            model=model,
+            model_provider=model_provider,
+            session_name=str(session.get("sessionName") or ""),
         )
         replaced = ReplacedSessionContext(**{item.name: getattr(ctx, item.name) for item in dataclasses.fields(Context)})
         replaced._replacement = replacement
@@ -2873,18 +2897,34 @@ class Context:
         if message is not None:
             raise RuntimeError(message)
 
+    def _current_model(self) -> tuple[str, str]:
+        """The model's id and provider id. A replacement context asks the host, since this process replicates only the requesting Session's model."""
+        if self._replacement is not None:
+            try:
+                return _model_identity(self._call("getModelInfo").get("result"))
+            except HostCallError:
+                return self._replacement.model, self._replacement.model_provider
+        with self.extension._state_lock:
+            return self.extension._model, self.extension._model_provider
+
     @property
     def model(self) -> str:
+        """The active model's id: Pi's ``ctx.model.id``, the identity every SDK reports (Go ``Model()`` and Rust ``model()`` return the same id). ``""`` while the Session has no model."""
         self._assert_active()
-        if self._replacement is not None:
-            # This process replicates only the requesting Session's model.
-            try:
-                info = self._call("getModelInfo").get("result") or {}
-            except HostCallError:
-                return self._replacement.model
-            return str(info.get("id") or info.get("name") or "") if isinstance(info, dict) else ""
-        with self.extension._state_lock:
-            return self.extension._model
+        return self._current_model()[0]
+
+    @property
+    def model_provider(self) -> str:
+        """The active model's provider id (Pi's ``ctx.model.provider``), ``""`` while the Session has no model."""
+        self._assert_active()
+        return self._current_model()[1]
+
+    @property
+    def model_qualified(self) -> str:
+        """The ``provider/id`` string ``set_model`` takes; just the id when the provider is unknown."""
+        self._assert_active()
+        identity, provider = self._current_model()
+        return f"{provider}/{identity}" if provider else identity
 
     @property
     def cwd(self) -> str:
@@ -2906,6 +2946,13 @@ class Context:
 
     @property
     def session_name(self) -> str:
+        """The session's name, ``""`` while it has none: the replicated value behind Pi's ``ctx.sessionManager.getSessionName()``. State updates keep it current and ``set_session_name`` is visible to the next read."""
+        self._assert_active()
+        if self._replacement is not None:
+            try:
+                return self.get_session_name() or ""
+            except HostCallError:
+                return self._replacement.session_name
         with self.extension._state_lock:
             return self.extension._session_name
 
@@ -3959,6 +4006,7 @@ class Extension:
         self._tool_render_lock = threading.Lock()
         self._flag_defaults: dict[str, Any] = {}
         self._session_name: str = ""
+        self._model_provider: str = ""
         self._session_file: str = ""
         self._cwd: str = ""
         self._mode: str = ""
@@ -4747,12 +4795,10 @@ class Extension:
         ready_data = ready.get("ready") or {}
         source_info = ready_data.get("sourceInfo")
         self._source_info = dict(source_info) if isinstance(source_info, dict) else None
-        self._session_name = ready_data.get("session_name", "")
         self._cwd = ready_data.get("cwd", "")
         self._mode = ready_data.get("mode", "")
         self._width = ready_data.get("width", 0)
         self._height = ready_data.get("height", 0)
-        self._model = ready_data.get("model", "")
         # Initialize session mirror from the ready payload state.
         initial_state = ready_data.get("state") or {}
         with self._state_lock:
@@ -5077,10 +5123,6 @@ class Extension:
                     if session.get("sessionFile"):
                         self._session_file = str(session["sessionFile"])
                     self._session_mirror.apply_update(session)
-                model = state.get("model") or {}
-                name = model.get("name") or model.get("id") or ""
-                if name:
-                    self._model = name
                 self._apply_ui_state(state)
             elif method == "theme_change":
                 palette = notify.get("args")
@@ -5207,8 +5249,15 @@ class Extension:
             self._theme_feed.publish(self._theme)
 
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
-        """Record the snapshot's hasUI and theme. Caller holds _state_lock."""
+        """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
         self._views.apply_state(state)
+        if "model" in state:
+            # An absent key keeps the replica; an explicit null clears it (the Session holds no model).
+            self._model, self._model_provider = _model_identity(state["model"])
+        session = state.get("session")
+        if isinstance(session, dict):
+            # Every session snapshot carries the name; "" is the host's carrier for a session with no name.
+            self._session_name = str(session.get("sessionName") or "")
         has_ui = state.get("hasUI")
         if isinstance(has_ui, bool):
             self._has_ui = has_ui

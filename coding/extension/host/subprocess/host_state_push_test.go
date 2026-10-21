@@ -1,6 +1,8 @@
 package subprocess
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -99,6 +101,73 @@ func TestHostStateChangedStuckRuntimeDelaysOnlyItself(t *testing.T) {
 		if got := string(rig.nextState(t)["systemPrompt"]); got != `"`+prompt+`"` {
 			t.Fatalf("the healthy runtime received %s, want %q", got, prompt)
 		}
+	}
+}
+
+// Upstream's getMcpServers reads the runtime's registry live (loader.ts:495-497), and an extension with no mcp_servers_change handler gets no event when another extension registers or removes a server. The registry's own change reports the new list to every connected runtime, and a runtime that holds the list is sent nothing.
+func TestMcpServerRegistryChangePushesTheListToEveryRuntime(t *testing.T) {
+	rig := newPushRig(t)
+	rig.push(t)
+	rig.nextState(t)
+	names := func(state map[string]json.RawMessage) string {
+		var servers []struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(state["mcpServers"], &servers); err != nil {
+			t.Fatalf("mcpServers %s: %v", state["mcpServers"], err)
+		}
+		listed := make([]string, len(servers))
+		for i, server := range servers {
+			listed[i] = server.Name
+		}
+		return strings.Join(listed, ",")
+	}
+
+	runtime := rig.h.Runtime()
+	if err := runtime.RegisterMcpServer("other-extension", "pushed", json.RawMessage(`{"type":"http","url":"https://mcp.example.com/pushed"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if got := names(rig.nextState(t)); got != "pushed" {
+		t.Fatalf("the push after a registration listed %q, want pushed", got)
+	}
+	rig.bridge.HostStateChanged()
+	rig.expectNoFrame(t, "a report for a list the runtime already holds")
+
+	runtime.UnregisterMcpServer("other-extension", "pushed")
+	if got := names(rig.nextState(t)); got != "" {
+		t.Fatalf("the push after the removal listed %q, want none", got)
+	}
+}
+
+// The registry's report ends with the Host: a registration after Shutdown pushes nothing and leaves no observer on a runtime another Host may share.
+func TestMcpServerRegistryChangeAfterShutdownPushesNothing(t *testing.T) {
+	rig := newPushRig(t)
+	rig.push(t)
+	rig.nextState(t)
+	runtime := rig.h.Runtime()
+	rig.h.Shutdown("done")
+	if err := runtime.RegisterMcpServer("other-extension", "late", json.RawMessage(`{"type":"http","url":"https://mcp.example.com/late"}`)); err != nil {
+		t.Fatal(err)
+	}
+	rig.expectNoFrame(t, "a registration after Shutdown")
+}
+
+// A theme the owner selects with no extension call reaches the runtime as one lean push of the palette.
+func TestHostStateChangedPushesTheThemeAlone(t *testing.T) {
+	rig := newPushRig(t)
+	rig.push(t)
+	rig.nextState(t)
+	rig.theme.Store("light")
+	rig.bridge.HostStateChanged()
+	state := rig.nextState(t)
+	var theme struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(state["theme"], &theme); err != nil || theme.Name != "light" {
+		t.Fatalf("pushed theme = %s (%v), want light", state["theme"], err)
+	}
+	if _, present := state["commands"]; present {
+		t.Fatal("a theme push carried the command catalog")
 	}
 }
 

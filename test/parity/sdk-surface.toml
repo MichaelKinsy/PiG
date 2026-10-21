@@ -411,10 +411,12 @@ python = "Context.session_manager"
 
 [[row]]
 key = "ctx.model"
-go = "Context.GetModelInfo"
-rust = "Context::get_model_info"
-python = "Context.get_model_info"
-partial = "the current model's metadata from the host's model registry"
+go = "Context.Model"
+rust = "Context::model"
+python = "Context.model"
+go_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo"
+rust_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info"
+python_partial = "the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info"
 
 [[row]]
 key = "ctx.thinkingLevel"

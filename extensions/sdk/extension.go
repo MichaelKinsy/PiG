@@ -267,7 +267,7 @@ type Extension struct {
 	expandedFeed stateFeed[bool]
 
 	requestsMu sync.Mutex
-	requests   map[string]context.CancelFunc
+	requests   map[string]context.CancelCauseFunc
 	requestWG  sync.WaitGroup
 	runCtx     context.Context
 	runCancel  context.CancelFunc
@@ -696,7 +696,7 @@ func New(name string) *Extension {
 		messageViewRendererFuncs: make(map[string]MessageViewRendererFunc),
 		entryViewRendererFuncs:   make(map[string]EntryViewRendererFunc),
 		flagDefaults:             make(map[string]any),
-		requests:                 make(map[string]context.CancelFunc),
+		requests:                 make(map[string]context.CancelCauseFunc),
 		modelStreams:             make(map[string]*ModelEventStream),
 		modelStreamCallbacks:     make(map[string]*modelStreamCallbacks),
 		overlays:                 make(map[string]*remoteOverlay),
@@ -1180,12 +1180,10 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		return fmt.Errorf("expected ready message, got %s", env.Type)
 	}
 	e.mu.Lock()
-	e.sessionName = env.Ready.SessionName
 	e.cwd = env.Ready.Cwd
 	e.mode = env.Ready.Mode
 	e.width = env.Ready.Width
 	e.height = env.Ready.Height
-	e.model = env.Ready.Model
 	if env.Ready.SourceInfo != nil {
 		e.sourceInfo, e.sourceInfoKnown = *env.Ready.SourceInfo, true
 	}
@@ -1289,7 +1287,7 @@ func (e *Extension) armRequest(id string) (Context, func()) {
 	if requestRoot == nil {
 		requestRoot = context.Background()
 	}
-	reqCtx, cancel := context.WithCancel(requestRoot)
+	reqCtx, cancel := context.WithCancelCause(requestRoot)
 	parent := e.conn.armParent(id, requestRoot, reqCtx)
 	e.requestsMu.Lock()
 	e.requests[id] = cancel
@@ -1298,7 +1296,7 @@ func (e *Extension) armRequest(id string) (Context, func()) {
 		e.requestsMu.Lock()
 		delete(e.requests, id)
 		e.requestsMu.Unlock()
-		cancel()
+		cancel(nil)
 	}
 }
 
@@ -1790,7 +1788,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				// Frontend is omitted by the host while false, and every
 				// state is a full snapshot, so an absent value clears it.
 				Frontend bool            `json:"frontend"`
-				Model    map[string]any  `json:"model"`
+				Model    json.RawMessage `json:"model"`
 				Session  json.RawMessage `json:"session"`
 				Theme    json.RawMessage `json:"theme"`
 				// Keybindings is the host's effective keybinding table and TerminalCapabilities its resolved
@@ -1810,6 +1808,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		// Session replication: apply incremental entries before any handler
 		// runs, so GetBranch()/GetEntries() are current and local.
 		var sessionState struct {
+			SessionName string `json:"sessionName"`
 			SessionFile string `json:"sessionFile"`
 		}
 		if len(payload.State.Session) > 0 {
@@ -1824,6 +1823,10 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		e.frontend = payload.State.Frontend
 		if sessionState.SessionFile != "" {
 			e.sessionFile = sessionState.SessionFile
+		}
+		// Every session snapshot carries the name; the empty string is the host's carrier for a session with no name, so it clears the replica.
+		if len(payload.State.Session) > 0 {
+			e.sessionName = sessionState.SessionName
 		}
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
 			e.setUITheme(theme)
@@ -1841,23 +1844,11 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				e.notifyFooterData(branchChanged)
 			}
 		}()
-		if m := payload.State.Model; m != nil {
-			if id, ok := m["id"].(string); ok && id != "" {
-				e.model = id
-			} else if name, ok := m["name"].(string); ok && name != "" {
-				e.model = name
-			}
-			// Extract provider ID from nested {"provider": {"id": "..."}}
-			// or flat {"provider": "..."}.
-			if prov, ok := m["provider"]; ok {
-				switch v := prov.(type) {
-				case map[string]any:
-					if pid, ok := v["id"].(string); ok {
-						e.modelProvider = pid
-					}
-				case string:
-					e.modelProvider = v
-				}
+		// An absent model key leaves the replica, an explicit null clears it (the Session has no model), and an object replaces it.
+		if len(payload.State.Model) > 0 {
+			var model map[string]any
+			if json.Unmarshal(payload.State.Model, &model) == nil {
+				e.model, e.modelProvider = modelIdentity(model)
 			}
 		}
 	case "theme_change":
@@ -1994,20 +1985,24 @@ func (e *Extension) cancelRequest(env envelope) {
 		e.conn.cancelParentCalls(id)
 	}
 	if cancel != nil {
-		cancel()
+		var cause error
+		if env.Cancel != nil && env.Cancel.Reason != "" {
+			cause = cancelReason(env.Cancel.Reason)
+		}
+		cancel(cause)
 	}
 }
 
 func (e *Extension) cancelAllRequests() {
 	e.requestsMu.Lock()
-	cancels := make([]context.CancelFunc, 0, len(e.requests))
+	cancels := make([]context.CancelCauseFunc, 0, len(e.requests))
 	for _, cancel := range e.requests {
 		cancels = append(cancels, cancel)
 	}
-	e.requests = make(map[string]context.CancelFunc)
+	e.requests = make(map[string]context.CancelCauseFunc)
 	e.requestsMu.Unlock()
 	for _, cancel := range cancels {
-		cancel()
+		cancel(nil)
 	}
 }
 
