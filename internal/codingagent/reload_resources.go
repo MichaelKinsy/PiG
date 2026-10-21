@@ -239,9 +239,7 @@ func (m *InteractiveMode) rebuildSystemPromptFromResources() {
 	m.opts.SystemPrompt = systemPrompt
 	m.opts.SystemPromptOptions = promptOptions
 	m.rebuildToolSystemPrompt()
-	if m.agent != nil {
-		m.agent.SetSystemPrompt(m.currentSystemPrompt())
-	}
+	m.refreshForcedPrompt()
 }
 
 func mergeUniqueStrings(base []string, additions ...string) []string {
