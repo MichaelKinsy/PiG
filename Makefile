@@ -144,13 +144,22 @@ help-parity: ## List the parity and porting targets (automation/make/parity.mk)
 
 ##@ Release maintenance
 
-.PHONY: set-version module-publication module-size
+.PHONY: set-version module-publication module-build module-build-report module-build-selftest module-size
 set-version: ## Update the release identity; preserve dependencies unless SET_VERSION_ARGS=--release-modules
 	@./automation/ci/with-isolated-pig-home.sh go run ./automation/release/set-version -version "$(VERSION)" $(SET_VERSION_ARGS)
 
 module-publication: ## Verify nested Go dependency tags and checksums against their public source
 	@./automation/ci/with-isolated-pig-home.sh python3 -B -m unittest automation/ci/test_module_publication.py
 	@python3 automation/ci/check-module-publication.py
+
+module-build-selftest: ## Prove the GOWORK=off build gate fails on API the required nested version lacks and passes once it is satisfied
+	@./automation/ci/with-isolated-pig-home.sh python3 -B -m unittest automation/ci/test_check_module_build.py
+
+module-build: module-build-selftest ## Release gate: build and vet the root and every workspace module with GOWORK=off from an empty module cache; fails on API the required nested modules lack
+	@python3 automation/ci/check-module-build.py --fresh-cache
+
+module-build-report: module-build-selftest ## Report, never fail: root uses of nested-module API newer than the required version (job summary in CI)
+	@python3 automation/ci/check-module-build.py --report
 
 module-size: ## Fail when the root module zip exceeds the committed byte budget; prove go install of cmd/pig from that zip through a file:// GOPROXY
 	@./automation/ci/with-isolated-pig-home.sh go run ./automation/release/modulesize -install
@@ -545,7 +554,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard port-lint any-trap perf-lint check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard port-lint any-trap perf-lint check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size module-build-report ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo

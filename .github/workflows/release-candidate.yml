@@ -398,7 +398,7 @@ jobs:
     environment:
       name: release
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -496,6 +496,13 @@ jobs:
           cache: false
       - name: Verify nested Go module publication before the root release
         run: python3 automation/ci/check-module-publication.py
+      - name: Build the release commit against the published nested modules
+        # go.work resolves extensions/sdk to the working tree everywhere else in CI. This builds the root and every workspace
+        # module with GOWORK=off from an empty module cache, so the nested modules come from the tags just verified; the root
+        # tag v<version> is only created by publishing the draft below, and a commit that needs SDK API its tag lacks fails here.
+        run: |
+          python3 -B -m unittest automation/ci/test_check_module_build.py
+          python3 automation/ci/check-module-build.py --fresh-cache --no-vet
       - name: Create the draft GitHub Release
         shell: bash
         env:
