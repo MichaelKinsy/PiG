@@ -38,8 +38,11 @@ type nestedCall struct {
 	cancel context.CancelFunc
 }
 
-// reserveNestedCall reserves call when it is an executeTool call and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op.
+// reserveNestedCall reserves call when it is an executeTool call or a dialog that carries a dialogId, and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op.
 func (h *Host) reserveNestedCall(conn *Conn, call *CallPayload) (release func()) {
+	if id := dialogIDOf(call); id != "" {
+		return h.nested.reserve(conn, dialogSignalKey(id))
+	}
 	if call.Method != CallExecuteTool {
 		return func() {}
 	}
@@ -50,6 +53,22 @@ func (h *Host) reserveNestedCall(conn *Conn, call *CallPayload) (release func())
 		return func() {}
 	}
 	return h.nested.reserve(conn, named.ExecuteID)
+}
+
+// dialogIDOf returns the dialogId of a ui.select, ui.confirm or ui.input call whose extension passed an options.signal, or "".
+func dialogIDOf(call *CallPayload) string {
+	switch call.Method {
+	case "ui.select", "ui.confirm", "ui.input":
+	default:
+		return ""
+	}
+	var named struct {
+		DialogID string `json:"dialogId"`
+	}
+	if json.Unmarshal(call.Args, &named) != nil {
+		return ""
+	}
+	return named.DialogID
 }
 
 func (n *nestedCalls) reserve(conn *Conn, id string) (release func()) {

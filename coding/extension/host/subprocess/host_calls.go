@@ -360,6 +360,14 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleVirtualModelCall(callCtx, me, call)
 	case call.Method == CallExecuteTool || call.Method == CallExecuteToolCancel:
 		result, err = h.handleExecuteToolCall(callCtx, conn, call)
+	case call.Method == CallUICancelDialog:
+		var cancel UICancelDialog
+		if err = json.Unmarshal(call.Args, &cancel); err != nil {
+			err = fmt.Errorf("decode %s: %w", call.Method, err)
+			break
+		}
+		h.nested.cancel(conn, dialogSignalKey(cancel.DialogID))
+		result = &CallResultPayload{}
 	case call.Method == "provider.retain" || call.Method == "provider.release":
 		result, err = h.handleProviderReference(conn, call)
 	case call.Method == CallProviderObject:
@@ -378,7 +386,17 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		// The render is a pure function of the options the call carries, so a Host with no UI bridge (an SDK session) answers it too.
 		result, err = renderSystemPromptCall(call.Args)
 	case h.uiBridge != nil:
-		result, err = h.uiBridge.handleCall(callCtx, me.config.Name, conn, call)
+		dialogCtx := callCtx
+		// The extension's options.signal dismisses its own dialog, and only that one.
+		if id := dialogIDOf(call); id != "" {
+			if signal := h.nested.signal(conn, dialogSignalKey(id)); signal != nil {
+				var cancel context.CancelFunc
+				dialogCtx, cancel = context.WithCancel(callCtx)
+				defer cancel()
+				defer context.AfterFunc(signal, cancel)()
+			}
+		}
+		result, err = h.uiBridge.handleCall(dialogCtx, me.config.Name, conn, call)
 	case h.onCall != nil:
 		result, err = h.onCall(me.config.Name, call)
 	case isEarlyModelStreamCall(call.Method) && earlyModelStream.Load() != nil:

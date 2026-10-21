@@ -691,7 +691,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 wire = "none"
-partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+python_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 
 [[row]]
 key = "ctx.ui.select(opts.timeout)"
@@ -709,7 +711,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 wire = "none"
-partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+python_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 
 [[row]]
 key = "ctx.ui.confirm(opts.timeout)"
@@ -727,7 +731,9 @@ go = "Context.Done"
 rust = "Context::is_cancelled"
 python = "Context.is_cancelled"
 wire = "none"
-partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+go_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+rust_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+python_partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
 
 [[row]]
 key = "ctx.ui.input(opts.timeout)"
