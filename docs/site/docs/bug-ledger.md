@@ -14166,7 +14166,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** Pi orders hard-link aliases (and, on a case-insensitive filesystem where its `realpath` keeps case, case aliases) by file identity, or an owner decision reverses this one; then the identity check, its marker, the allowance test and this record go.
-- **Fix commits:** `b1cea06458` (2026-10-21), `bfc03c667c` (2026-10-21)
+- **Fix commits:** `89fe00961e` (2026-10-21), `b1cea06458` (2026-10-21), `bfc03c667c` (2026-10-21)
 - **Tests:** `internal/codingagent/tools/mutation_queue_alias_test.go::TestEditPreservesParallelAliasChanges`, `internal/codingagent/tools/mutation_queue_alias_test.go::TestHardLinkAliasesDifferFromPi`, `internal/codingagent/tools/mutation_queue_alias_test.go::TestMutationAliasReservationsKeepDispatchOrder`, `internal/codingagent/tools/mutation_queue_oracle_test.go::TestWithFileMutationQueueMatchesPi`
 - **Release note:** Two parallel `edit` calls through two names of one existing file (a hard link, or a case alias on a case-insensitive filesystem such as the macOS default) no longer lose one of the edits. The built-in file mutation queue made them run at once, so both read the original text and the later write dropped the earlier edit while both calls reported success; it now orders them in call order. Pi does not order hard-link aliases (D190).
 
