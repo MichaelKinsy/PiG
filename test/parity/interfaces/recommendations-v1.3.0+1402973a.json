@@ -25353,7 +25353,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -25364,6 +25364,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ModelImageResizeOptions",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelImageResizeOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelImageResizeOptions"
       ],
       "missingClosure": [
@@ -41071,7 +41072,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -41082,7 +41083,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.tool",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.tool"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -79934,7 +79936,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -79945,6 +79947,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ModelImageResizeOptions",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelImageResizeOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelImageResizeOptions"
       ],
       "missingClosure": [
@@ -95652,7 +95655,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -95663,7 +95666,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.tool",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.tool"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -118736,7 +118740,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -118747,6 +118751,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ModelImageResizeOptions",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelImageResizeOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#modelImageResizeOptions"
       ],
       "missingClosure": [
@@ -173377,22 +173382,24 @@
     {
       "id": "pkg:coding-agent/.#BashSpawnContext",
       "upstreamShapeHash": "sha256:bb71bf5ef825fbc34fb3e488ef33e4f340abf632e2218bb5d3fe7dcb4f01850c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#BashSpawnContext",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashSpawnContext"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -173490,22 +173497,24 @@
     {
       "id": "pkg:coding-agent/.#BashSpawnHook",
       "upstreamShapeHash": "sha256:2d70c69d3a7a2b1e8204c3a5935b45824f2d995f073709f9e4d6e6df7fa65af4",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#BashSpawnHook",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashSpawnHook"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -173828,22 +173837,24 @@
     {
       "id": "pkg:coding-agent/.#BashToolOptions",
       "upstreamShapeHash": "sha256:4396b9b7f0847a4b1b73038ba93c6640534067f1f1572c5bc7cf3456f6a3dd97",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#BashToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -187581,22 +187592,25 @@
     {
       "id": "pkg:coding-agent/.#EditOperations",
       "upstreamShapeHash": "sha256:7310eab3828b1c05c99933071cf46004a47e27da3e5d1f76367412b6faaf83a3",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinCallbacks.editOperations",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#EditOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -188089,22 +188103,24 @@
     {
       "id": "pkg:coding-agent/.#EditToolOptions",
       "upstreamShapeHash": "sha256:a016d10ab5973fa598d55b25e3d02d48c82f2e668a8a3ce9d136146cf5470607",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#EditToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#EditToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -188725,7 +188741,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -188736,7 +188752,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension#ExecResult",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ExecResult"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ExecResult",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#execResult"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -205546,22 +205563,25 @@
     {
       "id": "pkg:coding-agent/.#FindOperations",
       "upstreamShapeHash": "sha256:f033588e17b931b0fb43e2e2d2bb212448d8826b6fd7c76a62fdb56b3670e5bb",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinCallbacks.findOperations",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#FindOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -205968,22 +205988,24 @@
     {
       "id": "pkg:coding-agent/.#FindToolOptions",
       "upstreamShapeHash": "sha256:8bc28aad11653c16fa2c600ee27613b7225a9e3cc7b49c9658da9aa4be45ef26",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#FindToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -206730,22 +206752,25 @@
     {
       "id": "pkg:coding-agent/.#GrepOperations",
       "upstreamShapeHash": "sha256:eb568bb75d5d97c644b0992c9270e9873ce38be42de53cd9fe4b9e3803040402",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinCallbacks.grepOperations",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GrepOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -207180,22 +207205,24 @@
     {
       "id": "pkg:coding-agent/.#GrepToolOptions",
       "upstreamShapeHash": "sha256:706976dbd66b209c3beb5459ae25317fcd4c537658a98b11014da3280c4cc5cd",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GrepToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GrepToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -210558,22 +210585,25 @@
     {
       "id": "pkg:coding-agent/.#LsOperations",
       "upstreamShapeHash": "sha256:cf8147f864ad690b15134c9e0feda13849f431f5f0661aa1db4d9d894aa434d1",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinCallbacks.lsOperations",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#LsOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -211036,22 +211066,24 @@
     {
       "id": "pkg:coding-agent/.#LsToolOptions",
       "upstreamShapeHash": "sha256:18df632db33658cc604c25c7eb22ae15718803beff7ce29886d373362b1322d1",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#LsToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#LsToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -220254,22 +220286,24 @@
     {
       "id": "pkg:coding-agent/.#PowerShellOperations",
       "upstreamShapeHash": "sha256:4444078fbbf846e8e557045cac4be30ff2bed3b8481a7fc50f4c90304ff450a0",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#PowerShellOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -220283,22 +220317,24 @@
     {
       "id": "pkg:coding-agent/.#PowerShellSpawnContext",
       "upstreamShapeHash": "sha256:3a8036a6faf5d0b15a52547c80a7e809d087a21e8e4678585af8e378d2d4eb35",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#PowerShellSpawnContext",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellSpawnContext"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -220312,22 +220348,24 @@
     {
       "id": "pkg:coding-agent/.#PowerShellSpawnHook",
       "upstreamShapeHash": "sha256:831e990192152e59be420f2ff07e5e423cef568fe6d80f259a40a0cfc0358651",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#PowerShellSpawnHook",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellSpawnHook"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -220594,22 +220632,24 @@
     {
       "id": "pkg:coding-agent/.#PowerShellToolOptions",
       "upstreamShapeHash": "sha256:08fffc9ef893416c35e914ea5956056f9b49501bf0348d62e72dab0668868bf6",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#PowerShellToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -222986,22 +223026,25 @@
     {
       "id": "pkg:coding-agent/.#ReadOperations",
       "upstreamShapeHash": "sha256:ec3b863643809802adedb44670786065c8bbd9d6f5c0cc364c99a08ee649c962",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinCallbacks.readOperations",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReadOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -223408,22 +223451,24 @@
     {
       "id": "pkg:coding-agent/.#ReadToolOptions",
       "upstreamShapeHash": "sha256:ba3290a81a08660f6e989389dff87cb8478279a6aba4ca97fda11434980aeda1",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReadToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -251873,7 +251918,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "4 normalized-name Pig candidates are ambiguous."
+        "5 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -251886,6 +251931,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#toolDefinition",
         "go:github.com/MichaelKinsy/PiG/coding/extension#ToolDefinition",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.toolDefinition",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#ToolDefinition"
       ],
       "missingClosure": [
@@ -255061,22 +255107,24 @@
     {
       "id": "pkg:coding-agent/.#ToolsOptions",
       "upstreamShapeHash": "sha256:4463c135f717ad653c170846f0bdd9baef9dfa62b1402f72522451eb4123df86",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolsOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ToolsOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -258921,22 +258969,25 @@
     {
       "id": "pkg:coding-agent/.#WriteOperations",
       "upstreamShapeHash": "sha256:5fdf2dc1c7db7a4ad8df68991f4ad9ce03cd7642dd797add2c3c8d3f5105f08c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinCallbacks.writeOperations",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#WriteOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -259258,22 +259309,24 @@
     {
       "id": "pkg:coding-agent/.#WriteToolOptions",
       "upstreamShapeHash": "sha256:225c16ebc22eace8ad43b03910967f6658439722ee64fcd63318f079ed63daf5",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#WriteToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#WriteToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260111,22 +260164,24 @@
     {
       "id": "pkg:coding-agent/.#createBashTool",
       "upstreamShapeHash": "sha256:5b76c174510d4c3b39f4a70b90de765e8b4c0895c7cd6aeca6dc934fd265c0da",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateBashTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateBashTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260168,22 +260223,24 @@
     {
       "id": "pkg:coding-agent/.#createBashToolDefinition",
       "upstreamShapeHash": "sha256:ed4c106ebcc7b9f3fd4404e95dd2a7b6eb53b29fc5e803c2049cab42eebfe263",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateBashToolDefinition",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateBashToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260282,22 +260339,24 @@
     {
       "id": "pkg:coding-agent/.#createCodingTools",
       "upstreamShapeHash": "sha256:f1b7c43be0182faec190386bc2294d9938f2360af4b621063f88b98a0602cb57",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateCodingTools",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateCodingTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260339,22 +260398,24 @@
     {
       "id": "pkg:coding-agent/.#createEditTool",
       "upstreamShapeHash": "sha256:52ec2cff120bb1d06af3d4656cb6ff3d6488eff9f118dd873b4dffa08669c5c3",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateEditTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateEditTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260396,22 +260457,24 @@
     {
       "id": "pkg:coding-agent/.#createEditToolDefinition",
       "upstreamShapeHash": "sha256:17cbe0a7786546595c11078f709488f659052419c88e7eb3e1e38cb76305aa1d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#CreateEditToolDefinition"
+        "go:github.com/MichaelKinsy/PiG/coding#CreateEditToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateEditToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260567,22 +260630,24 @@
     {
       "id": "pkg:coding-agent/.#createFindTool",
       "upstreamShapeHash": "sha256:44b7c6242c15885876d21d4b8e63a067071683cb9ef37025b01d91362277706e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateFindTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateFindTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260624,22 +260689,24 @@
     {
       "id": "pkg:coding-agent/.#createFindToolDefinition",
       "upstreamShapeHash": "sha256:3f3665434a4c433b1079398824d2b57fb7a4a64a2c9e812cc79ec631c67305c9",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#CreateFindToolDefinition"
+        "go:github.com/MichaelKinsy/PiG/coding#CreateFindToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateFindToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260681,22 +260748,24 @@
     {
       "id": "pkg:coding-agent/.#createGrepTool",
       "upstreamShapeHash": "sha256:c8ab750bb6e567644d9470e596e62fcb2d92b6ff75b01d9e434ea112ef6804ee",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateGrepTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateGrepTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260738,22 +260807,24 @@
     {
       "id": "pkg:coding-agent/.#createGrepToolDefinition",
       "upstreamShapeHash": "sha256:e31d365b7f6e0a1fafe95c836a92323448f51413b930a9665697e0581ba9dbff",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#CreateGrepToolDefinition"
+        "go:github.com/MichaelKinsy/PiG/coding#CreateGrepToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateGrepToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260795,22 +260866,24 @@
     {
       "id": "pkg:coding-agent/.#createLocalBashOperations",
       "upstreamShapeHash": "sha256:768efe24fdd287e2381a30d75476608d22b60a133e6be12c2eabdbc1f69a8da9",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateLocalBashOperations",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateLocalBashOperations"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260852,21 +260925,23 @@
     {
       "id": "pkg:coding-agent/.#createLocalPowerShellOperations",
       "upstreamShapeHash": "sha256:b90d2526618e7606b2c25ff54a88c44f53ff94bd2cd3a8bab740a25e2cf8e39e",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateLocalPowerShellOperations"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -260907,22 +260982,24 @@
     {
       "id": "pkg:coding-agent/.#createLsTool",
       "upstreamShapeHash": "sha256:617e19f897f0a6a4b6a0e549e0cedef59b552b43c9a0ae05ccfec02213cef273",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateLsTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateLsTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -260964,22 +261041,24 @@
     {
       "id": "pkg:coding-agent/.#createLsToolDefinition",
       "upstreamShapeHash": "sha256:784a5fe6efd41debcae49bdebb3c24617b544a01bb25947a369bfc0d32ed5f37",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#CreateLsToolDefinition"
+        "go:github.com/MichaelKinsy/PiG/coding#CreateLsToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateLsToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -261078,22 +261157,24 @@
     {
       "id": "pkg:coding-agent/.#createPowerShellTool",
       "upstreamShapeHash": "sha256:4832a241374aba497d6117141c8b47c6b1d24d00ef4b12d6875861cfd9e71810",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreatePowerShellTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreatePowerShellTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -261135,22 +261216,24 @@
     {
       "id": "pkg:coding-agent/.#createPowerShellToolDefinition",
       "upstreamShapeHash": "sha256:b3d792bb54202375829f9d427615639c10113c78144a54ad055f012d707dd73c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#CreatePowerShellToolDefinition"
+        "go:github.com/MichaelKinsy/PiG/coding#CreatePowerShellToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreatePowerShellToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -261192,22 +261275,24 @@
     {
       "id": "pkg:coding-agent/.#createReadOnlyTools",
       "upstreamShapeHash": "sha256:2eae347b18735d6a647a962a459d3b55d5101b5ba3e4fae5db88dac603c39ebf",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateReadOnlyTools",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateReadOnlyTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -261249,22 +261334,24 @@
     {
       "id": "pkg:coding-agent/.#createReadTool",
       "upstreamShapeHash": "sha256:20a46b4fbb1028f657c9b38ccef5dbca28adadb260f8cc752e4cb2113204f213",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateReadTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateReadTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -261306,22 +261393,24 @@
     {
       "id": "pkg:coding-agent/.#createReadToolDefinition",
       "upstreamShapeHash": "sha256:4642bf1a0ea64620a3922a4608e118ffefbdf1d13a8b3027d130b6bc8923fdd7",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#CreateReadToolDefinition"
+        "go:github.com/MichaelKinsy/PiG/coding#CreateReadToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateReadToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -261477,22 +261566,24 @@
     {
       "id": "pkg:coding-agent/.#createWriteTool",
       "upstreamShapeHash": "sha256:a45b6921fda1476b0f39600dbe41f3149d898c9853b3a7177d2f7852687ffd98",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateWriteTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateWriteTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -261534,22 +261625,24 @@
     {
       "id": "pkg:coding-agent/.#createWriteToolDefinition",
       "upstreamShapeHash": "sha256:292dea752cf5e4d3508cbf215d19c9f6a01adba6552c698dba7e1bad7e896705",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding#CreateWriteToolDefinition"
+        "go:github.com/MichaelKinsy/PiG/coding#CreateWriteToolDefinition",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateWriteToolDefinition"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -301386,22 +301479,24 @@
     {
       "id": "pkg:durable/tools#BashToolOptions",
       "upstreamShapeHash": "sha256:30b6bbd9585b63599bb0befab9c8793536be43bd1c35f8e9658476925351d99b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#BashToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#BashToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -301668,22 +301763,24 @@
     {
       "id": "pkg:durable/tools#PowerShellToolOptions",
       "upstreamShapeHash": "sha256:d0070b3d053b10fb6d5fcfaf90decaf468c5a6e39bc14e7d37ad3cce2c7321a6",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#PowerShellToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#PowerShellToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -301866,22 +301963,24 @@
     {
       "id": "pkg:durable/tools#ReadToolOptions",
       "upstreamShapeHash": "sha256:d7f89789ff6eb1bb703ebab96ddbb1557a71742e6714d9a4adc77ed72a9128a3",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReadToolOptions",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadToolOptions"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -301924,22 +302023,24 @@
     {
       "id": "pkg:durable/tools#createBashTool",
       "upstreamShapeHash": "sha256:dbe1b87a365c088fdcfb9190a1fdacc03117635a143c1c77a8f806124d313b29",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateBashTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateBashTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -301981,22 +302082,24 @@
     {
       "id": "pkg:durable/tools#createCodingTools",
       "upstreamShapeHash": "sha256:9b9560413b073206b952d504a7f6d8d5304bef53513dad34b04a57b56ac95830",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateCodingTools",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateCodingTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -302038,22 +302141,24 @@
     {
       "id": "pkg:durable/tools#createEditTool",
       "upstreamShapeHash": "sha256:62aec4b158a0872292c6e4a33b616ee5c8b1b898f75c74c9df8cffec15b02102",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateEditTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateEditTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -302095,22 +302200,24 @@
     {
       "id": "pkg:durable/tools#createPowerShellTool",
       "upstreamShapeHash": "sha256:5d2377d17560fa98bc1e9c8a352b2b797a837f2d39f244628b6279671da9042b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreatePowerShellTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreatePowerShellTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -302152,22 +302259,24 @@
     {
       "id": "pkg:durable/tools#createReadTool",
       "upstreamShapeHash": "sha256:ce7485e3b867b8552600237b0fe0b475c4d61966a7d208cc25352a1aa534d778",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateReadTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateReadTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -302209,22 +302318,24 @@
     {
       "id": "pkg:durable/tools#createWriteTool",
       "upstreamShapeHash": "sha256:72474a6e4fc6bc39eaf5be5bb7243292e8f175f1044f6b97dc32bbb6620bb76b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateWriteTool",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#CreateWriteTool"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -319041,7 +319152,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -319052,7 +319163,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#bedrockWire.tool",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool"
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Tool",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#builtinSpec.tool"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -341331,7 +341443,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "6 normalized-name Pig candidates are ambiguous."
+        "7 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
