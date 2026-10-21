@@ -25,6 +25,10 @@ func (s *Session) ScopedModels() []ScopedModel {
 	return []ScopedModel{}
 }
 
+// AvailableModelSnapshot returns the Session ModelRuntime's available models, bound to their backends.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:5397 (this.session.modelRuntime.getAvailableSnapshot())
+func (s *Session) AvailableModelSnapshot() []*ai.Model { return s.modelRuntime.GetAvailableSnapshot() }
+
 // SetScopedModels replaces the session-only cycling scope, retaining the supplied list and model identities without changing settings. Nil means an empty scope.
 func (s *Session) SetScopedModels(models []ScopedModel) {
 	if models == nil {

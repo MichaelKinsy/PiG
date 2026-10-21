@@ -96,8 +96,10 @@ func (s *scopedModelsSelection) apply(m *InteractiveMode, enabled []string) {
 	m.scopedModelIDs = s.scopeIDs(enabled)
 	if m.opts.SessionHandle != nil {
 		scoped := []extension.ScopedModel{}
-		if len(m.scopedModelIDs) > 0 && m.opts.ModelRegistry != nil {
-			available := m.opts.ModelRegistry.GetAvailableModelData()
+		if len(m.scopedModelIDs) > 0 {
+			// Scope entries are the Session ModelRuntime's runtime-bound models, as in Pi; registry catalog descriptors carry no backend.
+			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:5397,5421-5431 (showModelsSelector)
+			available := m.scopeSourceModels()
 			modelsByID := make(map[string]*ai.Model, len(available))
 			for _, model := range available {
 				modelsByID[scopedModelKey(model)] = model
@@ -139,4 +141,18 @@ func scopedModelKey(model *ai.Model) string {
 		providerID = model.Provider.ID()
 	}
 	return providerID + "/" + model.ID
+}
+
+// runtimeModelSnapshot is implemented by the production Session: its ModelRuntime's runtime-bound available models.
+type runtimeModelSnapshot interface{ AvailableModelSnapshot() []*ai.Model }
+
+// scopeSourceModels is the model list scope entries come from: the Session ModelRuntime's snapshot. Session doubles that have no runtime fall back to the registry.
+func (m *InteractiveMode) scopeSourceModels() []*ai.Model {
+	if runtime, ok := m.opts.SessionHandle.(runtimeModelSnapshot); ok {
+		return runtime.AvailableModelSnapshot()
+	}
+	if m.opts.ModelRegistry != nil {
+		return m.opts.ModelRegistry.GetAvailableModelData()
+	}
+	return nil
 }

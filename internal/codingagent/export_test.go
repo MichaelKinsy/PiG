@@ -257,3 +257,12 @@ func (m *InteractiveMode) InitSnapshot() InitSnapshot {
 	}
 	return snapshot
 }
+
+// ApplyScopedSelection runs the /scoped-models selector's scope update, as the catalog refresh does when nothing changed (interactive-mode.ts showModelsSelector updateSessionModels).
+func (h *TestHarness) ApplyScopedSelection(models []tui.ModelItem, enabled []string) {
+	h.Do(func() {
+		selection, _ := newScopedModelsSelection(models, nil, nil)
+		h.m.statusLine = NewFooterComponent(nil, "test", nil)
+		selection.apply(h.m, enabled)
+	})
+}
