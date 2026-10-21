@@ -68,6 +68,10 @@ def script(ctx, args):
     tree = m.get_tree()
     r["tree"] = {"roots": len(tree), "firstChildren": len(tree[0]["children"])}
 
+    msg_id = m.append_custom_message_entry("note-msg", "body", True, {"k": 1})
+    usage = m.append_usage("test", "p", "m", {"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}})
+    r["extra"] = {"msgType": m.get_entry(msg_id)["type"], "msgCustomType": m.get_entry(msg_id)["customType"], "usageType": usage["type"], "usageKind": usage["kind"]}
+
     m.branch(first)
     alt = m.append_message({"role": "user", "content": "alt", "timestamp": 3})
     r["branch"] = {"shape": shape(m.get_branch()), "children": len(m.get_children(first)), "leafIsAlt": m.get_leaf_id() == alt}
@@ -272,6 +276,9 @@ def settings_script(ctx, args):
     s.flush()
     r["afterSet"] = read_all(s)
     r["modelThinking"] = s.get_model_thinking_level("p", "m")
+    s.remove_model_thinking_level("p", "m")
+    r["removed"] = {"thinking": s.get_model_thinking_level("p", "m"), "trackingId": s.get_tracking_id(), "deviceId": len(s.get_or_create_device_id()) > 0}
+    s.flush()
     r["files"] = {"global": read_json(os.path.join(agent_dir, "settings.json")), "project": read_json(os.path.join(cwd, config_dir, "settings.json"))}
 
     persisted = SettingsManager.create(ctx, cwd, agent_dir)

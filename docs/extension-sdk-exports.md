@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 804 | 793 | 794 |
+| `pi-coding-agent` | 920 | 305 | 910 | 645 | 634 | 635 |
 | `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -25,12 +25,12 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
-| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 1041 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
+| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 564 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1065 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
 
-88 exports imported by 5 or more scanned packages have a gap.
+85 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -39,8 +39,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-tui: visibleWidth` | 75 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: Key` | 60 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: wrapTextWithAnsi` | 45 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-coding-agent: SettingsManager` | 39 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
-| `pi-coding-agent: SessionManager` | 37 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getMarkdownTheme` | 30 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: Input` | 30 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: StringEnum` | 28 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
@@ -94,7 +92,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-ai/compat: contentText` | 7 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: AssistantMessageComponent` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: BorderedLoader` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
-| `pi-coding-agent: ProjectTrustStore` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createAgentSessionRuntime` | 6 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-coding-agent: createExtensionRuntime` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createLocalBashOperations` | 6 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
@@ -132,14 +129,13 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: CustomEditor.getExpandedText` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText |
 | `pi-coding-agent: CustomEditor.insertTextAtCursor` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls EditorComponent.InsertTextAtCursor |
 | `pi-coding-agent: CustomEditor.isShowingAutocomplete` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete |
-| `pi-coding-agent: CustomEditor.setAutocompleteMaxVisible` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible |
 | `pi-coding-agent: CustomEditor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
 | `pi-coding-agent: DEFAULT_MAX_BYTES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxBytes |
 | `pi-coding-agent: DEFAULT_MAX_LINES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines |
-| `pi-coding-agent: SessionManager.buildSessionContext` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.BuildSessionContext |
-| `pi-coding-agent: SessionManager.getChildren` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.GetChildren |
-| `pi-coding-agent: SessionManager.isPersisted` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.IsPersisted |
-| `pi-coding-agent: SessionManager.usesDefaultSessionDir` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.UsesDefaultSessionDir |
+| `pi-coding-agent: ProjectTrustStore.set` | python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
+| `pi-coding-agent: SessionManager.appendCompaction` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
+| `pi-coding-agent: SessionManager.appendContextEdit` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
+| `pi-coding-agent: SessionManager.setSessionFile` | go, python, rust | SdkSessionGraph | a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name) |
 | `pi-coding-agent: serializeConversation` | rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls serialize_conversation |
 | `pi-coding-agent: stripFrontmatter` | python | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls strip_frontmatter |
 | `pi-tui: Editor.addToHistory` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.AddToHistory |
@@ -147,7 +143,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-tui: Editor.getExpandedText` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText |
 | `pi-tui: Editor.insertTextAtCursor` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.InsertTextAtCursor |
 | `pi-tui: Editor.isShowingAutocomplete` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete |
-| `pi-tui: Editor.setAutocompleteMaxVisible` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible |
 | `pi-tui: Editor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
 | `pi-tui: parseColor` | python | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls parse_color |
 | `pi-tui: styleTextWithAnsi` | python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls style_text_with_ansi |
@@ -619,11 +614,11 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `OAuthSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProjectTrustStore` | 6 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ProjectTrustStore.get` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ProjectTrustStore.getEntry` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ProjectTrustStore.set` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ProjectTrustStore.setMany` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ProjectTrustStore` | 6 | served | native:ProjectTrustStore | native:ProjectTrustStore | native:ProjectTrustStore |
+| `ProjectTrustStore.get` | 0 | served | native:ProjectTrustStore.Get | native:ProjectTrustStore::get | native:ProjectTrustStore.get |
+| `ProjectTrustStore.getEntry` | 0 | served | native:ProjectTrustStore.GetEntry | native:ProjectTrustStore::get_entry | native:ProjectTrustStore.get_entry |
+| `ProjectTrustStore.set` | 0 | served | native:ProjectTrustStore.Set | native:ProjectTrustStore::set | native:ProjectTrustStore.set |
+| `ProjectTrustStore.setMany` | 0 | served | native:ProjectTrustStore.SetMany | native:ProjectTrustStore::set_many | native:ProjectTrustStore.set_many |
 | `RpcClient` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `RpcClient.abort` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `RpcClient.abortBash` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -665,30 +660,30 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `RpcClient.stop` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `RpcClient.switchSession` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `RpcClient.waitForIdle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionManager` | 37 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `SessionManager` | 37 | served | native:SessionManager | native:SessionManager | native:SessionManager |
 | `SessionManager._persist` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendCompaction` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendContextEdit` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendCustomEntry` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendCustomMessageEntry` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendLabelChange` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendMessage` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendModelChange` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendSessionInfo` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendThinkingLevelChange` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendUsage` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.branch` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.branchWithSummary` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `SessionManager.appendCompaction` | 0 | served | native:SessionManager.AppendCompaction | native:SessionManager::append_compaction | native:SessionManager.append_compaction |
+| `SessionManager.appendContextEdit` | 0 | served | native:SessionManager.AppendContextEdit | native:SessionManager::append_context_edit | native:SessionManager.append_context_edit |
+| `SessionManager.appendCustomEntry` | 0 | served | native:SessionManager.AppendCustomEntry | native:SessionManager::append_custom_entry | native:SessionManager.append_custom_entry |
+| `SessionManager.appendCustomMessageEntry` | 0 | served | native:SessionManager.AppendCustomMessageEntry | native:SessionManager::append_custom_message_entry | native:SessionManager.append_custom_message_entry |
+| `SessionManager.appendLabelChange` | 0 | served | native:SessionManager.AppendLabelChange | native:SessionManager::append_label_change | native:SessionManager.append_label_change |
+| `SessionManager.appendMessage` | 0 | served | native:SessionManager.AppendMessage | native:SessionManager::append_message | native:SessionManager.append_message |
+| `SessionManager.appendModelChange` | 0 | served | native:SessionManager.AppendModelChange | native:SessionManager::append_model_change | native:SessionManager.append_model_change |
+| `SessionManager.appendSessionInfo` | 0 | served | native:SessionManager.AppendSessionInfo | native:SessionManager::append_session_info | native:SessionManager.append_session_info |
+| `SessionManager.appendThinkingLevelChange` | 0 | served | native:SessionManager.AppendThinkingLevelChange | native:SessionManager::append_thinking_level_change | native:SessionManager.append_thinking_level_change |
+| `SessionManager.appendUsage` | 0 | served | native:SessionManager.AppendUsage | native:SessionManager::append_usage | native:SessionManager.append_usage |
+| `SessionManager.branch` | 0 | served | native:SessionManager.Branch | native:SessionManager::branch | native:SessionManager.branch |
+| `SessionManager.branchWithSummary` | 0 | served | native:SessionManager.BranchWithSummary | native:SessionManager::branch_with_summary | native:SessionManager.branch_with_summary |
 | `SessionManager.buildContextEntries` | 0 | served | native:SessionManager.BuildContextEntries | native:SessionManager::build_context_entries | native:SessionManager.build_context_entries |
 | `SessionManager.buildSessionContext` | 0 | served | native:SessionManager.BuildSessionContext | native:SessionManager::build_session_context | native:SessionManager.build_session_context |
 | `SessionManager.buildSessionProjection` | 0 | served | native:SessionManager.BuildSessionProjection | native:SessionManager::build_session_projection | native:SessionManager.build_session_projection |
-| `SessionManager.createBranchedSession` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `SessionManager.createBranchedSession` | 0 | served | native:SessionManager.CreateBranchedSession | native:SessionManager::create_branched_session | native:SessionManager.create_branched_session |
 | `SessionManager.getBranch` | 0 | served | native:SessionManager.GetBranch | native:SessionManager::get_branch | native:SessionManager.get_branch |
 | `SessionManager.getChildren` | 0 | served | native:SessionManager.GetChildren | native:SessionManager::get_children | native:SessionManager.get_children |
 | `SessionManager.getCwd` | 0 | served | native:SessionManager.GetCwd | native:SessionManager::get_cwd | native:SessionManager.get_cwd |
 | `SessionManager.getEntries` | 0 | served | native:SessionManager.GetEntries | native:SessionManager::get_entries | native:SessionManager.get_entries |
 | `SessionManager.getEntry` | 0 | served | native:SessionManager.GetEntry | native:SessionManager::get_entry | native:SessionManager.get_entry |
-| `SessionManager.getEntryCount` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `SessionManager.getEntryCount` | 0 | served | native:SessionManager.GetEntryCount | native:SessionManager::get_entry_count | native:SessionManager.get_entry_count |
 | `SessionManager.getHeader` | 0 | served | native:SessionManager.GetHeader | native:SessionManager::get_header | native:SessionManager.get_header |
 | `SessionManager.getLabel` | 0 | served | native:SessionManager.GetLabel | native:SessionManager::get_label | native:SessionManager.get_label |
 | `SessionManager.getLeafEntry` | 0 | served | native:SessionManager.GetLeafEntry | native:SessionManager::get_leaf_entry | native:SessionManager.get_leaf_entry |
@@ -699,9 +694,9 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `SessionManager.getSessionName` | 0 | served | native:SessionManager.GetSessionName | native:SessionManager::get_session_name | native:SessionManager.get_session_name |
 | `SessionManager.getTree` | 0 | served | native:SessionManager.GetTree | native:SessionManager::get_tree | native:SessionManager.get_tree |
 | `SessionManager.isPersisted` | 0 | served | native:SessionManager.IsPersisted | native:SessionManager::is_persisted | native:SessionManager.is_persisted |
-| `SessionManager.newSession` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.resetLeaf` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.setSessionFile` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `SessionManager.newSession` | 0 | served | native:SessionManager.NewSession | native:SessionManager::new_session | native:SessionManager.new_session |
+| `SessionManager.resetLeaf` | 0 | served | native:SessionManager.ResetLeaf | native:SessionManager::reset_leaf | native:SessionManager.reset_leaf |
+| `SessionManager.setSessionFile` | 0 | served | native:SessionManager.SetSessionFile | native:SessionManager::set_session_file | native:SessionManager.set_session_file |
 | `SessionManager.usesDefaultSessionDir` | 0 | served | native:SessionManager.UsesDefaultSessionDir | native:SessionManager::uses_default_session_dir | native:SessionManager.uses_default_session_dir |
 | `SessionSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SessionSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -714,141 +709,141 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `SessionSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SessionSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SessionSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsManager` | 39 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.applyOverrides` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.drainErrors` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.flush` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getAllModelThinkingLevels` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getAutocompleteMaxVisible` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getBlockImages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getBranchSummarySettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getBranchSummarySkipPrompt` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getCacheWarmingMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getClearOnShrink` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getCodeBlockIndent` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getCollapseChangelog` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getCompactionEnabled` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getCompactionKeepRecentTokens` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getCompactionReserveTokens` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getCompactionSettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getDefaultModel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getDefaultProjectTrust` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getDefaultProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getDefaultThinkingLevel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getDefaultTools` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getDoubleEscapeAction` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getEditorPaddingX` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getEnableAnalytics` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getEnableInstallTelemetry` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getEnableSkillCommands` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getEnabledModels` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getExtensionPaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getExternalEditorCommand` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getFollowUpMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getFullscreenCopyOnSelect` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getFullscreenExitOutput` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getFullscreenScrollbar` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getFullscreenWheelScrollLines` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getGlobalSettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getHideThinkingBlock` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getHttpIdleTimeoutMs` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getImageAutoResize` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getImageWidthCells` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getLastChangelogVersion` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getMermaidRenderingMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getModelThinkingLevel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getNpmCommand` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getOrCreateDeviceId` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getOutputPad` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getPackages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getProjectSettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getPromptTemplatePaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getProviderRetrySettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getQuietStartup` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getRetryEnabled` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getRetrySettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getSessionDir` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getSessionShareDestination` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getSettings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getShellCommandPrefix` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getShellPath` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getShowCacheMissNotices` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getShowHardwareCursor` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getShowImages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getShowTerminalProgress` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getSkillPaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getSteeringMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getTerminalCapabilityOverrides` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getTheme` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getThemePaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getThemeSetting` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getThinkingBudgets` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getTrackingId` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getTransport` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getTreeFilterMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getTuiMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getWarnings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.getWebSocketConnectTimeoutMs` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.isProjectTrusted` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.reload` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.removeModelThinkingLevel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setAutocompleteMaxVisible` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setBlockImages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setCacheWarmingMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setClearOnShrink` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setCollapseChangelog` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setCompactionEnabled` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setDefaultModel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setDefaultModelAndProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setDefaultProjectTrust` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setDefaultProvider` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setDefaultThinkingLevel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setDoubleEscapeAction` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setEditorPaddingX` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setEnableAnalytics` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setEnableInstallTelemetry` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setEnableSkillCommands` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setEnabledModels` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setExtensionPaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setFollowUpMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setFullscreenCopyOnSelect` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setFullscreenExitOutput` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setFullscreenScrollbar` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setFullscreenWheelScrollLines` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setHideThinkingBlock` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setHttpIdleTimeoutMs` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setImageAutoResize` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setImageWidthCells` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setLastChangelogVersion` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setMermaidRenderingMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setModelThinkingLevel` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setNpmCommand` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setOutputPad` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setPackages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setProjectExtensionPaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setProjectPackages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setProjectPromptTemplatePaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setProjectSkillPaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setProjectThemePaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setProjectTrusted` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setPromptTemplatePaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setQuietStartup` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setRetryEnabled` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setSessionShareDestination` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setShellCommandPrefix` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setShellPath` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setShowCacheMissNotices` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setShowHardwareCursor` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setShowImages` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setShowTerminalProgress` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setSkillPaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setSteeringMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setTheme` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setThemePaths` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setTransport` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setTreeFilterMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setTuiMode` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SettingsManager.setWarnings` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `SettingsManager` | 39 | served | native:SettingsManager | native:SettingsManager | native:SettingsManager |
+| `SettingsManager.applyOverrides` | 0 | served | native:SettingsManager.ApplyOverrides | native:SettingsManager::apply_overrides | native:SettingsManager.apply_overrides |
+| `SettingsManager.drainErrors` | 0 | served | native:SettingsManager.DrainErrors | native:SettingsManager::drain_errors | native:SettingsManager.drain_errors |
+| `SettingsManager.flush` | 0 | served | native:SettingsManager.Flush | native:SettingsManager::flush | native:SettingsManager.flush |
+| `SettingsManager.getAllModelThinkingLevels` | 0 | served | native:SettingsManager.GetAllModelThinkingLevels | native:SettingsManager::get_all_model_thinking_levels | native:SettingsManager.get_all_model_thinking_levels |
+| `SettingsManager.getAutocompleteMaxVisible` | 0 | served | native:SettingsManager.GetAutocompleteMaxVisible | native:SettingsManager::get_autocomplete_max_visible | native:SettingsManager.get_autocomplete_max_visible |
+| `SettingsManager.getBlockImages` | 0 | served | native:SettingsManager.GetBlockImages | native:SettingsManager::get_block_images | native:SettingsManager.get_block_images |
+| `SettingsManager.getBranchSummarySettings` | 0 | served | native:SettingsManager.GetBranchSummarySettings | native:SettingsManager::get_branch_summary_settings | native:SettingsManager.get_branch_summary_settings |
+| `SettingsManager.getBranchSummarySkipPrompt` | 0 | served | native:SettingsManager.GetBranchSummarySkipPrompt | native:SettingsManager::get_branch_summary_skip_prompt | native:SettingsManager.get_branch_summary_skip_prompt |
+| `SettingsManager.getCacheWarmingMode` | 0 | served | native:SettingsManager.GetCacheWarmingMode | native:SettingsManager::get_cache_warming_mode | native:SettingsManager.get_cache_warming_mode |
+| `SettingsManager.getClearOnShrink` | 0 | served | native:SettingsManager.GetClearOnShrink | native:SettingsManager::get_clear_on_shrink | native:SettingsManager.get_clear_on_shrink |
+| `SettingsManager.getCodeBlockIndent` | 0 | served | native:SettingsManager.GetCodeBlockIndent | native:SettingsManager::get_code_block_indent | native:SettingsManager.get_code_block_indent |
+| `SettingsManager.getCollapseChangelog` | 0 | served | native:SettingsManager.GetCollapseChangelog | native:SettingsManager::get_collapse_changelog | native:SettingsManager.get_collapse_changelog |
+| `SettingsManager.getCompactionEnabled` | 0 | served | native:SettingsManager.GetCompactionEnabled | native:SettingsManager::get_compaction_enabled | native:SettingsManager.get_compaction_enabled |
+| `SettingsManager.getCompactionKeepRecentTokens` | 0 | served | native:SettingsManager.GetCompactionKeepRecentTokens | native:SettingsManager::get_compaction_keep_recent_tokens | native:SettingsManager.get_compaction_keep_recent_tokens |
+| `SettingsManager.getCompactionReserveTokens` | 0 | served | native:SettingsManager.GetCompactionReserveTokens | native:SettingsManager::get_compaction_reserve_tokens | native:SettingsManager.get_compaction_reserve_tokens |
+| `SettingsManager.getCompactionSettings` | 0 | served | native:SettingsManager.GetCompactionSettings | native:SettingsManager::get_compaction_settings | native:SettingsManager.get_compaction_settings |
+| `SettingsManager.getDefaultModel` | 0 | served | native:SettingsManager.GetDefaultModel | native:SettingsManager::get_default_model | native:SettingsManager.get_default_model |
+| `SettingsManager.getDefaultProjectTrust` | 0 | served | native:SettingsManager.GetDefaultProjectTrust | native:SettingsManager::get_default_project_trust | native:SettingsManager.get_default_project_trust |
+| `SettingsManager.getDefaultProvider` | 0 | served | native:SettingsManager.GetDefaultProvider | native:SettingsManager::get_default_provider | native:SettingsManager.get_default_provider |
+| `SettingsManager.getDefaultThinkingLevel` | 0 | served | native:SettingsManager.GetDefaultThinkingLevel | native:SettingsManager::get_default_thinking_level | native:SettingsManager.get_default_thinking_level |
+| `SettingsManager.getDefaultTools` | 0 | served | native:SettingsManager.GetDefaultTools | native:SettingsManager::get_default_tools | native:SettingsManager.get_default_tools |
+| `SettingsManager.getDoubleEscapeAction` | 0 | served | native:SettingsManager.GetDoubleEscapeAction | native:SettingsManager::get_double_escape_action | native:SettingsManager.get_double_escape_action |
+| `SettingsManager.getEditorPaddingX` | 0 | served | native:SettingsManager.GetEditorPaddingX | native:SettingsManager::get_editor_padding_x | native:SettingsManager.get_editor_padding_x |
+| `SettingsManager.getEnableAnalytics` | 0 | served | native:SettingsManager.GetEnableAnalytics | native:SettingsManager::get_enable_analytics | native:SettingsManager.get_enable_analytics |
+| `SettingsManager.getEnableInstallTelemetry` | 0 | served | native:SettingsManager.GetEnableInstallTelemetry | native:SettingsManager::get_enable_install_telemetry | native:SettingsManager.get_enable_install_telemetry |
+| `SettingsManager.getEnableSkillCommands` | 0 | served | native:SettingsManager.GetEnableSkillCommands | native:SettingsManager::get_enable_skill_commands | native:SettingsManager.get_enable_skill_commands |
+| `SettingsManager.getEnabledModels` | 0 | served | native:SettingsManager.GetEnabledModels | native:SettingsManager::get_enabled_models | native:SettingsManager.get_enabled_models |
+| `SettingsManager.getExtensionPaths` | 0 | served | native:SettingsManager.GetExtensionPaths | native:SettingsManager::get_extension_paths | native:SettingsManager.get_extension_paths |
+| `SettingsManager.getExternalEditorCommand` | 0 | served | native:SettingsManager.GetExternalEditorCommand | native:SettingsManager::get_external_editor_command | native:SettingsManager.get_external_editor_command |
+| `SettingsManager.getFollowUpMode` | 0 | served | native:SettingsManager.GetFollowUpMode | native:SettingsManager::get_follow_up_mode | native:SettingsManager.get_follow_up_mode |
+| `SettingsManager.getFullscreenCopyOnSelect` | 0 | served | native:SettingsManager.GetFullscreenCopyOnSelect | native:SettingsManager::get_fullscreen_copy_on_select | native:SettingsManager.get_fullscreen_copy_on_select |
+| `SettingsManager.getFullscreenExitOutput` | 0 | served | native:SettingsManager.GetFullscreenExitOutput | native:SettingsManager::get_fullscreen_exit_output | native:SettingsManager.get_fullscreen_exit_output |
+| `SettingsManager.getFullscreenScrollbar` | 0 | served | native:SettingsManager.GetFullscreenScrollbar | native:SettingsManager::get_fullscreen_scrollbar | native:SettingsManager.get_fullscreen_scrollbar |
+| `SettingsManager.getFullscreenWheelScrollLines` | 0 | served | native:SettingsManager.GetFullscreenWheelScrollLines | native:SettingsManager::get_fullscreen_wheel_scroll_lines | native:SettingsManager.get_fullscreen_wheel_scroll_lines |
+| `SettingsManager.getGlobalSettings` | 0 | served | native:SettingsManager.GetGlobalSettings | native:SettingsManager::get_global_settings | native:SettingsManager.get_global_settings |
+| `SettingsManager.getHideThinkingBlock` | 0 | served | native:SettingsManager.GetHideThinkingBlock | native:SettingsManager::get_hide_thinking_block | native:SettingsManager.get_hide_thinking_block |
+| `SettingsManager.getHttpIdleTimeoutMs` | 0 | served | native:SettingsManager.GetHttpIdleTimeoutMs | native:SettingsManager::get_http_idle_timeout_ms | native:SettingsManager.get_http_idle_timeout_ms |
+| `SettingsManager.getImageAutoResize` | 0 | served | native:SettingsManager.GetImageAutoResize | native:SettingsManager::get_image_auto_resize | native:SettingsManager.get_image_auto_resize |
+| `SettingsManager.getImageWidthCells` | 0 | served | native:SettingsManager.GetImageWidthCells | native:SettingsManager::get_image_width_cells | native:SettingsManager.get_image_width_cells |
+| `SettingsManager.getLastChangelogVersion` | 0 | served | native:SettingsManager.GetLastChangelogVersion | native:SettingsManager::get_last_changelog_version | native:SettingsManager.get_last_changelog_version |
+| `SettingsManager.getMermaidRenderingMode` | 0 | served | native:SettingsManager.GetMermaidRenderingMode | native:SettingsManager::get_mermaid_rendering_mode | native:SettingsManager.get_mermaid_rendering_mode |
+| `SettingsManager.getModelThinkingLevel` | 0 | served | native:SettingsManager.GetModelThinkingLevel | native:SettingsManager::get_model_thinking_level | native:SettingsManager.get_model_thinking_level |
+| `SettingsManager.getNpmCommand` | 0 | served | native:SettingsManager.GetNpmCommand | native:SettingsManager::get_npm_command | native:SettingsManager.get_npm_command |
+| `SettingsManager.getOrCreateDeviceId` | 0 | served | native:SettingsManager.GetOrCreateDeviceID | native:SettingsManager::get_or_create_device_id | native:SettingsManager.get_or_create_device_id |
+| `SettingsManager.getOutputPad` | 0 | served | native:SettingsManager.GetOutputPad | native:SettingsManager::get_output_pad | native:SettingsManager.get_output_pad |
+| `SettingsManager.getPackages` | 0 | served | native:SettingsManager.GetPackages | native:SettingsManager::get_packages | native:SettingsManager.get_packages |
+| `SettingsManager.getProjectSettings` | 0 | served | native:SettingsManager.GetProjectSettings | native:SettingsManager::get_project_settings | native:SettingsManager.get_project_settings |
+| `SettingsManager.getPromptTemplatePaths` | 0 | served | native:SettingsManager.GetPromptTemplatePaths | native:SettingsManager::get_prompt_template_paths | native:SettingsManager.get_prompt_template_paths |
+| `SettingsManager.getProviderRetrySettings` | 0 | served | native:SettingsManager.GetProviderRetrySettings | native:SettingsManager::get_provider_retry_settings | native:SettingsManager.get_provider_retry_settings |
+| `SettingsManager.getQuietStartup` | 0 | served | native:SettingsManager.GetQuietStartup | native:SettingsManager::get_quiet_startup | native:SettingsManager.get_quiet_startup |
+| `SettingsManager.getRetryEnabled` | 0 | served | native:SettingsManager.GetRetryEnabled | native:SettingsManager::get_retry_enabled | native:SettingsManager.get_retry_enabled |
+| `SettingsManager.getRetrySettings` | 0 | served | native:SettingsManager.GetRetrySettings | native:SettingsManager::get_retry_settings | native:SettingsManager.get_retry_settings |
+| `SettingsManager.getSessionDir` | 0 | served | native:SettingsManager.GetSessionDir | native:SettingsManager::get_session_dir | native:SettingsManager.get_session_dir |
+| `SettingsManager.getSessionShareDestination` | 0 | served | native:SettingsManager.GetSessionShareDestination | native:SettingsManager::get_session_share_destination | native:SettingsManager.get_session_share_destination |
+| `SettingsManager.getSettings` | 0 | served | native:SettingsManager.GetSettings | native:SettingsManager::get_settings | native:SettingsManager.get_settings |
+| `SettingsManager.getShellCommandPrefix` | 0 | served | native:SettingsManager.GetShellCommandPrefix | native:SettingsManager::get_shell_command_prefix | native:SettingsManager.get_shell_command_prefix |
+| `SettingsManager.getShellPath` | 0 | served | native:SettingsManager.GetShellPath | native:SettingsManager::get_shell_path | native:SettingsManager.get_shell_path |
+| `SettingsManager.getShowCacheMissNotices` | 0 | served | native:SettingsManager.GetShowCacheMissNotices | native:SettingsManager::get_show_cache_miss_notices | native:SettingsManager.get_show_cache_miss_notices |
+| `SettingsManager.getShowHardwareCursor` | 0 | served | native:SettingsManager.GetShowHardwareCursor | native:SettingsManager::get_show_hardware_cursor | native:SettingsManager.get_show_hardware_cursor |
+| `SettingsManager.getShowImages` | 0 | served | native:SettingsManager.GetShowImages | native:SettingsManager::get_show_images | native:SettingsManager.get_show_images |
+| `SettingsManager.getShowTerminalProgress` | 0 | served | native:SettingsManager.GetShowTerminalProgress | native:SettingsManager::get_show_terminal_progress | native:SettingsManager.get_show_terminal_progress |
+| `SettingsManager.getSkillPaths` | 0 | served | native:SettingsManager.GetSkillPaths | native:SettingsManager::get_skill_paths | native:SettingsManager.get_skill_paths |
+| `SettingsManager.getSteeringMode` | 0 | served | native:SettingsManager.GetSteeringMode | native:SettingsManager::get_steering_mode | native:SettingsManager.get_steering_mode |
+| `SettingsManager.getTerminalCapabilityOverrides` | 0 | served | native:SettingsManager.GetTerminalCapabilityOverrides | native:SettingsManager::get_terminal_capability_overrides | native:SettingsManager.get_terminal_capability_overrides |
+| `SettingsManager.getTheme` | 0 | served | native:SettingsManager.GetTheme | native:SettingsManager::get_theme | native:SettingsManager.get_theme |
+| `SettingsManager.getThemePaths` | 0 | served | native:SettingsManager.GetThemePaths | native:SettingsManager::get_theme_paths | native:SettingsManager.get_theme_paths |
+| `SettingsManager.getThemeSetting` | 0 | served | native:SettingsManager.GetThemeSetting | native:SettingsManager::get_theme_setting | native:SettingsManager.get_theme_setting |
+| `SettingsManager.getThinkingBudgets` | 0 | served | native:SettingsManager.GetThinkingBudgets | native:SettingsManager::get_thinking_budgets | native:SettingsManager.get_thinking_budgets |
+| `SettingsManager.getTrackingId` | 0 | served | native:SettingsManager.GetTrackingID | native:SettingsManager::get_tracking_id | native:SettingsManager.get_tracking_id |
+| `SettingsManager.getTransport` | 0 | served | native:SettingsManager.GetTransport | native:SettingsManager::get_transport | native:SettingsManager.get_transport |
+| `SettingsManager.getTreeFilterMode` | 0 | served | native:SettingsManager.GetTreeFilterMode | native:SettingsManager::get_tree_filter_mode | native:SettingsManager.get_tree_filter_mode |
+| `SettingsManager.getTuiMode` | 0 | served | native:SettingsManager.GetTuiMode | native:SettingsManager::get_tui_mode | native:SettingsManager.get_tui_mode |
+| `SettingsManager.getWarnings` | 0 | served | native:SettingsManager.GetWarnings | native:SettingsManager::get_warnings | native:SettingsManager.get_warnings |
+| `SettingsManager.getWebSocketConnectTimeoutMs` | 0 | served | native:SettingsManager.GetWebSocketConnectTimeoutMs | native:SettingsManager::get_web_socket_connect_timeout_ms | native:SettingsManager.get_web_socket_connect_timeout_ms |
+| `SettingsManager.isProjectTrusted` | 0 | served | native:SettingsManager.IsProjectTrusted | native:SettingsManager::is_project_trusted | native:SettingsManager.is_project_trusted |
+| `SettingsManager.reload` | 0 | served | native:SettingsManager.Reload | native:SettingsManager::reload | native:SettingsManager.reload |
+| `SettingsManager.removeModelThinkingLevel` | 0 | served | native:SettingsManager.RemoveModelThinkingLevel | native:SettingsManager::remove_model_thinking_level | native:SettingsManager.remove_model_thinking_level |
+| `SettingsManager.setAutocompleteMaxVisible` | 0 | served | native:SettingsManager.SetAutocompleteMaxVisible | native:SettingsManager::set_autocomplete_max_visible | native:SettingsManager.set_autocomplete_max_visible |
+| `SettingsManager.setBlockImages` | 0 | served | native:SettingsManager.SetBlockImages | native:SettingsManager::set_block_images | native:SettingsManager.set_block_images |
+| `SettingsManager.setCacheWarmingMode` | 0 | served | native:SettingsManager.SetCacheWarmingMode | native:SettingsManager::set_cache_warming_mode | native:SettingsManager.set_cache_warming_mode |
+| `SettingsManager.setClearOnShrink` | 0 | served | native:SettingsManager.SetClearOnShrink | native:SettingsManager::set_clear_on_shrink | native:SettingsManager.set_clear_on_shrink |
+| `SettingsManager.setCollapseChangelog` | 0 | served | native:SettingsManager.SetCollapseChangelog | native:SettingsManager::set_collapse_changelog | native:SettingsManager.set_collapse_changelog |
+| `SettingsManager.setCompactionEnabled` | 0 | served | native:SettingsManager.SetCompactionEnabled | native:SettingsManager::set_compaction_enabled | native:SettingsManager.set_compaction_enabled |
+| `SettingsManager.setDefaultModel` | 0 | served | native:SettingsManager.SetDefaultModel | native:SettingsManager::set_default_model | native:SettingsManager.set_default_model |
+| `SettingsManager.setDefaultModelAndProvider` | 0 | served | native:SettingsManager.SetDefaultModelAndProvider | native:SettingsManager::set_default_model_and_provider | native:SettingsManager.set_default_model_and_provider |
+| `SettingsManager.setDefaultProjectTrust` | 0 | served | native:SettingsManager.SetDefaultProjectTrust | native:SettingsManager::set_default_project_trust | native:SettingsManager.set_default_project_trust |
+| `SettingsManager.setDefaultProvider` | 0 | served | native:SettingsManager.SetDefaultProvider | native:SettingsManager::set_default_provider | native:SettingsManager.set_default_provider |
+| `SettingsManager.setDefaultThinkingLevel` | 0 | served | native:SettingsManager.SetDefaultThinkingLevel | native:SettingsManager::set_default_thinking_level | native:SettingsManager.set_default_thinking_level |
+| `SettingsManager.setDoubleEscapeAction` | 0 | served | native:SettingsManager.SetDoubleEscapeAction | native:SettingsManager::set_double_escape_action | native:SettingsManager.set_double_escape_action |
+| `SettingsManager.setEditorPaddingX` | 0 | served | native:SettingsManager.SetEditorPaddingX | native:SettingsManager::set_editor_padding_x | native:SettingsManager.set_editor_padding_x |
+| `SettingsManager.setEnableAnalytics` | 0 | served | native:SettingsManager.SetEnableAnalytics | native:SettingsManager::set_enable_analytics | native:SettingsManager.set_enable_analytics |
+| `SettingsManager.setEnableInstallTelemetry` | 0 | served | native:SettingsManager.SetEnableInstallTelemetry | native:SettingsManager::set_enable_install_telemetry | native:SettingsManager.set_enable_install_telemetry |
+| `SettingsManager.setEnableSkillCommands` | 0 | served | native:SettingsManager.SetEnableSkillCommands | native:SettingsManager::set_enable_skill_commands | native:SettingsManager.set_enable_skill_commands |
+| `SettingsManager.setEnabledModels` | 0 | served | native:SettingsManager.SetEnabledModels | native:SettingsManager::set_enabled_models | native:SettingsManager.set_enabled_models |
+| `SettingsManager.setExtensionPaths` | 0 | served | native:SettingsManager.SetExtensionPaths | native:SettingsManager::set_extension_paths | native:SettingsManager.set_extension_paths |
+| `SettingsManager.setFollowUpMode` | 0 | served | native:SettingsManager.SetFollowUpMode | native:SettingsManager::set_follow_up_mode | native:SettingsManager.set_follow_up_mode |
+| `SettingsManager.setFullscreenCopyOnSelect` | 0 | served | native:SettingsManager.SetFullscreenCopyOnSelect | native:SettingsManager::set_fullscreen_copy_on_select | native:SettingsManager.set_fullscreen_copy_on_select |
+| `SettingsManager.setFullscreenExitOutput` | 0 | served | native:SettingsManager.SetFullscreenExitOutput | native:SettingsManager::set_fullscreen_exit_output | native:SettingsManager.set_fullscreen_exit_output |
+| `SettingsManager.setFullscreenScrollbar` | 0 | served | native:SettingsManager.SetFullscreenScrollbar | native:SettingsManager::set_fullscreen_scrollbar | native:SettingsManager.set_fullscreen_scrollbar |
+| `SettingsManager.setFullscreenWheelScrollLines` | 0 | served | native:SettingsManager.SetFullscreenWheelScrollLines | native:SettingsManager::set_fullscreen_wheel_scroll_lines | native:SettingsManager.set_fullscreen_wheel_scroll_lines |
+| `SettingsManager.setHideThinkingBlock` | 0 | served | native:SettingsManager.SetHideThinkingBlock | native:SettingsManager::set_hide_thinking_block | native:SettingsManager.set_hide_thinking_block |
+| `SettingsManager.setHttpIdleTimeoutMs` | 0 | served | native:SettingsManager.SetHttpIdleTimeoutMs | native:SettingsManager::set_http_idle_timeout_ms | native:SettingsManager.set_http_idle_timeout_ms |
+| `SettingsManager.setImageAutoResize` | 0 | served | native:SettingsManager.SetImageAutoResize | native:SettingsManager::set_image_auto_resize | native:SettingsManager.set_image_auto_resize |
+| `SettingsManager.setImageWidthCells` | 0 | served | native:SettingsManager.SetImageWidthCells | native:SettingsManager::set_image_width_cells | native:SettingsManager.set_image_width_cells |
+| `SettingsManager.setLastChangelogVersion` | 0 | served | native:SettingsManager.SetLastChangelogVersion | native:SettingsManager::set_last_changelog_version | native:SettingsManager.set_last_changelog_version |
+| `SettingsManager.setMermaidRenderingMode` | 0 | served | native:SettingsManager.SetMermaidRenderingMode | native:SettingsManager::set_mermaid_rendering_mode | native:SettingsManager.set_mermaid_rendering_mode |
+| `SettingsManager.setModelThinkingLevel` | 0 | served | native:SettingsManager.SetModelThinkingLevel | native:SettingsManager::set_model_thinking_level | native:SettingsManager.set_model_thinking_level |
+| `SettingsManager.setNpmCommand` | 0 | served | native:SettingsManager.SetNpmCommand | native:SettingsManager::set_npm_command | native:SettingsManager.set_npm_command |
+| `SettingsManager.setOutputPad` | 0 | served | native:SettingsManager.SetOutputPad | native:SettingsManager::set_output_pad | native:SettingsManager.set_output_pad |
+| `SettingsManager.setPackages` | 0 | served | native:SettingsManager.SetPackages | native:SettingsManager::set_packages | native:SettingsManager.set_packages |
+| `SettingsManager.setProjectExtensionPaths` | 0 | served | native:SettingsManager.SetProjectExtensionPaths | native:SettingsManager::set_project_extension_paths | native:SettingsManager.set_project_extension_paths |
+| `SettingsManager.setProjectPackages` | 0 | served | native:SettingsManager.SetProjectPackages | native:SettingsManager::set_project_packages | native:SettingsManager.set_project_packages |
+| `SettingsManager.setProjectPromptTemplatePaths` | 0 | served | native:SettingsManager.SetProjectPromptTemplatePaths | native:SettingsManager::set_project_prompt_template_paths | native:SettingsManager.set_project_prompt_template_paths |
+| `SettingsManager.setProjectSkillPaths` | 0 | served | native:SettingsManager.SetProjectSkillPaths | native:SettingsManager::set_project_skill_paths | native:SettingsManager.set_project_skill_paths |
+| `SettingsManager.setProjectThemePaths` | 0 | served | native:SettingsManager.SetProjectThemePaths | native:SettingsManager::set_project_theme_paths | native:SettingsManager.set_project_theme_paths |
+| `SettingsManager.setProjectTrusted` | 0 | served | native:SettingsManager.SetProjectTrusted | native:SettingsManager::set_project_trusted | native:SettingsManager.set_project_trusted |
+| `SettingsManager.setPromptTemplatePaths` | 0 | served | native:SettingsManager.SetPromptTemplatePaths | native:SettingsManager::set_prompt_template_paths | native:SettingsManager.set_prompt_template_paths |
+| `SettingsManager.setQuietStartup` | 0 | served | native:SettingsManager.SetQuietStartup | native:SettingsManager::set_quiet_startup | native:SettingsManager.set_quiet_startup |
+| `SettingsManager.setRetryEnabled` | 0 | served | native:SettingsManager.SetRetryEnabled | native:SettingsManager::set_retry_enabled | native:SettingsManager.set_retry_enabled |
+| `SettingsManager.setSessionShareDestination` | 0 | served | native:SettingsManager.SetSessionShareDestination | native:SettingsManager::set_session_share_destination | native:SettingsManager.set_session_share_destination |
+| `SettingsManager.setShellCommandPrefix` | 0 | served | native:SettingsManager.SetShellCommandPrefix | native:SettingsManager::set_shell_command_prefix | native:SettingsManager.set_shell_command_prefix |
+| `SettingsManager.setShellPath` | 0 | served | native:SettingsManager.SetShellPath | native:SettingsManager::set_shell_path | native:SettingsManager.set_shell_path |
+| `SettingsManager.setShowCacheMissNotices` | 0 | served | native:SettingsManager.SetShowCacheMissNotices | native:SettingsManager::set_show_cache_miss_notices | native:SettingsManager.set_show_cache_miss_notices |
+| `SettingsManager.setShowHardwareCursor` | 0 | served | native:SettingsManager.SetShowHardwareCursor | native:SettingsManager::set_show_hardware_cursor | native:SettingsManager.set_show_hardware_cursor |
+| `SettingsManager.setShowImages` | 0 | served | native:SettingsManager.SetShowImages | native:SettingsManager::set_show_images | native:SettingsManager.set_show_images |
+| `SettingsManager.setShowTerminalProgress` | 0 | served | native:SettingsManager.SetShowTerminalProgress | native:SettingsManager::set_show_terminal_progress | native:SettingsManager.set_show_terminal_progress |
+| `SettingsManager.setSkillPaths` | 0 | served | native:SettingsManager.SetSkillPaths | native:SettingsManager::set_skill_paths | native:SettingsManager.set_skill_paths |
+| `SettingsManager.setSteeringMode` | 0 | served | native:SettingsManager.SetSteeringMode | native:SettingsManager::set_steering_mode | native:SettingsManager.set_steering_mode |
+| `SettingsManager.setTheme` | 0 | served | native:SettingsManager.SetTheme | native:SettingsManager::set_theme | native:SettingsManager.set_theme |
+| `SettingsManager.setThemePaths` | 0 | served | native:SettingsManager.SetThemePaths | native:SettingsManager::set_theme_paths | native:SettingsManager.set_theme_paths |
+| `SettingsManager.setTransport` | 0 | served | native:SettingsManager.SetTransport | native:SettingsManager::set_transport | native:SettingsManager.set_transport |
+| `SettingsManager.setTreeFilterMode` | 0 | served | native:SettingsManager.SetTreeFilterMode | native:SettingsManager::set_tree_filter_mode | native:SettingsManager.set_tree_filter_mode |
+| `SettingsManager.setTuiMode` | 0 | served | native:SettingsManager.SetTuiMode | native:SettingsManager::set_tui_mode | native:SettingsManager.set_tui_mode |
+| `SettingsManager.setWarnings` | 0 | served | native:SettingsManager.SetWarnings | native:SettingsManager::set_warnings | native:SettingsManager.set_warnings |
 | `SettingsSelectorComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SettingsSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SettingsSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1033,7 +1028,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `getSelectListTheme` | 7 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `getSettingsListTheme` | 16 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `getShellConfig` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `hasTrustRequiringProjectResources` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `hasTrustRequiringProjectResources` | 4 | served | native:HasTrustRequiringProjectResources | native:has_trust_requiring_project_resources | native:has_trust_requiring_project_resources |
 | `highlightCode` | 12 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `initTheme` | 6 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `isBashToolResult` | 3 | served | native:IsBashToolResult | native:is_bash_tool_result | native:is_bash_tool_result |

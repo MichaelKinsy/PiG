@@ -98,12 +98,6 @@ lane = "SdkLedgerHygiene"
 row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete"
 
 [[unreached]]
-key = "pi-coding-agent: CustomEditor.setAutocompleteMaxVisible"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible"
-
-[[unreached]]
 key = "pi-coding-agent: CustomEditor.setPaddingX"
 sdks = ["go"]
 lane = "SdkLedgerHygiene"
@@ -122,28 +116,28 @@ lane = "SdkLedgerHygiene"
 row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines"
 
 [[unreached]]
-key = "pi-coding-agent: SessionManager.buildSessionContext"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.BuildSessionContext"
+key = "pi-coding-agent: ProjectTrustStore.set"
+sdks = ["python", "rust"]
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
 
 [[unreached]]
-key = "pi-coding-agent: SessionManager.getChildren"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.GetChildren"
-
-[[unreached]]
-key = "pi-coding-agent: SessionManager.isPersisted"
+key = "pi-coding-agent: SessionManager.appendCompaction"
 sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.IsPersisted"
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
 
 [[unreached]]
-key = "pi-coding-agent: SessionManager.usesDefaultSessionDir"
+key = "pi-coding-agent: SessionManager.appendContextEdit"
 sdks = ["go", "python", "rust"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.UsesDefaultSessionDir"
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
+
+[[unreached]]
+key = "pi-coding-agent: SessionManager.setSessionFile"
+sdks = ["go", "python", "rust"]
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (no fixture step builds the entries it needs yet; the host method is the runtime Session method of the same name)"
 
 [[unreached]]
 key = "pi-coding-agent: serializeConversation"
@@ -186,12 +180,6 @@ key = "pi-tui: Editor.isShowingAutocomplete"
 sdks = ["go"]
 lane = "SdkLedgerHygiene"
 row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete"
-
-[[unreached]]
-key = "pi-tui: Editor.setAutocompleteMaxVisible"
-sdks = ["go"]
-lane = "SdkLedgerHygiene"
-row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible"
 
 [[unreached]]
 key = "pi-tui: Editor.setPaddingX"
@@ -675,11 +663,11 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: OAuthSelectorComponent.invalidate" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: OAuthSelectorComponent.removeChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: OAuthSelectorComponent.render" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
-"pi-coding-agent: ProjectTrustStore" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ProjectTrustStore.get" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ProjectTrustStore.getEntry" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ProjectTrustStore.set" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ProjectTrustStore.setMany" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ProjectTrustStore" = { go = "native:ProjectTrustStore", rust = "native:ProjectTrustStore", python = "native:ProjectTrustStore" }
+"pi-coding-agent: ProjectTrustStore.get" = { go = "native:ProjectTrustStore.Get", rust = "native:ProjectTrustStore::get", python = "native:ProjectTrustStore.get" }
+"pi-coding-agent: ProjectTrustStore.getEntry" = { go = "native:ProjectTrustStore.GetEntry", rust = "native:ProjectTrustStore::get_entry", python = "native:ProjectTrustStore.get_entry" }
+"pi-coding-agent: ProjectTrustStore.set" = { go = "native:ProjectTrustStore.Set", rust = "native:ProjectTrustStore::set", python = "native:ProjectTrustStore.set" }
+"pi-coding-agent: ProjectTrustStore.setMany" = { go = "native:ProjectTrustStore.SetMany", rust = "native:ProjectTrustStore::set_many", python = "native:ProjectTrustStore.set_many" }
 "pi-coding-agent: RpcClient" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: RpcClient.abort" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: RpcClient.abortBash" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -721,30 +709,30 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: RpcClient.stop" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: RpcClient.switchSession" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: RpcClient.waitForIdle" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
-"pi-coding-agent: SessionManager" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: SessionManager" = { go = "native:SessionManager", rust = "native:SessionManager", python = "native:SessionManager" }
 "pi-coding-agent: SessionManager._persist" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendCompaction" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendContextEdit" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendCustomEntry" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendCustomMessageEntry" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendLabelChange" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendMessage" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendModelChange" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendSessionInfo" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendThinkingLevelChange" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.appendUsage" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.branch" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.branchWithSummary" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: SessionManager.appendCompaction" = { go = "native:SessionManager.AppendCompaction", rust = "native:SessionManager::append_compaction", python = "native:SessionManager.append_compaction" }
+"pi-coding-agent: SessionManager.appendContextEdit" = { go = "native:SessionManager.AppendContextEdit", rust = "native:SessionManager::append_context_edit", python = "native:SessionManager.append_context_edit" }
+"pi-coding-agent: SessionManager.appendCustomEntry" = { go = "native:SessionManager.AppendCustomEntry", rust = "native:SessionManager::append_custom_entry", python = "native:SessionManager.append_custom_entry" }
+"pi-coding-agent: SessionManager.appendCustomMessageEntry" = { go = "native:SessionManager.AppendCustomMessageEntry", rust = "native:SessionManager::append_custom_message_entry", python = "native:SessionManager.append_custom_message_entry" }
+"pi-coding-agent: SessionManager.appendLabelChange" = { go = "native:SessionManager.AppendLabelChange", rust = "native:SessionManager::append_label_change", python = "native:SessionManager.append_label_change" }
+"pi-coding-agent: SessionManager.appendMessage" = { go = "native:SessionManager.AppendMessage", rust = "native:SessionManager::append_message", python = "native:SessionManager.append_message" }
+"pi-coding-agent: SessionManager.appendModelChange" = { go = "native:SessionManager.AppendModelChange", rust = "native:SessionManager::append_model_change", python = "native:SessionManager.append_model_change" }
+"pi-coding-agent: SessionManager.appendSessionInfo" = { go = "native:SessionManager.AppendSessionInfo", rust = "native:SessionManager::append_session_info", python = "native:SessionManager.append_session_info" }
+"pi-coding-agent: SessionManager.appendThinkingLevelChange" = { go = "native:SessionManager.AppendThinkingLevelChange", rust = "native:SessionManager::append_thinking_level_change", python = "native:SessionManager.append_thinking_level_change" }
+"pi-coding-agent: SessionManager.appendUsage" = { go = "native:SessionManager.AppendUsage", rust = "native:SessionManager::append_usage", python = "native:SessionManager.append_usage" }
+"pi-coding-agent: SessionManager.branch" = { go = "native:SessionManager.Branch", rust = "native:SessionManager::branch", python = "native:SessionManager.branch" }
+"pi-coding-agent: SessionManager.branchWithSummary" = { go = "native:SessionManager.BranchWithSummary", rust = "native:SessionManager::branch_with_summary", python = "native:SessionManager.branch_with_summary" }
 "pi-coding-agent: SessionManager.buildContextEntries" = { go = "native:SessionManager.BuildContextEntries", rust = "native:SessionManager::build_context_entries", python = "native:SessionManager.build_context_entries" }
 "pi-coding-agent: SessionManager.buildSessionContext" = { go = "native:SessionManager.BuildSessionContext", rust = "native:SessionManager::build_session_context", python = "native:SessionManager.build_session_context" }
 "pi-coding-agent: SessionManager.buildSessionProjection" = { go = "native:SessionManager.BuildSessionProjection", rust = "native:SessionManager::build_session_projection", python = "native:SessionManager.build_session_projection" }
-"pi-coding-agent: SessionManager.createBranchedSession" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: SessionManager.createBranchedSession" = { go = "native:SessionManager.CreateBranchedSession", rust = "native:SessionManager::create_branched_session", python = "native:SessionManager.create_branched_session" }
 "pi-coding-agent: SessionManager.getBranch" = { go = "native:SessionManager.GetBranch", rust = "native:SessionManager::get_branch", python = "native:SessionManager.get_branch" }
 "pi-coding-agent: SessionManager.getChildren" = { go = "native:SessionManager.GetChildren", rust = "native:SessionManager::get_children", python = "native:SessionManager.get_children" }
 "pi-coding-agent: SessionManager.getCwd" = { go = "native:SessionManager.GetCwd", rust = "native:SessionManager::get_cwd", python = "native:SessionManager.get_cwd" }
 "pi-coding-agent: SessionManager.getEntries" = { go = "native:SessionManager.GetEntries", rust = "native:SessionManager::get_entries", python = "native:SessionManager.get_entries" }
 "pi-coding-agent: SessionManager.getEntry" = { go = "native:SessionManager.GetEntry", rust = "native:SessionManager::get_entry", python = "native:SessionManager.get_entry" }
-"pi-coding-agent: SessionManager.getEntryCount" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: SessionManager.getEntryCount" = { go = "native:SessionManager.GetEntryCount", rust = "native:SessionManager::get_entry_count", python = "native:SessionManager.get_entry_count" }
 "pi-coding-agent: SessionManager.getHeader" = { go = "native:SessionManager.GetHeader", rust = "native:SessionManager::get_header", python = "native:SessionManager.get_header" }
 "pi-coding-agent: SessionManager.getLabel" = { go = "native:SessionManager.GetLabel", rust = "native:SessionManager::get_label", python = "native:SessionManager.get_label" }
 "pi-coding-agent: SessionManager.getLeafEntry" = { go = "native:SessionManager.GetLeafEntry", rust = "native:SessionManager::get_leaf_entry", python = "native:SessionManager.get_leaf_entry" }
@@ -755,9 +743,9 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: SessionManager.getSessionName" = { go = "native:SessionManager.GetSessionName", rust = "native:SessionManager::get_session_name", python = "native:SessionManager.get_session_name" }
 "pi-coding-agent: SessionManager.getTree" = { go = "native:SessionManager.GetTree", rust = "native:SessionManager::get_tree", python = "native:SessionManager.get_tree" }
 "pi-coding-agent: SessionManager.isPersisted" = { go = "native:SessionManager.IsPersisted", rust = "native:SessionManager::is_persisted", python = "native:SessionManager.is_persisted" }
-"pi-coding-agent: SessionManager.newSession" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.resetLeaf" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SessionManager.setSessionFile" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: SessionManager.newSession" = { go = "native:SessionManager.NewSession", rust = "native:SessionManager::new_session", python = "native:SessionManager.new_session" }
+"pi-coding-agent: SessionManager.resetLeaf" = { go = "native:SessionManager.ResetLeaf", rust = "native:SessionManager::reset_leaf", python = "native:SessionManager.reset_leaf" }
+"pi-coding-agent: SessionManager.setSessionFile" = { go = "native:SessionManager.SetSessionFile", rust = "native:SessionManager::set_session_file", python = "native:SessionManager.set_session_file" }
 "pi-coding-agent: SessionManager.usesDefaultSessionDir" = { go = "native:SessionManager.UsesDefaultSessionDir", rust = "native:SessionManager::uses_default_session_dir", python = "native:SessionManager.uses_default_session_dir" }
 "pi-coding-agent: SessionSelectorComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: SessionSelectorComponent.addChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -770,141 +758,141 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: SessionSelectorComponent.invalidate" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: SessionSelectorComponent.removeChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: SessionSelectorComponent.render" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
-"pi-coding-agent: SettingsManager" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.applyOverrides" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.drainErrors" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.flush" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getAllModelThinkingLevels" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getAutocompleteMaxVisible" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getBlockImages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getBranchSummarySettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getBranchSummarySkipPrompt" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getCacheWarmingMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getClearOnShrink" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getCodeBlockIndent" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getCollapseChangelog" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getCompactionEnabled" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getCompactionKeepRecentTokens" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getCompactionReserveTokens" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getCompactionSettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getDefaultModel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getDefaultProjectTrust" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getDefaultProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getDefaultThinkingLevel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getDefaultTools" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getDoubleEscapeAction" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getEditorPaddingX" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getEnableAnalytics" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getEnableInstallTelemetry" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getEnableSkillCommands" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getEnabledModels" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getExtensionPaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getExternalEditorCommand" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getFollowUpMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getFullscreenCopyOnSelect" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getFullscreenExitOutput" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getFullscreenScrollbar" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getFullscreenWheelScrollLines" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getGlobalSettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getHideThinkingBlock" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getHttpIdleTimeoutMs" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getImageAutoResize" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getImageWidthCells" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getLastChangelogVersion" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getMermaidRenderingMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getModelThinkingLevel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getNpmCommand" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getOrCreateDeviceId" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getOutputPad" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getPackages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getProjectSettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getPromptTemplatePaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getProviderRetrySettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getQuietStartup" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getRetryEnabled" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getRetrySettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getSessionDir" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getSessionShareDestination" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getSettings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getShellCommandPrefix" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getShellPath" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getShowCacheMissNotices" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getShowHardwareCursor" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getShowImages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getShowTerminalProgress" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getSkillPaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getSteeringMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getTerminalCapabilityOverrides" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getTheme" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getThemePaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getThemeSetting" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getThinkingBudgets" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getTrackingId" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getTransport" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getTreeFilterMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getTuiMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getWarnings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.getWebSocketConnectTimeoutMs" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.isProjectTrusted" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.reload" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.removeModelThinkingLevel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setAutocompleteMaxVisible" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setBlockImages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setCacheWarmingMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setClearOnShrink" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setCollapseChangelog" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setCompactionEnabled" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setDefaultModel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setDefaultModelAndProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setDefaultProjectTrust" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setDefaultProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setDefaultThinkingLevel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setDoubleEscapeAction" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setEditorPaddingX" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setEnableAnalytics" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setEnableInstallTelemetry" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setEnableSkillCommands" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setEnabledModels" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setExtensionPaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setFollowUpMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setFullscreenCopyOnSelect" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setFullscreenExitOutput" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setFullscreenScrollbar" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setFullscreenWheelScrollLines" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setHideThinkingBlock" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setHttpIdleTimeoutMs" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setImageAutoResize" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setImageWidthCells" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setLastChangelogVersion" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setMermaidRenderingMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setModelThinkingLevel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setNpmCommand" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setOutputPad" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setPackages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setProjectExtensionPaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setProjectPackages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setProjectPromptTemplatePaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setProjectSkillPaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setProjectThemePaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setProjectTrusted" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setPromptTemplatePaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setQuietStartup" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setRetryEnabled" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setSessionShareDestination" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setShellCommandPrefix" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setShellPath" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setShowCacheMissNotices" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setShowHardwareCursor" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setShowImages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setShowTerminalProgress" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setSkillPaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setSteeringMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setTheme" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setThemePaths" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setTransport" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setTreeFilterMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setTuiMode" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: SettingsManager.setWarnings" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: SettingsManager" = { go = "native:SettingsManager", rust = "native:SettingsManager", python = "native:SettingsManager" }
+"pi-coding-agent: SettingsManager.applyOverrides" = { go = "native:SettingsManager.ApplyOverrides", rust = "native:SettingsManager::apply_overrides", python = "native:SettingsManager.apply_overrides" }
+"pi-coding-agent: SettingsManager.drainErrors" = { go = "native:SettingsManager.DrainErrors", rust = "native:SettingsManager::drain_errors", python = "native:SettingsManager.drain_errors" }
+"pi-coding-agent: SettingsManager.flush" = { go = "native:SettingsManager.Flush", rust = "native:SettingsManager::flush", python = "native:SettingsManager.flush" }
+"pi-coding-agent: SettingsManager.getAllModelThinkingLevels" = { go = "native:SettingsManager.GetAllModelThinkingLevels", rust = "native:SettingsManager::get_all_model_thinking_levels", python = "native:SettingsManager.get_all_model_thinking_levels" }
+"pi-coding-agent: SettingsManager.getAutocompleteMaxVisible" = { go = "native:SettingsManager.GetAutocompleteMaxVisible", rust = "native:SettingsManager::get_autocomplete_max_visible", python = "native:SettingsManager.get_autocomplete_max_visible" }
+"pi-coding-agent: SettingsManager.getBlockImages" = { go = "native:SettingsManager.GetBlockImages", rust = "native:SettingsManager::get_block_images", python = "native:SettingsManager.get_block_images" }
+"pi-coding-agent: SettingsManager.getBranchSummarySettings" = { go = "native:SettingsManager.GetBranchSummarySettings", rust = "native:SettingsManager::get_branch_summary_settings", python = "native:SettingsManager.get_branch_summary_settings" }
+"pi-coding-agent: SettingsManager.getBranchSummarySkipPrompt" = { go = "native:SettingsManager.GetBranchSummarySkipPrompt", rust = "native:SettingsManager::get_branch_summary_skip_prompt", python = "native:SettingsManager.get_branch_summary_skip_prompt" }
+"pi-coding-agent: SettingsManager.getCacheWarmingMode" = { go = "native:SettingsManager.GetCacheWarmingMode", rust = "native:SettingsManager::get_cache_warming_mode", python = "native:SettingsManager.get_cache_warming_mode" }
+"pi-coding-agent: SettingsManager.getClearOnShrink" = { go = "native:SettingsManager.GetClearOnShrink", rust = "native:SettingsManager::get_clear_on_shrink", python = "native:SettingsManager.get_clear_on_shrink" }
+"pi-coding-agent: SettingsManager.getCodeBlockIndent" = { go = "native:SettingsManager.GetCodeBlockIndent", rust = "native:SettingsManager::get_code_block_indent", python = "native:SettingsManager.get_code_block_indent" }
+"pi-coding-agent: SettingsManager.getCollapseChangelog" = { go = "native:SettingsManager.GetCollapseChangelog", rust = "native:SettingsManager::get_collapse_changelog", python = "native:SettingsManager.get_collapse_changelog" }
+"pi-coding-agent: SettingsManager.getCompactionEnabled" = { go = "native:SettingsManager.GetCompactionEnabled", rust = "native:SettingsManager::get_compaction_enabled", python = "native:SettingsManager.get_compaction_enabled" }
+"pi-coding-agent: SettingsManager.getCompactionKeepRecentTokens" = { go = "native:SettingsManager.GetCompactionKeepRecentTokens", rust = "native:SettingsManager::get_compaction_keep_recent_tokens", python = "native:SettingsManager.get_compaction_keep_recent_tokens" }
+"pi-coding-agent: SettingsManager.getCompactionReserveTokens" = { go = "native:SettingsManager.GetCompactionReserveTokens", rust = "native:SettingsManager::get_compaction_reserve_tokens", python = "native:SettingsManager.get_compaction_reserve_tokens" }
+"pi-coding-agent: SettingsManager.getCompactionSettings" = { go = "native:SettingsManager.GetCompactionSettings", rust = "native:SettingsManager::get_compaction_settings", python = "native:SettingsManager.get_compaction_settings" }
+"pi-coding-agent: SettingsManager.getDefaultModel" = { go = "native:SettingsManager.GetDefaultModel", rust = "native:SettingsManager::get_default_model", python = "native:SettingsManager.get_default_model" }
+"pi-coding-agent: SettingsManager.getDefaultProjectTrust" = { go = "native:SettingsManager.GetDefaultProjectTrust", rust = "native:SettingsManager::get_default_project_trust", python = "native:SettingsManager.get_default_project_trust" }
+"pi-coding-agent: SettingsManager.getDefaultProvider" = { go = "native:SettingsManager.GetDefaultProvider", rust = "native:SettingsManager::get_default_provider", python = "native:SettingsManager.get_default_provider" }
+"pi-coding-agent: SettingsManager.getDefaultThinkingLevel" = { go = "native:SettingsManager.GetDefaultThinkingLevel", rust = "native:SettingsManager::get_default_thinking_level", python = "native:SettingsManager.get_default_thinking_level" }
+"pi-coding-agent: SettingsManager.getDefaultTools" = { go = "native:SettingsManager.GetDefaultTools", rust = "native:SettingsManager::get_default_tools", python = "native:SettingsManager.get_default_tools" }
+"pi-coding-agent: SettingsManager.getDoubleEscapeAction" = { go = "native:SettingsManager.GetDoubleEscapeAction", rust = "native:SettingsManager::get_double_escape_action", python = "native:SettingsManager.get_double_escape_action" }
+"pi-coding-agent: SettingsManager.getEditorPaddingX" = { go = "native:SettingsManager.GetEditorPaddingX", rust = "native:SettingsManager::get_editor_padding_x", python = "native:SettingsManager.get_editor_padding_x" }
+"pi-coding-agent: SettingsManager.getEnableAnalytics" = { go = "native:SettingsManager.GetEnableAnalytics", rust = "native:SettingsManager::get_enable_analytics", python = "native:SettingsManager.get_enable_analytics" }
+"pi-coding-agent: SettingsManager.getEnableInstallTelemetry" = { go = "native:SettingsManager.GetEnableInstallTelemetry", rust = "native:SettingsManager::get_enable_install_telemetry", python = "native:SettingsManager.get_enable_install_telemetry" }
+"pi-coding-agent: SettingsManager.getEnableSkillCommands" = { go = "native:SettingsManager.GetEnableSkillCommands", rust = "native:SettingsManager::get_enable_skill_commands", python = "native:SettingsManager.get_enable_skill_commands" }
+"pi-coding-agent: SettingsManager.getEnabledModels" = { go = "native:SettingsManager.GetEnabledModels", rust = "native:SettingsManager::get_enabled_models", python = "native:SettingsManager.get_enabled_models" }
+"pi-coding-agent: SettingsManager.getExtensionPaths" = { go = "native:SettingsManager.GetExtensionPaths", rust = "native:SettingsManager::get_extension_paths", python = "native:SettingsManager.get_extension_paths" }
+"pi-coding-agent: SettingsManager.getExternalEditorCommand" = { go = "native:SettingsManager.GetExternalEditorCommand", rust = "native:SettingsManager::get_external_editor_command", python = "native:SettingsManager.get_external_editor_command" }
+"pi-coding-agent: SettingsManager.getFollowUpMode" = { go = "native:SettingsManager.GetFollowUpMode", rust = "native:SettingsManager::get_follow_up_mode", python = "native:SettingsManager.get_follow_up_mode" }
+"pi-coding-agent: SettingsManager.getFullscreenCopyOnSelect" = { go = "native:SettingsManager.GetFullscreenCopyOnSelect", rust = "native:SettingsManager::get_fullscreen_copy_on_select", python = "native:SettingsManager.get_fullscreen_copy_on_select" }
+"pi-coding-agent: SettingsManager.getFullscreenExitOutput" = { go = "native:SettingsManager.GetFullscreenExitOutput", rust = "native:SettingsManager::get_fullscreen_exit_output", python = "native:SettingsManager.get_fullscreen_exit_output" }
+"pi-coding-agent: SettingsManager.getFullscreenScrollbar" = { go = "native:SettingsManager.GetFullscreenScrollbar", rust = "native:SettingsManager::get_fullscreen_scrollbar", python = "native:SettingsManager.get_fullscreen_scrollbar" }
+"pi-coding-agent: SettingsManager.getFullscreenWheelScrollLines" = { go = "native:SettingsManager.GetFullscreenWheelScrollLines", rust = "native:SettingsManager::get_fullscreen_wheel_scroll_lines", python = "native:SettingsManager.get_fullscreen_wheel_scroll_lines" }
+"pi-coding-agent: SettingsManager.getGlobalSettings" = { go = "native:SettingsManager.GetGlobalSettings", rust = "native:SettingsManager::get_global_settings", python = "native:SettingsManager.get_global_settings" }
+"pi-coding-agent: SettingsManager.getHideThinkingBlock" = { go = "native:SettingsManager.GetHideThinkingBlock", rust = "native:SettingsManager::get_hide_thinking_block", python = "native:SettingsManager.get_hide_thinking_block" }
+"pi-coding-agent: SettingsManager.getHttpIdleTimeoutMs" = { go = "native:SettingsManager.GetHttpIdleTimeoutMs", rust = "native:SettingsManager::get_http_idle_timeout_ms", python = "native:SettingsManager.get_http_idle_timeout_ms" }
+"pi-coding-agent: SettingsManager.getImageAutoResize" = { go = "native:SettingsManager.GetImageAutoResize", rust = "native:SettingsManager::get_image_auto_resize", python = "native:SettingsManager.get_image_auto_resize" }
+"pi-coding-agent: SettingsManager.getImageWidthCells" = { go = "native:SettingsManager.GetImageWidthCells", rust = "native:SettingsManager::get_image_width_cells", python = "native:SettingsManager.get_image_width_cells" }
+"pi-coding-agent: SettingsManager.getLastChangelogVersion" = { go = "native:SettingsManager.GetLastChangelogVersion", rust = "native:SettingsManager::get_last_changelog_version", python = "native:SettingsManager.get_last_changelog_version" }
+"pi-coding-agent: SettingsManager.getMermaidRenderingMode" = { go = "native:SettingsManager.GetMermaidRenderingMode", rust = "native:SettingsManager::get_mermaid_rendering_mode", python = "native:SettingsManager.get_mermaid_rendering_mode" }
+"pi-coding-agent: SettingsManager.getModelThinkingLevel" = { go = "native:SettingsManager.GetModelThinkingLevel", rust = "native:SettingsManager::get_model_thinking_level", python = "native:SettingsManager.get_model_thinking_level" }
+"pi-coding-agent: SettingsManager.getNpmCommand" = { go = "native:SettingsManager.GetNpmCommand", rust = "native:SettingsManager::get_npm_command", python = "native:SettingsManager.get_npm_command" }
+"pi-coding-agent: SettingsManager.getOrCreateDeviceId" = { go = "native:SettingsManager.GetOrCreateDeviceID", rust = "native:SettingsManager::get_or_create_device_id", python = "native:SettingsManager.get_or_create_device_id" }
+"pi-coding-agent: SettingsManager.getOutputPad" = { go = "native:SettingsManager.GetOutputPad", rust = "native:SettingsManager::get_output_pad", python = "native:SettingsManager.get_output_pad" }
+"pi-coding-agent: SettingsManager.getPackages" = { go = "native:SettingsManager.GetPackages", rust = "native:SettingsManager::get_packages", python = "native:SettingsManager.get_packages" }
+"pi-coding-agent: SettingsManager.getProjectSettings" = { go = "native:SettingsManager.GetProjectSettings", rust = "native:SettingsManager::get_project_settings", python = "native:SettingsManager.get_project_settings" }
+"pi-coding-agent: SettingsManager.getPromptTemplatePaths" = { go = "native:SettingsManager.GetPromptTemplatePaths", rust = "native:SettingsManager::get_prompt_template_paths", python = "native:SettingsManager.get_prompt_template_paths" }
+"pi-coding-agent: SettingsManager.getProviderRetrySettings" = { go = "native:SettingsManager.GetProviderRetrySettings", rust = "native:SettingsManager::get_provider_retry_settings", python = "native:SettingsManager.get_provider_retry_settings" }
+"pi-coding-agent: SettingsManager.getQuietStartup" = { go = "native:SettingsManager.GetQuietStartup", rust = "native:SettingsManager::get_quiet_startup", python = "native:SettingsManager.get_quiet_startup" }
+"pi-coding-agent: SettingsManager.getRetryEnabled" = { go = "native:SettingsManager.GetRetryEnabled", rust = "native:SettingsManager::get_retry_enabled", python = "native:SettingsManager.get_retry_enabled" }
+"pi-coding-agent: SettingsManager.getRetrySettings" = { go = "native:SettingsManager.GetRetrySettings", rust = "native:SettingsManager::get_retry_settings", python = "native:SettingsManager.get_retry_settings" }
+"pi-coding-agent: SettingsManager.getSessionDir" = { go = "native:SettingsManager.GetSessionDir", rust = "native:SettingsManager::get_session_dir", python = "native:SettingsManager.get_session_dir" }
+"pi-coding-agent: SettingsManager.getSessionShareDestination" = { go = "native:SettingsManager.GetSessionShareDestination", rust = "native:SettingsManager::get_session_share_destination", python = "native:SettingsManager.get_session_share_destination" }
+"pi-coding-agent: SettingsManager.getSettings" = { go = "native:SettingsManager.GetSettings", rust = "native:SettingsManager::get_settings", python = "native:SettingsManager.get_settings" }
+"pi-coding-agent: SettingsManager.getShellCommandPrefix" = { go = "native:SettingsManager.GetShellCommandPrefix", rust = "native:SettingsManager::get_shell_command_prefix", python = "native:SettingsManager.get_shell_command_prefix" }
+"pi-coding-agent: SettingsManager.getShellPath" = { go = "native:SettingsManager.GetShellPath", rust = "native:SettingsManager::get_shell_path", python = "native:SettingsManager.get_shell_path" }
+"pi-coding-agent: SettingsManager.getShowCacheMissNotices" = { go = "native:SettingsManager.GetShowCacheMissNotices", rust = "native:SettingsManager::get_show_cache_miss_notices", python = "native:SettingsManager.get_show_cache_miss_notices" }
+"pi-coding-agent: SettingsManager.getShowHardwareCursor" = { go = "native:SettingsManager.GetShowHardwareCursor", rust = "native:SettingsManager::get_show_hardware_cursor", python = "native:SettingsManager.get_show_hardware_cursor" }
+"pi-coding-agent: SettingsManager.getShowImages" = { go = "native:SettingsManager.GetShowImages", rust = "native:SettingsManager::get_show_images", python = "native:SettingsManager.get_show_images" }
+"pi-coding-agent: SettingsManager.getShowTerminalProgress" = { go = "native:SettingsManager.GetShowTerminalProgress", rust = "native:SettingsManager::get_show_terminal_progress", python = "native:SettingsManager.get_show_terminal_progress" }
+"pi-coding-agent: SettingsManager.getSkillPaths" = { go = "native:SettingsManager.GetSkillPaths", rust = "native:SettingsManager::get_skill_paths", python = "native:SettingsManager.get_skill_paths" }
+"pi-coding-agent: SettingsManager.getSteeringMode" = { go = "native:SettingsManager.GetSteeringMode", rust = "native:SettingsManager::get_steering_mode", python = "native:SettingsManager.get_steering_mode" }
+"pi-coding-agent: SettingsManager.getTerminalCapabilityOverrides" = { go = "native:SettingsManager.GetTerminalCapabilityOverrides", rust = "native:SettingsManager::get_terminal_capability_overrides", python = "native:SettingsManager.get_terminal_capability_overrides" }
+"pi-coding-agent: SettingsManager.getTheme" = { go = "native:SettingsManager.GetTheme", rust = "native:SettingsManager::get_theme", python = "native:SettingsManager.get_theme" }
+"pi-coding-agent: SettingsManager.getThemePaths" = { go = "native:SettingsManager.GetThemePaths", rust = "native:SettingsManager::get_theme_paths", python = "native:SettingsManager.get_theme_paths" }
+"pi-coding-agent: SettingsManager.getThemeSetting" = { go = "native:SettingsManager.GetThemeSetting", rust = "native:SettingsManager::get_theme_setting", python = "native:SettingsManager.get_theme_setting" }
+"pi-coding-agent: SettingsManager.getThinkingBudgets" = { go = "native:SettingsManager.GetThinkingBudgets", rust = "native:SettingsManager::get_thinking_budgets", python = "native:SettingsManager.get_thinking_budgets" }
+"pi-coding-agent: SettingsManager.getTrackingId" = { go = "native:SettingsManager.GetTrackingID", rust = "native:SettingsManager::get_tracking_id", python = "native:SettingsManager.get_tracking_id" }
+"pi-coding-agent: SettingsManager.getTransport" = { go = "native:SettingsManager.GetTransport", rust = "native:SettingsManager::get_transport", python = "native:SettingsManager.get_transport" }
+"pi-coding-agent: SettingsManager.getTreeFilterMode" = { go = "native:SettingsManager.GetTreeFilterMode", rust = "native:SettingsManager::get_tree_filter_mode", python = "native:SettingsManager.get_tree_filter_mode" }
+"pi-coding-agent: SettingsManager.getTuiMode" = { go = "native:SettingsManager.GetTuiMode", rust = "native:SettingsManager::get_tui_mode", python = "native:SettingsManager.get_tui_mode" }
+"pi-coding-agent: SettingsManager.getWarnings" = { go = "native:SettingsManager.GetWarnings", rust = "native:SettingsManager::get_warnings", python = "native:SettingsManager.get_warnings" }
+"pi-coding-agent: SettingsManager.getWebSocketConnectTimeoutMs" = { go = "native:SettingsManager.GetWebSocketConnectTimeoutMs", rust = "native:SettingsManager::get_web_socket_connect_timeout_ms", python = "native:SettingsManager.get_web_socket_connect_timeout_ms" }
+"pi-coding-agent: SettingsManager.isProjectTrusted" = { go = "native:SettingsManager.IsProjectTrusted", rust = "native:SettingsManager::is_project_trusted", python = "native:SettingsManager.is_project_trusted" }
+"pi-coding-agent: SettingsManager.reload" = { go = "native:SettingsManager.Reload", rust = "native:SettingsManager::reload", python = "native:SettingsManager.reload" }
+"pi-coding-agent: SettingsManager.removeModelThinkingLevel" = { go = "native:SettingsManager.RemoveModelThinkingLevel", rust = "native:SettingsManager::remove_model_thinking_level", python = "native:SettingsManager.remove_model_thinking_level" }
+"pi-coding-agent: SettingsManager.setAutocompleteMaxVisible" = { go = "native:SettingsManager.SetAutocompleteMaxVisible", rust = "native:SettingsManager::set_autocomplete_max_visible", python = "native:SettingsManager.set_autocomplete_max_visible" }
+"pi-coding-agent: SettingsManager.setBlockImages" = { go = "native:SettingsManager.SetBlockImages", rust = "native:SettingsManager::set_block_images", python = "native:SettingsManager.set_block_images" }
+"pi-coding-agent: SettingsManager.setCacheWarmingMode" = { go = "native:SettingsManager.SetCacheWarmingMode", rust = "native:SettingsManager::set_cache_warming_mode", python = "native:SettingsManager.set_cache_warming_mode" }
+"pi-coding-agent: SettingsManager.setClearOnShrink" = { go = "native:SettingsManager.SetClearOnShrink", rust = "native:SettingsManager::set_clear_on_shrink", python = "native:SettingsManager.set_clear_on_shrink" }
+"pi-coding-agent: SettingsManager.setCollapseChangelog" = { go = "native:SettingsManager.SetCollapseChangelog", rust = "native:SettingsManager::set_collapse_changelog", python = "native:SettingsManager.set_collapse_changelog" }
+"pi-coding-agent: SettingsManager.setCompactionEnabled" = { go = "native:SettingsManager.SetCompactionEnabled", rust = "native:SettingsManager::set_compaction_enabled", python = "native:SettingsManager.set_compaction_enabled" }
+"pi-coding-agent: SettingsManager.setDefaultModel" = { go = "native:SettingsManager.SetDefaultModel", rust = "native:SettingsManager::set_default_model", python = "native:SettingsManager.set_default_model" }
+"pi-coding-agent: SettingsManager.setDefaultModelAndProvider" = { go = "native:SettingsManager.SetDefaultModelAndProvider", rust = "native:SettingsManager::set_default_model_and_provider", python = "native:SettingsManager.set_default_model_and_provider" }
+"pi-coding-agent: SettingsManager.setDefaultProjectTrust" = { go = "native:SettingsManager.SetDefaultProjectTrust", rust = "native:SettingsManager::set_default_project_trust", python = "native:SettingsManager.set_default_project_trust" }
+"pi-coding-agent: SettingsManager.setDefaultProvider" = { go = "native:SettingsManager.SetDefaultProvider", rust = "native:SettingsManager::set_default_provider", python = "native:SettingsManager.set_default_provider" }
+"pi-coding-agent: SettingsManager.setDefaultThinkingLevel" = { go = "native:SettingsManager.SetDefaultThinkingLevel", rust = "native:SettingsManager::set_default_thinking_level", python = "native:SettingsManager.set_default_thinking_level" }
+"pi-coding-agent: SettingsManager.setDoubleEscapeAction" = { go = "native:SettingsManager.SetDoubleEscapeAction", rust = "native:SettingsManager::set_double_escape_action", python = "native:SettingsManager.set_double_escape_action" }
+"pi-coding-agent: SettingsManager.setEditorPaddingX" = { go = "native:SettingsManager.SetEditorPaddingX", rust = "native:SettingsManager::set_editor_padding_x", python = "native:SettingsManager.set_editor_padding_x" }
+"pi-coding-agent: SettingsManager.setEnableAnalytics" = { go = "native:SettingsManager.SetEnableAnalytics", rust = "native:SettingsManager::set_enable_analytics", python = "native:SettingsManager.set_enable_analytics" }
+"pi-coding-agent: SettingsManager.setEnableInstallTelemetry" = { go = "native:SettingsManager.SetEnableInstallTelemetry", rust = "native:SettingsManager::set_enable_install_telemetry", python = "native:SettingsManager.set_enable_install_telemetry" }
+"pi-coding-agent: SettingsManager.setEnableSkillCommands" = { go = "native:SettingsManager.SetEnableSkillCommands", rust = "native:SettingsManager::set_enable_skill_commands", python = "native:SettingsManager.set_enable_skill_commands" }
+"pi-coding-agent: SettingsManager.setEnabledModels" = { go = "native:SettingsManager.SetEnabledModels", rust = "native:SettingsManager::set_enabled_models", python = "native:SettingsManager.set_enabled_models" }
+"pi-coding-agent: SettingsManager.setExtensionPaths" = { go = "native:SettingsManager.SetExtensionPaths", rust = "native:SettingsManager::set_extension_paths", python = "native:SettingsManager.set_extension_paths" }
+"pi-coding-agent: SettingsManager.setFollowUpMode" = { go = "native:SettingsManager.SetFollowUpMode", rust = "native:SettingsManager::set_follow_up_mode", python = "native:SettingsManager.set_follow_up_mode" }
+"pi-coding-agent: SettingsManager.setFullscreenCopyOnSelect" = { go = "native:SettingsManager.SetFullscreenCopyOnSelect", rust = "native:SettingsManager::set_fullscreen_copy_on_select", python = "native:SettingsManager.set_fullscreen_copy_on_select" }
+"pi-coding-agent: SettingsManager.setFullscreenExitOutput" = { go = "native:SettingsManager.SetFullscreenExitOutput", rust = "native:SettingsManager::set_fullscreen_exit_output", python = "native:SettingsManager.set_fullscreen_exit_output" }
+"pi-coding-agent: SettingsManager.setFullscreenScrollbar" = { go = "native:SettingsManager.SetFullscreenScrollbar", rust = "native:SettingsManager::set_fullscreen_scrollbar", python = "native:SettingsManager.set_fullscreen_scrollbar" }
+"pi-coding-agent: SettingsManager.setFullscreenWheelScrollLines" = { go = "native:SettingsManager.SetFullscreenWheelScrollLines", rust = "native:SettingsManager::set_fullscreen_wheel_scroll_lines", python = "native:SettingsManager.set_fullscreen_wheel_scroll_lines" }
+"pi-coding-agent: SettingsManager.setHideThinkingBlock" = { go = "native:SettingsManager.SetHideThinkingBlock", rust = "native:SettingsManager::set_hide_thinking_block", python = "native:SettingsManager.set_hide_thinking_block" }
+"pi-coding-agent: SettingsManager.setHttpIdleTimeoutMs" = { go = "native:SettingsManager.SetHttpIdleTimeoutMs", rust = "native:SettingsManager::set_http_idle_timeout_ms", python = "native:SettingsManager.set_http_idle_timeout_ms" }
+"pi-coding-agent: SettingsManager.setImageAutoResize" = { go = "native:SettingsManager.SetImageAutoResize", rust = "native:SettingsManager::set_image_auto_resize", python = "native:SettingsManager.set_image_auto_resize" }
+"pi-coding-agent: SettingsManager.setImageWidthCells" = { go = "native:SettingsManager.SetImageWidthCells", rust = "native:SettingsManager::set_image_width_cells", python = "native:SettingsManager.set_image_width_cells" }
+"pi-coding-agent: SettingsManager.setLastChangelogVersion" = { go = "native:SettingsManager.SetLastChangelogVersion", rust = "native:SettingsManager::set_last_changelog_version", python = "native:SettingsManager.set_last_changelog_version" }
+"pi-coding-agent: SettingsManager.setMermaidRenderingMode" = { go = "native:SettingsManager.SetMermaidRenderingMode", rust = "native:SettingsManager::set_mermaid_rendering_mode", python = "native:SettingsManager.set_mermaid_rendering_mode" }
+"pi-coding-agent: SettingsManager.setModelThinkingLevel" = { go = "native:SettingsManager.SetModelThinkingLevel", rust = "native:SettingsManager::set_model_thinking_level", python = "native:SettingsManager.set_model_thinking_level" }
+"pi-coding-agent: SettingsManager.setNpmCommand" = { go = "native:SettingsManager.SetNpmCommand", rust = "native:SettingsManager::set_npm_command", python = "native:SettingsManager.set_npm_command" }
+"pi-coding-agent: SettingsManager.setOutputPad" = { go = "native:SettingsManager.SetOutputPad", rust = "native:SettingsManager::set_output_pad", python = "native:SettingsManager.set_output_pad" }
+"pi-coding-agent: SettingsManager.setPackages" = { go = "native:SettingsManager.SetPackages", rust = "native:SettingsManager::set_packages", python = "native:SettingsManager.set_packages" }
+"pi-coding-agent: SettingsManager.setProjectExtensionPaths" = { go = "native:SettingsManager.SetProjectExtensionPaths", rust = "native:SettingsManager::set_project_extension_paths", python = "native:SettingsManager.set_project_extension_paths" }
+"pi-coding-agent: SettingsManager.setProjectPackages" = { go = "native:SettingsManager.SetProjectPackages", rust = "native:SettingsManager::set_project_packages", python = "native:SettingsManager.set_project_packages" }
+"pi-coding-agent: SettingsManager.setProjectPromptTemplatePaths" = { go = "native:SettingsManager.SetProjectPromptTemplatePaths", rust = "native:SettingsManager::set_project_prompt_template_paths", python = "native:SettingsManager.set_project_prompt_template_paths" }
+"pi-coding-agent: SettingsManager.setProjectSkillPaths" = { go = "native:SettingsManager.SetProjectSkillPaths", rust = "native:SettingsManager::set_project_skill_paths", python = "native:SettingsManager.set_project_skill_paths" }
+"pi-coding-agent: SettingsManager.setProjectThemePaths" = { go = "native:SettingsManager.SetProjectThemePaths", rust = "native:SettingsManager::set_project_theme_paths", python = "native:SettingsManager.set_project_theme_paths" }
+"pi-coding-agent: SettingsManager.setProjectTrusted" = { go = "native:SettingsManager.SetProjectTrusted", rust = "native:SettingsManager::set_project_trusted", python = "native:SettingsManager.set_project_trusted" }
+"pi-coding-agent: SettingsManager.setPromptTemplatePaths" = { go = "native:SettingsManager.SetPromptTemplatePaths", rust = "native:SettingsManager::set_prompt_template_paths", python = "native:SettingsManager.set_prompt_template_paths" }
+"pi-coding-agent: SettingsManager.setQuietStartup" = { go = "native:SettingsManager.SetQuietStartup", rust = "native:SettingsManager::set_quiet_startup", python = "native:SettingsManager.set_quiet_startup" }
+"pi-coding-agent: SettingsManager.setRetryEnabled" = { go = "native:SettingsManager.SetRetryEnabled", rust = "native:SettingsManager::set_retry_enabled", python = "native:SettingsManager.set_retry_enabled" }
+"pi-coding-agent: SettingsManager.setSessionShareDestination" = { go = "native:SettingsManager.SetSessionShareDestination", rust = "native:SettingsManager::set_session_share_destination", python = "native:SettingsManager.set_session_share_destination" }
+"pi-coding-agent: SettingsManager.setShellCommandPrefix" = { go = "native:SettingsManager.SetShellCommandPrefix", rust = "native:SettingsManager::set_shell_command_prefix", python = "native:SettingsManager.set_shell_command_prefix" }
+"pi-coding-agent: SettingsManager.setShellPath" = { go = "native:SettingsManager.SetShellPath", rust = "native:SettingsManager::set_shell_path", python = "native:SettingsManager.set_shell_path" }
+"pi-coding-agent: SettingsManager.setShowCacheMissNotices" = { go = "native:SettingsManager.SetShowCacheMissNotices", rust = "native:SettingsManager::set_show_cache_miss_notices", python = "native:SettingsManager.set_show_cache_miss_notices" }
+"pi-coding-agent: SettingsManager.setShowHardwareCursor" = { go = "native:SettingsManager.SetShowHardwareCursor", rust = "native:SettingsManager::set_show_hardware_cursor", python = "native:SettingsManager.set_show_hardware_cursor" }
+"pi-coding-agent: SettingsManager.setShowImages" = { go = "native:SettingsManager.SetShowImages", rust = "native:SettingsManager::set_show_images", python = "native:SettingsManager.set_show_images" }
+"pi-coding-agent: SettingsManager.setShowTerminalProgress" = { go = "native:SettingsManager.SetShowTerminalProgress", rust = "native:SettingsManager::set_show_terminal_progress", python = "native:SettingsManager.set_show_terminal_progress" }
+"pi-coding-agent: SettingsManager.setSkillPaths" = { go = "native:SettingsManager.SetSkillPaths", rust = "native:SettingsManager::set_skill_paths", python = "native:SettingsManager.set_skill_paths" }
+"pi-coding-agent: SettingsManager.setSteeringMode" = { go = "native:SettingsManager.SetSteeringMode", rust = "native:SettingsManager::set_steering_mode", python = "native:SettingsManager.set_steering_mode" }
+"pi-coding-agent: SettingsManager.setTheme" = { go = "native:SettingsManager.SetTheme", rust = "native:SettingsManager::set_theme", python = "native:SettingsManager.set_theme" }
+"pi-coding-agent: SettingsManager.setThemePaths" = { go = "native:SettingsManager.SetThemePaths", rust = "native:SettingsManager::set_theme_paths", python = "native:SettingsManager.set_theme_paths" }
+"pi-coding-agent: SettingsManager.setTransport" = { go = "native:SettingsManager.SetTransport", rust = "native:SettingsManager::set_transport", python = "native:SettingsManager.set_transport" }
+"pi-coding-agent: SettingsManager.setTreeFilterMode" = { go = "native:SettingsManager.SetTreeFilterMode", rust = "native:SettingsManager::set_tree_filter_mode", python = "native:SettingsManager.set_tree_filter_mode" }
+"pi-coding-agent: SettingsManager.setTuiMode" = { go = "native:SettingsManager.SetTuiMode", rust = "native:SettingsManager::set_tui_mode", python = "native:SettingsManager.set_tui_mode" }
+"pi-coding-agent: SettingsManager.setWarnings" = { go = "native:SettingsManager.SetWarnings", rust = "native:SettingsManager::set_warnings", python = "native:SettingsManager.set_warnings" }
 "pi-coding-agent: SettingsSelectorComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: SettingsSelectorComponent.addChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: SettingsSelectorComponent.children" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1089,7 +1077,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: getSelectListTheme" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-coding-agent: getSettingsListTheme" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-coding-agent: getShellConfig" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
-"pi-coding-agent: hasTrustRequiringProjectResources" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: hasTrustRequiringProjectResources" = { go = "native:HasTrustRequiringProjectResources", rust = "native:has_trust_requiring_project_resources", python = "native:has_trust_requiring_project_resources" }
 "pi-coding-agent: highlightCode" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-coding-agent: initTheme" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
 "pi-coding-agent: isBashToolResult" = { go = "native:IsBashToolResult", rust = "native:is_bash_tool_result", python = "native:is_bash_tool_result" }

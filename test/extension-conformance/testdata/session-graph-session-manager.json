@@ -43,12 +43,18 @@
 		"noFork": "error: Cannot fork",
 		"notSession": "error: not a valid"
 	},
+	"extra": {
+		"msgCustomType": "note-msg",
+		"msgType": "custom_message",
+		"usageKind": "test",
+		"usageType": "usage"
+	},
 	"find": {
 		"found": true,
 		"missing": true
 	},
 	"fork": {
-		"count": 9,
+		"count": 11,
 		"cwd": true,
 		"id": "forked-1",
 		"inDir": true,
@@ -61,6 +67,8 @@
 			"custom\u003c3",
 			"thinking_level_change\u003c4",
 			"model_change\u003c5",
+			"custom_message\u003c6",
+			"usage\u003c7",
 			"message\u003c0",
 			"branch_summary\u003c0"
 		]
@@ -158,7 +166,7 @@
 		"persisted": false
 	},
 	"opened": {
-		"count": 9,
+		"count": 11,
 		"cwd": "\u003croot\u003e/project",
 		"dirIsFileDir": true,
 		"file": true,

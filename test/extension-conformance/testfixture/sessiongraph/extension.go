@@ -116,6 +116,10 @@ func script(ctx sdk.Context, args map[string]any) map[string]any {
 	tree := ok(m.GetTree())
 	r["tree"] = map[string]any{"roots": len(tree), "firstChildren": len(tree[0].Children)}
 
+	msgID := ok(m.AppendCustomMessageEntry("note-msg", "body", true, map[string]any{"k": 1}))
+	usage := ok(m.AppendUsage("test", "p", "m", map[string]any{"input": 1, "output": 2, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 3, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}}, nil))
+	r["extra"] = map[string]any{"msgType": ok(m.GetEntry(msgID))["type"], "msgCustomType": ok(m.GetEntry(msgID))["customType"], "usageType": usage["type"], "usageKind": usage["kind"]}
+
 	ok(0, m.Branch(first))
 	alt := ok(m.AppendMessage(map[string]any{"role": "user", "content": "alt", "timestamp": 3}))
 	branch := ok(m.GetBranch(nil))

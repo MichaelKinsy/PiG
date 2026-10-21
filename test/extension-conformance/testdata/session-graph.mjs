@@ -64,6 +64,10 @@ async function script({ cwd, dir, otherDir, junk }) {
   const tree = m.getTree();
   r.tree = { roots: tree.length, firstChildren: tree[0].children.length };
 
+  const msgId = m.appendCustomMessageEntry("note-msg", "body", true, { k: 1 });
+  const usage = m.appendUsage("test", "p", "m", {"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}});
+  r.extra = { msgType: m.getEntry(msgId).type, msgCustomType: m.getEntry(msgId).customType, usageType: usage.type, usageKind: usage.kind };
+
   m.branch(first);
   const alt = m.appendMessage({ role: "user", content: "alt", timestamp: 3 });
   r.branch = { shape: shape(m.getBranch()), children: m.getChildren(first).length, leafIsAlt: m.getLeafId() === alt };
@@ -268,6 +272,9 @@ async function settingsScript({ cwd, agentDir, configDir, brokenCwd }) {
   await s.flush();
   r.afterSet = readAll(s);
   r.modelThinking = orNull(s.getModelThinkingLevel("p", "m"));
+  s.removeModelThinkingLevel("p", "m");
+  r.removed = { thinking: orNull(s.getModelThinkingLevel("p", "m")), trackingId: orNull(s.getTrackingId()), deviceId: s.getOrCreateDeviceId().length > 0 };
+  await s.flush();
   r.files = { global: readJson(join(agentDir, "settings.json")), project: readJson(join(cwd, configDir, "settings.json")) };
 
   const persisted = SettingsManager.create(cwd, agentDir);

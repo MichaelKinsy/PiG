@@ -100,6 +100,11 @@ fn script(ctx: &Context, args: &Value) -> io::Result<Value> {
     let tree = m.get_tree()?;
     r.insert("tree".into(), json!({"roots": tree.as_array().map_or(0, Vec::len), "firstChildren": tree[0]["children"].as_array().map_or(0, Vec::len)}));
 
+    let msg_id = text(&m.append_custom_message_entry("note-msg", json!("body"), true, Some(json!({"k": 1})))?).to_string();
+    let usage = m.append_usage("test", "p", "m", json!({"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}), None)?;
+    let msg_entry = m.get_entry(&msg_id)?;
+    r.insert("extra".into(), json!({"msgType": msg_entry["type"], "msgCustomType": msg_entry["customType"], "usageType": usage["type"], "usageKind": usage["kind"]}));
+
     m.branch(&first)?;
     let alt = text(&m.append_message(json!({"role": "user", "content": "alt", "timestamp": 3}))?).to_string();
     r.insert("branch".into(), json!({"shape": shape(&m.get_branch(None)?), "children": m.get_children(&first)?.as_array().map_or(0, Vec::len), "leafIsAlt": m.get_leaf_id()?.as_str() == Some(&alt)}));
@@ -311,6 +316,9 @@ fn settings_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     s.flush()?;
     r.insert("afterSet".into(), read_all(&s)?);
     r.insert("modelThinking".into(), json!(s.get_model_thinking_level("p", "m")?));
+    s.remove_model_thinking_level("p", "m")?;
+    r.insert("removed".into(), json!({"thinking": s.get_model_thinking_level("p", "m")?, "trackingId": s.get_tracking_id()?, "deviceId": !s.get_or_create_device_id()?.is_empty()}));
+    s.flush()?;
     r.insert("files".into(), json!({"global": read_json(&Path::new(agent_dir).join("settings.json"))?, "project": read_json(&Path::new(cwd).join(config_dir).join("settings.json"))?}));
 
     let persisted = SettingsManager::create(ctx, cwd, Some(agent_dir), None)?;

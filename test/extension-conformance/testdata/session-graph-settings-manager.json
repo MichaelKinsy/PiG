@@ -337,6 +337,7 @@
 			"defaultProjectTrust": "never",
 			"defaultProvider": "anthropic",
 			"defaultThinkingLevel": "high",
+			"deviceId": "\u003cuuid\u003e",
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
@@ -365,9 +366,6 @@
 			"lastChangelogVersion": "9.9.9",
 			"markdown": {
 				"mermaid": "off"
-			},
-			"modelThinkingLevels": {
-				"p/m": "low"
 			},
 			"npmCommand": [
 				"pnpm",
@@ -661,9 +659,7 @@
 	},
 	"modelThinking": "low",
 	"persisted": {
-		"getAllModelThinkingLevels": {
-			"p/m": "low"
-		},
+		"getAllModelThinkingLevels": {},
 		"getAutocompleteMaxVisible": 7,
 		"getBlockImages": true,
 		"getBranchSummarySettings": {
@@ -711,6 +707,7 @@
 			"defaultProjectTrust": "never",
 			"defaultProvider": "anthropic",
 			"defaultThinkingLevel": "high",
+			"deviceId": "\u003cuuid\u003e",
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
@@ -739,9 +736,6 @@
 			"lastChangelogVersion": "9.9.9",
 			"markdown": {
 				"mermaid": "off"
-			},
-			"modelThinkingLevels": {
-				"p/m": "low"
 			},
 			"npmCommand": [
 				"pnpm",
@@ -857,6 +851,7 @@
 			"defaultProjectTrust": "never",
 			"defaultProvider": "anthropic",
 			"defaultThinkingLevel": "high",
+			"deviceId": "\u003cuuid\u003e",
 			"doubleEscapeAction": "tree",
 			"editorPaddingX": 2,
 			"enableAnalytics": false,
@@ -884,9 +879,6 @@
 			"lastChangelogVersion": "9.9.9",
 			"markdown": {
 				"mermaid": "off"
-			},
-			"modelThinkingLevels": {
-				"p/m": "low"
 			},
 			"npmCommand": [
 				"pnpm",
@@ -984,6 +976,11 @@
 		},
 		"model": "sonnet",
 		"provider": "external"
+	},
+	"removed": {
+		"deviceId": true,
+		"thinking": null,
+		"trackingId": null
 	},
 	"retrusted": {
 		"projectModel": "sonnet",

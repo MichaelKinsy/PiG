@@ -177,6 +177,9 @@ func settingsScript(ctx sdk.Context, args map[string]any) map[string]any {
 	check(s.Flush())
 	r["afterSet"] = readAll(s)
 	r["modelThinking"] = orNil(ok(s.GetModelThinkingLevel("p", "m")))
+	check(s.RemoveModelThinkingLevel("p", "m"))
+	r["removed"] = map[string]any{"thinking": orNil(ok(s.GetModelThinkingLevel("p", "m"))), "trackingId": orNil(ok(s.GetTrackingID())), "deviceId": len(ok(s.GetOrCreateDeviceID())) > 0}
+	check(s.Flush())
 	r["files"] = map[string]any{"global": readFile(filepath.Join(agentDir, "settings.json")), "project": readFile(filepath.Join(cwd, configDir, "settings.json"))}
 
 	persisted := ok(sdk.SettingsManagerCreate(ctx, cwd, &agentDir, nil))
