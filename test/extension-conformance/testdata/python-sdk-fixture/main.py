@@ -548,10 +548,14 @@ def new_extension() -> pig_sdk.Extension:
         embed_working_status = True
 
     def eager_editor(ctx, _args):
-        def factory(base):
+        def factory(base: pig_sdk.EditorBase):
             try:
                 base.set_text("eager")
                 ctx.notify("eager:" + base.get_text(), "info")
+                # The stock editor's other queries and setters, at the values it already holds.
+                base.get_cursor(), base.get_expanded_text(), base.is_showing_autocomplete()
+                base.set_padding_x(0)
+                base.set_autocomplete_max_visible(5)
             except Exception as exc:  # noqa: BLE001
                 ctx.notify("eager-error:" + str(exc), "info")
             return ConformanceEditor(base)

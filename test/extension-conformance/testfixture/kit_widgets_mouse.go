@@ -1,6 +1,10 @@
 package testfixture
 
-import "github.com/MichaelKinsy/PiG/extensions/sdk/kit"
+import (
+	// The Go SDK: the ledger counts a Go fixture that imports it.
+	_ "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
+)
 
 func init() {
 	text := func(t string) *kit.Text { return kit.NewText(t, 1, 0) }

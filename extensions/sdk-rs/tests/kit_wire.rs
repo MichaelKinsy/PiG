@@ -139,6 +139,8 @@ impl ViewComponent for Picker {
             }
             EventKind::Cancel => return Err("cancelled".into()),
             EventKind::Change => self.log.push(format!("change:{}:{}", event.id, event.value)),
+            // The widget kinds' callbacks: this probe draws none of them.
+            EventKind::Submit | EventKind::Escape | EventKind::Abort | EventKind::Mouse => {}
         }
         Ok(RemoteComponentResult::pending())
     }

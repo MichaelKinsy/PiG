@@ -1003,6 +1003,9 @@ fn main() {
         let notify = ctx.clone();
         match ctx.set_editor_component(move |base| {
             let text = base.set_text(&JsString::from("eager")).and_then(|()| base.get_text());
+            // The stock editor's other queries and setters, at the values it already holds.
+            let _ = (base.get_cursor(), base.get_expanded_text(), base.is_showing_autocomplete());
+            let _ = (base.set_padding_x(0), base.set_autocomplete_max_visible(5));
             match text {
                 Ok(text) => notify.notify(&format!("eager:{}", text.to_string_lossy()), "info"),
                 Err(err) => notify.notify(&format!("eager-error:{err}"), "info"),
