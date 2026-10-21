@@ -73,13 +73,13 @@ func BeforeUpgrade(ctx context.Context, path, schemaTable string, current int) (
 	return backup, nil
 }
 
-// freeName is <path>.schema-v<version>.bak, or the first free <path>.schema-v<version>-<n>.bak when an earlier copy is
+// freeName is <path>.schema-<version>.bak, or the first free <path>.schema-<version>-<n>.bak when an earlier copy is
 // there: an earlier copy is never replaced.
 func freeName(path string, version int64) (string, error) {
 	for n := 1; n <= 1000; n++ {
-		name := fmt.Sprintf("%s.schema-v%d.bak", path, version)
+		name := fmt.Sprintf("%s.schema-%d.bak", path, version)
 		if n > 1 {
-			name = fmt.Sprintf("%s.schema-v%d-%d.bak", path, version, n)
+			name = fmt.Sprintf("%s.schema-%d-%d.bak", path, version, n)
 		}
 		_, err := os.Lstat(name)
 		if errors.Is(err, fs.ErrNotExist) {

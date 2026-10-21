@@ -65,7 +65,7 @@ func TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading(t *testing.T) {
 	writeVersionOneStore(t, path)
 
 	openAndClose(t, path)
-	backup := path + ".schema-v1.bak"
+	backup := path + ".schema-1.bak"
 	if version, nextID := storeState(t, backup); version != 1 || nextID != "42" {
 		t.Fatalf("backup is version %d with next_id %q, want version 1 with next_id 42", version, nextID)
 	}
@@ -75,7 +75,7 @@ func TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading(t *testing.T) {
 
 	// An upgraded store is not copied again.
 	openAndClose(t, path)
-	if _, err := os.Stat(path + ".schema-v1-2.bak"); !os.IsNotExist(err) {
+	if _, err := os.Stat(path + ".schema-1-2.bak"); !os.IsNotExist(err) {
 		t.Fatalf("an upgraded store was copied again: %v", err)
 	}
 
@@ -85,7 +85,7 @@ func TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading(t *testing.T) {
 	}
 	writeVersionOneStore(t, path)
 	openAndClose(t, path)
-	if version, _ := storeState(t, path+".schema-v1-2.bak"); version != 1 {
+	if version, _ := storeState(t, path+".schema-1-2.bak"); version != 1 {
 		t.Fatalf("second backup is version %d, want 1", version)
 	}
 	if version, nextID := storeState(t, backup); version != 1 || nextID != "42" {

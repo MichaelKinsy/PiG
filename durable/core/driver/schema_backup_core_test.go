@@ -48,7 +48,7 @@ func TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading(t *testing.T) {
 		}
 		return row["version"].(int64)
 	}
-	if got := version(path + ".schema-v1.bak"); got != 1 {
+	if got := version(path + ".schema-1.bak"); got != 1 {
 		t.Fatalf("backup is schema version %d, want 1", got)
 	}
 	if got := version(path); got != store.SupportedSchemaVersion {

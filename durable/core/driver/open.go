@@ -17,7 +17,7 @@ import (
 
 // OpenHarness opens the Durable core as a native Harness over the SQLite store at path (":memory:" or a file; a file written
 // by pi-durable opens as it is, CONTRACT section 3). A file at an older schema version is copied to
-// <path>.schema-v<N>.bak before the core upgrades it (D188). It is the D17 counterpart of harness.OpenHarness: the same
+// <path>.schema-<N>.bak before the core upgrades it (D188). It is the D17 counterpart of harness.OpenHarness: the same
 // options and the same harness.Harness, with one owner goroutine holding the core and the connection, and the store
 // closed with the Harness. The registry may keep changing while the Harness runs.
 func OpenHarness(ctx context.Context, path string, options harness.HarnessOptions) (harness.Harness, error) {
