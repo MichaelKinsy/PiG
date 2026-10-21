@@ -46,6 +46,8 @@ Use `SET_VERSION_ARGS=--rename-current` only to rename an unpublished candidate.
 
 Dry-run prints the planned diff without writing or running consistency tests. An apply runs `go test ./test/gomodule -count=1` and `go test ./internal/codingagent -run '^TestParseChangelog_RealFile$' -count=1`. A failed check returns a nonzero status and retains the changes for inspection. The command does not stage files, commit, tag, or publish.
 
+Before tagging, run `make bug-ledger-refresh` and commit the result. Day to day `make bug-ledger` keeps every committed entry whose fix commits are recorded, so a pull request changes only its own entries; the refresh recomputes every entry from the history, which also settles the fixed-in release and the commit lists of the release's entries.
+
 ## Changelog fragments and the bug ledger
 
 Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make changelog-fold VERSION=x.y.z` appends them to the release and deletes them, and `make bug-ledger` builds `docs/bug-ledger.json` from the `### Fixed` bullets, the commit history and the divergence records. Both read the history of the release commit, so both need a full clone (`fetch-depth: 0` in CI).
