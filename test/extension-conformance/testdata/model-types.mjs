@@ -205,6 +205,7 @@ export default function (pi) {
     }
     throw new Error("unknown op " + params.op);
   });
+  hostSurface(pi, tool);
   // theme_probe: the host's palette through ctx.ui.theme, for the colors and styles the test passes in params.
   tool("theme_probe", async (_id, params, _signal, _update, ctx) => {
     const theme = ctx.ui.theme;
@@ -258,4 +259,51 @@ function themeFg(theme, token) {
   } catch (error) {
     return `throw:${error.message}`;
   }
+}
+
+// The tools of the host-surface rows (host_surface_test.go): onThemeChange, onToolsExpandedChange, a widget component, bell, toolCallIndex, toolInput, extensionSourceInfo, onLoaded and a factory-time events.emit. testfixture/modeltypes (Go), testdata/modeltypes-rust and the inline Python fixture carry the same tools.
+function hostSurface(pi, tool) {
+  const log = { theme: [], expanded: [], heard: [], loaded: null, themeOff: undefined, expandedOff: undefined, heardAtEmit: null, errorEmitFailed: null, crossOwnAt: null, crossReturnedAt: null, ackHeard: [], ackAtCross: null };
+  // A factory's pi.events.emit reaches the listeners subscribed before it, its own included.
+  pi.events.on("c3:factory", (data) => { log.heard.push(data); });
+  pi.events.emit("c3:factory", { n: 1, from: "factory" });
+  // Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
+  log.heardAtEmit = log.heard.length;
+  try { pi.events.emit("error", { from: "factory" }); log.errorEmitFailed = false; } catch { log.errorEmitFailed = true; }
+  // An extension loaded before this one that listens on c3:cross runs first and finishes before emit returns (milliseconds, as the other fixtures report them).
+  // An extension loaded before this one answers the c3:cross emit, from inside its listener, with a c3:ack emit: the listener subscribed here, before the emit, hears it.
+  pi.events.on("c3:ack", (data) => { log.ackHeard.push(data); });
+  pi.events.on("c3:cross", () => { log.crossOwnAt = Date.now(); });
+  pi.events.emit("c3:cross", { from: "factory" });
+  log.crossReturnedAt = Date.now();
+  log.ackAtCross = log.ackHeard.length;
+  // The handler takes its time; a request that ran before it finished would read null.
+  pi.onLoaded(async (ctx) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    log.loaded = { cwd: ctx.cwd, mode: ctx.mode, hostCall: typeof ctx.ui.getToolsExpanded() === "boolean", expanded: ctx.ui.getToolsExpanded() };
+  });
+  const reply = (value) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
+  tool("c3_theme_arm", async (_id, _params, _signal, _update, ctx) => {
+    log.themeOff = ctx.ui.onThemeChange((theme) => { log.theme.push(theme.name + "|" + theme.fg("accent", "x")); });
+    return reply({ ok: true });
+  });
+  tool("c3_theme_disarm", async () => { log.themeOff(); return reply({ ok: true }); });
+  tool("c3_theme_log", async () => reply({ log: log.theme }));
+  tool("c3_expanded_arm", async (_id, _params, _signal, _update, ctx) => {
+    log.expandedOff = ctx.ui.onToolsExpandedChange((expanded) => { log.expanded.push(expanded); });
+    return reply({ ok: true });
+  });
+  tool("c3_expanded_disarm", async () => { log.expandedOff(); return reply({ ok: true }); });
+  tool("c3_expanded_log", async () => reply({ log: log.expanded }));
+  tool("c3_widget_arm", async (_id, params, _signal, _update, ctx) => {
+    ctx.ui.setWidget("c3w", () => ({ render: (width) => [`w=${width}|${ctx.ui.theme.name}`], invalidate() {} }), { placement: params.placement });
+    return reply({ ok: true });
+  });
+  tool("c3_widget_clear", async (_id, _params, _signal, _update, ctx) => { ctx.ui.setWidget("c3w", undefined); return reply({ ok: true }); });
+  tool("c3_bell", async (_id, _params, _signal, _update, ctx) => { ctx.ui.bell(); return reply({ error: "<nil>" }); });
+  tool("c3_tool_call", async (_id, params, _signal, _update, ctx) => reply({
+    index: ctx.toolCallIndex ?? null, input: ctx.toolInput ?? null, keys: Object.keys(params), meta: params.meta === undefined ? null : JSON.stringify(params.meta),
+  }));
+  tool("c3_source", async (_id, _params, _signal, _update, ctx) => reply({ info: ctx.extensionSourceInfo() ?? null }));
+  tool("c3_loaded", async () => reply({ loaded: log.loaded, factoryHeard: log.heard, heardAtEmit: log.heardAtEmit, errorEmitFailed: log.errorEmitFailed, crossOwnAt: log.crossOwnAt, crossReturnedAt: log.crossReturnedAt, ackHeard: log.ackHeard, ackAtCross: log.ackAtCross }));
 }

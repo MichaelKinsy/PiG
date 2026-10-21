@@ -160,6 +160,9 @@ type UIBridge struct {
 	// OnRunSignalChanged is called when a run begins or ends. Set by the Host, which brings every runtime up to date with the active run's signal (see [UIBridge.RunSignalChanged]).
 	OnRunSignalChanged func()
 
+	// OnHostStateChanged is called when host state that runtimes replicate changed with no extension call or event to announce it. Set by the Host, which pushes the new state to every connected runtime off the caller's goroutine (see [UIBridge.HostStateChanged]).
+	OnHostStateChanged func()
+
 	// invalidateTUI triggers a TUI render cycle.
 	invalidateTUI func()
 	currentWidth  int
@@ -1066,6 +1069,17 @@ func (b *UIBridge) RunSignalChanged() {
 	}
 }
 
+// HostStateChanged tells the Host that state the runtimes replicate (the model, the thinking level, the session name, the settings) changed without an extension call or an event to the extension, so every runtime learns it without waiting for its next request.
+// Upstream's `ctx.model`, `pi.getSettings()` and `pi.getSessionName()` read the live Session at every call (runner.ts:906, loader.ts:411-414); a runtime replicates them, so a timer or thread that reads between two requests sees the host's value only when the host pushes it. The owner of the change reports it here, after the state changed. It returns at once: the push runs on a task the Host joins at Shutdown, because the owner may be the UI loop, which never waits for an extension.
+func (b *UIBridge) HostStateChanged() {
+	b.mu.RLock()
+	changed := b.OnHostStateChanged
+	b.mu.RUnlock()
+	if changed != nil {
+		changed()
+	}
+}
+
 // SetHostAction sets a single host callback by name. Thread-safe.
 // This allows the interactive mode to wire callbacks one-by-one without
 // importing the HostCallbacks type (avoiding circular deps).
@@ -1338,7 +1352,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 			"ui.setWorkingVisible", "ui.setHiddenThinkingLabel", "ui.setWidget", "ui.setFooter",
 			"ui.setHeader", "ui.setTitle", "ui.setEditorComponent", "ui.pasteToEditor",
 			"ui.setEditorText", "ui.setToolsExpanded", "ui.addAutocompleteProvider",
-			"ui.onTerminalInput", "ui.offTerminalInput":
+			"ui.onTerminalInput", "ui.offTerminalInput", CallUIBell:
 			return &CallResultPayload{}, nil
 		case CallUICustom:
 			extension.CallInitiated(ctx)
@@ -1369,6 +1383,12 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleSetHiddenThinkingLabel(ui, call.Args)
 	case "ui.setWidget":
 		return b.handleSetWidget(extName, owner, call.Args)
+	// pig additive: a Pi extension rings the terminal bell by writing BEL to process.stdout, which a subprocess extension cannot reach.
+	case CallUIBell:
+		if beller, ok := ui.(extension.TerminalBeller); ok {
+			beller.Bell()
+		}
+		return &CallResultPayload{}, nil
 
 	// ── Category 2: User Interaction (blocking) ──────────────────────────
 	case "ui.select":

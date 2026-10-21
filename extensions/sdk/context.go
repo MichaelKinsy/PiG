@@ -242,10 +242,15 @@ func hostOptionalString(c Context, method, field string) (*string, error) {
 type Context struct {
 	ext        *Extension
 	toolCallID string // set for tool handlers
-	requestID  string
-	parent     *requestParent
-	ctx        context.Context
-	start      *toolStart // set for a tool_call request: its place in the order the handlers start
+	// toolIndex and toolInput are set for tool handlers: the call's place in its batch and its argument text (ToolCallIndex, ToolInput). toolInput points at the request's Args, so a Context stays comparable, as it was before these fields.
+	toolIndex *int
+	toolInput *json.RawMessage
+	requestID string
+	parent    *requestParent
+	ctx       context.Context
+	// loading is the connection of a Context made for a listener of this extension that the Host dispatched while the factory runs (the factory pump, serveLoadingEnvelope): the extension has not registered yet, so the Context's host calls use the connection the factory opened.
+	loading *conn
+	start   *toolStart // set for a tool_call request: its place in the order the handlers start
 	// systemPrompt is set for a before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
 	systemPrompt *SystemPrompt
 	// replacement is set for a withSession context: the replacement Session's locally answered values.
@@ -1723,6 +1728,7 @@ func (c Context) SetWidget(key string, content any, options ...WidgetOptions) er
 		return c.setWidgetView(key, view, options)
 	}
 	c.ext.replaceViewSurface(widgetViewSurfaceID(key), nil)
+	c.ext.replaceSurfaceID(widgetRendererID(key), nil)
 	if lines, ok := content.([]string); ok && lines != nil && len(options) == 0 {
 		return c.ext.conn.pushWidget(key, lines)
 	}

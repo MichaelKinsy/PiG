@@ -68,6 +68,8 @@ var helpers struct {
 	hook *HostHelpers
 	// dialled holds the connections helpers opened before Run, by socket path; Run takes its own.
 	dialled map[string]*conn
+	// factory is the connection of the fused extension whose factory ServeFactory is running; the pi.events calls of that factory use it.
+	factory *conn
 	// running are the connections of the extensions that are running (a packed cell runs several), with the socket path each serves (empty for one that has none), for a helper called from
 	// code that has no Context and no socket of its own: the first that is still running answers.
 	running []runningConn
@@ -185,11 +187,16 @@ func helperConnection() (*conn, error) {
 			return running.c, nil
 		}
 	}
-	if c := helpers.dialled[path]; c != nil {
-		return c, nil
-	}
 	if path == "" {
 		return nil, errors.New("not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig")
+	}
+	return dialLocked(path)
+}
+
+// dialLocked is the connection helpers opened to path, or a new one, which Run reuses. helpers.mu is held.
+func dialLocked(path string) (*conn, error) {
+	if c := helpers.dialled[path]; c != nil {
+		return c, nil
 	}
 	nc, err := net.Dial("unix", path)
 	if err != nil {
@@ -202,6 +209,53 @@ func helperConnection() (*conn, error) {
 	}
 	helpers.dialled[path] = c
 	return c, nil
+}
+
+// factoryConnection is the connection the pi.events calls of a factory use before Run: the one ServeFactory opened for a fused extension, or the one dialled to this extension's socket, which Run reuses. It is never a running extension's: a bus call attributes the listeners and emits it carries to the realm of the connection it rides, and a running extension's is another extension's.
+func factoryConnection() (*conn, error) {
+	helpers.mu.Lock()
+	defer helpers.mu.Unlock()
+	if c := helpers.factory; c != nil {
+		return c, nil
+	}
+	path := helperSocketPath()
+	if path == "" {
+		return nil, errNoFactoryHost
+	}
+	return dialLocked(path)
+}
+
+// fusedFactoryMu serializes the factories ServeFactory runs: helpers.factory is the connection of the one running.
+var fusedFactoryMu sync.Mutex
+
+// ServeFactory runs factory and serves the extension it returns over nc, as factory().RunWithConn(nc) does, with one difference: nc is the factory's own connection while the factory runs, so its pi.events calls reach the host at once, as a subprocess extension's do over the socket it dials. A fused Piglet Binary serves its extensions with it. The connection is closed when the serve loop ends.
+func ServeFactory(nc net.Conn, factory Factory) error {
+	started := newConn(nc)
+	started.start()
+	ext, err := factoryOnConn(started, factory)
+	if err != nil {
+		_ = nc.Close()
+		return err
+	}
+	return ext.runWithConn(nc, started, "")
+}
+
+func factoryOnConn(c *conn, factory Factory) (*Extension, error) {
+	fusedFactoryMu.Lock()
+	defer fusedFactoryMu.Unlock()
+	helpers.mu.Lock()
+	helpers.factory = c
+	helpers.mu.Unlock()
+	defer func() {
+		helpers.mu.Lock()
+		helpers.factory = nil
+		helpers.mu.Unlock()
+	}()
+	ext := factory()
+	if ext == nil {
+		return nil, errors.New("factory returned nil")
+	}
+	return ext, nil
 }
 
 // helperSocketPath is the socket a helper dials: PIG_EXT_SOCKET, which a packed cell's runner sets to the member's socket while the member's factory runs.

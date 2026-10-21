@@ -1709,6 +1709,8 @@ type SettingsManager struct {
 	// generation counts the changes of merged (setMergedLocked); extensionEncoding is the extension encoding of one generation.
 	generation        uint64
 	extensionEncoding atomic.Pointer[extensionSettingsEncoding]
+	// changeObservers run after each change of merged, with sm.mu held for writing.
+	changeObservers ChangeObservers
 	// globalObject and projectObject are the settings layers as Pi's SettingsManager holds them: the migrated file object, which a setter
 	// changes in place. mergedObject is their deepMergeSettings with each applied override (settings-manager.ts:195-212). Only their member
 	// order is read: the extension settings encoding lists the members of merged in it, as Pi's getSettings() clone of this.settings does.
@@ -1720,6 +1722,12 @@ func (sm *SettingsManager) setMergedLocked(merged Settings, object *orderedjson.
 	sm.merged = merged
 	sm.mergedObject = object
 	sm.generation++
+	sm.changeObservers.Notify()
+}
+
+// ObserveChange registers observe to run after every change of the effective settings: a setter, a reload, a trust change and an override. A change that leaves the merged settings equal still reports. observe runs on the goroutine that made the change, with the manager's lock held for writing, so it must return at once and must not call the manager. The returned function removes it and can be called repeatedly.
+func (sm *SettingsManager) ObserveChange(observe func()) func() {
+	return sm.changeObservers.Add(observe)
 }
 
 // remergeLocked makes deepMergeSettings(global, project) the merged settings, as Pi's setters and reload do. The caller holds sm.mu for writing.

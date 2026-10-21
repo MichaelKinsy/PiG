@@ -211,6 +211,7 @@ func (c Context) setWidgetView(key string, view kit.View, options []WidgetOption
 			return callResultError(result, err)
 		}
 	}
+	c.ext.replaceSurfaceID(widgetRendererID(key), nil)
 	c.ext.replaceViewSurface(widgetViewSurfaceID(key), surface)
 	return surface.push(c)
 }

@@ -481,6 +481,8 @@ type Host struct {
 	drainTasksMu     sync.Mutex
 	drainTasks       sync.WaitGroup
 	drainTasksClosed bool
+	// hostStatePushQueued is set while a fan-out of a host state change waits to run (see hostStateChanged); the fan-out clears it before it reads the targets, so a change that arrives while it runs queues the next one.
+	hostStatePushQueued atomic.Bool
 	// retirements are the stops of replaced generations that a running command deferred (retireGeneration). retirementTasks joins the goroutines that run them; retirementsClosed stops new ones once Shutdown has run the pending stops. Guarded by retirementMu.
 	retirementMu      sync.Mutex
 	retirements       map[*generationRetirement]struct{}
@@ -656,6 +658,8 @@ type managedExt struct {
 	// skip identical writes and to omit catalog fields the recipient already
 	// holds byte-for-byte.
 	lastStatePush map[*Conn]*connStatePushCache
+	// statePushQueue coalesces the pushes of host state changes to this extension (see queueStatePush).
+	statePushQueue statePushQueue
 	// runtimeStateGen counts the moments a runtime changed its own copy of the
 	// state ahead of the host (thinking level, editor text), so
 	// a push the host would otherwise skip still corrects the runtime. A cache
@@ -897,6 +901,7 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.OnStateChanged = h.BroadcastStateUpdate
 		bridge.onRuntimeStateMutated = h.runtimeStateMutated
 		bridge.OnRunSignalChanged = h.runSignalChanged
+		bridge.OnHostStateChanged = h.hostStateChanged
 		bridge.resolveFlag = h.resolveFlagValue
 		bridge.withSession = h.withSessionCallback
 		bridge.setup = h.setupCallback
@@ -1603,6 +1608,15 @@ func (h *Host) extensionSourceInfo(me *managedExt) extension.SourceInfo {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.configSourceInfo[me.config.Name]
+}
+
+// readySourceInfo is the SourceInfo the ready payload carries for me's extension, nil when the host holds none.
+func (h *Host) readySourceInfo(me *managedExt) *extension.SourceInfo {
+	info := h.extensionSourceInfo(me)
+	if info == (extension.SourceInfo{}) {
+		return nil
+	}
+	return &info
 }
 
 // ExtensionCount returns the number of loaded subprocess extensions.
@@ -3347,8 +3361,9 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 
 	// Send ready. sendReady fills the geometry.
 	readyPayload := &ReadyPayload{
-		Cwd:  h.cwd,
-		Mode: h.mode,
+		Cwd:        h.cwd,
+		Mode:       h.mode,
+		SourceInfo: h.readySourceInfo(me),
 	}
 	if h.uiBridge != nil {
 		flagNames := make([]string, 0, len(reg.Flags))
@@ -3920,14 +3935,15 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 		resp, err := conn.requestWithUpdates(reqCtx, &Envelope{
 			Type: MsgRequest,
 			Request: &RequestPayload{
-				Method:       MethodToolCall,
-				Tool:         toolName,
-				ToolCallID:   toolCallID,
-				Batch:        agent.ToolBatchFromContext(ctx, toolCallID),
-				Args:         params,
-				OwnSignal:    extension.OwnsSignal(ctx),
-				ExecuteID:    executeID,
-				ChildSession: target.childSession,
+				Method:        MethodToolCall,
+				Tool:          toolName,
+				ToolCallID:    toolCallID,
+				Batch:         agent.ToolBatchFromContext(ctx, toolCallID),
+				ToolCallIndex: toolCallIndexOf(ctx, toolCallID),
+				Args:          params,
+				OwnSignal:     extension.OwnsSignal(ctx),
+				ExecuteID:     executeID,
+				ChildSession:  target.childSession,
 			},
 		}, toolUpdateSink(onUpdate))
 		if errors.Is(err, ErrToolAborted) {
@@ -3973,6 +3989,26 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 
 		return extension.AgentToolResult{}, nil
 	}
+}
+
+// toolCallIndexOf is the position of the call among the tool calls of the assistant message that issued it, which agent-loop.ts executes as one batch; nil when no assistant message issued the call.
+func toolCallIndexOf(ctx context.Context, toolCallID string) *int {
+	hook, ok := agent.ToolCallHookContextFrom(ctx)
+	if !ok || hook.AssistantMessage == nil {
+		return nil
+	}
+	index := 0
+	for _, block := range hook.AssistantMessage.Content {
+		call, isCall := block.(ai.ToolCall)
+		if !isCall {
+			continue
+		}
+		if call.ID == toolCallID {
+			return &index
+		}
+		index++
+	}
+	return nil
 }
 
 // toolCallOrder reserves a call's place in the order the tool_call requests of the extension's connection are written. A

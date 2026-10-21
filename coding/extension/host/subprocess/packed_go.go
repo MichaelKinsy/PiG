@@ -907,7 +907,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	me.flagDefaults = reg.flagDefaults
 	h.joinRoutedBus(ctx, me)
 	// sendReady, or activateNode for a deferred Node payload, fills the geometry.
-	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode}
+	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode, SourceInfo: h.readySourceInfo(me)}
 	if h.uiBridge != nil {
 		// Same contract as the isolated path: a registering extension gets the
 		// whole log once, then only what is new.

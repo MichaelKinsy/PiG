@@ -332,6 +332,7 @@ pub fn new_extension() -> Extension {
     ext.tool("ops_status", "Reports what the host's provider requests did in the extension.", empty_schema(), |_, _| {
         ToolResult::text(json!({"cancelled": CANCELLED.load(Ordering::SeqCst)}).to_string())
     });
+    register_host_surface(&mut ext);
     ext
 }
 
@@ -460,4 +461,117 @@ fn tui_probe(args: &Value) -> Value {
     swapped["kitty"] = json!([before, after, tui::is_kitty_protocol_active()]);
     report["swapped"] = swapped;
     report
+}
+
+/// The tools of the host-surface rows (host_surface_test.go): on_theme_change, on_tools_expanded_change, set_widget_renderer, bell, tool_call_index, tool_input and tool_params, extension_source_info, on_loaded and a factory-time events.emit. testfixture/modeltypes (Go), the inline Python fixture and testdata/model-types.mjs carry the same tools.
+fn register_host_surface(ext: &mut Extension) {
+    use pig_sdk::HostSubscription;
+    use std::sync::Mutex;
+    use std::time::Duration;
+
+    static THEME_LOG: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    static EXPANDED_LOG: Mutex<Vec<bool>> = Mutex::new(Vec::new());
+    static FACTORY_HEARD: Mutex<Vec<Value>> = Mutex::new(Vec::new());
+    // How many emits the factory's own listener had heard when the factory's emit returned, and whether the factory's emit on "error", which nobody hears, failed.
+    static HEARD_AT_EMIT: Mutex<Option<usize>> = Mutex::new(None);
+    static ERROR_EMIT_FAILED: Mutex<Option<bool>> = Mutex::new(None);
+    // When the factory's own c3:cross listener ran and when the factory's emit on c3:cross returned, in Unix milliseconds: an extension loaded before this one that listens on c3:cross runs first and finishes before emit returns.
+    static CROSS_OWN_AT: Mutex<Option<u128>> = Mutex::new(None);
+    static CROSS_RETURNED_AT: Mutex<Option<u128>> = Mutex::new(None);
+    // The c3:ack emits the factory's listener heard (an extension loaded before this one answers the c3:cross emit, from inside its listener, with a c3:ack emit), and how many it had heard when the c3:cross emit returned.
+    static ACK_HEARD: Mutex<Vec<Value>> = Mutex::new(Vec::new());
+    static ACK_AT_CROSS: Mutex<Option<usize>> = Mutex::new(None);
+    fn now_ms() -> u128 {
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis()
+    }
+    static LOADED: Mutex<Option<Value>> = Mutex::new(None);
+    static THEME_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
+    static EXPANDED_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
+
+    ext.events()
+        .on("c3:factory", |_, data| {
+            FACTORY_HEARD.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .expect("subscribe c3:factory");
+    ext.events().emit("c3:factory", json!({"n": 1, "from": "factory"})).expect("emit c3:factory");
+    // Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
+    *HEARD_AT_EMIT.lock().unwrap() = Some(FACTORY_HEARD.lock().unwrap().len());
+    *ERROR_EMIT_FAILED.lock().unwrap() = Some(ext.events().emit("error", json!({"from": "factory"})).is_err());
+    ext.events()
+        .on("c3:ack", |_, data| {
+            ACK_HEARD.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .expect("subscribe c3:ack");
+    ext.events()
+        .on("c3:cross", |_, _| {
+            *CROSS_OWN_AT.lock().unwrap() = Some(now_ms());
+            Ok(())
+        })
+        .expect("subscribe c3:cross");
+    ext.events().emit("c3:cross", json!({"from": "factory"})).expect("emit c3:cross");
+    *CROSS_RETURNED_AT.lock().unwrap() = Some(now_ms());
+    *ACK_AT_CROSS.lock().unwrap() = Some(ACK_HEARD.lock().unwrap().len());
+    // The handler takes its time; a request that ran before it finished would read null.
+    ext.on_loaded(|ctx| {
+        std::thread::sleep(Duration::from_millis(300));
+        let expanded = ctx.get_tools_expanded();
+        *LOADED.lock().unwrap() = Some(json!({"cwd": ctx.cwd(), "mode": ctx.mode(), "hostCall": expanded.is_ok(), "expanded": expanded.unwrap_or(false)}));
+    });
+
+    ext.tool("c3_theme_arm", "c3_theme_arm", empty_schema(), |ctx, _| {
+        let subscription = ctx.on_theme_change(|theme| {
+            let line = format!("{}|{}", theme.name, theme.fg("accent", "x"));
+            THEME_LOG.lock().unwrap().push(line);
+        });
+        *THEME_SUB.lock().unwrap() = Some(subscription);
+        ToolResult::text(json!({"ok": true}).to_string())
+    });
+    ext.tool("c3_theme_disarm", "c3_theme_disarm", empty_schema(), |_, _| {
+        THEME_SUB.lock().unwrap().take();
+        ToolResult::text(json!({"ok": true}).to_string())
+    });
+    ext.tool("c3_theme_log", "c3_theme_log", empty_schema(), |_, _| ToolResult::text(json!({"log": *THEME_LOG.lock().unwrap()}).to_string()));
+    ext.tool("c3_expanded_arm", "c3_expanded_arm", empty_schema(), |ctx, _| {
+        let subscription = ctx.on_tools_expanded_change(|expanded| EXPANDED_LOG.lock().unwrap().push(expanded));
+        *EXPANDED_SUB.lock().unwrap() = Some(subscription);
+        ToolResult::text(json!({"ok": true}).to_string())
+    });
+    ext.tool("c3_expanded_disarm", "c3_expanded_disarm", empty_schema(), |_, _| {
+        EXPANDED_SUB.lock().unwrap().take();
+        ToolResult::text(json!({"ok": true}).to_string())
+    });
+    ext.tool("c3_expanded_log", "c3_expanded_log", empty_schema(), |_, _| ToolResult::text(json!({"log": *EXPANDED_LOG.lock().unwrap()}).to_string()));
+    ext.tool("c3_widget_arm", "c3_widget_arm", empty_schema(), |ctx, args| {
+        let placement = args["placement"].as_str().unwrap_or_default().to_string();
+        let live = ctx.clone();
+        match ctx.set_widget_renderer("c3w", Some(move |width| vec![format!("w={width}|{}", live.theme().name)]), Some(json!({"placement": placement}))) {
+            Ok(()) => ToolResult::text(json!({"ok": true}).to_string()),
+            Err(error) => ToolResult::Error(error.to_string()),
+        }
+    });
+    ext.tool("c3_widget_clear", "c3_widget_clear", empty_schema(), |ctx, _| {
+        match ctx.set_widget_renderer("c3w", None::<fn(u32) -> Vec<String>>, None) {
+            Ok(()) => ToolResult::text(json!({"ok": true}).to_string()),
+            Err(error) => ToolResult::Error(error.to_string()),
+        }
+    });
+    ext.tool("c3_bell", "c3_bell", empty_schema(), |ctx, _| {
+        let outcome = match ctx.bell() {
+            Ok(()) => "<nil>".to_string(),
+            Err(error) => error.to_string(),
+        };
+        ToolResult::text(json!({"error": outcome}).to_string())
+    });
+    ext.tool("c3_tool_call", "c3_tool_call", empty_schema(), |ctx, _| {
+        let params = ctx.tool_params();
+        let keys: Vec<String> = params.as_ref().map(|params| params.keys().cloned().collect()).unwrap_or_default();
+        let meta = params.as_ref().and_then(|params| params.get("meta")).map(|meta| meta.to_string());
+        ToolResult::text(json!({"index": ctx.tool_call_index(), "input": ctx.tool_input(), "keys": keys, "meta": meta}).to_string())
+    });
+    ext.tool("c3_source", "c3_source", empty_schema(), |ctx, _| ToolResult::text(json!({"info": ctx.extension_source_info()}).to_string()));
+    ext.tool("c3_loaded", "c3_loaded", empty_schema(), |_, _| {
+        ToolResult::text(json!({"loaded": *LOADED.lock().unwrap(), "factoryHeard": *FACTORY_HEARD.lock().unwrap(), "heardAtEmit": *HEARD_AT_EMIT.lock().unwrap(), "errorEmitFailed": *ERROR_EMIT_FAILED.lock().unwrap(), "crossOwnAt": (*CROSS_OWN_AT.lock().unwrap()).map(|ms| ms as u64), "crossReturnedAt": (*CROSS_RETURNED_AT.lock().unwrap()).map(|ms| ms as u64), "ackHeard": *ACK_HEARD.lock().unwrap(), "ackAtCross": *ACK_AT_CROSS.lock().unwrap()}).to_string())
+    });
 }

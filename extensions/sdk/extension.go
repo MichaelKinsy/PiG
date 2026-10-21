@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net"
 	"os"
+	"reflect"
 	"runtime/debug"
 	"slices"
 	"sync"
@@ -133,6 +134,11 @@ type Extension struct {
 
 	eventMu     sync.Mutex
 	eventNextID int
+	// loading is the connection the factory's first pi.events call opened before Run (loadingConnection), guarded by eventMu. Run adopts that connection and clears this.
+	loading *conn
+	// pump answers the host's dispatches on loading until Run takes the connection over; running is set from then until Run ends. Both are guarded by eventMu.
+	pump    *factoryPump
+	running bool
 
 	// run is the replicated signal of the run in progress (Context.Signal).
 	run runSignal
@@ -240,6 +246,25 @@ type Extension struct {
 	// uiTheme is the host's theme palette from the state snapshot and
 	// theme_change notifies (upstream ctx.ui.theme).
 	uiTheme UITheme
+	// themeKnown reports that uiTheme holds a palette the host sent, so a later different palette is a change (themeFeed).
+	themeKnown bool
+	// toolsExpanded is the host's tool-expansion state from the state snapshot; expandedKnown reports that the host sent one (expandedFeed).
+	toolsExpanded bool
+	expandedKnown bool
+
+	// sourceInfo is the provenance the host stamped on this extension (ExtensionSourceInfo); sourceInfoKnown reports that the host sent one. Guarded by mu.
+	sourceInfo      SourceInfo
+	sourceInfoKnown bool
+
+	// loadedMu guards loadedFuncs, the OnLoaded handlers waiting for Run.
+	loadedMu    sync.Mutex
+	loadedFuncs []func(Context)
+	// loadedDone closes when the OnLoaded handlers returned; requests wait for it.
+	loadedDone <-chan struct{}
+
+	// themeFeed and expandedFeed deliver a change of the replicated theme and tool-expansion state to the handlers of OnThemeChange and OnToolsExpandedChange.
+	themeFeed    stateFeed[UITheme]
+	expandedFeed stateFeed[bool]
 
 	requestsMu sync.Mutex
 	requests   map[string]context.CancelFunc
@@ -658,6 +683,8 @@ func (o *remoteOverlay) frameArgs(args map[string]any) map[string]any {
 func New(name string) *Extension {
 	return &Extension{
 		name:                     name,
+		themeFeed:                stateFeed[UITheme]{what: "theme"},
+		expandedFeed:             stateFeed[bool]{what: "tools expanded"},
 		toolFuncs:                make(map[string]ToolFunc),
 		toolPrepareFuncs:         make(map[string]ToolPrepareArgumentsFunc),
 		commandFuncs:             make(map[string]CommandFunc),
@@ -1072,6 +1099,7 @@ func (e *Extension) RunWithConn(nc net.Conn) error { return e.runWithConn(nc, ni
 func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) error {
 	defer func() { _ = nc.Close() }()
 
+	e.stopFactoryPump()
 	e.runCtx, e.runCancel = context.WithCancel(context.Background())
 	defer e.runCancel()
 	e.eventMu.Lock()
@@ -1081,6 +1109,8 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		e.conn = newConn(nc)
 	}
 	conn := e.conn
+	e.loading = nil
+	e.running = true
 	e.eventMu.Unlock()
 	if started == nil {
 		conn.start()
@@ -1156,6 +1186,9 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 	e.width = env.Ready.Width
 	e.height = env.Ready.Height
 	e.model = env.Ready.Model
+	if env.Ready.SourceInfo != nil {
+		e.sourceInfo, e.sourceInfoKnown = *env.Ready.SourceInfo, true
+	}
 	e.mu.Unlock()
 
 	// Process the initial State snapshot embedded in the Ready message.
@@ -1178,6 +1211,9 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 	e.toolConn = conn
 	e.toolMu.Unlock()
 
+	// The factory's emits and the OnLoaded handlers run before the loop serves a request.
+	e.loadedDone = e.startLoaded()
+
 	// Main message loop.
 	return e.loop()
 }
@@ -1196,6 +1232,10 @@ func (e *Extension) loop() error {
 			e.requestWG.Go(func() {
 				defer finish()
 				defer ctx.start.release()
+				// A loop that was not started by Run (a test serving requests on its own connection) has no loaded gate.
+				if e.loadedDone != nil && (env.Request == nil || env.Request.Method != methodEventsDispatch) {
+					<-e.loadedDone
+				}
 				e.handleArmedRequest(env.ID, env.Request, ctx)
 			})
 		case msgCancel:
@@ -1215,6 +1255,8 @@ func (e *Extension) loop() error {
 
 func (e *Extension) stopRequests() error {
 	e.stopWidthDeliveries()
+	e.themeFeed.stop()
+	e.expandedFeed.stop()
 	// The sessions end with the connection, as the host disposes them: no listener runs after it.
 	e.children.closeAll()
 	if e.runCancel != nil {
@@ -1364,6 +1406,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			return
 		}
 		ctx.toolCallID = req.ToolCallID
+		ctx.toolIndex = req.ToolCallIndex
+		ctx.toolInput = &req.Args
 		var params map[string]any
 		if len(req.Args) > 0 {
 			if err := json.Unmarshal(req.Args, &params); err != nil {
@@ -1753,9 +1797,11 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				// terminal capabilities; the SDK installs them as pi-tui's global state, as the Node runtime does.
 				Keybindings          json.RawMessage `json:"keybindings"`
 				TerminalCapabilities json.RawMessage `json:"terminalCapabilities"`
-				Settings             json.RawMessage `json:"settings"`
-				McpServers           json.RawMessage `json:"mcpServers"`
-				FooterData           *footerDataWire `json:"footerData"`
+				// ToolsExpanded is always sent by the host; a state without it (a test host) changes nothing.
+				ToolsExpanded *bool           `json:"toolsExpanded"`
+				Settings      json.RawMessage `json:"settings"`
+				McpServers    json.RawMessage `json:"mcpServers"`
+				FooterData    *footerDataWire `json:"footerData"`
 			} `json:"state"`
 		}
 		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
@@ -1780,8 +1826,11 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.sessionFile = sessionState.SessionFile
 		}
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
-			e.uiTheme = theme
+			e.setUITheme(theme)
 			setHostTheme(theme, payload.State.Theme)
+		}
+		if payload.State.ToolsExpanded != nil {
+			e.setToolsExpanded(*payload.State.ToolsExpanded)
 		}
 		applyHostTuiState(payload.State.Keybindings, payload.State.TerminalCapabilities)
 		e.applyReplicatedState(payload.State.Settings, payload.State.McpServers, 2*seq)
@@ -1824,7 +1873,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			theme, _ = decodeUITheme(json.RawMessage(`{}`))
 		}
 		e.mu.Lock()
-		e.uiTheme = theme
+		e.setUITheme(theme)
 		setHostTheme(theme, args)
 		e.mu.Unlock()
 	case "width_change":
@@ -2258,6 +2307,26 @@ func (e *Extension) subscribeSessionLog() error {
 		if !page.HasMore && len(page.Entries) == 0 {
 			return nil
 		}
+	}
+}
+
+// setUITheme replaces the replicated theme and delivers it to the OnThemeChange handlers when it differs from the one before; the caller holds e.mu.
+func (e *Extension) setUITheme(theme UITheme) {
+	changed := e.themeKnown && !reflect.DeepEqual(e.uiTheme, theme)
+	e.uiTheme = theme
+	e.themeKnown = true
+	if changed {
+		e.themeFeed.publish(e, theme)
+	}
+}
+
+// setToolsExpanded replaces the replicated tool-expansion state and delivers it to the OnToolsExpandedChange handlers when it differs from the one before; the caller holds e.mu.
+func (e *Extension) setToolsExpanded(expanded bool) {
+	changed := e.expandedKnown && e.toolsExpanded != expanded
+	e.toolsExpanded = expanded
+	e.expandedKnown = true
+	if changed {
+		e.expandedFeed.publish(e, expanded)
 	}
 }
 

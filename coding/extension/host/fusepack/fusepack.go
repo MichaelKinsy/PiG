@@ -32,11 +32,17 @@ func registerFactory(name string, factory sdk.Factory) {
 			}
 			_ = conn.Close()
 		}()
-		ext := factory()
-		if ext == nil {
+		// The connection is the factory's own while it runs, so a factory's pi.events.emit reaches the host at once, as a subprocess extension's does.
+		var built bool
+		err = sdk.ServeFactory(conn, func() *sdk.Extension {
+			ext := factory()
+			built = ext != nil
+			return ext
+		})
+		if !built && err != nil {
 			return fmt.Errorf("construct fused extension %q: factory returned nil", name)
 		}
-		return ext.RunWithConn(conn)
+		return err
 	}
 }
 

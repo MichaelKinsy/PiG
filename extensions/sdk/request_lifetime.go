@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // requestParent separates an active handler's cancellation scope from a retained Context's runtime lifetime. The connection's write mutex orders parent selection with response publication.
@@ -28,15 +29,38 @@ func (c *conn) armParent(id string, runtime, request context.Context) *requestPa
 	return parent
 }
 
+// loadingConn is the connection of a Context the factory's own emit made for a listener, while the extension has not connected: afterwards the Context is an ordinary one that rides the connection Run adopted, and this returns nil.
+func (c Context) loadingConn() *conn {
+	if c.loading == nil {
+		return nil
+	}
+	c.ext.eventMu.Lock()
+	defer c.ext.eventMu.Unlock()
+	if c.ext.loading != c.loading {
+		return nil
+	}
+	return c.loading
+}
+
 func (c Context) hostConnection() *conn {
 	if c.parent != nil {
 		return c.parent.conn
+	}
+	if c.loading != nil {
+		return c.loading
 	}
 	return c.ext.conn
 }
 
 func (c Context) beginHostCall(method string, args any) (pendingCall, error) {
 	connection := c.hostConnection()
+	if connection == nil {
+		return pendingCall{}, errBusNotConnected
+	}
+	// The host answers only the bus and the pure helpers before the extension registers, and a call it does not answer would wait for ever.
+	if c.loadingConn() != nil && !strings.HasPrefix(method, "events.") && !hostServesBeforeRegister(method) {
+		return pendingCall{}, fmt.Errorf("%s: the extension has not registered with the host yet", method)
+	}
 	// A tool handler's host call, of any kind, is an await of Pi's handler: it orders the handler among the calls of its batch (toolStartOrder). Only a dialog call
 	// carries the response slot.
 	c.start.beforeCall()
@@ -80,4 +104,13 @@ func (c *conn) parentIDLocked(parent *requestParent) (string, error) {
 		return "", nil
 	}
 	return parent.id, nil
+}
+
+// hostServesBeforeRegister reports whether the host answers method on a connection whose extension has not registered: the pure helpers that read no session state (loadingBusCall).
+func hostServesBeforeRegister(method string) bool {
+	switch method {
+	case callParseFrontmatter, callParseDate, callGenerateDiffString, callGenerateUnifiedPatch, callCopyToClipboard, callConvertToPng, callResizeImage, callHighlightCode, callLoadTheme, callBuiltinToolDefinition:
+		return true
+	}
+	return false
 }

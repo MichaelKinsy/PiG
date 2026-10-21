@@ -147,6 +147,7 @@ pub mod tui;
 mod login;
 mod oauth;
 mod protocol;
+mod host_subscriptions;
 mod theme;
 mod visual_truncate;
 pub use visual_truncate::{VisualKeep, VisualTruncateResult, truncate_to_visual_lines};
@@ -185,6 +186,7 @@ pub use context::{
 pub use events::*;
 mod child_session;
 pub use child_session::{AgentSession, CreateAgentSessionOptions, PromptOptions, ResourceOptions, SessionSubscription};
+pub use host_subscriptions::HostSubscription;
 #[doc(hidden)]
 pub use extension::report_load_failure;
 pub use extension::{

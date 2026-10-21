@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -54,6 +55,8 @@ type modelTypesRig struct {
 	bridge *subprocess.UIBridge
 	ext    extension.Extension
 	dir    string
+	// keepLoaded makes a placement that loads its members with a reload (python shared-ok) load them with LoadAll instead, so an extension loaded before the fixture stays: a reload removes the extensions its config loader does not name.
+	keepLoaded bool
 
 	mu        sync.Mutex
 	providers map[string]extension.ProviderConfig
@@ -253,7 +256,10 @@ func (r *modelTypesRig) toolWith(name string, args map[string]any) map[string]an
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	result, err := def.Definition.Execute(r.t.Context(), "call-"+name, encoded, nil)
+	// A row whose extension never answers (a mutated SDK that left a request unserved) fails here instead of holding the package to its test timeout.
+	ctx, cancel := context.WithTimeout(r.t.Context(), 45*time.Second)
+	defer cancel()
+	result, err := def.Definition.Execute(ctx, "call-"+name, encoded, nil)
 	if err != nil {
 		r.t.Fatalf("%s: %v", name, err)
 	}
@@ -293,6 +299,12 @@ func eachModelTypesPlacement(t *testing.T, body func(t *testing.T, r *modelTypes
 // eachModelTypesPlacementOf runs body for every placement of the named SDKs, or of every SDK when sdks is empty.
 func eachModelTypesPlacementOf(t *testing.T, sdks []string, body func(t *testing.T, r *modelTypesRig)) {
 	t.Helper()
+	eachModelTypesPlacementAfter(t, sdks, nil, body)
+}
+
+// eachModelTypesPlacementAfter is eachModelTypesPlacementOf with a step that runs on each fresh rig before the fixture loads: it loads the extensions that must be there first.
+func eachModelTypesPlacementAfter(t *testing.T, sdks []string, before func(t *testing.T, r *modelTypesRig), body func(t *testing.T, r *modelTypesRig)) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (starts SDK subprocesses)")
 	}
@@ -303,6 +315,9 @@ func eachModelTypesPlacementOf(t *testing.T, sdks []string, body func(t *testing
 		for placement, load := range kit.placements {
 			t.Run(kit.name+"-"+placement, func(t *testing.T) {
 				r := newModelTypesRig(t)
+				if before != nil {
+					before(t, r)
+				}
 				load(t, r)
 				body(t, r)
 			})
@@ -315,16 +330,16 @@ func loadModelTypesGo(placement string) modelTypesLoader {
 		t.Helper()
 		root := findModuleRoot(t)
 		if placement == "fused" {
-			var factory *sdk.Extension
-			func() {
+			// A fused Piglet Binary serves a factory over the host's pipe, and the pipe is the factory's own connection while it runs (fusepack.registerFactory).
+			serve := func(conn net.Conn) (err error) {
 				defer func() {
 					if recovered := recover(); recovered != nil {
-						t.Fatalf("the fixture factory failed: %v", recovered)
+						err = fmt.Errorf("the fixture factory failed: %v", recovered)
 					}
 				}()
-				factory = modeltypes.Extension()
-			}()
-			ext, err := r.host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: modeltypes.Name, Path: "/ext/" + modeltypes.Name + ".go", Enabled: true}, factory.RunWithConn)
+				return sdk.ServeFactory(conn, modeltypes.Extension)
+			}
+			ext, err := r.host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: modeltypes.Name, Path: "/ext/" + modeltypes.Name + ".go", Enabled: true, SourceInfo: hostSurfaceSource}, serve)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -335,6 +350,7 @@ func loadModelTypesGo(placement string) modelTypesLoader {
 			Name: modeltypes.Name, Source: filepath.Join(root, "test/extension-conformance/testdata/model-types-go"), Enabled: true, Isolation: "strict",
 			RuntimeKind: "subprocess", RuntimeLanguage: "go", EntrypointKind: "factory", Factory: "Extension",
 			SDKName: "github.com/MichaelKinsy/PiG/extensions/sdk", ModulePath: "example.com/model-types-go", Package: "example.com/model-types-go",
+			SourceInfo: hostSurfaceSource,
 		}
 		configs := []subprocess.ExtConfig{cfg}
 		if placement == "packed" {
@@ -360,6 +376,7 @@ func loadModelTypesNode(packed bool) modelTypesLoader {
 		if err != nil {
 			t.Fatal(err)
 		}
+		cfg.SourceInfo = hostSurfaceSource
 		configs := []subprocess.ExtConfig{cfg}
 		if packed {
 			sibling, err := filepath.Abs("testdata/provider-sibling.mjs")
@@ -399,6 +416,7 @@ func loadModelTypesRust(packed bool) modelTypesLoader {
 		if err != nil {
 			t.Fatal(err)
 		}
+		cfg.SourceInfo = hostSurfaceSource
 		configs := []subprocess.ExtConfig{cfg}
 		if packed {
 			sibling, err := filepath.Abs("testdata/provider-rust-sibling")
@@ -428,6 +446,7 @@ func loadModelTypesRust(packed bool) modelTypesLoader {
 }
 
 const modelTypesPython = `import json
+import time
 import pig_sdk
 
 CANCELLED = {"n": 0}
@@ -545,6 +564,86 @@ def ids(models):
 
 def route(ctx, request):
     return {"model": {"provider": "p", "id": "m"}, "thinkingLevel": "off"}
+
+
+def register_host_surface(ext):
+    # The tools of the host-surface rows (host_surface_test.go): on_theme_change, on_tools_expanded_change, set_widget_renderer, bell, tool_call_index, tool_input and tool_params, extension_source_info, on_loaded and a factory-time events.emit. testfixture/modeltypes (Go), testdata/modeltypes-rust and testdata/model-types.mjs carry the same tools.
+    log = {"theme": [], "expanded": [], "heard": [], "loaded": None, "theme_off": None, "expanded_off": None, "heard_at_emit": None, "error_emit_failed": None, "cross_own_at": None, "cross_returned_at": None, "ack_heard": [], "ack_at_cross": None}
+    # A factory's pi.events.emit reaches the listeners subscribed before it, its own included.
+    ext.events.on("c3:factory", lambda ctx, data: log["heard"].append(data))
+    ext.events.emit("c3:factory", {"n": 1, "from": "factory"})
+    # Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
+    log["heard_at_emit"] = len(log["heard"])
+    try:
+        ext.events.emit("error", {"from": "factory"})
+        log["error_emit_failed"] = False
+    except RuntimeError:
+        log["error_emit_failed"] = True
+    # An extension loaded before this one that listens on c3:cross runs first and finishes before emit returns (milliseconds, as the other fixtures report them).
+    # An extension loaded before this one answers the c3:cross emit, from inside its listener, with a c3:ack emit: the listener subscribed here, before the emit, hears it.
+    ext.events.on("c3:ack", lambda ctx, data: log["ack_heard"].append(data))
+    ext.events.on("c3:cross", lambda ctx, data: log.__setitem__("cross_own_at", int(time.time() * 1000)))
+    ext.events.emit("c3:cross", {"from": "factory"})
+    log["cross_returned_at"] = int(time.time() * 1000)
+    log["ack_at_cross"] = len(log["ack_heard"])
+
+    def loaded(ctx):
+        # The handler takes its time; a request that ran before it finished would read None.
+        time.sleep(0.3)
+        expanded = ctx.get_tools_expanded()
+        log["loaded"] = {"cwd": ctx.cwd, "mode": ctx.mode, "hostCall": isinstance(expanded, bool), "expanded": expanded}
+
+    ext.on_loaded(loaded)
+
+    def theme_arm(ctx, args):
+        log["theme_off"] = ctx.on_theme_change(lambda theme: log["theme"].append(theme.name + "|" + theme.fg("accent", "x")))
+        return json.dumps({"ok": True})
+
+    def theme_disarm(ctx, args):
+        log["theme_off"]()
+        return json.dumps({"ok": True})
+
+    def expanded_arm(ctx, args):
+        log["expanded_off"] = ctx.on_tools_expanded_change(lambda expanded: log["expanded"].append(expanded))
+        return json.dumps({"ok": True})
+
+    def expanded_disarm(ctx, args):
+        log["expanded_off"]()
+        return json.dumps({"ok": True})
+
+    def widget_arm(ctx, args):
+        ctx.set_widget_renderer("c3w", lambda width: ["w=%d|%s" % (width, ctx.theme.name)], {"placement": args.get("placement")})
+        return json.dumps({"ok": True})
+
+    def widget_clear(ctx, args):
+        ctx.set_widget_renderer("c3w", None)
+        return json.dumps({"ok": True})
+
+    def bell(ctx, args):
+        ctx.bell()
+        return json.dumps({"error": "<nil>"})
+
+    def tool_call(ctx, args):
+        params = ctx.tool_params()
+        meta = params.get("meta") if params is not None else None
+        return json.dumps({"index": ctx.tool_call_index(), "input": ctx.tool_input(), "keys": list(params) if params is not None else [], "meta": None if meta is None else ctx_json(meta)})
+
+    handlers = {
+        "c3_theme_arm": theme_arm, "c3_theme_disarm": theme_disarm, "c3_theme_log": lambda ctx, args: json.dumps({"log": log["theme"]}),
+        "c3_expanded_arm": expanded_arm, "c3_expanded_disarm": expanded_disarm, "c3_expanded_log": lambda ctx, args: json.dumps({"log": log["expanded"]}),
+        "c3_widget_arm": widget_arm, "c3_widget_clear": widget_clear, "c3_bell": bell, "c3_tool_call": tool_call,
+        "c3_source": lambda ctx, args: json.dumps({"info": ctx.extension_source_info()}),
+        "c3_loaded": lambda ctx, args: json.dumps({"loaded": log["loaded"], "factoryHeard": log["heard"], "heardAtEmit": log["heard_at_emit"], "errorEmitFailed": log["error_emit_failed"], "crossOwnAt": log["cross_own_at"], "crossReturnedAt": log["cross_returned_at"], "ackHeard": log["ack_heard"], "ackAtCross": log["ack_at_cross"]}),
+    }
+    for name, handler in handlers.items():
+        ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
+
+
+def ctx_json(value):
+    # JSON.stringify of a decoded value, as the Node fixture's JSON.stringify(params.meta).
+    from pig_sdk.serialize_conversation import _json_stringify
+
+    return _json_stringify(value)
 
 
 def new_extension():
@@ -702,6 +801,7 @@ def new_extension():
 
     for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
+    register_host_surface(ext)
     return ext
 `
 
@@ -712,6 +812,7 @@ func loadModelTypesPython(isolation string) modelTypesLoader {
 		cfg := packedFlagFactory(t, root, "python", "model-types", false)
 		cfg.Isolation = isolation
 		cfg.ContentHash = "python-model-types-" + fmt.Sprint(len(modelTypesPython))
+		cfg.SourceInfo = hostSurfaceSource
 		if err := os.WriteFile(filepath.Join(cfg.Source, cfg.Package+".py"), []byte(modelTypesPython), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -720,6 +821,8 @@ func loadModelTypesPython(isolation string) modelTypesLoader {
 			peer := packedFlagFactory(t, root, "python", "model-types-peer", false)
 			peer.Isolation = isolation
 			configs = append(configs, peer)
+		}
+		if isolation == "shared-ok" && !r.keepLoaded {
 			r.host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })
 			loaded, err := r.host.Reload(t.Context())
 			if err != nil {
@@ -734,7 +837,7 @@ func loadModelTypesPython(isolation string) modelTypesLoader {
 			t.Fatalf("model-types not loaded: %v", loaded)
 		}
 		loaded, failures := r.host.LoadAll(t.Context(), configs)
-		if len(failures) != 0 || len(loaded) != 1 {
+		if len(failures) != 0 || len(loaded) != len(configs) {
 			t.Fatalf("load: %v", failures)
 		}
 		r.finish(loaded[0])

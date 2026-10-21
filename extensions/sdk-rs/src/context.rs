@@ -707,7 +707,7 @@ pub(crate) fn tool_declaration(definition: &crate::ToolDefinition) -> io::Result
     Ok(declaration)
 }
 
-fn call_result_to_io(result: CallResultMsg) -> io::Result<()> {
+pub(crate) fn call_result_to_io(result: CallResultMsg) -> io::Result<()> {
     if let Some(err) = result.error {
         return Err(io::Error::new(io::ErrorKind::Other, host_error_message(err)));
     }
@@ -1515,7 +1515,12 @@ pub struct Context {
     /// Replicated `hasUI` and theme palette.
     pub(crate) shared_ui: Arc<Mutex<UiState>>,
     pub(crate) bus: Arc<crate::event_bus::BusRegistry>,
-    /// Footer and header renderers, keyed by the host method that installs them.
+    /// Subscriptions to the host's theme and tool-expansion changes, and the extension's source (host_subscriptions.rs).
+    pub(crate) host_subs: Arc<crate::host_subscriptions::HostSubscriptions>,
+    /// Set for a tool_call request: the call's position in its assistant message's batch, and the JSON text of its arguments.
+    pub(crate) tool_call_index: Option<u32>,
+    pub(crate) tool_input: Option<Arc<str>>,
+    /// Footer, header and widget renderers, keyed by the host method that installs them (a widget's by the method and its key).
     pub(crate) surfaces: Surfaces,
     /// Whether this is a withSession context, whose session log is the replacement Session's.
     pub(crate) replacement: bool,
@@ -2532,6 +2537,7 @@ impl Context {
     /// to send. [`Self::set_widget_value`] waits for the host.
     pub fn set_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
         self.conn.views.widgets.lock().unwrap().remove(key);
+        self.replace_surface_id(widget_renderer_id(key), None);
         self.conn.push_widget(key, lines)
     }
 
@@ -2548,6 +2554,7 @@ impl Context {
         options: Option<serde_json::Value>,
     ) -> io::Result<()> {
         let encoded = self.conn.views.encode(&view).map_err(io::Error::other)?;
+        self.replace_surface_id(widget_renderer_id(key), None);
         // Held across the send, so an eviction's resend and this frame keep their order.
         let mut widgets = self.conn.views.widgets.lock().unwrap();
         let wire = self.conn.views.wire(&encoded);
@@ -2578,7 +2585,30 @@ impl Context {
         options: Option<serde_json::Value>,
     ) -> io::Result<()> {
         self.conn.views.widgets.lock().unwrap().remove(key);
+        self.replace_surface_id(widget_renderer_id(key), None);
         call_result_to_io(self.call_wire("ui.setWidget", Some(serde_json::json!({"key": key, "content": content, "options": options.unwrap_or_default()})))?)
+    }
+
+    /// Installs the widget `key` with a renderer that lays its rows out at the host's terminal width, the subprocess form of the component factory Pi's `ctx.ui.setWidget(key, factory, options)` takes.
+    ///
+    /// It follows the contract of [`Self::set_footer_renderer`]: the SDK renders at the width the host reports and again after every width change, sends each set of rows with the width it was rendered for, and the host paints them only at that width, so a widget never shows rows laid out for the old width. `options` is the placement (`{"placement": "aboveEditor" | "belowEditor"}`). `None` clears the widget. A panic in `render` is reported as "widget render failed: ..." and leaves the previous rows. [`Self::set_widget`] with the same key replaces the renderer.
+    pub fn set_widget_renderer<F>(&self, key: &str, render: Option<F>, options: Option<serde_json::Value>) -> io::Result<()>
+    where
+        F: Fn(u32) -> Vec<String> + Send + Sync + 'static,
+    {
+        let Some(render) = render else {
+            return self.set_widget_value(key, serde_json::Value::Null, options);
+        };
+        let renderer = Arc::new(SurfaceRenderer {
+            method: "ui.setWidget",
+            widget: Some((key.to_string(), options)),
+            render: Box::new(render),
+            stopped: Mutex::new(false),
+            refresh: Mutex::new((false, false)),
+        });
+        self.conn.views.widgets.lock().unwrap().remove(key);
+        self.replace_surface_id(widget_renderer_id(key), Some(renderer.clone()));
+        renderer.push(self)
     }
 
     /// Clear a custom footer. Passing live component factories is intentionally unsupported by the subprocess bridge.
@@ -4353,6 +4383,8 @@ impl Drop for TerminalInputSubscription {
 /// `width_change`. Only the newest width is rendered when several arrive together.
 pub(crate) struct SurfaceRenderer {
     method: &'static str,
+    /// The widget a renderer of `ui.setWidget` lays out, and its placement options.
+    widget: Option<(String, Option<serde_json::Value>)>,
     render: Box<dyn Fn(u32) -> Vec<String> + Send + Sync>,
     /// True once superseded. Held while a push is in flight, so a superseded
     /// renderer never overwrites the rows that replaced it.
@@ -4361,7 +4393,12 @@ pub(crate) struct SurfaceRenderer {
     refresh: Mutex<(bool, bool)>,
 }
 
-pub(crate) type Surfaces = Arc<Mutex<HashMap<&'static str, Arc<SurfaceRenderer>>>>;
+pub(crate) type Surfaces = Arc<Mutex<HashMap<String, Arc<SurfaceRenderer>>>>;
+
+/// The key of the renderer installed for the widget `key` in [`Surfaces`].
+fn widget_renderer_id(key: &str) -> String {
+    format!("ui.setWidget:{key}")
+}
 
 fn surface_args(lines: Vec<String>, width: u32) -> serde_json::Value {
     if width > 0 {
@@ -4373,7 +4410,23 @@ fn surface_args(lines: Vec<String>, width: u32) -> serde_json::Value {
 
 impl SurfaceRenderer {
     fn kind(&self) -> &'static str {
-        if self.method == "ui.setHeader" { "header" } else { "footer" }
+        match self.method {
+            "ui.setHeader" => "header",
+            "ui.setWidget" => "widget",
+            _ => "footer",
+        }
+    }
+
+    /// The host call's argument for rows rendered at `width`.
+    fn args(&self, lines: Vec<String>, width: u32) -> serde_json::Value {
+        let mut args = surface_args(lines, width);
+        if let Some((key, options)) = &self.widget {
+            args["key"] = serde_json::json!(key);
+            if let Some(options) = options {
+                args["options"] = options.clone();
+            }
+        }
+        args
     }
 
     /// Renders at the current host width and sends the rows tagged with it. A
@@ -4392,7 +4445,7 @@ impl SurfaceRenderer {
                 return Ok(());
             }
         };
-        call_result_to_io(ctx.call_wire(self.method, Some(surface_args(lines, width)))?)
+        call_result_to_io(ctx.call_wire(self.method, Some(self.args(lines, width)))?)
     }
 
     fn stop(&self) {
@@ -4431,11 +4484,16 @@ impl Context {
     /// Retires the renderer installed for `method` and installs `next`.
     fn replace_surface(&self, method: &'static str, next: Option<Arc<SurfaceRenderer>>) {
         self.conn.views.surfaces.lock().unwrap().remove(method);
+        self.replace_surface_id(method.to_string(), next);
+    }
+
+    /// Retires the renderer installed under `id` and installs `next`.
+    fn replace_surface_id(&self, id: String, next: Option<Arc<SurfaceRenderer>>) {
         let previous = {
             let mut surfaces = self.surfaces.lock().unwrap();
             let previous = match &next {
-                Some(renderer) => surfaces.insert(method, renderer.clone()),
-                None => surfaces.remove(method),
+                Some(renderer) => surfaces.insert(id, renderer.clone()),
+                None => surfaces.remove(&id),
             };
             drop(surfaces);
             previous
@@ -4507,6 +4565,7 @@ impl Context {
         };
         let renderer = Arc::new(SurfaceRenderer {
             method,
+            widget: None,
             render: Box::new(render),
             stopped: Mutex::new(false),
             refresh: Mutex::new((false, false)),
@@ -4753,6 +4812,9 @@ mod width_change_tests {
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
             bus: Arc::new(crate::event_bus::BusRegistry::default()),
+            host_subs: Arc::new(crate::host_subscriptions::HostSubscriptions::new(Arc::new(crate::extension::RequestThreads::default()))),
+            tool_call_index: None,
+            tool_input: None,
             surfaces: Arc::new(Mutex::new(HashMap::new())),
             replacement: false,
             system_prompt: None,
@@ -4865,6 +4927,9 @@ mod login_call_tests {
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
             bus: Arc::new(crate::event_bus::BusRegistry::default()),
+            host_subs: Arc::new(crate::host_subscriptions::HostSubscriptions::new(Arc::new(crate::extension::RequestThreads::default()))),
+            tool_call_index: None,
+            tool_input: None,
             surfaces: Arc::new(Mutex::new(HashMap::new())),
             replacement: false,
             system_prompt: None,
@@ -5158,6 +5223,9 @@ mod sdk_surface_call_tests {
             model_stream_seq: Arc::new(AtomicU64::new(0)),
             shared_ui: Arc::new(Mutex::new(UiState::default())),
             bus: Arc::new(crate::event_bus::BusRegistry::default()),
+            host_subs: Arc::new(crate::host_subscriptions::HostSubscriptions::new(Arc::new(crate::extension::RequestThreads::default()))),
+            tool_call_index: None,
+            tool_input: None,
             surfaces: Arc::new(Mutex::new(HashMap::new())),
             replacement: false,
             system_prompt: None,

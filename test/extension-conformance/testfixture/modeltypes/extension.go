@@ -224,5 +224,6 @@ func Extension() *sdk.Extension {
 	registerThemeProbe(e)
 	registerTuiThemeProbe(e)
 	registerTuiProbe(e)
+	registerHostSurface(e)
 	return e
 }

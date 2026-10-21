@@ -6,6 +6,8 @@ export async function probeFailedAPI(api, onLateEvent = () => {}) {
     ["registerCommand", () => api.registerCommand("late-command", { handler: async () => {} })],
     ["registerShortcut", () => api.registerShortcut("ctrl+shift+y", { handler: async () => {} })],
     ["registerFlag", () => api.registerFlag("late-flag", { type: "boolean", default: true })],
+    // pig additive: a captured onLoaded of a failed factory rejects like every other call.
+    ["onLoaded", () => api.onLoaded(() => {})],
     ["registerMessageRenderer", () => api.registerMessageRenderer("late-message", () => {})],
     ["registerMarkdownTransformer", () => api.registerMarkdownTransformer(text => text)],
     ["registerToolRenderer", () => api.registerToolRenderer(() => undefined)],

@@ -335,6 +335,10 @@ impl Theme {
 pub(crate) struct UiState {
     pub(crate) has_ui: bool,
     pub(crate) theme: Theme,
+    /// The palette `theme` was built from, to tell a change from a repeat.
+    palette: Option<Value>,
+    /// The host's tool-expansion state, once it sent one.
+    tools_expanded: Option<bool>,
 }
 
 impl Default for UiState {
@@ -343,6 +347,8 @@ impl Default for UiState {
         Self {
             has_ui: false,
             theme: Theme::default(),
+            palette: None,
+            tools_expanded: None,
         }
     }
 }
@@ -350,20 +356,36 @@ impl Default for UiState {
 impl UiState {
     /// Applies a state snapshot (the ready state or a `state_update`): its
     /// `hasUI` when a boolean and its `theme` when an object.
-    pub(crate) fn apply_state(&mut self, state: &serde_json::Map<String, Value>) {
+    pub(crate) fn apply_state(&mut self, state: &serde_json::Map<String, Value>) -> crate::host_subscriptions::UiChange {
+        let mut change = crate::host_subscriptions::UiChange::default();
         if let Some(has_ui) = state.get("hasUI").and_then(Value::as_bool) {
             self.has_ui = has_ui;
         }
         if let Some(theme) = state.get("theme").filter(|theme| theme.is_object()) {
-            self.theme = Theme::from_palette(theme);
+            change.theme = self.set_palette(theme);
         }
         crate::tui::apply_host_state(state);
+        if let Some(expanded) = state.get("toolsExpanded").and_then(Value::as_bool) {
+            if self.tools_expanded.is_some_and(|before| before != expanded) {
+                change.tools_expanded = Some(expanded);
+            }
+            self.tools_expanded = Some(expanded);
+        }
+        change
+    }
+
+    /// Installs a palette; returns the new theme when it differs from the palette before.
+    fn set_palette(&mut self, palette: &Value) -> Option<Theme> {
+        let changed = self.palette.as_ref().is_some_and(|before| before != palette);
+        self.theme = Theme::from_palette(palette);
+        self.palette = Some(palette.clone());
+        changed.then(|| self.theme.clone())
     }
 
     /// Applies a `theme_change` notify's palette. A palette sent as a JSON
     /// string is decoded, and one that is not an object clears the palette,
     /// as the Node runtime does.
-    pub(crate) fn apply_theme_change(&mut self, args: Option<&Value>) {
+    pub(crate) fn apply_theme_change(&mut self, args: Option<&Value>) -> crate::host_subscriptions::UiChange {
         let decoded;
         let palette = match args {
             Some(Value::String(raw)) => {
@@ -373,8 +395,9 @@ impl UiState {
             Some(value) => value,
             None => &Value::Null,
         };
-        self.theme = Theme::from_palette(palette);
+        let change = crate::host_subscriptions::UiChange { theme: self.set_palette(palette), tools_expanded: None };
         crate::tui::set_host_theme(palette);
+        change
     }
 }
 

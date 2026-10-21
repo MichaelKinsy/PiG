@@ -56,7 +56,7 @@ from .branch_summary import (
 from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, _ChildSessions, create_agent_session as _create_agent_session
 from .image_dimension_note import ResizedImage as ResizedImage, format_dimension_note as format_dimension_note
 from .llm_convert import convert_to_llm as convert_to_llm
-from .serialize_conversation import serialize_conversation as serialize_conversation
+from .serialize_conversation import _ordered_keys, serialize_conversation as serialize_conversation
 from .session_entry_messages import session_entry_to_context_messages as session_entry_to_context_messages
 from .stored_credential import read_stored_credential as read_stored_credential
 from .pi_ai_helpers import (
@@ -102,6 +102,7 @@ from . import kit as kit
 from . import _tui_state
 from .kit import ViewComponent as ViewComponent
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
+from .state_feed import StateFeed
 from .user_bash import BashExecOptions as BashExecOptions, BashOperations as BashOperations, _BashOperationsTable, _data_update, _run_user_bash_exec, _user_bash_operations_reply
 from .provider import (
     Provider, ProviderSignal,
@@ -2063,9 +2064,12 @@ class _SurfaceRenderer:
     width_change. Only the newest width is rendered when several arrive together.
     """
 
-    def __init__(self, method: str, render: "Callable[[int], list[str]]") -> None:
+    def __init__(self, method: str, render: "Callable[[int], list[str]]", key: str | None = None, options: dict[str, Any] | None = None) -> None:
         self.method = method
         self.render = render
+        # The widget a renderer of ui.setWidget lays out, and its placement options.
+        self.key = key
+        self.options = options
         # Serializes a render with its push and orders a push against stop(), so
         # a superseded renderer never overwrites the rows that replaced it.
         self._lock = threading.Lock()
@@ -2075,6 +2079,8 @@ class _SurfaceRenderer:
         self._refresh_running = False
 
     def _kind(self) -> str:
+        if self.method == "ui.setWidget":
+            return "widget"
         return "header" if self.method == "ui.setHeader" else "footer"
 
     def push(self, ctx: "Context") -> None:
@@ -2090,7 +2096,12 @@ class _SurfaceRenderer:
             except Exception as error:  # a failing component must not end the extension
                 ctx.notify(f"{self._kind()} render failed: {error}", "error")
                 return
-            ctx._call(self.method, _surface_args(lines, width))
+            args = _surface_args(lines, width)
+            if self.method == "ui.setWidget":
+                args["key"] = self.key
+                if self.options:
+                    args["options"] = self.options
+            ctx._call(self.method, args)
 
     def stop(self) -> None:
         with self._lock:
@@ -2567,10 +2578,15 @@ class Context:
     _tool_context: bool = False
     # A tool_call request: its place in the order the handlers start.
     _tool_start: "_ToolStart | None" = None
+    # A tool_call request: the call's position in its assistant message's batch, and the JSON text of its arguments as the host sent it.
+    _tool_index: int | None = None
+    _tool_args: Any = None
     # A withSession context: the replacement Session's locally answered values.
     _replacement: "_ReplacementState | None" = None
     # A before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
     _system_prompt: _SystemPrompt | None = None
+    # A context made for a listener of this extension that the host dispatched while the factory runs (host_helpers.loading_call): the extension has not registered yet, so its host calls use the connection the factory opened, and only pi.events calls and the parse helpers are answered.
+    _loading: bool = False
 
     @property
     def session_manager(self) -> "ReadonlySessionManager":
@@ -2629,6 +2645,13 @@ class Context:
         self.extension._request_state(self.request_id, state, reason, self._parent)
 
     def _call(self, method: str, args: Any = None) -> dict[str, Any]:
+        if self._loading and not self.extension._bus._live:
+            # The host answers only the bus before the extension registers, and a call it does not answer would wait for ever.
+            if not method.startswith("events.") and method not in ("frontmatter.parse", "date.parse"):
+                raise RuntimeError(f"{method}: the extension has not registered with the host yet")
+            from . import host_helpers
+
+            return {"result": host_helpers.loading_call(method, args, self.extension)}
         # An RPC UI effect is no suspension of the handler, as the Node runtime sends it (_RPC_SYNCHRONOUS_UI_EFFECTS).
         reports = bool(self.request_id) and not (method in _RPC_SYNCHRONOUS_UI_EFFECTS and self._rpc_mode())
         if reports and method not in _DIALOG_METHODS:
@@ -3136,10 +3159,27 @@ class Context:
             return
         with self.extension._views.widgets_lock:
             self.extension._views.widgets.pop(key, None)
+        self.extension._replace_surface_id(f"ui.setWidget:{key}", None)
         if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None:
             self.extension._push_widget(key, content)
             return
         self._call("ui.setWidget", {"key": key, "content": content, "options": options or {}})
+
+    def set_widget_renderer(self, key: str, render: "Callable[[int], list[str]] | None", options: dict[str, Any] | None = None) -> None:
+        """Install the widget ``key`` with a renderer that lays its rows out at the host's terminal width, the subprocess form of the component factory Pi's ``ctx.ui.setWidget(key, factory, options)`` takes.
+
+        It follows the contract of :meth:`set_footer_renderer`: the SDK renders at the width the host reports and again after every width change, sends each set of rows with the width it was rendered for, and the host paints them only at that width, so a widget never shows rows laid out for the old width. ``options`` is the placement (``{"placement": "aboveEditor" | "belowEditor"}``). ``None`` clears the widget. An exception in ``render`` is reported as "widget render failed: ..." and leaves the previous rows. :meth:`set_widget` with the same key replaces the renderer.
+        """
+        if render is None:
+            self.set_widget(key, None, options)
+            return
+        if not callable(render):
+            raise TypeError("a widget renderer must be callable")
+        surface = _SurfaceRenderer("ui.setWidget", render, key, options)
+        with self.extension._views.widgets_lock:
+            self.extension._views.widgets.pop(key, None)
+        self.extension._replace_surface_id(f"ui.setWidget:{key}", surface)
+        surface.push(self)
 
     def set_footer(self, lines: list[str] | None) -> None:
         """Replace the footer with pre-rendered lines, or clear it for None.
@@ -3342,6 +3382,52 @@ class Context:
         if not callable(handler):
             raise TypeError("on_width_change requires a callable handler")
         return self.extension._add_width_change_handler(handler)
+
+    def on_theme_change(self, handler: "Callable[[Theme], Any]") -> "Callable[[], None]":
+        """Subscribe to changes of the host's theme: the user switching theme, a custom theme's file reloading, the terminal reporting new colors. ``handler(theme)`` receives :attr:`theme` after it took the new palette.
+
+        Pi calls a widget component's ``invalidate()`` on a theme change, and the component reads ``ctx.ui.theme`` at its next render, so it never paints the colors of an old theme. A subprocess extension pushes rows that were colored when it built them, so it re-renders from this subscription. :meth:`set_widget_renderer` colors through the live theme at every render and needs no handler for it.
+
+        Handlers run on a worker thread, one at a time in the order the changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call. A handler that raises is reported on stderr and does not stop the others. Returns an idempotent unsubscribe callable; a delivery already queued still reaches the handlers subscribed when the change arrived. A palette equal to the one before is not a change.
+        """
+        if not callable(handler):
+            raise TypeError("on_theme_change requires a callable handler")
+        return self.extension._theme_feed.subscribe(handler)
+
+    def on_tools_expanded_change(self, handler: "Callable[[bool], Any]") -> "Callable[[], None]":
+        """Subscribe to the host toggling tool-output expansion (Pi's expand key, or ``set_tools_expanded`` from any extension). ``handler(expanded)`` receives the new state after it changed.
+
+        The original of a widget reads ``ui.getToolsExpanded()`` at every frame and Pi redraws on its expand key; a subprocess extension pushes rows built for one state and re-renders from this subscription. It follows the contract of :meth:`on_theme_change`.
+        """
+        if not callable(handler):
+            raise TypeError("on_tools_expanded_change requires a callable handler")
+        return self.extension._tools_expanded_feed.subscribe(handler)
+
+    def bell(self) -> None:
+        """Ring the terminal bell (BEL) of the interactive terminal between frames, the call a Pi extension makes by writing ``"\\x07"`` to ``process.stdout``. It does nothing where there is no terminal UI: print, JSON and RPC modes."""
+        self._call("ui.bell", {})
+
+    def extension_source_info(self) -> dict[str, Any] | None:
+        """The provenance the loader stamped on this extension: upstream's ``extension.sourceInfo`` (``types.ts`` ``SourceInfo``), where ``ExtensionRunner.getExtensionPaths`` reads the extension's path from. ``path`` is the entry file and ``baseDir`` the package root when the extension came from a Package; a Pi extension reads both from ``import.meta.url``, which a subprocess extension has no equivalent of. A dict with ``path``, ``source``, ``scope``, ``origin`` and, for a Package, ``baseDir``, as ``get_commands`` reports a command's ``sourceInfo``. None when the host holds no source for this extension."""
+        with self.extension._state_lock:
+            info = self.extension._source_info
+        return None if info is None else dict(info)
+
+    def tool_call_index(self) -> int | None:
+        """The running tool call's position among the tool calls of the assistant message that issued it, the batch agent-loop.ts executes (the ``toolCall`` content blocks of that message, counted from 0). None outside a tool handler and for a call no assistant message issued, such as a nested :meth:`execute_tool` call. The host sends it with the call, so a batch is ordered without reading the session's leaf entry."""
+        return self._tool_index
+
+    def tool_input(self) -> str | None:
+        """The running tool call's arguments as the JSON text ``JSON.stringify`` gives for the object Pi hands ``execute``: members in the order the model wrote them (array-index keys first, ascending, as JavaScript orders them), numbers as JavaScript prints them. The arguments are the ones the host sent the handler, after the tool's ``prepare_arguments``. None outside a tool handler."""
+        if self._tool_args is None:
+            return None
+        from .serialize_conversation import _json_stringify
+
+        return _json_stringify(self._tool_args)
+
+    def tool_params(self) -> dict[str, Any] | None:
+        """The running tool call's arguments with every object, at any depth, in the member order JavaScript's ``Object.keys`` gives (array-index keys ascending, then the others in insertion order), which Pi's ``execute`` params keep and an extension that writes the arguments back out (``JSON.stringify(params.metadata)``) relies on. None outside a tool handler or when the arguments are not an object."""
+        return _js_ordered(self._tool_args) if isinstance(self._tool_args, dict) else None
 
     def get_tools_expanded(self) -> bool:
         return bool(self._reply_field("ui.getToolsExpanded", "expanded"))
@@ -3768,6 +3854,15 @@ def _user_bash_event_result(value: Any) -> Any:
     return {**value, "result": result, "_pigUserBashExitCodeUndefined": undefined}
 
 
+def _js_ordered(value: Any) -> Any:
+    """``value`` with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order."""
+    if isinstance(value, dict):
+        return {key: _js_ordered(value[key]) for key in _ordered_keys(value)}
+    if isinstance(value, list):
+        return [_js_ordered(item) for item in value]
+    return value
+
+
 class Extension:
     def __init__(self, name: str):
         self._name = name
@@ -3780,6 +3875,19 @@ class Extension:
         self._term_input_seq = 0
         self._width_change: list[tuple[int, Any]] = []
         self._width_change_seq = 0
+        # Changes of the replicated theme and tool-expansion state reach on_theme_change / on_tools_expanded_change handlers on workers of their own (StateFeed). *_known says the host sent a first value, so a later different one is a change.
+        self._theme_feed = StateFeed(self, "theme")
+        self._tools_expanded_feed = StateFeed(self, "tools expanded")
+        self._theme_palette: Any = None
+        self._theme_known = False
+        self._tools_expanded = False
+        self._tools_expanded_known = False
+        # The provenance the host stamped on this extension (Context.extension_source_info), from the ready payload.
+        self._source_info: dict[str, Any] | None = None
+        # on_loaded handlers run on a worker after ready; requests wait for _loaded (see _handle_request_thread).
+        self._loaded_handlers: list[Callable[[Context], Any]] = []
+        self._loaded = threading.Event()
+        self._loaded.set()
         self._footer_data: dict[str, Any] = {"branch": None, "statuses": {}, "count": 0}
         self._branch_subscribers: dict[int, Callable[[], Any]] = {}
         self._branch_subscriber_seq = 0
@@ -4592,6 +4700,8 @@ class Extension:
                 raise RuntimeError(f"expected ready, got {ready.get('type')}")
             self._tools_live = True
         ready_data = ready.get("ready") or {}
+        source_info = ready_data.get("sourceInfo")
+        self._source_info = dict(source_info) if isinstance(source_info, dict) else None
         self._session_name = ready_data.get("session_name", "")
         self._cwd = ready_data.get("cwd", "")
         self._mode = ready_data.get("mode", "")
@@ -4606,6 +4716,7 @@ class Extension:
         if initial_session:
             self._session_file = str(initial_session.get("sessionFile") or "")
             self._session_mirror.apply_update(initial_session)
+        self._run_loaded()
         while True:
             try:
                 env = self._read()
@@ -4753,8 +4864,42 @@ class Extension:
         for evicted in stream.get("evict") or ():
             replicas.pop((name, str(evicted)), None)
 
+    def on_loaded(self, handler: "Callable[[Context], Any]") -> None:
+        """Run ``handler(ctx)`` once the extension is registered with the host and has received its state, before it serves any request (session_start included).
+
+        It is the place for work a factory cannot do: a :class:`Context` exists, so the handler can read session state, call the host and emit on ``ctx.events``. Handlers run in registration order, one at a time on a thread of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that raises is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is ``session_start``. A handler registered after the extension started never runs.
+        """
+        if not callable(handler):
+            raise TypeError("on_loaded requires a callable handler")
+        self._loaded_handlers.append(handler)
+
+    def _run_loaded(self) -> None:
+        handlers, self._loaded_handlers = self._loaded_handlers, []
+        if not handlers:
+            return
+        self._loaded.clear()
+
+        def run() -> None:
+            try:
+                for handler in handlers:
+                    try:
+                        handler(Context(self))
+                    except Exception:  # noqa: BLE001 - one handler's failure must not stop the next
+                        print(f"pig: on_loaded handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
+            finally:
+                self._loaded.set()
+                with self._request_threads_lock:
+                    self._request_threads.discard(threading.current_thread())
+
+        worker = threading.Thread(target=run, name="pig-on-loaded", daemon=True)
+        with self._request_threads_lock:
+            self._request_threads.add(worker)
+        worker.start()
+
     def _handle_request_thread(self, env: dict[str, Any], ctx: Context) -> None:
         try:
+            if (env.get("request") or {}).get("method") != "events.dispatch":
+                self._loaded.wait()
             self._handle_request(env, ctx)
         finally:
             with self._request_threads_lock:
@@ -4899,7 +5044,7 @@ class Extension:
                         palette = json.loads(palette)
                     except ValueError:
                         palette = {}
-                self._theme._set_palette(palette or {})
+                self._set_theme_palette(palette if isinstance(palette, dict) and palette else {})
                 _tui_state.set_host_theme(palette)
             elif method == "width_change":
                 w = args.get("width", 0)
@@ -5007,6 +5152,15 @@ class Extension:
                     if not self._shutdown.is_set():
                         print(f"pig: width change handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
 
+    def _set_theme_palette(self, palette: dict[str, Any]) -> None:
+        """Install the host's palette and deliver it to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
+        changed = self._theme_known and self._theme_palette != palette
+        self._theme._set_palette(palette)
+        self._theme_palette = palette
+        self._theme_known = True
+        if changed:
+            self._theme_feed.publish(self._theme)
+
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
         """Record the snapshot's hasUI and theme. Caller holds _state_lock."""
         self._views.apply_state(state)
@@ -5015,8 +5169,15 @@ class Extension:
             self._has_ui = has_ui
         theme = state.get("theme")
         if isinstance(theme, dict):
-            self._theme._set_palette(theme)
+            self._set_theme_palette(theme)
         _tui_state.apply_host_state(state)
+        tools_expanded = state.get("toolsExpanded")
+        if isinstance(tools_expanded, bool):
+            changed = self._tools_expanded_known and self._tools_expanded != tools_expanded
+            self._tools_expanded = tools_expanded
+            self._tools_expanded_known = True
+            if changed:
+                self._tools_expanded_feed.publish(tools_expanded)
         settings = state.get("settings")
         if isinstance(settings, dict):
             self._settings = settings
@@ -5032,7 +5193,7 @@ class Extension:
         with self._state_lock:
             self._active[req_id] = (cancel, None)
             self._request_parents[req_id] = parent
-        ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent, _tool_context=req.get("method") == "tool_call")
+        ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent, _tool_context=req.get("method") == "tool_call", _tool_index=req.get("tool_call_index"), _tool_args=req.get("args") if req.get("method") == "tool_call" else None)
         ctx._reason_provider = lambda: self._active.get(req_id, (None, None))[1]
         return ctx
 
@@ -5731,6 +5892,7 @@ class Extension:
     def _set_widget_view(self, ctx: Context, key: str, view: kit.View, options: dict[str, Any] | None) -> None:
         views = self._views
         encoded = views.encode(view)
+        self._replace_surface_id(f"ui.setWidget:{key}", None)
         # Held across the send, so an eviction's resend and this frame keep their order.
         with views.widgets_lock:
             views.widgets[key] = (encoded, options)
@@ -5811,6 +5973,15 @@ class Extension:
             previous = self._surfaces.pop(method, None)
             if surface is not None:
                 self._surfaces[method] = surface
+        if previous is not None:
+            previous.stop()
+
+    def _replace_surface_id(self, surface_id: str, surface: "_SurfaceRenderer | None") -> None:
+        """Retire the renderer installed under surface_id and install surface (None for none)."""
+        with self._surface_lock:
+            previous = self._surfaces.pop(surface_id, None)
+            if surface is not None:
+                self._surfaces[surface_id] = surface
         if previous is not None:
             previous.stop()
 

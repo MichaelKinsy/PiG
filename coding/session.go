@@ -93,6 +93,7 @@ type Session struct {
 	nextListenerID    uint64
 	closeDone         chan struct{}
 	closeOnce         sync.Once
+	replicatedState   icodingagent.ChangeObservers
 	// successorOwnsResources makes Close leave the session-ID keyed provider resources alone: the Session that replaced this one carries the same ID and owns them now.
 	successorOwnsResources atomic.Bool
 	// eventsDone ends the Session event executor: the forwarder stops, the
@@ -1188,6 +1189,7 @@ func (s *Session) refreshCurrentModelFromRegistry() {
 		return
 	}
 	s.agent.SetModel(refreshed)
+	s.notifyReplicatedState()
 }
 
 // sameBoundModelMetadata retains an unchanged runtime-bound model instead of replacing it with another equivalent adapter. A changed catalog still replaces the model, and concrete caller providers are never treated as runtime adapters.
@@ -1339,6 +1341,8 @@ func (s *Session) beginModelChangeState(ctx context.Context, m *ai.Model, source
 		s.agent.SetModel(m)
 	}
 	s.modelChangeMu.Unlock()
+	// The change is reported once the whole synchronous mutation, including the thinking level the model implies, has run, and on the error paths after the agent holds the model.
+	defer s.notifyReplicatedState()
 	if s.inner != nil {
 		if _, err := s.inner.AppendModelChange(providerID(m), m.ID); err != nil {
 			return nil, fmt.Errorf("coding: SetModel: persist audit: %w", err)
@@ -1432,6 +1436,7 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 		thinking = ai.ClampThinkingLevel(model, thinking)
 	}
 	s.agent.SetThinkingLevel(thinking)
+	s.notifyReplicatedState()
 }
 
 // EmitSessionStart dispatches a session_start event to extension handlers.
@@ -1590,6 +1595,7 @@ func (s *Session) SetSessionName(name string) error {
 	if err != nil {
 		return fmt.Errorf("coding: SetSessionName: append: %w", err)
 	}
+	s.notifyReplicatedState()
 	// upstream: packages/coding-agent/src/core/agent-session.ts:setSessionName
 	event := agent.SessionInfoChangedEvent{Name: current}
 	s.notifyAgentEventListeners(event)
@@ -2000,6 +2006,7 @@ func (s *Session) setThinkingLevelState(level ai.ModelThinkingLevel, options ...
 	effective := ai.ClampThinkingLevel(model, level)
 	previous := s.agent.ThinkingLevel()
 	s.agent.SetThinkingLevel(effective)
+	s.notifyReplicatedState()
 	if len(options) > 0 && options[0].Persist {
 		// A failed write is recorded by the settings manager, as Pi's setDefaultThinkingLevel queues it.
 		// upstream: packages/coding-agent/src/core/settings-manager.ts:enqueueWrite
