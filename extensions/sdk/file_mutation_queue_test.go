@@ -17,10 +17,7 @@ import (
 func admittedCallers(key string) int {
 	fileMutationQueues.mu.Lock()
 	defer fileMutationQueues.mu.Unlock()
-	if queue := fileMutationQueues.queues[key]; queue != nil {
-		return queue.admitted
-	}
-	return 0
+	return fileMutationQueues.queues[key].admitted
 }
 
 // awaitAdmission spins until the queue of key admitted more callers than previous, that is until a caller started earlier has taken its position, and returns the new count.

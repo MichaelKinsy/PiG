@@ -85,6 +85,65 @@ var laneBehaviors = []struct {
 		a.Reserve()
 		b.Reserve().Wait()
 	}},
+	{"every place after one waits for it, and the place that follows a released place does not wait", func(t *testing.T) {
+		first := After(nil)
+		const waiting = 5
+		var woken sync.WaitGroup
+		blocked := make(chan struct{}, waiting)
+		passed := make(chan struct{}, waiting)
+		for range waiting {
+			follower := After(first)
+			woken.Go(func() {
+				blocked <- struct{}{}
+				follower.Wait()
+				passed <- struct{}{}
+			})
+		}
+		for range waiting {
+			awaitSignal(t, blocked, "a follower reaching its Wait")
+		}
+		select {
+		case <-passed:
+			t.Fatal("a follower passed before the place it follows was released")
+		default:
+		}
+		first.Release()
+		woken.Wait()
+		if len(passed) != waiting {
+			t.Fatalf("%d followers passed, want %d", len(passed), waiting)
+		}
+		after := make(chan struct{})
+		go func() { After(first).Wait(); close(after) }()
+		awaitSignal(t, after, "the place after a released one")
+	}},
+	{"a place keeps no link to the place it waited for or that it replaced", func(t *testing.T) {
+		var lane Lane
+		first, second, third := lane.Reserve(), lane.Reserve(), lane.Reserve()
+		first.Release()
+		second.Wait()
+		if second.previous.Load() != nil {
+			t.Fatal("a place that waited still holds the place before it, so a long-lived lane would keep every place it ever made")
+		}
+		third.Release()
+		if third.previous.Load() != nil {
+			t.Fatal("a released place still holds the place before it")
+		}
+		fourth := lane.Reserve()
+		if fourth.previous.Load() != nil {
+			t.Fatal("a place reserved behind a released place holds it")
+		}
+	}},
+	{"a call that makes no contention allocates its place and nothing else", func(t *testing.T) {
+		var lane Lane
+		allocs := testing.AllocsPerRun(100, func() {
+			place := lane.Reserve()
+			place.Wait()
+			place.Release()
+		})
+		if allocs > 1 {
+			t.Fatalf("an uncontended trip through a lane allocated %v objects, want its place only", allocs)
+		}
+	}},
 	{"a nil place is no reservation", func(t *testing.T) {
 		var place *Place
 		place.Wait()

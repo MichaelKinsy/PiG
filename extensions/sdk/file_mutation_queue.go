@@ -13,14 +13,15 @@ import (
 )
 
 // fileMutationQueues serializes the mutations of one file inside this extension process, as Pi's module-level queue does (core/tools/file-mutation-queue.ts). Each
-// file has a lane and the number of mutations admitted and not finished; the entry is dropped when the count reaches zero.
+// file keeps the place of the last mutation registered for it and the number of mutations admitted and not finished; the entry is dropped when the count reaches zero.
+// The entry is a value in the map, so a call that finds no queue makes no allocation but its place.
 var fileMutationQueues = struct {
 	mu     sync.Mutex
-	queues map[string]*mutationQueue
-}{queues: map[string]*mutationQueue{}}
+	queues map[string]mutationQueue
+}{queues: map[string]mutationQueue{}}
 
 type mutationQueue struct {
-	lane     jsloop.Lane
+	tail     *jsloop.Place
 	admitted int
 }
 
@@ -42,20 +43,21 @@ func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, err
 		return zero, err
 	}
 	queue := queues.queues[key]
-	if queue == nil {
-		queue = &mutationQueue{}
-		queues.queues[key] = queue
-	}
+	place := jsloop.After(queue.tail)
+	queue.tail = place
 	queue.admitted++
-	place := queue.lane.Reserve()
+	queues.queues[key] = queue
 	queues.mu.Unlock()
 
 	place.Wait()
 	defer func() {
 		place.Release()
 		queues.mu.Lock()
+		queue := queues.queues[key]
 		if queue.admitted--; queue.admitted == 0 {
 			delete(queues.queues, key)
+		} else {
+			queues.queues[key] = queue
 		}
 		queues.mu.Unlock()
 	}()
