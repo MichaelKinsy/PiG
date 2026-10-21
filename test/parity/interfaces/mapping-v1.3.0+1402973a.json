@@ -156057,7 +156057,8 @@
         "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetUIContext"
       ],
       "evidence": [
-        "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults"
+        "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
+        "test:internal/codingagent/ext_ui_noop_theme_test.go#TestNoopUIContextThemeIsTheActiveTheme"
       ]
     },
     {
@@ -176837,7 +176838,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_ui.go#rpcUIContext.ClearStatus"
+        "call:coding/cli/rpc_ui.go#confirmRequest"
       ],
       "evidence": [
         "test:coding/cli/rpc_closed_unions_test.go#TestRPCClosedUnionConstantsAreTheUpstreamLiterals",

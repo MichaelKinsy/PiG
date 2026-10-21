@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-959 bugs. 909 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 141 bugs have no recorded test.
+981 bugs. 931 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 149 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -958,12 +958,27 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-d99a513](#bf-d99a513) | In RPC mode, a toast an extension deferred with `setTimeout(0)` from a `model_select` or `session_start`… | PiG's own defect | All platforms | Unreleased |
 | [BF-d99a513-2](#bf-d99a513-2) | In RPC mode, a message an extension's `session_start` listener sent while a command replaced the Session was… | PiG's own defect | All platforms | Unreleased |
 | [BF-d99a513-3](#bf-d99a513-3) | In RPC mode, an extension command that sends a user message and then awaits `ctx.waitForIdle()` (the init… | PiG's own defect | All platforms | Unreleased |
+| [BF-81add24](#bf-81add24) | A compiled-in extension factory, inline or built in, no longer panics "Extension runtime not initialized"… | PiG's own defect | All platforms | Unreleased |
+| [BF-31e26ea](#bf-31e26ea) | RPC mode writes one `setWidget` request per `ctx.ui.setWidget` call from the Go, Python and Rust SDKs, in… | PiG's own defect | All platforms | Unreleased |
+| [BF-a293b81](#bf-a293b81) | An extension's UI closures now run only in the TUI, as in Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-0f59853](#bf-0f59853) | RPC mode no longer writes `entry_appended` for a `pi.appendEntry` or `session_info_changed` for a… | PiG's own defect | All platforms | Unreleased |
 | [BF-b856354](#bf-b856354) | A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached… | PiG's own defect | All platforms | Unreleased |
+| [BF-7827d96](#bf-7827d96) | Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a… | PiG's own defect | All platforms | Unreleased |
+| [BF-b2a73bf](#bf-b2a73bf) | A Node extension's `ctx.ui.select`, `confirm` and `input` honor `options.signal`, as Pi's RPC and interactive… | PiG's own defect | All platforms | Unreleased |
 | [BF-fd51f36](#bf-fd51f36) | A Go or Rust extension edited while it was being built could be cached under the hash of the source from… | PiG's own defect | All platforms | Unreleased |
+| [BF-b8c4b2c](#bf-b8c4b2c) | A tool's `prepareLoadout` hook now runs again before every later turn of a run, as in Pi, so the descriptions… | PiG's own defect | All platforms | Unreleased |
+| [BF-a343b2b](#bf-a343b2b) | Interactive mode now routes a message an extension sends with `sendMessage` while a run streams as Pi does | PiG's own defect | All platforms | Unreleased |
+| [BF-1ac1eee](#bf-1ac1eee) | RPC mode now writes the members of an `extension_ui_request` that Pi writes empty, as Pi's `JSON.stringify`… | PiG's own defect | All platforms | Unreleased |
+| [BF-863981b](#bf-863981b) | The interactive mode no longer rewrites every provider request's system prompt into one head | PiG's own defect | All platforms | Unreleased |
 | [BF-d68f60e](#bf-d68f60e) | On a file system that refuses file locks (an NFS mount without a lock manager, a FUSE or SMB share), starting… | PiG's own defect | All platforms | Unreleased |
+| [BF-3f51752](#bf-3f51752) | Images are now resized with the image profile of the model that answered last under a virtual model selection | PiG's own defect | All platforms | Unreleased |
 | [BF-0275c62](#bf-0275c62) | Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every… | PiG's own defect | All platforms | Unreleased |
+| [BF-404bc7c](#bf-404bc7c) | The system prompt a run forced no longer shows while the bash and custom messages held during that run are… | PiG's own defect | All platforms | Unreleased |
+| [BF-a003596](#bf-a003596) | A Node extension that changes the active tools or registers a tool now reads the system prompt back as Pi does | PiG's own defect | All platforms | Unreleased |
 | [BF-3853a96](#bf-3853a96) | `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again | PiG's own defect | All platforms | Unreleased |
+| [BF-5df1bac](#bf-5df1bac) | An SDK's `ctx.hasPendingMessages()` in interactive mode counts queued user messages only, as Pi does, and no… | PiG's own defect | All platforms | Unreleased |
 | [BF-6811585](#bf-6811585) | CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary… | PiG's own defect | Windows | Unreleased |
+| [BF-a96962e](#bf-a96962e) | `ctx.isIdle()` after `pi.sendMessage(..., { triggerTurn: true })` in an `agent_settled` handler of a Node… | PiG's own defect | All platforms | Unreleased |
 | [BF-aca002e](#bf-aca002e) | CI: `make interface-gaps` passes on main again | PiG's own defect | All platforms | Unreleased |
 | [BF-626f830](#bf-626f830) | `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path… | PiG's own defect | Windows | Unreleased |
 | [BF-785bb1b](#bf-785bb1b) | Forking a session from a file no longer overwrites a session file that already has the new session's… | PiG's own defect | All platforms | Unreleased |
@@ -974,10 +989,17 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-63d1bf0](#bf-63d1bf0) | A pig session on another machine or container that shares your `~/.pig` (an NFS home, a bind mount) is no… | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7af8b](#bf-2f7af8b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-34f3a49](#bf-34f3a49) | In print and JSON mode, a `/skill:name` prompt whose skill file cannot be read now reports the skill's read… | PiG's own defect | All platforms | Unreleased |
+| [BF-9a694a5](#bf-9a694a5) | A message sent with `deliverAs: "nextTurn"` while a run was starting could join that run instead of the next… | PiG's own defect | All platforms | Unreleased |
 | [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
 | [BF-5d1af78](#bf-5d1af78) | CI: the nightly `-race` run now covers the packages that own most of PiG's goroutines | PiG's own defect | All platforms | Unreleased |
 | [BF-df5e91e](#bf-df5e91e) | A Go, Python or Rust extension tool that awaits a host call such as `exec` before its first dialog no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-1e8ec25](#bf-1e8ec25) | Extension API parity ledger: removed the stale `ctx.ui.custom(options.onHandle)` exception (Go, Rust and… | PiG's own defect | All platforms | Unreleased |
+| [BF-c4bcb66](#bf-c4bcb66) | RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or… | PiG's own defect | All platforms | Unreleased |
+| [BF-00e1452](#bf-00e1452) | Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file… | PiG's own defect | All platforms | Unreleased |
+| [BF-1588d24](#bf-1588d24) | Docs: another PiG build that shares the config root no longer removes the documentation bundle a running… | PiG's own defect | All platforms | Unreleased |
+| [BF-abb8c1d](#bf-abb8c1d) | CI: `TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem` no longer fails every run under… | PiG's own defect | All platforms | Unreleased |
+| [BF-19db555](#bf-19db555) | CI: `TestNodeCellAddedMembersStayWithinTheirOwnState` no longer fails under load | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -3303,8 +3325,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
-- **Fix commits:** `65b7c13e09` (2026-10-06, #168), `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `3452432f8b` (2026-10-08, #190), `4610c9f4a1` (2026-10-08, #189)
-- **Tests:** `coding/cli/rpc_ctx_signal_test.go::TestExtensionContextSignalComparedWithPi`, `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleEntryLeasedAfterClassificationIsSkippedNotAnError`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleOtherErrorsStayErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleStopsWhenItsContextIsCancelled` and 49 more in docs/bug-ledger.json
+- **Fix commits:** `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `3452432f8b` (2026-10-08, #190), `4610c9f4a1` (2026-10-08, #189)
+- **Tests:** `coding/cli/rpc_ctx_signal_test.go::TestExtensionContextSignalComparedWithPi`, `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleEntryLeasedAfterClassificationIsSkippedNotAnError`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleOtherErrorsStayErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleStopsWhenItsContextIsCancelled` and 41 more in docs/bug-ledger.json
 - **Release note:** Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with `(cancelled)`. Escape had left the command running until it finished on its own. While an agent run streams, Escape still aborts the run and leaves a command started during it running, as Pi does.
 
 ### BF-66b0fc0
@@ -13884,7 +13906,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `e6d1b69dbc` (2026-10-20)
-- **Tests:** `agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived`, `internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors`
+- **Tests:** `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived`
 - **Release note:** Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.
 
 ### BF-7fbd629
@@ -13898,7 +13920,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `0bb10c0c59` (2026-10-20), `3e4404a2d1` (2026-10-20), `631ca46e27` (2026-10-20), `710ef28883` (2026-10-20), `7fbd629d13` (2026-10-20), `835390ada3` (2026-10-20), `b4ae58aeb4` (2026-10-20)
-- **Tests:** `agent/settle_order_test.go::TestToolBatchFromContextNamesTheParallelBatch`, `extensions/sdk-py/tests/test_tool_dialog_order.py`, `extensions/sdk/tool_dialog_order_test.go::TestToolBatchOrdersAreIndependentAcrossBatches`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogOrderPassesAnEndedRequest`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogsOpenInCallOrder`, `extensions/sdk/tool_dialog_order_test.go::TestToolResponsesFollowTheOrderTheAnswersWereRead`, `extensions/sdk/tool_prepare_arguments_test.go::TestToolCallHandlersStartInArrivalOrder`, `test/extension-conformance/tool_dialog_order_test.go::TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs`
+- **Tests:** `extensions/sdk-py/tests/test_tool_dialog_order.py`, `extensions/sdk/tool_dialog_order_test.go::TestToolBatchOrdersAreIndependentAcrossBatches`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogOrderPassesAnEndedRequest`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogsOpenInCallOrder`, `extensions/sdk/tool_dialog_order_test.go::TestToolResponsesFollowTheOrderTheAnswersWereRead`, `extensions/sdk/tool_prepare_arguments_test.go::TestToolCallHandlersStartInArrivalOrder`, `test/extension-conformance/tool_dialog_order_test.go::TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs`
 - **Release note:** Two calls of a Go, Python or Rust extension tool in one assistant message that each open a dialog now behave as Pi's one thread makes them behave, as Node extensions already did: the dialogs open in call order (a port's second dialog could open first), and when the user answers them back to back the calls respond, and end, in the order of the answers. The SDKs keep these orders for the calls of one parallel batch, which the host now names on each `tool_call` request (`batch`); calls of other batches, other sessions' calls and tools that make no host call take no part and are never held. A handler that blocks on something other than a host call before its first host call holds the first dialogs of the later calls of its batch, while a call that awaits a host call such as `exec` before its dialog is overtaken by the later calls' dialogs, as in Pi, and a handler whose dialog was answered holds the later-answered handlers' responses until it returns or makes its next host call (recorded as divergence D187: Pi's single thread lets a call that awaits work the SDK cannot see be overtaken).
 
 ### BF-bfd090d
@@ -14068,6 +14090,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateClosesForAReplacementUntilItsResponse`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateHoldsForCommandsUntilTheyAnswer`, `coding/cli/rpc_background_gate_test.go::TestRPCBackgroundGateStaysClosedUntilEveryHoldEnds`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateHoldsRequestlessUICalls`, `coding/extension/host/subprocess/background_gate_test.go::TestBackgroundCallGateLeavesOtherRequestlessCallsAlone`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportIgnoresAnotherRequestsCall`, `coding/extension/host/subprocess/background_gate_test.go::TestBlockedReportWaitsForTheCallThatFollows`, `test/extension-conformance/rpc_nested_events_test.go::TestRPCNestedEventsCompleteInEverySDK`
 - **Release note:** In RPC mode, an extension command that sends a user message and then awaits `ctx.waitForIdle()` (the init command of a Pigpen warden) had the run's `agent_start` written before the prompt's response, for the Go, Python, Rust and Node SDKs alike. Pi's `waitForIdle` returns at once while the run the command started has not begun, so the command returns, the response is written, and `agent_start` follows. The host now settles such a wait at once and no longer counts the handler as suspended.
 
+### BF-81add24
+
+**A compiled-in extension factory, inline or built in, no longer panics "Extension runtime not initialized"…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A compiled-in extension factory, inline or built in, no longer panics "Extension runtime not initialized" when it calls `pi.sendMessage`, `appendEntry`, `setSessionName`, `getSessionName`, `setModel`, `setThinkingLevel` or `getThinkingLevel` under the interactive mode.
+- **Root cause:** Pi's _bindExtensionCore binds every ExtensionActions member in every mode (agent-session.ts:3416-3465). Interactive mode rebinds the in-process runner after the Session and replaced the Session's actions with three of them, so an extension factory loaded into the runner (inline and built-in factories) panicked 'Extension runtime not initialized' on pi.sendMessage, setSessionName, getSessionName, setModel and the thinking-level calls. The mode now binds each action, through the code the wire host actions of the same names run.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `81add2436b` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** A compiled-in extension factory, inline or built in, no longer panics "Extension runtime not initialized" when it calls `pi.sendMessage`, `appendEntry`, `setSessionName`, `getSessionName`, `setModel`, `setThinkingLevel` or `getThinkingLevel` under the interactive mode. The mode rebinds its in-process runner after the Session binds it and replaced the Session's actions with three of them; it now binds every action Pi's `_bindExtensionCore` binds, through the code the wire host actions of the same names run.
+
+### BF-31e26ea
+
+**RPC mode writes one `setWidget` request per `ctx.ui.setWidget` call from the Go, Python and Rust SDKs, in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** RPC mode writes one `setWidget` request per `ctx.ui.setWidget` call from the Go, Python and Rust SDKs, in call order and before the command's response, as Pi does.
+- **Root cause:** In RPC mode, where the width never changes, the SDK now sends the list as the ui.setWidget call every other shape uses, and the RPC writer's widget diff (the dedupe and the diff against the previous lists) is removed.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `31e26eac2b` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** RPC mode writes one `setWidget` request per `ctx.ui.setWidget` call from the Go, Python and Rust SDKs, in call order and before the command's response, as Pi does. A string list with no options went out as an unanswered frame that the host applied on a lane of its own: the last list a command set could be written after the command's response or after a later `notify`, a repeat of the same list was dropped, and a list set after a clear stayed cleared on the client. In RPC mode the SDKs now send the list as the host call every other widget shape uses.
+
+### BF-a293b81
+
+**An extension's UI closures now run only in the TUI, as in Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension's UI closures now run only in the TUI, as in Pi.
+- **Root cause:** The Node runtime ran setFooter and setHeader factories and their render under RPC, answered getEditorComponent with the installed factory, registered terminal-input handlers and forwarded the working-indicator calls and setTheme(Theme object) to the host. The Go, Python and Rust SDKs ran footer and header render closures in print, JSON and RPC mode, and ran Custom components (or reported an unsupported error) in RPC mode. Pi's rpc-mode.ts createExtensionUIContext and runner.ts noOpUIContext make all of these no-ops: custom() resolves undefined, setTheme answers {success:false}, getEditorComponent answers undefined.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a293b81d2a` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** An extension's UI closures now run only in the TUI, as in Pi. In RPC mode the Node runtime no longer runs `setFooter`/`setHeader` factories (a throwing render leaked a `notify` error), keeps `setEditorComponent` and `onTerminalInput` handlers, forwards the working-indicator calls, answers `getEditorComponent` with the installed factory, or fails `setTheme(Theme)`; they are no-ops, `getEditorComponent` answers undefined and `setTheme` answers `{success:false,error:"Theme switching not supported in RPC mode"}`. The Go, Python and Rust SDKs no longer run footer and header renderers in RPC, print or JSON mode, and `Custom` in RPC mode resolves nil/None without running the component.
+
+### BF-0f59853
+
+**RPC mode no longer writes `entry_appended` for a `pi.appendEntry` or `session_info_changed` for a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** RPC mode no longer writes `entry_appended` for a `pi.appendEntry` or `session_info_changed` for a `pi.setSessionName` that an extension's `session_start` handler makes, and `--mode json` no longer writes anything a `session_start` handler produced: its `entry_appended`, `session_info_changed`, and the `message_start` and `message_end` of a `sendMessage`.
+- **Root cause:** Pi subscribes its stdout writer after `await session.bindExtensions()` (rpc-mode.ts:316-361, print-mode.ts:76-122), so the entry_appended and session_info_changed events a session_start handler emits through pi.appendEntry and pi.setSessionName, and in JSON mode the custom message_start/message_end of a sendMessage, are never written. PiG subscribed first and wrote them.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0f59853005` (2026-10-20)
+- **Tests:** `coding/cli/writer_after_session_start_structure_test.go::TestSessionOriginWritersObeyTheWriterSubscribedGate`
+- **Release note:** RPC mode no longer writes `entry_appended` for a `pi.appendEntry` or `session_info_changed` for a `pi.setSessionName` that an extension's `session_start` handler makes, and `--mode json` no longer writes anything a `session_start` handler produced: its `entry_appended`, `session_info_changed`, and the `message_start` and `message_end` of a `sendMessage`. Pi subscribes its stdout writer after the extensions are bound, so none of these reach a client; the JSON stream now starts at the prompt, after the session header. The `session_start` of a replacement command (`new_session`, `switch_session`, `fork`) that runs after the writer exists is still written, as in Pi.
+
 ### BF-b856354
 
 **A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached…**
@@ -14081,6 +14159,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `b856354834` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/sdk_fingerprint_record_test.go::TestRecordSDKFingerprintLeavesAMarkerThatAlreadyHoldsItAlone`
 - **Release note:** A start could fail with a bare missing-file error when another `pig`'s cache collection removed the cached extension build it had just reused. The collection (the daily automatic one, or `pig extensions cache prune`) decides which entries are expired and removes them a moment later. A start that reuses an old entry in between refreshed its use time but holds no lease until its extension process spawns, so the entry was removed under it, the lease then came back empty instead of failing, and the spawn reported a missing file. The collection now reads each entry again under its exclusive lock and skips one that another `pig` used since, counting it as in use. A reuse takes the entry's lock while it checks and records the entry, so it never reuses an entry that is being removed and builds it again instead. A lease for an entry that is gone fails with `cache_lease_failed` and says the entry was removed. The SDK fingerprint file of a published entry is replaced through a rename and written only when it changes, so a collection can no longer read it half written and expire a build that a start is using.
+
+### BF-7827d96
+
+**Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a prompt template produced.
+- **Root cause:** AgentSession.prompt checks for an extension command on the raw text only (agent-session.ts:2067-2074). sendPrintPrompt passed the transformed text to Session.SendContent, which dispatched a command a second time on it and sent nothing to the model. It now starts the run with SendContentWithPreflight.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7827d96bf8` (2026-10-20)
+- **Tests:** `coding/cli/print_mode_test.go::TestPrintAndJSONModeDoNotDispatchCommandsOnTransformedText`, `coding/session_prompt_command_order_test.go::TestSendContentWithPreflightDoesNotDispatchCommands`
+- **Release note:** Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a prompt template produced. A handler that rewrote the prompt into an extension command's invocation, or a template whose body is that invocation, ran the command and sent nothing to the model. Pi checks for a command on the raw text only and sends the produced text to the model.
+
+### BF-b2a73bf
+
+**A Node extension's `ctx.ui.select`, `confirm` and `input` honor `options.signal`, as Pi's RPC and interactive…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The signal was ignored: the dialog stayed open until the user or its timeout answered, and the extension waited for it.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b2a73bfaed` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** A Node extension's `ctx.ui.select`, `confirm` and `input` honor `options.signal`, as Pi's RPC and interactive modes do. A signal that is already aborted resolves the default (`undefined`, or `false` for `confirm`) without showing the dialog or writing an RPC request, and a signal that aborts while the dialog is open resolves the default at once and dismisses the dialog (RPC: the pending request is dropped). Before, the signal was ignored: the dialog stayed open until the user or its timeout answered, and the extension waited for it.
 
 ### BF-fd51f36
 
@@ -14096,6 +14202,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/extension/host/runtimecell/go_packed_verify_test.go::TestBuildGoPackedCellPublishesNothingWhenAMembersSourceChangesDuringTheBuild`, `coding/extension/host/subprocess/content_hash_test.go::TestFillContentHashChecksOnlyWhatItHashedAndIgnoresALockfileTheBuildWrites`, `coding/extension/host/subprocess/content_hash_test.go::TestFillContentHashGivesCellBuildsACheckOfTheSourceTheyHashed`
 - **Release note:** A Go or Rust extension edited while it was being built could be cached under the hash of the source from before the edit. The compiler reads the source after the build hashed it, past the wait for another `pig`'s build of the same extension and through its own compile, and nothing read it again, so an edit saved in that time was compiled into a build stored under the original source's hash. Putting the original source back then ran the build of the edit. A build now reads its inputs again when the compiler returns (the extension source, the SDK, workspace modules and toolchain) and caches nothing when they changed: it fails with `changed while it was being built`, and the next start builds the current source. A Rust crate's `Cargo.lock`, which `cargo` writes during the build, does not count as an edit.
 
+### BF-b8c4b2c
+
+**A tool's `prepareLoadout` hook now runs again before every later turn of a run, as in Pi, so the descriptions…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool's `prepareLoadout` hook now runs again before every later turn of a run, as in Pi, so the descriptions it sets and the declarations it hides follow the state the hook reads.
+- **Root cause:** Pi's prepareNextTurnWithContext calls _preparePromptAndToolLoadout, which runs _applyToolLoadout before each turn (agent-session.ts:899-933, 1743-1755), so every active tool's prepareLoadout hook and the hidden declarations it sets follow the state they read. PiG applied the loadout at run start and on loadout changes only.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b8c4b2c287` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** A tool's `prepareLoadout` hook now runs again before every later turn of a run, as in Pi, so the descriptions it sets and the declarations it hides follow the state the hook reads. The hooks ran when a run started and when the loadout changed, so a hook that read settings or extension state kept the first turn's answer for the rest of the run.
+
+### BF-a343b2b
+
+**Interactive mode now routes a message an extension sends with `sendMessage` while a run streams as Pi does**
+
+- **Source:** PiG's own defect
+- **Symptom:** A message with no `deliverAs` steers: the run delivers it after the current tool batch, before the next model call, where it used to wait until the run would stop.
+- **Root cause:** Interactive mode queued every message sent during a run as a follow-up, where Pi steers it unless deliverAs is followUp, and queued triggerTurn:false messages too, where Pi holds them until the turn's tool results are complete and appends them without a model call. The route now has Pi's branches with a tri-state triggerTurn, held messages go through the Session's pending custom messages (flushed at turn_end and when the run settles), and hasPendingMessages counts queued user messages only. The empty customType and unknown deliverAs rejections are gone: Pi accepts both.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a343b2ba32` (2026-10-20)
+- **Tests:** `internal/codingagent/custom_message_route_test.go::TestRouteCustomMessageMatchesUpstreamBranchOrder`, `internal/codingagent/interactive_send_message_test.go::TestInteractiveHasPendingMessagesCountsUserMessagesOnly`, `internal/codingagent/interactive_send_message_test.go::TestInteractiveSendMessageAcceptsEmptyCustomTypeAndUnknownDeliverAs`, `internal/codingagent/interactive_send_message_test.go::TestInteractiveSendMessageDeferFallsBackToAppendWhenRunEnded`, `internal/codingagent/interactive_send_message_test.go::TestInteractiveSendMessageDeferredIsNotPending`, `internal/codingagent/interactive_send_message_test.go::TestInteractiveSendMessageWhileStreamingRoutesAsUpstream`, `internal/codingagent/interactive_send_message_test.go::TestInteractiveSettleTurnFlushesDeferredCustomMessages`
+- **Release note:** Interactive mode now routes a message an extension sends with `sendMessage` while a run streams as Pi does. A message with no `deliverAs` steers: the run delivers it after the current tool batch, before the next model call, where it used to wait until the run would stop. A message with `triggerTurn: false` is held until the turn's tool results are complete and appended without a model call, where it used to be queued as a follow-up that cost the run another model call. `sendMessage` no longer rejects an empty `customType` or an unknown `deliverAs` (Pi accepts the first and steers the second).
+
+### BF-1ac1eee
+
+**RPC mode now writes the members of an `extension_ui_request` that Pi writes empty, as Pi's `JSON.stringify`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In the Go, Python and Rust SDKs `SetStatus(key, "")` is now an empty status text (it used to remove the entry), and `ClearStatus` / `clear_status` is Pi's `setStatus(key, undefined)`; an empty placeholder or prefill is the unset member (Python: `None`).
+- **Root cause:** rpc-mode.ts builds each extension_ui_request as an object literal and serialises it with JSON.stringify: an empty string, an empty list and a zero timeout are written, only an undefined member is omitted. The encoder dropped every empty Title, Options, Message, StatusText and Text (omitempty) and always wrote placeholder and prefill, so a client could not clear its editor with set_editor_text "" or tell setStatus(k, "") from setStatus(k, undefined).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1ac1eeebec` (2026-10-20)
+- **Tests:** `coding/cli/rpc_ui_set_widget_factory_test.go::TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/cli/rpc_ui_wire_test.go::TestRPCUIWireKeepsEmptyMembersAndOmitsUndefinedOnes`, `coding/extension/host/inproc/ui_unset_members_test.go::TestUIPrompt_UnsetMemberFormsReachTheBoundUI`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_HandleCall_DialogsTellAbsentMembersFromEmptyOnes`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_HandleCall_DialogsWithoutOmittersFallBackToEmpty`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_HandleCall_SetStatusTellsUndefinedFromEmpty`, `coding/extension/host/subprocess/ui_bridge_unset_members_test.go::TestUIBridge_SetUIContextReplaysStatusesAsSet` and 2 more in docs/bug-ledger.json
+- **Release note:** RPC mode now writes the members of an `extension_ui_request` that Pi writes empty, as Pi's `JSON.stringify` does: `message: ""` of `notify`, `title: ""` of `setTitle`, `text: ""` of `set_editor_text` (how a client clears its editor), `statusText: ""` of `setStatus` and an empty `options` list of `select` were dropped, so a client could not tell empty from absent. `input` and `editor` no longer write `placeholder: ""` / `prefill: ""` when the extension passed none. In the Go, Python and Rust SDKs `SetStatus(key, "")` is now an empty status text (it used to remove the entry), and `ClearStatus` / `clear_status` is Pi's `setStatus(key, undefined)`; an empty placeholder or prefill is the unset member (Python: `None`). The interactive footer is unchanged.
+
+### BF-863981b
+
+**The interactive mode no longer rewrites every provider request's system prompt into one head**
+
+- **Source:** PiG's own defect
+- **Symptom:** The interactive mode no longer rewrites every provider request's system prompt into one head.
+- **Root cause:** Pi sends the prompt of a run as the transcript's sections and patch messages and forces text onto the request only for the systemPrompt a before_agent_start handler returned (agent-session.ts:1743-1755, 1792-1807). Interactive mode set the agent's system prompt for every run and again after every tool change and reload, so every request projected one head holding the rendered text and dropped the transcript's patch messages. A mode with a Session now projects only a forced prompt; a mode without one still projects every prompt, as it has no transcript to record it in.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `863981b82a` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** The interactive mode no longer rewrites every provider request's system prompt into one head. It set the agent's system prompt for every run and again after every tool change and reload, so a mid-session change to the prompt or the active tools reached the model as a rewritten head with the transcript's system patch messages dropped. Pi sends the prompt as the transcript's sections and patch messages and forces text onto the request only for the `systemPrompt` a `before_agent_start` handler returned; the interactive mode now does the same.
+
 ### BF-d68f60e
 
 **On a file system that refuses file locks (an NFS mount without a lock manager, a FUSE or SMB share), starting…**
@@ -14109,6 +14271,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `d68f60ece2` (2026-10-20)
 - **Tests:** `internal/filelock/filelock_test.go::TestExplainNamesTheDirectoryAndTheRemedyOnlyForUnsupportedLocks`, `internal/filelock/filelock_test.go::TestUnsupportedRecognisesAFileSystemThatRefusesFileLocks`
 - **Release note:** On a file system that refuses file locks (an NFS mount without a lock manager, a FUSE or SMB share), starting an extension failed with `wait for cell build lock: flock: no locks available`, or with a bare lock error from the lease of a cached build, the cache collector or the SDK staging, and nothing named the cause. The error now names the directory, says the file system does not support file locks, and names the remedy: point `PIG_HOME` at a directory on a file system that does. The cache still needs its locks, so a file system without them cannot hold it.
+
+### BF-3f51752
+
+**Images are now resized with the image profile of the model that answered last under a virtual model selection**
+
+- **Source:** PiG's own defect
+- **Symptom:** Images are now resized with the image profile of the model that answered last under a virtual model selection.
+- **Root cause:** Pi resizes prompt images (agent-session.ts:2037) and tool-result images (:707) with _limitsModel(): the physical model of the latest virtual-selection response, else the selected model. The Session and interactive mode read the selected model, whose virtual definition carries no input limits.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3f517521bc` (2026-10-20)
+- **Tests:** `coding/session_images_routed_test.go::TestPromptImagesUseTheRoutedModelsProfile`, `coding/session_images_routed_test.go::TestToolResultImagesUseTheRoutedModelsProfile`, `internal/codingagent/interactive_input_limits_test.go::TestInteractiveLimitsModelIsTheRoutedPhysicalModel`
+- **Release note:** Images are now resized with the image profile of the model that answered last under a virtual model selection. Prompt images and tool-result images used the selected virtual model, which declares no image limits, so a routed model's `inputLimits.images.resize` never applied. Pi sizes both with the physical model of the latest routed response, and the selected model otherwise.
 
 ### BF-0275c62
 
@@ -14124,6 +14300,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationCallsAreRoutedLikeThePureHelperCalls`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterFailsForAnUnresolvablePath`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterHoldsTheHostQueueUntilExit`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterRegistersInCallOrderAndInitiatesBeforeItWaits`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationExitOfAnotherConnectionsTicketFails`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses`, `extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueHostErrorAndTaskFailures` and 3 more in docs/bug-ledger.json
 - **Release note:** Extensions: `withFileMutationQueue` is now one queue for the built-in `edit` and `write` tools and every extension process, as in Pi. Before, each extension process kept its own queue, so a Go, Rust, Python or Node extension tool and a built-in tool on one file, or two extensions, could lose an update. The SDKs ask the host's queue for the file's turn (`fileMutation.enter`, `fileMutation.exit`); the turn is released if the extension's connection closes.
 
+### BF-404bc7c
+
+**The system prompt a run forced no longer shows while the bash and custom messages held during that run are…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The system prompt a run forced no longer shows while the bash and custom messages held during that run are flushed at its end.
+- **Root cause:** Pi sets _runSystemPromptOptions to undefined before it flushes the messages held during the run (agent-session.ts:1874-1881). The Session ended the run's prompt, forced prompt included, after the flush, so a listener of a flushed message read the run's prompt.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `404bc7ca0f` (2026-10-20)
+- **Tests:** `coding/session_run_prompt_lifetime_test.go::TestHeldCustomMessageFlushedAtRunEndSeesTheBaseSystemPrompt`
+- **Release note:** The system prompt a run forced no longer shows while the bash and custom messages held during that run are flushed at its end. A listener of a flushed custom message that read the system prompt saw the run's forced prompt, where Pi ends the run's prompt options first and reports the base prompt.
+
+### BF-a003596
+
+**A Node extension that changes the active tools or registers a tool now reads the system prompt back as Pi does**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension that changes the active tools or registers a tool now reads the system prompt back as Pi does.
+- **Root cause:** Pi's ctx.getSystemPrompt(), ctx.getSystemPromptOptions() and ctx.isIdle() read the Session (agent-session.ts:1474-1476, 3495-3496). The Node runtime answered them from the state the Host pushes with the next event, so a read after pi.setActiveTools or pi.registerTool in the same handler returned the prompt of before the write, and a read after a triggering pi.sendMessage guessed that the run had started even when the Session holds the message back until the agent_settled handlers return (agent-session.ts:2344-2349). Once an extension has written the loadout its reads ask the Host, and after a triggering sendMessage isIdle takes the Host's answer.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a003596587` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** A Node extension that changes the active tools or registers a tool now reads the system prompt back as Pi does. `ctx.getSystemPrompt()` and `ctx.getSystemPromptOptions()` answered from the state the host pushes with the next event, so a read after `pi.setActiveTools` or `pi.registerTool` in the same handler returned the prompt of before the write, while the Go, Python and Rust SDKs read the live value. From the first such write on, the reads ask the host.
+
 ### BF-3853a96
 
 **`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again**
@@ -14138,6 +14342,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `test/gomodule/gomodule_test.go::TestModuleTagsScriptRefusesAPseudoVersionPin`
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again. The root `go.mod` required `extensions/sdk v0.5.0`, which lacks `Result.Drift`, `FileChange.Created` and `Skipped.Suggest` that `pig extension upgrade` uses, so building the module outside the workspace failed, and `make module-size` failed on every pull request. Between releases the root `go.mod` (and `piglets/standard` and `piglets/aot`) now require the SDK at the pseudo-version of the `main` commit that holds the API the root uses; the release replaces it with the tag. `make module-publication` accepts such a pseudo-version, and proves by downloading it into an empty cache, with the committed checksums, that the commit is public.
 
+### BF-5df1bac
+
+**An SDK's `ctx.hasPendingMessages()` in interactive mode counts queued user messages only, as Pi does, and no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An SDK's `ctx.hasPendingMessages()` in interactive mode counts queued user messages only, as Pi does, and no longer counts the custom messages an extension queued with `sendMessage`.
+- **Root cause:** The host action behind every SDK's ctx.hasPendingMessages() still counted the agent's whole steering and follow-up queues, which hold the custom messages an extension queued with sendMessage. Pi counts only queued user messages (agent-session.ts:2443-2445); the wire action now uses the same count as the in-process context.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5df1bac28c` (2026-10-20)
+- **Tests:** `internal/codingagent/interactive_send_message_test.go::TestInteractiveHasPendingMessagesCountsUserMessagesOnly`
+- **Release note:** An SDK's `ctx.hasPendingMessages()` in interactive mode counts queued user messages only, as Pi does, and no longer counts the custom messages an extension queued with `sendMessage`.
+
 ### BF-6811585
 
 **CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary…**
@@ -14151,6 +14369,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `6811585d05` (2026-10-20)
 - **Tests:** `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_startup_test.go::TestStartupNamesSDKDriftAndExitsInPrintMode`
 - **Release note:** CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does. The notice already quotes such a path for the Windows shell (`"C:\Users\RUNNER~1\..."`) and is unchanged; the tests expected the raw path and now expect the quoted word, as the notice test beside them does.
+
+### BF-a96962e
+
+**`ctx.isIdle()` after `pi.sendMessage(..., { triggerTurn: true })` in an `agent_settled` handler of a Node…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `ctx.isIdle()` after `pi.sendMessage(..., { triggerTurn: true })` in an `agent_settled` handler of a Node extension now reports `true`, as the Go, Python and Rust SDKs do.
+- **Root cause:** A run that a triggering sendMessage starts can end before the extension's next host call, so asking the host after every triggering send raced fast runs (coding/cli TestExtensionSendMessageTriggerTurnStartsTheRunAsPi read idle=true in one of six runs). Pi's read is the in-progress run's state. Outside agent_settled the runtime keeps reporting a busy session; inside an agent_settled handler, where the Session holds the message back, it takes the host's answer.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a96962ee93` (2026-10-20)
+- **Tests:** `coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi`
+- **Release note:** `ctx.isIdle()` after `pi.sendMessage(..., { triggerTurn: true })` in an `agent_settled` handler of a Node extension now reports `true`, as the Go, Python and Rust SDKs do. The session holds such a message until the handlers return, as in Pi, and Node had assumed the run started.
 
 ### BF-aca002e
 
@@ -14290,6 +14522,34 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `2f7af8b96d` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationEnterCancelledWhileWaitingTakesNoTurn`
 
+### BF-34f3a49
+
+**In print and JSON mode, a `/skill:name` prompt whose skill file cannot be read now reports the skill's read…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In print and JSON mode, a `/skill:name` prompt whose skill file cannot be read now reports the skill's read error (`Extension error (<SKILL.md path>): ENOENT: ...`) before the missing-credentials error, as Pi does.
+- **Root cause:** Print and JSON mode validated the selected model's auth before they expanded skill commands and prompt templates. Pi expands first (agent-session.ts:2095-2100, then 2118-2136), so an unreadable /skill: reports its skill_expansion error before a missing-auth error. sendPrintPrompt now expands right after the input handlers and keeps the expanded text for the Session.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `34f3a493d3` (2026-10-20)
+- **Tests:** `coding/cli/print_no_model_test.go::TestPrintModeExpandsSkillCommandsBeforeTheAuthCheck`
+- **Release note:** In print and JSON mode, a `/skill:name` prompt whose skill file cannot be read now reports the skill's read error (`Extension error (<SKILL.md path>): ENOENT: ...`) before the missing-credentials error, as Pi does. Skill commands and prompt templates are expanded before the selected model's authentication is checked; they were expanded after it, so the skill error never appeared when the provider had no credentials.
+
+### BF-9a694a5
+
+**A message sent with `deliverAs: "nextTurn"` while a run was starting could join that run instead of the next…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A message sent with `deliverAs: "nextTurn"` while a run was starting could join that run instead of the next one.
+- **Root cause:** A user or custom-message run started by the Session took the pending nextTurn messages when the Agent claimed it, after the messages held while the run started had been appended and their events emitted. A nextTurn message sent meanwhile, by a Session listener reacting to a held custom message's message_end, joined the run being started; in Pi _prepareRun has taken the pending messages before _startRun flushes the held ones, so that message waits for the next run (agent-session.ts:1914-1925, 1852-1853).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9a694a51f1` (2026-10-20)
+- **Tests:** `coding/session_next_turn_after_held_flush_test.go::TestNextTurnMessageSentWhileHeldMessagesFlushWaitsForTheNextRun`
+- **Release note:** A message sent with `deliverAs: "nextTurn"` while a run was starting could join that run instead of the next one. A run takes the pending nextTurn messages when its preparation ends, before the bash results and custom messages held while it started are appended, as Pi does. The Session took them after that, when it claimed the Agent, so a Session event listener that answered a held custom message's `message_end` with a nextTurn message (a Go program embedding the Session; no extension handler sees those events) had it reach the model a run early.
+
 ### BF-16f8d39
 
 **fix(codingagent): keep the clock allowance on the marker header's time.Now line**
@@ -14344,6 +14604,76 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `1e8ec257e1` (2026-10-20)
 - **Tests:** None recorded.
 - **Release note:** Extension API parity ledger: removed the stale `ctx.ui.custom(options.onHandle)` exception (Go, Rust and Python implement the overlay handle; `TestCustomOverlayHandleSDKsMatch` runs it on every SDK), reworded the keybinding-hint, highlight and `createAgentSession` rows that said "Node runtime only", and added a "Native package-export gaps" table naming the closing lane for every export Node serves and the native SDKs lack.
+
+### BF-c4bcb66
+
+**RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or whose `cancelled` is not a boolean no longer leaves the dialog pending.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c4bcb663a6` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** RPC mode: an `extension_ui_response` whose `value` is not a string, whose `confirmed` is not a boolean, or whose `cancelled` is not a boolean no longer leaves the dialog pending. The dialog resolves with the client's JSON as Pi's does: a Node, Go, Python or Rust extension sees a number, `null`, an object or an array from `select`, `input` and `editor`, and the client's `confirmed` from `confirm`; `cancelled` is read by JavaScript truthiness.
+
+### BF-00e1452
+
+**Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds.
+- **Root cause:** The free function withFileMutationQueue has no Context, so in a packed Go, Rust or Python cell its turn rides the first running connection of the process. The task's exit then went to the closed connection and failed.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `00e1452222` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsAreReleasedWhenTheConnectionCloses`, `coding/extension/host/subprocess/host_file_mutation_test.go::TestFileMutationTurnsOfOneProcessOutliveAConnectionAndEndWithTheLast`, `coding/extension/host/subprocess/packed_file_mutation_test.go::TestPackedMemberStoppingDoesNotReleaseAnotherMembersFileMutationTurn`, `extensions/sdk/file_mutation_queue_test.go::TestWithFileMutationQueueExitReachesTheHostWhenTheCarryingConnectionStopped`
+- **Release note:** Extensions: in a packed Go, Rust or Python cell, a member that stops or is replaced no longer releases a file mutation turn (`withFileMutationQueue`) that another member's task still holds. The turns of a packed process now belong to the process: they are released by `fileMutation.exit` over any of its connections, or when its last connection closes.
+
+### BF-1588d24
+
+**Docs: another PiG build that shares the config root no longer removes the documentation bundle a running…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Docs: another PiG build that shares the config root no longer removes the documentation bundle a running session's system prompt names.
+- **Root cause:** The system prompt names the pages of this build's documentation bundle and the session reads them for as long as it runs. Another PiG build that shares the config root evicts the bundles beyond the four most recently used when it writes its own, and the use time a session records is its start, so a session that outlives four newer builds' use found its pages gone and nothing wrote them again (the staged SDK directories share contentdirs.Evict; the Python SDK is safe because import pig_sdk loads every module, which is why this bundle is the real instance of the hazard).
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1588d24df6` (2026-10-20)
+- **Tests:** `coding/cli/docs_bundle_eviction_test.go::TestARunningSessionsDocsBundleSurvivesAnotherBuildsEviction`, `coding/cli/startup_lazy_bundles_test.go::TestBuildWritesTheDocsBundleBeforeItStartsAnExtension`, `internal/contentdirs/contentdirs_test.go::TestEvictLeavesADirectoryAProcessHolds`, `internal/contentdirs/contentdirs_test.go::TestEvictRemovesADirectoryWithNoLiveHolder`, `internal/contentdirs/contentdirs_test.go::TestHoldTwiceHoldsOnce`
+- **Release note:** Docs: another PiG build that shares the config root no longer removes the documentation bundle a running session's system prompt names. A session leases its bundle until it exits; before, a session that outlived four newer builds' use lost its pages and nothing wrote them again.
+
+### BF-abb8c1d
+
+**CI: `TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem` no longer fails every run under…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: `TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem` no longer fails every run under `make test-fast`.
+- **Root cause:** TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem required SigIgn to be zero. Pi's pty.rs resets signals 1..32 (exclusive), so a signal above 31 that the launcher ignored stays ignored.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `abb8c1dc6d` (2026-10-20)
+- **Tests:** `env/terminal_linux_test.go::TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem`
+- **Release note:** CI: `TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem` no longer fails every run under `make test-fast`. It required every ignored-signal bit of the terminal's program to be clear, but Pi's `pty.rs` (and PiG's daemon, which mirrors it) resets signals 1 through 31 only, and GNU make 4.4.1 starts its recipes with signals 32 and 33 ignored, so the program ended with `SigIgn` 0x80000000 under both daemons. The test asserts signals 1 through 31, the daemon's contract.
+
+### BF-19db555
+
+**CI: `TestNodeCellAddedMembersStayWithinTheirOwnState` no longer fails under load**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: `TestNodeCellAddedMembersStayWithinTheirOwnState` no longer fails under load.
+- **Root cause:** TestNodeCellAddedMembersStayWithinTheirOwnState compared the RSS of a one-member process with the RSS of a five-member process against a 6 MiB budget. The RSS of one member read 131.8 to 152.2 MiB over 19 runs (6.4 to 27.5 MiB below its own peak), five members 149.7 to 160.8 MiB, so the per-member figure ranged 0.8 to 7.2 MiB and failed once under load. The Worker a member could add is still counted by TestNodeCellMembersShareOneIOWorker.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `19db55583c` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/node_cell_memory_test.go::TestNodeCellAddedMembersStayWithinTheirOwnState`, `coding/extension/host/subprocess/node_cell_memory_test.go::TestNodeCellMembersShareOneIOWorker`
+- **Release note:** CI: `TestNodeCellAddedMembersStayWithinTheirOwnState` no longer fails under load. It compared the RSS of a one-member Node cell with the RSS of a five-member cell against 6 MiB per added member; one member's RSS read 131.8 to 152.2 MiB (6.4 to 27.5 MiB below its own peak) in 19 runs, so the figure ranged 0.8 to 7.2 MiB and failed once. The probe now reads the retained V8 heap plus external memory right after the forced collection, which gives 0.20 to 0.25 MiB per added member in every run, and the budget is 2 MiB.
 
 ## Divergences from Pi added in this release
 
