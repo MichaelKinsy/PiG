@@ -17,6 +17,9 @@ func TestExportLedgerIsCurrent(t *testing.T) {
 	if problems := checkLedger(in); len(problems) > 0 {
 		t.Fatalf("%d problem(s):\n  %s", len(problems), strings.Join(problems, "\n  "))
 	}
+	if problems := checkVectors(repoRoot, in.Rows, currentPin()); len(problems) > 0 {
+		t.Fatalf("vectors:\n  %s", strings.Join(problems, "\n  "))
+	}
 	typeOnly, err := typeOnlyCounts(repoRoot, in.Rows)
 	if err != nil {
 		t.Fatal(err)
@@ -298,5 +301,53 @@ func TestLedgerRenderKeepsCellsAndMarksNewRows(t *testing.T) {
 	}
 	if strings.Contains(text, "Text.render") {
 		t.Errorf("a row Pi no longer exports survived:\n%s", text)
+	}
+}
+
+// TestVectorFilesAreChecked seeds good, bad and near-miss vector trees.
+func TestVectorFilesAreChecked(t *testing.T) {
+	rows := []ledgerRow{{Key: "pi-tui: truncateToWidth", Module: "pi-tui"}, {Key: "pi-ai/compat: calculateCost", Module: "pi-ai/compat"}}
+	good := `{"pin":"1.3.0+x","package":"pi-tui@1.3.0","module":"pi-tui","export":"truncateToWidth","cases":[{"name":"a","args":["x",1],"result":"x"},{"name":"b","args":[],"throws":"boom"}]}`
+	cases := []struct {
+		name  string
+		files map[string]string
+		want  string
+	}{
+		{"none", nil, ""},
+		{"good", map[string]string{"pi-tui/truncateToWidth.json": good, "cases/pi-tui/truncateToWidth.mjs": "x", "README.md": "x"}, ""},
+		{"compat dir", map[string]string{"pi-ai-compat/calculateCost.json": strings.Replace(strings.Replace(good, `"pi-tui"`, `"pi-ai-compat"`, 1), `truncateToWidth`, `calculateCost`, 1), "cases/pi-ai-compat/calculateCost.mjs": "x"}, ""},
+		{"stale pin", map[string]string{"pi-tui/truncateToWidth.json": strings.Replace(good, "1.3.0+x", "1.0.3", 1), "cases/pi-tui/truncateToWidth.mjs": "x"}, "current pin"},
+		{"hand written: no case source", map[string]string{"pi-tui/truncateToWidth.json": good}, "no case source"},
+		{"unknown export", map[string]string{"pi-tui/nope.json": strings.Replace(good, "truncateToWidth", "nope", 1), "cases/pi-tui/nope.mjs": "x"}, "names no export"},
+		{"unknown module dir", map[string]string{"pi-x/a.json": good}, "not a served module"},
+		{"result and throws", map[string]string{"pi-tui/truncateToWidth.json": strings.Replace(good, `"result":"x"`, `"result":"x","throws":"y"`, 1), "cases/pi-tui/truncateToWidth.mjs": "x"}, "exactly one of result and throws"},
+		{"neither", map[string]string{"pi-tui/truncateToWidth.json": strings.Replace(good, `"result":"x"`, `"x":1`, 1), "cases/pi-tui/truncateToWidth.mjs": "x"}, "exactly one of result and throws"},
+		{"args not an array", map[string]string{"pi-tui/truncateToWidth.json": strings.Replace(good, `"args":["x",1]`, `"args":{}`, 1), "cases/pi-tui/truncateToWidth.mjs": "x"}, "args array"},
+		{"duplicate case", map[string]string{"pi-tui/truncateToWidth.json": strings.Replace(good, `"name":"b"`, `"name":"a"`, 1), "cases/pi-tui/truncateToWidth.mjs": "x"}, "unique name"},
+		{"mismatched path", map[string]string{"pi-tui/truncateToWidth.json": strings.Replace(good, `"export":"truncateToWidth"`, `"export":"other"`, 1), "cases/pi-tui/truncateToWidth.mjs": "x"}, "must match the path"},
+		{"invalid json", map[string]string{"pi-tui/truncateToWidth.json": "{", "cases/pi-tui/truncateToWidth.mjs": "x"}, "invalid JSON"},
+		{"case source without a vector", map[string]string{"cases/pi-tui/truncateToWidth.mjs": "x"}, "not generated"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			base := filepath.Join(root, vectorsDir)
+			if err := os.MkdirAll(base, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			for name, data := range c.files {
+				path := filepath.Join(base, filepath.FromSlash(name))
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got := strings.Join(checkVectors(root, rows, "1.3.0+x"), "\n")
+			if (c.want == "") != (got == "") || !strings.Contains(got, c.want) {
+				t.Fatalf("want %q, got:\n%s", c.want, got)
+			}
+		})
 	}
 }

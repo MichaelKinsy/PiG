@@ -45,7 +45,7 @@ closing = "TestConformance_BuiltinToolDelegationAcrossSDKs"
 [lane.SdkExportsLedger]
 owner = "SdkExportsLedger lane (Pi application internals no extension scan imports)"
 opened = "0.5.2"
-closing = "Per export: a port with a conformance row, or an owner-approved numbered divergence recorded in docs/parity/DIVERGENCES.md; the owner decides the divergence"
+closing = "Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row"
 
 [lane.SdkLedgerHygiene]
 owner = "SdkLedgerHygiene lane (ledger hygiene)"
@@ -1129,7 +1129,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: truncateLine" = { go = "native:TruncateLine", rust = "native:truncate_line", python = "native:truncate_line" }
 "pi-coding-agent: truncateTail" = { go = "native:TruncateTail", rust = "native:truncate_tail", python = "native:truncate_tail" }
 "pi-coding-agent: truncateToVisualLines" = { go = "gap:SdkTuiHelpers", rust = "gap:SdkTuiHelpers", python = "gap:SdkTuiHelpers" }
-"pi-coding-agent: withFileMutationQueue" = { go = "native:WithFileMutationQueue", rust = "gap:SdkExportsLedger", python = "native:with_file_mutation_queue" }
+"pi-coding-agent: withFileMutationQueue" = { go = "native:WithFileMutationQueue", rust = "native:with_file_mutation_queue", python = "native:with_file_mutation_queue" }
 "pi-coding-agent: wrapRegisteredTool" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: wrapRegisteredTools" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-tui: Box" = { go = "kit:Box", rust = "kit:Box", python = "kit:Box" }

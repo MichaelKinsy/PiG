@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 804 | 794 | 794 |
+| `pi-coding-agent` | 920 | 305 | 910 | 804 | 793 | 794 |
 | `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -22,7 +22,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 |---|---|---|---|---|
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 432 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
 | SdkBuiltinToolDelegate | SdkBuiltinToolDelegate lane (built-in tool delegation, E7) | 0.5.2 | 60 | TestConformance_BuiltinToolDelegationAcrossSDKs |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1129 | Per export: a port with a conformance row, or an owner-approved numbered divergence recorded in docs/parity/DIVERGENCES.md; the owner decides the divergence |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 1041 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
@@ -30,7 +30,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 ## High-use gaps (block the release gate)
 
-89 exports imported by 5 or more scanned packages have a gap.
+88 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -54,7 +54,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-tui: isKeyRelease` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai/compat: clampThinkingLevel` | 16 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: createAssistantMessageEventStream` | 16 | Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-coding-agent: withFileMutationQueue` | 14 | Rust SdkExportsLedger |
 | `pi-ai: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: createAssistantMessageEventStream` | 14 | Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
@@ -1074,7 +1073,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `truncateLine` | 4 | served | native:TruncateLine | native:truncate_line | native:truncate_line |
 | `truncateTail` | 5 | served | native:TruncateTail | native:truncate_tail | native:truncate_tail |
 | `truncateToVisualLines` | 4 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `withFileMutationQueue` | 14 | served | native:WithFileMutationQueue | gap:SdkExportsLedger | native:with_file_mutation_queue |
+| `withFileMutationQueue` | 14 | served | native:WithFileMutationQueue | native:with_file_mutation_queue | native:with_file_mutation_queue |
 | `wrapRegisteredTool` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `wrapRegisteredTools` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 

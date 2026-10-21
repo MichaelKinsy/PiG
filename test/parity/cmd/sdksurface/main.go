@@ -90,7 +90,7 @@ func run(root string, check, release bool) error {
 		if err := validateGaps(rows, gaps); err != nil {
 			return err
 		}
-		return ledgerError(checkLedger(in))
+		return ledgerError(append(checkLedger(in), checkVectors(root, in.Rows, currentPin())...))
 	}
 	for _, f := range []struct {
 		path string
@@ -106,7 +106,7 @@ func run(root string, check, release bool) error {
 	if err := validateGaps(rows, gaps); err != nil {
 		return err
 	}
-	return ledgerError(checkLedger(in))
+	return ledgerError(append(checkLedger(in), checkVectors(root, in.Rows, currentPin())...))
 }
 
 func ledgerError(problems []string) error {
