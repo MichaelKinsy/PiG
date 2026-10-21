@@ -262,14 +262,15 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%[1]q);
- e.on_event_result("before_agent_start",|_,data| {
+ e.on_before_agent_start(|_,event| {
   std::thread::sleep(std::time::Duration::from_millis(20));
-  if data["prompt"]=="repair" {data["systemPromptOptions"]["selectedTools"]=if data["systemPromptOptions"]["selectedTools"].is_null() {Schema::Array(vec![Schema::String(%[1]q.into())])} else {Schema::Null};return Ok(None)}
-  if data["prompt"]=="null" {data["systemPromptOptions"]["selectedTools"]=Schema::Null;return Ok(None)}
-  if data["prompt"]=="mixed" {data["systemPromptOptions"]["selectedTools"]=Schema::Array(vec![Schema::Null,Schema::Number(17.into()),Schema::String(%[1]q.into())]);return Ok(None)}
-  if data["prompt"]=="replace" {data["systemPromptOptions"]["selectedTools"]=Schema::Array(vec![Schema::String(%[1]q.into())])} else {data["systemPromptOptions"]["selectedTools"].as_array_mut().ok_or("selectedTools is not a list")?.push(Schema::String(%[1]q.into()))}
-  if data["prompt"]=="error" {return Err("selected tools failure".into())}
-  if data["prompt"]=="result" {let mut result=Schema::Object(Default::default());result["systemPrompt"]=Schema::String("Exact prompt.".into());return Ok(Some(result))};Ok(None)
+  let prompt=event.payload()["prompt"].clone();
+  if prompt=="repair" {event.edit_system_prompt_options(|options| options["selectedTools"]=if options["selectedTools"].is_null() {Schema::Array(vec![Schema::String(%[1]q.into())])} else {Schema::Null});return Ok(None)}
+  if prompt=="null" {event.edit_system_prompt_options(|options| options["selectedTools"]=Schema::Null);return Ok(None)}
+  if prompt=="mixed" {event.edit_system_prompt_options(|options| options["selectedTools"]=Schema::Array(vec![Schema::Null,Schema::Number(17.into()),Schema::String(%[1]q.into())]));return Ok(None)}
+  if prompt=="replace" {event.edit_system_prompt_options(|options| options["selectedTools"]=Schema::Array(vec![Schema::String(%[1]q.into())]))} else {event.edit_system_prompt_options(|options| -> Result<(),String> {options["selectedTools"].as_array_mut().ok_or("selectedTools is not a list")?.push(Schema::String(%[1]q.into()));Ok(())})?}
+  if prompt=="error" {return Err("selected tools failure".into())}
+  if prompt=="result" {let mut result=Schema::Object(Default::default());result["systemPrompt"]=Schema::String("Exact prompt.".into());return Ok(Some(result))};Ok(None)
  });
  e
 }`, name)

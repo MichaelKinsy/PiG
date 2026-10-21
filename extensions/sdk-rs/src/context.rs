@@ -1458,17 +1458,44 @@ pub struct Context {
     pub(crate) system_prompt: Option<Arc<SystemPromptState>>,
 }
 
-/// A before_agent_start request's prompt: the options it was last rendered for, as JSON text, and the prompt. It starts
-/// as the options the handler received and the prompt the host rendered for them.
+/// A before_agent_start emission's shared options and the prompt they last rendered to (Pi's one `systemPromptOptions` object, runner.ts:1426-1450). The
+/// [`crate::BeforeAgentStartEvent`] a handler edits and the [`Context`] it reads share this cell, so a read sees an edit made before it. It starts as the options the
+/// handler received and the prompt the host rendered for them.
 pub(crate) struct SystemPromptState {
-    rendered: Mutex<(String, String)>,
+    cell: Mutex<PromptCell>,
+}
+
+struct PromptCell {
+    options: serde_json::Value,
+    /// The options as JSON text when `prompt` was rendered for them, and that prompt.
+    rendered: (String, String),
 }
 
 impl SystemPromptState {
     pub(crate) fn new(event: &serde_json::Value) -> Self {
-        let options = event.get("systemPromptOptions").map(|options| options.to_string()).unwrap_or_default();
+        let options = event.get("systemPromptOptions").cloned().unwrap_or(serde_json::Value::Null);
         let prompt = event.get("systemPrompt").and_then(serde_json::Value::as_str).unwrap_or_default().to_string();
-        Self { rendered: Mutex::new((options, prompt)) }
+        Self { cell: Mutex::new(PromptCell { rendered: (options.to_string(), prompt), options }) }
+    }
+
+    pub(crate) fn options(&self) -> serde_json::Value {
+        self.lock().options.clone()
+    }
+
+    pub(crate) fn set_options(&self, options: serde_json::Value) {
+        self.lock().options = options;
+    }
+
+    /// Runs `edit` on a copy of the options and stores the result, so the closure holds no lock and may read the prompt through the context.
+    pub(crate) fn edit_options<R>(&self, edit: impl FnOnce(&mut serde_json::Value) -> R) -> R {
+        let mut options = self.options();
+        let result = edit(&mut options);
+        self.set_options(options);
+        result
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, PromptCell> {
+        self.cell.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
@@ -2990,38 +3017,25 @@ impl Context {
         }))
     }
 
-    /// Get the current system prompt text. In a before_agent_start handler it is the prompt the emission's shared options
-    /// rendered when last read: the options the handler received, or those [`Context::current_system_prompt`] last read.
-    /// The handler's own `data` cannot be read through `ctx` while the handler holds it mutably, so after an edit to
-    /// `data["systemPromptOptions"]` read Pi's `event.systemPrompt` / `ctx.getSystemPrompt()` with
-    /// `ctx.current_system_prompt(data)`.
+    /// Get the current system prompt text. In a `before_agent_start` handler it is Pi's `ctx.getSystemPrompt()` (runner.ts:1426-1450,
+    /// `renderCurrentSystemPrompt`): the prompt the emission's shared options render now, including the edits this handler and the
+    /// handlers before it made through [`crate::BeforeAgentStartEvent`]. Options unchanged since the last read return that prompt;
+    /// others are rendered by the host, and an invalid custom section is an error, as Pi's builder throws.
     pub fn get_system_prompt(&self) -> io::Result<String> {
-        if let Some(state) = &self.system_prompt {
-            self.assert_active();
-            return Ok(state.rendered.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).1.clone());
-        }
-        self.required_field("getSystemPrompt", None, "prompt")
-    }
-
-    /// Pi's before_agent_start `event.systemPrompt` and `ctx.getSystemPrompt()` (runner.ts:1426-1450,
-    /// renderCurrentSystemPrompt): the prompt `event["systemPromptOptions"]` render now, including this handler's own edits.
-    /// Options unchanged since the last read return that prompt; others are rendered by the host. An invalid custom section
-    /// is an error, as Pi's builder throws. Only a before_agent_start handler's context has an emission to render.
-    pub fn current_system_prompt(&self, event: &serde_json::Value) -> io::Result<String> {
         let Some(state) = &self.system_prompt else {
-            return Err(io::Error::other("current_system_prompt is only available in a before_agent_start handler"));
+            return self.required_field("getSystemPrompt", None, "prompt");
         };
         self.assert_active();
-        let options = event
-            .get("systemPromptOptions")
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "before_agent_start event has no systemPromptOptions"))?;
-        let key = options.to_string();
-        let mut rendered = state.rendered.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        if rendered.0 != key {
-            let prompt = self.required_field("renderSystemPrompt", Some(serde_json::json!({ "options": options })), "prompt")?;
-            *rendered = (key, prompt);
-        }
-        Ok(rendered.1.clone())
+        let (options, key) = {
+            let cell = state.lock();
+            if cell.rendered.0 == cell.options.to_string() {
+                return Ok(cell.rendered.1.clone());
+            }
+            (cell.options.clone(), cell.options.to_string())
+        };
+        let prompt: String = self.required_field("renderSystemPrompt", Some(serde_json::json!({ "options": options })), "prompt")?;
+        state.lock().rendered = (key, prompt.clone());
+        Ok(prompt)
     }
 
     /// Get the base inputs pi currently uses to build the system prompt
