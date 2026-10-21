@@ -76,14 +76,42 @@ func wireKeys(raw json.RawMessage) []string {
 
 // hostTheme is the host's active theme as Pi's own process-global theme is: the pi-coding-agent helpers (keyHint, getMarkdownTheme, ...)
 // color with it. The host has one theme, so extensions sharing a process share it.
-var hostTheme atomic.Pointer[UITheme]
+var hostTheme atomic.Pointer[globalTheme]
 
-func setHostTheme(theme UITheme) { hostTheme.Store(&theme) }
+// installedTheme is the theme initTheme installed, which stands for the global theme until the host's theme changes, as Pi's own theme change replaces it.
+var installedTheme atomic.Pointer[globalTheme]
 
-// currentHostTheme is the theme the host last published, or the zero theme (modifiers only) before one arrives.
+// globalTheme is one global theme with the palette it was decoded from, which a host helper that draws with the theme (highlightCode) is given when the theme is
+// not the host's active one.
+type globalTheme struct {
+	theme UITheme
+	raw   json.RawMessage
+}
+
+// setHostTheme records the palette the host published. A palette that differs from the last one the host published ends what initTheme installed; the same
+// palette, which every state snapshot repeats, leaves it.
+func setHostTheme(theme UITheme, raw json.RawMessage) {
+	previous := hostTheme.Swap(&globalTheme{theme: theme, raw: raw})
+	if previous != nil && string(previous.raw) != string(raw) {
+		installedTheme.Store(nil)
+	}
+}
+
+// currentHostTheme is the global theme: the one initTheme installed, else the theme the host last published, or the zero theme (modifiers only) before one arrives.
 func currentHostTheme() UITheme {
+	if theme := installedTheme.Load(); theme != nil {
+		return theme.theme
+	}
 	if theme := hostTheme.Load(); theme != nil {
-		return *theme
+		return theme.theme
 	}
 	return UITheme{}
+}
+
+// installedThemePalette is the palette of the theme initTheme installed, nil while the global theme is the host's.
+func installedThemePalette() json.RawMessage {
+	if theme := installedTheme.Load(); theme != nil {
+		return theme.raw
+	}
+	return nil
 }

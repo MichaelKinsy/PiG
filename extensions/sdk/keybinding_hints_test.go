@@ -51,7 +51,7 @@ func TestKeyHintsMatchPi(t *testing.T) {
 		if !ok {
 			t.Fatal("palette does not decode")
 		}
-		setHostTheme(palette)
+		setHostTheme(palette, theme.Palette)
 		for _, row := range theme.KeyHints {
 			defs := tui.KeybindingDefinitions{}
 			for id, d := range v.Defs {
