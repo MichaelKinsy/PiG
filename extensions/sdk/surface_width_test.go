@@ -35,6 +35,12 @@ type widthSurfaceHost struct {
 
 func startWidthSurfaceHost(t *testing.T, register func(ext *Extension)) *widthSurfaceHost {
 	t.Helper()
+	return startWidthSurfaceHostMode(t, "", register)
+}
+
+// startWidthSurfaceHostMode is startWidthSurfaceHost with the host running in mode.
+func startWidthSurfaceHostMode(t *testing.T, mode string, register func(ext *Extension)) *widthSurfaceHost {
+	t.Helper()
 	host := newMockHost(t)
 	ext := New("surface-width")
 	register(ext)
@@ -43,7 +49,7 @@ func startWidthSurfaceHost(t *testing.T, register func(ext *Extension)) *widthSu
 	go func() { s.done <- ext.Run() }()
 	host.accept(t)
 	_ = host.readEnvelope(t)
-	host.writeEnvelope(t, envelope{Type: msgReady, Ready: &readyMsg{Cwd: "/tmp", Width: 80}})
+	host.writeEnvelope(t, envelope{Type: msgReady, Ready: &readyMsg{Cwd: "/tmp", Width: 80, Mode: mode}})
 	go func() {
 		for {
 			env, ok := s.read()
@@ -335,6 +341,27 @@ func TestSetWidgetStringListFromAWidthHandlerIsNotAHostCall(t *testing.T) {
 		if want := []string{fmt.Sprintf("w@%d", width)}; !slices.Equal(args.Lines, want) {
 			t.Fatalf("widget lines = %q, want %q", args.Lines, want)
 		}
+	}
+}
+
+// Pi's RPC mode writes one request per setWidget call, in call order and before the handler's response (rpc-mode.ts), so in RPC mode a string
+// list is a ui.setWidget host call like every other shape: an unanswered widget_push frame has no place in that order.
+func TestSetWidgetStringListInRPCModeIsAHostCall(t *testing.T) {
+	s := startWidthSurfaceHostMode(t, "rpc", func(ext *Extension) {
+		ext.Command("go", "set widget", func(ctx Context, _ string) error {
+			return ctx.SetWidget("status", []string{"w-one"})
+		})
+	})
+	s.command()
+	var args struct {
+		Key     string   `json:"key"`
+		Content []string `json:"content"`
+	}
+	if err := json.Unmarshal(s.next("ui.setWidget"), &args); err != nil {
+		t.Fatal(err)
+	}
+	if args.Key != "status" || !slices.Equal(args.Content, []string{"w-one"}) {
+		t.Fatalf("ui.setWidget = %+v", args)
 	}
 }
 

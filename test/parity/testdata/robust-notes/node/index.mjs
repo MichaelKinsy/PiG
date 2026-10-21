@@ -38,6 +38,18 @@ export default function (pi) {
       ctx.ui.notify(`robust note ${notes.length}: ${args}`, "info");
     },
   });
+  // One command, the same calls in every SDK: a widget list, a notification, the same list again, a clear, another list, a notification.
+  pi.registerCommand("robust-widgets", {
+    description: "Set, repeat, clear and reset a widget around notifications",
+    handler: async (_args, ctx) => {
+      ctx.ui.setWidget("robust-w", ["w-one"]);
+      ctx.ui.notify("w-n1", "info");
+      ctx.ui.setWidget("robust-w", ["w-one"]);
+      ctx.ui.setWidget("robust-w", undefined);
+      ctx.ui.setWidget("robust-w", ["w-two"]);
+      ctx.ui.notify("w-n2", "info");
+    },
+  });
   pi.registerCommand("robust-pick", {
     description: "Pick an item in an overlay",
     handler: async (_args, ctx) => {

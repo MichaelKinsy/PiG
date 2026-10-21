@@ -1651,8 +1651,10 @@ func (c Context) SetTheme(name string) (bool, string) {
 // A non-nil []string with no options goes out as a widget_push frame without a
 // width, which the host applies in arrival order and never answers: Pi's
 // setWidget returns void, so it may be called from an [Context.OnWidthChange]
-// handler, and the error reports only a failure to send. Every other shape
-// waits for the host.
+// handler, and the error reports only a failure to send. In RPC mode, where
+// the width never changes and Pi writes one request per call, in call order and
+// before the handler's response, the list waits for the host like every other
+// shape: an unanswered frame has no place in that order.
 //
 // A [kit.View] is the kit form of a widget component factory (D107): the host
 // renders it at the widget's width every frame. Without options it goes out
@@ -1663,7 +1665,7 @@ func (c Context) SetWidget(key string, content any, options ...WidgetOptions) er
 		return c.setWidgetView(key, view, options)
 	}
 	c.ext.replaceViewSurface(widgetViewSurfaceID(key), nil)
-	if lines, ok := content.([]string); ok && lines != nil && len(options) == 0 {
+	if lines, ok := content.([]string); ok && lines != nil && len(options) == 0 && !c.rpcMode() {
 		return c.ext.conn.pushWidget(key, lines)
 	}
 	var opts WidgetOptions
