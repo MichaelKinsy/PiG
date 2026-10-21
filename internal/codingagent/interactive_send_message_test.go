@@ -157,11 +157,16 @@ func TestInteractiveHasPendingMessagesCountsUserMessagesOnly(t *testing.T) {
 	if err := send(extension.CustomMessageRef{CustomType: "m", Content: "x"}, extension.SendMessageOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if m.extensionHasPendingMessages() {
+	hasPending, ok := m.opts.SubprocessUIBridge.(*captureUIBridge).actions["hasPendingMessages"].(func() bool)
+	if !ok {
+		t.Fatal("hasPendingMessages host action missing")
+	}
+	inProc := m.extensionHasPendingMessages
+	if hasPending() || inProc() {
 		t.Fatal("queued custom messages count as pending")
 	}
 	m.followUpMessageWithImages("typed", []ai.ImageContent(nil))
-	if !m.extensionHasPendingMessages() {
+	if !hasPending() || !inProc() {
 		t.Fatal("a queued user message is not pending")
 	}
 }
