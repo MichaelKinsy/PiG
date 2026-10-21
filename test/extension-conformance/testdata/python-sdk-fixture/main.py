@@ -782,7 +782,10 @@ def new_extension() -> pig_sdk.Extension:
     # A tool that notifies inline and, from a thread released by timer_release, after its handler returned (D5).
     timer_gate = threading.Semaphore(0)
 
+    stale_contexts = []
+
     def timer_defer(ctx, _params):
+        stale_contexts.append(ctx)
         ctx.notify("inline:sync", "info")
 
         def deferred():
@@ -792,12 +795,18 @@ def new_extension() -> pig_sdk.Extension:
         threading.Thread(target=deferred, daemon=True).start()
         return {"content": "queued"}
 
+    # timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+    def timer_stale(_ctx, _params):
+        stale_contexts[0].notify("stale:awaited", "info")
+        return {"content": "applied"}
+
     def timer_release(_ctx, _params):
         timer_gate.release()
         return {"content": "released"}
 
     ext.tool("timer_defer", "Notify inline and from deferred work", {"type": "object"}, timer_defer)
     ext.tool("timer_release", "Release the deferred work", {"type": "object"}, timer_release)
+    ext.tool("timer_stale", "Await a host call made through an earlier request's context", {"type": "object"}, timer_stale)
     # order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
     def order_probe(ctx, params):
         ctx.notify(f"order-call={params.get('n')}", "info")

@@ -1053,12 +1053,14 @@ fn main() {
     );
     // A tool that notifies inline and, from a thread timer_release releases, after its handler returned (D5).
     static TIMER_GATE: (std::sync::Mutex<usize>, std::sync::Condvar) = (std::sync::Mutex::new(0), std::sync::Condvar::new());
+    static STALE_CTX: std::sync::Mutex<Option<pig_sdk::Context>> = std::sync::Mutex::new(None);
     ext.tool(
         "timer_defer",
         "Notify inline and from deferred work",
         json!({"type": "object"}),
         |ctx, _params: Value| {
             ctx.notify("inline:sync", "info");
+            *STALE_CTX.lock().unwrap() = Some(ctx.clone());
             let ctx = ctx.clone();
             std::thread::spawn(move || {
                 let (released, signal) = &TIMER_GATE;
@@ -1071,6 +1073,17 @@ fn main() {
                 ctx.notify("deferred:thread", "info");
             });
             ToolResult::text("queued")
+        },
+    );
+    // timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+    ext.tool(
+        "timer_stale",
+        "Await a host call made through an earlier request's context",
+        json!({"type": "object"}),
+        |_ctx, _params: Value| {
+            let earlier = STALE_CTX.lock().unwrap().clone().expect("timer_defer has not run");
+            earlier.notify("stale:awaited", "info");
+            ToolResult::text("applied")
         },
     );
     ext.tool(

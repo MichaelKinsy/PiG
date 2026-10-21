@@ -513,9 +513,6 @@ pub struct CallMsg {
     /// Set on a call made through a request's scope after its handler returned: deferred work, which the host runs once Pi's loop turns.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub timer: bool,
-    /// Set on a `timer` call made while a sibling tool call still runs: Pi's loop turns then, so the host runs the call right after the tool that queued it ends.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub tick: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -576,8 +573,6 @@ pub(crate) struct RequestParent {
     id: String,
     state: AtomicU8,
     finished: AtomicBool,
-    /// Whether the request is a tool call.
-    tool: bool,
 }
 
 impl RequestParent {
@@ -710,8 +705,8 @@ impl Connection {
         }
     }
 
-    pub(crate) fn arm_parent(&self, id: &str, tool: bool) -> Arc<RequestParent> {
-        let parent = Arc::new(RequestParent { id: id.to_owned(), state: AtomicU8::new(0), finished: AtomicBool::new(false), tool });
+    pub(crate) fn arm_parent(&self, id: &str) -> Arc<RequestParent> {
+        let parent = Arc::new(RequestParent { id: id.to_owned(), state: AtomicU8::new(0), finished: AtomicBool::new(false) });
         self.request_parents.lock().unwrap().insert(id.to_owned(), parent.clone());
         parent
     }
@@ -895,8 +890,6 @@ impl Connection {
         }
         // pig additive (D5): a call made through a request's scope after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
         let timer = scope.is_some_and(RequestParent::completed);
-        // pig additive (D5): Pi's loop turns while a sibling tool still awaits, so deferred work that fires then runs right after the tool that queued it ends.
-        let tick = timer && self.request_parents.lock().unwrap().values().any(|parent| parent.tool && parent.state.load(Ordering::Acquire) == 0);
         let parent_request_id = match scope {
             Some(parent) if parent.completed() => None,
             Some(parent) => Some(parent.id.as_str()),
@@ -917,10 +910,10 @@ impl Connection {
         );
         drop(pending_calls);
         #[derive(Serialize)]
-        struct Call<'a, A> { method: &'a str, #[serde(skip_serializing_if = "Option::is_none")] args: Option<A>, #[serde(skip_serializing_if = "Option::is_none")] parent_request_id: Option<&'a str>, #[serde(skip_serializing_if = "std::ops::Not::not")] timer: bool, #[serde(skip_serializing_if = "std::ops::Not::not")] tick: bool }
+        struct Call<'a, A> { method: &'a str, #[serde(skip_serializing_if = "Option::is_none")] args: Option<A>, #[serde(skip_serializing_if = "Option::is_none")] parent_request_id: Option<&'a str>, #[serde(skip_serializing_if = "std::ops::Not::not")] timer: bool }
         #[derive(Serialize)]
         struct Request<'a, A> { #[serde(rename = "type")] kind: &'static str, id: &'a str, call: Call<'a, A> }
-        if let Err(err) = Self::write_envelope_to(&mut writer, &Request { kind: "call", id: &id, call: Call { method, args, parent_request_id, timer, tick } }) {
+        if let Err(err) = Self::write_envelope_to(&mut writer, &Request { kind: "call", id: &id, call: Call { method, args, parent_request_id, timer } }) {
             self.pending_calls.lock().unwrap().remove(&id);
             return Err(err);
         }

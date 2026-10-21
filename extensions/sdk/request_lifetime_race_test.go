@@ -33,7 +33,7 @@ func TestNormalCompletionPublishedBeforeResponseIsVisible(t *testing.T) {
 	connection, host := newConn(transport), newConn(server)
 	connection.start()
 	host.start()
-	parent := connection.armParent("origin", t.Context(), t.Context(), false)
+	parent := connection.armParent("origin", t.Context(), t.Context())
 	done := make(chan error, 1)
 	go func() { done <- connection.respond("origin", nil, nil) }()
 	<-transport.written
@@ -56,7 +56,7 @@ func retainedContextHarness(t *testing.T) (*Extension, *conn, *conn, Context, fu
 	host.start()
 	ext := New("parent-lifetime")
 	ext.conn = connection
-	ctx, finish := ext.armRequest("origin", nil)
+	ctx, finish := ext.armRequest("origin")
 	return ext, connection, host, ctx, finish
 }
 
@@ -158,7 +158,7 @@ func TestRetainedContextParentSelectionRacesNormalResponse(t *testing.T) {
 	}()
 	for i := range 100 {
 		id := fmt.Sprintf("request-%d", i)
-		ctx, finish := ext.armRequest(id, nil)
+		ctx, finish := ext.armRequest(id)
 		var workers sync.WaitGroup
 		workers.Go(func() {
 			defer finish()

@@ -568,19 +568,8 @@ impl Context {
         tool_call_id: Option<String>,
         request_id: String,
     ) -> Self {
-        self.clone_for_request_as(cancel, tool_call_id, request_id, false)
-    }
-
-    /// `clone_for_request` for a request the reader arms: `tool` says it is a tool call, which a sibling's deferred work orders itself behind (D5).
-    fn clone_for_request_as(
-        &self,
-        cancel: RequestCancel,
-        tool_call_id: Option<String>,
-        request_id: String,
-        tool: bool,
-    ) -> Self {
         let parent = if self.request_id == request_id { self.request_parent.clone() } else { None }
-            .unwrap_or_else(|| self.conn.arm_parent(&request_id, tool));
+            .unwrap_or_else(|| self.conn.arm_parent(&request_id));
         Self {
             conn: self.conn.clone(),
             request_parent: Some(parent),
@@ -1539,7 +1528,7 @@ impl Extension {
                             .unwrap()
                             .insert(id.clone(), cancel.clone());
                         let active = active_requests.clone();
-                        let base = base_ctx.clone_for_request_as(cancel.clone(), None, id.to_string(), req.method == "tool_call");
+                        let base = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                         let conn = conn.clone();
                         let ext = ext.clone();
                         // agent-loop.ts:619-647, runner.ts:1096-1125: the handlers of a batch and of concurrent emits start in arrival order.

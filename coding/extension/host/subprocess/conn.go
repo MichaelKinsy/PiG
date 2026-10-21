@@ -134,6 +134,8 @@ type Conn struct {
 	onLoopTurned func(args json.RawMessage)
 	// onLoopTurnTaken runs on the read loop for each NotifyLoopTurnTaken frame, with its arguments.
 	onLoopTurnTaken func(args json.RawMessage)
+	// onRequestStart, when set, runs on the goroutine that sends a request, before the request is written (Host.handleIncoming sets it for a Go, Rust or Python extension: the request's handler may await a call the host holds, so the host releases those calls first).
+	onRequestStart atomic.Pointer[func()]
 	// onTimerDeferAck runs on the read loop for each NotifyTimerDeferAck frame, with its arguments.
 	onTimerDeferAck func(args json.RawMessage)
 	// timerDefer numbers the NotifyTimerDefer frames sent on this connection and records the acks (timer_defer.go).
@@ -769,6 +771,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		c.drainable[env.ID] = &drainableRequest{drained: fn}
 	}
 	c.pendingMu.Unlock()
+	if start := c.onRequestStart.Load(); start != nil {
+		(*start)()
+	}
 	// A request with no inactivity lease and no suspension report has nothing to do on a started or progress state, and its blocked and completed states only release the invocation acknowledgment, which the read loop applies itself (deliverRequestState). Only a request that reacts to its states waits for them.
 	var stateCh chan RequestStatePayload
 	if inactivity > 0 || requestReportsSuspension(ctx) {
@@ -2264,4 +2269,11 @@ func (c *Conn) dispatchBarrier(ctx context.Context) <-chan struct{} {
 		mark.release()
 	}
 	return mark.done
+}
+
+// requestsInFlight reports whether a request the host sent has no response yet.
+func (c *Conn) requestsInFlight() bool {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	return len(c.pending) > 0
 }

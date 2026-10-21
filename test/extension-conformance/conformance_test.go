@@ -1465,6 +1465,17 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"timer_stale": {
+				Definition: extension.ToolDefinition{
+					Name:        "timer_stale",
+					Description: "Await a host call made through an earlier request's context",
+					Parameters:  json.RawMessage(`{"type":"object"}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "applied"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"timer_release": {
 				Definition: extension.ToolDefinition{
 					Name:        "timer_release",

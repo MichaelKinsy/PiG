@@ -176,3 +176,31 @@ func TestArmWaitsForTheRuntimesToApplyTheHold(t *testing.T) {
 		t.Fatalf("frames = %v, want hold then release", frames)
 	}
 }
+
+func TestReleaseRunsOnlyTheCallbacksHeldForItsOwner(t *testing.T) {
+	var turns Turns
+	end := turns.Chain()
+	var ran []string
+	hold := func(owner any, name string) {
+		turns.MacrotaskDoneFor(owner, func(done func()) { ran = append(ran, name); done() })
+	}
+	hold("native", "native-1")
+	hold(nil, "node")
+	hold("native", "native-2")
+	hold("other", "other")
+	turns.Release("native")
+	if !slices.Equal(ran, []string{"native-1", "native-2"}) {
+		t.Fatalf("Release ran %v, want the owner's two callbacks in arrival order", ran)
+	}
+	if turns.Held() != 2 {
+		t.Fatalf("held = %d, want the other owners' two callbacks", turns.Held())
+	}
+	turns.Release(nil)
+	if turns.Held() != 2 {
+		t.Fatalf("Release(nil) ran callbacks: held = %d", turns.Held())
+	}
+	end()
+	if !slices.Equal(ran, []string{"native-1", "native-2", "node", "other"}) {
+		t.Fatalf("after the chain ran %v", ran)
+	}
+}

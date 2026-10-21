@@ -662,13 +662,29 @@ func Extension() *sdk.Extension {
 
 	// A tool that notifies inline and, from a goroutine timer_release releases, after its handler returned (D5).
 	timerGate := make(chan struct{}, 16)
+	var staleMu sync.Mutex
+	var stale *sdk.Context
 	ext.Tool("timer_defer", "Notify inline and from deferred work", sdk.Schema{"type": "object"}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		staleMu.Lock()
+		stale = &ctx
+		staleMu.Unlock()
 		ctx.Notify("inline:sync", "info")
 		go func() {
 			<-timerGate
 			ctx.Notify("deferred:goroutine", "info")
 		}()
 		return map[string]string{"content": "queued"}, nil
+	})
+	// timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+	ext.Tool("timer_stale", "Await a host call made through an earlier request's context", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		staleMu.Lock()
+		earlier := stale
+		staleMu.Unlock()
+		if earlier == nil {
+			return nil, fmt.Errorf("timer_defer has not run")
+		}
+		earlier.Notify("stale:awaited", "info")
+		return map[string]string{"content": "applied"}, nil
 	})
 	ext.Tool("timer_release", "Release the deferred work", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
 		timerGate <- struct{}{}

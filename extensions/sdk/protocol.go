@@ -212,8 +212,6 @@ type callMsg struct {
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
 	// Timer marks a call made through a request's context after the request's handler returned: deferred work, which Pi runs from a timer, an immediate or a later continuation, once the loop turns (D5).
 	Timer bool `json:"timer,omitempty"`
-	// Tick marks a Timer call made while a sibling tool call still runs: Pi's loop turns then, so the host runs the call right after the tool that queued it ends (D5).
-	Tick bool `json:"tick,omitempty"`
 }
 
 type callResultMsg struct {
@@ -525,7 +523,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		return pendingCall{}, fmt.Errorf("extension connection closed")
 	default:
 	}
-	timer, tick := false, false
+	timer := false
 	if parent != nil {
 		parentRequestID, err = c.parentIDLocked(parent)
 		if err != nil {
@@ -536,7 +534,6 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 		if parent.completed {
 			callCtx = parent.runtime
 			timer = true
-			tick = c.toolRunningLocked()
 		}
 	}
 	c.pending[id] = ch
@@ -546,7 +543,7 @@ func (c *conn) beginCall(parentRequestID string, parent *requestParent, method s
 	if err := c.sendLocked(envelope{
 		Type: msgCall,
 		ID:   id,
-		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, Timer: timer, Tick: tick},
+		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID, Timer: timer},
 	}); err != nil {
 		c.pendingMu.Lock()
 		delete(c.pending, id)

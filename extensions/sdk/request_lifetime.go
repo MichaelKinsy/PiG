@@ -15,22 +15,10 @@ type requestParent struct {
 	completed bool
 	finished  bool
 	cancelled bool
-	// tool is whether the request is a tool call.
-	tool bool
 }
 
-// toolRunningLocked reports whether a tool call is still running on the connection; the caller holds pendingMu. Deferred work that fires then ends up after the sibling's end in Pi, whose loop turns while a tool awaits (D5).
-func (c *conn) toolRunningLocked() bool {
-	for _, parent := range c.requestParents {
-		if parent.tool && !parent.finished && !parent.cancelled {
-			return true
-		}
-	}
-	return false
-}
-
-func (c *conn) armParent(id string, runtime, request context.Context, tool bool) *requestParent {
-	parent := &requestParent{conn: c, id: id, runtime: runtime, request: request, tool: tool}
+func (c *conn) armParent(id string, runtime, request context.Context) *requestParent {
+	parent := &requestParent{conn: c, id: id, runtime: runtime, request: request}
 	c.pendingMu.Lock()
 	if c.requestParents == nil {
 		c.requestParents = make(map[string]*requestParent)

@@ -261,11 +261,13 @@ export default function (pi) {
     async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
   });
   // Notifies inline (before the handler returns, and from a microtask and a promise continuation) and from a setImmediate and a setTimeout(0) callback; the callbacks run once the handler returned (D5).
+  let staleCtx;
   pi.registerTool({
     name: "timer_defer",
     description: "Notify inline and from deferred callbacks",
     parameters: { type: "object" },
     async execute(_id, _params, _signal, _onUpdate, ctx) {
+      staleCtx = ctx;
       ctx.ui.notify("inline:sync", "info");
       queueMicrotask(() => ctx.ui.notify("inline:microtask", "info"));
       Promise.resolve().then(() => ctx.ui.notify("inline:promise", "info"));
@@ -273,6 +275,16 @@ export default function (pi) {
       setImmediate(() => ctx.ui.notify("deferred:immediate", "info"));
       setTimeout(() => ctx.ui.notify("deferred:timeout", "info"), 0);
       return { content: [{ type: "text", text: "queued" }] };
+    },
+  });
+  // Awaits a host call made through the context of the earlier timer_defer request, from a timer callback it waits for (Pi-port extensions keep such a context); the call must not wait for a loop turn that waits for this handler.
+  pi.registerTool({
+    name: "timer_stale",
+    description: "Await a host call made through an earlier request's context",
+    parameters: { type: "object" },
+    async execute() {
+      await new Promise((resolve) => setTimeout(() => { staleCtx.ui.notify("stale:awaited", "info"); resolve(); }, 0));
+      return { content: [{ type: "text", text: "applied" }] };
     },
   });
   pi.registerTool({

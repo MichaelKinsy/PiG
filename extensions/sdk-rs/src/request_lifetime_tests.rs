@@ -7,7 +7,7 @@ fn parent_selection_races_response_publication() {
         let (client, server) = UnixStream::pair().unwrap();
         let connection = Arc::new(Connection::new(client));
         let host = Connection::new(server);
-        let parent = connection.arm_parent("origin", false);
+        let parent = connection.arm_parent("origin");
         let barrier = Arc::new(std::sync::Barrier::new(3));
         let caller = connection.clone();
         let captured = parent.clone();
@@ -61,7 +61,7 @@ fn retained_parent_uses_live_connection_after_response() {
     let (client, server) = UnixStream::pair().unwrap();
     let connection = Arc::new(Connection::new(client));
     let host = Connection::new(server);
-    let parent = connection.arm_parent("origin", false);
+    let parent = connection.arm_parent("origin");
     let writer = connection.clone();
     let response = thread::spawn(move || writer.respond("origin", None, None).unwrap());
     assert_eq!(host.read_envelope().unwrap().msg_type, "request_state");
@@ -113,7 +113,7 @@ fn cancelled_parent_never_becomes_runtime_parent() {
     let (client, server) = UnixStream::pair().unwrap();
     let connection = Arc::new(Connection::new(client));
     let host = Connection::new(server);
-    let parent = connection.arm_parent("cancelled", false);
+    let parent = connection.arm_parent("cancelled");
     let caller = connection.clone();
     let captured = parent.clone();
     let query = thread::spawn(move || {
@@ -136,44 +136,4 @@ fn cancelled_parent_never_becomes_runtime_parent() {
     assert!(connection
         .call_for_scope(Some(&parent), Some("cancelled"), "ui.getEditorText", None)
         .is_err());
-}
-
-/// D5: Pi's loop turns while a sibling tool still awaits, so deferred work that fires then runs right after the tool that queued it ends: the call carries `tick` besides `timer`.
-#[test]
-fn deferred_call_while_a_sibling_tool_runs_carries_the_tick_mark() {
-    let (client, server) = UnixStream::pair().unwrap();
-    let connection = Arc::new(Connection::new(client));
-    let host = Connection::new(server);
-    let origin = connection.arm_parent("origin", false);
-    let _sibling = connection.arm_parent("sibling", true);
-    let writer = connection.clone();
-    thread::spawn(move || writer.respond("origin", None, None).unwrap()).join().unwrap();
-    assert_eq!(host.read_envelope().unwrap().msg_type, "request_state");
-    assert_eq!(host.read_envelope().unwrap().msg_type, "response");
-    let mut marks = Vec::new();
-    for round in 0..2 {
-        let caller = connection.clone();
-        let captured = origin.clone();
-        let query = thread::spawn(move || caller.call_for_scope(Some(&captured), Some("origin"), "ui.getEditorText", None));
-        let call = host.read_envelope().unwrap();
-        let call_msg = call.call.unwrap();
-        marks.push((call_msg.timer, call_msg.tick));
-        host.write_envelope(&Envelope {
-            msg_type: "call_result".into(),
-            id: call.id,
-            call_result: Some(CallResultMsg { result: Some(serde_json::json!({"text": ""})), error: None }),
-            ..Default::default()
-        })
-        .unwrap();
-        let result = connection.read_envelope().unwrap();
-        assert!(connection.complete_call(&result));
-        query.join().unwrap().unwrap();
-        if round == 0 {
-            let writer = connection.clone();
-            thread::spawn(move || writer.respond("sibling", None, None).unwrap()).join().unwrap();
-            assert_eq!(host.read_envelope().unwrap().msg_type, "request_state");
-            assert_eq!(host.read_envelope().unwrap().msg_type, "response");
-        }
-    }
-    assert_eq!(marks, vec![(true, true), (true, false)], "a deferred call is a tick while the sibling tool runs and a timer once it ended");
 }

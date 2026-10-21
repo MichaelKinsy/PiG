@@ -4509,6 +4509,11 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 		}
 	}()
 	lanes := newCallLanes()
+	if !me.hostsNodeRuntime() {
+		// A request's handler in a Go, Rust or Python extension may await a call the host holds for the loop's turn; it runs before the request does (Turns.Release).
+		release := func() { h.timerTurns.Load().Release(conn) }
+		conn.onRequestStart.Store(&release)
+	}
 	for env := range conn.Incoming() {
 		if env.barrier != nil {
 			env.barrier.release()
@@ -4577,10 +4582,15 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			// calls the same extension sends while an earlier call runs.
 			if call.Timer {
 				if turns := h.timerTurns.Load(); turns != nil {
-					if holdsForLoopTurn(call.Method) {
-						if call.Tick {
+					// A Go, Rust or Python extension marks every call made through a context whose request returned, whoever makes it. A request of the connection that is still in flight may be awaiting this very call (a handler that keeps an earlier request's context), and the loop turn the hold waits for waits for that handler, so such a call runs on arrival: while a handler is pending, Pi's loop is turning. Only a Node runtime knows a callback from a handler's own call (timer-origin.mjs).
+					native := !me.hostsNodeRuntime()
+					if holdsForLoopTurn(call.Method) && !(native && conn.requestsInFlight()) {
+						switch {
+						case call.Tick:
 							turns.Tick(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
-						} else {
+						case native:
+							turns.MacrotaskDoneFor(conn, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+						default:
 							turns.MacrotaskDone(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
 						}
 						continue

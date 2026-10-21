@@ -1129,7 +1129,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			return fmt.Errorf("connection closed before ready")
 		}
 		if env.Type == msgRequest && env.Request != nil && env.Request.Method == methodEventsDispatch {
-			ctx, finish := e.armRequest(env.ID, env.Request)
+			ctx, finish := e.armRequest(env.ID)
 			e.requestWG.Go(func() {
 				defer finish()
 				e.handleArmedRequest(env.ID, env.Request, ctx)
@@ -1187,7 +1187,7 @@ func (e *Extension) loop() error {
 			if env.Request != nil && env.Request.Stream != nil {
 				e.applyEventStream(env.Request)
 			}
-			ctx, finish := e.armRequest(env.ID, env.Request)
+			ctx, finish := e.armRequest(env.ID)
 			if startsInArrivalOrder(env.Request) {
 				ctx.start = e.requestStarts.Reserve()
 			}
@@ -1250,13 +1250,13 @@ func (e *Extension) stopRequests() error {
 	}
 }
 
-func (e *Extension) armRequest(id string, req *requestMsg) (Context, func()) {
+func (e *Extension) armRequest(id string) (Context, func()) {
 	requestRoot := e.runCtx
 	if requestRoot == nil {
 		requestRoot = context.Background()
 	}
 	reqCtx, cancel := context.WithCancel(requestRoot)
-	parent := e.conn.armParent(id, requestRoot, reqCtx, req != nil && req.Method == "tool_call")
+	parent := e.conn.armParent(id, requestRoot, reqCtx)
 	e.requestsMu.Lock()
 	e.requests[id] = cancel
 	e.requestsMu.Unlock()
@@ -1269,7 +1269,7 @@ func (e *Extension) armRequest(id string, req *requestMsg) (Context, func()) {
 }
 
 func (e *Extension) handleRequest(id string, req *requestMsg) {
-	ctx, finish := e.armRequest(id, req)
+	ctx, finish := e.armRequest(id)
 	defer finish()
 	e.handleArmedRequest(id, req, ctx)
 }

@@ -1949,7 +1949,6 @@ class _RequestParent:
     socket: Any
     state: str = "active"
     finished: bool = False
-    tool: bool = False
 
 
 def _surface_args(lines: list[str], width: int) -> dict[str, Any]:
@@ -4672,7 +4671,7 @@ class Extension:
         req_id = env.get("id", "")
         req = env.get("request") or {}
         cancel = ProviderSignal()
-        parent = _RequestParent(req_id, self._sock, tool=req.get("method") == "tool_call")
+        parent = _RequestParent(req_id, self._sock)
         with self._state_lock:
             self._active[req_id] = (cancel, None)
             self._request_parents[req_id] = parent
@@ -5122,7 +5121,6 @@ class Extension:
     def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None, event: threading.Event | None = None) -> tuple[str, threading.Event]:
         event = event if event is not None else threading.Event()
         timer = False
-        tick = False
         with self._write_lock:
             with self._state_lock:
                 if self._shutdown.is_set() or (parent is not None and parent.socket is not self._sock):
@@ -5133,8 +5131,6 @@ class Extension:
                     parent_request_id = "" if parent.state == "completed" else parent.request_id
                     # pig additive (D5): a call made through a request's context after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
                     timer = parent.state == "completed"
-                    # pig additive (D5): Pi's loop turns while a sibling tool still awaits, so deferred work that fires then runs right after the tool that queued it ends.
-                    tick = timer and any(other.tool and other.state == "active" for other in self._request_parents.values())
                 self._call_id += 1
                 call_id = f"c{self._call_id}"
                 self._pending[call_id] = event
@@ -5147,8 +5143,6 @@ class Extension:
                 call["parent_request_id"] = parent_request_id
             if timer:
                 call["timer"] = True
-            if tick:
-                call["tick"] = True
             try:
                 self._send_locked({"type": "call", "id": call_id, "call": call})
             except Exception:

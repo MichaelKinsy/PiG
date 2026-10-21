@@ -16,7 +16,7 @@ type Turns struct {
 	mu        sync.Mutex
 	chains    int
 	waits     int
-	held      []func(done func())
+	held      []heldCall
 	commands  int
 	observers []func(deferring bool)
 	// appliedWaits wait for the runtimes to apply the changes the observers made.
@@ -25,6 +25,12 @@ type Turns struct {
 	notifyMu     sync.Mutex
 	ticks        []func(done func())
 	flushing     bool
+}
+
+// heldCall is a callback that waits for a turn, and the owner it is held for (MacrotaskDoneFor).
+type heldCall struct {
+	fn    func(done func())
+	owner any
 }
 
 // Chain says the running work is a chain of microtasks, and returns the function that ends it. Callbacks wait while any chain runs and no wait is open.
@@ -146,7 +152,10 @@ func (t *Turns) Macrotask(fn func()) {
 }
 
 // MacrotaskDone is Macrotask for work whose effect is written after fn returns: fn calls done once it is. The call that releases the callback waits for done before it returns, so the output of the callback precedes whatever Pi's chain does next.
-func (t *Turns) MacrotaskDone(fn func(done func())) {
+func (t *Turns) MacrotaskDone(fn func(done func())) { t.MacrotaskDoneFor(nil, fn) }
+
+// MacrotaskDoneFor is MacrotaskDone for a callback held for owner: Release(owner) runs it before the loop turns. An owner is a runtime that cannot say whether one of its handlers waits for the callback's call (a Go, Rust or Python extension), so the handler's own wait is a turn the host cannot see.
+func (t *Turns) MacrotaskDoneFor(owner any, fn func(done func())) {
 	if t == nil {
 		fn(func() {})
 		return
@@ -154,12 +163,41 @@ func (t *Turns) MacrotaskDone(fn func(done func())) {
 	t.mu.Lock()
 	if t.flushing || len(t.held)+len(t.ticks) > 0 || (t.chains > 0 && t.waits == 0) {
 		// A callback never overtakes one that arrived earlier: when the loop is free it runs behind the held ones.
-		t.held = append(t.held, fn)
+		t.held = append(t.held, heldCall{fn: fn, owner: owner})
 		t.flushLocked(false)
 		return
 	}
 	t.mu.Unlock()
 	fn(func() {})
+}
+
+// Release runs the callbacks held for owner now, in the order they arrived, and returns once their effect is written. The host calls it when a request starts on the owner's connection: the request's handler may await one of those callbacks' calls, which no turn of the loop would run while the handler is pending.
+func (t *Turns) Release(owner any) {
+	if t == nil || owner == nil {
+		return
+	}
+	t.mu.Lock()
+	var mine []heldCall
+	kept := t.held[:0:0]
+	for _, call := range t.held {
+		if call.owner == owner {
+			mine = append(mine, call)
+		} else {
+			kept = append(kept, call)
+		}
+	}
+	if len(mine) == 0 {
+		t.mu.Unlock()
+		return
+	}
+	t.held = kept
+	t.mu.Unlock()
+	var written sync.WaitGroup
+	for _, call := range mine {
+		written.Add(1)
+		call.fn(written.Done)
+	}
+	written.Wait()
 }
 
 // Tick runs fn, which must call done once its effect is written, as the work of a process.nextTick callback, or of a timer callback that runs while a sibling tool awaits, at the next Ticked: Pi runs such a callback right after the tool_execution_end of the tool that queued it, before the chain goes on. It runs at once when no chain runs or a wait is open. A callback that waits for Ticked also runs at the next turn, wait or end of the chain, behind the ticks already held.
@@ -230,7 +268,7 @@ func (t *Turns) flushLocked(turn bool) {
 			open = false
 		}
 		var runTicks []func(done func())
-		var runHeld []func(done func())
+		var runHeld []heldCall
 		if ticks {
 			runTicks, t.ticks = t.ticks, nil
 		}
@@ -249,9 +287,9 @@ func (t *Turns) flushLocked(turn bool) {
 			written.Add(1)
 			fn(written.Done)
 		}
-		for _, fn := range runHeld {
+		for _, call := range runHeld {
 			written.Add(1)
-			fn(written.Done)
+			call.fn(written.Done)
 		}
 		written.Wait()
 		t.mu.Lock()

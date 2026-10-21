@@ -197,3 +197,58 @@ func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
 		})
 	}
 }
+
+// D5: a Go, Rust or Python SDK marks every call made through a context whose request returned, and Pi-port extensions keep such a context (an activeCtx) and call through it from a handler that awaits the
+// answer. The host holds a marked call until the loop turns, and the turn waits for the handler, so a held call that a running handler awaits hangs every run that reaches it. The host must run such a
+// call on arrival: while a handler is pending, Pi's loop is turning. The tool timer_stale awaits a ui.notify made through the context of an earlier timer_defer request while a chain runs and holds calls.
+func TestHostCallAwaitedByARunningHandlerIsNotHeldForTheLoopTurn(t *testing.T) {
+	for _, tc := range sdkHarnessCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			h.wire.on.Store(true)
+			var turns jsloop.Turns
+			h.host.SetTimerTurns(&turns)
+			end := turns.Chain()
+			defer end()
+			if results := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("timer_defer", map[string]any{}, &ai.FauxToolCallOptions{ID: "timer-defer-1"})}); len(results) != 1 || results[0].IsError {
+				t.Fatalf("timer_defer: %s", describeToolResults(results))
+			}
+			type outcome struct {
+				results []*agent.ToolResultMessage
+			}
+			done := make(chan outcome, 1)
+			go func() {
+				done <- outcome{dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("timer_stale", map[string]any{}, &ai.FauxToolCallOptions{ID: "timer-stale-1"})})}
+			}()
+			select {
+			case got := <-done:
+				if len(got.results) != 1 || got.results[0].IsError {
+					t.Fatalf("timer_stale: %s", describeToolResults(got.results))
+				}
+			case <-time.After(30 * time.Second):
+				t.Fatalf("timer_stale never returned: the host holds the call its handler awaits (%d held) for a loop turn that waits for the handler", turns.Held())
+			}
+			end()
+			deadline := time.Now().Add(60 * time.Second)
+			for {
+				for _, call := range h.wire.take("ui.notify") {
+					if strings.Contains(string(call.args), `"stale:awaited"`) {
+						return
+					}
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("the awaited ui.notify never reached the host")
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+		})
+	}
+}
