@@ -399,12 +399,6 @@ count = 2
 
 [[hit]]
 check = "clock"
-file = "internal/codingagent/interactive_extensions.go"
-func = "InteractiveMode.wireSubprocessHostCallbacks"
-snippet = "\"timestamp\":  time.Now().UnixMilli(),"
-
-[[hit]]
-check = "clock"
 file = "internal/codingagent/interactive_helpers.go"
 func = "debugLog"
 snippet = "_, _ = fmt.Fprintf(f, \"[%s] \", time.Now().Format(\"15:04:05.000\"))"

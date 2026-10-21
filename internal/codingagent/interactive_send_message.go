@@ -23,7 +23,7 @@ func (m *InteractiveMode) sendExtensionMessage(msg extension.CustomMessageRef, o
 		"customType": msg.CustomType,
 		"content":    msg.Content,
 		"display":    msg.Display,
-		"timestamp":  time.Now().UnixMilli(),
+		"timestamp":  time.Now().UnixMilli(), //portlint:allow clock agent-session.ts:2331 sendCustomMessage stamps `timestamp: Date.now()`; the package's clock seams belong to the logo animations
 	}}
 	if msg.Details != nil {
 		agentMsg.Custom["details"] = msg.Details

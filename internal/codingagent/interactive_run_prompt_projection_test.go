@@ -13,7 +13,9 @@ type runPromptRecordingHandle struct {
 	runs []*BeforeAgentStartRun
 }
 
-func (h *runPromptRecordingHandle) SetRunPrompt(run *BeforeAgentStartRun) { h.runs = append(h.runs, run) }
+func (h *runPromptRecordingHandle) SetRunPrompt(run *BeforeAgentStartRun) {
+	h.runs = append(h.runs, run)
+}
 
 func runPromptProjectionMode(t *testing.T, session bool) *InteractiveMode {
 	t.Helper()
