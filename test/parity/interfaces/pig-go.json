@@ -322384,6 +322384,28 @@
       "shapeHash": "sha256:99b2f0daea2fa02fc914a648e106daded5256ebd450a525affbca76e1bb1f7d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.decodeAllDeferred",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.decodeAllDeferred",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.decodeDeferred",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.decodeDeferred",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(names []string)"
+      },
+      "shapeHash": "sha256:b7c385f6197886af50b3f59ba7532658a87f2975c43bbbf2a598596a6e7683ea"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.decodeModeProperty",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "Registry.decodeModeProperty",
@@ -322439,6 +322461,39 @@
       "shapeHash": "sha256:1b90d7a53651175ae8a22d68364281677e0c903303a208bce01e3119e3685ee9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.indexDeferred",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.indexDeferred",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.lookupDeferred",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.lookupDeferred",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) *Mode"
+      },
+      "shapeHash": "sha256:35a8c2b878f4021bcb707c8dccf61b5597358b23495c5ace662e233df27dae91"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.materialize",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.materialize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ids []int, nodes []snapshotNode)"
+      },
+      "shapeHash": "sha256:bc94e2882bfcf8b016cc52eb64153347d14756958d9f90bbb2f1e6793ac7f5ed"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.ref",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "Registry.ref",
@@ -322470,6 +322525,39 @@
         "type": "func(s *snapshot)"
       },
       "shapeHash": "sha256:911f9aea97eabb4c3907e8bc19d8fb1a39b37bfc2a2112e9391453b51e71bfba"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.registeredDeferred",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.registeredDeferred",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) *Mode"
+      },
+      "shapeHash": "sha256:35a8c2b878f4021bcb707c8dccf61b5597358b23495c5ace662e233df27dae91"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.registeredLanguage",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.registeredLanguage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) *Mode"
+      },
+      "shapeHash": "sha256:35a8c2b878f4021bcb707c8dccf61b5597358b23495c5ace662e233df27dae91"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.setLanguage",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "Registry.setLanguage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string, language *Mode)"
+      },
+      "shapeHash": "sha256:5123be49c1c3e8e3bc3a083eda1bece892e26e05552841e3d74d704c8a24478d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Result",
@@ -322989,6 +323077,17 @@
       "shapeHash": "sha256:2b1f317bc0441dba365524f4b61357d768466ed0f741bbc755219b662323e99c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#deferredGrammars",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "deferredGrammars",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "deferredGrammars"
+      },
+      "shapeHash": "sha256:21a25e3eccae654136678c966202b1fb691aa4faa7aab6af94f0bc264a1e7a5c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#deleteKey",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "deleteKey",
@@ -323438,6 +323537,17 @@
         "type": "func(o firstSet)"
       },
       "shapeHash": "sha256:e55638115c92c0b0065ca8a1c03ca27170f9043b366bb600c13f3016a34c2fe8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#forEachRef",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "forEachRef",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value snapshotValue, f func(node int))"
+      },
+      "shapeHash": "sha256:aca351a3b5ef6e33eb31ca17714b904386292066ab4e42b25ab6332389b61548"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#frame",
