@@ -83,7 +83,7 @@ These are the call names the host accepts. SDK bindings wrap each into a method 
 ### UI bridge
 
 - `ui.notify(message, level)` - toast in the footer. `level` is `info | warn | error`.
-- `ui.setStatus(key, text)` - pin a small status line keyed by `key`. Empty text clears.
+- `ui.setStatus(key, text)` - pin a small status line keyed by `key`. In the interactive footer empty text clears; in RPC mode it is written as given, and `ClearStatus(key)` (Go), `clear_status(key)` (Python, Rust) or `setStatus(key, undefined)` (Node) is the request that carries no text.
 - `ui.setLogin(definition)` - validate and install a native login in the shared header slot.
 - `ui.setWorkingMessage(message)`, `ui.setWorkingVisible(bool)`, `ui.setWorkingIndicator(options)` - control the bordered loader.
 - `ui.setHiddenThinkingLabel(label)` - label shown when reasoning is hidden.

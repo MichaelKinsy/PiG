@@ -76,7 +76,7 @@ Respond with `value` (the edited text) or `cancelled: true`.
 {"type":"extension_ui_request","id":"uuid-6","method":"setStatus","statusKey":"my-ext","statusText":"Turn 3 running..."}
 ```
 
-A request without `statusText` clears the status entry of that key.
+A request without `statusText` clears the status entry of that key. An empty `statusText` (`""`) is written as the extension passed it. The same holds for every member: a request carries an empty string, an empty `options` list or a `timeout` of 0 as the extension passed it, and omits only what the extension left out (the `placeholder` of `input`, the `prefill` of `editor`, `notifyType`, `statusText`, `timeout`).
 
 ### setWidget
 
