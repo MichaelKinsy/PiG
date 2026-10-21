@@ -2,11 +2,23 @@
 
 name: CI
 
-# Pull requests carry the full verification; a squash merge lands exactly the
-# tested tree, so pushes to main do not run it again. A weekly run keeps main's
-# health and the CI badge current.
+# The full verification runs on the exact tree that lands on main, so a squash
+# merge lands what was tested and pushes to main do not run it again.
+# The repository variable PIG_PR_CI_LIGHT selects how a pull request gets there:
+#   unset  every pull request push runs the full set.
+#   label  no merge queue: a push runs the light subset, and CI result fails
+#          ("full run required") until the full set has run on the pull request's
+#          head, which the ci:full label, marking the pull request ready for
+#          review, or dispatching CI on the branch each start.
+#   queue  a merge queue is required: a push runs the light subset and CI result
+#          can pass, and the queue's merge_group run is the full verification.
+# automation/ci/ci-tiers.txt assigns every job to a tier and .github/AGENTS.md
+# renders the table. A weekly run keeps main's health and the CI badge current.
 on:
   pull_request:
+    # labeled starts the run that the ci:full label asks for; ready_for_review starts the one a draft's owner asks for.
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  merge_group:
   schedule:
     - cron: '41 6 * * 1'
   workflow_dispatch:
@@ -34,6 +46,15 @@ jobs:
     timeout-minutes: 5
     outputs:
       product: ${{ steps.classify.outputs.product }}
+      full: ${{ steps.plan.outputs.full }}
+      full-required: ${{ steps.plan.outputs.full-required }}
+      linux: ${{ steps.plan.outputs.linux }}
+      windows: ${{ steps.plan.outputs.windows }}
+      macos: ${{ steps.plan.outputs.macos }}
+      run-node-runtime: ${{ steps.plan.outputs.run-node-runtime }}
+      run-durable-cf-host: ${{ steps.plan.outputs.run-durable-cf-host }}
+      run-android: ${{ steps.plan.outputs.run-android }}
+      run-node-loader: ${{ steps.plan.outputs.run-node-loader }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,14 +64,28 @@ jobs:
         id: classify
         env:
           EVENT: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         shell: bash
         run: |
-          # Only a pull request that changes nothing but project prose and
-          # repository metadata skips the product suites; the docs job below
-          # still checks those files.
+          # Only a pull request or merge group that changes nothing but project
+          # prose and repository metadata skips the product suites; the docs job
+          # below still checks those files.
           automation/ci/classify-changes.sh "$EVENT" "$BASE_SHA" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
+      - name: Plan the jobs this event runs
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          MODE: ${{ vars.PIG_PR_CI_LIGHT }}
+          # The label is read from the event's payload, so it is the pull request's labels at the push, label or review
+          # event that started this run.
+          FULL_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') || github.event.action == 'ready_for_review' }}
+        shell: bash
+        # Every event but a pull request in a PIG_PR_CI_LIGHT mode runs every
+        # job in automation/ci/ci-tiers.txt; the light pull-request run is the
+        # table's pr rows, so a queue-only job's check name appears only where
+        # it runs.
+        run: automation/ci/ci-plan.sh "$EVENT" "$MODE" "$FULL_REQUESTED" | tee -a "$GITHUB_OUTPUT"
 
   docs:
     name: Project documents
@@ -146,8 +181,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Longest first, so the jobs that bound the run's end start first when the account's job slots are full.
-        shard: [portmap-1, portmap-2, portmap-3, test-fast-sharded, test-fast, test-conformance, build, test-cli-1, test-cli-2, test-subprocess, parity-2, parity-1, toolchains, checks, contracts]
+        # The shards come from automation/ci/ci-tiers.txt through the changes job, longest first, so the jobs that bound
+        # the run's end start first when the account's job slots are full. Each shard's check name is the same in the
+        # light and the full run; target is the make target it runs (the light run's build and checks lint and gate the
+        # changed files without the repository-wide lint and module-size).
+        include: ${{ fromJSON(needs.changes.outputs.linux) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -304,9 +342,12 @@ jobs:
         env:
           CI: '1'
           SHARD: ${{ matrix.shard }}
+          TARGET: ${{ matrix.target }}
+          # ci-build-pr lints the changed files against the base branch (a pull request run has the base as a remote ref only).
+          LINT_BASE: origin/main
           # A shard that groups several gates runs every one of them and fails if any failed.
           MAKEFLAGS: -k
-        run: make "ci-$SHARD"
+        run: make "$TARGET"
       - name: Save the golangci-lint cache
         if: ${{ !cancelled() && matrix.shard == 'build' && steps.lintcache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -334,7 +375,7 @@ jobs:
   node-runtime:
     name: Node extensions
     needs: [changes]
-    if: needs.changes.outputs.product == 'true'
+    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -407,7 +448,7 @@ jobs:
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight]
-    if: needs.changes.outputs.product == 'true'
+    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -443,7 +484,7 @@ jobs:
   durable-cf-host:
     name: Durable Cloudflare host
     needs: [changes]
-    if: needs.changes.outputs.product == 'true'
+    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -522,8 +563,9 @@ jobs:
         # jobs, paired longest with shortest from measured run times, so each job builds
         # the test binary once. The two extension shards were one shard whose extension
         # step took 49 of the job's 60 minutes, and native with cmd/pig reached the
-        # 60-minute limit. Longest jobs first.
-        shard: [cli-2 cli-5, cli-1 cli-3, cli-4 cli-7, cli-6 cli-8, extension-conformance-2, native-3, native-2, native-1, extension-conformance-1, extension-host-1, native-4, extension-host-2, extension-host-3]
+        # 60-minute limit. Longest jobs first. The shards come from automation/ci/ci-tiers.txt through the changes job:
+        # the light pull-request run keeps native-1, the full run every shard, under the same check names.
+        include: ${{ fromJSON(needs.changes.outputs.windows) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -761,7 +803,9 @@ jobs:
         # extension-host-1 to extension-host-3: the subprocess extension host tests, split in three.
         # packages: the remaining packages whose tests bind Unix sockets, watch paths or resolve symlinked temporary
         # directories, which macOS spells differently from Linux (104-byte socket paths, /var -> /private/var).
-        shard: [native, cli-1 extension-host-3 packages, cli-2 cli-8 extension-host-2, cli-4 cli-7 extension-host-1, cli-3 cli-5 cli-6]
+        # The shards come from automation/ci/ci-tiers.txt through the changes job: the light pull-request run keeps native,
+        # the full run every shard, under the same check names.
+        include: ${{ fromJSON(needs.changes.outputs.macos) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -861,7 +905,7 @@ jobs:
   android:
     name: Android build
     needs: [changes]
-    if: needs.changes.outputs.product == 'true'
+    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true'
     # Termux runs this binary. The runner image provides the NDK; no hosted
     # runner executes the result, so this builds it with cgo and checks its ELF
     # headers (PIE, /system/bin/linker64, bionic libc) as the release does.
@@ -918,17 +962,37 @@ jobs:
     name: CI result
     # The one required check for this workflow. It runs even when a job it
     # needs failed, because a skipped job would otherwise count as passing.
-    # A job may be skipped only where its own condition skips it.
+    # A job may be skipped only where its own condition skips it: a docs-only
+    # change skips the product jobs, and the light pull-request run skips the
+    # jobs automation/ci/ci-tiers.txt leaves to the full run. Every event but a
+    # pull request must have planned the full run, so the merge queue never
+    # reports success for a skipped job. Without a merge queue (PIG_PR_CI_LIGHT
+    # is label) a pull request's result fails unless this run is the full run
+    # on the pull request's current head, so a head that only the light run
+    # tested can never satisfy the required check.
     needs: [changes, docs, dco, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Require every job this change needs
         env:
           EVENT: ${{ github.event_name }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PRODUCT: ${{ needs.changes.outputs.product }}
+          FULL: ${{ needs.changes.outputs.full }}
+          FULL_REQUIRED: ${{ needs.changes.outputs.full-required }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_NODE_RUNTIME: ${{ needs.changes.outputs.run-node-runtime }}
+          RUN_NODE_LOADER: ${{ needs.changes.outputs.run-node-loader }}
+          RUN_ANDROID: ${{ needs.changes.outputs.run-android }}
+          RUN_DURABLE_CF_HOST: ${{ needs.changes.outputs.run-durable-cf-host }}
           CHANGES: ${{ needs.changes.result }}
           DOCS: ${{ needs.docs.result }}
           DCO: ${{ needs.dco.result }}
@@ -956,15 +1020,36 @@ jobs:
           [ "$PRODUCT" = false ] && product_skip=true
           [ "$PRODUCT" = true ] && docs_skip=true
           { [ "$EVENT" != pull_request ] || [ "$PR_AUTHOR" = 'dependabot[bot]' ]; } && dco_skip=true
+          skip_unless_planned() { # run-output of a job the light run may leave out
+            if [ "$product_skip" = true ] || [ "$1" = false ]; then echo true; else echo false; fi
+          }
+          if [ "$EVENT" != pull_request ] && [ "$FULL" != true ]; then
+            echo "::error::$EVENT must run the full plan, got full=$FULL"
+            status=1
+          fi
+          if [ "$FULL_REQUIRED" = true ]; then
+            # This run's plan was made for the head in its event payload. A newer push has its own run and check, but a
+            # re-run or a late event must not report success for a head that is no longer the pull request's.
+            live=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha) || live=
+            if [ -z "$live" ] || [ "$live" != "$PR_HEAD_SHA" ]; then
+              echo "::error::this run tested ${PR_HEAD_SHA:-no head}, the pull request head is ${live:-unknown}"
+              status=1
+            fi
+            # A docs-only change runs the same jobs in the light and the full run.
+            if [ "$FULL" != true ] && [ "$PRODUCT" != false ]; then
+              echo "::error::full run required: add the ci:full label to this pull request (or mark it ready for review, or dispatch CI on its branch); the light run does not test enough to merge"
+              status=1
+            fi
+          fi
           expect "Changed paths" "$CHANGES" false
           expect "Project documents" "$DOCS" "$docs_skip"
           expect "DCO" "$DCO" "$dco_skip"
           expect "Linux verification" "$VERIFY" false
           expect "Linux preflight" "$PREFLIGHT" "$product_skip"
-          expect "Node extensions" "$NODE_RUNTIME" "$product_skip"
+          expect "Node extensions" "$NODE_RUNTIME" "$(skip_unless_planned "$RUN_NODE_RUNTIME")"
           expect "Windows" "$WINDOWS" "$product_skip"
           expect "macOS" "$MACOS" "$product_skip"
-          expect "Android" "$ANDROID" "$product_skip"
-          expect "Node loader" "$NODE_LOADER" "$product_skip"
-          expect "Durable Cloudflare host" "$DURABLE_CF_HOST" "$product_skip"
+          expect "Android" "$ANDROID" "$(skip_unless_planned "$RUN_ANDROID")"
+          expect "Node loader" "$NODE_LOADER" "$(skip_unless_planned "$RUN_NODE_LOADER")"
+          expect "Durable Cloudflare host" "$DURABLE_CF_HOST" "$(skip_unless_planned "$RUN_DURABLE_CF_HOST")"
           exit "$status"

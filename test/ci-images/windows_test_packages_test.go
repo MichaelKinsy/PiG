@@ -144,7 +144,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	}
 	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "extension-conformance-1", "extension-conformance-2")
 	var gotUnits []string
-	for _, entry := range job.Strategy.Matrix.Shard {
+	for _, entry := range planFor(t, "merge_group", "").shards("windows") {
 		units := strings.Fields(entry)
 		for _, unit := range units {
 			if len(units) > 1 && !strings.HasPrefix(unit, "cli-") {
