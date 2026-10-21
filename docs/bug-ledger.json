@@ -2984,7 +2984,6 @@
           "pr": "170"
         }
       ],
-      "commitsFrom": "release note",
       "tests": [
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack",
@@ -31082,47 +31081,6 @@
       ]
     },
     {
-      "id": "BF-7fae4f5",
-      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB",
-      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB.",
-      "rootCause": "The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "7fae4f5df2",
-          "date": "2026-10-19"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-b341a82",
-      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
-      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
-      "rootCause": "The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
-      "rootCauseSource": "release note",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "b341a82e9d",
-          "date": "2026-10-19",
-          "pr": "221"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-2d13115",
       "title": "`pig piglet verify \u003cbinary\u003e --source \u003cname|path\u003e` and `pig piglet lineage \u003cbinary\u003e --source \u003cname|path\u003e`…",
       "symptom": "`pig piglet verify \u003cbinary\u003e --source \u003cname|path\u003e` and `pig piglet lineage \u003cbinary\u003e --source \u003cname|path\u003e` report `Provenance: matches` for a Binary built from that unchanged source.",
@@ -31179,81 +31137,21 @@
       ]
     },
     {
-      "id": "BF-ab1324d",
-      "title": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…",
-      "symptom": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.",
-      "rootCause": "A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.",
+      "id": "BF-7fae4f5",
+      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB",
+      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB.",
+      "rootCause": "The root module zip was 303.6 MB. Each gets a go.mod, so Go leaves it out of the parent module zip. The files stay in the repository and tests read them by path. No go:embed reaches into these directories.",
       "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
+      "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.",
+      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@\u003cversion\u003e` downloads a root module of 181 MB instead of 304 MB. Nine data-only directories (parity interface ledgers, pin ledgers, upstream-sync ledgers and large test data) have their own `go.mod`, so Go leaves them out of the root module zip. The files stay in the repository.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "94e6796e8d",
-          "date": "2026-10-20",
-          "pr": "234"
-        },
-        {
-          "hash": "ab1324df34",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts",
-        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart"
-      ]
-    },
-    {
-      "id": "BF-f35d0a0",
-      "title": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation…",
-      "symptom": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout).",
-      "rootCause": "The Harness recomputes its wake (the timer for the earliest sleep, or the value it offers OnWake) in a goroutine that the first change queues, and later changes share it. Pi does this in a microtask (scheduler.ts #scheduleWake), which runs in the turn of the change and reads the clock of the change. Here the goroutine read the clock when it ran. When it ran after a sleep committed meanwhile had come due, the sleep was not ahead of it any more, although a reservation pass queued by the change had found it not yet due, dropped it from the candidates, and relied on that wake. No timer was armed, OnWake was told that work was active instead of the time to wake at, and nothing ran the task again.",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "94e6796e8d",
-          "date": "2026-10-20",
-          "pr": "234"
-        },
-        {
-          "hash": "f35d0a0567",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal",
-        "durable/harness/harness_generation_test.go::TestGeneration",
-        "durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue",
-        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer",
-        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm"
-      ]
-    },
-    {
-      "id": "BF-0e3411c",
-      "title": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…",
-      "symptom": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "0e3411c597",
-          "date": "2026-10-19",
-          "pr": "224"
+          "hash": "7fae4f5df2",
+          "date": "2026-10-19"
         }
       ],
       "tests": []
@@ -31287,6 +31185,27 @@
       ]
     },
     {
+      "id": "BF-b341a82",
+      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
+      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
+      "rootCause": "The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b341a82e9d",
+          "date": "2026-10-19",
+          "pr": "221"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c1d1a4c",
       "title": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit",
       "symptom": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit.",
@@ -31316,55 +31235,6 @@
         "test/parity/cmd/portmapcheck/main_test.go::TestRowsSharingAPackageKeepTheirOwnVerdicts",
         "test/parity/cmd/portmapcheck/main_test.go::TestShardsJudgeEveryRowOnce",
         "test/parity/cmd/portmapcheck/main_test.go::TestWidget"
-      ]
-    },
-    {
-      "id": "BF-e6d1b69",
-      "title": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends…",
-      "symptom": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them.",
-      "rootCause": "the order of the answers was lost at two goroutine hand-offs. A sender that wakes two goroutines in a row runs the second first, so (1) the goroutines waiting in two RPC dialogs, answered by two lines of one stdin chunk, returned in reverse order, and wrote their call results to the extension in that order; and (2) the goroutines of a parallel batch that waited for two tool_call responses the connection's read loop read in order, emitted tool_execution_end in no order (about half the runs ended the second call first).",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "e6d1b69dbc",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "agent/settle_order_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
-        "agent/settle_order_test.go::TestSettleGateRunsActionsInSettleOrder",
-        "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
-        "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived"
-      ]
-    },
-    {
-      "id": "BF-bfd090d",
-      "title": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the…",
-      "symptom": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up.",
-      "rootCause": "Node cannot lose them, because an owner registers in the tick that creates the channel.",
-      "rootCauseSource": "release note",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up. The Go port of Node's IPC channel read messages in its own goroutine and dropped any that arrived before its owner had registered a listener. Node cannot lose them, because an owner registers in the tick that creates the channel. A child that opened its channel after the parent's init message had been written could miss the init (so it never answered), and a manager descheduled between spawning the child and registering its control listener could miss the child's ready. The channel now keeps the messages received before its first listener and replays them to it in order, and a forked child instance does the same for its control listeners.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "bfd090d135",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener",
-        "chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt",
-        "chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog"
       ]
     },
     {
@@ -31449,6 +31319,440 @@
         "extensions/sdk/upgrade/expression_position_test.go::TestOnePlanRewritesEveryChangedAPIAndListsOnlyTheRest",
         "extensions/sdk/upgrade/rules_test.go::TestConfigHomeSkipsWhereMovingTheCallChangesBehavior",
         "extensions/sdk/upgrade/rules_test.go::TestConfigHomeWithNowhereForTheErrorIsReportedNotDiscarded"
+      ]
+    },
+    {
+      "id": "BF-ab1324d",
+      "title": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the…",
+      "symptom": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection.",
+      "rootCause": "A /reload that arrived while the supervisor was restarting a crashed isolated extension could kill the process the reloaded extension runs in. The restart now holds the transition lock for its whole start.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94e6796e8d",
+          "date": "2026-10-20",
+          "pr": "234"
+        },
+        {
+          "hash": "ab1324df34",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts",
+        "coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart"
+      ]
+    },
+    {
+      "id": "BF-bfd090d",
+      "title": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the…",
+      "symptom": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up.",
+      "rootCause": "Node cannot lose them, because an owner registers in the tick that creates the channel.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting a child host could wait out its 30-second ready timeout (\"child not ready in time\") although the child was up. The Go port of Node's IPC channel read messages in its own goroutine and dropped any that arrived before its owner had registered a listener. Node cannot lose them, because an owner registers in the tick that creates the channel. A child that opened its channel after the parent's init message had been written could miss the init (so it never answered), and a manager descheduled between spawning the child and registering its control listener could miss the child's ready. The channel now keeps the messages received before its first listener and replays them to it in order, and a forked child instance does the same for its control listeners.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bfd090d135",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener",
+        "chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt",
+        "chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog"
+      ]
+    },
+    {
+      "id": "BF-e6d1b69",
+      "title": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends…",
+      "symptom": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them.",
+      "rootCause": "the order of the answers was lost at two goroutine hand-offs. A sender that wakes two goroutines in a row runs the second first, so (1) the goroutines waiting in two RPC dialogs, answered by two lines of one stdin chunk, returned in reverse order, and wrote their call results to the extension in that order; and (2) the goroutines of a parallel batch that waited for two tool_call responses the connection's read loop read in order, emitted tool_execution_end in no order (about half the runs ended the second call first).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e6d1b69dbc",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "agent/settle_order_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
+        "agent/settle_order_test.go::TestSettleGateRunsActionsInSettleOrder",
+        "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
+        "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived"
+      ]
+    },
+    {
+      "id": "BF-f35d0a0",
+      "title": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation…",
+      "symptom": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout).",
+      "rootCause": "The Harness recomputes its wake (the timer for the earliest sleep, or the value it offers OnWake) in a goroutine that the first change queues, and later changes share it. Pi does this in a microtask (scheduler.ts #scheduleWake), which runs in the turn of the change and reads the clock of the change. Here the goroutine read the clock when it ran. When it ran after a sleep committed meanwhile had come due, the sleep was not ahead of it any more, although a reservation pass queued by the change had found it not yet due, dropped it from the candidates, and relied on that wake. No timer was armed, OnWake was told that work was active instead of the time to wake at, and nothing ran the task again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation retry, could stay asleep for good on a busy machine, so a `Wait` on its submission never returned (a CI run of the `durable/harness` tests hung until the 10-minute timeout). The Harness recomputes when to wake the process in a goroutine that can run milliseconds after the change, and it read the clock when that goroutine ran, not at the change, as Pi's microtask does. A sleep that had been ahead of a scheduling pass was then already due, so no timer was armed for it, and a host's `onWake` was told that work was active instead of the time to wake at; nothing ran the task again. The recomputation now reads the clock of the change that queued it, so the timer is armed (or the time is offered to `onWake`) and the task wakes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94e6796e8d",
+          "date": "2026-10-20",
+          "pr": "234"
+        },
+        {
+          "hash": "f35d0a0567",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_blocked_test.go::TestPublishWakeOwedAfterSeal",
+        "durable/harness/harness_generation_test.go::TestGeneration",
+        "durable/harness/scheduler_wake_clock_test.go::TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue",
+        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueArmsItsTimer",
+        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterSleepCameDueOffersItsAlarm"
+      ]
+    },
+    {
+      "id": "BF-0e3411c",
+      "title": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…",
+      "symptom": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0e3411c597",
+          "date": "2026-10-19",
+          "pr": "224"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-06dc555",
+      "title": "A Python extension's `ctx.session_name` and a Rust extension's `ctx.session_name()` returned an empty string…",
+      "symptom": "A Python extension's `ctx.session_name` and a Rust extension's `ctx.session_name()` returned an empty string for the life of the process, because nothing ever read the name from the state the host sends.",
+      "rootCause": "Python ctx.session_name and Rust ctx.session_name() were always empty: the host never filled the ready payload's session_name, and no SDK read the name from a state snapshot. Python ctx.model and Rust ctx.model() returned the model's display name where Go and Pi (ctx.model.id) use the id. A read right after setLabel, setSessionName or sendMessage could be stale because the host sent state before the result only for setModel, appendEntry and focus dialogs, and the Go SDK did not wait for the notifies that preceded a result.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python extension's `ctx.session_name` and a Rust extension's `ctx.session_name()` returned an empty string for the life of the process, because nothing ever read the name from the state the host sends. Every SDK now keeps the session name current from each state update, and a Go extension has the same accessor, `Context.SessionName`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06dc555220",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_before_result_test.go::TestReplyToCallPublishesStateBeforeASessionWriteResult",
+        "extensions/sdk-py/tests/test_replicated_state.py",
+        "extensions/sdk/replicated_state_test.go::TestStateUpdateReplicatesModelIdentityAndSessionName",
+        "extensions/sdk/sdk_test.go::TestExtension_RegisterAndReady",
+        "test/extension-conformance/replicated_accessors_test.go::TestReplicatedAccessorsReadYourWritesAcrossSDKs",
+        "test/extension-conformance/state_model_switch_test.go::TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestGoSDKReplicatedFieldsAreAssignedFromStateUpdates",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestPythonSDKReplicatedFieldsAreAssignedFromStateUpdates",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestRustSDKReplicatedStateIsAppliedFromStateUpdates"
+      ]
+    },
+    {
+      "id": "BF-06dc555-2",
+      "title": "`ctx.model` is the model's id in every SDK, as in Pi (`ctx.model.id`)",
+      "symptom": "`ctx.model` is the model's id in every SDK, as in Pi (`ctx.model.id`).",
+      "rootCause": "Python ctx.session_name and Rust ctx.session_name() were always empty: the host never filled the ready payload's session_name, and no SDK read the name from a state snapshot. Python ctx.model and Rust ctx.model() returned the model's display name where Go and Pi (ctx.model.id) use the id. A read right after setLabel, setSessionName or sendMessage could be stale because the host sent state before the result only for setModel, appendEntry and focus dialogs, and the Go SDK did not wait for the notifies that preceded a result.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.model` is the model's id in every SDK, as in Pi (`ctx.model.id`). A Python extension's `ctx.model` and a Rust extension's `ctx.model()` returned the model's display name (`Claude Sonnet 4.5`), so a comparison with `claude-sonnet-4-5` or a `provider/model` string built from it failed there and passed in Go. Python and Rust also have `model_provider` and `model_qualified`, as Go has `ModelProvider` and `ModelQualified`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06dc555220",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_before_result_test.go::TestReplyToCallPublishesStateBeforeASessionWriteResult",
+        "extensions/sdk-py/tests/test_replicated_state.py",
+        "extensions/sdk/replicated_state_test.go::TestStateUpdateReplicatesModelIdentityAndSessionName",
+        "extensions/sdk/sdk_test.go::TestExtension_RegisterAndReady",
+        "test/extension-conformance/replicated_accessors_test.go::TestReplicatedAccessorsReadYourWritesAcrossSDKs",
+        "test/extension-conformance/state_model_switch_test.go::TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestGoSDKReplicatedFieldsAreAssignedFromStateUpdates",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestPythonSDKReplicatedFieldsAreAssignedFromStateUpdates",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestRustSDKReplicatedStateIsAppliedFromStateUpdates"
+      ]
+    },
+    {
+      "id": "BF-06dc555-3",
+      "title": "A read of the session name, the session log or the model right after `setLabel`, `setSessionName`…",
+      "symptom": "A read of the session name, the session log or the model right after `setLabel`, `setSessionName`, `sendMessage` or `setModel` could return the old value in a Go, Python or Rust extension.",
+      "rootCause": "Python ctx.session_name and Rust ctx.session_name() were always empty: the host never filled the ready payload's session_name, and no SDK read the name from a state snapshot. Python ctx.model and Rust ctx.model() returned the model's display name where Go and Pi (ctx.model.id) use the id. A read right after setLabel, setSessionName or sendMessage could be stale because the host sent state before the result only for setModel, appendEntry and focus dialogs, and the Go SDK did not wait for the notifies that preceded a result.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A read of the session name, the session log or the model right after `setLabel`, `setSessionName`, `sendMessage` or `setModel` could return the old value in a Go, Python or Rust extension. The host now sends its state before the result of those calls, and the Go SDK waits for it, so the next read sees the write as it does in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06dc555220",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_before_result_test.go::TestReplyToCallPublishesStateBeforeASessionWriteResult",
+        "extensions/sdk-py/tests/test_replicated_state.py",
+        "extensions/sdk/replicated_state_test.go::TestStateUpdateReplicatesModelIdentityAndSessionName",
+        "extensions/sdk/sdk_test.go::TestExtension_RegisterAndReady",
+        "test/extension-conformance/replicated_accessors_test.go::TestReplicatedAccessorsReadYourWritesAcrossSDKs",
+        "test/extension-conformance/state_model_switch_test.go::TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestGoSDKReplicatedFieldsAreAssignedFromStateUpdates",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestPythonSDKReplicatedFieldsAreAssignedFromStateUpdates",
+        "test/parity/cmd/sdksurface/replicated_fields_test.go::TestRustSDKReplicatedStateIsAppliedFromStateUpdates"
+      ]
+    },
+    {
+      "id": "BF-7abdf5b",
+      "title": "Extension SDKs: `ModelRegistry.find` reports a host or transport failure instead of \"no such model\"",
+      "symptom": "Extension SDKs: `ModelRegistry.find` reports a host or transport failure instead of \"no such model\".",
+      "rootCause": "ModelRegistry.find in the Go and Rust SDKs returned nil/None when the host call failed, as if no model matched; Pi's find answers undefined only for an absent model, and every other getter fails loudly. Go Find now returns (model, error) and Rust find returns io::Result\u003cOption\u003c_\u003e\u003e, as Python already raised. The host answers an error, not null, for a getModel or sessionRead it has no binding for, so a list-typed session read is never a null.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension SDKs: `ModelRegistry.find` reports a host or transport failure instead of \"no such model\". The Go `Find` returns `(model, error)` and the Rust `find` returns `io::Result\u003cOption\u003c_\u003e\u003e`; Python already raised. A host with no `getModel` or `sessionRead` binding answers an error, so a list-typed session read is never a null.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7abdf5b391",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_model_registry_edges.py",
+        "extensions/sdk/cancellation_reason_test.go::TestCancellationReasonIsTheHostsCancelFrameReason",
+        "extensions/sdk/model_registry_find_test.go::TestModelRegistryFindDistinguishesAbsentFromHostFailure",
+        "test/extension-conformance/cancel_reason_test.go::TestCancelReasonReachesEveryNativeSDK",
+        "test/extension-conformance/registry_edges_test.go::TestHostFailureIsNotAbsentInNativeSDKs",
+        "test/extension-conformance/registry_edges_test.go::TestRegistryProviderStateReadsAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-7abdf5b-2",
+      "title": "Python SDK: `has_configured_auth` and `is_using_oauth` answer `False` for a model with no provider, as Pi and…",
+      "symptom": "Python SDK: `has_configured_auth` and `is_using_oauth` answer `False` for a model with no provider, as Pi and the Go, Rust and Node SDKs do, instead of raising `KeyError`.",
+      "rootCause": "ModelRegistry.find in the Go and Rust SDKs returned nil/None when the host call failed, as if no model matched; Pi's find answers undefined only for an absent model, and every other getter fails loudly. Go Find now returns (model, error) and Rust find returns io::Result\u003cOption\u003c_\u003e\u003e, as Python already raised. The host answers an error, not null, for a getModel or sessionRead it has no binding for, so a list-typed session read is never a null.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Python SDK: `has_configured_auth` and `is_using_oauth` answer `False` for a model with no provider, as Pi and the Go, Rust and Node SDKs do, instead of raising `KeyError`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7abdf5b391",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_model_registry_edges.py",
+        "extensions/sdk/cancellation_reason_test.go::TestCancellationReasonIsTheHostsCancelFrameReason",
+        "extensions/sdk/model_registry_find_test.go::TestModelRegistryFindDistinguishesAbsentFromHostFailure",
+        "test/extension-conformance/cancel_reason_test.go::TestCancelReasonReachesEveryNativeSDK",
+        "test/extension-conformance/registry_edges_test.go::TestHostFailureIsNotAbsentInNativeSDKs",
+        "test/extension-conformance/registry_edges_test.go::TestRegistryProviderStateReadsAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-7abdf5b-3",
+      "title": "Go SDK: `Context.CancellationReason` returns the reason the host gave when it cancelled the request, as the…",
+      "symptom": "Go SDK: `Context.CancellationReason` returns the reason the host gave when it cancelled the request, as the Python and Rust SDKs do.",
+      "rootCause": "ModelRegistry.find in the Go and Rust SDKs returned nil/None when the host call failed, as if no model matched; Pi's find answers undefined only for an absent model, and every other getter fails loudly. Go Find now returns (model, error) and Rust find returns io::Result\u003cOption\u003c_\u003e\u003e, as Python already raised. The host answers an error, not null, for a getModel or sessionRead it has no binding for, so a list-typed session read is never a null.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Go SDK: `Context.CancellationReason` returns the reason the host gave when it cancelled the request, as the Python and Rust SDKs do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7abdf5b391",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_model_registry_edges.py",
+        "extensions/sdk/cancellation_reason_test.go::TestCancellationReasonIsTheHostsCancelFrameReason",
+        "extensions/sdk/model_registry_find_test.go::TestModelRegistryFindDistinguishesAbsentFromHostFailure",
+        "test/extension-conformance/cancel_reason_test.go::TestCancelReasonReachesEveryNativeSDK",
+        "test/extension-conformance/registry_edges_test.go::TestHostFailureIsNotAbsentInNativeSDKs",
+        "test/extension-conformance/registry_edges_test.go::TestRegistryProviderStateReadsAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-0966844",
+      "title": "An extension that reads `ctx.model`, `pi.getSettings()`, `pi.getSessionName()`, `pi.getThinkingLevel()` or…",
+      "symptom": "An extension that reads `ctx.model`, `pi.getSettings()`, `pi.getSessionName()`, `pi.getThinkingLevel()` or its footer's git branch and provider count from a timer, thread or goroutine between requests now sees a change the host makes itself.",
+      "rootCause": "The model, thinking level, session name, settings and footer branch and provider count are replicated to extension runtimes, and the host pushed them only before a request, after setModel/appendEntry and after a status change. A change the host makes with no extension call and no event to an extension (model switch, settings edit, /name, a resumed session, a branch checkout, a login) was never seen by an extension that reads from a timer, thread or goroutine between requests; Pi reads the live Session (runner.ts:906, loader.ts:411-414).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that reads `ctx.model`, `pi.getSettings()`, `pi.getSessionName()`, `pi.getThinkingLevel()` or its footer's git branch and provider count from a timer, thread or goroutine between requests now sees a change the host makes itself. A model switch (Ctrl+P, `/model`, cycling, RPC `set_model`), a settings edit, `/name` or RPC `set_session_name`, a resumed session, a branch checkout and a login updated the host but reached an extension only at its next request, so a background reader held the old value; Pi reads the live session. The host now pushes the new state to every connected extension when it changes, off the UI loop, and sends nothing to an extension that already holds it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0966844c54",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/session_state_watch_test.go::TestPrintModeReportsSessionStateChangesToTheExtensionHost",
+        "coding/cli/session_state_watch_test.go::TestWatchSessionStateReportsSessionChangesUntilStopped",
+        "coding/cli/session_state_watch_test.go::TestWatchSessionStateWithoutABridgeOrSession",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedAfterShutdownStartsNothing",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedNeverBlocksItsCallerAndCoalescesABurst",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedPushesStateTheHostChangedAndNothingElse",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedStuckRuntimeDelaysOnlyItself",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedWhileAFanOutIsQueuedDoesNotAllocate",
+        "coding/session_replicated_state_test.go::TestSessionReplicatedStateObserversStopAndCostNothingWhenIdle",
+        "coding/session_replicated_state_test.go::TestSessionReplicatedStateReportFollowsTheChange",
+        "coding/session_replicated_state_test.go::TestSessionReportsAModelRefreshedFromTheRegistry",
+        "coding/session_replicated_state_test.go::TestSessionReportsEveryChangeOfTheStateExtensionsReplicate",
+        "internal/codingagent/change_observers_test.go::TestChangeObserversRegisterWhileNotifying",
+        "internal/codingagent/change_observers_test.go::TestChangeObserversRunInRegistrationOrderUntilRemoved",
+        "internal/codingagent/interactive_replicated_state_test.go::TestFooterDataProviderReportsABranchOrProviderCountChange",
+        "internal/codingagent/interactive_replicated_state_test.go::TestInteractiveModeReportsReplicatedStateChangesToTheExtensionHost",
+        "internal/codingagent/interactive_replicated_state_test.go::TestInteractiveModeWithABridgeThatTakesNoStateReportsDoesNotWatch",
+        "internal/codingagent/settings_change_observers_test.go::TestSettingsManagerReportIsFollowedByTheNewSettings",
+        "internal/codingagent/settings_change_observers_test.go::TestSettingsManagerReportsEveryChangeOfTheEffectiveSettings",
+        "test/extension-conformance/state_push_on_change_test.go::TestHostStateChangeReachesABackgroundReaderAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-ff590eb",
+      "title": "A Node extension that registers or unregisters a provider through `ctx.modelRegistry` (or…",
+      "symptom": "A Node extension that registers or unregisters a provider through `ctx.modelRegistry` (or `pi.registerProvider`/`unregisterProvider`) sees the write on the next line, as Pi does: `find`, `getAll`, `getAvailable`, `hasConfiguredAuth`, `getProviderAuthStatus` and `isUsingOAuth` read the registry the registration left, and an unregistration removes the provider's models (a built-in provider keeps its own).",
+      "rootCause": "The runtime keeps each write over the host snapshot until the host answers the call, so a publication that predates the write cannot undo it, and an unregistration removes the provider's models. - ctx.abort() aborts the run signal (ctx.signal and a tool's signal) synchronously, as agent.ts:340-342 does, in every member of a packed process. - A command registered after load is read back from the host, so pi.getCommands() lists it in the same turn.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension that registers or unregisters a provider through `ctx.modelRegistry` (or `pi.registerProvider`/`unregisterProvider`) sees the write on the next line, as Pi does: `find`, `getAll`, `getAvailable`, `hasConfiguredAuth`, `getProviderAuthStatus` and `isUsingOAuth` read the registry the registration left, and an unregistration removes the provider's models (a built-in provider keeps its own). The runtime keeps its own writes over the host's registry snapshot until the host answers the call, so a publication that predates the write cannot undo it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ff590eb41e",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/run_signal_abort_reply_test.go::TestAbortReplyFollowsTheRunSignalFrame",
+        "coding/extension/host/subprocess/run_signal_abort_reply_test.go::TestOtherCallRepliesSendNoRunSignalFrame",
+        "test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeGetCommandsListsACommandRegisteredAfterLoad",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryBuiltinOverlayRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryNativeProviderRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryProviderRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryRegistrationSurvivesLaterPublications",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryWritesSurviveConcurrentPublications"
+      ]
+    },
+    {
+      "id": "BF-ff590eb-2",
+      "title": "`ctx.abort()` aborts the run's `ctx.signal`, and the signal a tool receives, before it returns in a Node…",
+      "symptom": "`ctx.abort()` aborts the run's `ctx.signal`, and the signal a tool receives, before it returns in a Node extension, as Pi's `agent.abort()` does.",
+      "rootCause": "The runtime keeps each write over the host snapshot until the host answers the call, so a publication that predates the write cannot undo it, and an unregistration removes the provider's models. - ctx.abort() aborts the run signal (ctx.signal and a tool's signal) synchronously, as agent.ts:340-342 does, in every member of a packed process. - A command registered after load is read back from the host, so pi.getCommands() lists it in the same turn.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.abort()` aborts the run's `ctx.signal`, and the signal a tool receives, before it returns in a Node extension, as Pi's `agent.abort()` does. The host sends the run's `run_signal` frame ahead of the reply to the `abort` call, so the Go, Python and Rust SDKs read the signal aborted as soon as `abort()` returns instead of when a watcher's frame happens to win the race.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ff590eb41e",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/run_signal_abort_reply_test.go::TestAbortReplyFollowsTheRunSignalFrame",
+        "coding/extension/host/subprocess/run_signal_abort_reply_test.go::TestOtherCallRepliesSendNoRunSignalFrame",
+        "test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeGetCommandsListsACommandRegisteredAfterLoad",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryBuiltinOverlayRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryNativeProviderRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryProviderRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryRegistrationSurvivesLaterPublications",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryWritesSurviveConcurrentPublications"
+      ]
+    },
+    {
+      "id": "BF-ff590eb-3",
+      "title": "`pi.getCommands()` in a Node extension lists a command registered after load by the same turn's…",
+      "symptom": "`pi.getCommands()` in a Node extension lists a command registered after load by the same turn's `pi.registerCommand`, as Pi's live command Map does.",
+      "rootCause": "The runtime keeps each write over the host snapshot until the host answers the call, so a publication that predates the write cannot undo it, and an unregistration removes the provider's models. - ctx.abort() aborts the run signal (ctx.signal and a tool's signal) synchronously, as agent.ts:340-342 does, in every member of a packed process. - A command registered after load is read back from the host, so pi.getCommands() lists it in the same turn.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.getCommands()` in a Node extension lists a command registered after load by the same turn's `pi.registerCommand`, as Pi's live command Map does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ff590eb41e",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/run_signal_abort_reply_test.go::TestAbortReplyFollowsTheRunSignalFrame",
+        "coding/extension/host/subprocess/run_signal_abort_reply_test.go::TestOtherCallRepliesSendNoRunSignalFrame",
+        "test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeGetCommandsListsACommandRegisteredAfterLoad",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryBuiltinOverlayRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryNativeProviderRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryProviderRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryRegistrationSurvivesLaterPublications",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryWritesSurviveConcurrentPublications"
       ]
     }
   ],
