@@ -195,7 +195,7 @@ func script(ctx sdk.Context, args map[string]any) map[string]any {
 	editID := ok(m.AppendContextEdit(first, map[string]any{"content": "edited"}))
 	edit := ok(m.GetEntry(editID))
 	clearID := ok(m.AppendContextEdit(first, nil))
-	reopened := ok(sdk.SessionManagerCreate(ctx, cwd, &dir, &sdk.NewSessionOptions{ID: ptr("reopen-1")}))
+	reopened := ok(sdk.SessionManagerCreate(ctx, cwd, &dir, &sdk.NewSessionOptions{ID: new("reopen-1")}))
 	check(reopened.SetSessionFile(file))
 	reopenedFile := *ok(reopened.GetSessionFile())
 	_, badTarget := m.AppendContextEdit("nope", nil)

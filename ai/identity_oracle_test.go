@@ -3,6 +3,7 @@ package ai_test
 import (
 	"context"
 	"encoding/base64"
+	"maps"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -48,9 +49,7 @@ func TestProviderIdentityHeadersMatchPi(t *testing.T) {
 				for _, key := range target.keys {
 					for _, identity := range identities {
 						options := map[string]any{"identity": identity}
-						for name, value := range target.options {
-							options[name] = value
-						}
+						maps.Copy(options, target.options)
 						probes = append(probes, responseProbe{Provider: provider, APIKey: key, Status: 400, CheckRequest: true, KeepUserAgent: true, Options: options, SessionID: "s1"})
 					}
 				}
