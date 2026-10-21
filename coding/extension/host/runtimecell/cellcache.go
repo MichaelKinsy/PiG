@@ -16,9 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/flock"
-
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	"github.com/MichaelKinsy/PiG/internal/filelock"
 )
 
 // cellReadyFile is the readiness marker written last into a published cache
@@ -273,7 +272,7 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 		return PublishedEntry{}, fmt.Errorf("create cell lock dir: %w", err)
 	}
 
-	lock := flock.New(filepath.Join(lockDir, inputDigest+".lock"))
+	lock := filelock.New(filepath.Join(lockDir, inputDigest+".lock"))
 	lockCtx := ctx
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc

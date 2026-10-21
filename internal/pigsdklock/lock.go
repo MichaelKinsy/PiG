@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gofrs/flock"
+	"github.com/MichaelKinsy/PiG/internal/filelock"
 )
 
 const (
@@ -161,7 +161,7 @@ func acquire(ctx context.Context, configRoot string, shared bool) (func() error,
 		return nil, fmt.Errorf("create SDK transaction lock directory: %w", err)
 	}
 	lockPath := filepath.Join(lockDir, lockFile)
-	lock := flock.New(lockPath)
+	lock := filelock.New(lockPath)
 	lockCtx := ctx
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
