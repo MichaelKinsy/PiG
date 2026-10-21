@@ -4,9 +4,11 @@ package codingagent
 
 import (
 	"context"
+	"runtime/metrics"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -59,5 +61,31 @@ func TestLoadRemainingHighlightLanguagesSkipsTheRepaintAfterStop(t *testing.T) {
 	}
 	if len(renderer.calls) != 0 {
 		t.Fatalf("a stopped mode repainted: %v", renderer.calls)
+	}
+}
+
+func heapReleasedBytes() uint64 {
+	sample := []metrics.Sample{{Name: "/memory/classes/heap/released:bytes"}}
+	metrics.Read(sample)
+	return sample[0].Value.Uint64()
+}
+
+var startupGarbageSink [][]byte
+
+// The first frame and the startup loads leave free heap the runtime's background scavenger returns slowly; the task that registers the remaining grammars returns it once, after queueing the repaint (D172). The test runs in its own process so no other test's collection returns the garbage first.
+func TestLoadRemainingHighlightLanguagesReturnsTheStartupHeap(t *testing.T) {
+	if !testenv.InOwnProcess(t) {
+		return
+	}
+	for range 64 {
+		startupGarbageSink = append(startupGarbageSink, make([]byte, 1<<20))
+	}
+	startupGarbageSink = nil
+	before := heapReleasedBytes()
+	m := &InteractiveMode{tuiInst: &repaintRecorder{}, uiTaskCh: make(chan func(), 1), backgroundCtx: t.Context()}
+	m.loadRemainingHighlightLanguages()
+	m.backgroundTasks.Wait()
+	if released := heapReleasedBytes() - before; released < 40<<20 {
+		t.Fatalf("the grammar-load task returned %d bytes of the 64 MiB the start left free, want at least 40 MiB", released)
 	}
 }
