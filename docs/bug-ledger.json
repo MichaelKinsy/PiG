@@ -31834,6 +31834,30 @@
       ]
     },
     {
+      "id": "BF-18022b2",
+      "title": "A Node extension no longer keeps reading an entry the host refused",
+      "symptom": "A Node extension no longer keeps reading an entry the host refused.",
+      "rootCause": "The Node runtime shows pi.appendEntry's entry at once (Pi's log is in process and the append cannot fail), keeps it in pendingEntries and sends the append to the host without waiting. A host that answered with an error left the entry in the mirror: nothing took it back, and every later state push preserved it because the replicated log does not hold it, so getEntries, getBranch, getLeafId and the id index kept presenting an entry that was in no session.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "18022b2234",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds",
+        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused",
+        "test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-d084d86",
       "title": "Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object…",
       "symptom": "Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object after `Close` had taken its snapshot of the host's objects: that object's resource open kept waiting for an abort that nothing raised.",
@@ -31876,30 +31900,6 @@
       "tests": [
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
-      ]
-    },
-    {
-      "id": "BF-18022b2",
-      "title": "A Node extension no longer keeps reading an entry the host refused",
-      "symptom": "A Node extension no longer keeps reading an entry the host refused.",
-      "rootCause": "The Node runtime shows pi.appendEntry's entry at once (Pi's log is in process and the append cannot fail), keeps it in pendingEntries and sends the append to the host without waiting. A host that answered with an error left the entry in the mirror: nothing took it back, and every later state push preserved it because the replicated log does not hold it, so getEntries, getBranch, getLeafId and the id index kept presenting an entry that was in no session.",
-      "rootCauseSource": "commit",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "18022b2234",
-          "date": "2026-10-21"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds",
-        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused",
-        "test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs"
       ]
     }
   ],
