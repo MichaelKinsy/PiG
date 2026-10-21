@@ -130,10 +130,6 @@ func registryEdgesProbe(ctx sdk.Context, _ string) error {
 	if err != nil {
 		return err
 	}
-	ids := make([]string, 0, len(available))
-	for _, model := range available {
-		ids = append(ids, model["id"].(string))
-	}
 	hasAuth, oauth := []bool{}, []bool{}
 	for _, model := range slices.Concat(all, []map[string]any{{}}) {
 		auth, err := r.HasConfiguredAuth(model)
