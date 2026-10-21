@@ -1,0 +1,45 @@
+name: fifo-probe
+on:
+  push:
+    branches: [scratch/fifo-macos-probe]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: macos-15
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {id: a, burners: 0}
+          - {id: b, burners: 0}
+          - {id: c, burners: 2}
+          - {id: d, burners: 4}
+          - {id: e, burners: 8}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: probe
+        shell: bash
+        run: |
+          sw_vers; sysctl -n hw.ncpu; uname -a
+          go test -c -o /tmp/env.test ./env
+          cd env
+          for i in $(seq 1 ${{ matrix.burners }}); do (while :; do :; done) & done
+          fails=0; runs=0
+          end=$((SECONDS + 1500))
+          while [ $SECONDS -lt $end ]; do
+            runs=$((runs+1))
+            if ! /tmp/env.test -test.run '^TestProbeReadFIFO$' -test.v > /tmp/out.$runs 2>&1; then
+              fails=$((fails+1)); echo "=== FAIL run $runs"; cat /tmp/out.$runs
+            else
+              grep -h 'rounds=' /tmp/out.$runs
+            fi
+          done
+          echo "SUMMARY burners=${{ matrix.burners }} runs=$runs fails=$fails"
