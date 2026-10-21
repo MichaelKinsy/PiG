@@ -40,7 +40,7 @@ type SessionGraphStreamer interface {
 	StreamModel(ctx context.Context, model map[string]any, request map[string]any) (*ai.AssistantMessageEventStream, error)
 }
 
-// SessionGraphReleaser is an object that holds resources past its last reference: the table calls Release once, when the extension releases the object or its connection closes.
+// SessionGraphReleaser is an object that holds resources past its last reference: the table calls Release once, when the last holder lets go. The extension's handle is one holder (it ends when the extension releases the handle or its connection closes) and every child session created over the object is another (it ends when the session closes), as an object of Pi's lives while anything reaches it.
 type SessionGraphReleaser interface {
 	Release()
 }
@@ -138,7 +138,7 @@ func (h *Host) sessionGraph() SessionGraphBackend {
 	return h.sessionGraphBackend
 }
 
-// SessionGraphObjectOf returns the live object handle names on conn, or false when the connection holds none. It is how another host call (createAgentSession) takes the objects an extension passed to it.
+// SessionGraphObjectOf returns the live object handle names on conn, or false when the connection holds none. The caller holds nothing: a caller that keeps the object past its call takes a hold with the table's retain.
 func (h *Host) SessionGraphObjectOf(conn *Conn, handle string) (SessionGraphObject, bool) {
 	return h.sessionGraphObjects.lookup(conn, handle)
 }
@@ -151,7 +151,13 @@ type sessionGraphTable struct {
 }
 
 type connSessionGraph struct {
-	objects map[string]SessionGraphObject
+	objects map[string]*graphHold
+}
+
+// graphHold is an object and the number of holders that keep it: the extension's handle, and every session created over it. The last holder to let go releases it.
+type graphHold struct {
+	object  SessionGraphObject
+	holders int
 }
 
 // add makes object live for conn and names it. A connection that closed refuses it.
@@ -166,22 +172,22 @@ func (t *sessionGraphTable) add(conn *Conn, object SessionGraphObject) (string, 
 		if t.conns == nil {
 			t.conns = map[*Conn]*connSessionGraph{}
 		}
-		owned = &connSessionGraph{objects: map[string]SessionGraphObject{}}
+		owned = &connSessionGraph{objects: map[string]*graphHold{}}
 		t.conns[conn] = owned
 		go func() {
 			<-conn.Done()
 			t.mu.Lock()
-			objects := owned.objects
+			holds := owned.objects
 			delete(t.conns, conn)
 			t.mu.Unlock()
-			for _, object := range objects {
-				releaseGraphObject(object)
+			for _, hold := range holds {
+				t.drop(hold)
 			}
 		}()
 	}
 	t.next++
 	handle := "sg" + strconv.FormatUint(t.next, 10)
-	owned.objects[handle] = object
+	owned.objects[handle] = &graphHold{object: object, holders: 1}
 	return handle, nil
 }
 
@@ -189,21 +195,52 @@ func (t *sessionGraphTable) lookup(conn *Conn, handle string) (SessionGraphObjec
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if owned := t.conns[conn]; owned != nil {
-		object, ok := owned.objects[handle]
-		return object, ok
+		if hold, ok := owned.objects[handle]; ok {
+			return hold.object, true
+		}
 	}
 	return nil, false
 }
 
+// retain adds a holder to the live object handle names on conn, and returns the object and the function that ends that hold; the function is idempotent. The object is released when its last holder lets go, whether or not the extension has released its handle by then.
+func (t *sessionGraphTable) retain(conn *Conn, handle string) (SessionGraphObject, func(), bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	owned := t.conns[conn]
+	if owned == nil {
+		return nil, nil, false
+	}
+	hold, ok := owned.objects[handle]
+	if !ok {
+		return nil, nil, false
+	}
+	hold.holders++
+	var once sync.Once
+	return hold.object, func() { once.Do(func() { t.drop(hold) }) }, true
+}
+
 func (t *sessionGraphTable) remove(conn *Conn, handle string) {
 	t.mu.Lock()
-	var object SessionGraphObject
+	var hold *graphHold
 	if owned := t.conns[conn]; owned != nil {
-		object = owned.objects[handle]
+		hold = owned.objects[handle]
 		delete(owned.objects, handle)
 	}
 	t.mu.Unlock()
-	releaseGraphObject(object)
+	if hold != nil {
+		t.drop(hold)
+	}
+}
+
+// drop ends one hold of hold's object and releases the object when none is left.
+func (t *sessionGraphTable) drop(hold *graphHold) {
+	t.mu.Lock()
+	hold.holders--
+	last := hold.holders == 0
+	t.mu.Unlock()
+	if last {
+		releaseGraphObject(hold.object)
+	}
 }
 
 func releaseGraphObject(object SessionGraphObject) {

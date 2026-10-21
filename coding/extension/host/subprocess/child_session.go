@@ -80,6 +80,8 @@ type childSessionEntry struct {
 	updates childUpdateStream
 	// disposed stops the forwarding of events once the session is disposed.
 	disposed atomic.Bool
+	// unhold ends the session's hold on the session graph objects it was created over (resolveChildSessionObjects); nil when it named none.
+	unhold func()
 }
 
 // forward sends one event to the extension, numbered in emission order. The frame is queued before the listener returns, so it precedes every frame the host writes after the event, including the result of the prompt that ran it.
@@ -250,10 +252,13 @@ func (e *childSessionEntry) dispose() {
 	e.session.Dispose()
 }
 
-// close disposes the session if it was not, and releases it.
+// close disposes the session if it was not, and releases it. The objects it was created over are let go last: the session uses them until it is closed, even after the extension released their handles.
 func (e *childSessionEntry) close() {
 	e.dispose()
 	e.session.Close()
+	if e.unhold != nil {
+		e.unhold()
+	}
 }
 
 // handleChildSessionCall serves the childSession.* calls.
@@ -349,17 +354,19 @@ func (h *Host) createChildSession(ctx context.Context, conn *Conn, call *CallPay
 	// Creation loads resources, which can take as long as a prompt: the call's lane advances.
 	extension.CallInitiated(ctx)
 	request := ChildSessionRequest{ChildSessionCreate: create, ToolDefinitions: tools}
-	if err := h.resolveChildSessionObjects(conn, &request); err != nil {
+	unhold, err := h.resolveChildSessionObjects(conn, &request)
+	if err != nil {
 		h.childSessions.release(conn, create.ID)
 		return nil, err
 	}
 	session, err := factory(ctx, request)
 	if err != nil {
+		unhold()
 		h.childSessions.release(conn, create.ID)
 		return nil, err
 	}
 	idJSON, _ := json.Marshal(create.ID)
-	entry := &childSessionEntry{conn: conn, session: session, prefix: append(append([]byte(`{"id":`), idJSON...), `,"seq":`...)}
+	entry := &childSessionEntry{conn: conn, session: session, unhold: unhold, prefix: append(append([]byte(`{"id":`), idJSON...), `,"seq":`...)}
 	entry.unsubscribe = session.Subscribe(entry.forward)
 	if !h.childSessions.publish(conn, create.ID, entry) {
 		entry.close()
@@ -425,19 +432,20 @@ func childToolPrepareArguments(conn *Conn, sessionID, toolName string) extension
 	}
 }
 
-// resolveChildSessionObjects looks up the session graph objects a create call names. An object replaces the option that would build its own.
-func (h *Host) resolveChildSessionObjects(conn *Conn, request *ChildSessionRequest) error {
-	resolve := func(option, handle string, into *SessionGraphObject) error {
-		if handle == "" {
-			return nil
+// resolveChildSessionObjects looks up the session graph objects a create call names. An object replaces the option that would build its own. The session holds each object it takes until it closes: the returned function ends those holds, and the caller calls it when the creation fails or the session closes. On an error nothing is held.
+func (h *Host) resolveChildSessionObjects(conn *Conn, request *ChildSessionRequest) (unhold func(), err error) {
+	var holds []func()
+	unhold = func() {
+		for _, release := range holds {
+			release()
 		}
-		object, ok := h.sessionGraphObjects.lookup(conn, handle)
-		if !ok {
-			return fmt.Errorf("option %s: %s", option, SessionGraphUnknownMessage)
-		}
-		*into = object
-		return nil
 	}
+	defer func() {
+		if err != nil {
+			unhold()
+			unhold = nil
+		}
+	}()
 	create := request.ChildSessionCreate
 	for _, step := range []struct {
 		option, handle string
@@ -448,18 +456,24 @@ func (h *Host) resolveChildSessionObjects(conn *Conn, request *ChildSessionReque
 		{"resourceLoader", create.ResourceLoader, &request.ResourceLoader},
 		{"modelRuntime", create.ModelRuntime, &request.ModelRuntime},
 	} {
-		if err := resolve(step.option, step.handle, step.into); err != nil {
-			return err
+		if step.handle == "" {
+			continue
 		}
+		object, release, ok := h.sessionGraphObjects.retain(conn, step.handle)
+		if !ok {
+			return nil, fmt.Errorf("option %s: %s", step.option, SessionGraphUnknownMessage)
+		}
+		holds = append(holds, release)
+		*step.into = object
 	}
 	if create.SessionManager != "" && create.InMemory {
-		return errors.New("options sessionManager and inMemory both name the session log")
+		return nil, errors.New("options sessionManager and inMemory both name the session log")
 	}
 	if create.SettingsManager != "" && len(create.Settings) != 0 {
-		return errors.New("options settingsManager and settings both name the settings")
+		return nil, errors.New("options settingsManager and settings both name the settings")
 	}
 	if create.ResourceLoader != "" && create.Resources != nil {
-		return errors.New("options resourceLoader and resources both name the resource loader")
+		return nil, errors.New("options resourceLoader and resources both name the resource loader")
 	}
-	return nil
+	return unhold, nil
 }
