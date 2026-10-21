@@ -1,5 +1,5 @@
 # Behavior family: tui-components (terminal capability detection)
-# Pi 1.1.0 probe: terminal-image.ts detectCapabilities over 1856 environments on Linux and Windows: TERM and COLORTERM variants (-direct, tmux, screen, ghostty), named terminals (TERM_PROGRAM herdr, kitty,
+# Pi 1.1.0 probe: terminal-image.ts detectCapabilities over 2072 environments on Linux and Windows: TERM and COLORTERM variants (-direct, tmux, screen, ghostty), named terminals (TERM_PROGRAM herdr, rex, kitty,
 # ghostty, wezterm, WarpTerminal, iTerm.app, vscode, alacritty, zed, JetBrains JediTerm), the session variables (KITTY_WINDOW_ID, WEZTERM_PANE, GHOSTTY_RESOURCES_DIR, WARP_SESSION_ID, ITERM_SESSION_ID, WT_SESSION),
 # tmux with the hyperlink probe answering both ways, and the PI_IMAGE_PROTOCOL, PI_HYPERLINKS and PI_TRUE_COLOR overrides in every accepted and rejected spelling. Each environment's images, trueColor and
 # hyperlinks are compared as one JSON line. The Go test TestColorDetectionMatchesPi runs the same environments against the installed Pi and also compares the theme colors; this scenario compares the two printed streams.

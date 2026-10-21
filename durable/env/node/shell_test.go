@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -107,25 +108,50 @@ func TestShellCanReplaceRatherThanInheritTheDefaultShellEnvironment(t *testing.T
 	}
 }
 
-// Upstream also replaces process.platform with win32 for this case; the shell
-// transport depends only on the path.
+// Ports durable/test/env-node.test.ts "selects command transport for %s (SystemRoot=%j)" (#9490): legacy WSL detection also
+// handles a custom Windows directory. Upstream also replaces process.platform with win32 for this case; the shell transport
+// depends only on the path and SystemRoot.
 func TestShellUsesStdinCommandTransportForLegacyWSLBashPaths(t *testing.T) {
 	skipOnWindows(t)
-	root := t.TempDir()
-	shellPath := `C:\Windows\System32\bash.exe`
-	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: root})
-	mustDo(t, env.WriteFile(background, shellPath, []byte("#!/bin/sh\nprintf 'args:%s\\n' \"$*\" >&2\nexec /bin/bash \"$@\"\n")))
-	if err := os.Chmod(filepath.Join(root, shellPath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(root)
-	t.Setenv("PATH", root+string(os.PathListSeparator)+os.Getenv("PATH"))
+	unset, empty, winNT := (*string)(nil), new(""), new(`D:\WinNT`)
+	for _, tc := range []struct {
+		shellPath  string
+		systemRoot *string
+		wantArg    string
+	}{
+		{`C:\Windows\System32\bash.exe`, unset, "-s"},
+		{`D:\WinNT\System32\bash.exe`, winNT, "-s"},
+		{`D:\WinNT\Sysnative\bash.exe`, winNT, "-s"},
+		{`D:\WinNT\System32\bash.exe`, empty, "-c"},
+		{`E:\Windows\System32\bash.exe`, winNT, "-c"},
+	} {
+		root := "<unset>"
+		if tc.systemRoot != nil {
+			root = fmt.Sprintf("%q", *tc.systemRoot)
+		}
+		t.Run(fmt.Sprintf("selects command transport for %s (SystemRoot=%s)", tc.shellPath, root), func(t *testing.T) {
+			dir := t.TempDir()
+			env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: dir})
+			mustDo(t, env.WriteFile(background, tc.shellPath, []byte("#!/bin/sh\nprintf 'args:%s\\n' \"$*\" >&2\nexec /bin/bash \"$@\"\n")))
+			if err := os.Chmod(filepath.Join(dir, tc.shellPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Chdir(dir)
+			t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+			t.Setenv("SystemRoot", "")
+			if tc.systemRoot == nil {
+				mustDo(t, os.Unsetenv("SystemRoot"))
+			} else {
+				t.Setenv("SystemRoot", *tc.systemRoot)
+			}
 
-	wslEnv := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: root, ShellPath: shellPath})
-	result, output, err := collectShellOutput(wslEnv, `name='World'; echo "Hello, ${name}!"`, nil, background)
-	mustDo(t, err)
-	if !strings.Contains(output, "Hello, World!") || !strings.Contains(output, "args:-s") || result.ExitCode != 0 {
-		t.Fatalf("output = %q, exit %d", output, result.ExitCode)
+			wslEnv := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: dir, ShellPath: tc.shellPath})
+			result, output, err := collectShellOutput(wslEnv, `name='World'; echo "Hello, ${name}!"`, nil, background)
+			mustDo(t, err)
+			if !strings.Contains(output, "Hello, World!") || !strings.Contains(output, "args:"+tc.wantArg) || result.ExitCode != 0 {
+				t.Fatalf("output = %q, exit %d", output, result.ExitCode)
+			}
+		})
 	}
 }
 

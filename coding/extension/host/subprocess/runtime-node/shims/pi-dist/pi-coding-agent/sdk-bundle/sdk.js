@@ -22,7 +22,7 @@ import {
   isInstallTelemetryEnabled,
   isToolModifier,
   time
-} from "./chunk-JV5ZIIBA.js";
+} from "./chunk-3YI37CVX.js";
 import {
   createBashTool,
   createCodingTools,
@@ -35,15 +35,16 @@ import {
   createReadTool,
   createWriteTool,
   withFileMutationQueue
-} from "./chunk-NF4F5DMY.js";
+} from "./chunk-5EKWCXVB.js";
 import "./chunk-UFSRWEFA.js";
-import "./chunk-4XCBZNRK.js";
+import "./chunk-QJIK7HVQ.js";
 import "./chunk-472CZNGH.js";
 import {
   createToolNameMatcher
-} from "./chunk-E7M6DDVC.js";
-import "./chunk-PCYDWUGN.js";
+} from "./chunk-RTGDH7DA.js";
+import "./chunk-RVJYK3FO.js";
 import {
+  VERSION,
   getAgentDir,
   resolvePath
 } from "./chunk-YXY3JV6E.js";
@@ -56,78 +57,17 @@ import { join } from "node:path";
 import { Agent, setDefaultStreamFn } from "../../pi-agent-core/index.js";
 import { clampThinkingLevel, streamSimple } from "../../pi-ai/sdk-bundle/compat.js";
 
-// pi-dist/pi-coding-agent/core/provider-attribution.js
-var OPENROUTER_HOST = "openrouter.ai";
-var NVIDIA_NIM_HOST = "integrate.api.nvidia.com";
-var CLOUDFLARE_API_HOST = "api.cloudflare.com";
-var CLOUDFLARE_AI_GATEWAY_HOST = "gateway.ai.cloudflare.com";
-var OPENCODE_HOST = "opencode.ai";
-function matchesHost(baseUrl, expectedHost) {
-  try {
-    return new URL(baseUrl).hostname === expectedHost;
-  } catch {
-    return false;
-  }
-}
-__name(matchesHost, "matchesHost");
-function isOpenRouterModel(model) {
-  return model.provider === "openrouter" || model.baseUrl.includes(OPENROUTER_HOST);
-}
-__name(isOpenRouterModel, "isOpenRouterModel");
-function isNvidiaNimModel(model) {
-  return model.provider === "nvidia" || matchesHost(model.baseUrl, NVIDIA_NIM_HOST);
-}
-__name(isNvidiaNimModel, "isNvidiaNimModel");
-function isCloudflareModel(model) {
-  return model.provider === "cloudflare-workers-ai" || model.provider === "cloudflare-ai-gateway" || matchesHost(model.baseUrl, CLOUDFLARE_API_HOST) || matchesHost(model.baseUrl, CLOUDFLARE_AI_GATEWAY_HOST);
-}
-__name(isCloudflareModel, "isCloudflareModel");
-function getDefaultAttributionHeaders(model, settingsManager) {
-  if (!isInstallTelemetryEnabled(settingsManager)) {
-    return void 0;
-  }
-  if (isOpenRouterModel(model)) {
-    return {
-      "HTTP-Referer": "https://github.com/MichaelKinsy/PiG",
-      "X-OpenRouter-Title": "PiG",
-      "X-OpenRouter-Categories": "cli-agent"
-    };
-  }
-  if (isNvidiaNimModel(model)) {
-    return {
-      "X-BILLING-INVOKE-ORIGIN": "PiG"
-    };
-  }
-  if (isCloudflareModel(model)) {
-    return {
-      "User-Agent": "pig-coding-agent"
-    };
-  }
-  return void 0;
-}
-__name(getDefaultAttributionHeaders, "getDefaultAttributionHeaders");
-function getSessionHeaders(model, sessionId) {
-  if (!sessionId)
-    return void 0;
-  if (model.provider !== "opencode" && model.provider !== "opencode-go" && !matchesHost(model.baseUrl, OPENCODE_HOST)) {
-    return void 0;
-  }
-  return { "x-opencode-session": sessionId, "x-opencode-client": "pig" };
-}
-__name(getSessionHeaders, "getSessionHeaders");
-function mergeProviderAttributionHeaders(model, settingsManager, sessionId, ...headerSources) {
-  const merged = {
-    ...getSessionHeaders(model, sessionId),
-    ...getDefaultAttributionHeaders(model, settingsManager)
+// pi-dist/pi-coding-agent/core/client-identity.js
+import { PI_ATTRIBUTION } from "../../pi-ai/sdk-bundle/index.js";
+function getClientIdentity(settingsManager) {
+  return {
+    userAgent: "detailed",
+    // pig divergence (D26, D65): PiG's product identity replaces Pi's; see automation/gen/pi-identity-patches.mjs.
+    version: process.env.PIG_PRODUCT_VERSION ?? VERSION,
+    attribution: isInstallTelemetryEnabled(settingsManager) ? PI_ATTRIBUTION : null
   };
-  for (const headers of headerSources) {
-    if (headers) {
-      Object.assign(merged, headers);
-    }
-  }
-  return Object.keys(merged).length > 0 ? merged : void 0;
 }
-__name(mergeProviderAttributionHeaders, "mergeProviderAttributionHeaders");
+__name(getClientIdentity, "getClientIdentity");
 
 // pi-dist/pi-coding-agent/core/sdk.js
 setDefaultStreamFn(streamSimple);
@@ -233,7 +173,7 @@ async function createAgentSession(options = {}) {
   }, "convertToLlmWithBlockImages");
   const extensionRunnerRef = {};
   const cacheWarmer = new CacheWarmer(modelRuntime, sessionManager, () => settingsManager.getCacheWarmingMode(), async (event) => extensionRunnerRef.current?.emitCacheWarmingDecision(event) ?? event.action);
-  const buildRequestOptions = /* @__PURE__ */ __name((requestModel, options2 = {}) => {
+  const buildRequestOptions = /* @__PURE__ */ __name((options2 = {}) => {
     const providerRetrySettings = settingsManager.getProviderRetrySettings();
     const httpIdleTimeoutMs = settingsManager.getHttpIdleTimeoutMs();
     const effectiveTimeoutMs = httpIdleTimeoutMs === 0 ? 2147483647 : httpIdleTimeoutMs;
@@ -244,10 +184,9 @@ async function createAgentSession(options = {}) {
       websocketConnectTimeoutMs: options2.websocketConnectTimeoutMs ?? settingsManager.getWebSocketConnectTimeoutMs(),
       maxRetries: options2.maxRetries ?? providerRetrySettings.maxRetries,
       maxRetryDelayMs: options2.maxRetryDelayMs ?? providerRetrySettings.maxRetryDelayMs,
-      transformHeaders: /* @__PURE__ */ __name(async (requestHeaders) => {
-        const headers = mergeProviderAttributionHeaders(requestModel, settingsManager, options2.sessionId, requestHeaders);
-        return headerRunner?.hasHandlers("before_provider_headers") ? headerRunner.emitBeforeProviderHeaders(headers ?? {}) : headers ?? {};
-      }, "transformHeaders")
+      // Replaces the agent loop's default identity; read per request so telemetry changes apply at once.
+      identity: getClientIdentity(settingsManager),
+      transformHeaders: /* @__PURE__ */ __name(async (headers) => headerRunner?.hasHandlers("before_provider_headers") ? headerRunner.emitBeforeProviderHeaders(headers) : headers, "transformHeaders")
     };
   }, "buildRequestOptions");
   const cacheContextIsCurrent = /* @__PURE__ */ __name((requestModel) => {
@@ -296,7 +235,7 @@ async function createAgentSession(options = {}) {
     },
     convertToLlm: convertToLlmWithBlockImages,
     streamFn: /* @__PURE__ */ __name(async (model2, context, options2) => {
-      const requestOptions = buildRequestOptions(model2, options2);
+      const requestOptions = buildRequestOptions(options2);
       if (options2?.sessionId === sessionManager.getSessionId()) {
         cacheWarmer.start({ model: model2, context, options: requestOptions }, cacheContextIsCurrent(model2));
       }

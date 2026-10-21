@@ -54,7 +54,7 @@ func lazyStreamPushOrder(t *testing.T, owned bool) []string {
 			}
 			executor.post(step)
 			return source, nil
-		}, launch)
+		}, launch, nil)
 		mu.Lock()
 		outer = stream
 		mu.Unlock()

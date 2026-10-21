@@ -8,6 +8,8 @@ import (
 
 // Default resolves the shell on unix, mirroring upstream getShellConfig's unix
 // branch (shell.ts). It never errors.
+//
+// Ports packages/coding-agent/src/utils/shell.ts (getShellConfig, unix branch).
 func Default() (Config, error) {
 	return unixDefault(fileExists, FindExecutableOnPath), nil
 }

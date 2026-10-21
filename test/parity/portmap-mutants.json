@@ -739,5 +739,34 @@
    "old": "CodeVersion: report.CodeVersion, Previous: report.Previous, Changed: report.Changed, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire",
    "new": "CodeVersion: report.CodeVersion, Previous: report.Previous, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire"
   }
+ ],
+ "packages/coding-agent/src/core/client-identity.ts": [
+  {
+   "file": "coding/client_identity.go",
+   "old": "\tif settings.IsInstallTelemetryEnabled() {",
+   "new": "\tif !settings.IsInstallTelemetryEnabled() {"
+  }
+ ],
+ "packages/chord/src/telemetry-sqlite/store.ts": [
+  {
+   "file": "chord/telemetrysqlite/store.go",
+   "old": "ORDER BY started_ms DESC, trace_id LIMIT ?",
+   "new": "ORDER BY started_ms, trace_id LIMIT ?"
+  },
+  {
+   "file": "chord/telemetrysqlite/store.go",
+   "old": "int64(limit)+1",
+   "new": "int64(limit)"
+  },
+  {
+   "file": "chord/telemetrysqlite/store.go",
+   "old": "ORDER BY started_ms, id LIMIT 1) = ?",
+   "new": "ORDER BY started_ms DESC, id LIMIT 1) = ?"
+  },
+  {
+   "file": "chord/telemetrysqlite/store.go",
+   "old": "ORDER BY started_ms, id\", string(encoded))",
+   "new": "ORDER BY started_ms DESC, id\", string(encoded))"
+  }
  ]
 }

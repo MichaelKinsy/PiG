@@ -73,7 +73,8 @@ type runState struct {
 // and the outcome, written once when the call decides it (with the store writes, in one transaction), so a rerun after
 // that returns it without a VM.
 var RunDoc = durable.DefineDoc(durable.DocDefinition[runState]{
-	CommonDocDefinition: durable.CommonDocDefinition[runState]{Kind: "pi.codemode.run", Version: 1, Initial: func() runState { return runState{} }},
+	// The document retires with its task.
+	CommonDocDefinition: durable.CommonDocDefinition[runState]{Kind: "pi.codemode.run", Version: 1, Initial: func() runState { return runState{} }, CheckpointWhen: func(runState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
 })
 
@@ -114,7 +115,8 @@ type journalState struct {
 // order: the VM call ID, the clock value, the calls the VM had issued after processing it (once acknowledged), and a
 // global's outcome.
 var JournalDoc = durable.DefineDoc(durable.DocDefinition[journalState]{
-	CommonDocDefinition: durable.CommonDocDefinition[journalState]{Kind: "pi.codemode.journal", Version: 1, Initial: func() journalState { return journalState{Entries: []journalEntry{}} }},
+	// The document retires with its task.
+	CommonDocDefinition: durable.CommonDocDefinition[journalState]{Kind: "pi.codemode.journal", Version: 1, Initial: func() journalState { return journalState{Entries: []journalEntry{}} }, CheckpointWhen: func(journalState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
 })
 
@@ -126,8 +128,10 @@ type StoreState struct {
 // StoreDoc is the pi.codemode.store document of a conversation: rewindable and copied as of the fork point, so a fork
 // sees the values as they were when its entry was committed.
 var StoreDoc = durable.DefineDoc(durable.DocDefinition[StoreState]{
-	CommonDocDefinition: durable.CommonDocDefinition[StoreState]{Kind: "pi.codemode.store", Version: 1, Initial: func() StoreState { return StoreState{Values: map[string]json.RawMessage{}} }},
-	DocumentSemantics:   durable.NewRewindableConversationSemantics(durable.ForkAsOf).DocumentSemantics,
+	CommonDocDefinition: durable.CommonDocDefinition[StoreState]{Kind: "pi.codemode.store", Version: 1, Initial: func() StoreState { return StoreState{Values: map[string]json.RawMessage{}} }, CheckpointWhen: func(_ StoreState, _ []durable.Op, info durable.CheckpointInfo) bool {
+		return info.DeltasSinceBase >= 64
+	}},
+	DocumentSemantics: durable.NewRewindableConversationSemantics(durable.ForkAsOf).DocumentSemantics,
 })
 
 // NestedCall is one tool call a script made, as the code mode call's details show it.

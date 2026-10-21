@@ -6,7 +6,7 @@ import {
   loadMcpConfig,
   openBrowser,
   updateMcpServerConfig
-} from "./chunk-QXZMA627.js";
+} from "./chunk-7NLBDVYL.js";
 import {
   ArminComponent
 } from "./chunk-S7TFHYGY.js";
@@ -78,7 +78,6 @@ import {
   getLastAssistantUsage,
   getLatestCompactionEntry,
   getMissingSessionCwdIssue,
-  getPiUserAgent,
   isBashToolResult,
   isBuiltinExtension,
   isEditToolResult,
@@ -123,7 +122,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-JV5ZIIBA.js";
+} from "./chunk-3YI37CVX.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -147,6 +146,7 @@ import {
   formatDimensionNote,
   generateDiffString,
   generateUnifiedPatch,
+  getPiUserAgent,
   grepRenderers,
   loadPhoton,
   lsRenderers,
@@ -157,13 +157,13 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-NF4F5DMY.js";
+} from "./chunk-5EKWCXVB.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-XTKQ4MSE.js";
+} from "./chunk-XIVHZPV4.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -186,7 +186,7 @@ import {
   truncateTail,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-4XCBZNRK.js";
+} from "./chunk-QJIK7HVQ.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -231,12 +231,12 @@ import {
   mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-E7M6DDVC.js";
+} from "./chunk-RTGDH7DA.js";
 import {
   getPowerShellConfig,
   getShellConfig,
   killTrackedDetachedChildren
-} from "./chunk-PCYDWUGN.js";
+} from "./chunk-RVJYK3FO.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -827,7 +827,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-PEIU5R4Q.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-H73TEJEY.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -848,6 +848,7 @@ function runClipboardCommand(command, args, options) {
   return new Promise((resolve7) => {
     const child = spawn(command, args, {
       stdio: ["pipe", options?.input === void 0 ? "pipe" : "ignore", "ignore"],
+      detached: process.platform !== "win32",
       windowsHide: true
     });
     const chunks = [];
@@ -6154,7 +6155,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-A3LIKKFL.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-CAUF7UZP.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -12982,9 +12983,9 @@ var InteractiveMode = class _InteractiveMode {
   bugReportHintShown = false;
   installChangeWarningShown = false;
   // Extension UI state
-  extensionSelector = void 0;
-  extensionInput = void 0;
-  extensionEditor = void 0;
+  // Extension dialogs shown in the editor slot (select, confirm, input, editor, inline custom).
+  // The last entry is visible; see pushExtensionDialog().
+  extensionDialogs = [];
   extensionTerminalInputSubscriptions = /* @__PURE__ */ new Set();
   // Extension widgets (components rendered above/below the editor)
   extensionWidgetsAbove = /* @__PURE__ */ new Map();
@@ -14454,14 +14455,12 @@ ${warningLines()}`, 0, 0));
     this.renderWidgets();
   }
   resetExtensionUI() {
-    if (this.extensionSelector) {
-      this.hideExtensionSelector();
-    }
-    if (this.extensionInput) {
-      this.hideExtensionInput();
-    }
-    if (this.extensionEditor) {
-      this.hideExtensionEditor();
+    if (this.extensionDialogs.length > 0) {
+      for (const dialog of this.extensionDialogs) {
+        dialog.component.dispose?.();
+      }
+      this.extensionDialogs = [];
+      this.showTopExtensionDialog();
     }
     this.ui.hideOverlay();
     this.clearExtensionTerminalInputListeners();
@@ -14650,6 +14649,35 @@ ${warningLines()}`, 0, 0));
     };
   }
   /**
+   * Show an extension dialog in the editor slot.
+   * Dialogs form a stack: a new dialog hides the visible one, and closing the visible dialog shows
+   * the previous one again. Every dialog stays answerable, so no dialog promise is left pending,
+   * and dialogs opened from inside another dialog (for example a confirm from a custom component) work.
+   */
+  pushExtensionDialog(component, blocked) {
+    this.disposeActiveSelector();
+    this.extensionDialogs.push({ component, blocked });
+    this.showTopExtensionDialog();
+  }
+  /** Remove an extension dialog. If it was visible, show the previous dialog or the editor. */
+  removeExtensionDialog(component) {
+    const index = this.extensionDialogs.findIndex((dialog) => dialog.component === component);
+    if (index === -1)
+      return;
+    this.extensionDialogs.splice(index, 1);
+    if (index === this.extensionDialogs.length)
+      this.showTopExtensionDialog();
+  }
+  showTopExtensionDialog() {
+    const top = this.extensionDialogs.at(-1);
+    const component = top?.component ?? this.editor;
+    this.editorContainer.clear();
+    this.editorContainer.addChild(component);
+    this.ui.setFocus(component);
+    this.programStatus.setBlocked("extension-dialog", top?.blocked);
+    this.ui.requestRender();
+  }
+  /**
    * Show a selector for extensions.
    */
   showExtensionSelector(title, options, opts, blocked = { kind: "question", message: title }) {
@@ -14658,39 +14686,17 @@ ${warningLines()}`, 0, 0));
         resolve7(void 0);
         return;
       }
-      const onAbort = /* @__PURE__ */ __name(() => {
-        this.hideExtensionSelector();
-        resolve7(void 0);
-      }, "onAbort");
-      opts?.signal?.addEventListener("abort", onAbort, { once: true });
-      this.extensionSelector = new ExtensionSelectorComponent(title, options, (option) => {
+      const finish = /* @__PURE__ */ __name((option) => {
         opts?.signal?.removeEventListener("abort", onAbort);
-        this.hideExtensionSelector();
+        selector.dispose();
+        this.removeExtensionDialog(selector);
         resolve7(option);
-      }, () => {
-        opts?.signal?.removeEventListener("abort", onAbort);
-        this.hideExtensionSelector();
-        resolve7(void 0);
-      }, { tui: this.ui, timeout: opts?.timeout, onToggleToolsExpanded: /* @__PURE__ */ __name(() => this.toggleToolOutputExpansion(), "onToggleToolsExpanded") });
-      this.disposeActiveSelector();
-      this.editorContainer.clear();
-      this.editorContainer.addChild(this.extensionSelector);
-      this.ui.setFocus(this.extensionSelector);
-      this.programStatus.setBlocked("extension-dialog", blocked);
-      this.ui.requestRender();
+      }, "finish");
+      const onAbort = /* @__PURE__ */ __name(() => finish(void 0), "onAbort");
+      opts?.signal?.addEventListener("abort", onAbort, { once: true });
+      const selector = new ExtensionSelectorComponent(title, options, (option) => finish(option), () => finish(void 0), { tui: this.ui, timeout: opts?.timeout, onToggleToolsExpanded: /* @__PURE__ */ __name(() => this.toggleToolOutputExpansion(), "onToggleToolsExpanded") });
+      this.pushExtensionDialog(selector, blocked);
     });
-  }
-  /**
-   * Hide the extension selector.
-   */
-  hideExtensionSelector() {
-    this.extensionSelector?.dispose();
-    this.editorContainer.clear();
-    this.editorContainer.addChild(this.editor);
-    this.extensionSelector = void 0;
-    this.programStatus.setBlocked("extension-dialog", void 0);
-    this.ui.setFocus(this.editor);
-    this.ui.requestRender();
   }
   /**
    * Show a confirmation dialog for extensions.
@@ -14716,70 +14722,30 @@ ${message}`, ["Yes", "No"], opts, {
         resolve7(void 0);
         return;
       }
-      const onAbort = /* @__PURE__ */ __name(() => {
-        this.hideExtensionInput();
-        resolve7(void 0);
-      }, "onAbort");
-      opts?.signal?.addEventListener("abort", onAbort, { once: true });
-      this.extensionInput = new ExtensionInputComponent(title, placeholder, (value) => {
+      const finish = /* @__PURE__ */ __name((value) => {
         opts?.signal?.removeEventListener("abort", onAbort);
-        this.hideExtensionInput();
+        input2.dispose();
+        this.removeExtensionDialog(input2);
         resolve7(value);
-      }, () => {
-        opts?.signal?.removeEventListener("abort", onAbort);
-        this.hideExtensionInput();
-        resolve7(void 0);
-      }, { tui: this.ui, timeout: opts?.timeout });
-      this.disposeActiveSelector();
-      this.editorContainer.clear();
-      this.editorContainer.addChild(this.extensionInput);
-      this.ui.setFocus(this.extensionInput);
-      this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
-      this.ui.requestRender();
+      }, "finish");
+      const onAbort = /* @__PURE__ */ __name(() => finish(void 0), "onAbort");
+      opts?.signal?.addEventListener("abort", onAbort, { once: true });
+      const input2 = new ExtensionInputComponent(title, placeholder, (value) => finish(value), () => finish(void 0), { tui: this.ui, timeout: opts?.timeout });
+      this.pushExtensionDialog(input2, { kind: "question", message: title });
     });
-  }
-  /**
-   * Hide the extension input.
-   */
-  hideExtensionInput() {
-    this.extensionInput?.dispose();
-    this.editorContainer.clear();
-    this.editorContainer.addChild(this.editor);
-    this.extensionInput = void 0;
-    this.programStatus.setBlocked("extension-dialog", void 0);
-    this.ui.setFocus(this.editor);
-    this.ui.requestRender();
   }
   /**
    * Show a multi-line editor for extensions (with Ctrl+G support).
    */
   showExtensionEditor(title, prefill) {
     return new Promise((resolve7) => {
-      this.extensionEditor = new ExtensionEditorComponent(this.ui, this.keybindings, title, prefill, (value) => {
-        this.hideExtensionEditor();
+      const finish = /* @__PURE__ */ __name((value) => {
+        this.removeExtensionDialog(editor);
         resolve7(value);
-      }, () => {
-        this.hideExtensionEditor();
-        resolve7(void 0);
-      }, void 0, this.settingsManager.getExternalEditorCommand());
-      this.disposeActiveSelector();
-      this.editorContainer.clear();
-      this.editorContainer.addChild(this.extensionEditor);
-      this.ui.setFocus(this.extensionEditor);
-      this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
-      this.ui.requestRender();
+      }, "finish");
+      const editor = new ExtensionEditorComponent(this.ui, this.keybindings, title, prefill, (value) => finish(value), () => finish(void 0), void 0, this.settingsManager.getExternalEditorCommand());
+      this.pushExtensionDialog(editor, { kind: "question", message: title });
     });
-  }
-  /**
-   * Hide the extension editor.
-   */
-  hideExtensionEditor() {
-    this.editorContainer.clear();
-    this.editorContainer.addChild(this.editor);
-    this.extensionEditor = void 0;
-    this.programStatus.setBlocked("extension-dialog", void 0);
-    this.ui.setFocus(this.editor);
-    this.ui.requestRender();
   }
   /**
    * Set a custom editor component from an extension.
@@ -14857,17 +14823,16 @@ ${message}`, ["Yes", "No"], opts, {
   async showExtensionCustom(factory, options) {
     const savedText = this.editor.getText();
     const isOverlay = options?.overlay ?? false;
-    const restoreEditor3 = /* @__PURE__ */ __name(() => {
-      this.editorContainer.clear();
-      this.editorContainer.addChild(this.editor);
-      this.editor.setText(savedText);
-      this.ui.setFocus(this.editor);
-      this.ui.requestRender();
-    }, "restoreEditor");
     return new Promise((resolve7, reject) => {
       let component;
       let overlayHandle;
       let closed = false;
+      const restoreEditor3 = /* @__PURE__ */ __name(() => {
+        if (component)
+          this.removeExtensionDialog(component);
+        this.editor.setText(savedText);
+        this.ui.requestRender();
+      }, "restoreEditor");
       const close = /* @__PURE__ */ __name((result) => {
         if (closed)
           return;
@@ -14892,17 +14857,13 @@ ${message}`, ["Yes", "No"], opts, {
               const opts = typeof options.overlayOptions === "function" ? options.overlayOptions() : options.overlayOptions;
               return opts;
             }
-            const w = component.width;
+            const w = c2.width;
             return w ? { width: w } : void 0;
           }, "resolveOptions");
-          overlayHandle = this.ui.showOverlay(component, resolveOptions());
+          overlayHandle = this.ui.showOverlay(c2, resolveOptions());
           options?.onHandle?.(overlayHandle);
         } else {
-          this.disposeActiveSelector();
-          this.editorContainer.clear();
-          this.editorContainer.addChild(component);
-          this.ui.setFocus(component);
-          this.ui.requestRender();
+          this.pushExtensionDialog(c2);
         }
       }).catch((err) => {
         if (closed)
@@ -20432,7 +20393,7 @@ function getActiveManagedInstallRoot() {
     return void 0;
   const markerPath = join14(managedRoot, MANAGED_INSTALL_MARKER);
   try {
-    const marker = JSON.parse(readFileSync10(markerPath, "utf8"));
+    const marker = JSON.parse(stripBom(readFileSync10(markerPath, "utf8")));
     if (marker.kind !== "pi-managed-install" || marker.schemaVersion !== 1 || marker.layout !== "releases-v1") {
       throw new Error();
     }

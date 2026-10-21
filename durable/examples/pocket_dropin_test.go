@@ -42,16 +42,16 @@ type pocketArtifact struct {
 var (
 	// SessionsDoc: scope "session", read as harness.snapshot(SessionsDoc, context).
 	pocketSessionsDoc = durable.DefineDoc(durable.DocDefinition[pocketSessions]{
-		CommonDocDefinition: durable.CommonDocDefinition[pocketSessions]{Kind: "pocket.sessions", Version: 1, Initial: func() pocketSessions { return pocketSessions{Items: map[string]map[string]any{}} }},
+		CommonDocDefinition: durable.CommonDocDefinition[pocketSessions]{Kind: "pocket.sessions", Version: 1, Initial: func() pocketSessions { return pocketSessions{Items: map[string]map[string]any{}} }, CheckpointWhen: func(pocketSessions, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
 	})
 	// PlanDoc and ChatDoc: conversation scope, latest history, a fork keeps the parent's current value.
 	pocketPlanDoc = durable.DefineDoc(durable.DocDefinition[pocketPlan]{
-		CommonDocDefinition: durable.CommonDocDefinition[pocketPlan]{Kind: "pocket.plan", Version: 1, Initial: func() pocketPlan { return pocketPlan{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[pocketPlan]{Kind: "pocket.plan", Version: 1, Initial: func() pocketPlan { return pocketPlan{} }, CheckpointWhen: func(pocketPlan, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 	})
 	pocketChatDoc = durable.DefineDoc(durable.DocDefinition[pocketChat]{
-		CommonDocDefinition: durable.CommonDocDefinition[pocketChat]{Kind: "pocket.chat", Version: 1, Initial: func() pocketChat { return pocketChat{Messages: []string{}} }},
+		CommonDocDefinition: durable.CommonDocDefinition[pocketChat]{Kind: "pocket.chat", Version: 1, Initial: func() pocketChat { return pocketChat{Messages: []string{}} }, CheckpointWhen: func(pocketChat, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 	})
 	// ArtifactBodyDoc: a family keyed by artifact id with a seed.
@@ -60,6 +60,7 @@ var (
 		Kind:   "pocket.artifact-body", Version: 1,
 		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 		Initial:           func(seed pocketArtifact) pocketArtifact { return seed },
+		CheckpointWhen:    func(pocketArtifact, []durable.Op, durable.CheckpointInfo) bool { return false },
 	})
 )
 

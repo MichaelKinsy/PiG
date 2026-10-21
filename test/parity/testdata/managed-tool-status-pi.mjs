@@ -18,8 +18,9 @@ let source = ts.transpileModule(readFileSync('.upstream/current/packages/coding-
 const dependencies = {
   'fs': 'export * from "node:fs";',
   'child_process': 'import { spawnSync as spawn } from "node:child_process"; export const spawnSync = (cmd, args, options) => cmd === "tar" ? spawn(cmd, args, options) : ({ error: new Error("not found") });',
-  '../config.ts': 'export const APP_NAME = "pi"; export const getBinDir = () => process.env.PI_CODING_AGENT_DIR;',
+  '../config.ts': `export { VERSION } from ${JSON.stringify(pathToFileURL(join(root, 'dist/config.js')).href)}; export const APP_NAME = "pi"; export const getBinDir = () => process.env.PI_CODING_AGENT_DIR;`,
   './management-http.ts': 'export const fetchWithRetry = (...args) => globalThis.fetch(...args);',
+  './pi-user-agent.ts': `export { getPiUserAgent } from ${JSON.stringify(pathToFileURL(join(root, 'dist/utils/pi-user-agent.js')).href)};`,
 };
 for (const [specifier, stub] of Object.entries(dependencies)) {
   const needle = `from "${specifier}"`;

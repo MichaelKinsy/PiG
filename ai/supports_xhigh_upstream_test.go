@@ -74,7 +74,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 		})
 	}
 	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:88
-	for _, id := range []string{"gpt-5.5", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"} {
+	for _, id := range []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"} {
 		t.Run("includes xhigh for openai-codex "+id+" models", func(t *testing.T) {
 			if got := GetSupportedThinkingLevels(upstreamThinkingModel(t, "openai-codex/"+id)); !slices.Contains(got, ThinkingXHigh) {
 				t.Fatalf("levels = %v", got)

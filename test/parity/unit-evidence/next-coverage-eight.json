@@ -22,14 +22,14 @@
     "mutation": "ai/auth_env_keys.go: replace qwen-token-plan-individual's QWEN_TOKEN_PLAN_API_KEY mapping with MUTANT_QWEN_TOKEN_PLAN_API_KEY; compiling go test -overlay qwen-individual.json ./ai -run '^(TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable|TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels|TestQwenTokenPlanSendsQwenThinkingFields)$' -count=1 fails TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable; qwen-red.log"
   },
   {
-    "upstream": "packages/ai/src/utils/pi-user-agent.ts",
+    "upstream": "packages/ai/src/utils/identity.ts",
     "package": "./ai",
     "tests": [
       "TestPiUserAgentFormat",
       "TestProviderDefaultUserAgent",
       "TestProviderUserAgentOverridePrecedence"
     ],
-    "upstream_reference": "packages/ai/src/utils/pi-user-agent.ts getPiUserAgent exact platform/release/arch identity independently obtained from node:os, plus provider default-header wiring and override precedence; the approved pig/<coding.Version> product-identity divergence D65 is preserved",
+    "upstream_reference": "packages/ai/src/utils/identity.ts formatUserAgent (Pi bd3c9b82 replaced utils/pi-user-agent.ts getPiUserAgent) exact platform/release/arch identity independently obtained from node:os, plus provider default-header wiring and override precedence; the approved pig/<coding.Version> product-identity divergence D65 is preserved",
     "mutation": "ai/user_agent.go: change piUserAgentArch's amd64 result from x64 to invented-arch; go test -overlay ai-arch.json ./ai -run '^$' -count=1 compiles, then -run '^TestPiUserAgentFormat$' -count=1 fails on invented-arch versus independently observed x64; ai-after-compile.log and ai-after-red.log. The same mutation passed all three selected tests before the independent assertion; ai-before-mutation.log. Restored tests pass; restored-green.log"
   },
   {

@@ -1,5 +1,6 @@
 import { calculateCost } from "../models.js";
 import { headersToRecord, providerHeadersToRecord } from "../utils/headers.js";
+import { getIdentityHeaders } from "../utils/identity.js";
 import { retryProviderRequest } from "../utils/provider-retry.js";
 function httpError(label, response, body) {
     const error = new Error(`${label} returned ${response.status}`);
@@ -25,8 +26,8 @@ export function requiredNumber(label, value, field) {
     }
     return value;
 }
-function requestHeaders(model, apiKey, optionsHeaders) {
-    return (providerHeadersToRecord({ authorization: `Bearer ${apiKey}`, "content-type": "application/json" }, model.headers, optionsHeaders) ?? {});
+function requestHeaders(model, apiKey, optionsHeaders, identity) {
+    return (providerHeadersToRecord(getIdentityHeaders(model, identity), { authorization: `Bearer ${apiKey}`, "content-type": "application/json" }, model.headers, optionsHeaders) ?? {});
 }
 /**
  * Posts one JSON classifier request with bearer auth, `onPayload`/`onResponse` hooks, a fresh
@@ -50,7 +51,7 @@ export async function postClassifierRequest(label, url, model, body, options, no
         try {
             const next = await requestFetch(url, {
                 method: "POST",
-                headers: requestHeaders(model, apiKey, options.headers),
+                headers: requestHeaders(model, apiKey, options.headers, options.identity),
                 body: JSON.stringify(payload),
                 signal,
             });

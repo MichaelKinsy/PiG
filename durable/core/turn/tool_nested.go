@@ -26,6 +26,8 @@ var NestedCallDef = &session.DocDef{
 	Scope:   session.ScopeTask,
 	Family:  true,
 	Initial: func(any) *jv.Object { return jv.NewObject() },
+	// The document retires with its task.
+	CheckpointWhen: func(*jv.Object, []delta.Op, int) bool { return false },
 }
 
 // madeNestedCalls is the memo of a tool task that made a nested call, in any attempt, committed before the first admission of

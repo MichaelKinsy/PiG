@@ -6,33 +6,17 @@ package telemetry_test
 // histogram names to histograms, unknown names, required and exact measurement attributes, closed-set values, variables
 // with unknown attributes, duplicate metric names across schemas, and high-cardinality attributes on metrics. They have no
 // Go form, and upstream performs no runtime validation for them (see the header of metrics.go). Object.isFrozen has no Go
-// form either: the shared no-op instruments are stateless values. An unreadable Proxy argument has no Go form: a Go options
-// struct or attribute bag cannot fail to read. The Go forms of those cases are the values whose methods panic and a
-// context whose methods panic.
+// form either: the shared no-op instruments are stateless values.
 
 import (
 	"encoding/json"
-	"math"
 	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// panickingValue is the Go form of upstream's unreadable payload: every method that could inspect it panics.
-type panickingValue struct{}
-
-func (panickingValue) String() string               { panic("read") }
-func (panickingValue) MarshalJSON() ([]byte, error) { panic("read") }
-
-// panickingContext is the Go form of upstream's unreadable context: calling any method on it panics.
-type panickingContext struct{}
-
-func (panickingContext) StartSpan(telemetry.SpanOptions, func(telemetry.TelemetrySpan) error) error {
-	panic("read")
-}
-
-func metricAttribute(attributeType telemetry.TelemetryAttributeType, description string, required bool, values ...telemetry.AttributeValue) telemetry.TelemetryMetricAttributeDefinition {
+func metricAttribute(attributeType telemetry.TelemetryAttributeType, description string, required bool, values ...string) telemetry.TelemetryMetricAttributeDefinition {
 	definition := telemetry.TelemetryMetricAttributeDefinition{Required: required}
 	definition.Type = attributeType
 	definition.Description = description
@@ -48,7 +32,7 @@ func trafficSchema() *telemetry.TelemetrySchemaDefinition {
 		Spans:   map[string]telemetry.TelemetrySpanDefinition{},
 		Metrics: map[string]telemetry.TelemetryMetricDefinition{
 			"network.bytes": {
-				Kind: telemetry.TelemetryMetricKindCounter, Description: "Encoded bytes", Unit: new("By"),
+				Kind: telemetry.TelemetryMetricKindCounter, Description: "Encoded bytes", Unit: "By",
 				Attributes: map[string]telemetry.TelemetryMetricAttributeDefinition{"direction": direction},
 			},
 			"network.active": {Kind: telemetry.TelemetryMetricKindUpDownCounter, Description: "Open links", Attributes: map[string]telemetry.TelemetryMetricAttributeDefinition{}},
@@ -62,7 +46,7 @@ func latencySchema() *telemetry.TelemetrySchemaDefinition {
 		Spans:   map[string]telemetry.TelemetrySpanDefinition{},
 		Metrics: map[string]telemetry.TelemetryMetricDefinition{
 			"call.duration": {
-				Kind: telemetry.TelemetryMetricKindHistogram, Description: "Call duration", Unit: new("ms"), Boundaries: []float64{1, 10, 100},
+				Kind: telemetry.TelemetryMetricKindHistogram, Description: "Call duration", Unit: "ms", Boundaries: []float64{1, 10, 100},
 				Attributes: map[string]telemetry.TelemetryMetricAttributeDefinition{"method": metricAttribute(telemetry.TelemetryAttributeTypeString, "Method", false)},
 			},
 		},
@@ -77,11 +61,11 @@ func TestMetricsUpstream(t *testing.T) {
 		adapter := telemetry.NewInMemoryTelemetryContext()
 		traffic, latency := trafficSchema(), latencySchema()
 		metrics := telemetry.CreateTypedMetrics(adapter, traffic, latency)
-		metrics.Counter("network.bytes").Add(128, telemetry.SpanAttributes{"direction": "out"})
+		metrics.Counter("network.bytes").Add(128, telemetry.SpanAttributes{telemetry.Attr("direction", "out")})
 		metrics.UpDownCounter("network.active").Add(1, nil)
 		metrics.UpDownCounter("network.active").Add(-1, nil)
 		if err := adapter.StartSpan(telemetry.SpanOptions{Name: "request"}, func(span telemetry.TelemetrySpan) error {
-			metrics.Histogram("call.duration").Record(12, telemetry.SpanAttributes{"method": "read"}, span)
+			metrics.Histogram("call.duration").Record(12, telemetry.SpanAttributes{telemetry.Attr("method", "read")}, span)
 			metrics.Histogram("call.duration").Record(13, nil, nil)
 			metrics.Histogram("call.duration").Record(14, nil, span)
 			return nil
@@ -95,7 +79,7 @@ func TestMetricsUpstream(t *testing.T) {
 		counter := measurements[0]
 		if counter.Kind != telemetry.TelemetryMetricKindCounter || counter.Name != "network.bytes" || counter.Value != 128 ||
 			counter.Description == nil || *counter.Description != "Encoded bytes" || counter.Unit == nil || *counter.Unit != "By" ||
-			!reflect.DeepEqual(counter.Attributes, telemetry.SpanAttributes{"direction": "out"}) {
+			!reflect.DeepEqual(counter.Attributes, telemetry.SpanAttributes{telemetry.Attr("direction", "out")}) {
 			t.Fatalf("counter measurement = %+v", counter)
 		}
 		span := adapter.GetSpans()[0]
@@ -132,9 +116,9 @@ func TestMetricsUpstream(t *testing.T) {
 			}},
 		})
 		adapter := telemetry.NewInMemoryTelemetryContext()
-		telemetry.CreateTypedMetrics(adapter, schema).Histogram("required").Record(1, telemetry.SpanAttributes{"cache": true}, nil)
+		telemetry.CreateTypedMetrics(adapter, schema).Histogram("required").Record(1, telemetry.SpanAttributes{telemetry.Attr("cache", true)}, nil)
 		measurements := adapter.GetMetrics()
-		if len(measurements) != 1 || measurements[0].Name != "required" || measurements[0].Value != 1 || !reflect.DeepEqual(measurements[0].Attributes, telemetry.SpanAttributes{"cache": true}) ||
+		if len(measurements) != 1 || measurements[0].Name != "required" || measurements[0].Value != 1 || !reflect.DeepEqual(measurements[0].Attributes, telemetry.SpanAttributes{telemetry.Attr("cache", true)}) ||
 			measurements[0].Description == nil || *measurements[0].Description != "Required tag" || measurements[0].Unit != nil || measurements[0].Boundaries != nil {
 			t.Fatalf("measurements = %+v", measurements)
 		}
@@ -145,7 +129,7 @@ func TestMetricsUpstream(t *testing.T) {
 		adapter := telemetry.NewInMemoryTelemetryContext()
 		histogram := adapter.Histogram("duration", telemetry.HistogramOptions{Boundaries: []float64{1, 2}})
 		if err := adapter.StartSpan(telemetry.SpanOptions{Name: "request"}, func(span telemetry.TelemetrySpan) error {
-			histogram.Record(1, telemetry.SpanAttributes{"tags": []string{"original"}}, span)
+			histogram.Record(1, telemetry.SpanAttributes{telemetry.Attr("tags", []string{"original"})}, span)
 			return nil
 		}); err != nil {
 			t.Fatal(err)
@@ -157,44 +141,28 @@ func TestMetricsUpstream(t *testing.T) {
 		// A Go slice aliases its backing array, so each element is mutated in place as well as the slice replaced.
 		measurement.Boundaries[0] = 99
 		measurement.Boundaries = append(measurement.Boundaries, 3)
-		measurement.Attributes["tags"].([]string)[0] = "mutated"
-		measurement.Attributes["tags"] = []string{"mutated"}
+		measurement.Attributes.Value("tags").([]string)[0] = "mutated"
+		measurement.Attributes.Set("tags", []string{"mutated"})
 		measurement.Context["pi-memory-span"] = "999"
 		again := adapter.GetMetrics()[0]
-		if !reflect.DeepEqual(again.Boundaries, []float64{1, 2}) || !reflect.DeepEqual(again.Attributes, telemetry.SpanAttributes{"tags": []string{"original"}}) || !reflect.DeepEqual(again.Context, adapter.GetSpans()[0].Context) {
+		if !reflect.DeepEqual(again.Boundaries, []float64{1, 2}) || !reflect.DeepEqual(again.Attributes, telemetry.SpanAttributes{telemetry.Attr("tags", []string{"original"})}) || !reflect.DeepEqual(again.Context, adapter.GetSpans()[0].Context) {
 			t.Fatalf("measurement = %+v, want boundaries [1 2], tags [original] and the request span as exemplar", again)
 		}
 	})
 
-	t.Run("metrics › ignores malformed metadata, nonfinite values, and unreadable attributes", func(t *testing.T) {
-		// upstream: packages/telemetry/test/metrics.test.ts:164
+	t.Run("metrics › records histogram measurements without an exemplar for a no-op context", func(t *testing.T) {
+		// upstream: packages/telemetry/test/metrics.test.ts:151 (the adapter contract trusts typed inputs, so only the exemplar check remains)
 		adapter := telemetry.NewInMemoryTelemetryContext()
-		// Upstream's first two calls pass unreadable option bags, which have no Go form: a Go options struct cannot fail to read.
-		for _, boundaries := range [][]float64{{1, 1}, {2, 1}, {math.NaN()}, {math.Inf(1)}} {
-			adapter.Histogram("bad", telemetry.HistogramOptions{Boundaries: boundaries}).Record(1, nil, nil)
-		}
-		for _, value := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
-			adapter.Counter("bad", telemetry.InstrumentOptions{}).Add(value, nil)
-			adapter.UpDownCounter("bad", telemetry.InstrumentOptions{}).Add(value, nil)
-			adapter.Histogram("bad", telemetry.HistogramOptions{}).Record(value, nil, nil)
-		}
-		adapter.Counter("bad", telemetry.InstrumentOptions{}).Add(-1, nil)
-		// Upstream's last invalid call passes an unreadable attribute bag. A Go bag cannot fail to read, and the recorder stores
-		// a value it never inspects, so that call is not ported; the recorder passivity of an unreadable value is the
-		// "metrics" conformance case.
-		if measurements := adapter.GetMetrics(); len(measurements) != 0 {
-			t.Fatalf("measurements = %+v, want none", measurements)
-		}
 		adapter.Histogram("valid", telemetry.HistogramOptions{}).Record(-1, telemetry.SpanAttributes{}, telemetry.NoopTelemetryContext)
 		if measurements := adapter.GetMetrics(); len(measurements) != 1 || measurements[0].Context != nil {
 			t.Fatalf("measurements = %+v, want one measurement without an exemplar", measurements)
 		}
 	})
 
-	t.Run("metrics › shares frozen no-op instruments without inspecting arguments", func(t *testing.T) {
+	t.Run("metrics › shares frozen no-op instruments", func(t *testing.T) {
 		// upstream: packages/telemetry/test/metrics.test.ts:182
 		options := telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Unit: new("By")}}
-		attributes := telemetry.SpanAttributes{"secret": panickingValue{}}
+		attributes := telemetry.SpanAttributes{telemetry.Attr("direction", "out")}
 		counter := telemetry.NoopTelemetryMetrics.Counter("bytes", options.InstrumentOptions)
 		active := telemetry.NoopTelemetryMetrics.UpDownCounter("active", options.InstrumentOptions)
 		histogram := telemetry.NoopTelemetryMetrics.Histogram("duration", options)
@@ -206,7 +174,7 @@ func TestMetricsUpstream(t *testing.T) {
 		}
 		counter.Add(1, attributes)
 		active.Add(-1, attributes)
-		histogram.Record(1, attributes, panickingContext{})
+		histogram.Record(1, attributes, telemetry.NoopTelemetryContext)
 	})
 }
 
@@ -216,7 +184,7 @@ func TestMetricsUpstream(t *testing.T) {
 func TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly(t *testing.T) {
 	adapter := telemetry.NewInMemoryTelemetryContext()
 	first := telemetry.DefineTelemetrySchema(&telemetry.TelemetrySchemaDefinition{Version: 1, Spans: map[string]telemetry.TelemetrySpanDefinition{}, Metrics: map[string]telemetry.TelemetryMetricDefinition{
-		"shared": {Kind: telemetry.TelemetryMetricKindCounter, Description: "first", Unit: new("a"), Attributes: map[string]telemetry.TelemetryMetricAttributeDefinition{}},
+		"shared": {Kind: telemetry.TelemetryMetricKindCounter, Description: "first", Unit: "a", Attributes: map[string]telemetry.TelemetryMetricAttributeDefinition{}},
 	}})
 	second := telemetry.DefineTelemetrySchema(&telemetry.TelemetrySchemaDefinition{Version: 1, Spans: map[string]telemetry.TelemetrySpanDefinition{}, Metrics: map[string]telemetry.TelemetryMetricDefinition{
 		"shared": {Kind: telemetry.TelemetryMetricKindCounter, Description: "second", Attributes: map[string]telemetry.TelemetryMetricAttributeDefinition{}},

@@ -22,7 +22,7 @@ func TestPostLoginModelSelectionRules(t *testing.T) {
 		ids               []string
 		selected, problem string
 	}{
-		{"oauth default", "github-copilot", []string{"other", "gpt-5.4"}, "gpt-5.4", ""},
+		{"oauth default", "github-copilot", []string{"other", "gpt-6.1-sol"}, "gpt-6.1-sol", ""},
 		{"api key default", "openai", []string{"other", "gpt-5.5"}, "gpt-5.5", ""},
 		{"no default", "custom", []string{"first"}, "", `, but no default model is configured for provider "custom". Use /model to select a model.`},
 		{"empty no default", "custom", nil, "", `, but no default model is configured for provider "custom". Use /model to select a model.`},

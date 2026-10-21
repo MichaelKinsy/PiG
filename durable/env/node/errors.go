@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"strings"
 	"syscall"
 
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // nodeErrorCode is an error this package raises itself with a fixed Node
@@ -110,10 +110,9 @@ func abortedFileError(ctx context.Context, path string) error {
 	return durableenv.NewFileError(durableenv.FileErrorAborted, "aborted", path, nil)
 }
 
-func pathExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
+// pathExists is upstream's pathExists, an access(F_OK) check. On Windows it is not os.Stat's existence check, which rejects a
+// runnable Microsoft Store alias (nodejs/node#36790).
+func pathExists(path string) bool { return nodefs.Access(path) }
 
 // sq wraps s in single quotes for Node-style error text (display only). An embedded single quote is escaped so the
 // value cannot end the quoted span; paths without one print exactly as Node prints them.

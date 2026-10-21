@@ -18,6 +18,7 @@ import type {
   ToolLoadoutChanges,
   ToolNamespace,
 } from "@earendil-works/pi-coding-agent";
+import { clampThinkingLevel } from "@earendil-works/pi-ai/models";
 import type { Component, Container } from "@earendil-works/pi-tui";
 import type {
   ExtensionToolContext as AdapterExtensionToolContext,
@@ -307,3 +308,9 @@ export function beforeAgentStartTrigger(pi: ExtensionAPI): void {
     return undefined;
   });
 }
+
+// Pi serves @earendil-works/pi-ai/models to extensions (core/extensions/virtual-modules.ts, #11156); its declarations resolve.
+export const clampedThinkingLevel: string = clampThinkingLevel(
+  { reasoning: false } as Parameters<typeof clampThinkingLevel>[0],
+  "high",
+);

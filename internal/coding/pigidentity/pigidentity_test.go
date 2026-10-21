@@ -12,30 +12,24 @@ import (
 // rewriting both sides.
 func TestIdentityValuesAreThePiGBrand(t *testing.T) {
 	want := map[string]string{
-		"OpenRouterReferer":    "https://github.com/MichaelKinsy/PiG",
-		"OpenRouterTitle":      "PiG",
-		"OpenRouterCategories": "cli-agent",
-		"NvidiaBillingOrigin":  "PiG",
-		"CloudflareUserAgent":  "pig-coding-agent",
-		"OpenCodeClient":       "pig",
-		"CodexOriginator":      "pig",
-		"XAIReferrer":          "pig",
-		"AgentMarker":          "pig",
-		"UserAgentProduct":     "pig",
-		"HostedOrigin":         "https://pi-in-go.dev",
+		"AttributionName":     "PiG",
+		"AttributionURL":      "https://github.com/MichaelKinsy/PiG",
+		"AttributionCategory": "cli-agent",
+		"CodexOriginator":     "pig",
+		"XAIReferrer":         "pig",
+		"AgentMarker":         "pig",
+		"UserAgentProduct":    "pig",
+		"HostedOrigin":        "https://pi-in-go.dev",
 	}
 	got := map[string]string{
-		"OpenRouterReferer":    OpenRouterReferer,
-		"OpenRouterTitle":      OpenRouterTitle,
-		"OpenRouterCategories": OpenRouterCategories,
-		"NvidiaBillingOrigin":  NvidiaBillingOrigin,
-		"CloudflareUserAgent":  CloudflareUserAgent,
-		"OpenCodeClient":       OpenCodeClient,
-		"CodexOriginator":      CodexOriginator,
-		"XAIReferrer":          XAIReferrer,
-		"AgentMarker":          AgentMarker,
-		"UserAgentProduct":     UserAgentProduct,
-		"HostedOrigin":         HostedOrigin,
+		"AttributionName":     AttributionName,
+		"AttributionURL":      AttributionURL,
+		"AttributionCategory": AttributionCategory,
+		"CodexOriginator":     CodexOriginator,
+		"XAIReferrer":         XAIReferrer,
+		"AgentMarker":         AgentMarker,
+		"UserAgentProduct":    UserAgentProduct,
+		"HostedOrigin":        HostedOrigin,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("identity = %v, want %v", got, want)
@@ -55,18 +49,15 @@ func TestIdentityJSONIsTheSingleSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"openRouterReferer":    OpenRouterReferer,
-		"openRouterTitle":      OpenRouterTitle,
-		"openRouterCategories": OpenRouterCategories,
-		"nvidiaBillingOrigin":  NvidiaBillingOrigin,
-		"cloudflareUserAgent":  CloudflareUserAgent,
-		"openCodeClient":       OpenCodeClient,
-		"codexOriginator":      CodexOriginator,
-		"chatgptAgentName":     ChatGPTAgentName,
-		"xaiReferrer":          XAIReferrer,
-		"agentMarker":          AgentMarker,
-		"userAgentProduct":     UserAgentProduct,
-		"hostedOrigin":         HostedOrigin,
+		"attributionName":     AttributionName,
+		"attributionUrl":      AttributionURL,
+		"attributionCategory": AttributionCategory,
+		"codexOriginator":     CodexOriginator,
+		"chatgptAgentName":    ChatGPTAgentName,
+		"xaiReferrer":         XAIReferrer,
+		"agentMarker":         AgentMarker,
+		"userAgentProduct":    UserAgentProduct,
+		"hostedOrigin":        HostedOrigin,
 	}
 	if !reflect.DeepEqual(file, want) {
 		t.Fatalf("identity.json = %v, want the exported values %v", file, want)

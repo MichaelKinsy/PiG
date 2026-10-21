@@ -1,0 +1,52 @@
+# Behavior family: extensions-runtime
+# Surface: a resumed session restores the loadout its branch recorded and also activates the extension tools the whole branch never added or removed,
+# except tools registered with defaultActive false; a tool the branch removed stays inactive.
+#
+# Pi bd3c9b82 (#11062, #11075): _restoreToolsFromTranscript. The staged branch recorded read and retired, then removed retired. The extension registers
+# fresh (never mentioned), retired (removed), and quiet (defaultActive false). The extension's getActiveTools after resume lists read and fresh only.
+#
+# Upstream evidence (2026-10-21, 100x35 tmux, pinned Pi 1.3.0+bd3c9b82 built from the oracle): `go test -tags=parity ./test/parity/runner -run
+# 'TestParity/36-resume-activates-extension-tools$'` passed 3 of 3 declared pairs with byte-identical crops:
+#   active-tools:fresh,read:end
+
+name = "36-resume-activates-extension-tools"
+description = "Resume activates extension tools the branch never mentioned and keeps removed and defaultActive false tools inactive."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+pig_extensions = ["testdata/ext/resume-tools.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/resume-tools.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/resume-tools-session"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "active-tools:"
+capture_end = ":end"
+
+[[tmux.steps]]
+keys = ["/active-tools", "Enter"]
+wait_contains = ["active-tools:", ":end"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["active-tools:fresh,read:end"]
+both_not_contain = ["retired", "quiet", "panic:", "goroutine "]
+output_equal = true
+runs = 3

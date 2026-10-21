@@ -15,7 +15,7 @@ import { root, tempDir, toolchain } from "./helpers.ts"
 const wasm = join(root, "dist", `core-${toolchain}.wasm`)
 const context = BACKGROUND_CONTEXT
 const COMMITS = 4
-const Live = defineDoc<{ items: number[] }>({ kind: "recovery.live", version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ items: [] }) })
+const Live = defineDoc<{ items: number[] }>({ kind: "recovery.live", checkpointWhen: () => false, version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ items: [] }) })
 const noModels = { getModel: () => undefined, streamSimple: () => { throw new Error("a Session has no models") } }
 const registry = createRegistry()
 

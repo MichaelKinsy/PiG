@@ -5044,18 +5044,10 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/codingagent/tools/shell_config.go"
-func = "GetShellConfig"
-pattern = "env-stat"
-detail = "os.Stat"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "internal/codingagent/tools/taskkill.go"
 func = "newTaskkillCommand"
 pattern = "env-stat"
-detail = "os.LookupEnv"
+detail = "os.Getenv"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 

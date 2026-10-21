@@ -19,6 +19,28 @@ import (
 //   - every Go package that PORT_MAP records as porting a file the entry point publishes (its source and the `export ... from`
 //     closure of it) is listed for that entry, so the seed does not leave out part of an entry point's API.
 func TestReachLibrariesPortPublishedEntryPoints(t *testing.T) {
+	// A published entry point PiG designs out has no Go package to seed. Its PORT_MAP row must say so: the row's file is n/a.
+	designedOutEntries := map[string]string{
+		"durable:./storage/indexeddb": "packages/durable/src/storage/indexeddb.ts", // browser-only IDBDatabase (Pi 16f5f0af)
+	}
+	portMap, readErr := os.ReadFile(filepath.Join("..", "..", "..", "..", "docs", "parity", "PORT_MAP.md"))
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	for entry, file := range designedOutEntries {
+		if _, ok := libraryEntries[entry]; ok {
+			t.Errorf("%s is designed out, so libraryEntries must not map it", entry)
+		}
+		row := ""
+		for _, line := range strings.Split(string(portMap), "\n") {
+			if strings.HasPrefix(line, "| `"+file+"` |") {
+				row = line
+			}
+		}
+		if !strings.HasSuffix(strings.TrimSpace(row), "| n/a |") {
+			t.Errorf("%s is designed out, but PORT_MAP's row for %s is not n/a: %q", entry, file, row)
+		}
+	}
 	root := filepath.Join("..", "..", "..", "..")
 	mirror := filepath.Join(root, ".upstream", "current", "packages")
 	ports := portMapGoDirs(t, root)
@@ -40,6 +62,9 @@ func TestReachLibrariesPortPublishedEntryPoints(t *testing.T) {
 			}
 			entry := pkg + ":" + subpath
 			published[entry] = true
+			if _, designedOut := designedOutEntries[entry]; designedOut {
+				continue
+			}
 			var target struct {
 				Source string `json:"source"`
 			}
@@ -68,6 +93,9 @@ func TestReachLibrariesPortPublishedEntryPoints(t *testing.T) {
 		}
 	}
 	for entry := range published {
+		if _, designedOut := designedOutEntries[entry]; designedOut {
+			continue
+		}
 		if _, ok := libraryEntries[entry]; !ok {
 			t.Errorf("Pi publishes %s, which libraryEntries does not map to a Go package", entry)
 		}

@@ -192,7 +192,7 @@ func TestAzureUpstreamUserAgent(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{Model: "gpt-4o-mini", APIKey: "test-api-key", BaseURL: "https://my-resource.openai.azure.com"}).(*openAIResponsesProvider)
-			want := PiUserAgent()
+			want := FormatUserAgent(nil)
 			opts := StreamOptions{}
 			if tc.custom != "" {
 				want = tc.custom

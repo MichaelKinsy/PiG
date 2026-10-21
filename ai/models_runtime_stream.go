@@ -32,11 +32,30 @@ type requestAuth struct {
 	apiKey  string
 	headers ProviderHeaders
 	env     ProviderEnv
+	// identity is the request identity merged over the Models default.
+	identity *ClientIdentity
+}
+
+// requestIdentityTarget is the provider and endpoint a request to model goes to; authBaseURL, when set, replaces the model's base URL as it does for the request.
+func requestIdentityTarget(model AnyModel, authBaseURL string) ClientIdentityTarget {
+	target := ClientIdentityTarget{Provider: model.ProviderID(), BaseURL: authBaseURL}
+	if authBaseURL != "" {
+		return target
+	}
+	switch typed := model.(type) {
+	case *Model:
+		target.BaseURL = typed.ProviderMeta.BaseURL
+	case *ImageModel:
+		target.BaseURL = typed.BaseURL
+	case *ClassifierModel:
+		target.BaseURL = typed.BaseURL
+	}
+	return target
 }
 
 // resolveRequestAuth resolves provider auth for model and merges it under the request's own key, headers and env.
 // apiKeySet marks an explicit empty request key, which suppresses the resolved key.
-func (m *Models) resolveRequestAuth(ctx context.Context, model AnyModel, apiKey string, apiKeySet bool, headers ProviderHeaders, env ProviderEnv, transform func(context.Context, ProviderHeaders) (ProviderHeaders, error)) (requestAuth, error) {
+func (m *Models) resolveRequestAuth(ctx context.Context, model AnyModel, apiKey string, apiKeySet bool, headers ProviderHeaders, env ProviderEnv, sessionID string, identity *ClientIdentity, transform func(context.Context, ProviderHeaders) (ProviderHeaders, error)) (requestAuth, error) {
 	if _, err := m.requireProvider(model); err != nil {
 		return requestAuth{}, err
 	}
@@ -51,7 +70,9 @@ func (m *Models) resolveRequestAuth(ctx context.Context, model AnyModel, apiKey 
 	if resolution == nil {
 		return requestAuth{}, NewModelsError(ModelsErrorAuth, "Provider is not configured: "+model.ProviderID(), nil)
 	}
-	out := requestAuth{baseURL: resolution.Auth.BaseURL, apiKey: apiKey, headers: MergeProviderHeaders(resolution.Auth.Headers, headers), env: env}
+	// The OpenCode session header is the lowest layer, so configured, auth and request headers override it (models.ts applyAuth).
+	opencode := GetOpenCodeSessionHeaders(requestIdentityTarget(model, resolution.Auth.BaseURL), sessionID)
+	out := requestAuth{baseURL: resolution.Auth.BaseURL, apiKey: apiKey, headers: MergeProviderHeaders(MergeProviderHeaders(opencode, resolution.Auth.Headers), headers), env: env, identity: MergeClientIdentity(m.identity, identity)}
 	if apiKey == "" && !apiKeySet {
 		out.apiKey = resolution.Auth.APIKey
 	}
@@ -75,11 +96,11 @@ func (m *Models) resolveRequestAuth(ctx context.Context, model AnyModel, apiKey 
 }
 
 func (m *Models) applyAuth(ctx context.Context, model *Model, options StreamOptions) (*Model, StreamOptions, error) {
-	auth, err := m.resolveRequestAuth(ctx, model, options.APIKey, false, options.Headers, options.Env, options.TransformHeaders)
+	auth, err := m.resolveRequestAuth(ctx, model, options.APIKey, false, options.Headers, options.Env, options.SessionID, options.Identity, options.TransformHeaders)
 	if err != nil {
 		return nil, StreamOptions{}, err
 	}
-	options.APIKey, options.Headers, options.Env, options.TransformHeaders = auth.apiKey, auth.headers, auth.env, nil
+	options.APIKey, options.Headers, options.Env, options.Identity, options.TransformHeaders = auth.apiKey, auth.headers, auth.env, auth.identity, nil
 	requestModel := model
 	if auth.baseURL != "" {
 		requestModel = new(*model)
@@ -89,14 +110,18 @@ func (m *Models) applyAuth(ctx context.Context, model *Model, options StreamOpti
 }
 
 // lazyStream returns immediately and forwards an owned setup/stream operation. It drains terminal events even after the caller cancels iteration.
-func (m *Models) lazyStream(ctx context.Context, model *Model, setup func() (*AssistantMessageEventStream, error)) *AssistantMessageEventStream {
+func (m *Models) lazyStream(ctx context.Context, model *Model, setup func() (*AssistantMessageEventStream, error), observer *LazyStreamObserver) *AssistantMessageEventStream {
+	var observation *lazyObservation
+	if observer != nil {
+		observation = &lazyObservation{observer: *observer}
+	}
 	return startLazyStream(ctx, model, func(context.Context) (*AssistantMessageEventStream, error) {
 		inner, err := setup()
 		if err == nil && inner == nil {
 			err = fmt.Errorf("provider returned no stream")
 		}
 		return inner, err
-	}, m.operations.Go)
+	}, m.operations.Go, observation)
 }
 
 // pushModelsSetupError ends stream with lazy.ts createSetupErrorMessage's message, errorMessage before timestamp.
@@ -140,7 +165,7 @@ func (m *Models) stream(ctx context.Context, model *Model, request Context, simp
 			return nil, NewModelsError(ModelsErrorStream, "Provider "+provider.ID+" has no stream implementation", nil)
 		}
 		return stream(ctx, prepared, transcript, params)
-	})
+	}, observeModelRequest(model, &opts, false, m.operations.Go))
 }
 
 func (m *Models) Complete(ctx context.Context, model *Model, request Context, options ...StreamOptions) *AssistantMessage {
@@ -171,7 +196,7 @@ func (m *Models) StreamDeferred(ctx context.Context, model *Model, handle Deferr
 		}
 		opts.StreamOptions = params
 		return provider.FetchDeferred(ctx, prepared, handle, opts)
-	})
+	}, observeModelRequest(model, &opts.StreamOptions, true, m.operations.Go))
 }
 
 func (m *Models) FetchDeferred(ctx context.Context, model *Model, handle DeferredHandle, options ...DeferredFetchOptions) *AssistantMessage {

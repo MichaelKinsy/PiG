@@ -51,25 +51,47 @@ HOME=h PIG_HOME=iso PIG_CODING_AGENT_DIR=a     → a/auth.json
 
 On Windows `HOME` is `%USERPROFILE%`. So the default is `%USERPROFILE%\.pig\agent` only when `XDG_CONFIG_HOME` is not set. If you set `XDG_CONFIG_HOME` for another tool, PiG will use `%XDG_CONFIG_HOME%\pig\agent` and your credentials will not be where the first section says. `PIG_CODING_AGENT_DIR` replaces the agent directory only: it is the `agent` folder itself, so `auth.json` sits directly in it. See [Environment variables](/docs/latest/environment-variables).
 
-## Bash on native Windows
+## Choose native Windows or WSL
 
-PiG runs the `bash` tool and `!` commands with Bash. It resolves Bash in this order:
+PiG runs either as a native Windows process or inside Windows Subsystem for Linux (WSL). Native Windows uses Git Bash by default for Bash commands and can optionally expose PowerShell to the model. PiG inside WSL uses the Linux environment and its Bash installation.
+
+| Environment | Command environment | Use it when |
+|---|---|---|
+| Native Windows with Git Bash | Git Bash for the built-in `bash` tool and `!` commands | Your files and development tools primarily live on Windows |
+| Native Windows with the `powershell` tool | PowerShell for model tool calls; Bash remains available for `!` commands | The task depends on PowerShell modules or Windows-native commands |
+| WSL | Linux Bash and tools inside the selected WSL distribution | Your files and toolchain already live in Linux or WSL |
+
+## Use Git Bash on native Windows
+
+For most native Windows users, installing [Git for Windows](https://git-scm.com/download/win) is sufficient.
+
+PiG resolves Bash in this order:
 
 1. `shellPath` from `~/.pig/agent/settings.json`.
-2. Git Bash under `Program Files` or `Program Files (x86)`.
-3. `bash.exe` on `PATH`, such as Cygwin, MSYS2 or the legacy WSL Bash.
+2. Git Bash at `%ProgramFiles%\Git\bin\bash.exe`.
+3. Git Bash at `%ProgramFiles(x86)%\Git\bin\bash.exe`.
+4. `bash.exe` on `PATH`, including Cygwin, MSYS2, or legacy WSL Bash.
 
-For most users, [Git for Windows](https://git-scm.com/download/win) is enough. Type this command in PiG to check the shell:
+Type this command in PiG to check the shell:
 
 ```text
 !printf 'Bash is working\n'
 ```
 
-See [Shell aliases](/docs/latest/shell-aliases) to set `shellPath` and a command prefix.
+If PiG cannot find Bash, it reports the Git Bash locations it checked. Install Git for Windows, put another Bash executable on `PATH`, or configure `shellPath`.
 
 ## Let the model use PowerShell
 
-The `powershell` tool is off by default and exists only when PiG runs as a native Windows process. It runs `pwsh.exe` when it is installed, and Windows PowerShell otherwise, with `-NoProfile -NonInteractive -ExecutionPolicy Bypass`. To replace the model's `bash` tool with `powershell`, set this in `~/.pig/agent/settings.json`:
+The `powershell` tool is off by default and exists only when PiG runs as a native Windows process. It runs `pwsh.exe` when available, then falls back to Windows PowerShell. It starts PowerShell with `-NoProfile -NonInteractive -ExecutionPolicy Bypass`. Administrator-enforced execution policies can still take precedence.
+
+PowerShell discovery checks these locations in order:
+
+1. `pwsh.exe` on `PATH`
+2. `%ProgramFiles%\PowerShell\7\pwsh.exe`
+3. `powershell.exe` on `PATH`
+4. `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`
+
+To replace the model's `bash` tool with `powershell`, set this in `~/.pig/agent/settings.json`:
 
 ```json
 {
@@ -77,9 +99,29 @@ The `powershell` tool is off by default and exists only when PiG runs as a nativ
 }
 ```
 
-Restart PiG. The `!` and `!!` commands still use Bash.
+`["read", "powershell", "edit", "write"]` does the same by listing the tools explicitly. Restart PiG. The `!` and `!!` commands still use Bash.
 
-## Terminal
+## WSL
+
+WSL path conversion on Windows and extra Git branch polling in WSL recognize `/mnt/<drive>`, not custom mount roots.
+
+When PiG uses the legacy WSL `bash.exe` launcher from Windows (`bash.exe` in the `System32` or `Sysnative` directory of `%SystemRoot%`), it sends commands over stdin to avoid command-line quoting problems.
+
+## Use a custom Bash executable
+
+Set `shellPath` when Bash is installed somewhere PiG does not discover automatically:
+
+```json
+{
+  "shellPath": "C:\\cygwin64\\bin\\bash.exe"
+}
+```
+
+JSON uses backslashes for escape sequences. When you write a Windows path with backslashes, write each backslash twice, as shown above.
+
+See [Shell aliases](/docs/latest/shell-aliases) for a command prefix and the complete shell-resolution behavior.
+
+## Configure Windows Terminal
 
 Use Windows Terminal or another terminal that supports the required input and ANSI behavior.
 

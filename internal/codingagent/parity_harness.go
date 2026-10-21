@@ -232,7 +232,7 @@ func loginGitHubCopilotForParity(ctx context.Context, cb ai.CopilotLoginCallback
 		case mode == "complete" && req.URL.Host == "api.github.com" && req.URL.Path == "/copilot_internal/v2/token":
 			return jsonResponse(200, `{"token":"tid=parity;proxy-ep=proxy.individual.githubcopilot.com","expires_at":4102444800}`), nil
 		case mode == "complete" && req.URL.Host == "api.individual.githubcopilot.com" && req.URL.Path == "/models":
-			return jsonResponse(200, `{"data":[{"id":"gpt-5.4","name":"GPT-5.4","model_picker_enabled":true,"policy":{"state":"enabled"},"capabilities":{"type":"chat","family":"gpt-5.4","supports":{"tool_calls":true},"limits":{"max_context_window_tokens":1000000,"max_output_tokens":32768}}}]}`), nil
+			return jsonResponse(200, `{"data":[{"id":"gpt-6.1-sol","name":"GPT-6.1 Sol","model_picker_enabled":true,"policy":{"state":"enabled"},"capabilities":{"type":"chat","family":"gpt-6.1-sol","supports":{"tool_calls":true},"limits":{"max_context_window_tokens":1000000,"max_output_tokens":32768}}}]}`), nil
 		default:
 			return nil, fmt.Errorf("unexpected login-dialog request: %s %s", req.Method, req.URL.String())
 		}

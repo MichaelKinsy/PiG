@@ -116,6 +116,8 @@ func TestCoreHostInputsAreReadAtEachUse(t *testing.T) {
 			first, second := ai.CreateModels(), ai.CreateModels()
 			first.SetProvider(faux.Provider())
 			second.SetProvider(faux.Provider())
+			// Marks the second Models: tools see views of the host's Models that add the Harness identity.
+			second.SetProvider(ai.NewFauxProvider(ai.FauxConfig{ProviderID: "second-only"}).Provider())
 			current := first
 			var seen []durable.Models
 			registry := harness.CreateRegistry()
@@ -135,7 +137,8 @@ func TestCoreHostInputsAreReadAtEachUse(t *testing.T) {
 			if got := hostInputsTurn(t, root, "go"); got != "done" {
 				t.Fatalf("turn %q", got)
 			}
-			if len(seen) != 2 || seen[0] != durable.Models(first) || seen[1] != durable.Models(second) {
+			listed := func(models durable.Models) int { return len(models.(ai.ModelsLister).GetModels("second-only")) }
+			if len(seen) != 2 || listed(seen[0]) != 0 || listed(seen[1]) == 0 {
 				t.Fatalf("api.models saw %v, want the first models, then the second", seen)
 			}
 		})

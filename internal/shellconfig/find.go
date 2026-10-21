@@ -2,12 +2,12 @@ package shellconfig
 
 import (
 	"context"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -15,8 +15,9 @@ import (
 const findTimeout = 5 * time.Second
 
 // FindExecutableOnPath asks the platform lookup command for the first match of executable: `where` on Windows, where
-// the match must also exist because `where` can report a path that does not, and `which` elsewhere, whose output is
-// trusted so Termux and special file systems work. It returns "" when the command fails, times out, or finds nothing.
+// the match must also pass the access check ([nodefs.Access]) because `where` can report a path that does not exist, and
+// `which` elsewhere, whose output is trusted so Termux and special file systems work. It returns "" when the command
+// fails, times out, or finds nothing.
 //
 // Ports packages/coding-agent/src/utils/shell.ts (findExecutableOnPath).
 func FindExecutableOnPath(executable string) string {
@@ -35,14 +36,18 @@ func FindExecutableOnPath(executable string) string {
 	if err != nil || len(output) == 0 {
 		return ""
 	}
-	firstMatch, _, _ := strings.Cut(strings.TrimSpace(strings.ReplaceAll(string(output), "\r\n", "\n")), "\n")
-	if firstMatch == "" {
+	return FirstMatch(string(output), windows, nodefs.Access)
+}
+
+// FirstMatch is the first line of the lookup command's output. On Windows the path must also exist according to exists,
+// which upstream checks with accessSync(F_OK), not existsSync, so a runnable Microsoft Store alias is found.
+func FirstMatch(output string, windows bool, exists func(string) bool) string {
+	first, _, _ := strings.Cut(strings.TrimSpace(strings.ReplaceAll(output, "\r\n", "\n")), "\n")
+	if first == "" {
 		return ""
 	}
-	if windows {
-		if _, err := os.Stat(firstMatch); err != nil {
-			return ""
-		}
+	if windows && !exists(first) {
+		return ""
 	}
-	return firstMatch
+	return first
 }

@@ -578,7 +578,7 @@ func TestConversationView(t *testing.T) {
 			N int `json:"n"`
 		}
 		Other := durable.DefineDoc(durable.DocDefinition[other]{
-			CommonDocDefinition: durable.CommonDocDefinition[other]{Kind: "app.other", Version: 1, Initial: func() other { return other{} }},
+			CommonDocDefinition: durable.CommonDocDefinition[other]{Kind: "app.other", Version: 1, Initial: func() other { return other{} }, CheckpointWhen: func(other, []durable.Op, durable.CheckpointInfo) bool { return false }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
 		})
 		recorded := record(t, root)

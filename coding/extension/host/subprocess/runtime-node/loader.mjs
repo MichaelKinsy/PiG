@@ -14,7 +14,7 @@ process.emitWarning = () => {};
 
 // Specifiers Pi's extension loader serves from its own bundle
 // (core/extensions/virtual-modules.ts). Pi resolves the pi-ai root to its
-// compat entry point, so both names share one shim here. The pi-ai/oauth entry
+// compat entry point, so both names share one shim here. pi-ai/models is its own entry (shims/pi-ai-models.mjs). The pi-ai/oauth entry
 // point is type-only; pi-ai/providers/all and pi-agent-core are Pi's own modules.
 export const shims = new Map([
   ["@mariozechner/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
@@ -27,6 +27,8 @@ export const shims = new Map([
   ["@earendil-works/pi-ai", new URL("./shims/pi-ai.mjs", import.meta.url).href],
   ["@mariozechner/pi-ai/compat", new URL("./shims/pi-ai.mjs", import.meta.url).href],
   ["@earendil-works/pi-ai/compat", new URL("./shims/pi-ai.mjs", import.meta.url).href],
+  ["@mariozechner/pi-ai/models", new URL("./shims/pi-ai-models.mjs", import.meta.url).href],
+  ["@earendil-works/pi-ai/models", new URL("./shims/pi-ai-models.mjs", import.meta.url).href],
   ["@mariozechner/pi-ai/oauth", new URL("./shims/pi-ai-oauth.mjs", import.meta.url).href],
   ["@earendil-works/pi-ai/oauth", new URL("./shims/pi-ai-oauth.mjs", import.meta.url).href],
   ["@mariozechner/pi-ai/providers/all", new URL("./shims/pi-dist/pi-ai/sdk-bundle/providers.js", import.meta.url).href],

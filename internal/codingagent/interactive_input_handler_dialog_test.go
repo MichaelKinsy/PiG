@@ -90,7 +90,7 @@ func TestInputHandlerConfirmDialogAnswersThroughTheOwnerLoop(t *testing.T) {
 	deadline := time.Now().Add(3 * time.Second)
 	for {
 		var installed bool
-		if !onOwnerLoop(func() { installed = m.extensionDialog != nil }) {
+		if !onOwnerLoop(func() { installed = m.shownExtensionDialog() != nil }) {
 			t.Fatal("WEDGED: the owner loop stopped serving after Enter; the input handler's confirm dialog was never installed")
 		}
 		if installed {

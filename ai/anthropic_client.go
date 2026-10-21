@@ -137,18 +137,13 @@ func mergeAnthropicHeaders(sources ...anthropicHeaders) anthropicHeaders {
 	return merged
 }
 
-// mergeAnthropicClientHeaders mirrors upstream mergeClientHeaders, which
-// seeds User-Agent with getPiUserAgent(). The key holds the first position: a
-// later exact-case User-Agent value (a configured header) replaces it in
-// place, while a differently-cased user-agent key (the Claude Code OAuth
-// identity) sorts after it as a separate key and wins on the request.
-func mergeAnthropicClientHeaders(sources ...anthropicHeaders) anthropicHeaders {
-	userAgent := PiUserAgent()
-	seeded := anthropicHeaders{entries: []anthropicHeaderEntry{{name: "User-Agent", value: &userAgent, defined: true}}}
-	for _, entry := range mergeAnthropicHeaders(sources...).entries {
-		seeded.assign(entry.name, entry.value)
+// anthropicIdentityHeaders are the client identity's default headers (utils/identity.ts getIdentityHeaders) as the lowest source of the client headers.
+func anthropicIdentityHeaders(target ClientIdentityTarget, identity *ClientIdentity) anthropicHeaders {
+	var headers anthropicHeaders
+	for _, pair := range identityHeaderPairs(target, identity) {
+		headers.set(pair[0], pair[1])
 	}
-	return seeded
+	return headers
 }
 
 // anthropicHeadersFromMap converts configured headers in sorted key order,
@@ -191,15 +186,16 @@ type anthropicClient struct {
 // and the OAuth-token branch send the key as a bearer token; the OAuth-token
 // branch also presents the Claude Code identity. Every other request sends the
 // key as X-Api-Key, or leaves auth to the headers.
-func (p *anthropicProvider) createClient(apiKey string, optionsHeaders, dynamicHeaders, sessionAffinityHeaders anthropicHeaders, federation *anthropicFederationLease) anthropicClient {
+func (p *anthropicProvider) createClient(apiKey string, identity *ClientIdentity, optionsHeaders, dynamicHeaders, sessionAffinityHeaders anthropicHeaders, federation *anthropicFederationLease) anthropicClient {
 	modelHeaders := anthropicHeadersFromMap(p.cfg.ExtraHeaders)
+	identityHeaders := anthropicIdentityHeaders(ClientIdentityTarget{Provider: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL}, identity)
 	var base anthropicHeaders
 	base.set("accept", "application/json")
 	base.set("anthropic-dangerous-direct-browser-access", "true")
 	if p.cfg.UseBearerAuth {
 		return anthropicClient{
 			authToken:      apiKey,
-			defaultHeaders: mergeAnthropicClientHeaders(base, modelHeaders, dynamicHeaders, optionsHeaders),
+			defaultHeaders: mergeAnthropicHeaders(identityHeaders, base, modelHeaders, dynamicHeaders, optionsHeaders),
 		}
 	}
 	if apiKey != "" && isOAuthToken(apiKey) {
@@ -207,13 +203,13 @@ func (p *anthropicProvider) createClient(apiKey string, optionsHeaders, dynamicH
 		base.set("x-app", "cli")
 		return anthropicClient{
 			authToken:      apiKey,
-			defaultHeaders: mergeAnthropicClientHeaders(base, modelHeaders, optionsHeaders),
+			defaultHeaders: mergeAnthropicHeaders(base, modelHeaders, optionsHeaders),
 			isOAuthToken:   true,
 		}
 	}
 	return anthropicClient{
 		apiKey:         apiKey,
-		defaultHeaders: mergeAnthropicClientHeaders(base, sessionAffinityHeaders, modelHeaders, optionsHeaders),
+		defaultHeaders: mergeAnthropicHeaders(identityHeaders, base, sessionAffinityHeaders, modelHeaders, optionsHeaders),
 		federation:     federation,
 	}
 }

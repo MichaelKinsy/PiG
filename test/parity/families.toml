@@ -283,6 +283,7 @@ includes = [
   "packages/ai/src/utils/sanitize-unicode.ts",
   "packages/ai/src/utils/text.ts",
   "packages/ai/src/utils/validation.ts",
+  "packages/ai/src/api/openai-responses-shared.ts",
 ]
 
 [families.providers-registry]

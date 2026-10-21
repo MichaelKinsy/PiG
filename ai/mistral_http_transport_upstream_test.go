@@ -109,7 +109,7 @@ func TestMistralHTTPTransportUpstream(t *testing.T) {
 			if r.URL.String() != "https://api.mistral.ai/v1/chat/completions" {
 				t.Errorf("url=%s", r.URL)
 			}
-			for key, want := range map[string]string{"authorization": "Bearer secret", "accept": "text/event-stream", "x-affinity": "session-1", "x-custom": "value", "user-agent": PiUserAgent()} {
+			for key, want := range map[string]string{"authorization": "Bearer secret", "accept": "text/event-stream", "x-affinity": "session-1", "x-custom": "value", "user-agent": FormatUserAgent(nil)} {
 				if got := r.Header.Get(key); got != want {
 					t.Errorf("header %s=%q want %q", key, got, want)
 				}

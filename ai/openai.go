@@ -270,12 +270,23 @@ func (p *openAIProvider) cacheControlFormat() string {
 	return p.compat().CacheControlFormat
 }
 
+// toolAnchors says which of a conversation's system messages carry their own tool changes in place: those from index from on. The zero
+// value anchors none. It is a value, not a function, so a request build allocates no closure for it.
+type toolAnchors struct {
+	enabled bool
+	from    int
+}
+
+func (anchors toolAnchors) anchored(systemIndex int) bool {
+	return anchors.enabled && systemIndex >= anchors.from
+}
+
 // convertMessagesWithCompat wraps convertMessages with compat-aware transformations:
 // - requiresAssistantAfterToolResult: inserts assistant bridge messages
 // - requiresToolResultName: adds name field to tool result messages
 // - requiresThinkingAsText: converts thinking blocks to <thinking> text
 // Mirrors upstream openai-completions.ts convertMessages (lines 680-870).
-func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchorsAdditions, isReasoning bool) ([]oaiMessage, error) {
+func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchors toolAnchors, isReasoning bool) ([]oaiMessage, error) {
 	requiresAssistant := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresAssistantAfterToolResult }, false)
 	requiresName := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresToolResultName }, false)
 	requiresThinkingAsText := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresThinkingAsText }, false)
@@ -288,8 +299,8 @@ func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps 
 		thinkingAsText:                   requiresThinkingAsText,
 		requiresAssistantAfterToolResult: requiresAssistant,
 		instructionRole:                  instructionRole,
-		systemTools: func(message SystemMessage) ([]oaiTool, error) {
-			if !anchorsAdditions || len(message.ToolsAdded) == 0 {
+		systemTools: func(systemIndex int, message SystemMessage) ([]oaiTool, error) {
+			if !anchors.anchored(systemIndex) || len(message.ToolsAdded) == 0 {
 				return nil, nil
 			}
 			return p.convertTools(message.ToolsAdded)
@@ -691,9 +702,9 @@ type completionsConvertOptions struct {
 	// reasoningContentOnAssistant sets an empty reasoning_content on assistant messages that carry none (compat.requiresReasoningContentOnAssistantMessages with a reasoning model).
 	reasoningContentOnAssistant bool
 	instructionRole             string
-	// systemTools converts the tools a later system message loads in place,
-	// or returns none when the transcript does not anchor additions.
-	systemTools func(SystemMessage) ([]oaiTool, error)
+	// systemTools converts the tools a later system message loads in place, or returns none when the transcript does not anchor
+	// additions. systemIndex counts the conversation's system messages from 0.
+	systemTools func(systemIndex int, message SystemMessage) ([]oaiTool, error)
 }
 
 // convertCompletionsMessages converts the conversation after the leading
@@ -705,6 +716,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 	out := make([]oaiMessage, 0, len(messages))
 	// lastRole is the role of the previous message that reached the end of the loop body; a message skipped as empty leaves it (openai-completions.ts convertMessages).
 	lastRole, skipped := "", false
+	systemIndex := 0
 	for index := 0; index < len(messages); index++ {
 		if _, user := messages[index].(UserMessage); user && options.requiresAssistantAfterToolResult && lastRole == "toolResult" {
 			out = append(out, oaiMessage{Role: "assistant", Content: "I have processed the tool results."})
@@ -713,7 +725,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 		switch message := messages[index].(type) {
 		case SystemMessage:
 			if options.systemTools != nil {
-				tools, err := options.systemTools(message)
+				tools, err := options.systemTools(systemIndex, message)
 				if err != nil {
 					return nil, err
 				}
@@ -721,6 +733,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 					out = append(out, oaiMessage{Role: "system", Tools: tools})
 				}
 			}
+			systemIndex++
 			if text := RenderSystemMessageUpdate(message); text != "" {
 				out = append(out, oaiMessage{Role: options.instructionRole, Content: sanitizeSurrogates(text)})
 			}
@@ -1319,7 +1332,11 @@ func (p *openAIProvider) convertTranscript(transcript TranscriptContext, grammar
 	// (openai-completions.ts:813, :808): a transcript whose first message is an aborted assistant has no initial system message there, even
 	// though transformMessages drops that assistant.
 	given := transcript.borrowed()
-	transcriptTools := ResolveTranscriptTools(given, supportsMidConversation && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoToolAdditions }, false))
+	toolSupport := TranscriptToolSupportNone
+	if supportsMidConversation && p.compatBool(func(c *OpenAICompat) *bool { return c.SupportsMidConvoToolAdditions }, false) {
+		toolSupport = TranscriptToolSupportAdditions
+	}
+	transcriptTools := ResolveTranscriptTools(given, toolSupport)
 	if grammarProps == nil {
 		// grammarProps maps a grammar tool's name to the single string property that
 		// carries its constrained input. It is derived once from every declared tool and
@@ -1332,13 +1349,26 @@ func (p *openAIProvider) convertTranscript(transcript TranscriptContext, grammar
 			return completionsConversion{}, err
 		}
 	}
-	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(isReasoning), transcriptTools.AnchorsAdditions, isReasoning)
+	// The conversation drops the leading system message, but system messages count from the transcript's start.
+	leadingSystemMessages := len(messages) - len(conversation)
+	msgs, err := p.convertMessagesWithCompat(conversation, grammarProps, p.systemPromptRole(isReasoning), toolAnchors{enabled: true, from: transcriptTools.FoldedSystemMessages - leadingSystemMessages}, isReasoning)
 	if err != nil {
 		return completionsConversion{}, err
 	}
-	if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
-		role := p.systemPromptRole(isReasoning)
-		msgs = append([]oaiMessage{{Role: role, Content: sanitizeSurrogates(systemPrompt)}}, msgs...)
+	if leadingSystemMessages == 1 {
+		var lead []oaiMessage
+		// Only a transcript whose tool changes the request's tool list does not already hold anchors the leading message's tools.
+		if message, ok := messages[0].(SystemMessage); ok && transcriptTools.FoldedSystemMessages == 0 && len(message.ToolsAdded) > 0 {
+			tools, err := p.convertTools(message.ToolsAdded)
+			if err != nil {
+				return completionsConversion{}, err
+			}
+			lead = append(lead, oaiMessage{Role: "system", Tools: tools})
+		}
+		if systemPrompt := GetCurrentSystemPrompt(messages[:1]); systemPrompt != "" {
+			lead = append(lead, oaiMessage{Role: p.systemPromptRole(isReasoning), Content: sanitizeSurrogates(systemPrompt)})
+		}
+		msgs = append(lead, msgs...)
 	}
 	return completionsConversion{messages: messages, tools: transcriptTools, grammarProps: grammarProps, chat: msgs}, nil
 }
@@ -1702,7 +1732,8 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 	httpReq.Header.Set("Content-Type", "application/json")
 	// The OpenAI SDK's default `accept` header.
 	httpReq.Header.Set("Accept", "application/json")
-	httpReq.Header.Set("User-Agent", PiUserAgent())
+	// The identity headers are the lowest layer: model, provider and request headers override them (utils/identity.ts getIdentityHeaders).
+	applyIdentityHeaders(httpReq.Header, ClientIdentityTarget{Provider: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL}, opts.Identity)
 	if apiKey != "" {
 		if p.cfg.ProviderID == "cloudflare-ai-gateway" {
 			httpReq.Header.Set("cf-aig-authorization", "Bearer "+apiKey)

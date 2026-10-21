@@ -35,7 +35,8 @@ func TestIsContextOverflowUpstreamCases(t *testing.T) {
 		{"Cerebras bodyless 400", overflowErrorMessage("400 status code (no body)", "cerebras"), 131072, true},
 		{"Cerebras bodyless 413", overflowErrorMessage("413 status code (no body)", "cerebras"), 131072, true},
 		{"bodyless 400 from another provider", overflowErrorMessage("400 status code (no body)", "opencode-go"), 1000000, false},
-		{"bodyless 413 from another provider", overflowErrorMessage("413 status code (no body)", "opencode-go"), 1000000, false},
+		// Pi 73f8de80: any HTTP 413 is request-size overflow, so a bodyless 413 is one for every provider.
+		{"bodyless 413 from another provider", overflowErrorMessage("413 status code (no body)", "opencode-go"), 1000000, true},
 		{"Bedrock throttling too many tokens", overflowErrorMessage("Throttling error: Too many tokens, please wait before trying again.", "ollama"), 200000, false},
 		{"Bedrock service unavailable", overflowErrorMessage("Service unavailable: The service is temporarily unavailable.", "ollama"), 200000, false},
 		{"generic rate limit", overflowErrorMessage("Rate limit exceeded, please retry after 30 seconds.", "ollama"), 200000, false},

@@ -167,7 +167,7 @@ func (e *execution) launch() {
 	if e.control != nil {
 		data.Tools, data.Globals, data.Deterministic = e.startTools, e.startGlobals, e.deterministic
 	}
-	channel, err := e.sandbox.launcher(e.callCtx, data, vmEvents{message: e.receive, ready: func() { e.deadline.Do(e.startDeadline) }, turn: &e.turn, failure: func(failure *Error) {
+	channel, err := e.sandbox.launcher(e.callCtx, data, vmEvents{message: e.receive, ready: func() { e.deadline.Do(e.startDeadline) }, turn: &e.turn, settled: e.isFinished, failure: func(failure *Error) {
 		e.finish(failure, nil, StoreWrites{})
 	}})
 	if err != nil {

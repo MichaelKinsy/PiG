@@ -113,7 +113,7 @@ func sendInstallTelemetry(endpoint, version string) {
 	if err != nil {
 		return
 	}
-	req.Header.Set("User-Agent", ai.PiUserAgent())
+	req.Header.Set("User-Agent", ai.FormatUserAgent(nil))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

@@ -228,7 +228,7 @@ type taskNotesState struct {
 }
 
 var taskNotesDoc = durable.DefineDoc(durable.DocDefinition[taskNotesState]{
-	CommonDocDefinition: durable.CommonDocDefinition[taskNotesState]{Kind: "test.task-notes", Version: 1, Initial: func() taskNotesState { return taskNotesState{} }},
+	CommonDocDefinition: durable.CommonDocDefinition[taskNotesState]{Kind: "test.task-notes", Version: 1, Initial: func() taskNotesState { return taskNotesState{} }, CheckpointWhen: func(taskNotesState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
 })
 

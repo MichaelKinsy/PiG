@@ -17,7 +17,9 @@ const { MemoryStorage } = await load("storage/memory.ts");
 const { createSession } = await load("session/session.ts");
 const { TaskGraphView } = await load("harness/task-graph.ts");
 const { defineTask } = await load("tasks.ts");
-const ctx = {};
+// Pi 0ed1b043 (2ec55d80) reads ctx.telemetry in the scheduler and the harness, so an empty object is no longer a Context.
+const { BACKGROUND_CONTEXT } = await import(pathToFileURL(`${packages}chord/src/context/index.ts`).href);
+const ctx = BACKGROUND_CONTEXT;
 const probeTask = defineTask({ name: "probe", version: 1, initial: (input) => ({ phase: "start", input }), phases: {} });
 const pick = (list, ref) => (list.length === 0 ? 1_000_000_000 : list[ref % list.length]);
 // Nothing here blocks a task: no registry, no restart limit (the Go side passes the same constant answer).

@@ -20,7 +20,7 @@ func TestClassifiersMatchPiAI(t *testing.T) {
 		{errorMessage("zai", `400 {"code":"1261","message":"Prompt too long"}`), true},
 		{errorMessage("cerebras", "400 status code (no body)"), true},
 		{errorMessage("opencode-go", "400 status code (no body)"), false},
-		{errorMessage("opencode-go", "413 status code (no body)"), false},
+		{errorMessage("opencode-go", "413 status code (no body)"), true}, // Pi 73f8de80: any HTTP 413 is request-size overflow
 	}
 	for _, tc := range overflow {
 		if got := IsContextOverflow(tc.message, 131072); got != tc.want {

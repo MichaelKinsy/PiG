@@ -61,7 +61,7 @@ func tokensUpstreamCases() []tokensUpstreamCase {
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:345
 		{"claude-sonnet-4 - should include token stats when aborted mid-stream", "github-copilot", "claude-sonnet-4.6", "", true, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:356
-		{"gpt-5.5 - should include token stats when aborted mid-stream", "openai-codex", "gpt-5.5", "", true, "", false},
+		{"gpt-6.1-sol - should include token stats when aborted mid-stream", "openai-codex", "gpt-6.1-sol", "", true, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:369
 		{"should include token stats when aborted mid-stream", "amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "", false, "", false},
 	}

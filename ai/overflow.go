@@ -40,6 +40,9 @@ var overflowPatterns = []*lazyregexp.Regexp{
 	lazyregexp.NewJSIgnoreCase(`context[_ ]length[_ ]exceeded`),                                                                               // Generic fallback
 	lazyregexp.NewJSIgnoreCase(`too many tokens`),                                                                                             // Generic fallback
 	lazyregexp.NewJSIgnoreCase(`token limit exceeded`),                                                                                        // Generic fallback
+	// HTTP 413 means request-size overflow regardless of provider or body text. Match raw SDK errors and
+	// formatProviderError's prefix, not a status mentioned in the body.
+	lazyregexp.NewJSIgnoreCase(`^(?:[\w -]+ API error \(413\):|413(?:` + jsSpaceClass + `|:|$))`),
 }
 
 // cerebrasBodylessOverflowPattern is Cerebras's bodyless 400/413 overflow.

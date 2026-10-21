@@ -12,7 +12,7 @@ import (
 // the millisecond it began in before it fails, so a message stamped at failure time cannot satisfy the bound.
 func TestLazyStreamSetupErrorTimestampIsTheRequestStart(t *testing.T) {
 	model := &Model{ID: "m", ProviderMeta: ProviderMetadata{API: APIOpenAIResponses, ProviderID: "p"}}
-	for name, start := range map[string]func(context.Context, *Model, func(context.Context) (*AssistantMessageEventStream, error)) *AssistantMessageEventStream{"async setup": LazyStream, "synchronous setup": LazyStreamSync} {
+	for name, start := range map[string]func(context.Context, *Model, func(context.Context) (*AssistantMessageEventStream, error), ...LazyStreamObserver) *AssistantMessageEventStream{"async setup": LazyStream, "synchronous setup": LazyStreamSync} {
 		t.Run(name, func(t *testing.T) {
 			var began, failed int64
 			stream := start(t.Context(), model, func(context.Context) (*AssistantMessageEventStream, error) {

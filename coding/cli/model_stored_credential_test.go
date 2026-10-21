@@ -54,7 +54,7 @@ func TestBuildModelStoredCredentialOwnsProvider(t *testing.T) {
 		},
 		{
 			name:     "stored subscription login outranks OPENAI_API_KEY",
-			provider: "openai-codex", model: "gpt-5.5",
+			provider: "openai-codex", model: "gpt-5.6-sol",
 			env:        map[string]string{"OPENAI_API_KEY": "env-key"},
 			stored:     &ai.Credential{Type: ai.CredentialOAuth, Refresh: "refresh", Access: codexStoredAccessToken, Expires: time.Now().Add(time.Hour).UnixMilli()},
 			wantHeader: "Bearer " + codexStoredAccessToken,

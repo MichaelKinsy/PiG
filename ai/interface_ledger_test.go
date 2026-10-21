@@ -196,18 +196,18 @@ func TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream(t *test
 		t.Errorf("declared tools = %+v", got)
 	}
 	// Anchoring transports keep the initial tools in the request and load later ones in place.
-	anchored := ResolveTranscriptTools(additive, true)
-	if !anchored.AnchorsAdditions || len(anchored.RequestTools) != 1 || anchored.RequestTools[0].Name != "read" {
+	anchored := ResolveTranscriptTools(additive, TranscriptToolSupportAdditions)
+	if anchored.FoldedSystemMessages != 1 || len(anchored.RequestTools) != 1 || anchored.RequestTools[0].Name != "read" {
 		t.Errorf("anchored = %+v", anchored)
 	}
 	// Without addition support the request holds the complete current tool set.
-	flat := ResolveTranscriptTools(additive, false)
-	if flat.AnchorsAdditions || len(flat.RequestTools) != 2 {
+	flat := ResolveTranscriptTools(additive, TranscriptToolSupportNone)
+	if flat.FoldedSystemMessages != 2 || len(flat.RequestTools) != 2 {
 		t.Errorf("not anchored = %+v", flat)
 	}
 	// An anchoring transport without a leading system message sends no top-level tools.
-	noLead := ResolveTranscriptTools([]Message{user, SystemMessage{ToolsAdded: []ToolSchema{write}}}, true)
-	if !noLead.AnchorsAdditions || len(noLead.RequestTools) != 0 {
+	noLead := ResolveTranscriptTools([]Message{user, SystemMessage{ToolsAdded: []ToolSchema{write}}}, TranscriptToolSupportAdditions)
+	if noLead.FoldedSystemMessages != 0 || len(noLead.RequestTools) != 0 {
 		t.Errorf("no leading system message = %+v", noLead)
 	}
 
@@ -220,17 +220,17 @@ func TestDeclaredToolsAndTranscriptToolsFollowTheToolHistoryLikeUpstream(t *test
 	if len(got) != 2 || got[0].Name != "read" || got[0].Description != "v2" || got[1].Name != "write" {
 		t.Errorf("redeclared = %+v", got)
 	}
-	// A redeclaration or a removal makes the history non-additive: anchoring is refused even when supported.
-	nonAdditive := ResolveTranscriptTools(redeclared, true)
-	if nonAdditive.AnchorsAdditions || len(nonAdditive.RequestTools) != 2 {
+	// A redeclaration or a removal moves the top-level tool boundary to its message: the request holds the tool state after it.
+	nonAdditive := ResolveTranscriptTools(redeclared, TranscriptToolSupportAdditions)
+	if nonAdditive.FoldedSystemMessages != 2 || len(nonAdditive.RequestTools) != 2 || nonAdditive.RequestTools[0].Description != "v2" {
 		t.Errorf("redeclared anchored = %+v", nonAdditive)
 	}
 	removed := []Message{
 		SystemMessage{ToolsAdded: []ToolSchema{read, write}},
 		SystemMessage{ToolsRemoved: []ToolReference{{Name: "read"}}},
 	}
-	afterRemoval := ResolveTranscriptTools(removed, true)
-	if afterRemoval.AnchorsAdditions || len(afterRemoval.RequestTools) != 1 || afterRemoval.RequestTools[0].Name != "write" {
+	afterRemoval := ResolveTranscriptTools(removed, TranscriptToolSupportAdditions)
+	if afterRemoval.FoldedSystemMessages != 2 || len(afterRemoval.RequestTools) != 1 || afterRemoval.RequestTools[0].Name != "write" {
 		t.Errorf("after removal = %+v", afterRemoval)
 	}
 	if got := GetDeclaredTools(removed); len(got) != 2 {

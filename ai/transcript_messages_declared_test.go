@@ -70,27 +70,30 @@ func TestHasNonAdditiveToolChangesOverACustomRoleTranscript(t *testing.T) {
 	}
 }
 
-// transcript.ts:229-237 additions anchor only when the transport supports them and the history is additive; then the request carries the initial tools, otherwise the current tool list.
+// transcript.ts resolveTranscriptTools: additions anchor after the last removal or redeclaration; then the request carries the tools up to that boundary, otherwise the current tool list.
 func TestResolveTranscriptToolsOverACustomRoleTranscript(t *testing.T) {
 	additive := customTranscript(
 		SystemMessage{ToolsAdded: []ToolSchema{{Name: "read"}}},
 		SystemMessage{ToolsAdded: []ToolSchema{{Name: "write"}}},
 	)
-	anchored := ResolveTranscriptTools(additive, true)
-	if !anchored.AnchorsAdditions || len(anchored.RequestTools) != 1 || anchored.RequestTools[0].Name != "read" {
+	anchored := ResolveTranscriptTools(additive, TranscriptToolSupportAdditions)
+	if anchored.FoldedSystemMessages != 1 || len(anchored.RequestTools) != 1 || anchored.RequestTools[0].Name != "read" {
 		t.Fatalf("anchored = %+v, want only the initial tools", anchored)
 	}
-	flat := ResolveTranscriptTools(additive, false)
-	if flat.AnchorsAdditions || len(flat.RequestTools) != 2 {
+	flat := ResolveTranscriptTools(additive, TranscriptToolSupportNone)
+	if flat.FoldedSystemMessages != 2 || len(flat.RequestTools) != 2 {
 		t.Fatalf("unsupported transport = %+v, want the complete current tool list", flat)
 	}
 	removing := customTranscript(
 		SystemMessage{ToolsAdded: []ToolSchema{{Name: "read"}, {Name: "bash"}}},
 		SystemMessage{ToolsRemoved: []ToolReference{{Name: "bash"}}},
 	)
-	got := ResolveTranscriptTools(removing, true)
-	if got.AnchorsAdditions || len(got.RequestTools) != 1 || got.RequestTools[0].Name != "read" {
+	got := ResolveTranscriptTools(removing, TranscriptToolSupportAdditions)
+	if got.FoldedSystemMessages != 2 || len(got.RequestTools) != 1 || got.RequestTools[0].Name != "read" {
 		t.Fatalf("non-additive history = %+v, want the current list [read]", got)
+	}
+	if changes := ResolveTranscriptTools(removing, TranscriptToolSupportChanges); changes.FoldedSystemMessages != 0 || len(changes.RequestTools) != 0 {
+		t.Fatalf("changes = %+v, want every tool declared in place", changes)
 	}
 }
 

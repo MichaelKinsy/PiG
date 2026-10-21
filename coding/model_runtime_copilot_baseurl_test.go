@@ -94,7 +94,7 @@ func TestModelRuntimeCopilotAnthropicAdaptiveThinking(t *testing.T) {
 // openai-completions leaf keeps the selected model's compat. Upstream
 // getCompat overlays model.compat on detectCompat
 // (.upstream/v0.87.1/packages/ai/src/api/openai-completions.ts:1688), and
-// github-copilot.json gives gemini-3.5-flash supportsStore, supportsDeveloperRole
+// github-copilot.json gives gemini-3.8-flash supportsStore, supportsDeveloperRole
 // and supportsReasoningEffort false with supportsStrictMode true: the request
 // uses the system role, omits store and reasoning_effort, and marks tools
 // strict:false (openai-completions.ts:832, 962, 1225, 1505).
@@ -104,9 +104,9 @@ func TestModelRuntimeCopilotCompletionsCompat(t *testing.T) {
 	if err := services.Auth().Set("github-copilot", ai.Credential{Type: ai.CredentialOAuth, Refresh: "github-access-token", Access: access, Expires: time.Now().Add(time.Hour).UnixMilli()}); err != nil {
 		t.Fatal(err)
 	}
-	model := services.ModelRuntime().GetModel("github-copilot", "gemini-3.5-flash")
+	model := services.ModelRuntime().GetModel("github-copilot", "gemini-3.8-flash")
 	if model == nil || model.ProviderMeta.API != ai.APIOpenAICompletions {
-		t.Fatal("catalog has no github-copilot gemini-3.5-flash openai-completions model")
+		t.Fatal("catalog has no github-copilot gemini-3.8-flash openai-completions model")
 	}
 	var body map[string]any
 	fetch := &http.Client{Transport: cloudflareCompatTransport(func(request *http.Request) (*http.Response, error) {

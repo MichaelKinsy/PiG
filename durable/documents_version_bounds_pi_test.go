@@ -19,11 +19,12 @@ func TestDocDefinitionVersionMustBeAPositiveSafeInteger(t *testing.T) {
 		}()
 		if family {
 			DefineDocFamily(DocFamilyDefinition[JsonObject, JsonValue]{Kind: "v.test", Version: version, DocumentSemantics: semantics, Family: true,
-				Initial: func(JsonValue) JsonObject { return delta.NewJsonObject(0) }})
+				Initial:        func(JsonValue) JsonObject { return delta.NewJsonObject(0) },
+				CheckpointWhen: func(JsonObject, []Op, CheckpointInfo) bool { return false }})
 			return ""
 		}
 		DefineDoc(DocDefinition[JsonObject]{CommonDocDefinition: CommonDocDefinition[JsonObject]{Kind: "v.test", Version: version,
-			Initial: func() JsonObject { return delta.NewJsonObject(0) }}, DocumentSemantics: semantics})
+			Initial: func() JsonObject { return delta.NewJsonObject(0) }, CheckpointWhen: func(JsonObject, []Op, CheckpointInfo) bool { return false }}, DocumentSemantics: semantics})
 		return ""
 	}
 	for _, family := range []bool{false, true} {

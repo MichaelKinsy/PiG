@@ -43,7 +43,7 @@ type bugReportChoices struct {
 
 // bugHandler runs /bug. The optional argument prefills the description.
 func bugHandler(sc *SlashContext) error {
-	if sc.ShowExtensionEditor == nil || sc.ShowExtensionSelector == nil || sc.BugReportInputs == nil {
+	if sc.ShowBugReportEditor == nil || sc.ShowBugReportSelector == nil || sc.BugReportInputs == nil {
 		sc.Append("/bug needs the interactive UI.")
 		return nil
 	}
@@ -89,11 +89,11 @@ func bugReportModelName(sc *SlashContext) string {
 // summary consent, then confirms the export. It mirrors upstream
 // promptForOptions without the upload choice.
 func promptBugReportChoices(sc *SlashContext) (bugReportChoices, bool) {
-	hint, ok := sc.ShowExtensionEditor("Report a bug", bugReportDisclaimer+"\n\nWhat went wrong? (optional)", jsstring.Trim(sc.Args))
+	hint, ok := sc.ShowBugReportEditor("Report a bug", bugReportDisclaimer+"\n\nWhat went wrong? (optional)", jsstring.Trim(sc.Args))
 	if !ok {
 		return bugReportChoices{}, false
 	}
-	transcript, ok := sc.ShowExtensionSelector("Include the session transcript?", []string{"Yes, include the transcript", "No"}, bugReportTranscriptNote)
+	transcript, ok := sc.ShowBugReportSelector("Include the session transcript?", []string{"Yes, include the transcript", "No"}, bugReportTranscriptNote)
 	if !ok {
 		return bugReportChoices{}, false
 	}
@@ -106,7 +106,7 @@ func promptBugReportChoices(sc *SlashContext) (bugReportChoices, bool) {
 				provider = name
 			}
 		}
-		summary, ok := sc.ShowExtensionSelector(
+		summary, ok := sc.ShowBugReportSelector(
 			"Attach a summary written by "+modelName+" instead?",
 			[]string{"Yes, generate a summary", "No"},
 			"The transcript is sent to "+provider+" with your credentials and tokens. Only the generated summary is attached; the transcript stays on your machine.",
@@ -129,7 +129,7 @@ func promptBugReportChoices(sc *SlashContext) (bugReportChoices, bool) {
 		summaryState = "written by " + modelName
 	}
 	// pig divergence (D62): export is the only delivery; PiG never uploads.
-	delivery, ok := sc.ShowExtensionSelector("Bug report", []string{bugReportExport, "Cancel"}, fmt.Sprintf(
+	delivery, ok := sc.ShowBugReportSelector("Bug report", []string{bugReportExport, "Cancel"}, fmt.Sprintf(
 		"Description: %s\nTranscript: %s\nSummary: %s\n\nExport writes a zip archive to the current directory. Nothing is uploaded; you can attach the archive to a PiG issue.",
 		description, transcriptState, summaryState,
 	))

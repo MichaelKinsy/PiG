@@ -451,7 +451,7 @@ type sandbox struct {
 func TestExample29SandboxPerConversation(t *testing.T) {
 	// `fork: "initial"`: a fork gets no sandbox until the app assigns one.
 	sandboxDoc := durable.DefineDoc(durable.DocDefinition[sandbox]{
-		CommonDocDefinition: durable.CommonDocDefinition[sandbox]{Kind: "app.sandbox", Version: 1, Initial: func() sandbox { return sandbox{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[sandbox]{Kind: "app.sandbox", Version: 1, Initial: func() sandbox { return sandbox{} }, CheckpointWhen: func(sandbox, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
 	})
 	note := func(text string) ai.FauxResponseStep {

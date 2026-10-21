@@ -27,8 +27,9 @@ var piIdentity = regexp.MustCompile(`(?i)(^pi$|^pi[ /(]|pi\.dev|^pi-coding-agent
 // The Go, Python and Rust SDKs make no model request of their own: ModelRegistry
 // Complete is one host call, and the host sends the request through the
 // Services-owned runtime. A model call from each SDK therefore reaches an
-// OpenRouter-, NVIDIA- or OpenCode-shaped endpoint carrying PiG's attribution
-// and never Pi's (D26). The Node SDK's own paths run in the real binary in
+// OpenRouter-, NVIDIA- or OpenCode-shaped endpoint carrying no attribution,
+// which only a Session's identity adds (as under Pi, where the extension runner's
+// model calls pass no identity), and never Pi's identity (D26). The Node SDK's own paths run in the real binary in
 // cmd/pig's TestNodeExtensionModelCallsCarryPiGIdentityNeverPis.
 func TestSDKModelCallsCarryPiGIdentityNeverPis(t *testing.T) {
 	type sdkCase struct {
@@ -44,9 +45,9 @@ func TestSDKModelCallsCarryPiGIdentityNeverPis(t *testing.T) {
 		id   string
 		want map[string]string
 	}{
-		{"openrouter", map[string]string{"HTTP-Referer": pigidentity.OpenRouterReferer, "X-OpenRouter-Title": pigidentity.OpenRouterTitle, "X-OpenRouter-Categories": pigidentity.OpenRouterCategories}},
-		{"nvidia", map[string]string{"X-BILLING-INVOKE-ORIGIN": pigidentity.NvidiaBillingOrigin}},
-		{"opencode", map[string]string{"x-opencode-session": "sdk-session", "x-opencode-client": pigidentity.OpenCodeClient}},
+		{"openrouter", map[string]string{"HTTP-Referer": "", "X-OpenRouter-Title": "", "X-OpenRouter-Categories": ""}},
+		{"nvidia", map[string]string{"X-BILLING-INVOKE-ORIGIN": ""}},
+		{"opencode", map[string]string{"x-opencode-session": "sdk-session", "x-opencode-client": ""}},
 	}
 	for _, sdk := range sdks {
 		for _, provider := range providers {

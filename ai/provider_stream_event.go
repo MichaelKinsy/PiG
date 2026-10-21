@@ -92,8 +92,29 @@ func jsonParsesAsValue(raw []byte) bool {
 	return json.Valid(raw) && validJSONParsesAsValue(raw)
 }
 
+// recordScanHook, when a test sets it, is told of each pass over a wire record's bytes that is not the decode that reads the record: json.Valid in the stream decoder (recordScanValid) and validJSONParsesAsValue for an event observer (recordScanObserver), with the record's length. It is nil in production, so a pass costs one nil check beside the scan of the record's bytes.
+var recordScanHook func(pass recordScanPass, bytes int)
+
+type recordScanPass uint8
+
+const (
+	recordScanValid recordScanPass = iota
+	recordScanObserver
+)
+
+// jsonValidRecord is json.Valid of a wire record the stream decoder checks.
+func jsonValidRecord(data []byte) bool {
+	if recordScanHook != nil {
+		recordScanHook(recordScanValid, len(data))
+	}
+	return json.Valid(data)
+}
+
 // validJSONParsesAsValue is jsonParsesAsValue for raw that json.Valid accepts: false when it holds a number with an exponent or of more than 300 characters.
 func validJSONParsesAsValue[T string | []byte](raw T) bool {
+	if recordScanHook != nil {
+		recordScanHook(recordScanObserver, len(raw))
+	}
 	inString := false
 	for i := 0; i < len(raw); i++ {
 		c := raw[i]

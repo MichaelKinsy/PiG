@@ -133,7 +133,7 @@ func TestComponentRowsMatchUpstream(t *testing.T) {
 	if err := os.MkdirAll(nm, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, pkg := range []string{"get-east-asian-width", "marked"} {
+	for _, pkg := range []string{"get-east-asian-width", "marked", "marked-cjk-friendly"} {
 		if err := os.Rename(filepath.Join(dir, pkg), filepath.Join(nm, pkg)); err != nil {
 			t.Fatal(err)
 		}

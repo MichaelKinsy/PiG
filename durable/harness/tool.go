@@ -15,11 +15,13 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/session"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // ToolTaskKind is the `kind` of a ToolTaskInput and a ToolTaskResult (tool.ts): "model" for a call the model issued,
@@ -390,6 +392,9 @@ func awaitEarlierAborts(ctx context.Context, runtime toolRuntime) error {
 func readCall(ctx context.Context, runtime toolRuntime, input ToolTaskInput) (ai.ToolCall, error) {
 	if input.Kind == ToolTaskNested {
 		// A nested call carries its call, because no entry holds it.
+		if span := chordctx.Telemetry(ctx); span != telemetry.NoopTelemetryContext {
+			span.SetAttributes(telemetry.SpanAttributes{telemetry.Attr("tool.name", input.Call.Name), telemetry.Attr("tool.call_id", input.Call.ID)})
+		}
 		return *input.Call, nil
 	}
 	call, found, err := durable.TaskAssistantToolCall(ctx, runtime, input.Assistant, input.CallId)
@@ -397,6 +402,9 @@ func readCall(ctx context.Context, runtime toolRuntime, input ToolTaskInput) (ai
 		return ai.ToolCall{}, err
 	}
 	if found {
+		if span := chordctx.Telemetry(ctx); span != telemetry.NoopTelemetryContext {
+			span.SetAttributes(telemetry.SpanAttributes{telemetry.Attr("tool.name", call.Name), telemetry.Attr("tool.call_id", call.ID)})
+		}
 		return call, nil
 	}
 	return ai.ToolCall{}, fmt.Errorf("Entry %d has no tool call %s", input.Assistant, input.CallId)

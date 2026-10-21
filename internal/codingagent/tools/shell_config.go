@@ -16,8 +16,8 @@ package tools
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/shellconfig"
 )
 
@@ -35,8 +35,14 @@ type SettingsView interface {
 
 // GetShellConfig mirrors upstream getShellConfig(customShellPath) (utils/shell.ts): the shell binary and its leading arguments for a custom shell path, or the platform default when the path is empty. A custom path that does not exist is an error.
 func GetShellConfig(customShellPath string) (ShellConfig, error) {
+	return getShellConfig(customShellPath, nodefs.Access)
+}
+
+// getShellConfig is [GetShellConfig] with the existence check as a parameter. Upstream checks with accessSync(F_OK), not
+// existsSync, which on Windows rejects a runnable Microsoft Store alias (nodejs/node#36790).
+func getShellConfig(customShellPath string, exists func(string) bool) (ShellConfig, error) {
 	if customShellPath != "" {
-		if _, err := os.Stat(customShellPath); err == nil {
+		if exists(customShellPath) {
 			return shellconfig.ForBash(customShellPath), nil
 		}
 		return ShellConfig{}, fmt.Errorf("Custom shell path not found: %s", customShellPath)

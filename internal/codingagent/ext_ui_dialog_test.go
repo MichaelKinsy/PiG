@@ -60,7 +60,7 @@ func runExtensionDialogProbe(
 	case <-time.After(time.Second):
 		t.Fatal("dialog did not post its mutation to the UI loop")
 	}
-	if m.extensionDialog == nil {
+	if m.shownExtensionDialog() == nil {
 		t.Fatal("dialog was not installed on the UI loop")
 	}
 	for _, key := range input {
@@ -159,7 +159,7 @@ func TestExtUIContextDialogContextCancellationRestoresEditorOnUILoop(t *testing.
 	case <-time.After(time.Second):
 		t.Fatal("dialog cleanup was not posted to the UI loop")
 	}
-	if m.extensionDialog != nil {
+	if m.shownExtensionDialog() != nil {
 		t.Fatal("cancelled dialog remains installed")
 	}
 }
@@ -390,7 +390,7 @@ func TestHeightChangesReachTheDialogCapWithoutSubprocessExtensions(t *testing.T)
 		t.Fatal("probe unexpectedly has a subprocess host")
 	}
 	m.chatContainer.SetMaxLines(staleChatCap)
-	m.extensionDialog = &extensionDialog{component: tui.NewText("dialog")}
+	m.extensionDialogs = []*extensionDialog{{component: tui.NewText("dialog"), handle: func(string) {}}}
 	m.onTerminalHeightChange(m.tuiInst.Height())
 	if got := len(m.chatContainer.Render(100)); got == staleChatCap {
 		t.Fatal("height change did not recompute the cap without a subprocess host")

@@ -229,7 +229,7 @@ func OpenReportingTestSession(report func(error)) Harness {
 	controlled := NewControlledStorage()
 	var hooks session.Hooks
 	if report != nil {
-		hooks.Report = func(err error, _ durable.ReportInfo) { report(err) }
+		hooks.Report = func(_ context.Context, err error, _ durable.ReportInfo) { report(err) }
 	}
 	kernel := session.NewSessionImpl(controlled, hooks, nil, nil)
 	publications := &Publications{}

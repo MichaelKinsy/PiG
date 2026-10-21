@@ -159,7 +159,7 @@ func PostClassifierRequest(ctx context.Context, label, target string, model Clas
 	if err != nil {
 		return nil, err
 	}
-	headers := providerHeadersToRecord(ProviderHeadersFromStrings(map[string]string{"authorization": "Bearer " + options.APIKey, "content-type": "application/json"}), ProviderHeadersFromStrings(model.Headers), options.Headers)
+	headers := providerHeadersToRecord(identityProviderHeaders(ClientIdentityTarget{Provider: model.Provider, BaseURL: model.BaseURL}, options.Identity), ProviderHeadersFromStrings(map[string]string{"authorization": "Bearer " + options.APIKey, "content-type": "application/json"}), ProviderHeadersFromStrings(model.Headers), options.Headers)
 	response, err := retryClassifierRequest(ctx, options, func() (classifierResponse, error) {
 		response, err := classifierPost(ctx, options, label, target, headers, body)
 		if err == nil {

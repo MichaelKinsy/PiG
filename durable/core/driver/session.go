@@ -121,6 +121,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	}
 	// Pi harness.ts:178-179: `const report = safeReport(options.onReport); const now = safeNow(options.now, report)`.
 	cfg.Harness.OnReport = harness.SafeReport(cfg.Harness.OnReport)
+	cfg.Harness = cfg.Harness.WithModelsView()
 	if cfg.Harness.Now != nil {
 		cfg.Harness.Now = harness.SafeNow(cfg.Harness.Now, cfg.Harness.OnReport)
 	}

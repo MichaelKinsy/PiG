@@ -8,6 +8,9 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "paths": {
+      "@earendil-works/pi-ai/models": [
+        "./node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/models.d.ts"
+      ],
       "@earendil-works/pi-tui": [
         "./node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui/dist/index.d.ts"
       ]

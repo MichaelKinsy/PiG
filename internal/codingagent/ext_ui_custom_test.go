@@ -210,7 +210,8 @@ func TestExtUIContextCustomDoneBeforeTheFactoryReturnsRestoresTheEditor(t *testi
 	}
 }
 
-// interactive-mode.ts:2925-2930: a factory error restores the editor and rejects the call.
+// interactive-mode.ts showExtensionCustom: a factory error runs restoreEditor, which with no component mounted only puts back the editor text
+// (Pi bdd9f039: no clear/addChild/setFocus), and rejects the call. The editor slot and the focus stay as they were.
 func TestExtUIContextCustomFactoryErrorRejects(t *testing.T) {
 	r := newCustomRig(t)
 	boom := errors.New("boom")
@@ -221,8 +222,8 @@ func TestExtUIContextCustomFactoryErrorRejects(t *testing.T) {
 	if !errors.Is(got.err, boom) {
 		t.Fatalf("err = %v", got.err)
 	}
-	if any(r.m.tuiInst.GetFocusedComponent()) != any(r.m.editor) {
-		t.Fatal("focus is not on the editor")
+	if children := r.m.editorContainer.Children(); len(children) != 1 || children[0] != tui.Component(r.m.editor) || openExtensionDialogs(r.m) != 0 {
+		t.Fatalf("editor slot after the factory error = %v with %d dialogs, want the editor alone", children, openExtensionDialogs(r.m))
 	}
 }
 

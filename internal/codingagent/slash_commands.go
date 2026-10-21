@@ -234,22 +234,21 @@ type SlashContext struct {
 	// nil in headless / test contexts unless explicitly wired.
 	CompactSession func(customInstructions string) error
 
-	// /tree summarize-branch flow.
-	// ShowExtensionSelector presents a modal string picker with an optional
-	// description under the title; returns the chosen option and true, or
-	// ("", false) on cancel (Esc). Mirrors upstream showExtensionSelector()
-	// and ExtensionSelectorOptions.description.
-	ShowExtensionSelector func(title string, options []string, description string) (string, bool)
-	// ShowExtensionConfirm shows a Yes/No confirmation and reports whether Yes was chosen. Mirrors upstream
-	// showExtensionConfirm(title, message). Nil falls back to ShowExtensionSelector.
+	// The prompts of the /tree summarize-branch flow, /import and a missing session cwd are dialogs on the extension dialog
+	// stack, as upstream awaits them through showExtensionSelector, showExtensionConfirm and showExtensionEditor.
+	// ShowExtensionSelector returns the chosen option and true, or ("", false) when the selector is dismissed (Esc).
+	ShowExtensionSelector func(title string, options []string) (string, bool)
+	// ShowExtensionConfirm shows a Yes/No confirmation and reports whether Yes was chosen. Nil falls back to ShowExtensionSelector.
 	ShowExtensionConfirm func(title, message string) bool
 	// ShowTrustSelector invokes OnSelect before restoring the editor so persistence precedes closing the selector.
 	ShowTrustSelector func(TrustSelectorOptions) (TrustSelection, bool)
-	// ShowExtensionEditor presents a text prompt with an optional description
-	// and prefill; returns the text and true, or ("", false) on cancel (Esc).
-	// Mirrors upstream showExtensionEditor() and
-	// ExtensionEditorOptions.description.
-	ShowExtensionEditor func(title, description, prefill string) (string, bool)
+	// ShowExtensionEditor returns the text and true, or ("", false) when the editor is dismissed (Esc).
+	ShowExtensionEditor func(title, prefill string) (string, bool)
+	// ShowBugReportSelector and ShowBugReportEditor are the /bug prompts. Upstream's bug-report.ts builds its own
+	// ExtensionSelectorComponent (with a description under the title) and ExtensionEditorComponent in the editor slot, outside
+	// the dialog stack, and reports no blocked status. Each returns the choice or text and true, or ("", false) on Esc.
+	ShowBugReportSelector func(title string, options []string, description string) (string, bool)
+	ShowBugReportEditor   func(title, description, prefill string) (string, bool)
 	// BugReportInputs snapshots the process state /bug describes (model,
 	// provider, thinking level, extensions, settings). Nil outside the
 	// interactive UI.

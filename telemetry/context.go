@@ -1,12 +1,106 @@
 // Package telemetry provides backend-neutral span carriers, propagation, links, metrics and in-memory recording.
 // Ports packages/telemetry/src/index.ts and packages/telemetry/src/noop.ts.
+//
+// The adapter contract trusts typed inputs: malformed input behavior is unspecified, as upstream states.
 package telemetry
+
+import "github.com/MichaelKinsy/PiG/internal/jsstring"
 
 // AttributeValue is a string, number, boolean, or slice of those values.
 type AttributeValue = any
 
-// SpanAttributes carries named telemetry values. A nil value is upstream's undefined: recorders omit it.
-type SpanAttributes map[string]AttributeValue
+// SpanAttribute is one named telemetry value. A nil Value is upstream's undefined: recorders omit it.
+type SpanAttribute struct {
+	Name  string
+	Value AttributeValue
+}
+
+// Attr is a SpanAttribute: SpanAttributes{Attr("name", value)}.
+func Attr(name string, value AttributeValue) SpanAttribute {
+	return SpanAttribute{Name: name, Value: value}
+}
+
+// SpanAttributes carries named telemetry values in insertion order, as a JavaScript object's own string keys do, so
+// the order an attribute bag is written in is the order recorders, stores and renderers report it. A name written
+// again keeps its position (see Set); recorders store a bag with each name once and without undefined (nil) values.
+type SpanAttributes []SpanAttribute
+
+// Get is `attributes[name]` with presence: the value of the first attribute named name.
+func (attributes SpanAttributes) Get(name string) (AttributeValue, bool) {
+	for _, attribute := range attributes {
+		if attribute.Name == name {
+			return attribute.Value, true
+		}
+	}
+	return nil, false
+}
+
+// Value is `attributes[name]`: the value of the first attribute named name, nil (upstream's undefined) when absent.
+func (attributes SpanAttributes) Value(name string) AttributeValue {
+	value, _ := attributes.Get(name)
+	return value
+}
+
+// Set is the assignment `attributes[name] = value`: an existing name keeps its position and takes value, and a new name
+// is appended, except that a name which is a canonical array index ("0", "17", never "01" or "-1") is placed among the
+// leading index names in ascending numeric order, as JavaScript lists an object's integer-like keys first. It writes
+// into the receiver's backing array like append does, so the caller keeps the result.
+func (attributes SpanAttributes) Set(name string, value AttributeValue) SpanAttributes {
+	for index := range attributes {
+		if attributes[index].Name == name {
+			attributes[index].Value = value
+			return attributes
+		}
+	}
+	attribute := SpanAttribute{Name: name, Value: value}
+	position := len(attributes)
+	if number, ok := jsstring.ArrayIndex(name); ok {
+		position = 0
+		for position < len(attributes) {
+			existing, ok := jsstring.ArrayIndex(attributes[position].Name)
+			if !ok || existing > number {
+				break
+			}
+			position++
+		}
+	}
+	attributes = append(attributes, SpanAttribute{})
+	copy(attributes[position+1:], attributes[position:])
+	attributes[position] = attribute
+	return attributes
+}
+
+// MarshalJSON is JSON.stringify of the object: the attributes as members in insertion order. A nil bag is null.
+func (attributes SpanAttributes) MarshalJSON() ([]byte, error) {
+	if attributes == nil {
+		return []byte("null"), nil
+	}
+	encoded := []byte{'{'}
+	for index, attribute := range attributes {
+		if index > 0 {
+			encoded = append(encoded, ',')
+		}
+		encoded = append(jsstring.AppendString(encoded, attribute.Name), ':')
+		var err error
+		if encoded, err = jsstring.AppendMarshalJSON(encoded, attribute.Value); err != nil {
+			return nil, err
+		}
+	}
+	return append(encoded, '}'), nil
+}
+
+// Merge is the object spread `{ ...attributes, ...other }`: the attributes of other overwrite in place or append, and a
+// nil value of other is upstream's undefined, which is not written. The receiver is not modified.
+func (attributes SpanAttributes) Merge(other SpanAttributes) SpanAttributes {
+	merged := make(SpanAttributes, len(attributes), len(attributes)+len(other))
+	copy(merged, attributes)
+	for _, attribute := range other {
+		if attribute.Value != nil {
+			merged = merged.Set(attribute.Name, attribute.Value)
+		}
+	}
+	return merged
+}
 
 // TelemetryCarrier is opaque, JSON-serializable, adapter-owned propagation data. A nil carrier is upstream's undefined:
 // Inject returns it for a context with nothing to propagate and Extract accepts it as an absent carrier.
@@ -52,8 +146,12 @@ type SpanStatus struct {
 	Error  *SpanStatusError
 }
 
-// TelemetryContext starts child spans and waits for their callbacks.
+// TelemetryContext starts child spans and waits for their callbacks. Metrics and Propagation are the adapter's optional
+// capabilities, upstream's readonly `metrics` and `propagation` members: they stay available on child spans and
+// extracted parents, and a nil result is an absent capability.
 type TelemetryContext interface {
+	Metrics() TelemetryMetrics
+	Propagation() TelemetryPropagation
 	StartSpan(SpanOptions, func(TelemetrySpan) error) error
 }
 
@@ -85,6 +183,8 @@ type TelemetrySpan interface {
 
 type noopTelemetrySpan struct{}
 
+func (noopTelemetrySpan) Metrics() TelemetryMetrics         { return NoopTelemetryMetrics }
+func (noopTelemetrySpan) Propagation() TelemetryPropagation { return NoopTelemetryPropagation }
 func (noopTelemetrySpan) StartSpan(_ SpanOptions, callback func(TelemetrySpan) error) error {
 	return callback(NoopTelemetryContext)
 }
@@ -93,7 +193,8 @@ func (noopTelemetrySpan) AddEvent(string, SpanAttributes) {}
 func (noopTelemetrySpan) SetAttributes(SpanAttributes)    {}
 func (noopTelemetrySpan) SetStatus(SpanStatus)            {}
 
-// NoopTelemetryContext is the shared parent used without a recording backend.
+// NoopTelemetryContext is the shared parent used without a recording backend. It is a span, so a Context's telemetry
+// parent is always a span.
 var NoopTelemetryContext TelemetrySpan = noopTelemetrySpan{}
 
 type noopTelemetryPropagation struct{}

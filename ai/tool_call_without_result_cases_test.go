@@ -61,6 +61,6 @@ func toolWithoutResultUpstreamCases() []toolWithoutResultCase {
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:339
 		{"claude-sonnet-4 - should filter out tool calls without corresponding tool results", "github-copilot", "claude-sonnet-4.6", "", true, ""},
 		// .upstream/v0.87.1/packages/ai/test/tool-call-without-result.test.ts:350
-		{"gpt-5.5 - should filter out tool calls without corresponding tool results", "openai-codex", "gpt-5.5", "", true, ""},
+		{"gpt-6.1-sol - should filter out tool calls without corresponding tool results", "openai-codex", "gpt-6.1-sol", "", true, ""},
 	}
 }

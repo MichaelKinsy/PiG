@@ -4,10 +4,14 @@ package codemode
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 )
+
+// errScriptSettled fails a launch that resumes after its execution settled. The execution has its outcome, so the error is not seen.
+var errScriptSettled = errors.New("The script already settled")
 
 // engineLoader returns the compiled module for VMs with the given heap limit.
 type engineLoader func(ctx context.Context, memoryLimit uint32) (*engine, error)
@@ -23,6 +27,11 @@ func (s *Sandbox) launchWorker(ctx context.Context, data VmStartData, events vmE
 	eng, err := s.engineFor(ctx, data.MemoryLimitBytes)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load QuickJS: %w", err)
+	}
+	// The script settled while the module loaded: nothing is left to run, so no worker starts (execute.ts's `reserved` guard in
+	// acquireWorker).
+	if events.settled != nil && events.settled() {
+		return nil, errScriptSettled
 	}
 	var release func()
 	if s.options.AcquireWorker != nil {

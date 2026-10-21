@@ -22,26 +22,45 @@ function createSetupErrorMessage(model, error, timestamp) {
 function hasResult(source) {
     return typeof source.result === "function";
 }
-async function forwardStream(target, source) {
+async function forwardStream(target, source, observer, observeResult) {
+    let result;
     for await (const event of source) {
         target.push(event);
+        observer?.onEvent?.(event);
+        if (event.type === "done")
+            result = event.message;
+        else if (event.type === "error")
+            result = event.error;
     }
-    target.end(hasResult(source) ? await source.result() : undefined);
+    if (hasResult(source))
+        result = await source.result();
+    target.end(result);
+    observeResult(result);
 }
 /**
  * Returns a stream synchronously while running async setup (auth resolution,
  * lazy module loading) behind it. Setup failures terminate the stream with an
  * error event.
  */
-export function lazyStream(model, setup) {
+export function lazyStream(model, setup, observer) {
     const startedAt = Date.now();
     const outer = new AssistantMessageEventStream();
+    let observedResult = false;
+    const observeResult = (result) => {
+        if (observedResult)
+            return;
+        observedResult = true;
+        observer?.onResult?.(result);
+    };
     setup()
-        .then((inner) => forwardStream(outer, inner))
+        .then((inner) => forwardStream(outer, inner, observer, observeResult))
         .catch((error) => {
         const message = createSetupErrorMessage(model, error, startedAt);
-        outer.push({ type: "error", reason: "error", error: message });
+        const event = { type: "error", reason: "error", error: message };
+        outer.push(event);
+        observer?.onEvent?.(event);
         outer.end(message);
+        observeResult(message);
     });
     return outer;
 }

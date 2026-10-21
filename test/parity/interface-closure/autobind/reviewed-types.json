@@ -3,6 +3,10 @@
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi agent/src/types.ts AgentTool extends ai Tool, so constrainedSampling?: false | ConstrainedSamplingConfig is the ai member (ai/src/types.ts:721) and agent.AgentTool.Schema() returns the ai.ToolSchema that carries it. PiG keeps the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false); agent tools reach the provider through Schema(), whose ConstrainedSampling providers read (ai/constrained_sampling.go resolveGrammarConstrainedSampling) and transcript tool declarations keep a false (ai/schema_object_order.go:247-279). The same member and tests as the ai Tool row: ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go."
   },
+  "pkg:ai/.#AI_TELEMETRY_SCHEMA": {
+    "go": "ai/telemetry.go#AITelemetrySchema",
+    "reason": "Pi packages/ai/src/telemetry.ts:63-104 declares AI_TELEMETRY_SCHEMA = defineTelemetrySchema({...}) (telemetry/src/index.ts:175 `defineTelemetrySchema<const T extends TelemetrySchemaDefinition>(schema: T): T`), so TypeScript infers the schema's exact literal type, one property per attribute name; that literal type is compile-time only (it feeds SchemaTelemetrySpan and createTypedMetrics inference, which Go designs out) and upstream performs no runtime schema validation. PiG carries the same data as the serializable *telemetry.TelemetrySchemaDefinition (spans, events, attributes, metrics as maps keyed by name), and every member shape rule that applies agrees; only the identifier-keyed attribute objects (`provider`, `api`, `model`, ...) have no rule, because T12q reads quoted keys only. TestAITelemetrySchemaMatchesPi (ai/telemetry_schema_oracle_test.go) evaluates Pi's own declaration (the shared attribute consts and the defineTelemetrySchema call of ai/src/telemetry.ts at the pin, types stripped) and compares its JSON.stringify with AITelemetrySchema's JSON member by member."
+  },
   "pkg:ai/.#AzureOpenAIResponsesOptions::property:toolChoice": {
     "go": "ai/types.go#StreamOptions.ToolChoice",
     "reason": "Pi types toolChoice per API as a compile-time union (azure-openai-responses.ts:28); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: the shared responses builder (openai_responses.go:1062) sends a non-nil value as tool_choice (string or object); locked by azure_upstream_test.go TestAzureUpstreamToolChoice and TestAzureAndOpenAIResponsesObjectToolChoice. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
@@ -39,6 +43,18 @@
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
   },
+  "pkg:ai/.#UserAgentMode": {
+    "go": "ai/identity.go#UserAgentMode",
+    "reason": "Pi utils/identity.ts:11 declares UserAgentMode = \"short\" | \"detailed\" | { custom: string }. Go has no sum type, so ai.UserAgentMode is a struct with an unexported kind and the three constructors/values UserAgentShort, UserAgentDetailed and UserAgentCustom(value), and encodes to exactly Pi's three JSON forms (`\"short\"`, `\"detailed\"`, `{\"custom\":...}`; MarshalJSON/UnmarshalJSON, TestClientIdentityJSON). FormatUserAgent switches on the mode as formatUserAgent does (TestFormatUserAgentForms), and ClientIdentity.UserAgent is a pointer so nil is the omitted `\"detailed\"` default."
+  },
+  "pkg:ai/.#withClientIdentity::call:0": {
+    "go": "ai/identity_models.go#WithClientIdentity",
+    "reason": "Pi utils/identity.ts withClientIdentity(models: MutableModels, identity): MutableModels is the first overload: it returns a Proxy over models that adds identity to every request. Go has no Proxy, so ai.WithClientIdentity takes the ClientIdentityModels interface (the request surface both Models and the Model Runtime implement) and returns a typed view with the optional ModelsLister and ModelsCatalog surfaces its argument has (ai/identity_models.go, TestWithClientIdentityKeepsTheOptionalSurfacesItsModelsHave); mutation of a mutable models goes through the original, which the view delegates to unchanged."
+  },
+  "pkg:ai/.#withClientIdentity::call:1": {
+    "go": "ai/identity_models.go#WithClientIdentity",
+    "reason": "Pi utils/identity.ts withClientIdentity(models: Models, identity): Models is the second overload, for the read and request surface without mutation. Go has the one ClientIdentityModels parameter for both overloads (a Go interface is satisfied by the smaller or the larger surface), and the view merges the request identity over the wrapper identity (TestWithClientIdentityMergesRequestIdentityOverTheWrapperIdentity, TestModelsMergeRequestIdentityOverTheModelsIdentity)."
+  },
   "pkg:ai/api/azure-openai-responses#AzureOpenAIResponsesOptions::property:toolChoice": {
     "go": "ai/types.go#StreamOptions.ToolChoice",
     "reason": "Pi types toolChoice per API as a compile-time union (azure-openai-responses.ts:28); T10 cannot compare it with Go. Go carries one StreamOptions.ToolChoice (types.go, `any`) for every API with the same runtime value space, a string name or the provider's object, and each provider reads it: the shared responses builder (openai_responses.go:1062) sends a non-nil value as tool_choice (string or object); locked by azure_upstream_test.go TestAzureUpstreamToolChoice and TestAzureAndOpenAIResponsesObjectToolChoice. The compile-time narrowing per API has no runtime effect, and the U1 rows for the other APIs are not covered by this entry."
@@ -58,6 +74,10 @@
   "pkg:ai/api/openai-responses-shared#OpenAIResponsesStreamOptions::property:resolveServiceTier": {
     "go": "ai/openai_responses.go#OpenAIResponsesStreamOptions.ResolveServiceTier",
     "reason": "Pi api/openai-responses-shared.ts types the tier parameters as ResponseCreateParamsStreaming[\"service_tier\"], the OpenAI SDK's \"auto\" | \"default\" | \"flex\" | \"scale\" | \"priority\" | null. Go carries the tier as a string (ai:ServiceTier is string in representations.json), with \"\" for null/undefined; the callbacks receive and return the same tier values."
+  },
+  "pkg:ai/compat#AI_TELEMETRY_SCHEMA": {
+    "go": "ai/telemetry.go#AITelemetrySchema",
+    "reason": "Pi packages/ai/src/telemetry.ts:63-104 declares AI_TELEMETRY_SCHEMA = defineTelemetrySchema({...}) (telemetry/src/index.ts:175 `defineTelemetrySchema<const T extends TelemetrySchemaDefinition>(schema: T): T`), so TypeScript infers the schema's exact literal type, one property per attribute name; that literal type is compile-time only (it feeds SchemaTelemetrySpan and createTypedMetrics inference, which Go designs out) and upstream performs no runtime schema validation. PiG carries the same data as the serializable *telemetry.TelemetrySchemaDefinition (spans, events, attributes, metrics as maps keyed by name), and every member shape rule that applies agrees; only the identifier-keyed attribute objects (`provider`, `api`, `model`, ...) have no rule, because T12q reads quoted keys only. TestAITelemetrySchemaMatchesPi (ai/telemetry_schema_oracle_test.go) evaluates Pi's own declaration (the shared attribute consts and the defineTelemetrySchema call of ai/src/telemetry.ts at the pin, types stripped) and compares its JSON.stringify with AITelemetrySchema's JSON member by member."
   },
   "pkg:ai/compat#AzureOpenAIResponsesOptions::property:toolChoice": {
     "go": "ai/types.go#StreamOptions.ToolChoice",
@@ -99,6 +119,22 @@
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
   },
+  "pkg:ai/compat#UserAgentMode": {
+    "go": "ai/identity.go#UserAgentMode",
+    "reason": "Pi utils/identity.ts:11 declares UserAgentMode = \"short\" | \"detailed\" | { custom: string }. Go has no sum type, so ai.UserAgentMode is a struct with an unexported kind and the three constructors/values UserAgentShort, UserAgentDetailed and UserAgentCustom(value), and encodes to exactly Pi's three JSON forms (`\"short\"`, `\"detailed\"`, `{\"custom\":...}`; MarshalJSON/UnmarshalJSON, TestClientIdentityJSON). FormatUserAgent switches on the mode as formatUserAgent does (TestFormatUserAgentForms), and ClientIdentity.UserAgent is a pointer so nil is the omitted `\"detailed\"` default."
+  },
+  "pkg:ai/compat#withClientIdentity::call:0": {
+    "go": "ai/identity_models.go#WithClientIdentity",
+    "reason": "Pi utils/identity.ts withClientIdentity(models: MutableModels, identity): MutableModels is the first overload: it returns a Proxy over models that adds identity to every request. Go has no Proxy, so ai.WithClientIdentity takes the ClientIdentityModels interface (the request surface both Models and the Model Runtime implement) and returns a typed view with the optional ModelsLister and ModelsCatalog surfaces its argument has (ai/identity_models.go, TestWithClientIdentityKeepsTheOptionalSurfacesItsModelsHave); mutation of a mutable models goes through the original, which the view delegates to unchanged."
+  },
+  "pkg:ai/compat#withClientIdentity::call:1": {
+    "go": "ai/identity_models.go#WithClientIdentity",
+    "reason": "Pi utils/identity.ts withClientIdentity(models: Models, identity): Models is the second overload, for the read and request surface without mutation. Go has the one ClientIdentityModels parameter for both overloads (a Go interface is satisfied by the smaller or the larger surface), and the view merges the request identity over the wrapper identity (TestWithClientIdentityMergesRequestIdentityOverTheWrapperIdentity, TestModelsMergeRequestIdentityOverTheModelsIdentity)."
+  },
+  "pkg:ai/models#AI_TELEMETRY_SCHEMA": {
+    "go": "ai/telemetry.go#AITelemetrySchema",
+    "reason": "Pi packages/ai/src/telemetry.ts:63-104 declares AI_TELEMETRY_SCHEMA = defineTelemetrySchema({...}) (telemetry/src/index.ts:175 `defineTelemetrySchema<const T extends TelemetrySchemaDefinition>(schema: T): T`), so TypeScript infers the schema's exact literal type, one property per attribute name; that literal type is compile-time only (it feeds SchemaTelemetrySpan and createTypedMetrics inference, which Go designs out) and upstream performs no runtime schema validation. PiG carries the same data as the serializable *telemetry.TelemetrySchemaDefinition (spans, events, attributes, metrics as maps keyed by name), and every member shape rule that applies agrees; only the identifier-keyed attribute objects (`provider`, `api`, `model`, ...) have no rule, because T12q reads quoted keys only. TestAITelemetrySchemaMatchesPi (ai/telemetry_schema_oracle_test.go) evaluates Pi's own declaration (the shared attribute consts and the defineTelemetrySchema call of ai/src/telemetry.ts at the pin, types stripped) and compares its JSON.stringify with AITelemetrySchema's JSON member by member."
+  },
   "pkg:ai/providers/compat-schema#CompatSchemasByApi": {
     "go": "internal/codingagent/configschema/compat_b.go#CompatSchemasByApi",
     "reason": "Pi 4954d760 compat-schema.ts:604 exports CompatSchemasByApi, an `as const` object of API name to TypeBox compat schema. PiG builds schemas as configschema *Schema values, so the export is CompatSchemasByApi(), the ordered API-to-schema list; ProviderCompatSchema merges it as Pi does ([...new Set(...)]). TestCompatSchemaExportsMatchPi compares its JSON text with Pi's export byte for byte."
@@ -110,6 +146,18 @@
   "pkg:ai/providers/compat-schema#ThinkingTokenBudgetField": {
     "go": "ai/types.go#ThinkingTokenBudgetField",
     "reason": "42a3497d compat-schema.ts ThinkingTokenBudgetField is Static<typeof ThinkingTokenBudgetFieldSchema>, the closed union 'thinking_token_budget' | 'thinking_budget' | 'thinking_budget_tokens'. PiG's ai.ThinkingTokenBudgetField is a string type with exactly those three constants (ai/types.go); TestThinkingTokenBudgetFieldLiteralsMatchUpstream locks the literals and the compat schema accepts the same three (TestModelsJSONSchemaErrorsMatchPi)."
+  },
+  "pkg:ai/utils/identity#UserAgentMode": {
+    "go": "ai/identity.go#UserAgentMode",
+    "reason": "Pi utils/identity.ts:11 declares UserAgentMode = \"short\" | \"detailed\" | { custom: string }. Go has no sum type, so ai.UserAgentMode is a struct with an unexported kind and the three constructors/values UserAgentShort, UserAgentDetailed and UserAgentCustom(value), and encodes to exactly Pi's three JSON forms (`\"short\"`, `\"detailed\"`, `{\"custom\":...}`; MarshalJSON/UnmarshalJSON, TestClientIdentityJSON). FormatUserAgent switches on the mode as formatUserAgent does (TestFormatUserAgentForms), and ClientIdentity.UserAgent is a pointer so nil is the omitted `\"detailed\"` default."
+  },
+  "pkg:ai/utils/identity#withClientIdentity::call:0": {
+    "go": "ai/identity_models.go#WithClientIdentity",
+    "reason": "Pi utils/identity.ts withClientIdentity(models: MutableModels, identity): MutableModels is the first overload: it returns a Proxy over models that adds identity to every request. Go has no Proxy, so ai.WithClientIdentity takes the ClientIdentityModels interface (the request surface both Models and the Model Runtime implement) and returns a typed view with the optional ModelsLister and ModelsCatalog surfaces its argument has (ai/identity_models.go, TestWithClientIdentityKeepsTheOptionalSurfacesItsModelsHave); mutation of a mutable models goes through the original, which the view delegates to unchanged."
+  },
+  "pkg:ai/utils/identity#withClientIdentity::call:1": {
+    "go": "ai/identity_models.go#WithClientIdentity",
+    "reason": "Pi utils/identity.ts withClientIdentity(models: Models, identity): Models is the second overload, for the read and request surface without mutation. Go has the one ClientIdentityModels parameter for both overloads (a Go interface is satisfied by the smaller or the larger surface), and the view merges the request identity over the wrapper identity (TestWithClientIdentityMergesRequestIdentityOverTheWrapperIdentity, TestModelsMergeRequestIdentityOverTheModelsIdentity)."
   },
   "pkg:chord/.#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
@@ -170,10 +218,6 @@
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
     "reason": "The same declaration as pkg:chord/.#ContextKey::property:token, published again by Pi's ./context entrypoint (chord/src/context/index.ts:58-60 createContextKey returns a frozen {token: Symbol(description)}). Go has no symbol type, so chordctx.Token is a comparable opaque value, equal exactly for the same key and carrying its description. TestContextKeyTokenMatchesPi (chord/context/context_key_token_pi_oracle_test.go) compares token description, identity and toString with Pi's createContextKey in Node."
-  },
-  "pkg:chord/context#traceIn::call:0": {
-    "go": "chord/context/chordctx.go#TraceIn",
-    "reason": "Pi traceIn<T>(context, options, callback: (context: Context & { telemetry: TelemetrySpan }) => T | Promise<T>): Promise<T> (chord/src/context/index.ts) runs a child span of context.telemetry and hands the callback a context whose telemetry is that span. Go TraceIn[T](ctx, telemetry.SpanOptions, fn func(child context.Context, span telemetry.TelemetrySpan) (T, error)) (T, error) takes the context first as Pi does and returns the callback's result or its error as the identical value after the span ends, the Go form of the Promise. Pi narrows the callback's context to `Context & { telemetry: TelemetrySpan }`; Go cannot narrow a context's type, so the callback also receives the span and Telemetry(child) is that same span. TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors (chord/context/chordctx_upstream_test.go)."
   },
   "pkg:chord/context#withTelemetry::call:0": {
     "go": "chord/context/chordctx.go#WithTelemetry",
@@ -351,13 +395,17 @@
     "go": "durable/tasks.go#AnyTask",
     "reason": "Pi AnyTask (harness/types.ts:91) is the object type { readonly definition: { name, version, initial, phases, abort, migrate?, hooks? } }. Go durable.AnyTask is the struct { Definition *AnyTaskDefinition } whose definition carries each of those members (Name, Version, Initial, Phases, Abort, Migrate, Hooks); a Task erases to it with Task.Erased(), and the registry, Extension.Tasks and CreateTaskErased take it. TestAnyTaskExposesTheErasedDefinitionPiReads and TestAnyTaskIsBuiltFromADefinitionAlone prove the shape. Lead ruling 2026-10-10: port Pi's shape as a struct."
   },
+  "pkg:durable/.#DURABLE_TELEMETRY_SCHEMA": {
+    "go": "durable/harness/telemetry.go#DurableTelemetrySchema",
+    "reason": "Pi packages/durable/src/harness/telemetry.ts:50-139 declares DURABLE_TELEMETRY_SCHEMA = defineTelemetrySchema({...}) (telemetry/src/index.ts:175 `defineTelemetrySchema<const T extends TelemetrySchemaDefinition>(schema: T): T`), so TypeScript infers the schema's exact literal type, one property per attribute name; that literal type is compile-time only (it feeds createTypedSpanStarter and createTypedMetrics inference, which Go designs out) and upstream performs no runtime schema validation. PiG carries the same data as the serializable *telemetry.TelemetrySchemaDefinition (spans, events, attributes, metrics as maps keyed by name), and every member shape rule that applies agrees (the attribute `values` tuples are []string); only the identifier-keyed attribute objects (`result`, `phase`, `outcome`, ...) have no rule, because T12q reads quoted keys only. TestDurableTelemetrySchemaMatchesPi (durable/harness/telemetry_schema_oracle_test.go) evaluates Pi's own declaration (telemetry.ts at the pin without its import, types stripped) and compares its JSON.stringify with DurableTelemetrySchema's JSON member by member."
+  },
   "pkg:durable/.#DocumentReader": {
     "go": "durable/types.go#DocumentReader",
     "reason": "Pi DocumentReader is Pick<Session, \"snapshot\" | \"snapshotAsOf\"> (types.ts:886): the two committed-read methods of Session, whose overloads are generic over the document token (types.ts:931-942). Go interfaces take no method type parameters, so DocumentReader holds the erased reads (SnapshotErased, SnapshotAsOfErased) and the typed overloads are the generic functions durable.Snapshot[T] and durable.SnapshotAsOf[T] (documents.go:305,315) taking a DocumentReader; Session satisfies it, as Pi's Pick of Session does. Locked by TestSessionHistoricalDocumentSnapshots (durable/session/session_checkpoints_migrations_test.go) and the examples that read through durable.Snapshot (durable/examples/support_test.go snapshotNotes)."
   },
   "pkg:durable/.#HarnessOptions": {
     "go": "durable/harness/types.go#HarnessOptions",
-    "reason": "Pi harness/types.ts HarnessOptions.settings is HarnessSettings | (() => HarnessSettings | undefined), read at each use either way (harness.ts currentSettings). T10 cannot compare a union of a value and a function with Go. PiG carries the one form that covers both, HarnessOptions.Settings func() *HarnessSettings (nil uses the defaults), which a host that has plain settings returns from a closure. HarnessOptions.telemetry is TelemetryContext & Partial<TelemetryPropagation & TelemetryMetrics>, an object that may define any subset of the capabilities; Go has no Partial or intersection types, so HarnessOptions.Telemetry is a telemetry.TelemetryContext (nil is the omitted option) and the optional capabilities are found by asserting it to telemetry.TelemetryPropagation and telemetry.TelemetryMetrics. TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetricsCapabilities (durable/harness/harness_telemetry_options_test.go). The other members (onReport with its ReportInfo, onWake, setTimer, now, registry) agree by rule, and onReport's two-argument shape is asserted by every durable harness test that opens a Harness with it (harness_reports_core_test.go TestReports, harness_sleep_core_test.go)."
+    "reason": "Pi durable/src/harness/types.ts HarnessOptions carries `identity?: ClientIdentity`, `models: Models | (() => Models)` and `settings?: HarnessSettings | (() => HarnessSettings | undefined)`. A union of a plain value and a function that returns it has no Go sum type: harness.HarnessOptions keeps Models and ModelsFunc as two fields (CurrentModels reads ModelsFunc when set, else Models, and applies Identity over DefaultHarnessIdentity as harness.ts currentModels does, wrapping a plain Models once: HarnessOptions.WithModelsView, TestToolsAndHooksSeeTheHarnessModels) and Settings as the function form (a plain settings value is a function returning it). The Identity member is harness.HarnessOptions.Identity (TestGeneration/attributes model requests by default and merges the Harness identity over it)."
   },
   "pkg:durable/.#ToolExecutionApi::property:createTask::call:0": {
     "go": "durable/harness_types.go#ToolExecutionApi.CreateTaskErased",

@@ -72,7 +72,7 @@ func (s *Session) prepareSummarizationRequest(ctx context.Context, model *ai.Mod
 	}
 	request := summarizationRequest{model: model, completer: s.resolveCompleter(), streamFn: s.streamFn, thinkingLevel: thinking}
 	// Registry-built providers use the stock request path. A directly supplied Go provider is a caller-owned stream, even when it carries provider identity metadata.
-	_, registryBuilt := model.Provider.(*providerAttributionProvider)
+	_, registryBuilt := model.Provider.(*requestOptionsProvider)
 	_, nativeAuth := model.Provider.(interface{ Auth() ai.ProviderAuth })
 	prepared, provider, options := model, model.Provider, ai.StreamOptions{Headers: ai.ProviderHeadersFromStrings(model.ProviderMeta.Headers)}
 	var err error

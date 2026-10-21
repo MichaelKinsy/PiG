@@ -22,6 +22,9 @@ type vmEvents struct {
 	// finish the execution, as Node runs a timer or an abort listener only between tasks, so a segment that computes past
 	// the deadline still delivers its result first. A launcher whose VM runs elsewhere never takes it.
 	turn *sync.Mutex
+	// settled reports whether the execution already has its outcome. A launcher that resumes after loading what it needs checks
+	// it before it takes a worker, so a script that was aborted while the module loaded starts none. Nil means never settled.
+	settled func() bool
 }
 
 // vmChannel is the host's handle on a running VM.

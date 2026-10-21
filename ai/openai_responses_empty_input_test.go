@@ -11,7 +11,7 @@ func TestConvertAnchoredMessagesEncodesAnEmptyInputAsAnArray(t *testing.T) {
 	provider := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai", Model: "gpt-test"}}
 	for name, messages := range map[string][]Message{"nil": nil, "empty": {}} {
 		t.Run(name, func(t *testing.T) {
-			items, err := provider.convertAnchoredMessages(messages, nil, false)
+			items, err := provider.convertMessages(messages, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

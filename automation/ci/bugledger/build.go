@@ -77,7 +77,7 @@ func (b *builder) inHistory(hash string) bool {
 	return len(hash) >= 10 && b.present[hash[:10]]
 }
 
-// inherit returns a copy of the committed entry that matches, when that entry names a commit missing from this history. A squash landing replaces the development commits with one commit, so neither the fix commits, their tests, nor the class their messages imply can be recomputed there; the committed entry, generated on the full history, is kept. On the history that holds every commit nothing is inherited and every entry is recomputed.
+// inherit returns a copy of the committed entry that matches, when that entry names a commit missing from this history. A squash landing replaces the development commits with one commit, so neither the fix commits, their tests, nor the class their messages imply can be recomputed there; the committed entry, generated on the full history, is kept, less any test the tree no longer declares. On the history that holds every commit nothing is inherited and every entry is recomputed.
 func (b *builder) inherit(match func(Entry) bool) *Entry {
 	for _, p := range b.prior {
 		if !match(p) || !slices.ContainsFunc(p.Commits, func(c Commit) bool { return !b.inHistory(c.Hash) }) {
@@ -85,7 +85,8 @@ func (b *builder) inherit(match func(Entry) bool) *Entry {
 		}
 		e := p
 		e.Commits = slices.Clone(p.Commits)
-		e.Tests = slices.Clone(p.Tests)
+		// A test the tree no longer declares (a port that renamed or retired it) cannot be recomputed from history either, so the entry drops it instead of failing the check on a guard that was replaced.
+		e.Tests = slices.DeleteFunc(slices.Clone(p.Tests), func(t string) bool { return !testExists(b.r.root, t) })
 		if e.Tests == nil {
 			e.Tests = []string{}
 		}

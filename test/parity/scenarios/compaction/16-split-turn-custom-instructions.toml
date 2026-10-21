@@ -1,0 +1,26 @@
+# Pi adfc1446 (#11058): compact() passes the /compact instructions to the summary of a split turn's prefix. Pi's unchanged compact() and PiG's Compact
+# run four split-turn preparations (prefix only, with history, with and without a previous summary, with and without instructions) against a recording
+# stream function. Every request prompt and the merged summary are compared exactly; the Node flag resolves Pi's ESM dependencies from its package.
+name = "16-split-turn-custom-instructions"
+description = "A split turn's prefix summary request carries the /compact instructions as Pi's compact sends it."
+covers = ["packages/coding-agent/src/core/compaction/compaction.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/split-turn-compact-pig.sh"]
+pig_go_tests = ["./internal/codingagent/compaction"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/split-turn-compact-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SPLIT_TURN prefix-only-instructions", "Additional focus: keep migration decisions", "SPLIT_TURN history-and-prefix-previous-instructions"]
+runs = 3

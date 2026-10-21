@@ -115,6 +115,13 @@ func TestOpenAIResponsesChatGPTUsageLimitUpstream(t *testing.T) {
 			t.Errorf("errorMessage = %q", message)
 		}
 	})
+	t.Run("asks the workspace admin to raise a ChatGPT Business usage limit", func(t *testing.T) {
+		body := `{"error":{"code":"subscription_sharing_workplace_individual_usage_limit_exceeded","message":"Usage limit reached.","type":"rate_limit_error"}}`
+		message := errorMessage(t, &http.Response{StatusCode: 429, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(body))})
+		if !strings.Contains(message, "subscription_sharing_workplace_individual_usage_limit_exceeded") || !strings.Contains(message, "\n"+chatGPTWorkspaceLimitHint) || strings.Contains(message, "settings/usage") {
+			t.Errorf("errorMessage = %q", message)
+		}
+	})
 	t.Run("links to ChatGPT usage when the stream fails", func(t *testing.T) {
 		event := `{"type":"response.failed","sequence_number":0,"response":{"id":"resp_failed","status":"failed","error":` + usageLimit + `}}`
 		message := errorMessage(t, &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: io.NopCloser(strings.NewReader("event: response.failed\ndata: " + event + "\n\n"))})

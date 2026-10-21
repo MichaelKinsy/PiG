@@ -64,7 +64,7 @@ test("open names every model of the models object as {provider, id, contextWindo
 })
 
 test("root() creates the root, its agent and init in one commit: one begin, the ops in order, one end", async () => {
-  const Notes = defineDoc({ kind: "example.notes", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: () => ({ text: "" }) })
+  const Notes = defineDoc({ kind: "example.notes", checkpointWhen: () => false, version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: () => ({ text: "" }) })
   const { core, log } = line(ev => {
     const op = ev.body.op
     if (op === "conversation") return { result: null }

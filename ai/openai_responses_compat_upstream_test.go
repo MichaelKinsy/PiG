@@ -110,26 +110,32 @@ func TestOpenAIResponsesCompatHeadersUpstream(t *testing.T) {
 
 func TestOpenAIResponsesCompatDefaultsUpstream(t *testing.T) {
 	request := Context{SystemPrompt: "sys", Messages: []Message{UserMessage{Content: UserText("hi")}}}
-	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:75
+	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:75 (Pi e5fe9777: #2567, Copilot rejected reasoning.effort "none"; gpt-6-sol has off: "none", so this exercises the Copilot exception)
 	t.Run("omits reasoning when no reasoning is requested", func(t *testing.T) {
-		payload, _, _ := captureResponsesCompat(t, responsesCompatConfig(t, "github-copilot", "gpt-5-mini"), request, StreamOptions{}, "data: [DONE]\n\n")
+		payload, _, _ := captureResponsesCompat(t, responsesCompatConfig(t, "github-copilot", "gpt-6-sol"), request, StreamOptions{}, "data: [DONE]\n\n")
 		if _, ok := payload["reasoning"]; ok {
 			t.Fatalf("reasoning=%s", payload["reasoning"])
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:110
+	// .upstream/v1.3.0+fdce48eb/packages/ai/test/openai-responses-compat.test.ts:151 gpt-5.4 declares its tools in additional_tools items; tool_choice applies to them.
 	t.Run("forwards required tool choice", func(t *testing.T) {
 		ctx := Context{Messages: []Message{UserMessage{Content: UserText("Do not call ping. Respond with text instead.")}}, Tools: []ToolSchema{{Name: "ping", Description: "Ping", Parameters: JsonObject{"type": "object", "properties": JsonObject{"value": JsonObject{"type": "string"}}, "required": []string{"value"}}}}}
 		payload, _, _ := captureResponsesCompat(t, responsesCompatConfig(t, "openai", "gpt-5.4"), ctx, StreamOptions{ToolChoice: "required"}, "data: [DONE]\n\n")
 		assertShapeJSON(t, payload["tool_choice"], `"required"`)
-		var tools []struct {
-			Name string `json:"name"`
+		if tools, ok := payload["tools"]; ok {
+			t.Fatalf("top-level tools=%s, want every tool in additional_tools items", tools)
 		}
-		if err := json.Unmarshal(payload["tools"], &tools); err != nil {
+		var input []struct {
+			Type  string `json:"type"`
+			Tools []struct {
+				Name string `json:"name"`
+			} `json:"tools"`
+		}
+		if err := json.Unmarshal(payload["input"], &input); err != nil {
 			t.Fatal(err)
 		}
-		if len(tools) != 1 || tools[0].Name != "ping" {
-			t.Fatalf("tools=%#v", tools)
+		if len(input) != 2 || input[0].Type != "additional_tools" || len(input[0].Tools) != 1 || input[0].Tools[0].Name != "ping" {
+			t.Fatalf("input=%s", payload["input"])
 		}
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:157

@@ -26,8 +26,8 @@ var (
 	reMdEnvVarInner       = lazyregexp.New(`^[A-Z_][A-Z0-9_]*(?:[^A-Za-z0-9_` + markdownJSSpace + `])?$`)
 	reMdBlockDollar       = lazyregexp.New(`(?s)^ {0,3}\$\$[ \t]*(?:\n)?(.*?)\$\$[ \t]*(?:\n|$)`)
 	reMdBlockBracket      = lazyregexp.New(`(?s)^ {0,3}\\\[[ \t]*(?:\n)?(.*?)\\\][ \t]*(?:\n|$)`)
-	reMdPendingBracket    = lazyregexp.New(`(?s)^ {0,3}\\\[[ \t]*(?:\n)?(.*)$`)
-	reMdPendingDollar     = lazyregexp.New(`(?s)^ {0,3}\$\$[ \t]*(?:\n)?(.*)$`)
+	// markdown.ts TABLE_DELIMITER_ROW_REGEX (2ed3118b, #11159). No multiline flag: $ is the end of the line it tests.
+	reMdTableDelimiterRow = lazyregexp.New(`^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$`)
 )
 
 // latexToken mirrors the upstream LatexToken shape.
@@ -123,20 +123,65 @@ func looksLikePendingDollarMath(source string) bool {
 	return reMdPendingDollarMath.MatchString(source)
 }
 
+// containsTableStart ports markdown.ts containsTableStart (2ed3118b, #11159): a GFM table starts with a header row
+// followed by a delimiter row such as "|---|---|" or "| --- |". The header needs a "|" only when the delimiter has
+// none: a pipe-free delimiter without a pipe in the header is a thematic break, not a table.
+func containsTableStart(source string) bool {
+	// Walks the lines in place and stops at the first table start: the unclosed-math fallbacks run once per display-math
+	// opener, and a split of the whole rest of the document on every opener made a long reply quadratic.
+	line, rest, ok := strings.Cut(source, "\n")
+	for ok {
+		var next string
+		next, rest, ok = strings.Cut(rest, "\n")
+		if (strings.Contains(next, "|") || strings.Contains(line, "|")) && reMdTableDelimiterRow.MatchString(next) {
+			return true
+		}
+		line = next
+	}
+	return false
+}
+
+// mdPendingBody is reMdPendingDollar and reMdPendingBracket without a regexp: it returns what `(?s)^ {0,3}<opener>[ \t]*(?:\n)?(.*)$`
+// captures, the whole rest of the document. The regexp read every byte of the rest on every opener that
+// containsTableStart then refuses.
+func mdPendingBody(source, opener string) (string, bool) {
+	spaces := 0
+	for spaces < len(source) && spaces <= 3 && source[spaces] == ' ' {
+		spaces++
+	}
+	if spaces > 3 || !strings.HasPrefix(source[spaces:], opener) {
+		return "", false
+	}
+	rest := source[spaces+len(opener):]
+	rest = strings.TrimLeft(rest, " \t")
+	return strings.TrimPrefix(rest, "\n"), true
+}
+
 // tokenizeBlockLatex ports markdown.ts tokenizeBlockLatex over the remaining
 // source (joined lines). Returns the block token and true on a match.
+// Display math never spans a table (2ed3118b, #11159): without the containsTableStart guards an unclosed "$$" or
+// "\[" pairs with a later opener or stays pending, swallowing the table.
 func tokenizeBlockLatex(source string) (latexToken, bool) {
-	if m := reMdBlockDollar.FindStringSubmatch(source); m != nil && m[1] != "" {
+	// Every form below starts with up to three spaces and then "$$" or "\[". Most blocks start with neither, and each
+	// regexp attempt on a long remaining document pays for its length before it fails.
+	spaces := 0
+	for spaces < len(source) && spaces <= 3 && source[spaces] == ' ' {
+		spaces++
+	}
+	if spaces > 3 || !strings.HasPrefix(source[spaces:], "$$") && !strings.HasPrefix(source[spaces:], `\[`) {
+		return latexToken{}, false
+	}
+	if m := reMdBlockDollar.FindStringSubmatch(source); m != nil && m[1] != "" && !containsTableStart(m[1]) {
 		return latexToken{raw: m[0], text: widthx.JSTrim(m[1])}, true
 	}
-	if m := reMdBlockBracket.FindStringSubmatch(source); m != nil && m[1] != "" {
+	if m := reMdBlockBracket.FindStringSubmatch(source); m != nil && m[1] != "" && !containsTableStart(m[1]) {
 		return latexToken{raw: m[0], text: widthx.JSTrim(m[1])}, true
 	}
-	if m := reMdPendingBracket.FindStringSubmatch(source); m != nil {
-		return latexToken{raw: m[0], text: m[1], pending: true}, true
+	if body, ok := mdPendingBody(source, `\[`); ok && body != "" && !containsTableStart(body) {
+		return latexToken{raw: source, text: body, pending: true}, true
 	}
-	if m := reMdPendingDollar.FindStringSubmatch(source); m != nil && m[1] != "" && looksLikePendingDollarMath(m[1]) {
-		return latexToken{raw: m[0], text: m[1], pending: true}, true
+	if body, ok := mdPendingBody(source, "$$"); ok && body != "" && looksLikePendingDollarMath(body) && !containsTableStart(body) {
+		return latexToken{raw: source, text: body, pending: true}, true
 	}
 	return latexToken{}, false
 }

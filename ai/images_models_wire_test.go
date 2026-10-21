@@ -12,11 +12,11 @@ import (
 )
 
 func TestOpenRouterImagesHeaderUndefinedOverride(t *testing.T) {
-	// Pi api/openrouter-images.ts:128 spreads model and option headers before providerHeadersToRecord removes undefined.
+	// Pi api/openrouter-images.ts passes the identity, model and option headers as separate providerHeadersToRecord sources, so a null option header removes a model header of any letter case.
 	model := map[string]string{"X-Removed": "remove-me", "X-Kept": "keep-me", "X-Shared": "model"}
 	options := ProviderHeaders{"X-Removed": nil, "x-kept": nil, "X-Shared": new("request")}
-	got := openRouterImagesHeaders("key", model, options)
-	want := http.Header{"Authorization": {"Bearer key"}, "Content-Type": {"application/json"}, "X-Kept": {"keep-me"}, "X-Shared": {"request"}}
+	got := openRouterImagesHeaders("key", ClientIdentityTarget{}, nil, model, options)
+	want := http.Header{"Authorization": {"Bearer key"}, "Content-Type": {"application/json"}, "User-Agent": {FormatUserAgent(nil)}, "X-Shared": {"request"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("headers=%v, want %v", got, want)
 	}

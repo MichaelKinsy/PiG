@@ -314,13 +314,13 @@ func codexWebSocketHref(endpoint string) (string, error) {
 	return href, nil
 }
 
-func codexWebSocketHeaders(base map[string]string, options ProviderHeaders, token, accountID, requestID string) http.Header {
+func codexWebSocketHeaders(target ClientIdentityTarget, identity *ClientIdentity, base map[string]string, options ProviderHeaders, token, accountID, requestID string) http.Header {
 	headers := make(http.Header, len(base)+7)
 	// Defaults first so model and caller headers override them (buildBaseCodexHeaders, #10429).
 	// pig divergence (D26): PiG names itself as the Codex originator.
 	headers.Set("originator", pigidentity.CodexOriginator)
-	// pig divergence (D65): the default User-Agent is PiG's product identity.
-	headers.Set("User-Agent", PiUserAgent())
+	// Codex expects an originator on every request; it is not attribution (openai-codex-responses.ts identityHeaders).
+	applyIdentityHeaders(headers, target, identity)
 	for name, value := range base {
 		headers.Set(name, value)
 	}
@@ -726,7 +726,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		}
 		requestID = id
 	}
-	headers := codexWebSocketHeaders(p.cfg.ExtraHeaders, opts.Headers, apiKey, accountID, requestID)
+	headers := codexWebSocketHeaders(ClientIdentityTarget{Provider: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL}, opts.Identity, p.cfg.ExtraHeaders, opts.Headers, apiKey, accountID, requestID)
 	connectTimeout := codexWebSocketConnectTimeout
 	if opts.WebSocketConnectTimeoutMs != nil {
 		connectTimeout = time.Duration(*opts.WebSocketConnectTimeoutMs) * time.Millisecond
@@ -970,7 +970,7 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 	result := builder.stream.Result()
 	keep := result != nil && result.StopReason != StopReasonError && result.StopReason != StopReasonAborted
 	if keep && useCachedContext && acquired.entry != nil && result.ResponseID != "" {
-		responseItems, err := p.convertAnchoredMessages([]Message{*result}, grammarProps, false)
+		responseItems, err := p.convertMessages([]Message{*result}, grammarProps)
 		baseline := make([]json.RawMessage, len(request.input), len(request.input)+len(responseItems))
 		copy(baseline, request.input)
 		// Each response item as the next request's body writes it: JSON.stringify text, compared byte for byte.

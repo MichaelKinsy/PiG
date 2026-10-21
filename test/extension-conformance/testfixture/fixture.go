@@ -2334,6 +2334,58 @@ func Extension() *sdk.Extension {
 		ctx.SetToolsExpanded(true)
 		return nil
 	})
+	// dialog-stack-probe opens its dialogs at the same time, each from its own goroutine, and reports each one's answer as it settles
+	// (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
+	ext.Command("dialog-stack-probe", "Open concurrent dialogs from one command", func(ctx sdk.Context, scenario string) error {
+		answer := func(value string, ok bool) string {
+			if !ok {
+				return "cancelled"
+			}
+			return value
+		}
+		dialogs := map[string]func() (string, error){
+			"A": func() (string, error) {
+				value, ok, err := ctx.Select("A", []string{"a1", "a2"})
+				return answer(value, ok), err
+			},
+			"B": func() (string, error) {
+				confirmed, err := ctx.Confirm("B", "message")
+				return strconv.FormatBool(confirmed), err
+			},
+			"S": func() (string, error) {
+				value, ok, err := ctx.Select("S", []string{"s1", "s2"})
+				return answer(value, ok), err
+			},
+			"C": func() (string, error) {
+				confirmed, err := ctx.Confirm("C", "message")
+				return strconv.FormatBool(confirmed), err
+			},
+			"I": func() (string, error) { value, ok, err := ctx.Input("I", "placeholder"); return answer(value, ok), err },
+			"E": func() (string, error) { value, ok, err := ctx.Editor("E", "prefill"); return answer(value, ok), err },
+		}
+		names := []string{"A", "B"}
+		if scenario == "mix" {
+			names = []string{"S", "C", "I", "E"}
+		}
+		errs := make([]error, len(names))
+		var wg sync.WaitGroup
+		for index, name := range names {
+			wg.Go(func() {
+				value, err := dialogs[name]()
+				if err != nil {
+					errs[index] = err
+					return
+				}
+				ctx.Notify("stack settled "+name+"="+value, "info")
+			})
+		}
+		wg.Wait()
+		if err := errors.Join(errs...); err != nil {
+			return err
+		}
+		ctx.Notify("stack done", "info")
+		return nil
+	})
 	// tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
 	ext.Command("tool_call_guard_probe", "Report the tool names the tool_call guard accepts", func(ctx sdk.Context, args string) error {
 		ext.OnEvent("tool_call", func(hctx sdk.Context, data map[string]any) (any, error) {

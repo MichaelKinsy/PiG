@@ -14,7 +14,7 @@ export type AnyDocDefinition = {
   family?: true
   initial(seed?: JsonValue): Record<string, JsonValue>
   migrate?(value: Record<string, JsonValue>, fromVersion: number): Record<string, JsonValue>
-  checkpointWhen?(value: unknown, ops: readonly unknown[], info: unknown): boolean
+  checkpointWhen(value: unknown, ops: readonly unknown[], info: unknown): boolean
 }
 export type AnyDocToken = { readonly definition: AnyDocDefinition }
 

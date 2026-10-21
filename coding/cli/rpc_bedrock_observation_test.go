@@ -80,25 +80,14 @@ func TestRPCBedrockConverseStreamObservation(t *testing.T) {
 			}
 			want := canonicalBedrockRPC(t, records)
 			var failures atomic.Int32
-			var wg sync.WaitGroup
-			jobs := make(chan int)
-			for range 8 {
-				wg.Go(func() {
-					for run := range jobs {
-						got := runBedrockRPCOnce(t, bin, &inputs, c.Shape, c.Delivery, len(records))
-						if !reflect.DeepEqual(got, want) && failures.Add(1) == 1 {
-							wantJSON, _ := json.MarshalIndent(want, "", "  ")
-							gotJSON, _ := json.MarshalIndent(got, "", "  ")
-							t.Errorf("run %d differs from Pi\nPi:\n%s\nGo:\n%s", run, wantJSON, gotJSON)
-						}
-					}
-				})
-			}
-			for run := range *bedrockRPCRuns {
-				jobs <- run
-			}
-			close(jobs)
-			wg.Wait()
+			runBedrockPool(*bedrockRPCRuns, 8, func(run int) {
+				got := runBedrockRPCOnce(t, bin, &inputs, c.Shape, c.Delivery, len(records))
+				if !reflect.DeepEqual(got, want) && failures.Add(1) == 1 {
+					wantJSON, _ := json.MarshalIndent(want, "", "  ")
+					gotJSON, _ := json.MarshalIndent(got, "", "  ")
+					t.Errorf("run %d differs from Pi\nPi:\n%s\nGo:\n%s", run, wantJSON, gotJSON)
+				}
+			})
 			if n := failures.Load(); n != 0 {
 				t.Errorf("%d of %d runs differ from Pi", n, *bedrockRPCRuns)
 			}
@@ -107,6 +96,24 @@ func TestRPCBedrockConverseStreamObservation(t *testing.T) {
 	if cases != 12 {
 		t.Fatalf("oracle has %d HTTP/1 cases; 4 shapes and 3 deliveries require 12", cases)
 	}
+}
+
+// runBedrockPool calls fn for runs 0 through n-1, at most workers at a time, and returns when every call has ended. Each call has its
+// own goroutine and releases its slot when that goroutine ends, however it ends: runBedrockRPCOnce calls t.Fatal, which ends the
+// calling goroutine with runtime.Goexit. A fixed set of worker goroutines fed through an unbuffered channel lost one worker per
+// Fatal, and once all of them were gone the feeder blocked on its next send for good, so a loaded host that failed eight process
+// starts hung the test until the package timeout instead of failing it.
+func runBedrockPool(n, workers int, fn func(run int)) {
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, workers)
+	for run := range n {
+		slots <- struct{}{}
+		wg.Go(func() {
+			defer func() { <-slots }()
+			fn(run)
+		})
+	}
+	wg.Wait()
 }
 
 // firstBedrockAssistantMessage keeps the oracle's records up to the first assistant message_end: the oracle also holds the follow-up turn.
@@ -244,6 +251,9 @@ func runBedrockRPCOnce(t *testing.T, bin string, inputs *bedrockRPCInputs, shape
 	}
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
+	// Wait copies stderr until every holder of the pipe has exited. After the kill below a descendant that kept it would make Wait
+	// block for good, so the copy is abandoned after this delay.
+	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}

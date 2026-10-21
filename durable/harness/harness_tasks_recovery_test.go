@@ -685,7 +685,7 @@ func TestBlockedTasks(t *testing.T) {
 			N int `json:"n"`
 		}
 		scratch := durable.DefineDoc(durable.DocDefinition[scratchState]{
-			CommonDocDefinition: durable.CommonDocDefinition[scratchState]{Kind: "test.orphan-scratch", Version: 1, Initial: func() scratchState { return scratchState{} }},
+			CommonDocDefinition: durable.CommonDocDefinition[scratchState]{Kind: "test.orphan-scratch", Version: 1, Initial: func() scratchState { return scratchState{} }, CheckpointWhen: func(scratchState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
 		})
 		harness, _, _ := openTasks(t, storage.NewMemoryStorage(), nil)

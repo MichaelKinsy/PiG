@@ -28,15 +28,18 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-CJFE2WDE.js";
+} from "./chunk-ZZXFLJFR.js";
 import {
   envApiKeyAuth,
   lazyOAuth
 } from "./chunk-VLLDVPPZ.js";
 import {
+  AI_TELEMETRY_SCHEMA,
   InMemoryCredentialStore,
   InMemoryModelsStore,
   ModelsError,
+  PI_AI_VERSION,
+  PI_ATTRIBUTION,
   appendAssistantMessageDiagnostic,
   calculateCost,
   clampThinkingLevel,
@@ -50,12 +53,17 @@ import {
   defaultProviderAuthContext,
   extractDiagnosticError,
   formatThrownValue,
+  formatUserAgent,
+  getAttributionHeaders,
+  getClientVersion,
   getCurrentSystemMessage,
   getCurrentSystemPrompt,
   getCurrentTools,
   getDeclaredTools,
+  getIdentityHeaders,
   getInitialSystemMessage,
   getModelType,
+  getOpenCodeSessionHeaders,
   getSupportedThinkingLevels,
   getSystemMessageText,
   getToolStateChanges,
@@ -63,22 +71,27 @@ import {
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
   isModelType,
+  mergeClientIdentity,
   modelsAreEqual,
   normalizeContext,
   renderSystemMessageUpdate,
   resolveTranscript,
   resolveTranscriptTools,
   toToolDeclaration,
+  withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-6C2VLFYL.js";
+} from "./chunk-4QEFVS4X.js";
 import "./chunk-SHUYVCID.js";
 export {
+  AI_TELEMETRY_SCHEMA,
   AssistantMessageEventStream,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
   InMemoryCredentialStore,
   InMemoryModelsStore,
   ModelsError,
+  PI_AI_VERSION,
+  PI_ATTRIBUTION,
   StringEnum,
   Type,
   appendAssistantMessageDiagnostic,
@@ -103,12 +116,17 @@ export {
   fauxThinking,
   fauxToolCall,
   formatThrownValue,
+  formatUserAgent,
+  getAttributionHeaders,
+  getClientVersion,
   getCurrentSystemMessage,
   getCurrentSystemPrompt,
   getCurrentTools,
   getDeclaredTools,
+  getIdentityHeaders,
   getInitialSystemMessage,
   getModelType,
+  getOpenCodeSessionHeaders,
   getOverflowPatterns,
   getSupportedThinkingLevels,
   getSystemMessageText,
@@ -123,6 +141,7 @@ export {
   lazyApi,
   lazyOAuth,
   lazyStream,
+  mergeClientIdentity,
   modelsAreEqual,
   normalizeContext,
   parseJsonWithRepair,
@@ -139,5 +158,6 @@ export {
   uuidv7,
   validateToolArguments,
   validateToolCall,
+  withClientIdentity,
   withoutInitialSystemMessage
 };

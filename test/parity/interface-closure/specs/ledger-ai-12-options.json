@@ -212,9 +212,9 @@
     ],
     "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
    },
-   "telemetryContext": {
+   "telemetry": {
     "targets": [
-     "ai/types.go#StreamOptions.TelemetryContext"
+     "ai/types.go#StreamOptions.Telemetry"
     ],
     "evidence": [
      "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
@@ -223,7 +223,7 @@
     "production": [
      "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
     ],
-    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+    "rationale": "The upstream property telemetry is the Go field StreamOptions.Telemetry."
    },
    "temperature": {
     "targets": [
@@ -518,9 +518,9 @@
     ],
     "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
    },
-   "telemetryContext": {
+   "telemetry": {
     "targets": [
-     "ai/types.go#StreamOptions.TelemetryContext"
+     "ai/types.go#StreamOptions.Telemetry"
     ],
     "evidence": [
      "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
@@ -529,7 +529,7 @@
     "production": [
      "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
     ],
-    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+    "rationale": "The upstream property telemetry is the Go field StreamOptions.Telemetry."
    },
    "temperature": {
     "targets": [
@@ -746,9 +746,9 @@
     ],
     "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
    },
-   "telemetryContext": {
+   "telemetry": {
     "targets": [
-     "ai/types.go#StreamOptions.TelemetryContext"
+     "ai/types.go#StreamOptions.Telemetry"
     ],
     "evidence": [
      "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsDeferredFailureAndCancellationUpstream",
@@ -757,7 +757,7 @@
     "production": [
      "call:ai/models_runtime_stream.go#Models.StreamDeferred"
     ],
-    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+    "rationale": "The upstream property telemetry is the Go field StreamOptions.Telemetry."
    },
    "timeoutMs": {
     "targets": [
@@ -922,9 +922,9 @@
     ],
     "rationale": "The upstream property signal is the Go field StreamOptions.Signal."
    },
-   "telemetryContext": {
+   "telemetry": {
     "targets": [
-     "ai/types.go#StreamOptions.TelemetryContext"
+     "ai/types.go#StreamOptions.Telemetry"
     ],
     "evidence": [
      "test:agent/agent_loop_upstream_test.go#TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState",
@@ -933,7 +933,7 @@
     "production": [
      "call:agent/agent_loop.go#loopRun.streamAssistantResponse"
     ],
-    "rationale": "The upstream property telemetryContext is the Go field StreamOptions.TelemetryContext."
+    "rationale": "The upstream property telemetry is the Go field StreamOptions.Telemetry."
    },
    "timeoutMs": {
     "targets": [
@@ -1085,9 +1085,9 @@
     ],
     "rationale": "AbortSignal is the context.Context argument of the Go call; there is no signal field."
    },
-   "telemetryContext": {
+   "telemetry": {
     "targets": [
-     "ai/classifier.go#ClassifierOptions.TelemetryContext"
+     "ai/classifier.go#ClassifierOptions.Telemetry"
     ],
     "evidence": [
      "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
@@ -1096,7 +1096,7 @@
     "production": [
      "call:ai/classifier.go#Models.classify"
     ],
-    "rationale": "The upstream property telemetryContext is the Go field ClassifierOptions.TelemetryContext."
+    "rationale": "The upstream property telemetry is the Go field ClassifierOptions.Telemetry."
    },
    "temperature": {
     "targets": [

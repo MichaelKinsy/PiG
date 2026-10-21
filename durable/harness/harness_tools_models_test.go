@@ -34,9 +34,17 @@ func TestToolsAndHooksSeeTheHarnessModels(t *testing.T) {
 	if len(seen) != 2 {
 		t.Fatalf("%d models reads, want one from the hook and one from the tool", len(seen))
 	}
+	// A view of the host's Models that adds the Harness identity, shared by tools and hooks (harness-tools.test.ts: `seen[0]` is `seen[1]`).
+	if seen[0] != seen[1] {
+		t.Fatalf("tools and hooks read different views %v and %v of the Harness's models, want one shared view", seen[0], seen[1])
+	}
 	for index, models := range seen {
-		if models != durable.Models(setup.Models) {
-			t.Fatalf("read %d returned %v, want the Harness's models %v", index, models, setup.Models)
+		lister, ok := models.(ai.ModelsLister)
+		if !ok || len(lister.GetModels()) == 0 || len(lister.GetModels()) != len(setup.Models.GetModels()) {
+			t.Fatalf("read %d returned %v, want a view of the Harness's models %v", index, models, setup.Models)
+		}
+		if models.GetModel("faux", "faux-1") != setup.Models.GetModel("faux", "faux-1") {
+			t.Fatalf("read %d returned a view with other models than the Harness's", index)
 		}
 	}
 	mustClose(t, run.harness)

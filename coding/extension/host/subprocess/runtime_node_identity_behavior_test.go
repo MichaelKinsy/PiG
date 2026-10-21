@@ -28,9 +28,11 @@ globalThis.fetch = async (url, init = {}) => {
 };
 const out = {};
 const agentUA = await load("pi-coding-agent/utils/pi-user-agent.js");
-const aiUA = await load("pi-ai/utils/pi-user-agent.js");
+const aiUA = await load("pi-ai/utils/identity.js");
 out.codingAgentUserAgent = agentUA.getPiUserAgent("0.87.1");
-out.aiUserAgent = aiUA.getPiUserAgent();
+out.aiUserAgent = aiUA.formatUserAgent();
+out.aiShortUserAgent = aiUA.formatUserAgent({ userAgent: "short" });
+out.attribution = aiUA.PI_ATTRIBUTION;
 
 const version = await load("pi-coding-agent/utils/version-check.js");
 await version.getLatestPiRelease("0.87.1");
@@ -61,10 +63,15 @@ func TestVendoredRuntimeRequestsAreNeverMadeAsPi(t *testing.T) {
 	var got struct {
 		CodingAgentUserAgent string
 		AIUserAgent          string
-		VersionCheck         []struct{ URL, UserAgent string }
-		Catalog              []struct{ URL, UserAgent string }
-		BugReportError       string
-		BugReportCalls       []struct{ URL, UserAgent string }
+		AIShortUserAgent     string
+		Attribution          struct {
+			Name, URL  string
+			Categories []string
+		}
+		VersionCheck   []struct{ URL, UserAgent string }
+		Catalog        []struct{ URL, UserAgent string }
+		BugReportError string
+		BugReportCalls []struct{ URL, UserAgent string }
 	}
 	if err := json.Unmarshal(output, &got); err != nil {
 		t.Fatalf("%v\n%s", err, output)
@@ -77,6 +84,12 @@ func TestVendoredRuntimeRequestsAreNeverMadeAsPi(t *testing.T) {
 		if want := pigidentity.UserAgentProduct + "/9.8.7+0.87.1 (" + platform + " "; !strings.HasPrefix(ua, want) {
 			t.Errorf("%s user agent = %q, want %q prefix (D65 shape: pig/<version> (<platform> <release>; <arch>))", name, ua, want)
 		}
+	}
+	if got.AIShortUserAgent != pigidentity.UserAgentProduct {
+		t.Errorf("short user agent = %q, want %q", got.AIShortUserAgent, pigidentity.UserAgentProduct)
+	}
+	if got.Attribution.Name != pigidentity.AttributionName || got.Attribution.URL != pigidentity.AttributionURL || len(got.Attribution.Categories) != 1 || got.Attribution.Categories[0] != pigidentity.AttributionCategory {
+		t.Errorf("PI_ATTRIBUTION = %+v, want PiG's (D26)", got.Attribution)
 	}
 	for name, calls := range map[string][]struct{ URL, UserAgent string }{"version check": got.VersionCheck, "remote catalog": got.Catalog} {
 		if len(calls) != 1 {

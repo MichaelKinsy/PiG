@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestClassifyOracle replays pi-ai utils/retry.ts and utils/overflow.ts (pi-durable main da866ada, oracle/gen_classify.mjs):
+// TestClassifyOracle replays pi-ai utils/retry.ts and utils/overflow.ts (Pi bd3c9b82, oracle/gen_classify.mjs):
 // isRetryableAssistantError, isContextOverflow and retryDelayMs over messages built from the providers' error texts.
 func TestClassifyOracle(t *testing.T) {
 	var retries, overflows, delays int
@@ -58,6 +58,34 @@ func TestEveryClassifierPatternCompiles(t *testing.T) {
 				}()
 				compileRx(pattern)
 			}()
+		}
+	}
+}
+
+// Pi 73f8de80: the generation task classifies an HTTP 413 as context overflow whatever the provider or body, so it compacts
+// (generation_classify.go) instead of retrying or failing on a raw API error. Only a failed response counts, and a 413 named
+// only in the body or as a prefix of another status does not.
+func TestHTTP413IsContextOverflowForEveryProvider(t *testing.T) {
+	for _, tc := range []struct {
+		stop, provider, text string
+		want                 bool
+	}{
+		{"error", "github-copilot", `github-copilot API error (413): {"message":"failed to parse request","code":""}`, true},
+		{"error", "custom-provider", "custom-provider API error (413): Payload Too Large", true},
+		{"error", "openai", `413 {"error":{"message":"failed to parse request","code":""}}`, true},
+		{"error", "opencode-go", "413 status code (no body)", true},
+		{"error", "x", "413", true},
+		{"error", "github-copilot", `github-copilot API error (400): {"message":"failed to parse request","code":""}`, false},
+		{"error", "x", `github-copilot API error (400): {"message":"failed to parse request: invalid value 413"}`, false},
+		{"error", "x", "custom-provider API error (400): upstream mentioned OpenAI API error (413): invalid input", false},
+		{"error", "x", "custom-provider API error (4130): invalid input", false},
+		{"error", "x", "4130 failed to parse request", false},
+		{"aborted", "x", `OpenAI API error (413): {"message":"failed to parse request"}`, false},
+		{"stop", "x", `OpenAI API error (413): {"message":"failed to parse request"}`, false},
+	} {
+		message := jobj("role", "assistant", "stopReason", tc.stop, "provider", tc.provider, "errorMessage", tc.text)
+		if got := IsContextOverflow(message); got != tc.want {
+			t.Errorf("IsContextOverflow(%s %q) = %v, want %v", tc.stop, tc.text, got, tc.want)
 		}
 	}
 }

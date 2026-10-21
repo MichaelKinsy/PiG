@@ -7,11 +7,12 @@ import (
 	"strconv"
 )
 
-// newTaskkillCommand selects the System32 executable independently of PATH.
+// newTaskkillCommand selects the System32 executable independently of PATH. Upstream joins process.env.SystemRoot ||
+// "C:\\Windows", so an unset or empty SystemRoot takes the default.
 // Ports packages/coding-agent/src/utils/shell.ts.
 func newTaskkillCommand(pid int) *exec.Cmd {
-	root, present := os.LookupEnv("SystemRoot")
-	if !present {
+	root := os.Getenv("SystemRoot")
+	if root == "" {
 		root = `C:\Windows`
 	}
 	return exec.Command(filepath.Join(root, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid))

@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { clampThinkingLevel, createModels, lazyStream, ModelsError, normalizeContext, } from "../../pi-ai/sdk-bundle/index.js";
+import { clampThinkingLevel, createModels, getOpenCodeSessionHeaders, lazyStream, ModelsError, normalizeContext, } from "../../pi-ai/sdk-bundle/index.js";
 import * as builtinProviderCatalog from "../../pi-ai/sdk-bundle/providers.js";
 import { personalizeOpenRouterCatalog } from "../../pi-ai/sdk-bundle/openrouter.js";
 import { assertChatModel, assertClassifierInputSupported, assertClassifierModel, assertImageModel, classifierErrorResult, imageErrorResult, } from "../../pi-ai/utils/model-operations.js";
@@ -462,13 +462,16 @@ export class ModelRuntime {
             throw new ModelsError("auth", `Provider is not configured: ${model.provider}`);
         const { transformHeaders, ...rawProviderOptions } = options ?? {};
         const providerOptions = rawProviderOptions;
-        let headers = mergeHeaders(resolution.auth.headers, providerOptions.headers);
+        const requestModel = resolution.auth.baseUrl ? { ...model, baseUrl: resolution.auth.baseUrl } : model;
+        const sessionId = "sessionId" in providerOptions && typeof providerOptions.sessionId === "string"
+            ? providerOptions.sessionId
+            : undefined;
+        let headers = mergeHeaders(mergeHeaders(getOpenCodeSessionHeaders(requestModel, sessionId), resolution.auth.headers), providerOptions.headers);
         if (transformHeaders)
             headers = await transformHeaders(headers ?? {});
         const env = resolution.env || providerOptions.env
             ? { ...(resolution.env ?? {}), ...(providerOptions.env ?? {}) }
             : undefined;
-        const requestModel = resolution.auth.baseUrl ? { ...model, baseUrl: resolution.auth.baseUrl } : model;
         return {
             provider,
             model: requestModel,

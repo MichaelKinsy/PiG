@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.3.0+1402973a's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.3.0+1402973a`.
+Every extension-facing surface of Pi 1.3.0+bd3c9b82's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.3.0+bd3c9b82`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.3.0+1402973a.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.3.0+bd3c9b82.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -39,16 +39,17 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Rust | 31 | 0 | 0 |
 | Python | 31 | 0 | 0 |
 
-1569 package exports and class members, Node runtime:
+1608 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
 | `pi-coding-agent` | 901 | 9 | 0 | 10 |
-| `pi-tui` | 361 | 1 | 0 | 1 |
-| `pi-ai` | 85 | 1 | 0 | 0 |
-| `pi-ai/compat` | 136 | 9 | 0 | 0 |
+| `pi-tui` | 362 | 1 | 0 | 1 |
+| `pi-ai` | 94 | 2 | 0 | 0 |
+| `pi-ai/compat` | 145 | 10 | 0 | 0 |
+| `pi-ai/models` | 16 | 0 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
-| `pi-agent-core` | 43 | 0 | 0 | 0 |
+| `pi-agent-core` | 45 | 0 | 0 | 0 |
 
 ## pi (ExtensionAPI)
 
@@ -2459,6 +2460,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: ProcessTerminal.kittyProtocolActive` | `ProcessTerminal.kittyProtocolActive` | Pi's own code |
 | `pi-tui: ProcessTerminal.modifyOtherKeysActive` | `ProcessTerminal.modifyOtherKeysActive` | Pi's own code |
 | `pi-tui: ProcessTerminal.moveBy` | `ProcessTerminal.moveBy` | Pi's own code |
+| `pi-tui: ProcessTerminal.restoreOnExit` | `ProcessTerminal.restoreOnExit` | Pi's own code |
 | `pi-tui: ProcessTerminal.rows` | `ProcessTerminal.rows` | Pi's own code |
 | `pi-tui: ProcessTerminal.setProgramStatus` | `ProcessTerminal.setProgramStatus` | Pi's own code |
 | `pi-tui: ProcessTerminal.setProgress` | `ProcessTerminal.setProgress` | Pi's own code |
@@ -2706,6 +2708,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Export | Pi declaration | Node runtime |
 |---|---|---|
+| `pi-ai: AI_TELEMETRY_SCHEMA` | `variable AI_TELEMETRY_SCHEMA` | Pi's own code |
 | `pi-ai: AssistantMessageEventStream` | `class AssistantMessageEventStream` | Pi's own code |
 | `pi-ai: AssistantMessageEventStream.[Symbol.asyncIterator]` | `AssistantMessageEventStream.[Symbol.asyncIterator]` | Pi's own code |
 | `pi-ai: AssistantMessageEventStream.end` | `AssistantMessageEventStream.end` | Pi's own code |
@@ -2732,6 +2735,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: ModelsError.message` | `ModelsError.message` | Pi's own code |
 | `pi-ai: ModelsError.name` | `ModelsError.name` | Pi's own code |
 | `pi-ai: ModelsError.stack` | `ModelsError.stack` | Pi's own code |
+| `pi-ai: PI_AI_VERSION` | `variable PI_AI_VERSION` | bridged |
+| `pi-ai: PI_ATTRIBUTION` | `variable PI_ATTRIBUTION` | Pi's own code |
 | `pi-ai: StringEnum` | `function StringEnum` | Pi's own code |
 | `pi-ai: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai: calculateCost` | `function calculateCost` | Pi's own code |
@@ -2755,12 +2760,17 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: fauxThinking` | `function fauxThinking` | Pi's own code |
 | `pi-ai: fauxToolCall` | `function fauxToolCall` | Pi's own code |
 | `pi-ai: formatThrownValue` | `function formatThrownValue` | Pi's own code |
+| `pi-ai: formatUserAgent` | `function formatUserAgent` | Pi's own code |
+| `pi-ai: getAttributionHeaders` | `function getAttributionHeaders` | Pi's own code |
+| `pi-ai: getClientVersion` | `function getClientVersion` | Pi's own code |
 | `pi-ai: getCurrentSystemMessage` | `function getCurrentSystemMessage` | Pi's own code |
 | `pi-ai: getCurrentSystemPrompt` | `function getCurrentSystemPrompt` | Pi's own code |
 | `pi-ai: getCurrentTools` | `function getCurrentTools` | Pi's own code |
 | `pi-ai: getDeclaredTools` | `function getDeclaredTools` | Pi's own code |
+| `pi-ai: getIdentityHeaders` | `function getIdentityHeaders` | Pi's own code |
 | `pi-ai: getInitialSystemMessage` | `function getInitialSystemMessage` | Pi's own code |
 | `pi-ai: getModelType` | `function getModelType` | Pi's own code |
+| `pi-ai: getOpenCodeSessionHeaders` | `function getOpenCodeSessionHeaders` | Pi's own code |
 | `pi-ai: getOverflowPatterns` | `function getOverflowPatterns` | Pi's own code |
 | `pi-ai: getSupportedThinkingLevels` | `function getSupportedThinkingLevels` | Pi's own code |
 | `pi-ai: getSystemMessageText` | `function getSystemMessageText` | Pi's own code |
@@ -2775,6 +2785,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: lazyApi` | `function lazyApi` | Pi's own code |
 | `pi-ai: lazyOAuth` | `function lazyOAuth` | Pi's own code |
 | `pi-ai: lazyStream` | `function lazyStream` | Pi's own code |
+| `pi-ai: mergeClientIdentity` | `function mergeClientIdentity` | Pi's own code |
 | `pi-ai: modelsAreEqual` | `function modelsAreEqual` | Pi's own code |
 | `pi-ai: normalizeContext` | `function normalizeContext` | Pi's own code |
 | `pi-ai: parseJsonWithRepair` | `function parseJsonWithRepair` | Pi's own code |
@@ -2791,12 +2802,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: uuidv7` | `function uuidv7` | Pi's own code |
 | `pi-ai: validateToolArguments` | `function validateToolArguments` | Pi's own code |
 | `pi-ai: validateToolCall` | `function validateToolCall` | Pi's own code |
+| `pi-ai: withClientIdentity` | `function withClientIdentity` | Pi's own code |
 | `pi-ai: withoutInitialSystemMessage` | `function withoutInitialSystemMessage` | Pi's own code |
 
 ## Package exports: pi-ai/compat
 
 | Export | Pi declaration | Node runtime |
 |---|---|---|
+| `pi-ai/compat: AI_TELEMETRY_SCHEMA` | `variable AI_TELEMETRY_SCHEMA` | Pi's own code |
 | `pi-ai/compat: ANTHROPIC_API_KEY_ENV` | `variable ANTHROPIC_API_KEY_ENV` | bridged |
 | `pi-ai/compat: ANTHROPIC_AUTH_TOKEN_ENV` | `variable ANTHROPIC_AUTH_TOKEN_ENV` | bridged |
 | `pi-ai/compat: ANTHROPIC_FEDERATION_RULE_ID_ENV` | `variable ANTHROPIC_FEDERATION_RULE_ID_ENV` | bridged |
@@ -2831,6 +2844,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: ModelsError.message` | `ModelsError.message` | Pi's own code |
 | `pi-ai/compat: ModelsError.name` | `ModelsError.name` | Pi's own code |
 | `pi-ai/compat: ModelsError.stack` | `ModelsError.stack` | Pi's own code |
+| `pi-ai/compat: PI_AI_VERSION` | `variable PI_AI_VERSION` | bridged |
+| `pi-ai/compat: PI_ATTRIBUTION` | `variable PI_ATTRIBUTION` | Pi's own code |
 | `pi-ai/compat: StringEnum` | `function StringEnum` | Pi's own code |
 | `pi-ai/compat: anthropicMessagesApi` | `variable anthropicMessagesApi` | Pi's own code |
 | `pi-ai/compat: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
@@ -2860,15 +2875,19 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: fauxToolCall` | `function fauxToolCall` | Pi's own code |
 | `pi-ai/compat: findEnvKeys` | `function findEnvKeys` | Pi's own code |
 | `pi-ai/compat: formatThrownValue` | `function formatThrownValue` | Pi's own code |
+| `pi-ai/compat: formatUserAgent` | `function formatUserAgent` | Pi's own code |
 | `pi-ai/compat: generateImages` | `function generateImages` | Pi's own code |
 | `pi-ai/compat: generateImagesOpenRouter` | `variable generateImagesOpenRouter` | Pi's own code |
 | `pi-ai/compat: getApiProvider` | `function getApiProvider` | Pi's own code |
 | `pi-ai/compat: getApiProviders` | `function getApiProviders` | Pi's own code |
+| `pi-ai/compat: getAttributionHeaders` | `function getAttributionHeaders` | Pi's own code |
+| `pi-ai/compat: getClientVersion` | `function getClientVersion` | Pi's own code |
 | `pi-ai/compat: getCurrentSystemMessage` | `function getCurrentSystemMessage` | Pi's own code |
 | `pi-ai/compat: getCurrentSystemPrompt` | `function getCurrentSystemPrompt` | Pi's own code |
 | `pi-ai/compat: getCurrentTools` | `function getCurrentTools` | Pi's own code |
 | `pi-ai/compat: getDeclaredTools` | `function getDeclaredTools` | Pi's own code |
 | `pi-ai/compat: getEnvApiKey` | `function getEnvApiKey` | Pi's own code |
+| `pi-ai/compat: getIdentityHeaders` | `function getIdentityHeaders` | Pi's own code |
 | `pi-ai/compat: getImageModel` | `function getImageModel` | Pi's own code |
 | `pi-ai/compat: getImageModels` | `function getImageModels` | Pi's own code |
 | `pi-ai/compat: getImageProviders` | `function getImageProviders` | Pi's own code |
@@ -2877,6 +2896,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: getModel` | `variable getModel` | Pi's own code |
 | `pi-ai/compat: getModelType` | `function getModelType` | Pi's own code |
 | `pi-ai/compat: getModels` | `variable getModels` | Pi's own code |
+| `pi-ai/compat: getOpenCodeSessionHeaders` | `function getOpenCodeSessionHeaders` | Pi's own code |
 | `pi-ai/compat: getOverflowPatterns` | `function getOverflowPatterns` | Pi's own code |
 | `pi-ai/compat: getProviders` | `variable getProviders` | Pi's own code |
 | `pi-ai/compat: getSupportedThinkingLevels` | `function getSupportedThinkingLevels` | Pi's own code |
@@ -2894,6 +2914,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: lazyApi` | `function lazyApi` | Pi's own code |
 | `pi-ai/compat: lazyOAuth` | `function lazyOAuth` | Pi's own code |
 | `pi-ai/compat: lazyStream` | `function lazyStream` | Pi's own code |
+| `pi-ai/compat: mergeClientIdentity` | `function mergeClientIdentity` | Pi's own code |
 | `pi-ai/compat: mistralConversationsApi` | `variable mistralConversationsApi` | Pi's own code |
 | `pi-ai/compat: modelsAreEqual` | `function modelsAreEqual` | Pi's own code |
 | `pi-ai/compat: normalizeContext` | `function normalizeContext` | Pi's own code |
@@ -2941,7 +2962,29 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: uuidv7` | `function uuidv7` | Pi's own code |
 | `pi-ai/compat: validateToolArguments` | `function validateToolArguments` | Pi's own code |
 | `pi-ai/compat: validateToolCall` | `function validateToolCall` | Pi's own code |
+| `pi-ai/compat: withClientIdentity` | `function withClientIdentity` | Pi's own code |
 | `pi-ai/compat: withoutInitialSystemMessage` | `function withoutInitialSystemMessage` | Pi's own code |
+
+## Package exports: pi-ai/models
+
+| Export | Pi declaration | Node runtime |
+|---|---|---|
+| `pi-ai/models: AI_TELEMETRY_SCHEMA` | `variable AI_TELEMETRY_SCHEMA` | Pi's own code |
+| `pi-ai/models: ModelsError` | `class ModelsError` | Pi's own code |
+| `pi-ai/models: ModelsError.cause` | `ModelsError.cause` | Pi's own code |
+| `pi-ai/models: ModelsError.code` | `ModelsError.code` | Pi's own code |
+| `pi-ai/models: ModelsError.message` | `ModelsError.message` | Pi's own code |
+| `pi-ai/models: ModelsError.name` | `ModelsError.name` | Pi's own code |
+| `pi-ai/models: ModelsError.stack` | `ModelsError.stack` | Pi's own code |
+| `pi-ai/models: calculateCost` | `function calculateCost` | Pi's own code |
+| `pi-ai/models: clampThinkingLevel` | `function clampThinkingLevel` | Pi's own code |
+| `pi-ai/models: createModels` | `function createModels` | Pi's own code |
+| `pi-ai/models: createProvider` | `function createProvider` | Pi's own code |
+| `pi-ai/models: getModelType` | `function getModelType` | Pi's own code |
+| `pi-ai/models: getSupportedThinkingLevels` | `function getSupportedThinkingLevels` | Pi's own code |
+| `pi-ai/models: hasApi` | `function hasApi` | Pi's own code |
+| `pi-ai/models: isModelType` | `function isModelType` | Pi's own code |
+| `pi-ai/models: modelsAreEqual` | `function modelsAreEqual` | Pi's own code |
 
 ## Package exports: pi-ai/providers/all
 
@@ -2978,6 +3021,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-agent-core: Agent.followUpMode` | `Agent.followUpMode` | Pi's own code |
 | `pi-agent-core: Agent.getApiKey` | `Agent.getApiKey` | Pi's own code |
 | `pi-agent-core: Agent.hasQueuedMessages` | `Agent.hasQueuedMessages` | Pi's own code |
+| `pi-agent-core: Agent.identity` | `Agent.identity` | Pi's own code |
 | `pi-agent-core: Agent.maxRetryDelayMs` | `Agent.maxRetryDelayMs` | Pi's own code |
 | `pi-agent-core: Agent.onPayload` | `Agent.onPayload` | Pi's own code |
 | `pi-agent-core: Agent.onProviderStreamEvent` | `Agent.onProviderStreamEvent` | Pi's own code |
@@ -3000,6 +3044,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-agent-core: Agent.transformContext` | `Agent.transformContext` | Pi's own code |
 | `pi-agent-core: Agent.transport` | `Agent.transport` | Pi's own code |
 | `pi-agent-core: Agent.waitForIdle` | `Agent.waitForIdle` | Pi's own code |
+| `pi-agent-core: DEFAULT_AGENT_IDENTITY` | `variable DEFAULT_AGENT_IDENTITY` | Pi's own code |
 | `pi-agent-core: agentLoop` | `function agentLoop` | Pi's own code |
 | `pi-agent-core: agentLoopContinue` | `function agentLoopContinue` | Pi's own code |
 | `pi-agent-core: runAgentLoop` | `function runAgentLoop` | Pi's own code |

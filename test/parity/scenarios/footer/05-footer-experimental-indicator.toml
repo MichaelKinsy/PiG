@@ -7,7 +7,7 @@
 # bold warning "xp" badge onto the stats line, right after the context-percent
 # token:
 #
-#   $0.000 (sub) 0.0%/1.0M (auto) • xp          ...          gpt-5.4 • medium
+#   $0.000 (sub) 0.0%/1.1M (auto) • xp          ...          gpt-6.1-sol • medium
 #
 # The gate is areExperimentalFeaturesEnabled() = (process.env.PI_EXPERIMENTAL
 # === "1"). pig mirrors this in internal/codingagent/experimental.go, reading
@@ -17,8 +17,9 @@
 # chalk.bold(theme.fg("warning","xp")) = \x1b[1m<warning>xp\x1b[39m\x1b[22m; for
 # the dark theme warning is #ffff00 → \x1b[38;2;255;255;0m.
 #
-# Reuses the 01-footer-default testdata (far-future OAuth auth.json, gpt-5.4
-# model) so the whole footer is byte-stable; the only difference from
+# Reuses the 01-footer-default testdata (far-future OAuth auth.json; the
+# github-copilot default model, gpt-6.1-sol, with a 1,050,000-token window)
+# so the whole footer is byte-stable; the only difference from
 # 01-footer-default is PI_EXPERIMENTAL=1 on both sides, which adds the "• xp"
 # badge to both binaries identically. escaped_output_equal asserts the badge -
 # including its bold/warning ANSI: is byte-identical between pig and pi.
@@ -26,7 +27,7 @@
 # Unit coverage: TestRenderFooterExperimentalIndicator (status_line_test.go)
 # proves the gate and the exact badge bytes, mutation-proven.
 #
-# Upstream evidence (pi v0.84.0, probed 2026-08-12):
+# Upstream evidence (pi v1.3.0 pin bd3c9b82, probed 2026-10-21):
 # ──────────────────────────────────────────────────────────────────────
 #   command: PI_CODING_AGENT_DIR=testdata/pi-agent PI_EXPERIMENTAL=1 \
 #            pi --no-extensions
@@ -36,13 +37,19 @@
 #   raw cropped upstream footer (plain, ANSI stripped):
 #
 #     <working-directory>
-#     $0.000 (sub) 0.0%/1.0M (auto) • xp                             gpt-5.4 • medium
+#     $0.000 (sub) 0.0%/1.1M (auto) • xp                             gpt-6.1-sol • medium
+#
+#   The model and the window changed since the v0.84.0 probe (gpt-5.4, 1.0M):
+#   core/model-resolver.ts:32 makes gpt-6.1-sol the github-copilot default, and
+#   the pinned catalog (ai/src/providers/data/github-copilot.json, chat:gpt-6.1-sol)
+#   gives it contextWindow 1050000, which the footer's formatTokens prints as
+#   1.1M. PiG renders the identical rows (escaped output byte-equal).
 #
 #   ANSI (tmux -e) shows the badge bold + warning-yellow:
 #     \x1b[1m\x1b[38;2;255;255;0mxp...  (bold on, fg #ffff00)
 #
-#   The badge appears only with PI_EXPERIMENTAL=1; 01-footer-default (same
-#   testdata, no PI_EXPERIMENTAL) renders the identical footer without it.
+#   The badge appears only with PI_EXPERIMENTAL=1; the same testdata without it
+#   renders the footer without the badge.
 #
 # The runner launches both binaries in same-length copies of the default cwd fixture and masks only the random digits. The crop retains both complete footer rows. The canonical cwd plus configured branch must fit the terminal width without HOME abbreviation; the runner rejects longer roots before launch and asks for a shorter TMPDIR or wider tmux.width. Re-probing pinned Pi with a long external TMPDIR confirms that its cwd row truncates before the snapshot-name anchor, while the stats row remains unchanged.
 
@@ -75,7 +82,7 @@ pi_args = ["--no-extensions"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["$0.000 (sub)", "0.0%/1.0M (auto)", "• xp", "gpt-5.4"]
+both_contain = ["$0.000 (sub)", "0.0%/1.1M (auto)", "• xp", "gpt-6.1-sol"]
 both_not_contain = [
   "panic:",
   "goroutine ",

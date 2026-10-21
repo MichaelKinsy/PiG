@@ -465,6 +465,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 		enter = keyboardProtocolPop + altEnterAltScreen + kittyKeyboardProtocolPush + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
 	}
 	_, _ = fmt.Fprint(t.out, enter)
+	registerExitRestoreAltScreen(t)
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, true)
 	}
@@ -510,6 +511,8 @@ type StopOptions struct {
 func (t *TuiAltScreen) Stop() { t.StopWithOptions(StopOptions{}) }
 
 func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
+	// Pi's stop() removes the exit handler first (tui.ts stop).
+	unregisterExitRestoreAltScreen(t)
 	t.closeSearch()
 	t.clearComponentMouseGesture()
 	t.mu.Lock()

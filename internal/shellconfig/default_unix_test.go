@@ -67,3 +67,19 @@ func TestFindExecutableOnPathTrustsTheFirstLineOfWhich(t *testing.T) {
 		t.Fatalf("which argv: got %q, want 1:rg", got)
 	}
 }
+
+// Ports the "Unix shell existence checks" of packages/coding-agent/test/shell-path-exists.test.ts: /bin/bash is accepted when
+// access(F_OK) succeeds, and bash on PATH is the fallback when it fails (the explicit-path case is in internal/codingagent/tools).
+func TestUpstreamUnixShellExistenceChecks(t *testing.T) {
+	t.Run("accepts /bin/bash when access(F_OK) succeeds", func(t *testing.T) {
+		if got := unixDefault(func(string) bool { return true }, func(string) string { return "" }); got.Path != "/bin/bash" {
+			t.Fatalf("shell = %+v", got)
+		}
+	})
+	t.Run("falls back to bash on PATH when /bin/bash fails access(F_OK)", func(t *testing.T) {
+		got := unixDefault(func(path string) bool { return path != "/bin/bash" }, func(string) string { return "/usr/local/bin/bash" })
+		if got.Path != "/usr/local/bin/bash" {
+			t.Fatalf("shell = %+v", got)
+		}
+	})
+}

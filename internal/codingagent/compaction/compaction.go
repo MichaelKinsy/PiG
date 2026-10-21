@@ -899,9 +899,13 @@ func generateTurnPrefixSummary(
 	retry *ai.RetryPolicy,
 	callbacks ai.RetryCallbacks,
 	sessionID string,
+	customInstructions string,
 ) (string, *ai.Usage, error) {
 	convText := SerializeConversation(convertToLlm(messages))
 	promptText := "# Conversation\n" + convText + "\n\n# Instructions\n" + turnPrefixSummarizationPrompt
+	if customInstructions != "" {
+		promptText += "\n\nAdditional focus: " + customInstructions
+	}
 	ts := time.Now().UnixMilli()
 	req := []agent.AgentMessage{
 		{
@@ -1005,7 +1009,7 @@ func Compact(
 			}
 		}
 
-		prefixSummary, prefixUsage, err := generateTurnPrefixSummary(ctx, prefix, model, prep.Settings.ReserveTokens, apiKey, headers, env, thinkingLevel, completer, streamFn, retry, callbacks, sessionID)
+		prefixSummary, prefixUsage, err := generateTurnPrefixSummary(ctx, prefix, model, prep.Settings.ReserveTokens, apiKey, headers, env, thinkingLevel, completer, streamFn, retry, callbacks, sessionID, customInstructions)
 		if err != nil {
 			return CompactionResult{}, err
 		}

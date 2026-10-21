@@ -104,7 +104,7 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 			fixture.GetMetrics = nil
 			return fixture
 		})
-		if want := []string{"metrics / copies inputs and suppresses invalid measurements atomically", "metrics / records ordered measurements and optional histogram exemplars"}; !slices.Equal(failed, want) {
+		if want := []string{"metrics / copies instrument metadata and measurement attributes", "metrics / records ordered measurements and optional histogram exemplars"}; !slices.Equal(failed, want) {
 			t.Fatalf("failing cases = %v, want %v", failed, want)
 		}
 	})
@@ -121,7 +121,7 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 				fixture.Propagation = faultyPropagation{InMemoryTelemetryContext: recorder, inject: func(telemetry.TelemetryContext) telemetry.TelemetryCarrier { return nil }}
 				return fixture
 			},
-			[]string{"propagation / propagates across fresh adapters and multiple hops", "propagation / roundtrips parent identity through JSON without retaining the carrier"},
+			[]string{"capabilities / carries adapter capabilities through contexts and spans", "propagation / propagates across fresh adapters and multiple hops", "propagation / roundtrips parent identity through JSON without retaining the carrier"},
 		},
 		{
 			"extract ignores the carrier",
@@ -130,7 +130,7 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 				fixture.Propagation = faultyPropagation{InMemoryTelemetryContext: recorder, extract: func(telemetry.TelemetryCarrier) telemetry.TelemetryContext { return recorder }}
 				return fixture
 			},
-			[]string{"propagation / propagates across fresh adapters and multiple hops", "propagation / roundtrips parent identity through JSON without retaining the carrier"},
+			[]string{"capabilities / carries adapter capabilities through contexts and spans", "propagation / propagates across fresh adapters and multiple hops", "propagation / roundtrips parent identity through JSON without retaining the carrier"},
 		},
 		{
 			"inject returns a carrier for a no-op context",
@@ -141,7 +141,7 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 				}}
 				return fixture
 			},
-			[]string{"propagation / propagates across fresh adapters and multiple hops", "propagation / roundtrips parent identity through JSON without retaining the carrier", "propagation / unknown and unreadable carriers produce recorded roots"},
+			[]string{"capabilities / carries adapter capabilities through contexts and spans", "propagation / absent and unknown carriers produce recorded roots", "propagation / propagates across fresh adapters and multiple hops", "propagation / roundtrips parent identity through JSON without retaining the carrier"},
 		},
 		{
 			"a counter accepts negative increments",
@@ -152,7 +152,7 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 				}}
 				return fixture
 			},
-			[]string{"metrics / copies inputs and suppresses invalid measurements atomically", "metrics / records ordered measurements and optional histogram exemplars"},
+			[]string{"capabilities / carries adapter capabilities through contexts and spans", "metrics / records ordered measurements and optional histogram exemplars"},
 		},
 		{
 			"a histogram drops its boundaries",
@@ -164,7 +164,7 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 				}}
 				return fixture
 			},
-			[]string{"metrics / copies inputs and suppresses invalid measurements atomically", "metrics / records ordered measurements and optional histogram exemplars"},
+			[]string{"capabilities / carries adapter capabilities through contexts and spans", "metrics / copies instrument metadata and measurement attributes", "metrics / records ordered measurements and optional histogram exemplars"},
 		},
 		{
 			"a histogram keeps the caller's boundaries and options",
@@ -175,7 +175,7 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 				}}
 				return fixture
 			},
-			[]string{"metrics / copies inputs and suppresses invalid measurements atomically"},
+			[]string{"capabilities / carries adapter capabilities through contexts and spans", "metrics / copies instrument metadata and measurement attributes"},
 		},
 		{
 			"the span snapshots gain a link after the source settled",
@@ -185,14 +185,14 @@ func TestConformanceCapabilityCasesCheckTheirRules(t *testing.T) {
 					spans := recorder.GetSpans()
 					for i := range spans {
 						if spans[i].Name == "link-source" {
-							spans[i].Links = append(spans[i].Links, telemetry.RecordedTelemetryLink{Context: spans[i].Context, Attributes: telemetry.SpanAttributes{"late": true}})
+							spans[i].Links = append(spans[i].Links, telemetry.RecordedTelemetryLink{Context: spans[i].Context, Attributes: telemetry.SpanAttributes{telemetry.Attr("late", true)}})
 						}
 					}
 					return spans, nil
 				}
 				return fixture
 			},
-			[]string{"links / suppresses malformed links atomically and ignores settled sources"},
+			[]string{"links / ignores links added after source settlement"},
 		},
 		{
 			"a link replaces the span's parent",

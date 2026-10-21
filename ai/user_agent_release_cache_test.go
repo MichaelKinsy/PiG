@@ -13,8 +13,8 @@ func TestUserAgentReadsTheKernelReleaseOnce(t *testing.T) {
 	userAgentRelease = &releaseCache{read: func() string { reads++; return "9.8.7-test" }}
 	t.Cleanup(func() { userAgentRelease = previous })
 	for range 3 {
-		if got := PiUserAgent(); !strings.Contains(got, " 9.8.7-test;") {
-			t.Fatalf("PiUserAgent() = %q, want the kernel release 9.8.7-test", got)
+		if got := FormatUserAgent(nil); !strings.Contains(got, " 9.8.7-test;") {
+			t.Fatalf("FormatUserAgent(nil) = %q, want the kernel release 9.8.7-test", got)
 		}
 	}
 	if reads != 1 {

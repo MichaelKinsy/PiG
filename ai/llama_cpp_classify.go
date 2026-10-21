@@ -300,7 +300,7 @@ func (r llamaRequestContext) headers() map[string]string {
 	if r.options.APIKey != "" {
 		base["authorization"] = "Bearer " + r.options.APIKey
 	}
-	return providerHeadersToRecord(ProviderHeadersFromStrings(base), ProviderHeadersFromStrings(r.model.Headers), r.options.Headers)
+	return providerHeadersToRecord(identityProviderHeaders(ClientIdentityTarget{Provider: r.model.Provider, BaseURL: r.model.BaseURL}, r.options.Identity), ProviderHeadersFromStrings(base), ProviderHeadersFromStrings(r.model.Headers), r.options.Headers)
 }
 
 // The member order of each request literal (llama-cpp-classify.ts:286-288, 340-348, 367-376): JSON.stringify writes the members in the order the literal creates them.

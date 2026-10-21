@@ -36,8 +36,6 @@ func (runtime *ModelRuntime) prepareAPIRequest(ctx context.Context, model *ai.Mo
 		}
 	}
 	prepared.TransformHeaders = nil
-	provider = newProviderAttributionProvider(provider, entry.ProviderID, entry.BaseURL, func() bool {
-		return runtime.services.settings != nil && runtime.services.settings.IsInstallTelemetryEnabled()
-	}, nil)
+	provider = newRequestOptionsProvider(provider, entry.ProviderID, nil)
 	return model, provider, prepared, nil
 }

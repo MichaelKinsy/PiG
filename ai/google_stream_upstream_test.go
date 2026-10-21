@@ -79,7 +79,7 @@ func TestGoogleRawStopReasonUpstream(t *testing.T) {
 		want    string
 	}{
 		// .upstream/v0.87.1/packages/ai/test/google-raw-stop-reason.test.ts:186
-		{"uses pi's User-Agent by default", nil, PiUserAgent()},
+		{"uses pi's User-Agent by default", nil, FormatUserAgent(nil)},
 		// .upstream/v0.87.1/packages/ai/test/google-raw-stop-reason.test.ts:190
 		{"lets explicit headers override the default User-Agent", ProviderHeadersFromStrings(map[string]string{"User-Agent": "custom-agent"}), "custom-agent"},
 	} {

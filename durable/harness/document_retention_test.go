@@ -24,7 +24,8 @@ type retentionCounter struct {
 var retentionTestDoc = durable.DefineDoc(durable.DocDefinition[retentionCounter]{
 	CommonDocDefinition: durable.CommonDocDefinition[retentionCounter]{
 		Kind: "test.retention.harness", Version: 1,
-		Initial: func() retentionCounter { return retentionCounter{} },
+		Initial:        func() retentionCounter { return retentionCounter{} },
+		CheckpointWhen: func(retentionCounter, []durable.Op, durable.CheckpointInfo) bool { return false },
 	},
 	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
 })

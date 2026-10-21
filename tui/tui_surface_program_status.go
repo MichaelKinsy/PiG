@@ -85,3 +85,7 @@ func (t *surfaceTerminal) report(status ProgramStatus) {
 		t.session.ProgramStatus(FormatProgramStatus(status))
 	}
 }
+
+// RestoreOnExit implements [Terminal]. The surface's session owns its terminal modes (D91), so the process-exit restore has
+// nothing of this terminal's to write.
+func (t *surfaceTerminal) RestoreOnExit(before, after string) {}

@@ -36,11 +36,11 @@ var killProcessTree = func(pid int) error {
 }
 
 // taskkillCommand is upstream's taskkill spawn with stdio "ignore", detached:
-// true, and windowsHide: true. Upstream joins process.env.SystemRoot ??
-// "C:\\Windows", so only an unset SystemRoot takes the default.
+// true, and windowsHide: true. Upstream joins process.env.SystemRoot ||
+// "C:\\Windows", so an unset or empty SystemRoot takes the default.
 func taskkillCommand(pid int) *exec.Cmd {
-	systemRoot, ok := os.LookupEnv("SystemRoot")
-	if !ok {
+	systemRoot := os.Getenv("SystemRoot")
+	if systemRoot == "" {
 		systemRoot = `C:\Windows`
 	}
 	command := exec.Command(filepath.Join(systemRoot, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid))

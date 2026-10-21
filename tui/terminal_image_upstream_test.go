@@ -53,6 +53,10 @@ func TestUpstreamTerminalImageCapabilities(t *testing.T) {
 		{"enables hyperlinks and Kitty images for Herdr", map[string]string{"TERM_PROGRAM": "herdr", "TERM": "xterm-256color", "COLORTERM": "truecolor", "KITTY_WINDOW_ID": "1"}, false, TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}},
 		// .upstream/v1.2.0/packages/tui/test/terminal-image.test.ts:328 (#10573): PI_HYPERLINKS=0 still wins
 		{"lets PI_HYPERLINKS=0 disable Herdr hyperlinks", map[string]string{"TERM_PROGRAM": "herdr", "PI_HYPERLINKS": "0"}, false, TerminalCapabilities{Images: ImageProtocolKitty}},
+		// packages/tui/test/terminal-image.test.ts:334 at bdd9f039 (#11131; 396ecd7b): Rex is checked before KITTY_WINDOW_ID and reports Kitty images (396ecd7b flipped images from null to "kitty")
+		{"enables hyperlinks and Kitty images for Rex", map[string]string{"TERM_PROGRAM": "rex", "TERM": "xterm-256color", "KITTY_WINDOW_ID": "1"}, false, TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}},
+		// packages/tui/test/terminal-image.test.ts:341 at bdd9f039 (#11131): PI_HYPERLINKS=0 still wins (Pi asserts only hyperlinks; images stay Kitty)
+		{"lets PI_HYPERLINKS=0 disable Rex hyperlinks", map[string]string{"TERM_PROGRAM": "rex", "PI_HYPERLINKS": "0"}, false, TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true}},
 		// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:326
 		{"does not disable Ghostty images solely because cmux is present", map[string]string{"TERM_PROGRAM": "ghostty", "CMUX_WORKSPACE_ID": "workspace"}, false, TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}},
 		// .upstream/v0.87.1/packages/tui/test/terminal-image.test.ts:334

@@ -399,6 +399,39 @@ def new_extension() -> pig_sdk.Extension:
         ctx.set_tools_expanded(True)
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
+
+    # dialog-stack-probe opens its dialogs at the same time, each from its own thread, and reports each one's answer as it settles (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
+    def dialog_stack_probe(ctx, scenario):
+        def chosen(result):
+            value, ok = result
+            return value if ok else "cancelled"
+
+        dialogs = {
+            "A": lambda: chosen(ctx.select("A", ["a1", "a2"])),
+            "B": lambda: str(ctx.confirm("B", "message")).lower(),
+            "S": lambda: chosen(ctx.select("S", ["s1", "s2"])),
+            "C": lambda: str(ctx.confirm("C", "message")).lower(),
+            "I": lambda: chosen(ctx.input("I", "placeholder")),
+            "E": lambda: chosen(ctx.editor("E", "prefill")),
+        }
+        failures = []
+
+        def run(name):
+            try:
+                ctx.notify("stack settled %s=%s" % (name, dialogs[name]()), "info")
+            except Exception as err:  # reported through the command's error below
+                failures.append(err)
+
+        threads = [threading.Thread(target=run, args=(name,)) for name in (["S", "C", "I", "E"] if scenario == "mix" else ["A", "B"])]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        if failures:
+            raise failures[0]
+        ctx.notify("stack done", "info")
+
+    ext.command("dialog-stack-probe", "Open concurrent dialogs from one command", dialog_stack_probe)
     # tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
     def tool_call_guard_probe(ctx, args):
         names = ["bash", "read", "probe", "other"]

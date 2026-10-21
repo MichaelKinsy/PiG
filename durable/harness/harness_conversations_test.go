@@ -65,7 +65,7 @@ func retireProviderDoc(t *testing.T, conversation Conversation) {
 }
 
 var noteDoc = durable.DefineDoc(durable.DocDefinition[noteState]{
-	CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.note", Version: 1, Initial: func() noteState { return noteState{Text: ""} }},
+	CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.note", Version: 1, Initial: func() noteState { return noteState{Text: ""} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 })
 

@@ -2,8 +2,13 @@
  * Agent loop that works with AgentMessage throughout.
  * Transforms to Message[] only at the LLM call boundary.
  */
-import { EventStream, getCurrentTools, getToolStateChanges, normalizeContext, toToolDeclaration, validateToolArguments, } from "../pi-ai/sdk-bundle/index.js";
+import { EventStream, getCurrentTools, getToolStateChanges, mergeClientIdentity, normalizeContext, PI_ATTRIBUTION, toToolDeclaration, validateToolArguments, } from "../pi-ai/sdk-bundle/index.js";
 import { getDefaultStreamFn } from "./stream-fn.js";
+/**
+ * Request identity of agent loops: pi-ai's defaults with provider attribution to pi. `AgentLoopConfig.identity`
+ * overrides it field by field.
+ */
+export const DEFAULT_AGENT_IDENTITY = { attribution: PI_ATTRIBUTION };
 /**
  * Start an agent loop with a new prompt message.
  * The prompt is added to the context and events are emitted for it.
@@ -271,6 +276,7 @@ async function streamAssistantResponse(context, config, signal, emit, streamFunc
     const response = await streamFunction(config.model, llmContext, {
         ...config,
         apiKey: resolvedApiKey,
+        identity: mergeClientIdentity(DEFAULT_AGENT_IDENTITY, config.identity),
         signal,
     });
     // Record the requested level, whichever stream function answered.

@@ -20,7 +20,7 @@ type notesState struct {
 }
 
 var notesDoc = durable.DefineDoc(durable.DocDefinition[notesState]{
-	CommonDocDefinition: durable.CommonDocDefinition[notesState]{Kind: "test.driver-notes", Version: 1, Initial: func() notesState { return notesState{} }},
+	CommonDocDefinition: durable.CommonDocDefinition[notesState]{Kind: "test.driver-notes", Version: 1, Initial: func() notesState { return notesState{} }, CheckpointWhen: func(notesState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
 })
 

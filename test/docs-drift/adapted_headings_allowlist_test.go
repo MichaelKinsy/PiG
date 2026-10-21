@@ -214,12 +214,6 @@ func init() {
 		"Adjust the terminal",
 		"Collect diagnostic information",
 	)
-	intentionalOmissions["windows.md"] = omit(legacyLayout,
-		"Choose native Windows or WSL",
-		"Use Git Bash on native Windows",
-		"Use a custom Bash executable",
-		"Configure Windows Terminal",
-	)
 }
 
 func omit(reason string, headings ...string) map[string]string {

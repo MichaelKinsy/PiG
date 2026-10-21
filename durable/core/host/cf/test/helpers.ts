@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -13,7 +13,16 @@ export const toolchain = process.env.DURABLE_CORE_TOOLCHAIN ?? "go"
 /** Path of the probe core built with the suite's toolchain, built on demand. */
 export function probeWasm(): string {
   const wasm = join(root, "dist", `probe-${toolchain}.wasm`)
-  if (!existsSync(wasm)) execFileSync(join(core, "budget", "build-wasm.sh"), [toolchain, join(core, "probe", "wasm"), wasm], { stdio: "inherit" })
+  if (!existsSync(wasm)) {
+    // Test files run side by side and each calls this: the build goes to a file of its own and takes the name in one rename, so a file that finds the name present reads a whole module, never one another file is still writing.
+    const building = wasm.replace(/\.wasm$/, `.${process.pid}.tmp.wasm`)
+    try {
+      execFileSync(join(core, "budget", "build-wasm.sh"), [toolchain, join(core, "probe", "wasm"), building], { stdio: "inherit" })
+      renameSync(building, wasm)
+    } finally {
+      rmSync(building, { force: true })
+    }
+  }
   return wasm
 }
 

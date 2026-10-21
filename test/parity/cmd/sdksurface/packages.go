@@ -36,13 +36,14 @@ type piPackage struct {
 
 // piPackages are the specifiers Pi's extension loader serves from its own
 // bundle (core/extensions/virtual-modules.ts): pi-coding-agent, pi-tui, the
-// pi-ai root (served as its compat entry point), pi-ai/compat and
-// pi-ai/providers/all, and pi-agent-core.
+// pi-ai root (served as its compat entry point), pi-ai/compat, pi-ai/models
+// and pi-ai/providers/all, and pi-agent-core.
 var piPackages = []piPackage{
 	{"pi-coding-agent", "@earendil-works/pi-coding-agent", ".", "shims/pi-coding-agent.mjs"},
 	{"pi-tui", "@earendil-works/pi-tui", ".", "shims/pi-tui.mjs"},
 	{"pi-ai", "@earendil-works/pi-ai", ".", "shims/pi-ai.mjs"},
 	{"pi-ai/compat", "@earendil-works/pi-ai", "./compat", "shims/pi-ai.mjs"},
+	{"pi-ai/models", "@earendil-works/pi-ai", "./models", "shims/pi-ai-models.mjs"},
 	{"pi-ai/providers/all", "@earendil-works/pi-ai", "./providers/all", "shims/pi-dist/pi-ai/providers/all.js"},
 	{"pi-agent-core", "@earendil-works/pi-agent-core", ".", "shims/pi-agent-core.mjs"},
 }

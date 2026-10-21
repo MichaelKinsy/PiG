@@ -27,7 +27,7 @@ keys = ["github-copilot", "Enter"]
 wait_contains = ["GitHub Enterprise URL/domain"]
 [[tmux.steps]]
 keys = ["Enter"]
-wait_visible_contains = ["Logged in to GitHub Copilot. Selected gpt-5.4. Credentials saved to"]
+wait_visible_contains = ["Logged in to GitHub Copilot. Selected gpt-6.1-sol. Credentials saved to"]
 [env]
 pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "PIG_PARITY_HARNESS=1", "PIG_PARITY_LOGIN_DIALOG=complete", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]  # gitleaks:allow -- synthetic parity fixture
 pi = ["PIG_CODING_AGENT_DIR=", "PIG_HOME=", "PI_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_PARITY_LOGIN_DIALOG=complete", "PATH={{FAKE_BIN}}:{{PATH}}"]
@@ -36,7 +36,7 @@ pi_args = ["--session-dir", "{{TEMP}}/sessions"]
 pi_extensions = ["../../testdata/oauth-harness.ts"]
 [assert]
 both_reach_ready = true
-both_contain = ["Logged in to GitHub Copilot. Selected gpt-5.4. Credentials saved to"]
+both_contain = ["Logged in to GitHub Copilot. Selected gpt-6.1-sol. Credentials saved to"]
 output_normalized_equal = true
 runs = 3
 # normalize-rationale: the two credential files live in isolated agent-directory snapshots.

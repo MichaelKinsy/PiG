@@ -15,7 +15,7 @@ export const CLOCK = 1_700_000_000_000;
 // has; an interval no session reaches leaves none. The Go twin is partialIntervalMs in app_test.go.
 const PARTIAL_INTERVAL_MS = 3_600_000;
 
-export const Notes = defineDoc({
+export const Notes = defineDoc({ checkpointWhen: () => false,
 	kind: "app.notes",
 	version: 1,
 	scope: "conversation",
@@ -23,14 +23,14 @@ export const Notes = defineDoc({
 	fork: "current",
 	initial: () => ({ lines: [] }),
 });
-export const Sessions = defineDoc({
+export const Sessions = defineDoc({ checkpointWhen: () => false,
 	kind: "app.sessions",
 	version: 1,
 	scope: "session",
 	initial: () => ({ items: {} }),
 });
 
-export const Plan = defineDoc({
+export const Plan = defineDoc({ checkpointWhen: () => false,
 	kind: "app.plan",
 	version: 1,
 	scope: "conversation",
@@ -38,7 +38,7 @@ export const Plan = defineDoc({
 	fork: "asOf",
 	initial: () => ({ steps: [] }),
 });
-export const Blob = defineDocFamily({
+export const Blob = defineDocFamily({ checkpointWhen: () => false,
 	kind: "app.blob",
 	version: 1,
 	family: true,

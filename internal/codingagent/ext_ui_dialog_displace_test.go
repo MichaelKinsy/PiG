@@ -56,28 +56,26 @@ func requireResult(t *testing.T, result <-chan dialogCall, name string) dialogCa
 	}
 }
 
-// Pi 1.2.0 interactive-mode.ts:2690-2857: showExtensionSelector, showExtensionInput and showExtensionEditor never refuse a
-// dialog. Each clears the editor slot and installs itself, so a dialog that opens while another is shown displaces it: the
-// new dialog takes the keys, and the displaced dialog's promise stays pending until its own signal aborts it.
-func TestExtensionDialogDisplacesTheOpenDialog(t *testing.T) {
+// Pi bdd9f039 interactive-mode.ts pushExtensionDialog (#11166): a dialog that opens while another is shown hides it without
+// settling it. The new dialog takes the keys, and once it closes the earlier dialog shows again and stays answerable.
+func TestExtensionDialogStacksOverTheOpenDialog(t *testing.T) {
 	m, _ := newExtensionDialogProbe(t)
 	ui := &ExtUIContext{m: m}
-	ctxA, abortA := context.WithCancel(context.Background())
-	defer abortA()
 
 	first := startDialog(t, m, func() (string, error) {
-		return ui.Select(ctxA, "First", []string{"one", "two"}, extension.ExtensionUIDialogOptions{})
+		return ui.Select(context.Background(), "First", []string{"one", "two"}, extension.ExtensionUIDialogOptions{})
 	})
 	second := startDialog(t, m, func() (string, error) {
 		return ui.Input(context.Background(), "Second", "", extension.ExtensionUIDialogOptions{})
 	})
-	requirePending(t, second, "displacing input")
-	requirePending(t, first, "displaced selector")
-	if m.extensionDialog == nil {
-		t.Fatal("displacing input is not installed")
+	requirePending(t, second, "stacked input")
+	requirePending(t, first, "hidden selector")
+	shown := m.shownExtensionDialog()
+	if shown == nil {
+		t.Fatal("stacked input is not installed")
 	}
-	if _, ok := m.extensionDialog.component.(*tui.ExtensionInputComponent); !ok {
-		t.Fatalf("focused dialog = %T, want the displacing input", m.extensionDialog.component)
+	if _, ok := shown.component.(*tui.ExtensionInputComponent); !ok {
+		t.Fatalf("focused dialog = %T, want the stacked input", shown.component)
 	}
 
 	for _, key := range []string{"x", "\r"} {
@@ -85,23 +83,32 @@ func TestExtensionDialogDisplacesTheOpenDialog(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if got := requireResult(t, second, "displacing input"); got.err != nil || got.value != "x" {
+	if got := requireResult(t, second, "stacked input"); got.err != nil || got.value != "x" {
 		t.Fatalf("input = %q, %v; want x", got.value, got.err)
 	}
-	if m.extensionDialog != nil || len(m.editorContainer.Children()) != 1 || m.editorContainer.Children()[0] != m.editor {
-		t.Fatal("submitted input did not restore the editor")
+	shown = m.shownExtensionDialog()
+	if shown == nil || len(m.editorContainer.Children()) != 1 || m.editorContainer.Children()[0] != shown.component {
+		t.Fatal("submitted input did not show the hidden selector again")
 	}
-	requirePending(t, first, "displaced selector")
+	if _, ok := shown.component.(*tui.ExtensionSelectorComponent); !ok {
+		t.Fatalf("shown dialog = %T, want the earlier selector", shown.component)
+	}
+	requirePending(t, first, "hidden selector")
 
-	abortA()
-	if got := requireResult(t, first, "displaced selector"); !errors.Is(got.err, context.Canceled) {
-		t.Fatalf("aborted selector = %q, %v; want cancellation", got.value, got.err)
+	if err := m.dispatchKey(context.Background(), "\r"); err != nil {
+		t.Fatal(err)
+	}
+	if got := requireResult(t, first, "earlier selector"); got.err != nil || got.value != "one" {
+		t.Fatalf("selector = %q, %v; want one", got.value, got.err)
+	}
+	if m.shownExtensionDialog() != nil || m.editorContainer.Children()[0] != tui.Component(m.editor) {
+		t.Fatal("answering the last dialog did not restore the editor")
 	}
 }
 
-// Pi's abort listener calls hideExtensionSelector (interactive-mode.ts:2702-2705, 2737-2745), which restores the editor
-// whatever dialog is shown, so aborting a displaced selector also hides the dialog that displaced it.
-func TestAbortingADisplacedDialogHidesTheShownDialog(t *testing.T) {
+// Pi's abort listener finishes its own dialog (interactive-mode.ts showExtensionSelector finish): aborting the hidden selector
+// removes it from the stack and leaves the dialog that hides it shown.
+func TestAbortingAHiddenDialogLeavesTheShownDialog(t *testing.T) {
 	m, _ := newExtensionDialogProbe(t)
 	ui := &ExtUIContext{m: m}
 	ctxA, abortA := context.WithCancel(context.Background())
@@ -115,12 +122,22 @@ func TestAbortingADisplacedDialogHidesTheShownDialog(t *testing.T) {
 		return ui.Select(ctxB, "Second", []string{"two"}, extension.ExtensionUIDialogOptions{})
 	})
 	abortA()
-	if got := requireResult(t, first, "displaced selector"); !errors.Is(got.err, context.Canceled) {
+	if got := requireResult(t, first, "hidden selector"); !errors.Is(got.err, context.Canceled) {
 		t.Fatalf("aborted selector = %q, %v; want cancellation", got.value, got.err)
 	}
-	pumpUITask(t, m, "abort did not post its hide to the UI loop")
-	if m.extensionDialog != nil || m.editorContainer.Children()[0] != m.editor {
-		t.Fatal("aborting the displaced selector left the newer selector shown")
+	pumpUITask(t, m, "abort did not post its removal to the UI loop")
+	shown := m.shownExtensionDialog()
+	if shown == nil || m.editorContainer.Children()[0] != shown.component {
+		t.Fatal("aborting the hidden selector removed the shown selector")
 	}
-	requirePending(t, second, "hidden selector")
+	requirePending(t, second, "shown selector")
+	if err := m.dispatchKey(context.Background(), "\r"); err != nil {
+		t.Fatal(err)
+	}
+	if got := requireResult(t, second, "shown selector"); got.err != nil || got.value != "two" {
+		t.Fatalf("shown selector = %q, %v; want two", got.value, got.err)
+	}
+	if m.shownExtensionDialog() != nil || m.editorContainer.Children()[0] != tui.Component(m.editor) {
+		t.Fatal("answering the last dialog did not restore the editor")
+	}
 }

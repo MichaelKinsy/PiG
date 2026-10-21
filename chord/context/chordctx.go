@@ -113,11 +113,11 @@ func WithCancel(parent context.Context) (ctx context.Context, cancel func(cause 
 }
 
 // telemetryKey is Pi's TELEMETRY_CONTEXT_KEY: the key under which a context carries its telemetry parent. It prints as `.WithValue(chord.telemetry)`.
-var telemetryKey = NewKey[telemetry.TelemetryContext]("chord.telemetry")
+var telemetryKey = NewKey[telemetry.TelemetrySpan]("chord.telemetry")
 
-// Telemetry is Pi's `Context.telemetry`: the explicit telemetry parent of ctx. It is never nil: a context that carries none, context.Background() and the to-do context included, returns telemetry.NoopTelemetryContext, as Pi's BaseContext defaults to NOOP_TELEMETRY_CONTEXT.
-// Pi's Context is a closed interface that custom implementations must extend with a `telemetry` member (a Breaking Change upstream). A Go context is stdlib's open interface, so a context from outside this package carries no telemetry and reads as the no-op parent; no Go caller breaks.
-func Telemetry(ctx context.Context) telemetry.TelemetryContext {
+// Telemetry is Pi's `Context.telemetry`: the explicit telemetry parent of ctx, always a span (the no-op span is one), so a caller never narrows it. It is never nil: a context that carries none, context.Background() and the to-do context included, returns telemetry.NoopTelemetryContext, as Pi's BaseContext defaults to NOOP_TELEMETRY_CONTEXT.
+// Pi's Context is a closed interface that custom implementations must extend with a `telemetry: TelemetrySpan` member (a Breaking Change upstream, whose type narrowed from TelemetryContext when Context.telemetry became always a span, so withTelemetry accepts spans and not adapters). A Go context is stdlib's open interface, so a context from outside this package carries no telemetry and reads as the no-op parent; no Go caller breaks.
+func Telemetry(ctx context.Context) telemetry.TelemetrySpan {
 	if value, ok := Value(ctx, telemetryKey); ok {
 		return value
 	}
@@ -126,15 +126,15 @@ func Telemetry(ctx context.Context) telemetry.TelemetryContext {
 
 // WithTelemetry derives an explicit telemetry parent without changing cancellation or application values: it is Pi's withTelemetry. The parent is unchanged, and a context derived from the result by this package keeps the telemetry until another WithTelemetry replaces it.
 // Pi types the result as `Context & { telemetry: T }` for the concrete T it was given; Go has no intersection type, so a caller that needs the concrete T keeps its own reference, and Telemetry(result) is the TelemetryContext interface. The argument order is the parent first, as WithValue and WithAbortSignal take it; Pi takes the telemetry first.
-func WithTelemetry(parent context.Context, t telemetry.TelemetryContext) context.Context {
+func WithTelemetry(parent context.Context, t telemetry.TelemetrySpan) context.Context {
 	return WithValue(parent, telemetryKey, t)
 }
 
 // TraceIn runs a child span of Telemetry(ctx) and passes fn a derived context whose telemetry is that span: Pi's traceIn. It returns fn's result, and fn's error as the identical value, after the span ends, as telemetry.StartSpan does.
-// Pi's callback receives one `Context & { telemetry: TelemetrySpan }`, narrowed by the type system. Go cannot narrow a context's type, so the callback receives the context and the span; Telemetry(child) is that same span.
-func TraceIn[T any](ctx context.Context, options telemetry.SpanOptions, fn func(child context.Context, span telemetry.TelemetrySpan) (T, error)) (T, error) {
+// Pi's callback receives one `Context & { telemetry: TelemetrySpan }`, narrowed by the type system. Go cannot narrow a context's type, so the callback receives the context and reads the span as Telemetry(child), which is always a span.
+func TraceIn[T any](ctx context.Context, options telemetry.SpanOptions, fn func(child context.Context) (T, error)) (T, error) {
 	return telemetry.StartSpan(Telemetry(ctx), options, func(span telemetry.TelemetrySpan) (T, error) {
-		return fn(WithTelemetry(ctx, span), span)
+		return fn(WithTelemetry(ctx, span))
 	})
 }
 

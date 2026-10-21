@@ -11,6 +11,7 @@ export * from "./session-resources.js";
 export * from "./types.js";
 export * from "./utils/diagnostics.js";
 export * from "./utils/event-stream.js";
+export * from "./utils/identity.js";
 export * from "./utils/json-parse.js";
 export * from "./utils/overflow.js";
 export * from "./utils/retry.js";
@@ -19,4 +20,5 @@ export * from "./utils/transcript.js";
 export * from "./utils/typebox-helpers.js";
 export { uuidv7 } from "./utils/uuid.js";
 export * from "./utils/validation.js";
+export { PI_AI_VERSION } from "./utils/version.js";
 //# sourceMappingURL=index.js.map

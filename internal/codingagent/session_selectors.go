@@ -161,8 +161,8 @@ func (m *InteractiveMode) disposeActiveSelector() {
 	}
 }
 
-// takeEditorSlot puts component in the editor slot. As Pi's extension dialogs, selectors and custom components do
-// (interactive-mode.ts:2714, 2790, 2832, 3010, 4860), it first disposes the active selector.
+// takeEditorSlot puts component in the editor slot. As Pi's selectors do (interactive-mode.ts:2832, 3010, 4860), it first
+// disposes the active selector.
 func (m *InteractiveMode) takeEditorSlot(component tui.Component) {
 	m.disposeActiveSelector()
 	m.editorContainer.SetChildren(component)
@@ -414,13 +414,10 @@ func sessionAge(t time.Time) string {
 	}
 }
 
-// runEditorSlotExtensionSelector shows a bordered ExtensionSelector in
-// the editor slot. Mirrors upstream's showExtensionSelector path
-// (interactive-mode.ts:1935-1969 → editorContainer.addChild + setFocus),
-// which uses the standalone ExtensionSelectorComponent (NO filter input,
-// fixed title row, fixed hint row). Used for `/tree → "Summarize
-// branch?"` and any extension UI dialog routed through
-// ExtUIContext.Select / Confirm.
+// runEditorSlotExtensionSelector shows a bordered ExtensionSelector in the editor slot outside the extension dialog stack,
+// as Pi's showSelector selectors and /bug's `choose` (bug-report.ts) do, with the standalone ExtensionSelectorComponent (no
+// filter input, fixed title row, fixed hint row). Used for the login, MCP and /bug selectors. The prompts Pi awaits through
+// showExtensionSelector and showExtensionConfirm are stacked dialogs: see awaitOwnerDialog.
 //
 // Uses the modal input channel to avoid racing with the main input
 // goroutine for stdin reads (same pattern as runEditorSlotTreeSelector).
@@ -462,11 +459,9 @@ func (m *InteractiveMode) runEditorSlotExtensionSelectorAs(sel *tui.ExtensionSel
 	return sel.SelectedIndex(), true
 }
 
-// runEditorSlotExtensionEditor shows a bordered ExtensionEditorComponent in
-// the editor slot. Mirrors upstream showExtensionEditor
-// (interactive-mode.ts:2065-2090 → editorContainer.clear + addChild +
-// setFocus). Used for /tree "Custom summarization instructions" and
-// any extension ctx.ui.editor() calls.
+// runEditorSlotExtensionEditor shows a bordered ExtensionEditorComponent in the editor slot outside the extension dialog
+// stack, as /bug's `input` does (bug-report.ts: showOverlay, restoreEditor). The editor Pi awaits through showExtensionEditor
+// is a stacked dialog: see awaitOwnerDialog.
 //
 // Uses the modal input channel to avoid racing with the main input
 // goroutine for stdin reads (same pattern as runEditorSlotTreeSelector).

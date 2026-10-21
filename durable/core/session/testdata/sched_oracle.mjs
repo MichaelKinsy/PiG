@@ -9,6 +9,7 @@ const { createSession } = await import(D + "/session/session.ts");
 const { MemoryStorage } = await import(D + "/storage/memory.ts");
 const { TaskScheduler } = await import(D + "/harness/scheduler.ts");
 
+const { BACKGROUND_CONTEXT } = await import(D + "/../../chord/src/context/index.ts"); // Pi 2ec55d80: a Context carries a telemetry span
 const scenario = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const clone = (v) => JSON.parse(JSON.stringify(v));
 const log = [];
@@ -98,7 +99,7 @@ const scheduler = new TaskScheduler({
 	now, writeAtClose: async () => {}, report: (e) => log.push({ t: "report", message: e.message }),
 	settleOutcome: async (tx, record, outcome) => { log.push({ t: "settleOutcome", task: record.id, status: outcome.status }); },
 	withdrawInputs: async (tx, id) => { log.push({ t: "withdraw", conversation: id }); },
-	conversation: async () => undefined, context: {},
+	conversation: async () => undefined, context: BACKGROUND_CONTEXT,
 });
 
 const flush = async () => { for (let i = 0; i < 4; i++) await new Promise((r) => setImmediate(r)); };
@@ -121,15 +122,15 @@ for (let i = 0; i < scenario.cmds.length; i++) {
 							default: throw new Error("bad op " + op.op);
 						}
 					}
-				}, {});
+				}, BACKGROUND_CONTEXT);
 				break;
-			case "open": await scheduler.open({}); break;
+			case "open": await scheduler.open(BACKGROUND_CONTEXT); break;
 			case "resume": scheduler.resume(); break;
-			case "abort": watch("abort", scheduler.abort(cmd.id, {})); break;
-			case "abortConversation": watch("abortConversation", scheduler.abortConversation(cmd.id, cmd.background ?? false, {})); break;
+			case "abort": watch("abort", scheduler.abort(cmd.id, BACKGROUND_CONTEXT)); break;
+			case "abortConversation": watch("abortConversation", scheduler.abortConversation(cmd.id, cmd.background ?? false, BACKGROUND_CONTEXT)); break;
 			case "release": for (const g of cmd.gates ?? [cmd.gate]) gate(g).resolve(); break;
-			case "waitForTask": watch("waitForTask:" + cmd.id, scheduler.waitForTask(cmd.id, {})); break;
-			case "waitForIdle": watch("waitForIdle:" + (cmd.conv ?? 0), scheduler.waitForIdle(cmd.conv, {})); break;
+			case "waitForTask": watch("waitForTask:" + cmd.id, scheduler.waitForTask(cmd.id, BACKGROUND_CONTEXT)); break;
+			case "waitForIdle": watch("waitForIdle:" + (cmd.conv ?? 0), scheduler.waitForIdle(cmd.conv, BACKGROUND_CONTEXT)); break;
 			case "registry": {
 				installed = new Map();
 				for (const k of cmd.installed) installed.set(defs[k].definition.name, defs[k]);

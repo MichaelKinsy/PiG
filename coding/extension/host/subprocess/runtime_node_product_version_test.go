@@ -16,7 +16,7 @@ import (
 // D65: the user agent PiG sends is pig/<coding.Version> (<platform> <release>;
 // <arch>). The Node runtime learns the composite version from the host that
 // spawns it (PIG_PRODUCT_VERSION), so the vendored getPiUserAgent reports the
-// same identity as the Go host's ai.PiUserAgent in every isolation mode.
+// same identity as the Go host's ai.FormatUserAgent in every isolation mode.
 func TestNodeExtensionUserAgentNamesPiGAndItsVersion(t *testing.T) {
 	entry := filepath.Join(t.TempDir(), "user-agent.mjs")
 	write(t, entry, `import { getPackageDir } from "@earendil-works/pi-coding-agent";

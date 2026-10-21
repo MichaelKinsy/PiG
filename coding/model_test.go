@@ -28,7 +28,7 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 		providerTy string
 	}{
 		{"openai/gpt-4", "*ai.openAIResponsesProvider"},
-		{"openai-codex/gpt-5.3-codex-spark", "*ai.openAIResponsesProvider"},
+		{"openai-codex/gpt-5.6-sol", "*ai.openAIResponsesProvider"},
 		{"anthropic/claude-haiku-4-5", "*ai.anthropicProvider"},
 		{"google/gemini-2.5-flash", "*ai.googleProvider"},
 		{"google-vertex/gemini-2.5-flash", "*ai.googleVertexProvider"},
@@ -43,9 +43,9 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 			if err != nil {
 				t.Fatalf("BuildModel: %v", err)
 			}
-			attributed, ok := model.Provider.(*providerAttributionProvider)
+			attributed, ok := model.Provider.(*requestOptionsProvider)
 			if !ok {
-				t.Fatalf("provider type = %T, want *coding.providerAttributionProvider", model.Provider)
+				t.Fatalf("provider type = %T, want *coding.requestOptionsProvider", model.Provider)
 			}
 			if got := fmt.Sprintf("%T", attributed.Provider); got != tc.providerTy {
 				t.Fatalf("underlying provider type = %s, want %s", got, tc.providerTy)
@@ -145,68 +145,6 @@ func TestBuildModelDoesNotAliasGeneratedFallbackMetadata(t *testing.T) {
 	}
 	if generated.Compat.AllowedFallbackModels[0].Cost.Tiers[0].InputCostPer1M != 2 {
 		t.Fatal("BuildModel aliased the generated fallback cost tiers")
-	}
-}
-
-// TestBuildModelGatesAttributionHeadersOnInstallTelemetrySetting drives the
-// production path (BuildModel -> Services.ModelRuntime().Complete) rather than
-// calling mergeProviderAttributionHeaders directly, proving
-// SettingsManager.SetEnableInstallTelemetry actually reaches the wire request.
-// Mirrors upstream getDefaultAttributionHeaders' telemetry gate
-// (provider-attribution.ts:40); pig divergence (D26) covers the branding.
-func TestBuildModelGatesAttributionHeadersOnInstallTelemetrySetting(t *testing.T) {
-	var gotHeader http.Header
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		gotHeader = request.Header.Clone()
-		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
-	}))
-	defer server.Close()
-
-	agentDir := t.TempDir()
-	models := fmt.Sprintf(`{"providers":{"openrouter":{"baseUrl":%q,"api":"openai-completions","authHeader":false,"models":[{"id":"model","name":"Model"}]}}}`, server.URL+"/v1")
-	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := services.SettingsManager().SetEnableInstallTelemetry(false); err != nil {
-		t.Fatal(err)
-	}
-	model, err := BuildModel("openrouter/model", services)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result := services.ModelRuntime().Complete(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}}, ai.StreamOptions{})
-	if result.StopReason != ai.StopReasonStop {
-		t.Fatalf("result = %#v", result)
-	}
-	if gotHeader.Get("HTTP-Referer") != "" || gotHeader.Get("X-OpenRouter-Title") != "" || gotHeader.Get("X-OpenRouter-Categories") != "" {
-		t.Fatalf("expected no attribution headers with install telemetry disabled, got %#v", gotHeader)
-	}
-
-	if err := services.SettingsManager().SetEnableInstallTelemetry(true); err != nil {
-		t.Fatal(err)
-	}
-	model, err = BuildModel("openrouter/model", services)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result = services.ModelRuntime().Complete(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}}, ai.StreamOptions{})
-	if result.StopReason != ai.StopReasonStop {
-		t.Fatalf("result = %#v", result)
-	}
-	if got := gotHeader.Get("HTTP-Referer"); got != "https://github.com/MichaelKinsy/PiG" {
-		t.Fatalf("HTTP-Referer = %q, want pig-branded referer", got)
-	}
-	if got := gotHeader.Get("X-OpenRouter-Title"); got != "PiG" {
-		t.Fatalf("X-OpenRouter-Title = %q, want PiG", got)
-	}
-	if got := gotHeader.Get("X-OpenRouter-Categories"); got != "cli-agent" {
-		t.Fatalf("X-OpenRouter-Categories = %q, want cli-agent", got)
 	}
 }
 

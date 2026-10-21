@@ -16,6 +16,8 @@ Shapes (`inputs.json` `bodies`): `tool` (the RPC33 read call), `text`, `thinking
 
 Deliveries (`inputs.json` `plans`), each chunk a separate socket write: `buffered` (headers and the whole body in one write with `content-length`, the RPC33 fixture), `pending` (headers, then the body later), `buffered-then-pending`, `pending-per-record`, `buffered-cr-split` (first write ends after a carriage return), `buffered-byte-split` (first write ends inside a multi-byte character) and `buffered-mid-line`. Layers: direct (`0`), one and two `lazyStream` forwarders, and `ModelRuntime.streamSimple` (`runtime`). `abortAtStart` cases abort when the consumer receives `start` and are retained for the cancellation work; the Go test does not compare them, because a Go cancellation completes externally where undici rejects synchronously.
 
+The server writes a later chunk only after the client socket has read every byte written before it (`clientHasRead` in `probe.mjs`), not after a fixed wait: a stalled event loop let a timer write the next chunk before the poll phase read the last one, and Node coalesced the two into one `read()`.
+
 A delivery that puts several HTTP chunks into one socket write is not an oracle: Node 24.19 coalesces them into one `read()` value and Node 26.7 does not (+3 ticks).
 
 ## Findings the Go model relies on

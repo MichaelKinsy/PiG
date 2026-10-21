@@ -56,7 +56,7 @@ var providerHookEvents = []string{"before_provider_headers", "before_provider_re
 func providerHookSession(t *testing.T) (*Session, *hookProbeProvider, func() []string) {
 	t.Helper()
 	probe := &hookProbeProvider{}
-	provider := newProviderAttributionProvider(probe, "opencode", "https://opencode.ai/zen/v1", func() bool { return false }, nil)
+	provider := newRequestOptionsProvider(probe, "opencode", nil)
 	var mu sync.Mutex
 	var log []string
 	record := func(name string) { mu.Lock(); log = append(log, name); mu.Unlock() }

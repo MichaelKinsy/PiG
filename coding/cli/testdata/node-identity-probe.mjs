@@ -1,7 +1,7 @@
 // Makes the model calls a Node extension can make on its own, so a test can
 // record what PiG's runtime sends. `/probe <mode> <provider> <baseUrl>`:
 //   session: the vendored SDK's createAgentSession + session.prompt (Pi's
-//            core/sdk.ts wiring, including mergeProviderAttributionHeaders);
+//            core/sdk.ts wiring, including getClientIdentity);
 //   stream:  pi-ai's completeSimple on the compat entry point.
 import { createAgentSession, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { completeSimple } from "@earendil-works/pi-ai/compat";

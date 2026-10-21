@@ -423,7 +423,7 @@ func TestTaskPhases(t *testing.T) {
 			Lines []string `json:"lines"`
 		}
 		progress := durable.DefineDoc(durable.DocDefinition[progressState]{
-			CommonDocDefinition: durable.CommonDocDefinition[progressState]{Kind: "test.task-progress", Version: 1, Initial: func() progressState { return progressState{Lines: []string{}} }},
+			CommonDocDefinition: durable.CommonDocDefinition[progressState]{Kind: "test.task-progress", Version: 1, Initial: func() progressState { return progressState{Lines: []string{}} }, CheckpointWhen: func(progressState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
 		})
 		answer := durable.DefineEntry[durable.Never]("answer")

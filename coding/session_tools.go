@@ -185,37 +185,57 @@ func (s *Session) SetSystemPromptSections(sections ai.OrderedSections) {
 	s.baseSystemPrompt.Store(new(ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: s.baseSystemSections}})))
 }
 
-// restoreToolsFromTranscript activates the tools the current branch's transcript declares, with the +name/-name modifiers applied (upstream _restoreToolsFromTranscript). Declared tools the Session does not have yet, such as tools of MCP servers that are still connecting, stay pending until they register, if the allowlist and denylist admit them. A branch without a system message keeps the current tools. It returns the TypeError Pi's replay throws for a system message holding a content or tool list it cannot read, before it changes anything.
+// restoreToolsFromTranscript activates the tools the current branch's transcript declares, with the +name/-name modifiers applied (upstream _restoreToolsFromTranscript). The whole branch is replayed, so a tool removed before a compaction stays inactive. Extension and SDK tools the branch never added or removed were registered after it recorded its loadout; they activate like newly registered tools unless they are registered with `defaultActive: false`, and built-in tools follow `defaultTools` instead. Declared tools the Session does not have yet, such as tools of MCP servers that are still connecting, stay pending until they register, if the allowlist and denylist admit them. A branch without a system message keeps the current tools. It returns the TypeError Pi's replay throws for a system message holding a tool list it cannot read, before it changes anything.
 func (s *Session) restoreToolsFromTranscript(modifiers ...string) error {
-	// The transcript is read before the loadout locks, so they are not held while the whole branch is projected.
-	messages, err := replayedTranscript(s.inner)
+	// The transcript is read before the loadout locks, so they are not held while the whole branch is read.
+	systems, err := replayedTranscript(s.inner)
 	if err != nil {
 		return err
 	}
-	s.applyTranscriptTools(messages, modifiers)
+	s.applyTranscriptTools(systems, modifiers)
 	return nil
 }
 
-// applyTranscriptTools activates the tools the system messages of an already replay-checked transcript declare.
+// applyTranscriptTools activates the tools the system messages of an already replay-checked branch declare.
 func (s *Session) applyTranscriptTools(messages []agent.AgentMessage, modifiers []string) {
-	var systems []ai.Message
-	for _, message := range messages {
-		if message.System != nil {
-			systems = append(systems, *message.System)
+	systems := make([]ai.Message, len(messages))
+	mentioned := map[string]struct{}{}
+	for i, message := range messages {
+		systems[i] = *message.System
+		for _, tool := range message.System.ToolsAdded {
+			mentioned[tool.Name] = struct{}{}
+		}
+		for _, tool := range message.System.ToolsRemoved {
+			mentioned[tool.Name] = struct{}{}
 		}
 	}
-	current := ai.GetCurrentSystemMessage(systems)
 	s.loadout.applyMu.Lock()
 	defer s.loadout.applyMu.Unlock()
 	s.toolRegistryMu.Lock()
 	defer s.toolRegistryMu.Unlock()
 	s.pendingToolNames = nil
-	if current == nil {
+	if len(systems) == 0 {
 		return
 	}
-	names := make([]string, len(current.ToolsAdded))
-	for i, tool := range current.ToolsAdded {
-		names[i] = tool.Name
+	var names []string
+	for _, tool := range ai.GetCurrentTools(systems) {
+		names = append(names, tool.Name)
+	}
+	base := map[string]struct{}{}
+	for _, entry := range s.toolRegistry.base {
+		base[entry.tool.Name()] = struct{}{}
+	}
+	for _, entry := range s.toolRegistry.entries {
+		name := entry.tool.Name()
+		if _, seen := mentioned[name]; seen {
+			continue
+		}
+		if _, builtin := base[name]; builtin {
+			continue
+		}
+		if toolActivatesOnRegistration(entry.registration.Definition) {
+			names = append(names, name)
+		}
 	}
 	names = icodingagent.ApplyToolModifiers(names, modifiers)
 	var pending []string

@@ -107,7 +107,7 @@ emit(JSON.parse(child.stdout));
 	}
 	bad := 0
 	for i, script := range scripts {
-		// A VM keeps its slot until it has exited, after Execute has returned (the pinned Pi's driver above waits for its workers' exits for the same reason).
+		// A VM keeps its slot until it has exited, after Execute has returned; a script that finds the slots taken waits for one and the wait counts toward its timeout_ms, so each starts once the earlier VMs have exited (the pinned Pi's driver above waits for its workers' exits for the same reason).
 		codemodeWorkers.waitIdle()
 		params, _ := json.Marshal(map[string]string{"code": script})
 		result, err := Execute(context.Background(), "call", params, nil, Options{})

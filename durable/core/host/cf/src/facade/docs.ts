@@ -16,4 +16,4 @@ export const UsageDoc = conversationDoc("pi.usage", () => ({ models: {}, tools: 
 export const ProviderDoc = conversationDoc("pi.provider", () => ({ sessionId: uuidv7() }), () => true)
 
 /** The nested calls of a tool call, a task-scoped family of the calling task keyed by the nested call's key (tool.ts NestedCallDoc). */
-export const NestedCallDoc = defineDocFamily({ kind: "pi.tool.nested-call", version: 1, scope: "task", family: true, initial: () => ({}) })
+export const NestedCallDoc = defineDocFamily({ kind: "pi.tool.nested-call", version: 1, scope: "task", family: true, initial: () => ({}), checkpointWhen: () => false })

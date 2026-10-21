@@ -44,6 +44,15 @@ classification = "external"
 rationale = "Google provider API path version is owned by the external provider contract."
 
 [[fields]]
+id = "ai/identity.go#ClientIdentity.Version:json:version"
+path = "ai/identity.go"
+owner = "ClientIdentity"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "The product version a detailed User-Agent names (pi-ai's ClientIdentity.version); a request identity value, not a schema discriminator and not read to select a format."
+
+[[fields]]
 id = "automation/ci/bugledger/changelog.go#bullet.Version:go:-"
 path = "automation/ci/bugledger/changelog.go"
 owner = "bullet"

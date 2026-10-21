@@ -231,6 +231,16 @@ export class TuiAltScreen extends TuiBase {
             this.savedCapabilities = undefined;
         }
     }
+    getExitRestorePrefix() {
+        const prefix = super.getExitRestorePrefix();
+        if (!this.altScreenActive)
+            return prefix;
+        return `${END_SYNCHRONIZED_OUTPUT}${this.mouseEnabled ? DISABLE_MOUSE : ""}${ENABLE_AUTOWRAP}${prefix}`;
+    }
+    getExitRestoreSuffix() {
+        // Kitty keyboard flags are per screen, so the terminal pops them before the alternate screen is left.
+        return `${super.getExitRestoreSuffix()}${this.altScreenActive ? `${EXIT_ALT_SCREEN}\x1b[?25h` : ""}`;
+    }
     deleteKittyImages() {
         return this.imageProtocol === "kitty" ? deleteAllKittyImages() : "";
     }

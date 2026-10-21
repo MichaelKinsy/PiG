@@ -9,17 +9,18 @@ const { createSession } = await import(D + "/session/session.ts");
 const { MemoryStorage } = await import(D + "/storage/memory.ts");
 const { defineDoc, defineDocFamily } = await import(D + "/documents.ts");
 
+const { BACKGROUND_CONTEXT } = await import(D + "/../../chord/src/context/index.ts"); // Pi 2ec55d80: a Context carries a telemetry span
 const scenario = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
 const tokens = {};
 for (const [name, d] of Object.entries(scenario.docs ?? {})) {
-	const checkpointWhen = d.checkpoint === "always" ? () => true : d.checkpoint === "emptyItems" ? (v) => v.items.length === 0 : undefined;
-	const base = { kind: d.kind, version: d.version, scope: d.scope, ...(d.history ? { history: d.history } : {}), ...(d.fork ? { fork: d.fork } : {}), ...(checkpointWhen ? { checkpointWhen } : {}) };
+	const checkpointWhen = d.checkpoint === "always" ? () => true : d.checkpoint === "emptyItems" ? (v) => v.items.length === 0 : () => false; // Pi 5c1736f8: checkpointWhen is required
+	const base = { kind: d.kind, version: d.version, scope: d.scope, ...(d.history ? { history: d.history } : {}), ...(d.fork ? { fork: d.fork } : {}), checkpointWhen };
 	if (d.migrate) base.migrate = (v) => ({ ...v, ...clone(d.migrate) });
 	tokens[name] = d.family
-		? defineDocFamily({ ...base, family: true, initial: (seed) => ({ ...clone(d.initial), seed: clone(seed) }) })
-		: defineDoc({ ...base, initial: () => clone(d.initial) });
+		? defineDocFamily({ checkpointWhen: () => false, ...base, family: true, initial: (seed) => ({ ...clone(d.initial), seed: clone(seed) }) })
+		: defineDoc({ checkpointWhen: () => false, ...base, initial: () => clone(d.initial) });
 }
 const tasks = {};
 for (const [name, t] of Object.entries(scenario.tasks ?? {})) {
@@ -113,7 +114,7 @@ for (let i = 0; i < scenario.steps.length; i++) {
 					default: throw new Error("bad op " + op.op);
 				}
 			}
-		}, {}, step.scope);
+		}, BACKGROUND_CONTEXT, step.scope);
 	} catch (e) {
 		error = e.message;
 	}

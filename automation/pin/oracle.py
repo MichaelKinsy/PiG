@@ -295,7 +295,7 @@ def pack(source: Path, destination: Path, root: str | None = None) -> dict[str, 
 AGENT = "@earendil-works/pi-coding-agent"
 DURABLE = "@earendil-works/pi-durable"
 # The packages durable/interop imports directly (its package.json dependencies): they sit at the top of the durable oracle tree.
-INTEROP = ["@earendil-works/chord", "@earendil-works/pi-ai", DURABLE]
+INTEROP = ["@earendil-works/chord", "@earendil-works/pi-ai", DURABLE, "@earendil-works/pi-telemetry"]
 LOCK_KEY = "node_modules/" + AGENT
 PACK_PREFIX = "pig-pack:"
 
@@ -662,6 +662,87 @@ def link_interop(modules: Path) -> None:
     elif link.exists():
         shutil.rmtree(link)
     link.symlink_to(modules)
+
+
+def top_level_packages(modules: Path) -> list[str]:
+    """The package names at the top of an npm tree (`@scope/name` for a scoped one), without npm's dot entries."""
+    names = []
+    for entry in sorted(modules.iterdir()):
+        if entry.name.startswith("."):
+            continue
+        if entry.name.startswith("@"):
+            names.extend(f"{entry.name}/{child.name}" for child in sorted(entry.iterdir()))
+        else:
+            names.append(entry.name)
+    return names
+
+
+def own_directory(path: Path) -> None:
+    """Make `path` a real directory whose entries are links to what it linked to: a locked tree installed through a shared
+    store is a link to a directory other checkouts read, and editing an entry through it would change theirs."""
+    if not path.is_symlink():
+        return
+    target = Path(os.path.realpath(path))
+    path.unlink()
+    path.mkdir()
+    for entry in sorted(target.iterdir()):
+        (path / entry.name).symlink_to(entry)
+
+
+def replace_with_link(path: Path, target: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+    path.symlink_to(target)
+
+
+def link_host(pin: Pin, host: Path) -> list[str]:
+    """Make the packages the Durable Cloudflare host (`host`, a directory with its own locked npm tree) imports from Pi the pin's.
+
+    The host's lock names the published release of the packages, so its tests would type-check and run against whatever npm
+    holds for that version, not against the Pi the repository pins: a commit pin is newer than the release its package.json
+    names (the facade ports Pi's `checkpointWhen`, which the published 1.3.0 predates). For a commit pin, every top-level package
+    of the pinned durable oracle (`ensure_durable`, the tree durable/interop runs) replaces the same-named entry of the host's
+    tree with a link to the oracle's, so the host and Pi's own packages share one copy of each (one `typebox`, one `chord`); every
+    other package stays the host's locked one. A release pin needs no replacement: the lock is the published install of the pin,
+    and only its version is checked. Returns the linked package names."""
+    modules = host / "node_modules"
+    if pin.kind == "tag":
+        version = json.loads((modules / DURABLE / "package.json").read_text())["version"]
+        if version != pin.package_version:
+            raise PinError(f"{host} installs {DURABLE} {version}, the release pin needs {pin.package_version}; run `make pin-sync`")
+        return []
+    check_durable(pin)
+    oracle = durable_modules(pin)
+    own_directory(modules)
+    linked = top_level_packages(oracle)
+    for name in linked:
+        scope, _, _ = name.partition("/")
+        if scope.startswith("@"):
+            (modules / scope).mkdir(exist_ok=True)
+            own_directory(modules / scope)
+        replace_with_link(modules / name, oracle / name)
+    check_host(pin, host)
+    return linked
+
+
+def check_host(pin: Pin, host: Path) -> None:
+    """The host's tree imports the pin's Pi packages: for a commit pin each package of the pinned durable oracle resolves to the
+    oracle's copy. A stale tree would type-check against the published release and pass or fail for the wrong reason."""
+    modules = host / "node_modules"
+    if pin.kind == "tag":
+        version = json.loads((modules / DURABLE / "package.json").read_text())["version"]
+        if version != pin.package_version:
+            raise PinError(f"{host} installs {DURABLE} {version}, the release pin needs {pin.package_version}; run `make pin-sync`")
+        return
+    oracle = durable_modules(pin)
+    stale = [name for name in top_level_packages(oracle) if not (modules / name).exists() or Path(os.path.realpath(modules / name)) != (oracle / name).resolve()]
+    if stale:
+        raise PinError(f"{host}/node_modules does not use the pinned build of commit {pin.commit} for {', '.join(stale)}; run `make durable-core-host-deps`")
+    version = json.loads((modules / DURABLE / "package.json").read_text())["version"]
+    if version != pin.package_version:
+        raise PinError(f"the host's {DURABLE} is {version}, the pin needs {pin.package_version}")
 
 
 def pi_version(modules: Path) -> str:

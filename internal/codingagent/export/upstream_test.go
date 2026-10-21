@@ -99,12 +99,13 @@ func TestCustomToolResultHTMLTrimsSpacing(t *testing.T) {
 // Refresh from .upstream/current/packages/coding-agent/src/core/export-html with sha256sum when the upstream pin changes.
 func TestExportHTMLPinnedAssets(t *testing.T) {
 	for name, want := range map[string]string{
-		"template.html": "916782b1184a9597527605ad751e2b3af30fcea23ba2194002969cd217a06881",
+		"template.html": "47d208235b066c856dae69c60281a3b99d164b99be9b81153d880375c9327105",
 		"template.css":  "8ee19851f8e583277ed396cbb76496687aa556707fdfc1f78d1118bff87c740a",
-		// D124: pinned Pi 1.2.0+b06c1f2c is a2dbf5bc70b95973ad58afa9afe61372e1640a13ad9fafb0c6d7dd772d694879; this is that file with pi-mono commit 83ca8020 (#9980) applied.
-		"template.js":             "b5a1063a514f1865996ec022c5c9501f1a0d6cf80502a8dad0941593bc58aee0",
-		"vendor/marked.min.js":    "d5487edc7258b404bfa74c393d74a6393155f02517bd5e7e77cd64f8187f39a0",
-		"vendor/highlight.min.js": "837a6fa5b0c736b52bbde2b2b6190f305da3fc9ed41681db5321507057b5c846",
+		// D124: pinned Pi 1.3.0+fdce48eb is 946bd9e3e8255c1ebb40f806def18007aa9397816291a7bf2ac0e4e99cec07a4; this is that file with pi-mono commit 83ca8020 (#9980) applied.
+		"template.js":                       "10bc6324f9cc3136a332d5670b25aa0a7280badd0565210beec7c1efb5036415",
+		"vendor/marked.min.js":              "438eedfcf932a414d0d0bfeea32dc365c063563b8ca713b4687fc8f8b501e5e4",
+		"vendor/marked-cjk-friendly.min.js": "93d2c938754cb24eef5b9ffecc268a98ef6beeb75dad614b0e874176aeeba565",
+		"vendor/highlight.min.js":           "837a6fa5b0c736b52bbde2b2b6190f305da3fc9ed41681db5321507057b5c846",
 	} {
 		t.Run(name, func(t *testing.T) {
 			got := fmt.Sprintf("%x", sha256.Sum256([]byte(mustReadAsset("assets/"+name))))

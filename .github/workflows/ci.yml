@@ -466,6 +466,14 @@ jobs:
           echo "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
+      # The host's tests import Pi's chord, pi-ai and pi-durable from the build of the commit .upstream/pin names (a release pin: the
+      # published release), as every other parity check does; make durable-core-host-deps links them. The oracle build is the same
+      # for every job of a pin; oracle.py reuses a restored build whose stamp matches.
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
       # TinyGo 0.42.0 (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
       # TinyGo pass's core; the Pi reference the conformance tests read is the checkout durable/contract/PIN names.
       - name: Restore TinyGo and the Pi reference
@@ -478,7 +486,7 @@ jobs:
       - name: Install the pinned TinyGo
         shell: bash
         run: echo "TINYGO=$(sh durable/core/budget/tinygo-install.sh)" >> "$GITHUB_ENV"
-      # durable-core-host-check: durable-contract-setup, durable-core-host-deps (the locked npm tree), then check.sh: tsc and the
+      # durable-core-host-check: durable-contract-setup, durable-core-host-deps (the pinned Pi build, then the locked npm tree), then check.sh: tsc and the
       # whole suite against the core built with Go and with TinyGo.
       - name: Typecheck and test the Cloudflare host
         shell: bash

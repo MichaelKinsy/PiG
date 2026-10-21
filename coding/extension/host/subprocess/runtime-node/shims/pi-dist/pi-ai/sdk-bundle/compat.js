@@ -28,7 +28,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-CJFE2WDE.js";
+} from "./chunk-ZZXFLJFR.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -52,19 +52,22 @@ import {
   openAICodexResponsesApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-FJD5SETT.js";
+} from "./chunk-2W6ZLWLV.js";
 import {
   anthropicMessagesApi,
   openAICompletionsApi
-} from "./chunk-PKG7C7T3.js";
+} from "./chunk-4LTYPEXS.js";
 import {
   envApiKeyAuth,
   lazyOAuth
 } from "./chunk-VLLDVPPZ.js";
 import {
+  AI_TELEMETRY_SCHEMA,
   InMemoryCredentialStore,
   InMemoryModelsStore,
   ModelsError,
+  PI_AI_VERSION,
+  PI_ATTRIBUTION,
   appendAssistantMessageDiagnostic,
   calculateCost,
   clampThinkingLevel,
@@ -78,12 +81,17 @@ import {
   defaultProviderAuthContext,
   extractDiagnosticError,
   formatThrownValue,
+  formatUserAgent,
+  getAttributionHeaders,
+  getClientVersion,
   getCurrentSystemMessage,
   getCurrentSystemPrompt,
   getCurrentTools,
   getDeclaredTools,
+  getIdentityHeaders,
   getInitialSystemMessage,
   getModelType,
+  getOpenCodeSessionHeaders,
   getSupportedThinkingLevels,
   getSystemMessageText,
   getToolStateChanges,
@@ -91,14 +99,16 @@ import {
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
   isModelType,
+  mergeClientIdentity,
   modelsAreEqual,
   normalizeContext,
   renderSystemMessageUpdate,
   resolveTranscript,
   resolveTranscriptTools,
   toToolDeclaration,
+  withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-6C2VLFYL.js";
+} from "./chunk-4QEFVS4X.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -406,6 +416,7 @@ async function completeSimple(model, context, options) {
 }
 __name(completeSimple, "completeSimple");
 export {
+  AI_TELEMETRY_SCHEMA,
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
   ANTHROPIC_FEDERATION_RULE_ID_ENV,
@@ -420,6 +431,8 @@ export {
   InMemoryCredentialStore,
   InMemoryModelsStore,
   ModelsError,
+  PI_AI_VERSION,
+  PI_ATTRIBUTION,
   StringEnum,
   Type,
   anthropicMessagesApi,
@@ -450,15 +463,19 @@ export {
   fauxToolCall,
   findEnvKeys,
   formatThrownValue,
+  formatUserAgent,
   generateImages,
   generateImagesOpenRouter,
   getApiProvider,
   getApiProviders,
+  getAttributionHeaders,
+  getClientVersion,
   getCurrentSystemMessage,
   getCurrentSystemPrompt,
   getCurrentTools,
   getDeclaredTools,
   getEnvApiKey,
+  getIdentityHeaders,
   getImageModel,
   getImageModels,
   getImageProviders,
@@ -467,6 +484,7 @@ export {
   getModel,
   getModelType,
   getModels,
+  getOpenCodeSessionHeaders,
   getOverflowPatterns,
   getProviders,
   getSupportedThinkingLevels,
@@ -484,6 +502,7 @@ export {
   lazyApi,
   lazyOAuth,
   lazyStream,
+  mergeClientIdentity,
   mistralConversationsApi,
   modelsAreEqual,
   normalizeContext,
@@ -531,5 +550,6 @@ export {
   uuidv7,
   validateToolArguments,
   validateToolCall,
+  withClientIdentity,
   withoutInitialSystemMessage
 };

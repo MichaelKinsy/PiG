@@ -722,6 +722,15 @@ export default function (pi) {
     ctx.ui.setEditorText("draft");
     ctx.ui.setToolsExpanded(true);
   } });
+  // dialog-stack-probe opens its dialogs at the same time and reports each one's answer as it settles (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
+  pi.registerCommand("dialog-stack-probe", { description: "Open concurrent dialogs from one command", handler: async (scenario, ctx) => {
+    const settled = (name) => (value) => ctx.ui.notify(`stack settled ${name}=${value ?? "cancelled"}`, "info");
+    const dialogs = scenario === "mix"
+      ? [ctx.ui.select("S", ["s1", "s2"]).then(settled("S")), ctx.ui.confirm("C", "message").then(settled("C")), ctx.ui.input("I", "placeholder").then(settled("I")), ctx.ui.editor("E", "prefill").then(settled("E"))]
+      : [ctx.ui.select("A", ["a1", "a2"]).then(settled("A")), ctx.ui.confirm("B", "message").then(settled("B"))];
+    await Promise.all(dialogs);
+    ctx.ui.notify("stack done", "info");
+  } });
   pi.registerCommand("tool_call_guard_probe", { description: "Report the tool names the tool_call guard accepts", handler: async () => {
     pi.on("tool_call", async (event, ctx) => { ctx.ui.notify(`tool_call_guard:${["bash", "read", "probe", "other"].filter((name) => isToolCallEventType(name, event)).join(",")}:end`, "info"); });
   } });

@@ -120,6 +120,9 @@ func TestBuildFdPathQuery(t *testing.T) {
 		name, input, want string
 	}{
 		{"simple", "foo", "foo"},
+		// Pi #10972 (autocomplete.ts buildFdPathQuery): a single segment is escaped like every segment of a path.
+		{"single segment metacharacters", "[id", `\[id`},
+		{"single segment parenthesis", "(", `\(`},
 		{"with slash", "internal/tui", `internal[\\/]tui`},
 		{"trailing slash", "internal/", `internal[\\/]`},
 		{"leading slash", "/usr/local", `usr[\\/]local`},

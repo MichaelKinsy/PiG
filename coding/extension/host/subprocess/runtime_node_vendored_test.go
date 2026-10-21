@@ -67,6 +67,8 @@ var vendoredImportRewrites = map[string][2]string{
 		`import { Type } from "../../../typebox.mjs";`},
 	"pi-ai/utils/typebox-helpers.js": {`import { Type } from "typebox";`,
 		`import { Type } from "../../../typebox.mjs";`},
+	"pi-ai/telemetry.js": {`import { createTypedMetrics, createTypedSpanStarter, defineTelemetrySchema, NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, } from "@earendil-works/pi-telemetry";`,
+		`import { createTypedMetrics, createTypedSpanStarter, defineTelemetrySchema, NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, } from "../pi-telemetry/index.js";`},
 	"pi-ai/index.js": {`export { Type } from "typebox";`,
 		`export { Type } from "../../typebox.mjs";`},
 	"pi-coding-agent/utils/shell.js": {`import { getBinDir } from "../config.js";`,
@@ -118,6 +120,7 @@ var pinnedPackageDist = map[string][]string{
 	"pi-agent-core":   {"node_modules", "@earendil-works", "pi-agent-core", "dist"},
 	"pi-codemode":     {"node_modules", "@earendil-works", "pi-codemode", "dist"},
 	"pi-mcp":          {"node_modules", "@earendil-works", "pi-mcp", "dist"},
+	"pi-telemetry":    {"node_modules", "@earendil-works", "pi-telemetry", "dist"},
 }
 
 // closureVendoredPackages are copied as the module graph reachable from
@@ -264,6 +267,9 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		if rw, ok := vendoredImportRewrites[rel]; ok {
 			rewrites = append(rewrites, rw)
 		}
+		if rel == "pi-tui/components/markdown.js" {
+			rewrites = append(rewrites, [2]string{`import markedCjkFriendly from "marked-cjk-friendly";`, `import markedCjkFriendly from "../../../marked-cjk-friendly/dist/index.js";`})
+		}
 		if rel == "pi-ai/utils/validation.js" {
 			rewrites = append(rewrites, vendoredValidationRewrites...)
 		}
@@ -366,6 +372,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 	}
 	ignore := filepath.Join(nodeModules, "ignore")
 	marked := filepath.Join(nodeModules, "marked")
+	markedCjk := filepath.Join(nodeModules, "marked-cjk-friendly")
 	eaw := filepath.Join(nodeModules, "get-east-asian-width")
 	partial := filepath.Join(nodeModules, "partial-json")
 	for dir, files := range map[string]map[string]string{
@@ -385,6 +392,10 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		"marked": {
 			"lib/marked.esm.js": filepath.Join(marked, "lib", "marked.esm.js"),
 			"LICENSE":           filepath.Join(marked, "LICENSE"), "package.json": filepath.Join(marked, "package.json"),
+		},
+		"marked-cjk-friendly": {
+			"dist/index.js": filepath.Join(markedCjk, "dist", "index.js"),
+			"LICENSE":       filepath.Join(markedCjk, "LICENSE"), "package.json": filepath.Join(markedCjk, "package.json"),
 		},
 		"partial-json": {
 			"dist/index.js": filepath.Join(partial, "dist", "index.js"), "dist/options.js": filepath.Join(partial, "dist", "options.js"),
@@ -865,7 +876,7 @@ func TestPiCodemodeRunsFromTheVendoredSDK(t *testing.T) {
 import assert from "node:assert/strict";
 import { Worker } from "node:worker_threads";
 // A worker keeps its slot of the two executeCodemode admits until it has exited, which is after executeCodemode has returned (execute.ts acquireWorker), and a script that
-// finds both slots taken fails at once ("Retry after they exit."). Each script therefore starts once the workers of the earlier ones have exited. The exit listeners are
+// finds both slots taken waits for one, and that wait counts toward its timeout_ms (#11184). Each script therefore starts once the workers of the earlier ones have exited, so none waits. The exit listeners are
 // added after executeCodemode's own, which give the slot back. executeCodemode unrefs a worker it has asked to terminate, so the wait refs it again.
 const workers = [];
 const once = Worker.prototype.once;

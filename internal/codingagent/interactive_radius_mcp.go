@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
+	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -101,7 +102,8 @@ func globalMcpServerJSON(mcpPath, name string) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	parsed, err := orderedjson.Parse(data)
+	// Pi reads this file through loadMcpConfig, which strips a UTF-8 BOM (config.ts readConfigFile, #11191).
+	parsed, err := orderedjson.Parse(text.StripBomBytes(data))
 	if err != nil {
 		return nil, err
 	}

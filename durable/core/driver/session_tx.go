@@ -443,7 +443,7 @@ func (p *txProxy) writeDraft(open *openDoc) error {
 		write["entry"] = *open.entry
 	}
 	// Pi runs checkpointWhen at settlement on the prepared value and ops (session/documents.ts); the driver has both here.
-	if !open.migrated && open.deltasSinceBase != nil && open.def.CheckpointWhen != nil {
+	if !open.migrated && open.deltasSinceBase != nil {
 		checkpoint, err := callCheckpoint(open.def, prepared.Value(), prepared.Ops(), durable.CheckpointInfo{DeltasSinceBase: *open.deltasSinceBase})
 		if err != nil {
 			return err

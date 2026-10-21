@@ -183,3 +183,19 @@ func TestRadiusMcpServerConfig(t *testing.T) {
 		t.Fatalf("added=%s, want %s", added, want)
 	}
 }
+
+// Pi reads the existing Radius entry through loadMcpConfig, which strips a UTF-8 BOM (mcp/config.ts readConfigFile, #11191), so
+// an mcp.json that starts with one still has its Radius server found and re-pointed at the Radius login.
+func TestRadiusMcpServerConfigReadsAMcpJSONThatStartsWithAUTF8BOM(t *testing.T) {
+	mcpPath := filepath.Join(t.TempDir(), "mcp.json")
+	if err := os.WriteFile(mcpPath, []byte("\uFEFF"+`{"mcpServers":{"gateway":{"url":"`+RadiusMcpURL+`","oauth":{"clientName":"x"}}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	existing, err := radiusMcpServerConfig(mcpPath, "gateway", true, "radius")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"url":"` + RadiusMcpURL + `","auth":{"provider":"radius"}}`; string(existing) != want {
+		t.Fatalf("existing=%s\nwant     %s", existing, want)
+	}
+}

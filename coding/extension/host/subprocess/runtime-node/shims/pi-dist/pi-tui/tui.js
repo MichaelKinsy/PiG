@@ -225,6 +225,28 @@ export class TuiBase extends Container {
     afterTerminalStart() { }
     beforeTerminalStop(_options) { }
     afterTerminalStop(_options) { }
+    /** Mode resets written before the terminal's own resets when the process exits without stop(). */
+    getExitRestorePrefix() {
+        return `${this.terminalColorSchemeNotificationsEnabled ? "\x1b[?2031l" : ""}\x1b[?25h`;
+    }
+    /** Mode resets written after the terminal's own resets when the process exits without stop(). */
+    getExitRestoreSuffix() {
+        return "";
+    }
+    /**
+     * Last-resort restore for exit paths that skip stop(), e.g. a direct process.exit() (#11170).
+     * Hard kills and native aborts run no JavaScript and cannot be covered.
+     */
+    exitRestoreHandler = () => {
+        if (this.stopped)
+            return;
+        try {
+            this.terminal.restoreOnExit?.(this.getExitRestorePrefix(), this.getExitRestoreSuffix());
+        }
+        catch {
+            // Never throw from an exit handler.
+        }
+    };
     get fullRedraws() {
         return this.fullRedrawCount;
     }
@@ -568,6 +590,8 @@ export class TuiBase extends Container {
     }
     start() {
         this.stopped = false;
+        process.off("exit", this.exitRestoreHandler);
+        process.on("exit", this.exitRestoreHandler);
         this.beforeTerminalStart();
         this.terminal.start((data) => this.handleTerminalInput(data), () => this.requestRender());
         this.afterTerminalStart();
@@ -613,6 +637,7 @@ export class TuiBase extends Container {
     }
     stop(options = {}) {
         this.stopped = true;
+        process.off("exit", this.exitRestoreHandler);
         this.cancelRenderTimer();
         if (this.terminalColorSchemeNotificationsEnabled) {
             this.terminal.write("\x1b[?2031l");

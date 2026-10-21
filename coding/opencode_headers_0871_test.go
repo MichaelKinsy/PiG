@@ -2,7 +2,7 @@ package coding
 
 // Ports .upstream/current/packages/ai/test/opencode-provider-headers.test.ts.
 // Pi adds x-opencode-session in ai/providers/opencode-headers.ts; PiG adds it
-// in the provider attribution wrapper every OpenCode stream passes through.
+// in the request options wrapper every built-in OpenCode provider stream passes through; the Model Runtime adds it for every OpenCode target (client_identity_test.go).
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 func streamOpenCodeAttribution(t *testing.T, providerID string, options ai.StreamOptions) ai.ProviderHeaders {
 	t.Helper()
 	capture := &attributionCaptureProvider{}
-	provider := newProviderAttributionProvider(capture, providerID, "https://opencode.ai/zen/v1", func() bool { return false }, nil)
+	provider := newRequestOptionsProvider(capture, providerID, nil)
 	if _, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{}), options); err != nil {
 		t.Fatal(err)
 	}
@@ -54,4 +54,23 @@ func TestOpenCodeSessionHeaderIsNotFabricatedWithoutSessionID(t *testing.T) {
 	if len(headers) != 1 || headers["x-custom"] == nil || *headers["x-custom"] != "value" {
 		t.Fatalf("headers = %#v, want only x-custom", headers)
 	}
+}
+
+type attributionCaptureProvider struct {
+	options ai.StreamOptions
+}
+
+func (provider *attributionCaptureProvider) ID() string   { return "capture" }
+func (provider *attributionCaptureProvider) Close() error { return nil }
+func (provider *attributionCaptureProvider) Stream(_ context.Context, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	provider.options = options
+	stream := ai.NewAssistantMessageEventStream()
+	message := &ai.AssistantMessage{StopReason: ai.StopReasonStop}
+	if err := stream.Push(ai.StartEvent{Partial: message}); err != nil {
+		return nil, err
+	}
+	if err := stream.Push(ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}); err != nil {
+		return nil, err
+	}
+	return stream, nil
 }

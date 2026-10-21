@@ -559,6 +559,32 @@ func TestGeneration(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
+	// Ports harness-generation.test.ts "attributes model requests to pi by default and merges the Harness identity over it".
+	// pig divergence (D26): the default attribution is PiG's (ai.PiAttribution).
+	t.Run("attributes model requests by default and merges the Harness identity over it", func(t *testing.T) {
+		var seen []*ai.ClientIdentity
+		var mu sync.Mutex
+		capture := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
+			mu.Lock()
+			seen = append(seen, options.Identity)
+			mu.Unlock()
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("ok")}}.AssistantMessage(), nil
+		})
+		acme := &ai.ClientAttribution{Name: "acme", URL: "https://acme.example"}
+		for _, identity := range []*ai.ClientIdentity{nil, {UserAgent: new(ai.UserAgentShort), Attribution: acme}} {
+			setup := chatSetup(t)
+			setup.Faux.SetResponses([]ai.FauxResponseStep{capture})
+			harness, root := openChat(t, storage.NewMemoryStorage(), setup, openChatOptions{identity: identity})
+			harness.Resume()
+			must(submitInput(t, root, "hi").Wait(testContext))
+			closeHarness(t, harness)
+		}
+		want := []*ai.ClientIdentity{{Attribution: &ai.PiAttribution}, {Attribution: acme, UserAgent: new(ai.UserAgentShort)}}
+		if !reflect.DeepEqual(seen, want) {
+			t.Fatalf("identities = %#v, want %#v", seen, want)
+		}
+	})
+
 	// Regression coverage for #10424 (harness-generation.test.ts:388, Pi 1.0.2).
 	t.Run("keeps provider session IDs request-local across concurrent conversations", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-generation.test.ts:389
@@ -771,7 +797,7 @@ func TestGeneration(t *testing.T) {
 			Kind string `json:"kind"`
 		}
 		agentDoc := durable.DefineDoc(durable.DocDefinition[agentState]{
-			CommonDocDefinition: durable.CommonDocDefinition[agentState]{Kind: "test.agent", Version: 1, Initial: func() agentState { return agentState{Cwd: "/", Kind: "main"} }},
+			CommonDocDefinition: durable.CommonDocDefinition[agentState]{Kind: "test.agent", Version: 1, Initial: func() agentState { return agentState{Cwd: "/", Kind: "main"} }, CheckpointWhen: func(agentState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 		})
 		read := func(ctx context.Context, input durable.PromptInput) (*agentState, error) {

@@ -48,10 +48,11 @@ func TestDocTokensCarryTheirDefinitionAndValidateTheVersion(t *testing.T) {
 
 	family := DefineDocFamily(DocFamilyDefinition[state, int]{
 		Kind: "tok.family", Version: 1, Family: true, DocumentSemantics: DocumentSemantics{Scope: ScopeTask},
-		Initial: func(seed int) state { return state{N: seed} },
+		Initial:        func(seed int) state { return state{N: seed} },
+		CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false },
 	})
 	var taskFamily TaskDocFamilyToken[state, int] = family
-	if def := taskFamily.AnyDefinition(); def.Kind != "tok.family" || def.Scope != ScopeTask || !def.Family || def.Migrate != nil || def.CheckpointWhen != nil {
+	if def := taskFamily.AnyDefinition(); def.Kind != "tok.family" || def.Scope != ScopeTask || !def.Family || def.Migrate != nil || def.CheckpointWhen == nil {
 		t.Fatalf("family definition = %+v", def)
 	}
 
@@ -63,7 +64,7 @@ func TestDocTokensCarryTheirDefinitionAndValidateTheVersion(t *testing.T) {
 					t.Errorf("version %d: recovered %q, want %q", version, message, want)
 				}
 			}()
-			DefineDoc(DocDefinition[state]{CommonDocDefinition: CommonDocDefinition[state]{Kind: "tok.bad", Version: version, Initial: func() state { return state{} }}, DocumentSemantics: DocumentSemantics{Scope: ScopeSession}})
+			DefineDoc(DocDefinition[state]{CommonDocDefinition: CommonDocDefinition[state]{Kind: "tok.bad", Version: version, Initial: func() state { return state{} }, CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false }}, DocumentSemantics: DocumentSemantics{Scope: ScopeSession}})
 		}()
 	}
 	func() {
@@ -72,6 +73,6 @@ func TestDocTokensCarryTheirDefinitionAndValidateTheVersion(t *testing.T) {
 				t.Errorf("family with version 0: recovered %q", message)
 			}
 		}()
-		DefineDocFamily(DocFamilyDefinition[state, int]{Kind: "tok.badfamily", Version: 0, Family: true, DocumentSemantics: DocumentSemantics{Scope: ScopeSession}, Initial: func(int) state { return state{} }})
+		DefineDocFamily(DocFamilyDefinition[state, int]{Kind: "tok.badfamily", Version: 0, Family: true, DocumentSemantics: DocumentSemantics{Scope: ScopeSession}, Initial: func(int) state { return state{} }, CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false }})
 	}()
 }

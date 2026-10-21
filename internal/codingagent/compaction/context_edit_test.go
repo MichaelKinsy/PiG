@@ -1,8 +1,10 @@
 package compaction
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -379,6 +381,74 @@ func TestTurnPrefixSummaryUsesMarkdownHeadingFraming(t *testing.T) {
 	if !strings.HasPrefix(result.Summary, "earlier checkpoint\n\n---\n\n**Turn Context (split turn):**\n\nprefix summary") {
 		t.Fatalf("summary = %q", result.Summary)
 	}
+}
+
+// Ports packages/coding-agent/test/compaction-summary-reasoning.test.ts "applies custom instructions to the turn prefix summary of a split turn" (#11058).
+func TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn(t *testing.T) {
+	var prompts []string
+	completer := simpleCompleterFunc(func(_ context.Context, _ *ai.Model, _ string, messages []agent.AgentMessage, _ ai.StreamOptions) (string, *ai.Usage, error) {
+		prompts = append(prompts, projectedMessageText(messages[0]))
+		return "prefix summary", nil, nil
+	})
+	prefix := []agent.AgentMessage{editUser("build the parser"), editAssistant("started on lexer.go", defaultEditUsage)}
+	_, err := Compact(context.Background(), CompactionPreparation{
+		FirstKeptEntryID:   "keep",
+		TurnPrefixMessages: prefix,
+		IsSplitTurn:        true,
+		PreviousSummary:    "previous checkpoint",
+		Settings:           CompactionSettings{ReserveTokens: 2000, KeepRecentTokens: 20},
+	}, &ai.Model{}, "test-key", nil, "keep migration decisions", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "# Conversation\n" + SerializeConversation(convertToLlm(prefix)) + "\n\n# Instructions\n" + turnPrefixSummarizationPrompt + "\n\nAdditional focus: keep migration decisions"
+	if len(prompts) != 1 || prompts[0] != want {
+		t.Fatalf("turn prefix prompt:\n got %q\nwant %q", prompts, want)
+	}
+}
+
+// TestSplitTurnCompactParity prints the requests and summaries of Compact on split turns, which scenario 16-split-turn-custom-instructions compares with Pi's compact().
+func TestSplitTurnCompactParity(t *testing.T) {
+	prefix := []agent.AgentMessage{editUser("build the parser"), editAssistant("started on lexer.go", defaultEditUsage)}
+	history := []agent.AgentMessage{editUser("earlier request"), editAssistant("earlier answer", defaultEditUsage)}
+	for _, tc := range []struct {
+		name         string
+		history      []agent.AgentMessage
+		previous     string
+		instructions string
+	}{
+		{"prefix-only-instructions", nil, "previous checkpoint", "keep migration decisions"},
+		{"prefix-only-no-instructions", nil, "previous checkpoint", ""},
+		{"history-and-prefix-instructions", history, "", "keep migration decisions"},
+		{"history-and-prefix-previous-instructions", history, "previous checkpoint", "focus on lexer.go"},
+	} {
+		var prompts []string
+		completer := simpleCompleterFunc(func(_ context.Context, _ *ai.Model, _ string, messages []agent.AgentMessage, _ ai.StreamOptions) (string, *ai.Usage, error) {
+			prompts = append(prompts, projectedMessageText(messages[0]))
+			return fmt.Sprintf("summary %d", len(prompts)), nil, nil
+		})
+		model := &ai.Model{ID: "test-model", DisplayName: "Test Model", Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}, ProviderMeta: ai.ProviderMetadata{ProviderID: "anthropic", API: "anthropic-messages", BaseURL: "https://api.anthropic.com"}}
+		result, err := Compact(context.Background(), CompactionPreparation{
+			FirstKeptEntryID: "keep", MessagesToSummarize: tc.history, TurnPrefixMessages: prefix, IsSplitTurn: true, TokensBefore: 100, PreviousSummary: tc.previous,
+			Settings: CompactionSettings{ReserveTokens: 2000, KeepRecentTokens: 20},
+		}, model, "test-key", nil, tc.instructions, "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("SPLIT_TURN %s prompts=%s summary=%s\n", tc.name, jsStringify(t, prompts), jsStringify(t, result.Summary))
+	}
+}
+
+// jsStringify is JSON.stringify of a string or a list of strings: no HTML escaping.
+func jsStringify(t *testing.T, value any) string {
+	t.Helper()
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSuffix(out.String(), "\n")
 }
 
 func projectedMessageText(message agent.AgentMessage) string {

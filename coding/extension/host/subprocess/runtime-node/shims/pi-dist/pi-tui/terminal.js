@@ -409,6 +409,24 @@ export class ProcessTerminal {
             process.stdin.setRawMode(this.wasRaw);
         }
     }
+    restoreOnExit(before, after) {
+        let sequence = before;
+        if (this.progressInterval)
+            sequence += TERMINAL_PROGRESS_CLEAR_SEQUENCE;
+        sequence += "\x1b[?2004l";
+        if (this.keyboardProtocolPushed || this._kittyProtocolActive)
+            sequence += "\x1b[<u";
+        if (this._modifyOtherKeysActive)
+            sequence += "\x1b[>4;0m";
+        sequence += after;
+        try {
+            // process.stdout.write() may be asynchronous (e.g. Windows TTYs) and would not flush during exit.
+            fs.writeSync(process.stdout.fd, sequence);
+        }
+        catch {
+            // The terminal may already be gone.
+        }
+    }
     write(data) {
         process.stdout.write(data);
         if (this.writeLogPath) {

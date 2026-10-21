@@ -23,7 +23,8 @@ func TestWatchHandleContract(t *testing.T) {
 	token := durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
 		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{
 			Kind: "watch.contract", Version: 1,
-			Initial: func() durable.JsonObject { return delta.JsonObjectOf("value", 0) },
+			Initial:        func() durable.JsonObject { return delta.JsonObjectOf("value", 0) },
+			CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
 		},
 		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
 	})

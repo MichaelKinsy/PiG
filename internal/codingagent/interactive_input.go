@@ -46,7 +46,9 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 	}
 }
 
-// emergencyTerminalExit exits without terminal restoration: the terminal is gone, and restore writes would fail again.
+// emergencyTerminalExit exits without the normal teardown: the terminal is gone, so TUI and extension cleanup would write
+// restore sequences and fail again. Pi's process.exit(129) still runs the TUI's exit handler, which writes the mode resets
+// synchronously and swallows the write errors (9df819de, #11170); tui.RestoreTerminalOnExit does the same here.
 // It kills the tracked detached children first, as upstream does, so a running shell command does not outlive the exit
 // in its own process group. Pi's extensions run inside the exiting process and die with it; pig's run as child
 // processes in their own process groups, so it kills them too, or they would keep writing into the session's
@@ -60,6 +62,8 @@ func (m *InteractiveMode) emergencyTerminalExit(reason string) {
 		m.opts.TerminateExtensionProcesses()
 	}
 	EndSessionMarker()
+	// Pi's process.exit(129) runs the TUI's exit handler, which restores the terminal modes (9df819de, #11170).
+	tui.RestoreTerminalOnExit()
 	os.Exit(129)
 }
 
@@ -671,7 +675,7 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 		}
 		data = current
 	}
-	if m.extensionDialog != nil {
+	if dialog := m.shownExtensionDialog(); dialog != nil {
 		// The dialog is the focused component, so releases are dropped unless
 		// it opts in. The editor's equivalent check sits below this branch and
 		// never runs while a dialog is open, which is what made every arrow
@@ -682,10 +686,10 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 		if m.tuiInst != nil && m.tuiInst.ConsumeDebugKey(data) {
 			return nil
 		}
-		if !tui.ShouldDeliverKey(m.extensionDialog.component, data) {
+		if !tui.ShouldDeliverKey(dialog.component, data) {
 			return nil
 		}
-		m.extensionDialog.handle(data)
+		dialog.handle(data)
 		return nil
 	}
 

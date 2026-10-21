@@ -23,6 +23,13 @@ type responsesImageTestCase struct {
 	provider, model, keyEnv string
 }
 
+type imageRequestTool struct {
+	Type        string                     `json:"type"`
+	Name        string                     `json:"name"`
+	Description string                     `json:"description"`
+	Parameters  map[string]json.RawMessage `json:"parameters"`
+}
+
 func responsesImageCases() []responsesImageTestCase {
 	return []responsesImageTestCase{
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:150
@@ -30,9 +37,9 @@ func responsesImageCases() []responsesImageTestCase {
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:160
 		{"azure", "gpt-4o-mini", "PIG_LIVE_AZURE_OPENAI_API_KEY"},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:168
-		{"github-copilot", "gpt-5-mini", "PIG_LIVE_COPILOT_TOKEN"},
+		{"github-copilot", "gpt-6-luna", "PIG_LIVE_COPILOT_TOKEN"},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-tool-result-images.test.ts:183
-		{"openai-codex", "gpt-5.5", "PIG_LIVE_CODEX_TOKEN"},
+		{"openai-codex", "gpt-6.1-sol", "PIG_LIVE_CODEX_TOKEN"},
 	}
 }
 
@@ -220,17 +227,25 @@ func responsesImageFauxEndpoint(t *testing.T, codex bool, image, requestModel st
 		var payload struct {
 			Model string                       `json:"model"`
 			Input []map[string]json.RawMessage `json:"input"`
-			Tools []struct {
-				Type        string                     `json:"type"`
-				Name        string                     `json:"name"`
-				Description string                     `json:"description"`
-				Parameters  map[string]json.RawMessage `json:"parameters"`
-			} `json:"tools"`
+			Tools []imageRequestTool           `json:"tools"`
 		}
 		if err = json.Unmarshal(data, &payload); err != nil {
 			t.Error(err)
 			http.Error(w, err.Error(), 400)
 			return
+		}
+		// A model with additional_tools declares its tools in an additional_tools input item instead of the top-level list (Pi 10940).
+		for _, item := range payload.Input {
+			if string(item["type"]) != `"additional_tools"` {
+				continue
+			}
+			var declared []imageRequestTool
+			if err = json.Unmarshal(item["tools"], &declared); err != nil {
+				t.Error(err)
+				http.Error(w, err.Error(), 400)
+				return
+			}
+			payload.Tools = append(payload.Tools, declared...)
 		}
 		if payload.Model != requestModel {
 			t.Errorf("request model=%q, want %q", payload.Model, requestModel)

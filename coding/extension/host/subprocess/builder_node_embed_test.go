@@ -20,10 +20,10 @@ func TestNodeRuntimeEmbedsVendoredEastAsianWidth(t *testing.T) {
 }
 
 // The runtime's Pi modules import the vendored Pi dist files, yaml, marked,
-// partial-json, ignore and diff, so the materialized runtime must carry every
-// one of them.
+// marked-cjk-friendly, partial-json, ignore and diff, so the materialized runtime
+// must carry every one of them.
 func TestNodeRuntimeEmbedsVendoredPiDistAndDependencies(t *testing.T) {
-	for _, dir := range []string{"pi-dist", "yaml", "marked", "partial-json", "ignore", "diff"} {
+	for _, dir := range []string{"pi-dist", "yaml", "marked", "marked-cjk-friendly", "partial-json", "ignore", "diff"} {
 		root := filepath.Join("runtime-node", "shims", dir)
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil || d.IsDir() {

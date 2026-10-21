@@ -1526,7 +1526,87 @@ func subprocessStreamOptions(request map[string]any, defaults ai.StreamOptions) 
 		}
 		options.Metadata = object
 	}
+	// upstream: packages/ai/src/utils/identity.ts:ClientIdentity. A Node extension's own request (a Session from createAgentSession, whose core/sdk.ts passes getClientIdentity, or a direct pi-ai call) names how it identifies itself; null or absent leaves the provider's defaults.
+	if value := request["identity"]; value != nil {
+		object, ok := value.(map[string]any)
+		if !ok {
+			return ai.StreamOptions{}, fmt.Errorf("model request.identity must be an object")
+		}
+		identity, err := subprocessClientIdentity(object)
+		if err != nil {
+			return ai.StreamOptions{}, fmt.Errorf("model request.identity: %w", err)
+		}
+		options.Identity = identity
+	}
 	return options, nil
+}
+
+// subprocessClientIdentity reads pi-ai's ClientIdentity from the request's decoded JSON: userAgent ("short", "detailed" or { custom }),
+// version, and attribution (an object, or null for none). An absent or null field leaves the provider default.
+func subprocessClientIdentity(object map[string]any) (*ai.ClientIdentity, error) {
+	identity := &ai.ClientIdentity{}
+	if value := object["userAgent"]; value != nil {
+		var mode ai.UserAgentMode
+		switch typed := value.(type) {
+		case string:
+			switch typed {
+			case "short":
+				mode = ai.UserAgentShort
+			case "detailed":
+				mode = ai.UserAgentDetailed
+			default:
+				return nil, errors.New(`userAgent must be "short", "detailed" or { "custom": string }`)
+			}
+		case map[string]any:
+			custom, ok := typed["custom"].(string)
+			if !ok {
+				return nil, errors.New(`userAgent must be "short", "detailed" or { "custom": string }`)
+			}
+			mode = ai.UserAgentCustom(custom)
+		default:
+			return nil, errors.New(`userAgent must be "short", "detailed" or { "custom": string }`)
+		}
+		identity.UserAgent = &mode
+	}
+	if value := object["version"]; value != nil {
+		version, ok := value.(string)
+		if !ok {
+			return nil, errors.New("version must be a string")
+		}
+		identity.Version = &version
+	}
+	if value, exists := object["attribution"]; exists {
+		if value == nil {
+			identity.AttributionNull = true
+			return identity, nil
+		}
+		fields, ok := value.(map[string]any)
+		if !ok {
+			return nil, errors.New("attribution must be an object or null")
+		}
+		attribution := &ai.ClientAttribution{}
+		var nameOK, urlOK bool
+		attribution.Name, nameOK = fields["name"].(string)
+		attribution.URL, urlOK = fields["url"].(string)
+		if !nameOK || !urlOK {
+			return nil, errors.New("attribution.name and attribution.url must be strings")
+		}
+		if categories, exists := fields["categories"]; exists && categories != nil {
+			list, ok := categories.([]any)
+			if !ok {
+				return nil, errors.New("attribution.categories must be an array of strings")
+			}
+			for _, entry := range list {
+				category, ok := entry.(string)
+				if !ok {
+					return nil, errors.New("attribution.categories must be an array of strings")
+				}
+				attribution.Categories = append(attribution.Categories, category)
+			}
+		}
+		identity.Attribution = attribution
+	}
+	return identity, nil
 }
 
 type ModelOperationBridge interface {

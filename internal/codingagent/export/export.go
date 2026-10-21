@@ -26,7 +26,7 @@ import (
 
 const appName = "pig"
 
-//go:embed assets/template.html assets/template.css assets/template.js assets/vendor/marked.min.js assets/vendor/highlight.min.js
+//go:embed assets/template.html assets/template.css assets/template.js assets/vendor/marked.min.js assets/vendor/marked-cjk-friendly.min.js assets/vendor/highlight.min.js
 var templateFS embed.FS
 
 // SessionData mirrors upstream export-html's payload shape.
@@ -95,6 +95,7 @@ func toHTML(data SessionData, themeName string) string {
 	css := mustReadAsset("assets/template.css")
 	js := mustReadAsset("assets/template.js")
 	marked := mustReadAsset("assets/vendor/marked.min.js")
+	markedCjkFriendly := mustReadAsset("assets/vendor/marked-cjk-friendly.min.js")
 	highlight := mustReadAsset("assets/vendor/highlight.min.js")
 
 	th := tui.ExportThemeNamed(themeName)
@@ -119,6 +120,7 @@ func toHTML(data SessionData, themeName string) string {
 	out = jsReplace(out, "{{JS}}", js)
 	out = jsReplace(out, "{{SESSION_DATA}}", sessionDataBase64)
 	out = jsReplace(out, "{{MARKED_JS}}", marked)
+	out = jsReplace(out, "{{MARKED_CJK_FRIENDLY_JS}}", markedCjkFriendly)
 	out = jsReplace(out, "{{HIGHLIGHT_JS}}", highlight)
 	return out
 }

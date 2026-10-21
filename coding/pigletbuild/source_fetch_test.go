@@ -16,7 +16,13 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/mod/module"
+	"golang.org/x/mod/sumdb/dirhash"
+	modzip "golang.org/x/mod/zip"
+
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
 )
 
 // checkoutPigSource returns the Pig checkout these tests run from.
@@ -243,19 +249,108 @@ func TestResolveSourceRejectsAnotherModule(t *testing.T) {
 	}
 }
 
-// TestGoModDownloadFetchesPublishedPigSource runs the real `go mod download`
-// against the configured module proxy for a published PiG release. It skips
-// when the proxy is unreachable.
+// publishedModuleProxy serves one PiG release from a file:// module proxy in the layout the Go
+// command reads: <escaped path>/@v/<version>.{info,mod,zip}. It returns the proxy URL, the
+// release revision its .info reports, and the h1: module hash of the zip, computed from the zip
+// itself, which is the value a checksum database pins for that release.
+func publishedModuleProxy(t *testing.T, version string) (proxyURL, revision, sum string) {
+	t.Helper()
+	revision = "0123456789abcdef0123456789abcdef01234567"
+	escaped, err := module.EscapePath(pigModulePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := t.TempDir()
+	versionDir := filepath.Join(base, filepath.FromSlash(escaped), "@v")
+	if err := os.MkdirAll(versionDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	tree := fakeModuleTree(t)
+	var archive bytes.Buffer
+	if err := modzip.CreateFromDir(&archive, module.Version{Path: pigModulePath, Version: version}, tree); err != nil {
+		t.Fatal(err)
+	}
+	gomod, err := os.ReadFile(filepath.Join(tree, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := json.Marshal(map[string]any{
+		"Version": version,
+		"Time":    "2026-01-02T03:04:05Z",
+		"Origin":  map[string]string{"VCS": "git", "URL": "https://" + pigModulePath, "Hash": revision},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string][]byte{version + ".info": info, version + ".mod": gomod, version + ".zip": archive.Bytes()} {
+		if err := os.WriteFile(filepath.Join(versionDir, name), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sum, err = dirhash.HashZip(filepath.Join(versionDir, version+".zip"), dirhash.Hash1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.ToSlash(base)
+	proxyURL = "file://" + root
+	if !strings.HasPrefix(root, "/") {
+		proxyURL = "file:///" + root
+	}
+	return proxyURL, revision, sum
+}
+
+// TestGoModDownloadFetchesPublishedPigSource runs the real `go mod download` against a local
+// file module proxy that serves one PiG release in the proxy layout. The fetch needs no network,
+// so the test proves the same path a release binary takes (go mod download -json, the module
+// sum, the origin revision, staging) without waiting on a 50 MB download. The module sum the
+// download reports must equal the h1: hash computed from the served zip, which is the hash a
+// checksum database pins for the release.
 func TestGoModDownloadFetchesPublishedPigSource(t *testing.T) {
+	const published = "v0.9.8"
+	proxy, revision, wantSum := publishedModuleProxy(t, published)
+	withoutPigCheckout(t)
+	t.Setenv("GOMODCACHE", t.TempDir())
+	t.Setenv("GOFLAGS", "-modcacherw")
+	t.Setenv("GOPROXY", proxy)
+	t.Setenv("GOSUMDB", "off")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	builder := nativeBuilder{runningRelease: func() (string, bool) { return published, true }}
+	var stderr bytes.Buffer
+	source, err := builder.resolveSource(ctx, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source.ModuleVersion != published || !isPigModule(source.Root) || source.Revision != revision {
+		t.Fatalf("source = %+v, want version %s and revision %s", source, published, revision)
+	}
+	if _, err := os.Stat(filepath.Join(source.Root, "coding", "cli", "main.go")); err != nil {
+		t.Fatalf("fetched source lacks coding/cli: %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(source.Root, ".pig-source-sum")); err != nil || string(got) != wantSum {
+		t.Fatalf("staged module sum = %q, %v; want the served zip's %s", got, err, wantSum)
+	}
+	if !strings.Contains(stderr.String(), "fetching PiG v0.9.8 source") {
+		t.Fatalf("stderr = %q", stderr.String())
+	}
+}
+
+// TestPublishedPigReleaseResolvesThroughTheModuleProxy resolves the published v0.3.1 release
+// through the real module proxy and checksum database. It fetches only the release metadata
+// (.info and go.mod, a few KB; a failed go.mod hash check fails the command), not the 50 MB source zip, and checks the go.mod hash against
+// sum.golang.org. An unreachable proxy fails the test; a run that has no network on purpose says so with PIG_TEST_OFFLINE=1 (or -short).
+func TestPublishedPigReleaseResolvesThroughTheModuleProxy(t *testing.T) {
 	if testing.Short() {
-		t.Skip("network download")
+		t.Skip("network metadata lookup")
+	}
+	if os.Getenv("PIG_TEST_OFFLINE") == "1" {
+		t.Skip("PIG_TEST_OFFLINE=1: no network by request")
 	}
 	conn, err := net.DialTimeout("tcp", "proxy.golang.org:443", 3*time.Second)
 	if err != nil {
-		t.Skipf("Go module proxy unreachable: %v", err)
+		t.Fatalf("Go module proxy unreachable (set PIG_TEST_OFFLINE=1 to run offline on purpose): %v", err)
 	}
 	_ = conn.Close()
-	withoutPigCheckout(t)
 	t.Setenv("GOMODCACHE", t.TempDir())
 	t.Setenv("GOFLAGS", "-modcacherw")
 	t.Setenv("GOPROXY", "https://proxy.golang.org")
@@ -263,20 +358,27 @@ func TestGoModDownloadFetchesPublishedPigSource(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	const published = "v0.3.1"
-	builder := nativeBuilder{runningRelease: func() (string, bool) { return published, true }}
-	var stderr bytes.Buffer
-	source, err := builder.resolveSource(ctx, &stderr)
+	goToolchain, err := toolchain.ResolveGo()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source.ModuleVersion != published || !isPigModule(source.Root) || len(source.Revision) != 40 {
-		t.Fatalf("source = %+v", source)
+	command := linkerexec.CommandContext(ctx, goToolchain.Command, "list", "-m", "-json", pigModulePath+"@"+published)
+	command.Dir = t.TempDir()
+	command.Env = goToolchain.Environ(moduleSourceBuildEnv(os.Environ()))
+	var stdout, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &stdout, &stderr
+	if err := command.Run(); err != nil {
+		t.Fatalf("go list -m %s@%s: %v\n%s", pigModulePath, published, err, stderr.String())
 	}
-	if _, err := os.Stat(filepath.Join(source.Root, "cmd", "pig", "main.go")); err != nil {
-		t.Fatalf("fetched source lacks cmd/pig: %v", err)
+	var listed struct {
+		Path, Version string
+		Origin        *struct{ Hash string }
 	}
-	if !strings.Contains(stderr.String(), "fetching PiG v0.3.1 source") {
-		t.Fatalf("stderr = %q", stderr.String())
+	if err := json.Unmarshal(stdout.Bytes(), &listed); err != nil {
+		t.Fatal(err)
+	}
+	if listed.Path != pigModulePath || listed.Version != published || listed.Origin == nil || len(listed.Origin.Hash) != 40 {
+		t.Fatalf("listed = %+v", listed)
 	}
 }
 

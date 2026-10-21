@@ -165,7 +165,8 @@ func runPigAdmission(t *testing.T, program []admitStep) []admitOutcome {
 			}
 			modes := QueueModes{SteeringMode: step.Modes.SteeringMode, FollowUpMode: step.Modes.FollowUpMode}
 			value, err = line.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
-				return AdmitSubmission(tx, conv, draft.submission(t, entries), step.Now, modes)
+				admission, err := AdmitSubmission(tx, conv, draft.submission(t, entries), step.Now, modes, nil)
+				return admission.Id, err
 			}, session.TransactionScope{})
 		case "endRun":
 			_, err = line.CommitWith(ctx, func(tx *session.Transaction) (any, error) {

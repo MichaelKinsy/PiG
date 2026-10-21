@@ -25,19 +25,19 @@ type definitionState struct {
 
 var (
 	definitionSessionDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.session", Version: 1, Initial: func() definitionState { return definitionState{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.session", Version: 1, Initial: func() definitionState { return definitionState{} }, CheckpointWhen: func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   sessionScope,
 	})
 	definitionLatestDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.latest", Version: 1, Initial: func() definitionState { return definitionState{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.latest", Version: 1, Initial: func() definitionState { return definitionState{} }, CheckpointWhen: func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   latestScope(durable.ForkCurrent),
 	})
 	definitionRewindableDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.rewindable", Version: 1, Initial: func() definitionState { return definitionState{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.rewindable", Version: 1, Initial: func() definitionState { return definitionState{} }, CheckpointWhen: func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   rewindableScope(durable.ForkAsOf),
 	})
 	definitionTaskDoc = durable.DefineDoc(durable.DocDefinition[definitionState]{
-		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.task", Version: 1, Initial: func() definitionState { return definitionState{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[definitionState]{Kind: "t.task", Version: 1, Initial: func() definitionState { return definitionState{} }, CheckpointWhen: func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   taskScope,
 	})
 	definitionSessionFamily = durable.DefineDocFamily(durable.DocFamilyDefinition[definitionState, float64]{
@@ -45,18 +45,21 @@ var (
 		Kind:   "t.session-family", Version: 1,
 		DocumentSemantics: sessionScope,
 		Initial:           func(seed float64) definitionState { return definitionState{Value: seed} },
+		CheckpointWhen:    func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false },
 	})
 	definitionConversationFamily = durable.DefineDocFamily(durable.DocFamilyDefinition[definitionState, float64]{
 		Family: true,
 		Kind:   "t.conversation-family", Version: 1,
 		DocumentSemantics: rewindableScope(durable.ForkInitial),
 		Initial:           func(seed float64) definitionState { return definitionState{Value: seed} },
+		CheckpointWhen:    func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false },
 	})
 	definitionTaskFamily = durable.DefineDocFamily(durable.DocFamilyDefinition[definitionState, float64]{
 		Family: true,
 		Kind:   "t.task-family", Version: 1,
 		DocumentSemantics: taskScope,
 		Initial:           func(seed float64) definitionState { return definitionState{Value: seed} },
+		CheckpointWhen:    func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false },
 	})
 )
 
@@ -101,11 +104,11 @@ var (
 func TestDocumentDefinitions(t *testing.T) {
 	t.Run("validates persisted version semantics", func(t *testing.T) {
 		expectPanic(t, "positive integer", func() {
-			durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "k", Version: 0}, DocumentSemantics: sessionScope})
+			durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "k", Version: 0, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }}, DocumentSemantics: sessionScope})
 		})
 		// Upstream also rejects version 1.5 at run time; a Go int version cannot hold a fraction, so the compiler does.
-		testenv.ExpectTypeError(t, "a fractional version", definitionImports, `_ = d.CommonDocDefinition[struct{}]{Kind: "k", Version: 1.5}`)
-		empty := durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "", Version: 1}, DocumentSemantics: sessionScope})
+		testenv.ExpectTypeError(t, "a fractional version", definitionImports, `_ = d.CommonDocDefinition[struct{}]{Kind: "k", Version: 1.5, CheckpointWhen: func(struct{}, []durable.Op, durable.CheckpointInfo) bool { return false }}`)
+		empty := durable.DefineDoc(durable.DocDefinition[obj]{CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "", Version: 1, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }}, DocumentSemantics: sessionScope})
 		if empty.AnyDefinition().Kind != "" || definitionSessionDoc.AnyDefinition().Kind != "t.session" {
 			t.Fatal("kinds are kept as defined")
 		}
@@ -118,6 +121,7 @@ func TestDocumentDefinitions(t *testing.T) {
 				Kind: "t.nofamily", Version: 1,
 				DocumentSemantics: sessionScope,
 				Initial:           func(float64) definitionState { return definitionState{} },
+				CheckpointWhen:    func(definitionState, []durable.Op, durable.CheckpointInfo) bool { return false },
 			})
 		})
 		for name, token := range map[string]durable.AnyDocToken{"session": definitionSessionFamily, "conversation": definitionConversationFamily, "task": definitionTaskFamily} {

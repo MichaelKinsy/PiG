@@ -12,6 +12,7 @@ process.emitWarning = () => {};
 const shimModules = new Map([
   ["./shims/pi-agent-core.mjs", () => runtimeRequire("./shims/pi-agent-core.mjs")],
   ["./shims/pi-ai.mjs", () => runtimeRequire("./shims/pi-ai.mjs")],
+  ["./shims/pi-ai-models.mjs", () => runtimeRequire("./shims/pi-ai-models.mjs")],
   ["./shims/pi-ai-oauth.mjs", () => runtimeRequire("./shims/pi-ai-oauth.mjs")],
   ["./shims/pi-coding-agent.mjs", () => runtimeRequire("./shims/pi-coding-agent.mjs")],
   ["./shims/pi-dist/pi-ai/sdk-bundle/providers.js", () => runtimeRequire("./shims/pi-dist/pi-ai/sdk-bundle/providers.js")],

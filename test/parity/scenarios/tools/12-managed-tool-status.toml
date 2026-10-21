@@ -3,6 +3,9 @@
 # no download contacts the network. tools-manager.ts:353-356 silently reuses an
 # installed binary; :377-382 downloads and reports installation otherwise.
 # Success cases assert one download across installation and reuse for fd and rg.
+# Pi bd3c9b82's tools-manager.ts also imports VERSION from ../config.ts and
+# getPiUserAgent from ./pi-user-agent.ts (it sends the detailed User-Agent, D65);
+# the oracle re-exports both from the pinned package's dist, so no pinned code is faked.
 # Only the temporary bin-directory prefix is projected to /fixture/bin in status records.
 # D81 additive same-manager overlapping-flight coalescing is Go-only and unit-tested;
 # pinned Pi starts separate downloads for overlapping same-tool misses.

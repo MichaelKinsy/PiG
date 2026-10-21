@@ -6,12 +6,12 @@ import { resolvePath } from "../utils/paths.js";
 import { AgentSession } from "./agent-session.js";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.js";
 import { CacheWarmer } from "./cache-warmer.js";
+import { getClientIdentity } from "./client-identity.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import { createToolNameMatcher } from "./mcp-servers.js";
 import { convertToLlm } from "./messages.js";
 import { findInitialModel } from "./model-resolver.js";
 import { ModelRuntime } from "./model-runtime.js";
-import { mergeProviderAttributionHeaders } from "./provider-attribution.js";
 import { DefaultResourceLoader } from "./resource-loader.js";
 import { getDefaultSessionDir, SessionManager } from "./session-manager.js";
 import { applyToolModifiers, DEFAULT_TOOL_NAMES, getToolListError, isToolModifier, SettingsManager, } from "./settings-manager.js";
@@ -190,7 +190,7 @@ export async function createAgentSession(options = {}) {
     };
     const extensionRunnerRef = {};
     const cacheWarmer = new CacheWarmer(modelRuntime, sessionManager, () => settingsManager.getCacheWarmingMode(), async (event) => extensionRunnerRef.current?.emitCacheWarmingDecision(event) ?? event.action);
-    const buildRequestOptions = (requestModel, options = {}) => {
+    const buildRequestOptions = (options = {}) => {
         const providerRetrySettings = settingsManager.getProviderRetrySettings();
         const httpIdleTimeoutMs = settingsManager.getHttpIdleTimeoutMs();
         const effectiveTimeoutMs = httpIdleTimeoutMs === 0 ? 2147483647 : httpIdleTimeoutMs;
@@ -201,12 +201,11 @@ export async function createAgentSession(options = {}) {
             websocketConnectTimeoutMs: options.websocketConnectTimeoutMs ?? settingsManager.getWebSocketConnectTimeoutMs(),
             maxRetries: options.maxRetries ?? providerRetrySettings.maxRetries,
             maxRetryDelayMs: options.maxRetryDelayMs ?? providerRetrySettings.maxRetryDelayMs,
-            transformHeaders: async (requestHeaders) => {
-                const headers = mergeProviderAttributionHeaders(requestModel, settingsManager, options.sessionId, requestHeaders);
-                return headerRunner?.hasHandlers("before_provider_headers")
-                    ? headerRunner.emitBeforeProviderHeaders(headers ?? {})
-                    : (headers ?? {});
-            },
+            // Replaces the agent loop's default identity; read per request so telemetry changes apply at once.
+            identity: getClientIdentity(settingsManager),
+            transformHeaders: async (headers) => headerRunner?.hasHandlers("before_provider_headers")
+                ? headerRunner.emitBeforeProviderHeaders(headers)
+                : headers,
         };
     };
     // Warm only requests for the selected model. Requests a virtual selection routed, or that an
@@ -260,7 +259,7 @@ export async function createAgentSession(options = {}) {
         },
         convertToLlm: convertToLlmWithBlockImages,
         streamFn: async (model, context, options) => {
-            const requestOptions = buildRequestOptions(model, options);
+            const requestOptions = buildRequestOptions(options);
             // Compaction and summaries use their own routing ids; only session requests
             // replace the cache entry, so warming restarts from them. Keep warming while
             // the current transcript still extends the request's prefix. Agent state may

@@ -119,6 +119,8 @@ export class Agent {
     maxRetryDelayMs;
     /** Tool execution strategy for assistant messages that contain multiple tool calls. */
     toolExecution;
+    /** Request identity forwarded to the stream function, over `DEFAULT_AGENT_IDENTITY`. */
+    identity;
     constructor(options) {
         // Older compiled consumers may omit options or streamFn even though the current API requires them.
         const runtimeOptions = options ?? {};
@@ -143,6 +145,7 @@ export class Agent {
         this.transport = runtimeOptions.transport ?? "auto";
         this.maxRetryDelayMs = runtimeOptions.maxRetryDelayMs;
         this.toolExecution = runtimeOptions.toolExecution ?? "parallel";
+        this.identity = runtimeOptions.identity;
     }
     /**
      * Subscribe to agent lifecycle events.
@@ -312,6 +315,7 @@ export class Agent {
             transport: this.transport,
             thinkingBudgets: this.thinkingBudgets,
             maxRetryDelayMs: this.maxRetryDelayMs,
+            identity: this.identity,
             toolExecution: this.toolExecution,
             beforeToolCall: this.beforeToolCall,
             afterToolCall: this.afterToolCall,

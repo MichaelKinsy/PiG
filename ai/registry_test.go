@@ -238,8 +238,8 @@ func TestLookupModelExact_NoCrossProviderBorrow(t *testing.T) {
 		t.Error("LookupModelExact resolved github-copilot/gpt-4o; copilot has no gpt-4o")
 	}
 	// A genuine provider/model still resolves.
-	if _, ok := LookupModelExact("github-copilot/gpt-5.4"); !ok {
-		t.Error("LookupModelExact should resolve github-copilot/gpt-5.4")
+	if _, ok := LookupModelExact("github-copilot/gpt-6.1-sol"); !ok {
+		t.Error("LookupModelExact should resolve github-copilot/gpt-6.1-sol")
 	}
 	if _, ok := LookupModelExact(""); ok {
 		t.Error("empty spec must miss")
@@ -488,15 +488,15 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			wantBaseURL:        "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic",
 		},
 		{
-			spec:               "github-copilot/gpt-5.4-mini",
+			spec:               "github-copilot/gpt-5.4-nano",
 			wantProvider:       "github-copilot",
-			wantName:           "GPT-5.4 mini",
+			wantName:           "GPT-5.4 nano",
 			wantAPI:            "openai-responses",
 			wantMaxTokens:      128000,
 			wantContext:        400000,
-			wantInputCost:      0.75,
-			wantOutputCost:     4.5,
-			wantCacheReadCost:  0.075,
+			wantInputCost:      0.2,
+			wantOutputCost:     1.25,
+			wantCacheReadCost:  0.02,
 			wantCacheWriteCost: 0,
 			wantReasoning:      true,
 			wantCapabilities:   []string{"text", "image"},
@@ -512,22 +512,23 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 			},
 		},
 		{
-			spec:               "openai-codex/gpt-5.3-codex-spark",
+			spec:               "openai-codex/gpt-5.6-sol",
 			wantProvider:       "openai-codex",
-			wantName:           "GPT-5.3 Codex Spark",
+			wantName:           "GPT-5.6 Sol",
 			wantAPI:            "openai-codex-responses",
 			wantMaxTokens:      128000,
-			wantContext:        128000,
-			wantInputCost:      1.75,
-			wantOutputCost:     14,
-			wantCacheReadCost:  0.175,
-			wantCacheWriteCost: 0,
+			wantContext:        272000,
+			wantInputCost:      4,
+			wantOutputCost:     20,
+			wantCacheReadCost:  0.4,
+			wantCacheWriteCost: 5,
 			wantReasoning:      true,
-			wantCapabilities:   []string{"text"},
+			wantCapabilities:   []string{"text", "image"},
 			wantBaseURL:        "https://chatgpt.com/backend-api",
 			wantThinkingEntries: map[ModelThinkingLevel]*string{
 				ThinkingMinimal: new("low"),
 				ThinkingXHigh:   new("xhigh"),
+				ThinkingMax:     new("max"),
 			},
 		},
 		{

@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable/env"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/durable/src/types.ts
@@ -135,12 +136,12 @@ type CommonDocDefinition[T any] struct {
 	Initial func() T
 	// Migrate converts a value stored by an older version; nil when absent.
 	Migrate func(value JsonObject, fromVersion int) (T, error)
-	// CheckpointWhen returns true to store this ordinary change as a complete base instead of a delta; nil when
-	// absent.
+	// CheckpointWhen is the required policy: it returns true to store this ordinary change as a complete base instead of
+	// a delta. There is no default; a definition without CheckpointWhen and CheckpointWhenRaw is rejected by DefineDoc.
 	CheckpointWhen func(value T, ops []Op, info CheckpointInfo) bool
-	// CheckpointWhenRaw is CheckpointWhen over the exact prepared JSON object, with no typed decode. It takes
-	// precedence over CheckpointWhen when both are set; a definition that sets both must make them agree. Built-in
-	// documents set it so the per-commit predicate costs nothing in the size of the value.
+	// CheckpointWhenRaw is CheckpointWhen over the exact prepared JSON object, with no typed decode, and satisfies the
+	// requirement in its place. It takes precedence over CheckpointWhen when both are set; a definition that sets both
+	// must make them agree. Built-in documents set it so the per-commit predicate costs nothing in the size of the value.
 	CheckpointWhenRaw func(value JsonObject, ops []Op, info CheckpointInfo) bool
 }
 
@@ -159,8 +160,8 @@ type DocFamilyDefinition[T, I any] struct {
 	Version int
 	// Migrate converts a value stored by an older version; nil when absent.
 	Migrate func(value JsonObject, fromVersion int) (T, error)
-	// CheckpointWhen returns true to store this ordinary change as a complete base instead of a delta; nil when
-	// absent.
+	// CheckpointWhen is the required policy: it returns true to store this ordinary change as a complete base instead of
+	// a delta. There is no default; DefineDocFamily rejects a definition without it.
 	CheckpointWhen func(value T, ops []Op, info CheckpointInfo) bool
 	DocumentSemantics
 	// Family is upstream's required literal `family: true` (documents.ts FamilyInput); DefineDocFamily panics when it is false.
@@ -351,8 +352,21 @@ const (
 	JoinAllSettled JoinPolicy = "allSettled"
 )
 
+// TaskTrace is TaskOptions.trace, `TelemetryCarrier | "root"`: an explicit carrier override, or Root to start at the
+// adapter root without a stored carrier. A nil *TaskTrace is upstream's omitted or undefined trace.
+type TaskTrace struct {
+	// Root selects `"root"`; Carrier is then ignored.
+	Root    bool
+	Carrier telemetry.TelemetryCarrier
+}
+
 // TaskOptions holds the creation options for a durable task.
 type TaskOptions struct {
+	// Trace omitted (nil) inherits the creator's carrier; a Carrier overrides it; Root starts at the adapter root
+	// without a stored carrier.
+	Trace *TaskTrace
+	// Links are immutable creation-time links, attached to the spans of this task's first invocation.
+	Links []telemetry.TelemetryCarrier
 	// Ownership is required: a task always names its owner (spec §5.5).
 	Ownership TaskOwnership
 	// ConversationId defaults to the owner task's conversation, or the transaction's bound conversation; required for
@@ -502,8 +516,10 @@ const (
 // keeps them consistent: Entry is set for placed and done records and optional for unanswered input; Answer only for
 // done input; Reason and Detail only for unanswered records.
 type SubmissionRecord struct {
-	Id             SubmissionId   `json:"id"`
-	ConversationId ConversationId `json:"conversationId"`
+	// Trace is the adapter-owned context of the admission span; absent without propagation.
+	Trace          telemetry.TelemetryCarrier `json:"trace,omitzero"`
+	Id             SubmissionId               `json:"id"`
+	ConversationId ConversationId             `json:"conversationId"`
 	// RequestId is the host-provided deduplication key, scoped to the conversation; nil when absent.
 	RequestId *string          `json:"requestId,omitempty"`
 	Type      SubmissionType   `json:"type"`
@@ -525,20 +541,21 @@ type SubmissionSettlement struct {
 
 // SubmissionCreate holds the submission fields supplied before the Session assigns an ID.
 type SubmissionCreate struct {
-	ConversationId ConversationId   `json:"conversationId"`
-	RequestId      *string          `json:"requestId,omitempty"`
-	Type           SubmissionType   `json:"type"`
-	Status         SubmissionStatus `json:"status"`
-	Entry          *EntryId         `json:"entry,omitempty"`
-	Answer         *EntryId         `json:"answer,omitempty"`
-	Reason         *string          `json:"reason,omitempty"`
-	Detail         JsonValue        `json:"detail,omitempty"`
+	Trace          telemetry.TelemetryCarrier `json:"trace,omitzero"`
+	ConversationId ConversationId             `json:"conversationId"`
+	RequestId      *string                    `json:"requestId,omitempty"`
+	Type           SubmissionType             `json:"type"`
+	Status         SubmissionStatus           `json:"status"`
+	Entry          *EntryId                   `json:"entry,omitempty"`
+	Answer         *EntryId                   `json:"answer,omitempty"`
+	Reason         *string                    `json:"reason,omitempty"`
+	Detail         JsonValue                  `json:"detail,omitempty"`
 }
 
 // Record returns the submission record of a create with its assigned ID.
 func (create SubmissionCreate) Record(id SubmissionId) SubmissionRecord {
 	return SubmissionRecord{
-		Id: id, ConversationId: create.ConversationId, RequestId: create.RequestId, Type: create.Type,
+		Trace: create.Trace, Id: id, ConversationId: create.ConversationId, RequestId: create.RequestId, Type: create.Type,
 		Status: create.Status, Entry: create.Entry, Answer: create.Answer, Reason: create.Reason, Detail: create.Detail,
 	}
 }
@@ -715,8 +732,12 @@ const AbortedByRestart TaskAbortReason = "restart"
 
 // TaskRecord is the complete replacement record for one durable task state machine.
 type TaskRecord[I, S, R any] struct {
-	Id             TaskId         `json:"id"`
-	ConversationId ConversationId `json:"conversationId"`
+	// Trace is the adapter-owned context that created this task; phase invocations extract it as their parent.
+	Trace telemetry.TelemetryCarrier `json:"trace,omitzero"`
+	// Links are the immutable creation-time links for the task's first invocation.
+	Links          []telemetry.TelemetryCarrier `json:"links,omitzero"`
+	Id             TaskId                       `json:"id"`
+	ConversationId ConversationId               `json:"conversationId"`
 	// Kind is the registered task definition name.
 	Kind string `json:"kind"`
 	// Version is the definition version used to migrate live input and checkpoints.

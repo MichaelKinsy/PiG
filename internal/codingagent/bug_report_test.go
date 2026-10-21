@@ -117,11 +117,11 @@ func (s *bugDialogScript) context(session *Session) *SlashContext {
 		AppendText: func(text string) { s.appended = append(s.appended, text) },
 		ShowStatus: func(text string) { s.status = append(s.status, text) },
 		ModelName:  func() string { return "Test Model" },
-		ShowExtensionEditor: func(title, description, prefill string) (string, bool) {
+		ShowBugReportEditor: func(title, description, prefill string) (string, bool) {
 			s.prompts = append(s.prompts, title+"\n"+description)
 			return s.editor, true
 		},
-		ShowExtensionSelector: func(title string, options []string, description string) (string, bool) {
+		ShowBugReportSelector: func(title string, options []string, description string) (string, bool) {
 			s.prompts = append(s.prompts, title+"\n"+description)
 			if len(s.choices) == 0 {
 				s.t.Fatalf("unexpected selector %q", title)

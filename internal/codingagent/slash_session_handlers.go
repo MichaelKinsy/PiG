@@ -379,7 +379,7 @@ func treeNavigateWithSummarize(sc *SlashContext, entryID string) error {
 	for !skipPrompt {
 		choice, ok := sc.ShowExtensionSelector("Summarize branch?", []string{
 			optNoSummary, optSummarize, optCustomSummarize,
-		}, "")
+		})
 		if !ok {
 			// Esc from selector: re-open tree at same row.
 			// Mirrors upstream interactive-mode.ts:5601.
@@ -388,7 +388,7 @@ func treeNavigateWithSummarize(sc *SlashContext, entryID string) error {
 		wantsSummary = choice != optNoSummary
 
 		if choice == optCustomSummarize {
-			instructions, ok := sc.ShowExtensionEditor("Custom summarization instructions", "", "")
+			instructions, ok := sc.ShowExtensionEditor("Custom summarization instructions", "")
 			if !ok {
 				// Esc from editor: loop back to selector.
 				// Mirrors upstream interactive-mode.ts:5609.
@@ -1106,7 +1106,7 @@ func confirmSlash(sc *SlashContext, title, message string) bool {
 	if sc.ShowExtensionConfirm != nil {
 		return sc.ShowExtensionConfirm(title, message)
 	}
-	choice, ok := sc.ShowExtensionSelector(title+"\n"+message, []string{"Yes", "No"}, "")
+	choice, ok := sc.ShowExtensionSelector(title+"\n"+message, []string{"Yes", "No"})
 	return ok && choice == "Yes"
 }
 

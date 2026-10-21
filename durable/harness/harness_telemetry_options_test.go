@@ -2,9 +2,9 @@
 // Ports packages/durable/test/harness-telemetry-options.test.ts.
 //
 // Upstream's expectTypeOf and @ts-expect-error assertions check the option's type. The Go port type-checks each snippet
-// against the compiled packages, as types_upstream_test.go does. TypeScript's `Partial<TelemetryPropagation &
-// TelemetryMetrics>` lets an adapter define any subset of the members; Go has no partial interface, so the capabilities
-// are the interfaces telemetry.TelemetryPropagation and telemetry.TelemetryMetrics, found by type assertion.
+// against the compiled packages, as types_upstream_test.go does. Since Pi 2ec55d80 the capabilities are the `metrics` and
+// `propagation` members of every TelemetryContext (`full.telemetry?.propagation?.inject`); Go carries them as the methods
+// Metrics() and Propagation(), where nil is an absent member.
 
 package harness
 
@@ -31,18 +31,19 @@ func TestHarnessOptionsTelemetryAcceptsOneAdapterWithOptionalPropagationAndMetri
 	if omitted.Telemetry != nil {
 		t.Fatal("an omitted Telemetry is not nil")
 	}
-	// The adapter's capabilities are found on the one value; a context-only adapter has none.
-	if _, ok := full.Telemetry.(telemetry.TelemetryPropagation); !ok {
+	// The adapter's capabilities are read from the one value (`full.telemetry?.propagation?.inject`); a context-only
+	// adapter has none.
+	if full.Telemetry.Propagation() == nil {
 		t.Fatal("the full adapter does not offer propagation")
 	}
-	if _, ok := full.Telemetry.(telemetry.TelemetryMetrics); !ok {
+	if full.Telemetry.Metrics() == nil {
 		t.Fatal("the full adapter does not offer metrics")
 	}
-	if _, ok := contextOnly.Telemetry.(telemetry.TelemetryPropagation); ok {
-		t.Fatal("the no-op context offers propagation")
+	if contextOnly.Telemetry.Propagation() != telemetry.NoopTelemetryPropagation {
+		t.Fatal("the no-op context does not carry the no-op propagation")
 	}
-	if _, ok := contextOnly.Telemetry.(telemetry.TelemetryMetrics); ok {
-		t.Fatal("the no-op context offers metrics")
+	if contextOnly.Telemetry.Metrics() != telemetry.NoopTelemetryMetrics {
+		t.Fatal("the no-op context does not carry the no-op metrics")
 	}
 
 	imports := map[string]string{

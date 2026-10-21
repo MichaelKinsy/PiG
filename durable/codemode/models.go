@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
@@ -434,7 +435,7 @@ func createModelTools() []*durable.ToolRegistration {
 			return durable.ToolExecutionResult{}, err
 		}
 		classifier := resolved.(*ai.ClassifierModel)
-		result := c.Classify(ctx, classifier, checked)
+		result := c.Classify(ctx, classifier, checked, ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Telemetry: chordctx.Telemetry(ctx)}})
 		encoded, err := json.Marshal(result)
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
@@ -451,7 +452,7 @@ func createModelTools() []*durable.ToolRegistration {
 			return durable.ToolExecutionResult{}, err
 		}
 		painter := resolved.(*ai.ImageModel)
-		result := c.GenerateImages(ctx, painter, checked)
+		result := c.GenerateImages(ctx, painter, checked, ai.ModelsImagesOptions{ImagesOptions: ai.ImagesOptions{Telemetry: chordctx.Telemetry(ctx)}})
 		encoded, err := json.Marshal(result)
 		if err != nil {
 			return durable.ToolExecutionResult{}, err

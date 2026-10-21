@@ -16,6 +16,7 @@ if (!PIG_UPSTREAM_VERSION) throw new Error('PIG_UPSTREAM_VERSION is not set: run
 import { PI_PACKAGE_VERSION } from "../../../../../test/parity/testdata/pi-version.mjs";
 import { createServer } from 'node:http';
 import { createHook } from 'node:async_hooks';
+import { subscribe } from 'node:diagnostics_channel';
 import { once } from 'node:events';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -187,6 +188,20 @@ function message(event) {
   return copy(event.partial ?? event.message ?? event.error);
 }
 
+// The client's sockets: undici connects with net.connect, which publishes each socket on this channel. A later chunk is written only
+// once the client has read every byte written before it (clientHasRead), so each chunk reaches the client in a macrotask of its own
+// whatever the machine's load: a fixed wait let a stall of the loop (a cold module, a collection) write the next chunk before the
+// poll phase read the last one, and Node then coalesced the two into one read().
+const clientSockets = new Set();
+subscribe('net.client.socket', ({ socket }) => { clientSockets.add(socket); socket.once('close', () => clientSockets.delete(socket)); });
+async function clientHasRead(res) {
+  // The client end of this response's connection: its local port is the server end's remote port.
+  const server = res.socket;
+  const client = () => [...clientSockets].find(socket => socket.localPort === server.remotePort && socket.remotePort === server.localPort);
+  // A connection that closed (the consumer aborted, or the case ended) has nothing left to read: stop, or the loop spins forever.
+  while (!server.destroyed && (client()?.bytesRead ?? 0) < server.bytesWritten) await new Promise(resolve => setImmediate(resolve));
+}
+
 function serverFor(delivery, body) {
   let requests = 0;
   const server = createServer(async (req, res) => {
@@ -204,7 +219,7 @@ function serverFor(delivery, body) {
     }
     for (let i = 0; i < plan.chunks.length; i++) {
       const chunk = plan.chunks[i];
-      if (chunk.wait) await new Promise(resolve => setTimeout(resolve, chunk.wait));
+      if (chunk.wait || i > 0) await clientHasRead(res);
       if (res.destroyed) return;
       const bytes = Buffer.from(chunk.data, 'latin1');
       if (i === plan.chunks.length - 1) res.end(bytes); else res.write(bytes);

@@ -19,7 +19,7 @@ func runCacheAffinityCase(t *testing.T, codex bool, key, baseURL string) {
 	var provider Provider
 	if codex {
 		expected = "cache affinity e2e success"
-		provider = NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{Model: "gpt-5.5", APIKey: key, BaseURL: baseURL})
+		provider = NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{Model: "gpt-6.1-sol", APIKey: key, BaseURL: baseURL})
 	} else {
 		model, ok := LookupModelExact("openai/gpt-5.4")
 		if !ok {
@@ -94,7 +94,7 @@ func cacheAffinityFauxEndpoint(t *testing.T, codex bool) string {
 		// Pi 0.87.1 complete(model, context, options) for the original cache-affinity cases: capture before transport with onPayload.
 		wantJSON := `{"model":"gpt-5.4","input":[{"role":"developer","content":"You are a helpful assistant. Reply exactly as requested."},{"role":"user","content":[{"type":"input_text","text":"Reply with exactly: openai cache affinity e2e success"}]}],"stream":true,"prompt_cache_key":"0195d6e4-4cf9-7f44-a2d8-f8f7f49ee9d3","store":false,"reasoning":{"effort":"none"}}` // gitleaks:allow (test fixture, not a credential)
 		if codex {
-			wantJSON = `{"model":"gpt-5.5","store":false,"stream":true,"instructions":"You are a helpful assistant. Reply exactly as requested.","input":[{"role":"user","content":[{"type":"input_text","text":"Reply with exactly: cache affinity e2e success"}]}],"text":{"verbosity":"low"},"include":["reasoning.encrypted_content"],"prompt_cache_key":"0195d6e4-4cf9-7f44-a2d8-f8f7f49ee9d3","tool_choice":"auto","parallel_tool_calls":true,"reasoning":{"effort":"none"}}` // gitleaks:allow (test fixture, not a credential)
+			wantJSON = `{"model":"gpt-6.1-sol","store":false,"stream":true,"instructions":"You are a helpful assistant. Reply exactly as requested.","input":[{"role":"user","content":[{"type":"input_text","text":"Reply with exactly: cache affinity e2e success"}]}],"text":{"verbosity":"low"},"include":["reasoning.encrypted_content"],"prompt_cache_key":"0195d6e4-4cf9-7f44-a2d8-f8f7f49ee9d3","tool_choice":"auto","parallel_tool_calls":true}` // gitleaks:allow (test fixture, not a credential)
 		}
 		var want map[string]any
 		if err := json.Unmarshal([]byte(wantJSON), &want); err != nil {

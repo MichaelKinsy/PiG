@@ -2,10 +2,12 @@ package durabletest
 
 import (
 	"fmt"
+	"reflect"
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // CheckRecordKeyOrder writes records whose dynamic members (entry data, task input and checkpoint, submission detail) hold objects
@@ -45,6 +47,45 @@ func CheckRecordKeyOrder(storage durable.Storage) error {
 		if string(encoded) != want {
 			return fmt.Errorf("%s reads back as %s, want %s", name, encoded, want)
 		}
+	}
+	return nil
+}
+
+// CheckRecordCarriers writes a task with a stored trace carrier and creation-time links, and a submission with a stored
+// trace carrier (Pi 2ec55d80 packages/durable/src/types.ts: TaskRecord.trace/links, SubmissionRecord.trace), and reads them
+// back through storage. The carriers are opaque and the records persist them as plain JSON members, so a record without
+// them reads back without them.
+func CheckRecordCarriers(storage durable.Storage) error {
+	rootId := createRoot(storage)
+	taskId := mint[durable.TaskId](storage)
+	plainId := mint[durable.TaskId](storage)
+	submissionId := mint[durable.SubmissionId](storage)
+	trace := telemetry.TelemetryCarrier{"adapter": "opaque", "b": "2", "a": "1"}
+	links := []telemetry.TelemetryCarrier{{"link": "first"}, {"link": "second", "x": "y"}}
+	task := pendingTask(taskId, rootId, "ready")
+	task.Trace, task.Links = trace, links
+	plain := pendingTask(plainId, rootId, "ready")
+	commit(storage,
+		taskWrite(task),
+		taskWrite(plain),
+		submissionWrite(durable.SubmissionRecord{Id: submissionId, ConversationId: rootId, Type: durable.SubmissionTypeInput, Status: durable.SubmissionQueued, Trace: trace}),
+	)
+	storedTask := must(storage.Task(conformanceContext, taskId))
+	if !reflect.DeepEqual(storedTask.Trace, trace) || !reflect.DeepEqual(storedTask.Links, links) {
+		return fmt.Errorf("task reads back trace %v and links %v, want %v and %v", storedTask.Trace, storedTask.Links, trace, links)
+	}
+	storedPlain := must(storage.Task(conformanceContext, plainId))
+	if storedPlain.Trace != nil || storedPlain.Links != nil {
+		return fmt.Errorf("task without carriers reads back trace %v and links %v", storedPlain.Trace, storedPlain.Links)
+	}
+	storedSubmission := must(storage.Submission(conformanceContext, submissionId))
+	if !reflect.DeepEqual(storedSubmission.Trace, trace) {
+		return fmt.Errorf("submission reads back trace %v, want %v", storedSubmission.Trace, trace)
+	}
+	// The stored carrier is detached: changing a read does not change what the next read returns.
+	storedTask.Trace["adapter"] = "changed"
+	if again := must(storage.Task(conformanceContext, taskId)); !reflect.DeepEqual(again.Trace, trace) {
+		return fmt.Errorf("a changed read leaked into storage: %v", again.Trace)
 	}
 	return nil
 }

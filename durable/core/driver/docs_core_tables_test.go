@@ -17,7 +17,7 @@ import (
 // Ports of packages/durable/test/session-tables.test.ts through driver.Session over the REAL core (docs_core_test.go rig).
 
 var tablesNotesDoc = durable.DefineDoc(durable.DocDefinition[obj]{
-	CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.notes", Version: 1, Initial: func() obj { return delta.JsonObjectOf("text", "") }},
+	CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.notes", Version: 1, Initial: func() obj { return delta.JsonObjectOf("text", "") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 })
 
@@ -219,7 +219,7 @@ func TestCoreCreatesAConversationWithAnExplicitlyStagedTaskOwner(t *testing.T) {
 }
 
 var tablesProgressDoc = durable.DefineDoc(durable.DocDefinition[obj]{
-	CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.progress", Version: 1, Initial: func() obj { return delta.JsonObjectOf("lines", []any{}) }},
+	CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.progress", Version: 1, Initial: func() obj { return delta.JsonObjectOf("lines", []any{}) }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
 })
 
@@ -229,6 +229,7 @@ var tablesStepDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[obj, any
 	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeTask},
 	Initial:           func(any) obj { return delta.JsonObjectOf("lines", []any{}) },
 	Family:            true,
+	CheckpointWhen:    func(obj, []durable.Op, durable.CheckpointInfo) bool { return false },
 })
 
 // session-tables.test.ts:354 "creates a task and then its document in one transaction without ReadAfterWrite".

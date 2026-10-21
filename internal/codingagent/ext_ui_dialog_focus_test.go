@@ -8,11 +8,11 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Pi 1.2.0 interactive-mode.ts:2690-2869 with tui.ts:598-665: an extension dialog that opens while a focused custom component holds the
-// terminal shows at once and takes focus (showExtension*: this.ui.setFocus(dialog)). The overlay's focus restore is then blocked by the
-// dialog, and hiding the dialog (this.ui.setFocus(this.editor) once the slot no longer holds it) hands focus back to the overlay, which
-// receives the next key. An editor-slot custom component is displaced by the dialog's editorContainer.clear(), so hiding the dialog
-// focuses the editor.
+// Pi bdd9f039 interactive-mode.ts pushExtensionDialog/showTopExtensionDialog with tui.ts:598-665: an extension dialog that opens while a
+// focused custom component holds the terminal shows at once and takes focus (this.ui.setFocus(dialog)). The overlay's focus restore is
+// then blocked by the dialog, and removing the dialog (this.ui.setFocus(this.editor) once the stack is empty) hands focus back to the
+// overlay, which receives the next key. An editor-slot custom component is a stack entry below the dialog, so removing the dialog shows
+// it again and focuses it.
 
 // startDialogOver opens a selector while a custom component is shown and pumps the owner loop until it is installed.
 func startDialogOver(t *testing.T, r *customRig, title string) <-chan dialogCall {
@@ -22,14 +22,14 @@ func startDialogOver(t *testing.T, r *customRig, title string) <-chan dialogCall
 		value, err := r.u.Select(r.m.runCtx, title, []string{"one", "two"}, extension.ExtensionUIDialogOptions{})
 		result <- dialogCall{value, err}
 	})
-	r.pump(t, nil, func() bool { return r.m.extensionDialog != nil })
+	r.pump(t, nil, func() bool { return r.m.shownExtensionDialog() != nil })
 	return result
 }
 
 func requireDialogFocus(t *testing.T, m *InteractiveMode) {
 	t.Helper()
-	if focused := m.tuiInst.GetFocusedComponent(); focused != m.extensionDialog.component {
-		t.Fatalf("focus while the dialog is shown = %T, want the dialog (interactive-mode.ts:2727 this.ui.setFocus(this.extensionSelector))", focused)
+	if focused := m.tuiInst.GetFocusedComponent(); focused != m.shownExtensionDialog().component {
+		t.Fatalf("focus while the dialog is shown = %T, want the dialog (interactive-mode.ts showTopExtensionDialog this.ui.setFocus(component))", focused)
 	}
 }
 
@@ -72,8 +72,9 @@ func TestExtensionDialogTakesFocusFromFocusedCustomOverlay(t *testing.T) {
 	}
 }
 
-// Host-process extension: ctx.ui.custom() in the editor slot, then ctx.ui.select. The dialog clears the slot, so hiding it focuses the editor.
-func TestExtensionDialogDisplacesFocusedEditorSlotCustom(t *testing.T) {
+// Host-process extension: ctx.ui.custom() in the editor slot, then ctx.ui.select. The dialog stacks over the component, so closing it shows
+// the component again with the focus and the next key.
+func TestExtensionDialogStacksOverFocusedEditorSlotCustom(t *testing.T) {
 	r := newCustomRig(t)
 	component := &customProbe{label: "CUSTOM"}
 	var done func(any)
@@ -91,11 +92,17 @@ func TestExtensionDialogDisplacesFocusedEditorSlotCustom(t *testing.T) {
 	if got := requireResult(t, selected, "selector"); got.err != nil || got.value != "one" {
 		t.Fatalf("selector = %q, %v; want one", got.value, got.err)
 	}
-	if focused := r.m.tuiInst.GetFocusedComponent(); focused != r.m.editor {
-		t.Fatalf("focus after the dialog closed = %T, want the editor (interactive-mode.ts:2743)", focused)
+	if focused := r.m.tuiInst.GetFocusedComponent(); any(focused) != component {
+		t.Fatalf("focus after the dialog closed = %T, want the custom component (interactive-mode.ts showTopExtensionDialog)", focused)
 	}
 	if got := component.received(); len(got) != 0 {
-		t.Fatalf("the displaced custom component received %q", got)
+		t.Fatalf("the hidden custom component received %q while the dialog was shown", got)
+	}
+	if err := r.m.dispatchKey(t.Context(), "x"); err != nil {
+		t.Fatal(err)
+	}
+	if got := component.received(); len(got) != 1 || got[0] != "x" {
+		t.Fatalf("custom component input after the dialog closed = %q, want x", got)
 	}
 	go done("closed")
 	if got := r.finish(t, out); got.err != nil || got.value != "closed" {

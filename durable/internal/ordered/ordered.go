@@ -43,7 +43,7 @@ func hasDynamic(t reflect.Type, visiting map[reflect.Type]bool) bool {
 	case t.Kind() == reflect.Map:
 		result = mapKeyDecodable(t.Key()) && hasDynamic(t.Elem(), visiting)
 	case t.Kind() == reflect.Struct:
-		for field := range fields(t) {
+		for _, field := range fields(t) {
 			if hasDynamic(field.Type, visiting) {
 				result = true
 				break
@@ -163,7 +163,7 @@ func decodeMapKey(key string, t reflect.Type) (reflect.Value, bool) {
 // restoreStruct matches object's keys to fields as encoding/json does: an exact name first, then a case-insensitive one; a later key for the same field wins.
 func restoreStruct(value reflect.Value, object *delta.JsonObject) {
 	byName := map[string]field{}
-	for field := range fields(value.Type()) {
+	for _, field := range fields(value.Type()) {
 		byName[field.name] = field
 	}
 	matched := map[string]any{}
@@ -208,9 +208,22 @@ type field struct {
 	reflect.Type
 }
 
-// fields yields the JSON members of struct type t as encoding/json names them, embedded structs' members promoted.
-func fields(t reflect.Type) func(yield func(field) bool) {
-	return func(yield func(field) bool) {
+var fieldLists sync.Map // reflect.Type -> []field
+
+// fields returns the JSON members of struct type t as encoding/json names them, embedded structs' members promoted. A
+// type's list is walked once and then shared read-only.
+func fields(t reflect.Type) []field {
+	if cached, ok := fieldLists.Load(t); ok {
+		return cached.([]field)
+	}
+	cached, _ := fieldLists.LoadOrStore(t, listFields(t))
+	return cached.([]field)
+}
+
+func listFields(t reflect.Type) []field {
+	var list []field
+	{
+		yield := func(member field) bool { list = append(list, member); return true }
 		var walk func(t reflect.Type, prefix []int) bool
 		walk = func(t reflect.Type, prefix []int) bool {
 			for at := range t.NumField() {
@@ -248,4 +261,5 @@ func fields(t reflect.Type) func(yield func(field) bool) {
 		}
 		walk(t, nil)
 	}
+	return list
 }

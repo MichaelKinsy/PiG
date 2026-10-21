@@ -57,7 +57,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 		model := toolChoiceModel(t, "opencode-go", "kimi-k3", true)
 		cfg := &OpenAICompat{SupportsStore: new(false), SupportsDeveloperRole: new(false), SupportsReasoningEffort: new(true), SupportsUsageInStreaming: new(true), SupportsFinishReason: new(true), MaxTokensField: "max_completion_tokens", ThinkingFormat: "openai", SupportsStrictMode: new(true), SupportsOpenAIGrammarTools: new(false), SendSessionAffinityHeaders: new(false), SessionAffinityFormat: SessionAffinityOpenAI, SupportsLongCacheRetention: new(true)}
 		provider := &openAIProvider{cfg: OpenAIConfig{Model: model.ID, ProviderID: "opencode-go", Compat: cfg, ModelMetadata: model}}
-		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{API: APIOpenAICompletions, Provider: "opencode-go", Model: "kimi-k3", Content: []AssistantContentBlock{ThinkingContent{Thinking: "think", ThinkingSignature: "reasoning"}, ToolCall{ID: "call_1", Name: "read", Arguments: JsonObject{"path": "README.md"}}}, StopReason: StopReasonStop}}, nil, "system", false, false)
+		messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{API: APIOpenAICompletions, Provider: "opencode-go", Model: "kimi-k3", Content: []AssistantContentBlock{ThinkingContent{Thinking: "think", ThinkingSignature: "reasoning"}, ToolCall{ID: "call_1", Name: "read", Arguments: JsonObject{"path": "README.md"}}}, StopReason: StopReasonStop}}, nil, "system", toolAnchors{}, false)
 		if err != nil || len(messages) == 0 {
 			t.Fatalf("messages=%#v err=%v", messages, err)
 		}
@@ -99,7 +99,7 @@ func TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream(t *testing.T) {
 	})
 	// .upstream/v0.87.1/packages/ai/test/openai-completions-tool-choice.test.ts:1763
 	t.Run("uses OpenRouter reasoning object instead of reasoning_effort", func(t *testing.T) {
-		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "openrouter", "deepseek/deepseek-r1", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
+		payload, _, _ := captureToolChoiceRequest(t, toolChoiceModel(t, "openrouter", "deepseek/deepseek-r1-0528", false), toolChoiceHi(), StreamOptions{Thinking: ThinkingLevelHigh}, nil)
 		requireToolChoiceField(t, payload, "reasoning", `{"effort":"high"}`)
 		forbidToolChoiceFields(t, payload, "reasoning_effort")
 	})

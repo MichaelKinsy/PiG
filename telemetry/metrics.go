@@ -67,10 +67,10 @@ const (
 
 // TelemetryMetricDefinition is serializable instrument metadata: its kind, description, optional unit and
 // required/optional low-cardinality attributes. Only histograms may declare Boundaries; a nil slice is absent and an
-// empty slice serializes as [].
+// empty slice serializes as []. An empty Unit is absent.
 type TelemetryMetricDefinition struct {
 	Description string                                        `json:"description"`
-	Unit        *string                                       `json:"unit,omitempty"`
+	Unit        string                                        `json:"unit,omitempty"`
 	Attributes  map[string]TelemetryMetricAttributeDefinition `json:"attributes"`
 	Kind        TelemetryMetricKind                           `json:"kind"`
 	Boundaries  []float64                                     `json:"boundaries,omitzero"`
@@ -98,7 +98,11 @@ func (typed *TypedTelemetryMetrics) options(name string) InstrumentOptions {
 	if !ok {
 		return InstrumentOptions{}
 	}
-	return InstrumentOptions{Description: &definition.Description, Unit: definition.Unit}
+	options := InstrumentOptions{Description: &definition.Description}
+	if definition.Unit != "" {
+		options.Unit = &definition.Unit
+	}
+	return options
 }
 
 // Counter returns the adapter's counter for name with the schema's description and unit.

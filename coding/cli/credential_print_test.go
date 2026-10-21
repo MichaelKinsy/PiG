@@ -246,13 +246,13 @@ func TestAuthCommandPrintsSecretsOnlyInTheRequestedForm(t *testing.T) {
 	}
 	noSecret("print-bearer-token api key", stdout, stderr)
 
-	// Both stored providers carry gpt-5.5; each print command selects only
+	// Both stored providers carry gpt-6.1-sol; each print command selects only
 	// its own credential type.
-	code, stdout, stderr = runAuthForTest(t, agentDir, "print-api-key", "--model", "gpt-5.5")
+	code, stdout, stderr = runAuthForTest(t, agentDir, "print-api-key", "--model", "gpt-6.1-sol")
 	if code != 0 || stdout != apiKey+"\n" {
 		t.Fatalf("print-api-key --model = %d %q %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runAuthForTest(t, agentDir, "print-bearer-token", "--model", "gpt-5.5")
+	code, stdout, stderr = runAuthForTest(t, agentDir, "print-bearer-token", "--model", "gpt-6.1-sol")
 	if code != 0 || stdout != token+"\n" {
 		t.Fatalf("print-bearer-token --model = %d %q %q", code, stdout, stderr)
 	}
@@ -359,7 +359,7 @@ func TestCredentialPrintModelWithoutProviderUsesCatalogOfConfiguredProviders(t *
 		"anthropic": {Type: ai.CredentialAPIKey, Key: "anthropic-test-key"},
 	}), true)
 	// anthropic has no gpt-5.5; an uncatalogued id on a configured provider must not count as a match.
-	value, err := resolvePrint(t, runtime, AuthCommandAPIKey, "--model", "gpt-5.5")
+	value, err := resolvePrint(t, runtime, AuthCommandAPIKey, "--model", "gpt-6.1-sol")
 	if err != nil || value != "openai-test-key" {
 		t.Fatalf("got %q, %v", value, err)
 	}

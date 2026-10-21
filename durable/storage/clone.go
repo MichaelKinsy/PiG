@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"maps"
+
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/storage/internal/writes"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Storage keeps values detached from callers: every write is copied before it is retained and every read returns a
@@ -23,7 +26,22 @@ func cloneJSONPointer(value *durable.JsonValue) *durable.JsonValue {
 	return &copied
 }
 
+func cloneCarrier(carrier telemetry.TelemetryCarrier) telemetry.TelemetryCarrier {
+	if carrier == nil {
+		return nil
+	}
+	return maps.Clone(carrier)
+}
+
 func cloneTask(record storedTask) storedTask {
+	record.Trace = cloneCarrier(record.Trace)
+	if record.Links != nil {
+		links := make([]telemetry.TelemetryCarrier, len(record.Links))
+		for index, link := range record.Links {
+			links[index] = cloneCarrier(link)
+		}
+		record.Links = links
+	}
 	record.Input = cloneJSON(record.Input)
 	record.Owner = clonePointer(record.Owner)
 	state := record.State
@@ -54,6 +72,7 @@ func cloneTask(record storedTask) storedTask {
 }
 
 func cloneSubmission(record durable.SubmissionRecord) durable.SubmissionRecord {
+	record.Trace = cloneCarrier(record.Trace)
 	record.RequestId = clonePointer(record.RequestId)
 	record.Entry = clonePointer(record.Entry)
 	record.Answer = clonePointer(record.Answer)

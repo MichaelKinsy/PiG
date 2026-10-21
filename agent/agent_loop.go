@@ -12,6 +12,9 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// DefaultAgentIdentity is the request identity of agent loops: the ai package's defaults with provider attribution to PiG. The loop config's Identity overrides it field by field (agent-loop.ts DEFAULT_AGENT_IDENTITY).
+var DefaultAgentIdentity = ai.ClientIdentity{Attribution: new(ai.PiAttribution)}
+
 // createLoopConfig mirrors upstream Agent.createLoopConfig. With
 // skipInitialSteeringPoll the first steering poll returns nothing: Continue
 // already drained the steering message that seeds the run. Hooks are captured
@@ -31,6 +34,7 @@ func (a *Agent) createLoopConfig(skipInitialSteeringPoll bool) AgentLoopConfig {
 		OnResponse:            a.opts.OnResponse,
 		OnPayload:             a.beforeProviderHook,
 		MaxRetryDelayMs:       a.opts.MaxRetryDelayMs,
+		Identity:              a.opts.Identity,
 	}
 	convertToLlm, toolExecution := a.opts.ConvertToLlm, a.opts.ToolExecution
 	transformContext := a.transformContext
@@ -502,6 +506,7 @@ func (r *loopRun) streamAssistantResponse() (*AssistantMessage, []pendingToolCal
 	}
 	// pig divergence (D48): a real provider repairs orphaned, repeated and out-of-order tool results; the stream function still receives Pi's messages.
 	streamOpts.RepairToolFlow = true
+	streamOpts.Identity = ai.MergeClientIdentity(&DefaultAgentIdentity, streamOpts.Identity)
 	streamOpts.Thinking = r.thinking.ReasoningOption()
 	streamOpts.IsReasoning = r.model.Capabilities.MaxThinking != ""
 	streamOpts.ModelCost = r.model.CostRates()

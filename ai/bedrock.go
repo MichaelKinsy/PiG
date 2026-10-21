@@ -20,6 +20,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
@@ -236,7 +237,7 @@ func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, co
 				}), smithymiddleware.Before)
 			})
 		}
-		options.APIOptions = append(options.APIOptions, withBedrockHeaders(opts.Headers), withBedrockConverseBody(opts.RequestMetadataOrder))
+		options.APIOptions = append(options.APIOptions, bedrockUserAgent(opts.Identity), withBedrockHeaders(opts.Headers), withBedrockConverseBody(opts.RequestMetadataOrder))
 	})
 	if err != nil {
 		failBedrockResponse(ctx, builder, tap.piError(bedrockSendError(ctx, err, p.baseURL, opts.Env)), "", false)
@@ -1585,5 +1586,50 @@ func NewBedrockAPIProvider(model Model) (Provider, error) {
 func init() {
 	builtInProviders[APIBedrockConverseStream] = func(_, model, baseURL string) Provider {
 		return NewBedrockProvider(model, baseURL)
+	}
+}
+
+// bedrockUserAgent is the client identity as AWS SDK user agent pairs (bedrock-converse-stream.ts bedrockUserAgent): the SDK appends them to its own User-Agent, so the detailed form is reduced to name and version.
+//
+// pig divergence (D65): the name is PiG's product name, and the AWS SDK for Go writes the pairs into its own User-Agent. A custom string is appended after the SDK's own value with the JavaScript SDK's escaping (each slash-separated part keeps its slashes and replaces characters outside the token set with "-"), because the Go SDK's own key helper would also replace the slash.
+func bedrockUserAgent(identity *ClientIdentity) func(*smithymiddleware.Stack) error {
+	mode := UserAgentDetailed
+	if identity != nil && identity.UserAgent != nil {
+		mode = *identity.UserAgent
+	}
+	if custom, ok := mode.Custom(); ok {
+		return appendBedrockUserAgent(escapeBedrockUserAgent(custom))
+	}
+	if mode == UserAgentShort {
+		return awsmiddleware.AddUserAgentKey(pigidentity.UserAgentProduct)
+	}
+	return awsmiddleware.AddUserAgentKeyValue(pigidentity.UserAgentProduct, GetClientVersion(identity))
+}
+
+// escapeBedrockUserAgent replaces each character outside the HTTP token set, per UTF-16 unit as the JavaScript SDK does, with "-".
+func escapeBedrockUserAgent(value string) string {
+	var escaped strings.Builder
+	for _, r := range value {
+		switch {
+		case r == '/' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || strings.ContainsRune("!#$%&'*+-.^_`|~", r):
+			escaped.WriteRune(r)
+		case r > 0xFFFF:
+			escaped.WriteString("--")
+		default:
+			escaped.WriteByte('-')
+		}
+	}
+	return escaped.String()
+}
+
+// appendBedrockUserAgent adds value to the User-Agent the SDK's own middleware builds, so it must run after that middleware.
+func appendBedrockUserAgent(value string) func(*smithymiddleware.Stack) error {
+	return func(stack *smithymiddleware.Stack) error {
+		return stack.Build.Insert(smithymiddleware.BuildMiddlewareFunc("pig-client-identity-user-agent", func(ctx context.Context, in smithymiddleware.BuildInput, next smithymiddleware.BuildHandler) (smithymiddleware.BuildOutput, smithymiddleware.Metadata, error) {
+			if request, ok := in.Request.(*smithyhttp.Request); ok {
+				request.Header.Set("User-Agent", strings.TrimSpace(request.Header.Get("User-Agent")+" "+value))
+			}
+			return next.HandleBuild(ctx, in)
+		}), (&awsmiddleware.RequestUserAgent{}).ID(), smithymiddleware.After)
 	}
 }

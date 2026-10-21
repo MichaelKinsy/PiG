@@ -17,13 +17,50 @@ type LazyAPICapabilities struct {
 }
 
 // LazyStream returns before setup runs. Setup starts in the first promise reaction after the call, as the continuation of an async function whose first statement awaits; use LazyStreamSync when Pi's setup has no await before its provider call. The producer owns cancellation and its final event/result; forwarding never replaces an established terminal value with an iterator cancellation.
-func LazyStream(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error)) *AssistantMessageEventStream {
-	return startLazyStream(ctx, model, setup, func(body func()) { go body() })
+func LazyStream(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error), observer ...LazyStreamObserver) *AssistantMessageEventStream {
+	//portlint:allow asyncorder the continuation queue inside startLazyStream is the ordering point: body runs on the queue, and the observer is called from that queue
+	return startLazyStream(ctx, model, setup, func(body func()) { go body() }, newLazyObservation(observer)) //portlint:allow golifetime the setup goroutine is owned by ctx and the producer (see the doc comment), which ends the stream
 }
 
 // LazyStreamSync is LazyStream for a setup that never awaits before it returns its stream. Like an async function without an await, setup runs to completion in the caller's synchronous prefix, before LazyStreamSync returns, and only the forwarding reaction is queued (packages/ai/src/api/lazy.ts:48-50). A caller that already owns the shared continuation queue runs setup inline; any other caller first acquires the queue.
-func LazyStreamSync(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error)) *AssistantMessageEventStream {
-	return startLazyStreamSync(ctx, model, setup, func(body func()) { go body() })
+func LazyStreamSync(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error), observer ...LazyStreamObserver) *AssistantMessageEventStream {
+	//portlint:allow asyncorder the continuation queue inside startLazyStreamSync is the ordering point: body runs on the queue, and the observer is called from that queue
+	return startLazyStreamSync(ctx, model, setup, func(body func()) { go body() }, newLazyObservation(observer)) //portlint:allow golifetime the setup goroutine is owned by ctx and the producer (see the doc comment), which ends the stream
+}
+
+// LazyStreamObserver is a synchronous, read-only observation of the stream's existing forwarding path (lazy.ts LazyStreamObserver). OnEvent runs after each event is pushed to the outer stream, and OnResult once after the outer stream ends; a nil member is an omitted method, and OnResult receives nil for Pi's undefined result.
+type LazyStreamObserver struct {
+	OnEvent  func(AssistantMessageEvent)
+	OnResult func(*AssistantMessage)
+}
+
+// lazyObservation is lazyStream's `observer` plus its `observedResult` guard: the result is observed once, whichever of the forwarding and the setup-failure path reaches it first. A nil *lazyObservation is the omitted observer. Its methods run inside the forwarding turn, one at a time.
+type lazyObservation struct {
+	observer LazyStreamObserver
+	resulted bool
+}
+
+func newLazyObservation(observer []LazyStreamObserver) *lazyObservation {
+	if len(observer) == 0 {
+		return nil
+	}
+	return &lazyObservation{observer: observer[0]}
+}
+
+func (o *lazyObservation) onEvent(event AssistantMessageEvent) {
+	if o != nil && o.observer.OnEvent != nil {
+		o.observer.OnEvent(event)
+	}
+}
+
+func (o *lazyObservation) onResult(result *AssistantMessage) {
+	if o == nil || o.resulted {
+		return
+	}
+	o.resulted = true
+	if o.observer.OnResult != nil {
+		o.observer.OnResult(result)
+	}
 }
 
 type lazySetupResult struct {
@@ -32,25 +69,38 @@ type lazySetupResult struct {
 }
 
 // startLazyStream models lazyStream(model, async () => { await x; ... }): the reserved turn is the await continuation that runs setup, and the setup promise settles when it returns.
-func startLazyStream(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error), launch func(func())) *AssistantMessageEventStream {
+func startLazyStream(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error), launch func(func()), observation *lazyObservation) *AssistantMessageEventStream {
 	ctx, executor := withContinuationExecutor(ctx)
 	outer := NewAssistantMessageEventStream()
 	outer.executor = executor
 	turn := executor.newTurn()
+	// Without an observer the closures capture nothing for it, so the unobserved path allocates as it did before observers existed.
+	if observation == nil {
+		launch(func() {
+			turn.run(func(turn *continuationTurn) {
+				inner, err := setup(context.WithValue(ctx, continuationTurnKey{}, turn))
+				settled := newContinuationPromise[lazySetupResult](executor)
+				settled.resolve(lazySetupResult{stream: inner, err: err})
+				prepared := awaitContinuation(turn, settled)
+				forwardLazySetup(ctx, turn, executor, outer, model, prepared.stream, prepared.err, nil)
+			})
+		})
+		return outer
+	}
 	launch(func() {
 		turn.run(func(turn *continuationTurn) {
 			inner, err := setup(context.WithValue(ctx, continuationTurnKey{}, turn))
 			settled := newContinuationPromise[lazySetupResult](executor)
 			settled.resolve(lazySetupResult{stream: inner, err: err})
 			prepared := awaitContinuation(turn, settled)
-			forwardLazySetup(ctx, turn, executor, outer, model, prepared.stream, prepared.err)
+			forwardLazySetup(ctx, turn, executor, outer, model, prepared.stream, prepared.err, observation)
 		})
 	})
 	return outer
 }
 
 // startLazyStreamSync models lazyStream(model, async () => { ...no await... }): setup completes in the caller's tick, and `setup().then(forwardStream)` registers its reaction on an already fulfilled promise before lazyStream returns.
-func startLazyStreamSync(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error), launch func(func())) *AssistantMessageEventStream {
+func startLazyStreamSync(ctx context.Context, model *Model, setup func(context.Context) (*AssistantMessageEventStream, error), launch func(func()), observation *lazyObservation) *AssistantMessageEventStream {
 	ctx, executor := withContinuationExecutor(ctx)
 	outer := NewAssistantMessageEventStream()
 	outer.executor = executor
@@ -69,9 +119,17 @@ func startLazyStreamSync(ctx context.Context, model *Model, setup func(context.C
 	} else {
 		executor.run(func(turn *continuationTurn) { run(context.WithValue(ctx, continuationTurnKey{}, turn)) })
 	}
+	if observation == nil {
+		launch(func() {
+			forward.run(func(turn *continuationTurn) {
+				forwardLazySetup(ctx, turn, executor, outer, model, prepared.stream, prepared.err, nil)
+			})
+		})
+		return outer
+	}
 	launch(func() {
 		forward.run(func(turn *continuationTurn) {
-			forwardLazySetup(ctx, turn, executor, outer, model, prepared.stream, prepared.err)
+			forwardLazySetup(ctx, turn, executor, outer, model, prepared.stream, prepared.err, observation)
 		})
 	})
 	return outer
@@ -139,15 +197,26 @@ func apiModuleFailure(ctx context.Context, api API, model *Model, startedAt int6
 }
 
 // forwardLazySetup is lazy.ts:48-60. A rejected setup reaches the catch handler two reactions after it settles: the .then passthrough, then the handler.
-func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *continuationExecutor, outer *AssistantMessageEventStream, model *Model, inner *AssistantMessageEventStream, err error) {
+func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *continuationExecutor, outer *AssistantMessageEventStream, model *Model, inner *AssistantMessageEventStream, err error, observation *lazyObservation) {
 	if err == nil && inner == nil {
 		err = fmt.Errorf("API returned no event stream")
 	}
 	if err == nil {
-		observation := context.WithValue(context.WithoutCancel(ctx), continuationTurnKey{}, turn)
+		forwarding := context.WithValue(context.WithoutCancel(ctx), continuationTurnKey{}, turn)
 		var result *AssistantMessage
-		if result, err = forwardEvents(turn, observation, inner, outer.Push); err == nil {
+		push := outer.Push
+		if observation != nil {
+			push = func(event AssistantMessageEvent) error {
+				if err := outer.Push(event); err != nil {
+					return err
+				}
+				observation.onEvent(event)
+				return nil
+			}
+		}
+		if result, err = forwardEvents(turn, forwarding, inner, push); err == nil {
 			outer.End(result)
+			observation.onResult(result)
 			return
 		}
 	} else {
@@ -162,7 +231,10 @@ func forwardLazySetup(ctx context.Context, turn *continuationTurn, executor *con
 		message.Provider = modelProviderID(model)
 		message.Model = model.ID
 	}
-	_ = outer.Push(ErrorEvent{Reason: StopReasonError, Error: message})
+	event := ErrorEvent{Reason: StopReasonError, Error: message}
+	_ = outer.Push(event)
+	observation.onEvent(event)
+	observation.onResult(message)
 }
 func (stream *AssistantMessageEventStream) isTerminated() bool {
 	stream.mu.Lock()

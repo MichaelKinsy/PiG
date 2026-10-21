@@ -37,6 +37,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/managementhttp"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
@@ -350,7 +351,8 @@ func (m *ToolsManager) getLatestVersion(ctx context.Context, repo string) (strin
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", "pig-coding-agent")
+	// tools-manager.ts getLatestVersion sends getPiUserAgent(VERSION), the detailed identity User-Agent (D65).
+	req.Header.Set("User-Agent", ai.FormatUserAgent(nil))
 	// redirect: "manual": only the status and Location matter.
 	client := *m.httpClient
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }

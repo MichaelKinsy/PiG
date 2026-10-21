@@ -19,7 +19,8 @@ func TestXAIResponsesExcludesRetiredAndRedundantModels(t *testing.T) {
 	}
 }
 
-// .upstream/v0.87.1/packages/ai/test/xai-responses.test.ts:129
+// .upstream/v1.3.0+fdce48eb/packages/ai/test/xai-responses.test.ts:129 (Pi fbc456d8): Pi's assertion for grok-4.5 and grok-4.3 now
+// includes xhigh, the level the catalog (packages/ai/src/providers/data/xai.json) maps for them, the same data the Go catalog is generated from.
 func TestXAIResponsesRoutesEveryBuiltInModelThroughResponses(t *testing.T) {
 	models := ListModels("xai")
 	if len(models) == 0 {
@@ -34,10 +35,10 @@ func TestXAIResponsesRoutesEveryBuiltInModelThroughResponses(t *testing.T) {
 		id   string
 		want []ModelThinkingLevel
 	}{
-		{"grok-4.5", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh}},
+		{"grok-4.5", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
 		{"grok-4.6", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
 		{"grok-4.7", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
-		{"grok-4.3", []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingHigh}},
+		{"grok-4.3", []ModelThinkingLevel{ThinkingOff, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh}},
 	} {
 		if got := GetSupportedThinkingLevels(upstreamThinkingModel(t, "xai/"+tc.id)); !slices.Equal(got, tc.want) {
 			t.Errorf("%s levels = %v, want %v", tc.id, got, tc.want)
@@ -83,7 +84,7 @@ func TestXAIResponsesRequestUpstream(t *testing.T) {
 				t.Errorf("authorization = %q", got)
 			}
 			// D65 changes only product identity; default/override semantics match Pi.
-			if got := headers.Get("User-Agent"); got != PiUserAgent() {
+			if got := headers.Get("User-Agent"); got != FormatUserAgent(nil) {
 				t.Errorf("user-agent = %q", got)
 			}
 			if tc.opts.SessionID != "" && headers.Get("session_id") != tc.opts.SessionID {
@@ -159,7 +160,7 @@ func TestXAIResponsesUserAgentUpstream(t *testing.T) {
 			// D65 preserves the Pi header contract with PiG's approved product identity.
 			want := tc.override
 			if want == "" {
-				want = PiUserAgent()
+				want = FormatUserAgent(nil)
 			}
 			if got := headers.Get("User-Agent"); got != want {
 				t.Fatalf("user-agent = %q, want %q", got, want)

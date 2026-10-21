@@ -1,6 +1,9 @@
 package tui
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // terminal-image.ts encodeITerm2(base64Data, options): every option field (width, height, name, preserveAspectRatio, inline) is reachable.
 func TestEncodeITerm2OptionsCarryEveryUpstreamField(t *testing.T) {
@@ -35,5 +38,16 @@ func TestEncodeKittyEmitsEveryNonZeroOption(t *testing.T) {
 	}
 	if got, want := EncodeKitty("AAAA", 0, 0, 0), "\x1b_Ga=T,f=100,q=2;AAAA\x1b\\"; got != want {
 		t.Fatalf("EncodeKitty zero options = %q, want %q", got, want)
+	}
+}
+
+// terminal-image.ts encodeKitty measures and slices base64Data with .length and .slice, which count UTF-16 units (:251-272). A payload of 2049
+// astral characters is 4098 units, so Pi sends one chunk of 2048 characters (4096 units) and a last chunk of one; chunking by byte would split
+// the characters. Expectation from running Pi's encodeKitty on the same input (bd3c9b82).
+func TestEncodeKittyChunksByUTF16Units(t *testing.T) {
+	payload := strings.Repeat("\U0001F600", 2049)
+	want := "\x1b_Ga=T,f=100,q=2,c=3,r=2,i=7,m=1;" + strings.Repeat("\U0001F600", 2048) + "\x1b\\" + "\x1b_Gm=0;\U0001F600\x1b\\"
+	if got := EncodeKitty(payload, 3, 2, 7); got != want {
+		t.Fatalf("EncodeKitty chunks = %d bytes, want %d; head %q", len(got), len(want), got[:min(len(got), 60)])
 	}
 }

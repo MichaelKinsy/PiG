@@ -37,7 +37,7 @@ func TestInMemoryTelemetryContextNumbersSpansAndSettlements(t *testing.T) {
 // returned snapshot is shared with the recorder; ids and sequence numbers are numbers, not references.
 func TestInMemoryTelemetryContextKeepsEventsAndSnapshotsDetached(t *testing.T) {
 	recorder := NewInMemoryTelemetryContext()
-	attributes := SpanAttributes{"list": []string{"a", "b"}, "n": 1}
+	attributes := SpanAttributes{Attr("list", []string{"a", "b"}), Attr("n", 1)}
 	err := recorder.StartSpan(SpanOptions{Name: "outer"}, func(outer TelemetrySpan) error {
 		return outer.StartSpan(SpanOptions{Name: "inner"}, func(inner TelemetrySpan) error {
 			inner.AddEvent("event", attributes)
@@ -47,11 +47,11 @@ func TestInMemoryTelemetryContextKeepsEventsAndSnapshotsDetached(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	attributes["n"] = 2
-	attributes["list"].([]string)[0] = "changed"
+	attributes.Set("n", 2)
+	attributes.Value("list").([]string)[0] = "changed"
 	first := recorder.GetSpans()
 	event := first[1].Events[0]
-	if event.Attributes["n"] != 1 || event.Attributes["list"].([]string)[0] != "a" {
+	if event.Attributes.Value("n") != 1 || event.Attributes.Value("list").([]string)[0] != "a" {
 		t.Fatalf("the recorded event shares the caller's attributes: %v", event.Attributes)
 	}
 	*first[1].ParentID = 99

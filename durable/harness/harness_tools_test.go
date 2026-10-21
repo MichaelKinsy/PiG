@@ -246,9 +246,12 @@ func TestToolRound(t *testing.T) {
 		if len(got) != 2 {
 			t.Fatalf("%d models seen, want the hook's and the tool's", len(got))
 		}
+		if got[0] != got[1] {
+			t.Fatalf("tools and hooks read different views %v and %v of the Harness's models, want one shared view", got[0], got[1])
+		}
 		for _, models := range got {
-			if models != durable.Models(setup.Models) {
-				t.Fatalf("api models %v is not the Harness's models %v", models, setup.Models)
+			if models.GetModel("faux", "faux-1") != setup.Models.GetModel("faux", "faux-1") {
+				t.Fatalf("api models %v is not a view of the Harness's models %v", models, setup.Models)
 			}
 		}
 		mustClose(t, run.harness)

@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// productVersionEnv carries PiG's composite release version to a Node extension process. The vendored Pi code builds its user agent from it, so a Node extension sends the identity the host's ai.PiUserAgent sends (D26, D65).
+// productVersionEnv carries PiG's composite release version to a Node extension process. The vendored Pi code builds its user agent from it, so a Node extension sends the identity the host's ai.FormatUserAgent sends (D26, D65).
 const productVersionEnv = "PIG_PRODUCT_VERSION"
 
 // terminalCapabilitiesEnv carries the host terminal's resolved capabilities to a Node extension process as TerminalCapabilitiesPayload JSON.

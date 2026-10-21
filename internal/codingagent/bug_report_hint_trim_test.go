@@ -32,11 +32,11 @@ func TestBugReportPromptTrimsLikeJavaScript(t *testing.T) {
 	var prefill string
 	sc := &SlashContext{
 		Args: "\ufeff\u0085 broke\u2028",
-		ShowExtensionEditor: func(_, _, initial string) (string, bool) {
+		ShowBugReportEditor: func(_, _, initial string) (string, bool) {
 			prefill = initial
 			return "\ufeff\u0085\u00a0", true
 		},
-		ShowExtensionSelector: func(_ string, options []string, _ string) (string, bool) { return options[0], true },
+		ShowBugReportSelector: func(_ string, options []string, _ string) (string, bool) { return options[0], true },
 	}
 	choices, ok := promptBugReportChoices(sc)
 	if !ok {

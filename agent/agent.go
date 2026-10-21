@@ -847,6 +847,8 @@ type AgentOptions struct {
 	OnResponse func(context.Context, ai.ProviderResponse, *ai.Model) error
 	// MaxRetryDelayMs caps the delay a provider waits before one retry; nil keeps the provider default. Mirrors upstream AgentOptions.maxRetryDelayMs.
 	MaxRetryDelayMs *int
+	// Identity is how requests identify the app to providers, merged field by field over DefaultAgentIdentity (attribution to PiG). Pass an identity with AttributionNull to send no attribution headers. Mirrors upstream AgentOptions.identity.
+	Identity *ai.ClientIdentity
 	// OnProviderStreamEvent is forwarded to every provider request. Mirrors upstream AgentOptions.onProviderStreamEvent (packages/agent/src/agent.ts:122).
 	OnProviderStreamEvent func(ctx context.Context, data any, model *ai.Model) error
 }
@@ -1543,6 +1545,20 @@ func (a *Agent) SetMaxRetryDelayMs(maxRetryDelayMs *int) {
 	a.stateMu.Lock()
 	defer a.stateMu.Unlock()
 	a.opts.MaxRetryDelayMs = maxRetryDelayMs
+}
+
+// Identity returns the request identity merged over DefaultAgentIdentity, or nil. Mirrors upstream Agent.identity.
+func (a *Agent) Identity() *ai.ClientIdentity {
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	return a.opts.Identity
+}
+
+// SetIdentity replaces the request identity for future runs; nil leaves DefaultAgentIdentity alone.
+func (a *Agent) SetIdentity(identity *ai.ClientIdentity) {
+	a.stateMu.Lock()
+	defer a.stateMu.Unlock()
+	a.opts.Identity = identity
 }
 
 // SetToolExecution replaces the batch strategy for assistant messages with several tool calls, for future runs. Mirrors assigning upstream Agent.toolExecution (agent.ts:191).

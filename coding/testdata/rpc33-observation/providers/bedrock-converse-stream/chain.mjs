@@ -77,7 +77,7 @@ async function run(delivery, http, hooks) {
   return records;
 }
 
-const out = {piVersion: PIG_UPSTREAM_VERSION, awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.36.0', node: process.version, cases: {}};
+const out = {piVersion: PIG_UPSTREAM_VERSION, awsSdkClientBedrockRuntime: '3.1127.0', smithyCore: '3.36.1', node: process.version, cases: {}};
 for (const http of ['h1', 'h2']) for (const delivery of ['buffered', 'pending']) for (const hooks of [true, false]) {
   out.cases[`${http}/${delivery}/${hooks ? 'hooks' : 'nohooks'}`] = await run(delivery, http, hooks);
 }

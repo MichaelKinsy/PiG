@@ -59,30 +59,36 @@ func realNodeDir(t *testing.T) string {
 }
 
 // A Node extension can make its own model calls: the vendored SDK's
-// createAgentSession/prompt (Pi's core/sdk.ts attribution wiring) and pi-ai's
+// createAgentSession/prompt (Pi's core/sdk.ts client identity) and pi-ai's
 // completeSimple (D74's host bridge). Run through the real binary against a
 // recording server shaped like OpenRouter and OpenCode (Pi selects those by
-// provider id or base URL: provider-attribution.ts isOpenRouterModel,
-// getSessionHeaders), every request carries PiG's attribution and none of Pi's
+// provider id or base URL: identity.ts isOpenRouter), the session carries PiG's attribution, the direct call none, and neither carries Pi's
 // (D26).
 func TestNodeExtensionModelCallsCarryPiGIdentityNeverPis(t *testing.T) {
 	type shape struct {
 		name, provider, path string
-		want                 func(sessionID string) map[string]string
+		// want is what the vendored SDK's createAgentSession sends: its client identity attributes the request to PiG.
+		want func(sessionID string) map[string]string
+		// wantStream is what a direct pi-ai completeSimple sends: pi-ai attributes nothing unless the caller passes an identity.
+		wantStream func(sessionID string) map[string]string
+	}
+	routed := func(string) map[string]string {
+		return map[string]string{"HTTP-Referer": pigidentity.AttributionURL, "X-OpenRouter-Title": pigidentity.AttributionName, "X-OpenRouter-Categories": pigidentity.AttributionCategory}
+	}
+	none := func(string) map[string]string {
+		return map[string]string{"HTTP-Referer": "", "X-OpenRouter-Title": "", "X-OpenRouter-Categories": "", "X-BILLING-INVOKE-ORIGIN": "", "x-opencode-client": ""}
 	}
 	shapes := []shape{
-		{"openrouter", "openrouter", "/api/v1", func(string) map[string]string {
-			return map[string]string{"HTTP-Referer": pigidentity.OpenRouterReferer, "X-OpenRouter-Title": pigidentity.OpenRouterTitle, "X-OpenRouter-Categories": pigidentity.OpenRouterCategories}
-		}},
-		// Pi's isOpenRouterModel also matches any base URL containing openrouter.ai.
-		{"openrouter-base-url", "gateway", "/proxy/openrouter.ai/v1", func(string) map[string]string {
-			return map[string]string{"HTTP-Referer": pigidentity.OpenRouterReferer, "X-OpenRouter-Title": pigidentity.OpenRouterTitle, "X-OpenRouter-Categories": pigidentity.OpenRouterCategories}
-		}},
+		{"openrouter", "openrouter", "/api/v1", routed, none},
+		// Pi's isOpenRouter also matches any base URL containing openrouter.ai.
+		{"openrouter-base-url", "gateway", "/proxy/openrouter.ai/v1", routed, none},
 		{"nvidia", "nvidia", "/v1", func(string) map[string]string {
-			return map[string]string{"X-BILLING-INVOKE-ORIGIN": pigidentity.NvidiaBillingOrigin}
-		}},
+			return map[string]string{"X-BILLING-INVOKE-ORIGIN": pigidentity.AttributionName}
+		}, none},
 		{"opencode", "opencode", "/zen/v1", func(sessionID string) map[string]string {
-			return map[string]string{"x-opencode-session": sessionID, "x-opencode-client": pigidentity.OpenCodeClient}
+			return map[string]string{"x-opencode-session": sessionID, "x-opencode-client": pigidentity.AttributionName}
+		}, func(sessionID string) map[string]string {
+			return map[string]string{"x-opencode-session": sessionID, "x-opencode-client": ""}
 		}},
 	}
 	nodeDir := realNodeDir(t)
@@ -112,7 +118,11 @@ func TestNodeExtensionModelCallsCarryPiGIdentityNeverPis(t *testing.T) {
 				if shape.name == "opencode" && sessionID == "" {
 					t.Fatalf("the OpenCode session header is missing: %v", headers)
 				}
-				for name, want := range shape.want(sessionID) {
+				wantHeaders := shape.want
+				if mode == "stream" {
+					wantHeaders = shape.wantStream
+				}
+				for name, want := range wantHeaders(sessionID) {
 					if got := headers.Get(name); got != want {
 						t.Errorf("%s = %q, want %q", name, got, want)
 					}

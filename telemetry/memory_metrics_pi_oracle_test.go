@@ -40,10 +40,10 @@ func (n numberSpec) float() float64 {
 }
 
 type callSpec struct {
-	Value numberSpec     `json:"value"`
-	Attrs map[string]any `json:"attrs,omitempty"`
-	Ctx   string         `json:"ctx,omitempty"`
-	Idx   int            `json:"idx"`
+	Value numberSpec `json:"value"`
+	Attrs attrList   `json:"attrs,omitempty"`
+	Ctx   string     `json:"ctx,omitempty"`
+	Idx   int        `json:"idx"`
 }
 
 // stepSpec creates one instrument with the given options (an absent member is undefined) and records its calls, optionally inside a span.
@@ -57,37 +57,57 @@ type stepSpec struct {
 	Calls       []callSpec   `json:"calls"`
 }
 
+// jsonNumber is JSON.stringify of a number: a non-finite number is null.
+func jsonNumber(value float64) any {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return nil
+	}
+	return value
+}
+
+// measurementJSON writes getMetrics() as JSON.stringify does, members in the order Pi's measurement creates them.
+type measurementJSON struct {
+	Kind        string                   `json:"kind"`
+	Name        string                   `json:"name"`
+	Description *string                  `json:"description,omitempty"`
+	Unit        *string                  `json:"unit,omitempty"`
+	Boundaries  *[]any                   `json:"boundaries,omitempty"`
+	Value       any                      `json:"value"`
+	Attributes  telemetry.SpanAttributes `json:"attributes"`
+	Context     map[string]string        `json:"context"`
+}
+
 type metricsProgram struct {
 	Spans int        `json:"spans"`
 	Steps []stepSpec `json:"steps"`
 }
 
-// The measurements Pi's InMemoryTelemetryContext records for seeded random instrument programs (counters, up-down counters and histograms with absent, empty and invalid
+// The measurements Pi's InMemoryTelemetryContext records for seeded random instrument programs (counters, up-down counters and histograms with absent, empty and unusual
 // metadata, boundaries that are unsorted, repeated or non-finite, non-finite and negative values, attributes with undefined and array values, and exemplar contexts that are kept spans,
 // the open span, the no-op context, the recorder root or omitted) against PiG's, as the JSON of getMetrics().
 func TestInMemoryMetricsMatchPiOnRandomPrograms(t *testing.T) {
 	rng := rand.New(rand.NewSource(1402))
 	pick := func(items ...string) string { return items[rng.Intn(len(items))] }
-	attributes := func() map[string]any {
+	attributes := func() attrList {
 		if rng.Intn(4) == 0 {
 			return nil
 		}
-		out := map[string]any{}
-		for range rng.Intn(4) {
-			name := pick("a", "b", "10", "é", "")
+		var out attrList
+		for range rng.Intn(6) {
+			name := pick("a", "b", "10", "2", "é", "")
 			switch rng.Intn(6) {
 			case 0:
-				out[name] = pick("x", "", "é😀")
+				out = append(out, [2]any{name, pick("x", "", "é😀")})
 			case 1:
-				out[name] = float64(rng.Intn(10)) + []float64{0, 0.5}[rng.Intn(2)]
+				out = append(out, [2]any{name, float64(rng.Intn(10)) + []float64{0, 0.5}[rng.Intn(2)]})
 			case 2:
-				out[name] = rng.Intn(2) == 0
+				out = append(out, [2]any{name, rng.Intn(2) == 0})
 			case 3:
-				out[name] = []any{pick("p", "q"), pick("r", "s")}
+				out = append(out, [2]any{name, []any{pick("p", "q"), pick("r", "s")}})
 			case 4:
-				out[name] = []any{}
+				out = append(out, [2]any{name, []any{}})
 			default:
-				out[name] = map[string]any{"$undef": true}
+				out = append(out, [2]any{name, map[string]any{"$undef": true}})
 			}
 		}
 		return out
@@ -243,20 +263,18 @@ func TestInMemoryMetricsMatchPiOnRandomPrograms(t *testing.T) {
 		}
 		recorded := recorder.GetMetrics()
 		measured += len(recorded)
-		got := make([]map[string]any, len(recorded))
+		got := make([]measurementJSON, len(recorded))
 		for j, measurement := range recorded {
-			got[j] = map[string]any{"kind": string(measurement.Kind), "name": measurement.Name, "value": measurement.Value, "attributes": measurement.Attributes, "context": nil}
-			if measurement.Description != nil {
-				got[j]["description"] = *measurement.Description
-			}
-			if measurement.Unit != nil {
-				got[j]["unit"] = *measurement.Unit
-			}
+			got[j] = measurementJSON{Kind: string(measurement.Kind), Name: measurement.Name, Description: measurement.Description, Unit: measurement.Unit, Value: jsonNumber(measurement.Value), Attributes: measurement.Attributes}
 			if measurement.Boundaries != nil {
-				got[j]["boundaries"] = measurement.Boundaries
+				boundaries := make([]any, len(measurement.Boundaries))
+				for k, boundary := range measurement.Boundaries {
+					boundaries[k] = jsonNumber(boundary)
+				}
+				got[j].Boundaries = &boundaries
 			}
 			if measurement.Context != nil {
-				got[j]["context"] = measurement.Context
+				got[j].Context = measurement.Context
 				exemplars++
 			}
 		}
@@ -265,15 +283,8 @@ func TestInMemoryMetricsMatchPiOnRandomPrograms(t *testing.T) {
 			t.Fatal(err)
 		}
 		gotJSON = scopePattern.ReplaceAll(gotJSON, []byte("SCOPE"))
-		var gotValue, wantValue any
-		if err := json.Unmarshal(gotJSON, &gotValue); err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(want[i], &wantValue); err != nil {
-			t.Fatal(err)
-		}
-		gotCanonical, _ := json.Marshal(gotValue)
-		wantCanonical, _ := json.Marshal(wantValue)
+		// The texts are compared as written, so member order, attribute order included, is part of the comparison.
+		gotCanonical, wantCanonical := gotJSON, []byte(want[i])
 		if !bytes.Equal(gotCanonical, wantCanonical) {
 			if failures++; failures <= 3 {
 				programJSON, _ := json.Marshal(program)

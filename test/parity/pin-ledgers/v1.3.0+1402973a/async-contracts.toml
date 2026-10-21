@@ -520,10 +520,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/context/index.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["cancellable"]
+evidence = ["test:chord/context/chordctx_upstream_test.go#TestContextStopsWaitingWhenTheInvocationIsCancelled", "test:chord/context/chordctx_upstream_test.go#TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn", "test:chord/context/chordctx_upstream_test.go#TestContextInheritsParentCancellationAndIsolatesChildCancellation", "test:chord/context/chordctx_upstream_test.go#TestContextMasksCallerCancellationForMandatoryCleanup", "test:chord/context/chordctx_upstream_test.go#TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation", "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors"]
+rationale = "A chord Context's abort signal is Go context cancellation, with the abort reason as the cancellation cause. withAbortSignal (:71-75) combines the parent and the signal with AbortSignal.any, which takes the first aborted input's reason and is already aborted when an input is; chordctx.WithAbortSignal derives a context cancelled with the first cause, before it returns when the signal is already cancelled. withoutAbortSignal and withCancel are chordctx.WithoutAbortSignal over context.WithoutCancel and chordctx.WithCancel over context.WithCancelCause (package chord/context). awaitWithContext (:98-115) returns the promise itself without a signal, rejects at once when the signal is already aborted, and otherwise rejects only this waiter on abort, leaving the work running; chordctx.Await blocks on the work's settlement or the context, checks an already cancelled context first, returns the cause on cancellation and leaves the work's channel unread so it can still settle. abortError's DOMException for a non-Error reason has no Go form, since a Go cause is an error and a nil cause is context.Canceled. traceIn (:105-125) runs a child span of context.telemetry through startSpan and returns the callback's result as a Promise, rejecting with the callback's own error. chordctx.TraceIn calls telemetry.StartSpan on the caller's goroutine, passes the callback the derived context and span, and returns the result, or the error as the identical value, after the span settles, the awaited form of the Promise; concurrent branches each derive their own context, so branches are isolated by the context they receive, not by the goroutine (TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors). withTelemetry and Context.telemetry are synchronous and cancellation-independent (TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation)."
 
 [[files]]
 path = "packages/chord/src/contract.ts"
@@ -2025,38 +2025,38 @@ rationale = "Promise appears only in the Transport interface declaration (start,
 
 [[files]]
 path = "packages/telemetry/src/index.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream", "test:telemetry/telemetry_upstream_test.go#TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan", "test:telemetry/conformance_upstream_test.go#TestConformanceUpstream", "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream", "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"]
+rationale = "TelemetryContext.startSpan and the typed starter (bindTypedSpanStarter, :325-340) admit the callback synchronously and return a Promise of its result. Go's TelemetryContext.StartSpan and the generic telemetry.StartSpan call the callback on the caller's goroutine and return its result or error when it settles, the awaited form; a callback that would await before settling blocks until it is done. The typed starter binds the child starter to the callback's span, so nesting follows the span the callback receives, not the goroutine. An unawaited startSpan has no Go form: a Go caller that wants spans to run concurrently calls StartSpan from its own goroutines, and each span then settles when its callback returns, as each Promise settles when its callback's Promise does. The Pi 1402973a additions (TelemetryPropagation.inject/extract, SpanLink, addLink, TelemetryMetrics) are synchronous and add no Promise; startSpan keeps its Promise, so the awaited form above also carries a span started under an extracted remote parent or with links (TestPropagationUpstream)."
 
 [[files]]
 path = "packages/telemetry/src/memory.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:telemetry/conformance_upstream_test.go#TestConformanceUpstream", "test:telemetry/memory_recording_test.go#TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents", "test:telemetry/memory_ids_detached_test.go#TestInMemoryTelemetryContextNumbersSpansAndSettlements", "test:telemetry/recorded_status_test.go#TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors", "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream", "test:telemetry/memory_pi_oracle_test.go#TestInMemoryTelemetryMatchesPiOnRandomPrograms"]
+rationale = "startInMemorySpan (:120-185) records the span, calls the callback synchronously, settles at once on a synchronous throw and otherwise settles when Promise.resolve(result) settles, taking the next end sequence then. Go's InMemoryTelemetryContext.start records the span under the recorder mutex, runs the callback on the caller's goroutine and settles it when the callback returns, fails or panics (the panic is re-raised after settling), so a span's end sequence follows its settlement order across goroutines as it follows Promise settlement order. A child started from a settled span, including from work the callback left running, goes to the no-op context, as :126 does. A sync-returning callback's span settles before StartSpan returns, where Pi settles it one microtask later; only code that reads getSpans before awaiting startSpan can see that, which a blocking Go call cannot express. Pi 1402973a adds the in-memory inject/extract carriers, span links and the measurement log, all synchronous; a span started from an extracted carrier settles in the same order contract, in this process or another (TestPropagationUpstream 'continues a parent in another Node process'), and TestInMemoryTelemetryMatchesPiOnRandomPrograms compares settlement order with Pi's memory.ts over random programs."
 
 [[files]]
 path = "packages/telemetry/src/noop.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream"]
+rationale = "startNoopSpan calls the callback synchronously and returns Promise.resolve of its result or a rejection of its synchronous throw. Go's no-op StartSpan returns the callback's own error from the caller's goroutine; nothing is recorded or retained. The 1402973a NOOP propagation and metrics are synchronous and inert, with no Promise; nothing changes for the awaited contract."
 
 [[files]]
 path = "packages/telemetry/src/testing/conformance.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:telemetry/conformance_upstream_test.go#TestConformanceUpstream", "test:telemetry/conformance_fixture_test.go#TestConformanceFixtureIsOwnedAndDisposedByEachCase", "test:telemetry/conformance_fixture_test.go#TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError", "test:telemetry/conformance_capability_cases_test.go#TestConformanceCapabilityCasesCheckTheirRules", "test:telemetry/conformance_case_catalogue_test.go#TestConformanceCasesKeepPiGroupsNamesAndOrder"]
+rationale = "Each case awaits its own fixture (await using, :21-24), awaits the test and disposes the fixture when the test settles, including after a failure. Go's case Run takes a context, creates the fixture from the factory, runs the test on the caller's goroutine and disposes in a defer, joining a dispose error with the test's own failure where await using raises a SuppressedError carrying both. A factory failure disposes nothing. Callbacks that await before rejecting are modelled by returning from another goroutine (afterAwait), so a rejection reaches the case after the callback's synchronous part, as the Promise-returning callbacks do. The new metrics, links and propagation cases (:77-240) await getMetrics, getSpans and one or two extra fixtures (await using receiver/worker); Go's case reads them through the fixture's GetMetrics and GetSpans with the case context and opens each extra fixture with withFixture, which disposes it when its callback returns, innermost first as await using does."
 
 [[files]]
 path = "packages/telemetry/src/testing/types.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:telemetry/conformance_factory_test.go#TestTelemetryAdapterFixtureFactoryBuildsAFreshFixturePerCase", "test:telemetry/fixture_factory_test.go#TestTelemetryAdapterFixtureFactoryIsCalledOncePerCaseWithTheCaseContext", "test:telemetry/conformance_capability_cases_test.go#TestConformanceCapabilityCasesCheckTheirRules"]
+rationale = "The fixture factory, getSpans, case run and Symbol.asyncDispose return Promises the conformance cases await. Go's TelemetryAdapterFixtureFactory, GetSpans, Run and Dispose are blocking functions that take the case's context, so an adapter can stop waiting when the case is cancelled; a nil Dispose releases nothing. The new optional getMetrics returns a Promise of the measurements; Go's TelemetryAdapterFixture.GetMetrics is a blocking function taking the case context (a nil GetMetrics is the absent capability)."
 
 [[files]]
 path = "packages/tui/src/autocomplete.ts"

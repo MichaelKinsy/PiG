@@ -10,7 +10,7 @@ func TestCommonDocDefinitionInitialIsTheSingletonsFirstValue(t *testing.T) {
 		N int `json:"n"`
 	}
 	singleton := DefineDoc(DocDefinition[state]{
-		CommonDocDefinition: CommonDocDefinition[state]{Kind: "t.single", Version: 1, Initial: func() state { return state{N: 7} }},
+		CommonDocDefinition: CommonDocDefinition[state]{Kind: "t.single", Version: 1, Initial: func() state { return state{N: 7} }, CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false }},
 		DocumentSemantics:   DocumentSemantics{Scope: "session"},
 	})
 	got, err := singleton.AnyDefinition().Initial(nil)
@@ -19,7 +19,8 @@ func TestCommonDocDefinitionInitialIsTheSingletonsFirstValue(t *testing.T) {
 	}
 	family := DefineDocFamily(DocFamilyDefinition[state, int]{
 		Kind: "t.family", Version: 1, Family: true, DocumentSemantics: DocumentSemantics{Scope: "session"},
-		Initial: func(seed int) state { return state{N: seed * 2} },
+		Initial:        func(seed int) state { return state{N: seed * 2} },
+		CheckpointWhen: func(state, []Op, CheckpointInfo) bool { return false },
 	})
 	got, err = family.AnyDefinition().Initial(JsonValue(float64(21)))
 	if err != nil || got.Value("n") != float64(42) {

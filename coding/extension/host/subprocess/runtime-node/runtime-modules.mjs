@@ -6,6 +6,7 @@ export const RUNTIME_REQUIRES = Object.freeze([
   "./shims/jiti/lib/jiti.cjs",
   "./shims/jiti/package.json",
   "./shims/pi-agent-core.mjs",
+  "./shims/pi-ai-models.mjs",
   "./shims/pi-ai-oauth.mjs",
   "./shims/pi-ai.mjs",
   "./shims/pi-coding-agent.mjs",

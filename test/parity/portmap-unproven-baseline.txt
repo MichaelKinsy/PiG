@@ -138,7 +138,6 @@ packages/ai/src/utils/event-stream.ts
 packages/ai/src/utils/hash.ts
 packages/ai/src/utils/headers.ts
 packages/ai/src/utils/node-http-proxy.ts
-packages/ai/src/utils/pi-user-agent.ts
 packages/ai/src/utils/sleep.ts
 packages/ai/src/utils/text.ts
 packages/ai/src/utils/typebox-helpers.ts
@@ -180,7 +179,6 @@ packages/coding-agent/src/core/nested-tool-calls.ts
 packages/coding-agent/src/core/package-manager.ts
 packages/coding-agent/src/core/pi-manifest.ts
 packages/coding-agent/src/core/project-trust.ts
-packages/coding-agent/src/core/provider-attribution.ts
 packages/coding-agent/src/core/provider-composer.ts
 packages/coding-agent/src/core/radius.ts
 packages/coding-agent/src/core/resolve-config-value.ts

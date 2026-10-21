@@ -98,8 +98,8 @@ func TestVersionChecks(t *testing.T) {
 		if err != nil || manifest.Version != "1.2.4" {
 			t.Fatalf("manifest = %#v, err = %v", manifest, err)
 		}
-		if userAgent != ai.PiUserAgent() || accept != "application/json" {
-			t.Errorf("User-Agent = %q, Accept = %q; want %q and application/json", userAgent, accept, ai.PiUserAgent())
+		if userAgent != ai.FormatUserAgent(nil) || accept != "application/json" {
+			t.Errorf("User-Agent = %q, Accept = %q; want %q and application/json", userAgent, accept, ai.FormatUserAgent(nil))
 		}
 	})
 

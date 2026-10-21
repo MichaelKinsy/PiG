@@ -72,7 +72,7 @@ func (m *Models) generateImages(ctx context.Context, model *ImageModel, request 
 	if provider.GenerateImages == nil {
 		return AssistantImages{}, NewModelsError(ModelsErrorProvider, "Provider "+model.Provider+" does not support image generation", nil)
 	}
-	auth, err := m.resolveRequestAuth(ctx, model, options.APIKey, options.APIKeySet, options.Headers, options.Env, options.TransformHeaders)
+	auth, err := m.resolveRequestAuth(ctx, model, options.APIKey, options.APIKeySet, options.Headers, options.Env, "", options.Identity, options.TransformHeaders)
 	if err != nil {
 		return AssistantImages{}, err
 	}
@@ -82,6 +82,6 @@ func (m *Models) generateImages(ctx context.Context, model *ImageModel, request 
 		requestModel.BaseURL = auth.baseURL
 	}
 	requestOptions := options.ImagesOptions
-	requestOptions.APIKey, requestOptions.Headers, requestOptions.Env = auth.apiKey, auth.headers, auth.env
+	requestOptions.APIKey, requestOptions.Headers, requestOptions.Env, requestOptions.Identity = auth.apiKey, auth.headers, auth.env, auth.identity
 	return provider.GenerateImages(ctx, requestModel, request, requestOptions)
 }

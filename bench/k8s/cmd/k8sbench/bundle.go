@@ -80,6 +80,22 @@ var publishedAgentPins = agentPins{
 // is a launcher whose bytes equal the release's; its chunks differ. A pin bump to a commit adds its entry
 // (TestCommittedPinHasAgentPins).
 var sourceAgentPins = map[string]agentPins{
+	"fdce48eb404ec014adaf2ac10a3a53bc6b1740c2": {
+		files: map[string]string{
+			"pi-agent/package.json":      "49bcc92772c7bb1fbb6597e3a3d5671b586f34627bd76c964b25b291af9a3d5e",
+			"pi-agent/package-lock.json": "8576e51f320c1506e2a665934fa9d4dc5f21db920f6688b8efae7cfd5c1cdf41",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "40d223e54a40caa4fbe81637ade01a42dfdfe4e261eb932cce14ac7e1addec95",
+	},
+	"73f8de80bc87021375f8b525292ac07492253002": {
+		files: map[string]string{
+			"pi-agent/package.json":      "49bcc92772c7bb1fbb6597e3a3d5671b586f34627bd76c964b25b291af9a3d5e",
+			"pi-agent/package-lock.json": "5c1fb4eb8812e40b9fd4eda11e044206d2598187e92fab14f2a9b24dbc8c4771",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "a887b2a5e318e7cf472f494d90ac61c2160cff2389b5518c0322bbdbf31295bd",
+	},
 	"42a3497d03ad17e308a2299fa824727894f2c0ec": {
 		files: map[string]string{
 			"pi-agent/package.json":      "1853ecaa7aaa617360c1a5630fc3a7b029ebf242099d8a822f98bbcb4e54b4cc",

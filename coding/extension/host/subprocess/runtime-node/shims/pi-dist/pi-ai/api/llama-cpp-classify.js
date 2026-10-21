@@ -1,5 +1,6 @@
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.js";
 import { headersToRecord, providerHeadersToRecord } from "../utils/headers.js";
+import { getIdentityHeaders } from "../utils/identity.js";
 import { retryProviderRequest } from "../utils/provider-retry.js";
 /**
  * Classification with a chat model served by llama.cpp's `llama-server`.
@@ -178,7 +179,7 @@ async function post(request, path, body, observe) {
             payload = transformed;
     }
     const requestFetch = options?.fetch ?? globalThis.fetch;
-    const headers = providerHeadersToRecord({
+    const headers = providerHeadersToRecord(getIdentityHeaders(model, options?.identity), {
         "content-type": "application/json",
         ...(options?.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
     }, model.headers, options?.headers) ?? {};

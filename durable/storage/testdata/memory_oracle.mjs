@@ -40,13 +40,13 @@ function pickId(arg, list) {
 const probeTask = defineTask({ name: "probe", version: 1, initial: (input) => ({ phase: "start", input }), phases: {} });
 
 const docTokens = {
-	s: defineDoc({ kind: "p.s", version: 1, scope: "session", initial: () => ({ count: 0, items: [] }) }),
-	c: defineDoc({ kind: "p.c", version: 1, scope: "conversation", history: "latest", fork: "current", initial: () => ({ count: 0, items: [] }) }),
-	i: defineDoc({ kind: "p.i", version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ count: 0, items: [] }) }),
-	r: defineDoc({ kind: "p.r", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: () => ({ count: 0, items: [] }) }),
-	k: defineDoc({ kind: "p.k", version: 1, scope: "task", initial: () => ({ count: 0, items: [] }) }),
-	g: defineDocFamily({ family: true, kind: "p.g", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: (seed) => ({ seed, count: 0, items: [] }) }),
-	f: defineDocFamily({ family: true, kind: "p.f", version: 1, scope: "session", initial: (seed) => ({ seed, count: 0, items: [] }) }),
+	s: defineDoc({ checkpointWhen: () => false, kind: "p.s", version: 1, scope: "session", initial: () => ({ count: 0, items: [] }) }),
+	c: defineDoc({ checkpointWhen: () => false, kind: "p.c", version: 1, scope: "conversation", history: "latest", fork: "current", initial: () => ({ count: 0, items: [] }) }),
+	i: defineDoc({ checkpointWhen: () => false, kind: "p.i", version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ count: 0, items: [] }) }),
+	r: defineDoc({ checkpointWhen: () => false, kind: "p.r", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: () => ({ count: 0, items: [] }) }),
+	k: defineDoc({ checkpointWhen: () => false, kind: "p.k", version: 1, scope: "task", initial: () => ({ count: 0, items: [] }) }),
+	g: defineDocFamily({ checkpointWhen: () => false, family: true, kind: "p.g", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: (seed) => ({ seed, count: 0, items: [] }) }),
+	f: defineDocFamily({ checkpointWhen: () => false, family: true, kind: "p.f", version: 1, scope: "session", initial: (seed) => ({ seed, count: 0, items: [] }) }),
 };
 
 // A doc op's owner argument: the conversation (scope conversation) or task (scope task) the ref names, then the family key and seed.

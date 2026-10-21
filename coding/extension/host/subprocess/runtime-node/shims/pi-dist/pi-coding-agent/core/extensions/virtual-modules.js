@@ -1,5 +1,6 @@
 import * as bundledPiAgentCore from "../../../pi-agent-core/index.js";
 import * as bundledPiAiCompat from "../../../pi-ai/sdk-bundle/compat.js";
+import * as bundledPiAiModels from "../../../pi-ai/models.js";
 import * as bundledPiAiOauth from "../../../pi-ai/oauth.js";
 import * as bundledPiAiProviders from "../../../pi-ai/sdk-bundle/providers.js";
 import * as bundledPiTui from "../../../../pi-tui.mjs";
@@ -24,6 +25,7 @@ export const VIRTUAL_MODULES = {
     // global API keep working at runtime until compat is removed.
     "@earendil-works/pi-ai": bundledPiAiCompat,
     "@earendil-works/pi-ai/compat": bundledPiAiCompat,
+    "@earendil-works/pi-ai/models": bundledPiAiModels,
     "@earendil-works/pi-ai/oauth": bundledPiAiOauth,
     "@earendil-works/pi-ai/providers/all": bundledPiAiProviders,
     "@earendil-works/pi-coding-agent": bundledPiCodingAgent,
@@ -31,6 +33,7 @@ export const VIRTUAL_MODULES = {
     "@mariozechner/pi-tui": bundledPiTui,
     "@mariozechner/pi-ai": bundledPiAiCompat,
     "@mariozechner/pi-ai/compat": bundledPiAiCompat,
+    "@mariozechner/pi-ai/models": bundledPiAiModels,
     "@mariozechner/pi-ai/oauth": bundledPiAiOauth,
     "@mariozechner/pi-ai/providers/all": bundledPiAiProviders,
     "@mariozechner/pi-coding-agent": bundledPiCodingAgent,

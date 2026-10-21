@@ -155,7 +155,7 @@ func TestModelRuntimeMissingAuthIsLazyTerminalError(t *testing.T) {
 		return nil, errors.New("provider called without auth")
 	}}
 	// This guard represents a registry-built backend. A caller-supplied callback owns its own auth even if its model carries the same metadata.
-	backend := newProviderAttributionProvider(provider, "openai", "", nil, nil)
+	backend := newRequestOptionsProvider(provider, "openai", nil)
 	model := &ai.Model{ID: "gpt", Provider: backend, ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAIResponses}}
 	stream := services.ModelRuntime().Stream(context.Background(), model, ai.Context{}, ai.StreamOptions{})
 	result := stream.Result()

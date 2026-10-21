@@ -812,8 +812,8 @@ func toolChoiceName(choice any) (string, bool) {
 
 // StreamOptions are the options for a streaming LLM call.
 type StreamOptions struct {
-	// TelemetryContext parents provider request spans; nil means no recording backend.
-	TelemetryContext telemetry.TelemetryContext
+	// Telemetry is the explicit parent span for telemetry produced by this logical request; nil is Pi's omitted option, which uses the no-op span.
+	Telemetry telemetry.TelemetrySpan
 	// Deferred preserves the deferred-generation boolean or window object.
 	Deferred *DeferredOption
 	// Fetch replaces HTTP execution with a caller-owned client, preserving its redirect policy and request context.
@@ -881,6 +881,8 @@ type StreamOptions struct {
 	// Headers are request-specific HTTP headers. A nil value deletes a header
 	// supplied by configured or resolved authentication state.
 	Headers ProviderHeaders
+	// Identity is how the request identifies the calling app: `User-Agent` and provider attribution headers. Absent fields use the defaults: a detailed `User-Agent` and no attribution (ProviderRequestOptions.identity).
+	Identity *ClientIdentity `json:"identity,omitempty"`
 	// Signal carries the request lifetime to extension-owned provider callbacks. Native Provider.Stream implementations receive the same lifetime as their context argument.
 	Signal context.Context `json:"-"`
 	// APIKey is the request credential; ModelRuntime and direct StreamSimple construct the selected API provider with it. Bedrock also accepts it directly as a bearer token.

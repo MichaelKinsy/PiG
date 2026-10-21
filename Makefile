@@ -756,8 +756,9 @@ interface-deps: ## Install the locked TypeScript compiler used by parity invento
 durable-interop-deps: ## Install the Pi Durable packages the cross-runtime tests run on Node: the locked release of a tag pin, a build of the commit of a commit pin
 	@if [ "$$($(PIN_TOOL) get kind)" = tag ]; then python3 automation/ci/npm-locked.py durable/interop; else $(PIN_TOOL) install-oracle; fi
 
-durable-core-host-deps: ## Install the locked npm tree of the Durable core's Cloudflare host
+durable-core-host-deps: durable-interop-deps ## Install the locked npm tree of the Durable core's Cloudflare host, with Pi's packages from the pinned build (the release itself for a tag pin)
 	@python3 automation/ci/npm-locked.py durable/core/host/cf
+	@$(PIN_TOOL) link-durable-host durable/core/host/cf
 
 durable-core-host-check: durable-contract-setup durable-core-host-deps ## Typecheck and test the Cloudflare host and its pi-durable facade against the probe core built with TinyGo and Go
 	@durable/core/host/cf/check.sh

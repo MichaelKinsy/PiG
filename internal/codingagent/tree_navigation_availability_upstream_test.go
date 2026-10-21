@@ -90,7 +90,7 @@ func TestTreeNavigationAvailabilityUpstream(t *testing.T) {
 				}
 			}
 			sc := m.buildSlashContext(t.Context())
-			sc.ShowExtensionSelector = func(string, []string, string) (string, bool) {
+			sc.ShowExtensionSelector = func(string, []string) (string, bool) {
 				m.isCompacting = tc.busyInDialog
 				return tc.choice, true
 			}

@@ -15,7 +15,8 @@ for await (const chunk of process.stdin) input += chunk;
 const revive = (attributes) => {
 	if (attributes === null || attributes === undefined) return undefined;
 	const out = {};
-	for (const [name, value] of Object.entries(attributes)) out[name] = value !== null && typeof value === "object" && !Array.isArray(value) && value.$undef ? undefined : value;
+	// An attribute bag is a list of [name, value] pairs written into the object in order.
+	for (const [name, value] of attributes) out[name] = value !== null && typeof value === "object" && !Array.isArray(value) && value.$undef ? undefined : value;
 	return out;
 };
 const num = (value) => (value !== null && typeof value === "object" ? Number(value.$num) : value);

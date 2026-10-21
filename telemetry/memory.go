@@ -4,15 +4,19 @@ package telemetry
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"math"
 	"reflect"
 	"slices"
+	"sort"
 	"strconv"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/jsclock"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // RecordedTelemetryEvent is a detached span event snapshot.
@@ -65,7 +69,7 @@ type InMemoryTelemetryContext struct {
 	mu              sync.Mutex
 	scope           string
 	spans           []*memorySpan
-	measurements    []RecordedTelemetryMeasurement
+	measurements    []timedMeasurement
 	nextEndSequence int
 }
 
@@ -73,18 +77,13 @@ var (
 	_ TelemetryContext     = (*InMemoryTelemetryContext)(nil)
 	_ TelemetryPropagation = (*InMemoryTelemetryContext)(nil)
 	_ TelemetryMetrics     = (*InMemoryTelemetryContext)(nil)
+	_ TelemetryStore       = (*InMemoryTelemetryContext)(nil)
 )
 
 const (
 	carrierScopeKey = "pi-memory-scope"
 	carrierSpanKey  = "pi-memory-span"
-	// maxSafeInteger is Number.MAX_SAFE_INTEGER: extraction accepts a span ID only when Number.isSafeInteger holds.
-	maxSafeInteger = 1<<53 - 1
-)
-
-var (
-	scopePattern = lazyregexp.New(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	spanPattern  = lazyregexp.New(`^[1-9][0-9]*$`)
+	carrierTraceKey = "pi-memory-trace"
 )
 
 // scopeLocked is the recorder's unique scope, created on first use so the zero value stays ready to use. It is
@@ -98,6 +97,17 @@ func (recorder *InMemoryTelemetryContext) scopeLocked() string {
 		recorder.scope = fmt.Sprintf("%x-%x-%x-%x-%x", id[0:4], id[4:6], id[6:8], id[8:10], id[10:16])
 	}
 	return recorder.scope
+}
+
+// timedMeasurement is a measurement with the start of the 10 s interval it was recorded in.
+type timedMeasurement struct {
+	intervalMs  float64
+	measurement RecordedTelemetryMeasurement
+}
+
+// carrierID is upstream's carrierId: the global span ID of a carrier.
+func carrierID(carrier TelemetryCarrier) string {
+	return carrier[carrierScopeKey] + ":" + carrier[carrierSpanKey]
 }
 
 // carrierOwner is implemented by every context the in-memory recorder hands out, a span or an extracted parent. It is
@@ -132,7 +142,9 @@ func (remote *memoryRemoteParent) StartSpan(options SpanOptions, callback func(T
 	return remote.owner.start(&remote.parent, options, callback)
 }
 
-func (remote *memoryRemoteParent) memoryCarrier() TelemetryCarrier { return remote.parent.context }
+func (remote *memoryRemoteParent) Metrics() TelemetryMetrics         { return remote.owner }
+func (remote *memoryRemoteParent) Propagation() TelemetryPropagation { return remote.owner }
+func (remote *memoryRemoteParent) memoryCarrier() TelemetryCarrier   { return remote.parent.context }
 
 // NewInMemoryTelemetryContext is `new InMemoryTelemetryContext()`: an empty recorder; its zero value is equally ready to use.
 func NewInMemoryTelemetryContext() *InMemoryTelemetryContext { return &InMemoryTelemetryContext{} }
@@ -140,28 +152,55 @@ func NewInMemoryTelemetryContext() *InMemoryTelemetryContext { return &InMemoryT
 type memorySpan struct {
 	owner          *InMemoryTelemetryContext
 	record         RecordedTelemetrySpan
+	startedMs      float64
+	clock          float64
+	endedMs        float64
+	eventTimes     []float64
 	explicitStatus bool
 	asParent       inMemoryParent
 }
 
-func (span *memorySpan) memoryCarrier() TelemetryCarrier { return span.record.Context }
+func (span *memorySpan) Metrics() TelemetryMetrics         { return span.owner }
+func (span *memorySpan) Propagation() TelemetryPropagation { return span.owner }
+func (span *memorySpan) memoryCarrier() TelemetryCarrier   { return span.record.Context }
 
+// copyAttributes is upstream's copyAttributes: a detached bag in insertion order, without undefined (nil) values and
+// with each name once, a repeated name keeping its first position and taking its last value as an object literal does,
+// so a later undefined value removes the name.
 func copyAttributes(attributes SpanAttributes) SpanAttributes {
-	copy := SpanAttributes{}
-	for name, value := range attributes {
-		if value == nil {
-			// A nil value is upstream's undefined: it is not recorded and does not overwrite a recorded value.
-			continue
+	copied := make(SpanAttributes, 0, len(attributes))
+	undefined := false
+	for _, attribute := range attributes {
+		if attribute.Value == nil {
+			undefined = true
 		}
-		v := reflect.ValueOf(value)
-		if v.Kind() == reflect.Slice {
-			cloned := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
-			reflect.Copy(cloned, v)
-			value = cloned.Interface()
-		}
-		copy[name] = value
+		copied = copied.Set(attribute.Name, cloneAttributeValue(attribute.Value))
 	}
-	return copy
+	if undefined {
+		copied = slices.DeleteFunc(copied, func(attribute SpanAttribute) bool { return attribute.Value == nil })
+	}
+	return copied
+}
+
+// cloneAttributeValue copies an array value, as upstream's `[...value]`.
+func cloneAttributeValue(value AttributeValue) AttributeValue {
+	switch typed := value.(type) {
+	case string, bool, int, int64, float64:
+		return value
+	case []string:
+		return slices.Clone(typed)
+	case []float64:
+		return slices.Clone(typed)
+	case []bool:
+		return slices.Clone(typed)
+	}
+	v := reflect.ValueOf(value)
+	if v.Kind() == reflect.Slice {
+		cloned := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
+		reflect.Copy(cloned, v)
+		return cloned.Interface()
+	}
+	return value
 }
 
 // copyLink is upstream's copyLink: a link whose target has no recorded identity is dropped.
@@ -192,7 +231,7 @@ func (recorder *InMemoryTelemetryContext) start(parent *inMemoryParent, options 
 	recorder.mu.Lock()
 	if parent != nil && parent.span != nil && parent.span.record.Settled {
 		recorder.mu.Unlock()
-		return NoopTelemetryContext.StartSpan(options, callback)
+		return (&inertSpan{owner: recorder}).StartSpan(options, callback)
 	}
 	links := []RecordedTelemetryLink{}
 	for _, link := range options.Links {
@@ -201,9 +240,16 @@ func (recorder *InMemoryTelemetryContext) start(parent *inMemoryParent, options 
 		}
 	}
 	id := len(recorder.spans) + 1
-	span := &memorySpan{owner: recorder, record: RecordedTelemetrySpan{
+	scope := recorder.scopeLocked()
+	trace := scope + ":" + strconv.Itoa(id)
+	if parent != nil {
+		if inherited, ok := parent.context[carrierTraceKey]; ok {
+			trace = inherited
+		}
+	}
+	span := &memorySpan{owner: recorder, startedMs: jsclock.DateNow(), clock: jsclock.PerformanceNow(), record: RecordedTelemetrySpan{
 		ID: id, Name: options.Name, Attributes: copyAttributes(options.Attributes),
-		Context: TelemetryCarrier{carrierScopeKey: recorder.scopeLocked(), carrierSpanKey: strconv.Itoa(id)},
+		Context: TelemetryCarrier{carrierScopeKey: scope, carrierSpanKey: strconv.Itoa(id), carrierTraceKey: trace},
 		Links:   links, Events: []RecordedTelemetryEvent{}, Status: SpanStatus{Status: SpanStatusCodeOK},
 	}}
 	span.asParent = inMemoryParent{context: span.record.Context, localID: &span.record.ID, span: span}
@@ -225,15 +271,24 @@ func (recorder *InMemoryTelemetryContext) start(parent *inMemoryParent, options 
 	return callback(span)
 }
 
-func automaticErrorStatus(failure any) (status SpanStatus) {
-	status = SpanStatus{Status: SpanStatusCodeError}
-	defer func() {
-		// upstream: telemetry/src/memory.ts:automaticErrorStatus
-		if recover() != nil {
-			// Error inspection is passive.
-			status = SpanStatus{Status: SpanStatusCodeError}
-		}
-	}()
+// inertSpan is upstream's startInertSpan span: a no-op span that keeps the recorder's capabilities, started when the
+// parent has settled.
+type inertSpan struct{ owner *InMemoryTelemetryContext }
+
+func (span *inertSpan) Metrics() TelemetryMetrics         { return span.owner }
+func (span *inertSpan) Propagation() TelemetryPropagation { return span.owner }
+func (span *inertSpan) StartSpan(_ SpanOptions, callback func(TelemetrySpan) error) error {
+	return callback(&inertSpan{owner: span.owner})
+}
+func (*inertSpan) AddLink(SpanLink)                {}
+func (*inertSpan) AddEvent(string, SpanAttributes) {}
+func (*inertSpan) SetAttributes(SpanAttributes)    {}
+func (*inertSpan) SetStatus(SpanStatus)            {}
+
+// automaticErrorStatus is the status of a span whose callback failed without an explicit status: the thrown value's own
+// `error.name` and message for an error, otherwise a bare error.
+func automaticErrorStatus(failure any) SpanStatus {
+	status := SpanStatus{Status: SpanStatusCodeError}
 	if err, ok := failure.(error); ok {
 		// The thrown value's own `error.name`: its Name method when it has one, otherwise "Error"; upstream reads no cause chain.
 		name := "Error"
@@ -255,6 +310,7 @@ func (span *memorySpan) settle(failed bool, failure any) {
 		span.record.Status = automaticErrorStatus(failure)
 	}
 	span.record.Settled = true
+	span.endedMs = span.startedMs + jsclock.PerformanceNow() - span.clock
 	span.owner.nextEndSequence++
 	span.record.EndSequence = new(span.owner.nextEndSequence)
 }
@@ -281,6 +337,8 @@ func (span *memorySpan) AddEvent(name string, attributes SpanAttributes) {
 		return
 	}
 	span.record.Events = append(span.record.Events, RecordedTelemetryEvent{Name: name, Attributes: copyAttributes(attributes)})
+	span.eventTimes = append(span.eventTimes, jsclock.PerformanceNow()-span.clock)
+	span.eventTimes = append(span.eventTimes, jsclock.PerformanceNow()-span.clock)
 }
 
 func (span *memorySpan) SetAttributes(attributes SpanAttributes) {
@@ -289,7 +347,9 @@ func (span *memorySpan) SetAttributes(attributes SpanAttributes) {
 	if span.record.Settled {
 		return
 	}
-	maps.Copy(span.record.Attributes, copyAttributes(attributes))
+	for _, attribute := range copyAttributes(attributes) {
+		span.record.Attributes = span.record.Attributes.Set(attribute.Name, attribute.Value)
+	}
 }
 
 func (span *memorySpan) SetStatus(status SpanStatus) {
@@ -338,35 +398,33 @@ func (recorder *InMemoryTelemetryContext) Inject(context TelemetryContext) Telem
 	return maps.Clone(carrierOf(context))
 }
 
-// Extract returns a parent whose spans record the carrier's span as their parent context. An unrecognized or malformed
-// carrier falls back to this recorder's root context. Only the two carrier keys are read, so a carrier with extra keys
-// is accepted and its extras dropped.
+// Extract returns a parent whose spans record the carrier's span as their parent context and continue its trace. An
+// absent or incomplete carrier falls back to this recorder's root context. Only the three carrier keys are read, so a
+// carrier with extra keys is accepted and its extras dropped; identities are opaque strings.
 func (recorder *InMemoryTelemetryContext) Extract(carrier TelemetryCarrier) TelemetryContext {
 	scope, hasScope := carrier[carrierScopeKey]
 	span, hasSpan := carrier[carrierSpanKey]
-	if !hasScope || !hasSpan || !scopePattern.MatchString(scope) || !spanPattern.MatchString(span) {
-		return recorder
-	}
-	// Number(span) is a safe integer exactly when it fits Number.MAX_SAFE_INTEGER; a longer digit string overflows ParseUint.
-	//portlint:allow numbers span matched ^[1-9][0-9]*$, so Number(span) is its value; a longer digit string overflows ParseUint, and Number(span) of one is above Number.MAX_SAFE_INTEGER too
-	number, err := strconv.ParseUint(span, 10, 64)
-	if err != nil || number > maxSafeInteger {
+	trace, hasTrace := carrier[carrierTraceKey]
+	if !hasScope || !hasSpan || !hasTrace {
 		return recorder
 	}
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
-	remote := &memoryRemoteParent{owner: recorder, parent: inMemoryParent{context: TelemetryCarrier{carrierScopeKey: scope, carrierSpanKey: span}}}
-	if scope == recorder.scopeLocked() && number <= uint64(len(recorder.spans)) {
-		remote.parent.localID = new(int(number))
+	remote := &memoryRemoteParent{owner: recorder, parent: inMemoryParent{context: TelemetryCarrier{carrierScopeKey: scope, carrierSpanKey: span, carrierTraceKey: trace}}}
+	if scope == recorder.scopeLocked() {
+		// localId = Number(span). A span that is not an integer (NaN, a fraction) names no local span, so Go leaves the parent unset where Pi keeps the number.
+		if number := jsnumber.Parse(span); number == math.Trunc(number) && math.Abs(number) <= 1<<53 {
+			id := int(number) //portlint:allow numbers number is a finite integer (NaN fails the Trunc equality) within 2^53, so the conversion is exact
+			remote.parent.localID = &id
+		}
 	}
 	return remote
 }
 
-// measurementRecorder is upstream's createMeasurementRecorder result: the validated instrument metadata and the
-// recorder it appends to. An invalid instrument records nothing.
+// measurementRecorder is upstream's createMeasurementRecorder result: the instrument metadata and the recorder it
+// appends to. Typed inputs are trusted, so every measurement is recorded.
 type measurementRecorder struct {
 	owner       *InMemoryTelemetryContext
-	valid       bool
 	kind        TelemetryMetricKind
 	name        string
 	description *string
@@ -382,29 +440,21 @@ func newMeasurementRecorder(owner *InMemoryTelemetryContext, kind TelemetryMetri
 	if options.Unit != nil {
 		recorder.unit = new(*options.Unit)
 	}
-	if kind == TelemetryMetricKindHistogram {
+	if kind == TelemetryMetricKindHistogram && options.Boundaries != nil {
 		recorder.boundaries = slices.Clone(options.Boundaries)
 	}
-	for index, boundary := range recorder.boundaries {
-		if math.IsNaN(boundary) || math.IsInf(boundary, 0) || (index > 0 && boundary <= recorder.boundaries[index-1]) {
-			return recorder
-		}
-	}
-	recorder.valid = true
 	return recorder
 }
 
 func (recorder *measurementRecorder) record(value float64, attributes SpanAttributes, context TelemetryContext) {
-	if !recorder.valid || math.IsNaN(value) || math.IsInf(value, 0) || (recorder.kind == TelemetryMetricKindCounter && value < 0) {
-		return
-	}
 	measurement := RecordedTelemetryMeasurement{
 		Kind: recorder.kind, Name: recorder.name, Description: recorder.description, Unit: recorder.unit, Boundaries: recorder.boundaries,
 		Value: value, Attributes: copyAttributes(attributes), Context: maps.Clone(carrierOf(context)),
 	}
+	interval := math.Floor(jsclock.DateNow()/10_000) * 10_000
 	recorder.owner.mu.Lock()
 	defer recorder.owner.mu.Unlock()
-	recorder.owner.measurements = append(recorder.owner.measurements, measurement)
+	recorder.owner.measurements = append(recorder.owner.measurements, timedMeasurement{intervalMs: interval, measurement: measurement})
 }
 
 type memoryCounter struct{ recorder *measurementRecorder }
@@ -441,7 +491,8 @@ func (recorder *InMemoryTelemetryContext) GetMetrics() []RecordedTelemetryMeasur
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
 	result := make([]RecordedTelemetryMeasurement, len(recorder.measurements))
-	for i, measurement := range recorder.measurements {
+	for i, timed := range recorder.measurements {
+		measurement := timed.measurement
 		if measurement.Description != nil {
 			measurement.Description = new(*measurement.Description)
 		}
@@ -454,4 +505,201 @@ func (recorder *InMemoryTelemetryContext) GetMetrics() []RecordedTelemetryMeasur
 		result[i] = measurement
 	}
 	return result
+}
+
+// Metrics is the recorder's own metrics capability, upstream's `metrics = this`.
+func (recorder *InMemoryTelemetryContext) Metrics() TelemetryMetrics { return recorder }
+
+// Propagation is the recorder's own propagation capability, upstream's `propagation = this`.
+func (recorder *InMemoryTelemetryContext) Propagation() TelemetryPropagation { return recorder }
+
+// storedSpansLocked is upstream's storedSpans: settled spans only, ordered by start time and then span ID.
+func (recorder *InMemoryTelemetryContext) storedSpansLocked() []StoredSpan {
+	var stored []StoredSpan
+	for _, span := range recorder.spans {
+		if !span.record.Settled {
+			continue
+		}
+		value := StoredSpan{
+			ID: carrierID(span.record.Context), TraceID: span.record.Context[carrierTraceKey], Name: span.record.Name,
+			StartedMs: span.startedMs, EndedMs: span.endedMs, Attributes: copyAttributes(span.record.Attributes),
+			Events: []StoredSpanEvent{}, Links: []StoredSpanLink{}, Status: copyStatus(span.record.Status),
+		}
+		if span.record.ParentContext != nil {
+			value.ParentID = new(carrierID(span.record.ParentContext))
+		}
+		for index, event := range span.record.Events {
+			value.Events = append(value.Events, StoredSpanEvent{Name: event.Name, TimeMs: span.eventTimes[index], Attributes: copyAttributes(event.Attributes)})
+		}
+		for _, link := range span.record.Links {
+			value.Links = append(value.Links, StoredSpanLink{TraceID: link.Context[carrierTraceKey], SpanID: carrierID(link.Context), Attributes: copyAttributes(link.Attributes)})
+		}
+		stored = append(stored, value)
+	}
+	sort.SliceStable(stored, func(left, right int) bool {
+		if stored[left].StartedMs != stored[right].StartedMs {
+			return stored[left].StartedMs < stored[right].StartedMs
+		}
+		return stored[left].ID < stored[right].ID
+	})
+	return stored
+}
+
+// GetTrace returns the settled spans of one trace, or nil when it has none.
+func (recorder *InMemoryTelemetryContext) GetTrace(traceID string) (*StoredTrace, error) {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	var spans []StoredSpan
+	for _, span := range recorder.storedSpansLocked() {
+		if span.TraceID == traceID {
+			spans = append(spans, span)
+		}
+	}
+	if len(spans) == 0 {
+		return nil, nil
+	}
+	return &StoredTrace{TraceID: traceID, Spans: spans}, nil
+}
+
+// attributeEqual is upstream's `===` on a string, number or boolean: numbers are equal by value whatever their Go type.
+func attributeEqual(left, right AttributeValue) bool {
+	leftNumber, leftIsNumber := numberOf(left)
+	rightNumber, rightIsNumber := numberOf(right)
+	if leftIsNumber || rightIsNumber {
+		return leftIsNumber && rightIsNumber && leftNumber == rightNumber
+	}
+	return left == right
+}
+
+func numberOf(value AttributeValue) (float64, bool) {
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return float64(reflected.Int()), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return float64(reflected.Uint()), true
+	case reflect.Float32, reflect.Float64:
+		return reflected.Float(), true
+	default:
+		return 0, false
+	}
+}
+
+// attributesMatch is upstream's `Object.entries(query).every(([key, value]) => attributes[key] === value)`.
+func attributesMatch(query map[string]AttributeValue, attributes SpanAttributes) bool {
+	for key, want := range query {
+		got, ok := attributes.Get(key)
+		if !ok || !attributeEqual(got, want) {
+			return false
+		}
+	}
+	return true
+}
+
+// FindTraces filters settled traces by their earliest span's name and start, by any error span and by attributes that
+// all match one span, newest first, and pages them with an opaque cursor.
+func (recorder *InMemoryTelemetryContext) FindTraces(query TraceQuery) (FindTracesResult, error) {
+	limit := 20
+	if query.Limit != nil {
+		limit = *query.Limit
+	}
+	var after struct {
+		set     bool
+		started float64
+		traceID string
+	}
+	if query.Cursor != nil {
+		var decoded [2]json.RawMessage
+		if err := json.Unmarshal([]byte(*query.Cursor), &decoded); err != nil {
+			return FindTracesResult{}, err
+		}
+		if err := json.Unmarshal(decoded[0], &after.started); err != nil {
+			return FindTracesResult{}, err
+		}
+		if err := json.Unmarshal(decoded[1], &after.traceID); err != nil {
+			return FindTracesResult{}, err
+		}
+		after.set = true
+	}
+	recorder.mu.Lock()
+	grouped := map[string]*StoredTrace{}
+	var traces []*StoredTrace
+	for _, span := range recorder.storedSpansLocked() {
+		trace, ok := grouped[span.TraceID]
+		if !ok {
+			trace = &StoredTrace{TraceID: span.TraceID}
+			grouped[span.TraceID] = trace
+			traces = append(traces, trace)
+		}
+		trace.Spans = append(trace.Spans, span)
+	}
+	recorder.mu.Unlock()
+	var matches []*StoredTrace
+	for _, trace := range traces {
+		first := trace.Spans[0]
+		if query.Name != nil && first.Name != *query.Name {
+			continue
+		}
+		if query.StartMin != nil && first.StartedMs < *query.StartMin || query.StartMax != nil && first.StartedMs > *query.StartMax {
+			continue
+		}
+		if after.set && !(first.StartedMs < after.started || first.StartedMs == after.started && trace.TraceID > after.traceID) {
+			continue
+		}
+		if query.Errors && !slices.ContainsFunc(trace.Spans, func(span StoredSpan) bool { return span.Status.Status == SpanStatusCodeError }) {
+			continue
+		}
+		if query.Attributes != nil && !slices.ContainsFunc(trace.Spans, func(span StoredSpan) bool { return attributesMatch(query.Attributes, span.Attributes) }) {
+			continue
+		}
+		matches = append(matches, trace)
+	}
+	sort.SliceStable(matches, func(left, right int) bool {
+		if matches[left].Spans[0].StartedMs != matches[right].Spans[0].StartedMs {
+			return matches[left].Spans[0].StartedMs > matches[right].Spans[0].StartedMs
+		}
+		return matches[left].TraceID < matches[right].TraceID
+	})
+	page := matches
+	if len(page) > limit {
+		page = page[:limit]
+	}
+	result := FindTracesResult{Traces: make([]StoredTrace, len(page))}
+	for index, trace := range page {
+		result.Traces[index] = *trace
+	}
+	if len(matches) > limit {
+		last := page[len(page)-1]
+		cursor, err := jsstring.MarshalJSON([]any{last.Spans[0].StartedMs, last.TraceID})
+		if err != nil {
+			return FindTracesResult{}, err
+		}
+		result.Cursor = new(string(cursor))
+	}
+	return result, nil
+}
+
+// FindMetrics reads raw measurements as count-one rows, without changing GetMetrics snapshots.
+func (recorder *InMemoryTelemetryContext) FindMetrics(query MetricQuery) ([]StoredMetric, error) {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	rows := []StoredMetric{}
+	for _, timed := range recorder.measurements {
+		measurement := timed.measurement
+		if measurement.Name != query.Name ||
+			query.StartMin != nil && timed.intervalMs < *query.StartMin ||
+			query.StartMax != nil && timed.intervalMs > *query.StartMax ||
+			!attributesMatch(query.Attributes, measurement.Attributes) {
+			continue
+		}
+		row := StoredMetric{
+			IntervalMs: timed.intervalMs, Name: measurement.Name, Kind: measurement.Kind,
+			Attributes: copyAttributes(measurement.Attributes), Count: 1, Sum: measurement.Value, Min: measurement.Value, Max: measurement.Value,
+		}
+		if measurement.Unit != nil {
+			row.Unit = new(*measurement.Unit)
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
 }

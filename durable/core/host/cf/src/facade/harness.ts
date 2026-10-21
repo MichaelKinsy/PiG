@@ -648,6 +648,21 @@ export class Harness {
     queueMicrotask(() => { this.resumeQueued = false; if (!this.shut && this.host.discarded === undefined) this.host.send(EVENT.resume) })
   }
 
+  /** harness.ts wake :282-285: assertUsable, then scheduler.ts wake(), synchronous and from memory. The core answers api `wake` inside the send, so the reply is read as it arrives. */
+  wake(): { active: boolean; at?: number } {
+    this.assertOpen()
+    let wake: { active: boolean; at?: number } | undefined
+    this.client.apiNow<{ active: boolean; at?: number }>("wake", {}, value => (wake = value))
+    if (wake === undefined) throw this.failure !== undefined ? new SessionFailed(this.failure.error) : new Error("the core did not answer wake at once")
+    return wake
+  }
+
+  /** harness.ts retryTask :324-327: assertUsable (a synchronous throw), then scheduler.ts retry(): a commit on the Session line that clears a parked task's restart count (an error for an unknown task), then resume(). The promise is the core's answer as it is. */
+  retryTask(id: number, context: Context): Promise<void> {
+    this.assertOpen()
+    return awaitWithContext(this.client.api<void>("retryTask", { taskId: id }, () => undefined), context)
+  }
+
   // Not async: harness.ts root :314-319 and createConversation :326-329 return #create's promise itself.
   root(context: Context, options: { agent?: unknown; init?: (tx: TxProxy, id: number) => unknown } = {}): Promise<Conversation> {
     return this.create({ kind: "root" }, options, context)

@@ -78,6 +78,7 @@ type Models struct {
 	credentials        CredentialStore
 	modelsStore        ModelsStore
 	authContext        AuthContext
+	identity           *ClientIdentity
 	modelAuth          func(context.Context, *Model, AuthResolutionOverrides) (*AuthResult, error)
 	refreshGenerations map[string]uint64
 	refreshControllers map[string]*modelsRefreshSignal
@@ -111,7 +112,7 @@ func createModels(modelAuth func(context.Context, *Model, AuthResolutionOverride
 	if opts.AuthContext != nil {
 		authContext = *opts.AuthContext
 	}
-	return &Models{providers: map[string]*ModelsProvider{}, credentials: opts.Credentials, modelsStore: opts.ModelsStore, authContext: authContext, modelAuth: modelAuth, refreshGenerations: map[string]uint64{}, refreshControllers: map[string]*modelsRefreshSignal{}, publicationChains: map[string]chan struct{}{}}
+	return &Models{providers: map[string]*ModelsProvider{}, credentials: opts.Credentials, modelsStore: opts.ModelsStore, authContext: authContext, identity: opts.Identity, modelAuth: modelAuth, refreshGenerations: map[string]uint64{}, refreshControllers: map[string]*modelsRefreshSignal{}, publicationChains: map[string]chan struct{}{}}
 }
 
 type modelsOperationResult[T any] struct {

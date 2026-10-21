@@ -148,6 +148,12 @@ SPDX-FileCopyrightText = [
 ]
 SPDX-License-Identifier = "MIT AND BSD-3-Clause"
 
+[[annotations]]
+path = "internal/codingagent/export/assets/vendor/marked-cjk-friendly.min.js"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2024 Tatsunori Uchino, and authors and contributors of original packages"
+SPDX-License-Identifier = "MIT"
+
 # Unicode character data embedded in the generated width tables.
 [[annotations]]
 path = "tui/widthx/unicode_tables.go"
@@ -181,6 +187,13 @@ SPDX-FileCopyrightText = [
   "Copyright 2004 John Gruber",
 ]
 SPDX-License-Identifier = "MIT AND BSD-3-Clause"
+
+# The unmodified marked-cjk-friendly 0.1.2 package, which pi-tui's Markdown component uses to close emphasis next to CJK punctuation.
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/marked-cjk-friendly/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2024 Tatsunori Uchino, and authors and contributors of original packages"
+SPDX-License-Identifier = "MIT"
 
 # The unmodified CommonJS build (lib/) of highlight.js 10.7.3, which Pi
 # 0.87.1's highlightCode tokenizes code with.

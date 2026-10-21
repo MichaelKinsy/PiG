@@ -1,4 +1,4 @@
-upstream_version = "1.3.0+1402973a"
+upstream_version = "1.3.0+bd3c9b82"
 
 [[contract]]
 id = "coding-agent/extension-input/remapped-confirm"
@@ -257,11 +257,14 @@ id = "coding-agent/extensions/select-dialog-lifecycle"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionSelector"
 family = "extensions-runtime"
 kind = "async-dialog-lifecycle"
-claim = "an extension selector resolves undefined at once for an aborted signal, takes the editor slot and focus on the owning TUI loop and reports the blocked status, also from a focused custom component (a custom overlay gets focus back when the dialog hides; an editor-slot component the dialog displaced does not), displaces a dialog already shown (which stays pending), resolves the chosen option or undefined on cancel, timeout or abort, and its abort hides whatever dialog is shown"
+claim = "an extension selector resolves undefined at once for an aborted signal, joins the editor-slot dialog stack (it takes the editor slot and focus on the owning TUI loop and reports the blocked status, also from a focused custom component: a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it so the earlier dialog is shown again once this one closes, resolves the chosen option or undefined on cancel, timeout or abort, and its abort removes only its own dialog from the stack"
 status = "ported"
 pig_targets = [
   "internal/codingagent/ext_ui_context.go#runDialog",
-  "internal/codingagent/ext_ui_context.go#hideExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
   "coding/extension/host/subprocess/ui_bridge.go#handleCall",
   "internal/codingagent/ext_ui_context.go#selectWithStatus",
   "internal/codingagent/custom_overlay_control.go#SetFocused",
@@ -269,23 +272,29 @@ pig_targets = [
 evidence = [
   "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
   "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
-  "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogDisplacesTheOpenDialog",
-  "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingADisplacedDialogHidesTheShownDialog",
+  "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+  "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
   "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
   "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
-  "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogDisplacesFocusedEditorSlotCustom",
+  "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
   "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
   "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
-  "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+  "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
   "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml",
+  "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
   "test/parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate showExtensionSelector("
-end = "\t/**\n\t * Hide the extension selector."
-sha256 = "9726e7a141545df5f93d9b69336e91496d11cdf58ea359ef4314e5ec7785bca6"
+end = "\t/**\n\t * Show a confirmation dialog for extensions."
+sha256 = "a21b4d72f2e9bd53a902d6e9d418f96dd247d68c5439af25aabef16fdd596262"
 keybindings = []
 
 [[contract]]
@@ -293,11 +302,14 @@ id = "coding-agent/extensions/input-dialog-lifecycle"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionInput"
 family = "extensions-runtime"
 kind = "async-dialog-lifecycle"
-claim = "an extension input resolves undefined at once for an aborted signal, takes the editor slot and focus on the owning TUI loop, also from a focused custom component (a custom overlay gets focus back when the dialog hides; an editor-slot component the dialog displaced does not), displaces a dialog already shown, preserves an empty submission, resolves undefined on cancel, timeout or abort, and its abort hides whatever dialog is shown"
+claim = "an extension input resolves undefined at once for an aborted signal, joins the editor-slot dialog stack with focus on the owning TUI loop, also from a focused custom component (a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it, preserves an empty submission, resolves undefined on cancel, timeout or abort, and its abort removes only its own dialog from the stack"
 status = "ported"
 pig_targets = [
   "internal/codingagent/ext_ui_context.go#runDialog",
-  "internal/codingagent/ext_ui_context.go#hideExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
   "coding/extension/host/subprocess/ui_bridge.go#handleCall",
   "internal/codingagent/ext_ui_context.go#Input",
   "internal/codingagent/custom_overlay_control.go#SetFocused",
@@ -305,23 +317,29 @@ pig_targets = [
 evidence = [
   "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
   "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
-  "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogDisplacesTheOpenDialog",
-  "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingADisplacedDialogHidesTheShownDialog",
+  "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+  "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
   "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
   "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
-  "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogDisplacesFocusedEditorSlotCustom",
+  "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
   "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
   "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
-  "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+  "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
   "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml",
+  "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
   "coding/extension/host/subprocess/push_proxy_test.go#TestUIBridge_EmptyDialogSubmissionIsSuccessful",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate showExtensionInput("
-end = "\t/**\n\t * Hide the extension input."
-sha256 = "97faead6128bcc6179c1fdad789dacb3fdd8ad9056ee1e37e06ac7f3f02646a5"
+end = "\t/**\n\t * Show a multi-line editor for extensions (with Ctrl+G support)."
+sha256 = "82867f580d91e258aeacdc2de0db11ec368c88e56aa101cbd0f10dbab68d9b59"
 keybindings = []
 
 [[contract]]
@@ -329,11 +347,14 @@ id = "coding-agent/extensions/editor-dialog-lifecycle"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor"
 family = "extensions-runtime"
 kind = "async-dialog-lifecycle"
-claim = "an extension editor takes the editor slot and focus on the owning TUI loop with the prefill, also from a focused custom component (a custom overlay gets focus back when the dialog hides; an editor-slot component the dialog displaced does not), displaces a dialog already shown, and resolves the submitted text or undefined on cancel"
+claim = "an extension editor joins the editor-slot dialog stack with focus on the owning TUI loop with the prefill, also from a focused custom component (a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it, resolves the submitted text or undefined on cancel, and is removed from the stack when it closes"
 status = "ported"
 pig_targets = [
   "internal/codingagent/ext_ui_context.go#runDialog",
-  "internal/codingagent/ext_ui_context.go#hideExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#pushExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#removeExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#showTopExtensionDialog",
+  "internal/codingagent/ext_ui_dialog_stack.go#finishExtensionDialog",
   "coding/extension/host/subprocess/ui_bridge.go#handleCall",
   "internal/codingagent/ext_ui_context.go#Editor",
   "internal/codingagent/custom_overlay_control.go#SetFocused",
@@ -341,22 +362,28 @@ pig_targets = [
 evidence = [
   "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
   "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
-  "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogDisplacesTheOpenDialog",
-  "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingADisplacedDialogHidesTheShownDialog",
+  "internal/codingagent/ext_ui_dialog_displace_test.go#TestExtensionDialogStacksOverTheOpenDialog",
+  "internal/codingagent/ext_ui_dialog_displace_test.go#TestAbortingAHiddenDialogLeavesTheShownDialog",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+  "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
   "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogsDoNotWaitForEachOther",
   "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
-  "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogDisplacesFocusedEditorSlotCustom",
+  "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogStacksOverFocusedEditorSlotCustom",
   "internal/codingagent/ext_ui_dialog_focus_test.go#TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
   "coding/extension/host/subprocess/ui_bridge_test.go#TestInteractiveDialogOpensOverFocusedOverlay",
-  "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+  "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
   "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml",
+  "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate showExtensionEditor("
-end = "\t/**\n\t * Hide the extension editor."
-sha256 = "e359904c0ace81a13a9c1c88c960568df882167352b2156d192f4fb805de7f75"
+end = "\t/**\n\t * Set a custom editor component from an extension."
+sha256 = "f581246fbf6d8b7144ccd69b69f1e9e011075234385cea93af879c11ea8203ab"
 keybindings = []
 
 [[contract]]
@@ -3480,7 +3507,7 @@ id = "tui/terminal-image/detect-capabilities"
 upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
 family = "tui-components"
 kind = "boundary-transition"
-claim = "the image protocol, truecolor and hyperlink capabilities follow Pi's environment order: tmux (hyperlinks from the probe) and screen first, then herdr, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty, vscode, zed, JetBrains JediTerm and the Windows console, with the COLORTERM and -direct truecolor hint, and the PI_IMAGE_PROTOCOL (case-insensitive kitty, iterm2, none, 0), PI_HYPERLINKS and PI_TRUE_COLOR (exactly 1 or 0) overrides, over 1856 environments"
+claim = "the image protocol, truecolor and hyperlink capabilities follow Pi's environment order: tmux (hyperlinks from the probe) and screen first, then herdr, Rex, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty, vscode, zed, JetBrains JediTerm and the Windows console, with Rex reporting Kitty images, with the COLORTERM and -direct truecolor hint, and the PI_IMAGE_PROTOCOL (case-insensitive kitty, iterm2, none, 0), PI_HYPERLINKS and PI_TRUE_COLOR (exactly 1 or 0) overrides, over 2072 environments"
 status = "ported"
 pig_targets = [
   "tui/terminal_image.go#DetectCapabilities",
@@ -3497,7 +3524,7 @@ evidence = [
 path = "packages/tui/src/terminal-image.ts"
 start = "function detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink: () => boolean): TerminalCapabilities {"
 end = "export function getCapabilities(): TerminalCapabilities {"
-sha256 = "794aab4f7dd1d2da96d5107d9c6b779511f9fea30b0777c16edbe4d72e1a8629"
+sha256 = "445dd2fc98cc7c75af16202b44e0b1182ccf5bffabea103cc6a97ca95c3f614c"
 keybindings = []
 
 [[contract]]

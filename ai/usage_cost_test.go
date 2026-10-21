@@ -150,11 +150,11 @@ data: [DONE]
 			want: `{"input":200000,"output":5000,"cacheRead":100000,"cacheWrite":0,"reasoning":1200,"totalTokens":305000,"cost":{"input":2,"output":0.225,"cacheRead":0.09999999999999999,"cacheWrite":0,"total":2.325}}`,
 		},
 		{
-			name: "codex gpt-5.5 priority", kind: "codex", spec: "openai-codex/gpt-5.5",
+			name: "codex gpt-5.6-sol priority", kind: "codex", spec: "openai-codex/gpt-5.6-sol",
 			body: `data: {"type":"response.completed","response":{"id":"resp_1","status":"completed","service_tier":"priority","usage":{"input_tokens":100000,"output_tokens":100000,"total_tokens":200000,"input_tokens_details":{"cached_tokens":0}}}}
 
 `,
-			want: `{"input":100000,"output":100000,"cacheRead":0,"cacheWrite":0,"reasoning":0,"totalTokens":200000,"cost":{"input":1.25,"output":7.5,"cacheRead":0,"cacheWrite":0,"total":8.75}}`,
+			want: `{"input":100000,"output":100000,"cacheRead":0,"cacheWrite":0,"reasoning":0,"totalTokens":200000,"cost":{"input":0.7999999999999999,"output":4,"cacheRead":0,"cacheWrite":0,"total":4.8}}`,
 		},
 		{
 			name: "azure ignores service tier", kind: "azure", spec: "azure/gpt-5.5",

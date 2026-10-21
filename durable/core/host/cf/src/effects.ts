@@ -33,8 +33,8 @@ export interface ModelsLike {
   /** The catalogue: the models the core may name (open's `models`). */
   getModels?(provider?: string): readonly { provider: string; id: string; contextWindow: number; maxTokens: number }[]
   streamSimple(model: any, context: { messages: unknown[] }, options?: any): AsyncIterable<any> & { result(): Promise<any> }
-  fetchDeferred?(model: any, handle: unknown, options?: { signal?: AbortSignal }): Promise<any>
-  cancelDeferred?(model: any, handle: unknown, options?: { signal?: AbortSignal }): Promise<void>
+  fetchDeferred?(model: any, handle: unknown, options?: { signal?: AbortSignal; telemetry?: unknown }): Promise<any>
+  cancelDeferred?(model: any, handle: unknown, options?: { signal?: AbortSignal; telemetry?: unknown }): Promise<void>
 }
 
 export interface EffectRuntime {
@@ -94,20 +94,20 @@ class EventBatch {
 }
 
 /**
- * The request options with the signal where Pi puts it: generation.ts builds `{ ...streamOptions, signal, sessionId, ...reasoning }`, and
- * ConversationStreamOptions holds neither key, so the core's options end with sessionId (and reasoning) and the signal goes just before
- * sessionId. A signal already in the options keeps its place (spread semantics).
+ * The request options with the signal and the telemetry where Pi puts them: generation.ts builds `{ ...streamOptions, signal, telemetry, sessionId, ...reasoning }`
+ * (:226-232), and ConversationStreamOptions holds none of those keys, so the core's options end with sessionId (and reasoning) and the signal and
+ * the telemetry go just before sessionId, in that order. A signal or telemetry already in the options keeps its place (spread semantics).
  */
-export function withSignal(options: Record<string, unknown> | undefined, signal: AbortSignal): Record<string, unknown> {
+export function withSignal(options: Record<string, unknown> | undefined, signal: AbortSignal, telemetry: unknown): Record<string, unknown> {
   const out: Record<string, unknown> = {}
-  if (options === undefined) { out.signal = signal; return out }
-  const keys = Object.keys(options)
-  const has = keys.includes("signal")
+  const place = () => { if (!("signal" in out)) out.signal = signal; if (!("telemetry" in out)) out.telemetry = telemetry }
+  const keys = Object.keys(options ?? {})
+  const has = keys.includes("signal") || keys.includes("telemetry")
   for (const key of keys) {
-    if (key === "sessionId" && !has) out.signal = signal
-    out[key] = key === "signal" ? signal : options[key]
+    if (key === "sessionId" && !has) place()
+    out[key] = key === "signal" ? signal : key === "telemetry" ? telemetry : options![key]
   }
-  if (!("signal" in out)) out.signal = signal
+  place()
   return out
 }
 
@@ -145,7 +145,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     try {
       // Each request gets its own copy of the list, as Pi's generation does (generation.ts streamSimple call): the kept list grows
       // in place when a later request of the conversation extends it.
-      const stream = rt.models.streamSimple(model, { messages: [...messages] }, withSignal(p.options, signal))
+      const stream = rt.models.streamSimple(model, { messages: [...messages] }, withSignal(p.options, signal, contextOf(signal).telemetry))
       let terminal = false
       // Pi stores the final message through a strict-JSON copy in the answer commit; one that is not JSON faults the run there.
       const checked = (event: any): unknown => {
@@ -343,11 +343,11 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       const model = rt.models.getModel(p.model.provider, p.model.modelId)
       if (model === undefined) throw new Error(`Model ${p.model.provider}/${p.model.modelId} is not available`)
       if (p.op === "cancel") {
-        await rt.models.cancelDeferred?.(model, p.handle, { signal })
+        await rt.models.cancelDeferred?.(model, p.handle, { signal, telemetry: contextOf(signal).telemetry })
         return host.hookDone(effect.id, 0, null)
       }
       if (!rt.models.fetchDeferred) throw new Error("the models object has no fetchDeferred")
-      const message = await rt.models.fetchDeferred(model, p.handle, { signal })
+      const message = await rt.models.fetchDeferred(model, p.handle, { signal, telemetry: contextOf(signal).telemetry })
       host.hookDone(effect.id, 0, message)
     } catch (error) {
       host.hookDone(effect.id, 1, thrown(error))

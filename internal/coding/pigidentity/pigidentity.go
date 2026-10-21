@@ -14,18 +14,12 @@ package pigidentity
 // editor headers, Anthropic OAuth's claude-cli) are not here; PiG keeps them as
 // Pi does.
 const (
-	// OpenRouterReferer replaces provider-attribution.ts's `HTTP-Referer: https://pi.dev`.
-	OpenRouterReferer = "https://github.com/MichaelKinsy/PiG"
-	// OpenRouterTitle replaces `X-OpenRouter-Title: pi`.
-	OpenRouterTitle = "PiG"
-	// OpenRouterCategories is `X-OpenRouter-Categories`, unchanged from Pi.
-	OpenRouterCategories = "cli-agent"
-	// NvidiaBillingOrigin replaces `X-BILLING-INVOKE-ORIGIN: Pi`.
-	NvidiaBillingOrigin = "PiG"
-	// CloudflareUserAgent replaces the Cloudflare `User-Agent: pi-coding-agent`.
-	CloudflareUserAgent = "pig-coding-agent"
-	// OpenCodeClient replaces `x-opencode-client: pi`.
-	OpenCodeClient = "pig"
+	// AttributionName replaces PI_ATTRIBUTION.name (`pi`): the OpenRouter app title, the NVIDIA invoke origin (first letter upper-cased) and the OpenCode client.
+	AttributionName = "PiG"
+	// AttributionURL replaces PI_ATTRIBUTION.url (`https://pi.dev`): the OpenRouter `HTTP-Referer`.
+	AttributionURL = "https://github.com/MichaelKinsy/PiG"
+	// AttributionCategory is PI_ATTRIBUTION.categories' one entry, unchanged from Pi.
+	AttributionCategory = "cli-agent"
 	// CodexOriginator replaces the OpenAI Codex `originator: pi`, sent on requests and in the login URL.
 	CodexOriginator = "pig"
 	// ChatGPTAgentName replaces the `agent_name_hint=Pi` of the Sign in with ChatGPT authorization URL.

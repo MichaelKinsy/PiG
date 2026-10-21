@@ -577,6 +577,41 @@ func TestASquashLandingKeepsTheCommittedLedger(t *testing.T) {
 	}
 }
 
+func TestASquashLandingDropsATestThePortRetired(t *testing.T) {
+	dev := newFixture(t)
+	release := dev.run("rev-parse", "HEAD")
+	dev.write("a.go", "package x\n")
+	dev.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	dev.commit("Fix a crash in a", "a.go", "a_test.go")
+	if err := run(dev.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	dev.commit("Add the ledger", "docs/bug-ledger.json", "docs/site/docs/bug-ledger.md")
+	committed, err := os.ReadFile(filepath.Join(dev.root, jsonPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(committed), "a_test.go::TestAFixed") {
+		t.Fatalf("the fix does not name its test:\n%s", committed)
+	}
+
+	pub := squash(t, dev, release)
+	pub.write("a_test.go", "package x\n\nfunc TestARenamed(t *testing.T) {}\n")
+	if err := run(pub.root, "0.4.1", false, false); err != nil {
+		t.Fatalf("regenerating after a port retired the test: %v", err)
+	}
+	regenerated, err := os.ReadFile(filepath.Join(pub.root, jsonPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(regenerated), "TestAFixed") {
+		t.Fatalf("the regenerated ledger still names the retired test:\n%s", regenerated)
+	}
+	if err := run(pub.root, "0.4.1", true, true); err != nil {
+		t.Fatalf("the regenerated ledger must verify: %v", err)
+	}
+}
+
 func TestAPortCommitClassesItsReleaseNoteAsAPiPort(t *testing.T) {
 	for _, c := range []struct {
 		msg, class string

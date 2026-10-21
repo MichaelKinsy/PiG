@@ -2026,18 +2026,6 @@ snippet = "go s.runPending()"
 
 [[hit]]
 check = "golifetime"
-file = "ai/provider_streams.go"
-func = "LazyStream"
-snippet = "return startLazyStream(ctx, model, setup, func(body func()) { go body() })"
-
-[[hit]]
-check = "golifetime"
-file = "ai/provider_streams.go"
-func = "LazyStreamSync"
-snippet = "return startLazyStreamSync(ctx, model, setup, func(body func()) { go body() })"
-
-[[hit]]
-check = "golifetime"
 file = "coding/cli/config_command.go"
 func = "driveConfigSelector"
 snippet = "select {"
@@ -4536,32 +4524,6 @@ check = "providerliteral"
 file = "coding/model.go"
 func = "buildLeafProviderForEntry"
 snippet = "if providerID == \"github-copilot\" && !resolvedAuth {"
-
-[[hit]]
-check = "providerliteral"
-file = "coding/model.go"
-func = "mergeProviderAttributionHeaders"
-snippet = "if sessionID != \"\" && (providerID == \"opencode\" || providerID == \"opencode-go\" || matchesProviderHost(baseURL, openCodeHost)) {"
-count = 2
-
-[[hit]]
-check = "providerliteral"
-file = "coding/model.go"
-func = "mergeProviderAttributionHeaders"
-snippet = "case providerID == \"openrouter\" || strings.Contains(baseURL, openRouterHost):"
-
-[[hit]]
-check = "providerliteral"
-file = "coding/model.go"
-func = "mergeProviderAttributionHeaders"
-snippet = "case providerID == \"nvidia\" || matchesProviderHost(baseURL, nvidiaNIMHost):"
-
-[[hit]]
-check = "providerliteral"
-file = "coding/model.go"
-func = "mergeProviderAttributionHeaders"
-snippet = "case providerID == \"cloudflare-workers-ai\" || providerID == \"cloudflare-ai-gateway\" || matchesProviderHost(baseURL, cloudflareAPIHost) || matchesProviderHost(baseURL, cloudflareGatewayHost):"
-count = 2
 
 [[hit]]
 check = "providerliteral"

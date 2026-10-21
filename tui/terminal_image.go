@@ -162,6 +162,12 @@ func detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink func() bool, goos s
 	if termProgram == "herdr" {
 		return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: hasTrueColorHint, Hyperlinks: true}
 	}
+	// Rex supports OSC 8 hyperlinks and only partially implements the Kitty graphics protocol
+	// (no Unicode placeholders), but enough to support Pi.
+	// Ports packages/tui/src/terminal-image.ts detectCapabilitiesFromEnvironment (396ecd7b).
+	if termProgram == "rex" {
+		return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}
+	}
 	// pig divergence (D44): without Herdr's positive graphics signal, ignore inherited outer-terminal image hints.
 	if os.Getenv("HERDR_ENV") == "1" {
 		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: false}
@@ -337,17 +343,26 @@ func EncodeKitty(base64Data string, columns, rows, imageID int, moveCursor ...bo
 	if imageID != 0 {
 		params = append(params, fmt.Sprintf("i=%d", imageID))
 	}
-	if len(base64Data) <= chunkSize {
+	// Pi measures and slices base64Data in UTF-16 units. Real base64 is ASCII, one unit per byte, so a payload whose
+	// unit count equals its byte count is sliced by byte.
+	length := jsstring.Length(base64Data)
+	if length <= chunkSize {
 		return "\x1b_G" + strings.Join(params, ",") + ";" + base64Data + "\x1b\\"
 	}
+	ascii := length == len(base64Data)
 	var chunks []string
-	for off := 0; off < len(base64Data); off += chunkSize {
-		end := min(off+chunkSize, len(base64Data))
-		chunk := base64Data[off:end]
+	for off := 0; off < length; off += chunkSize {
+		end := min(off+chunkSize, length)
+		var chunk string
+		if ascii {
+			chunk = base64Data[off:end]
+		} else {
+			chunk = jsstring.Slice(base64Data, off, off+chunkSize)
+		}
 		switch {
 		case off == 0:
 			chunks = append(chunks, "\x1b_G"+strings.Join(params, ",")+",m=1;"+chunk+"\x1b\\")
-		case end == len(base64Data):
+		case end == length:
 			chunks = append(chunks, "\x1b_Gm=0;"+chunk+"\x1b\\")
 		default:
 			chunks = append(chunks, "\x1b_Gm=1;"+chunk+"\x1b\\")
@@ -392,7 +407,7 @@ func EncodeITerm2(base64Data string, options ITerm2Options) string {
 	if options.Inline != nil && !*options.Inline {
 		inline = 0
 	}
-	params := []string{fmt.Sprintf("inline=%d", inline), fmt.Sprintf("size=%d", size/4*3+size%4*3/4)}
+	params := []string{fmt.Sprintf("inline=%d", inline), fmt.Sprintf("size=%d", size*3>>2)}
 	if width != nil {
 		params = append(params, fmt.Sprintf("width=%v", width))
 	}
@@ -428,7 +443,9 @@ func CalculateImageCellSize(imageDimensions ImageDimensions, maxWidthCells int, 
 
 	scaledWidthPx := float64(imageWidth) * scale
 	scaledHeightPx := float64(imageHeight) * scale
+	//portlint:allow numbers cell dimensions are positive (SetCellDimensions takes only the positive terminal response and the 9x18 default), so the quotient is finite and at most maxWidth cells wide after the min
 	columns := max(1, min(maxWidth, int(math.Ceil(scaledWidthPx/float64(dims.WidthPx)))))
+	//portlint:allow numbers same positive cell dimensions, so the quotient is finite
 	rows := max(1, int(math.Ceil(scaledHeightPx/float64(dims.HeightPx))))
 	if maxHeightCells > 0 {
 		rows = min(maxHeightCells, rows)

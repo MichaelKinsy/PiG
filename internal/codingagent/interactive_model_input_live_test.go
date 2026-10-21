@@ -323,11 +323,11 @@ func TestInteractiveModelChangeKeepsInputLive(t *testing.T) {
 			go m.routeInputChunk(ctx, []byte("\r"), m.inputReadCh)
 			m.handleModelPicker()
 			serveOwnerUntil(t, m, ctx, func() bool { return m.lastStatusMessage == "Model: model-one" }, func() string { return "the selection never settled" })
-			if m.extensionDialog == nil || m.editorContainer.Children()[0] != m.extensionDialog.component {
+			if m.shownExtensionDialog() == nil || m.editorContainer.Children()[0] != m.shownExtensionDialog().component {
 				t.Fatalf("slot %T after the selection settled, want the dialog it opened still shown", m.editorContainer.Children()[0])
 			}
 			go m.routeInputChunk(ctx, []byte("\r"), m.inputReadCh)
-			serveOwnerUntil(t, m, ctx, func() bool { return m.extensionDialog == nil }, func() string { return "the dialog was never answered" })
+			serveOwnerUntil(t, m, ctx, func() bool { return m.shownExtensionDialog() == nil }, func() string { return "the dialog was never answered" })
 			if err := <-answered; err != nil || m.editorContainer.Children()[0] != m.editor {
 				t.Fatalf("dialog answer %v, slot %T after it closed", err, m.editorContainer.Children()[0])
 			}

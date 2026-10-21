@@ -1,6 +1,7 @@
 package mcpext_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -213,6 +214,41 @@ func TestMCPConfigResolvesPerToolExposureFromExactNamesThenPatternsInOrder(t *te
 	if got := extension.GetMcpToolExposure(only, "get_file_x"); got != extension.McpExposureCodemode {
 		t.Errorf("exposure of get_file_x = %s, want codemode", got)
 	}
+}
+
+// mcp-extension.test.ts "reads and edits mcp.json files that start with a UTF-8 BOM" (#11191).
+func TestMCPConfigReadsAndEditsMcpJSONFilesThatStartWithAUTF8BOM(t *testing.T) {
+	paths := setupConfig(t, `{}`, `{}`)
+	global := filepath.Join(paths.AgentDir, "mcp.json")
+	project := filepath.Join(paths.Cwd, ".pi", "mcp.json")
+	if err := os.WriteFile(global, []byte("\uFEFF{\"mcpServers\":{\"demo\":{\"command\":\"echo\",\"enabled\":false}}}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(project, []byte("\uFEFF{\"mcpServers\":{\"local\":{\"command\":\"local-cmd\"}}}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded := mcpext.LoadMcpConfig(withTrust(paths, true))
+	if len(loaded.Errors) != 0 {
+		t.Fatalf("errors = %q, want none", loaded.Errors)
+	}
+	var got [][2]string
+	for _, s := range loaded.Servers {
+		got = append(got, [2]string{s.Name, s.Scope})
+	}
+	if want := [][2]string{{"demo", "global"}, {"local", "project"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("servers = %v, want %v", got, want)
+	}
+
+	replaced, err := mcpext.AddMcpServerConfig(global, "other", extension.McpServerConfig{Command: "other-cmd"})
+	if err != nil || replaced {
+		t.Fatalf("AddMcpServerConfig = %v, %v; want false, nil", replaced, err)
+	}
+	data, err := os.ReadFile(global)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonEqual(t, json.RawMessage(data), `{"mcpServers":{"demo":{"command":"echo","enabled":false},"other":{"command":"other-cmd"}}}`)
 }
 
 // mcp-extension.test.ts "rejects server names that differ only in - and _" (#10239): they share a namespace.

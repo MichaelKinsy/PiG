@@ -7,4 +7,6 @@ type CreateModelsOptions struct {
 	Credentials CredentialStore
 	ModelsStore ModelsStore
 	AuthContext *AuthContext
+	// Identity is the default identity of every request; a request's Identity overrides it field by field.
+	Identity *ClientIdentity
 }

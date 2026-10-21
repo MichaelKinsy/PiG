@@ -40,7 +40,7 @@ func TestToJsonValueIsStrictCopyJson(t *testing.T) {
 	}
 
 	token := DefineDoc(DocDefinition[gauge]{
-		CommonDocDefinition: CommonDocDefinition[gauge]{Kind: "test.gauge", Version: 1, Initial: func() gauge { return gauge{Level: math.NaN()} }},
+		CommonDocDefinition: CommonDocDefinition[gauge]{Kind: "test.gauge", Version: 1, Initial: func() gauge { return gauge{Level: math.NaN()} }, CheckpointWhen: func(gauge, []Op, CheckpointInfo) bool { return false }},
 		DocumentSemantics:   DocumentSemantics{Scope: ScopeSession},
 	})
 	if _, err := token.AnyDefinition().Initial(nil); !errors.Is(err, delta.ErrNotStrictJSON) {
@@ -77,6 +77,7 @@ func TestDocumentConversionsKeepRevisionsAndStayStrict(t *testing.T) {
 		Kind:   "test.family", Version: 1,
 		DocumentSemantics: DocumentSemantics{Scope: ScopeSession},
 		Initial:           func(seed JsonValue) JsonObject { return delta.JsonObjectOf("seed", seed) },
+		CheckpointWhen:    func(JsonObject, []Op, CheckpointInfo) bool { return false },
 	})
 	if _, err := family.AnyDefinition().Initial(math.NaN()); !errors.Is(err, delta.ErrNotStrictJSON) {
 		t.Fatalf("NaN seed err = %v, want a strict JSON error", err)

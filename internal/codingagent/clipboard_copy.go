@@ -66,6 +66,7 @@ func runClipboardCommandContext(parent context.Context, name string, args []stri
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	hideClipboardWindow(cmd)
+	detachClipboardChild(cmd)
 	// The parent owns its pipe end as an *os.File and closes it itself, so Wait joins only the child and never a copy that a descendant holds open.
 	parentEnd, childEnd, err := clipboardPipe(options.input == nil)
 	if err != nil {

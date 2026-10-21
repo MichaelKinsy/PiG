@@ -96,7 +96,7 @@ func runProviderSessionCacheCase(t *testing.T, token, baseURL string) {
 		t.Fatal(err)
 	}
 	defer closeHarness(t, harness)
-	root, err := harness.Root(testContext, &RootOptions{Agent: &AgentChange{Model: SetTo(durable.ModelRef{Provider: "openai-codex", ModelId: "gpt-5.5"})}})
+	root, err := harness.Root(testContext, &RootOptions{Agent: &AgentChange{Model: SetTo(durable.ModelRef{Provider: "openai-codex", ModelId: "gpt-6.1-sol"})}})
 	if err != nil {
 		t.Fatal(err)
 	}

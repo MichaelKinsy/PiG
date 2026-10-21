@@ -527,7 +527,7 @@ func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcr
 		return
 	}
 	leaf := provider
-	attributed, registryBuilt := leaf.(*providerAttributionProvider)
+	attributed, registryBuilt := leaf.(*requestOptionsProvider)
 	if registryBuilt {
 		leaf = attributed.Provider
 	}
@@ -570,7 +570,7 @@ func (runtime *ModelRuntime) start(ctx context.Context, model *ai.Model, transcr
 // knowsProvider reports whether Pi's Models would resolve auth for the model's provider. A caller-owned provider the runtime does not know is Pi's
 // compat path (registerFauxProvider and compat.complete): no auth resolution rejects an aborted request, the provider reports it as aborted.
 func (runtime *ModelRuntime) knowsProvider(model *ai.Model, provider ai.Provider) bool {
-	if _, registryBuilt := provider.(*providerAttributionProvider); registryBuilt {
+	if _, registryBuilt := provider.(*requestOptionsProvider); registryBuilt {
 		return true
 	}
 	// The PIG_TEST_FAUX provider stands for the provider Pi's parity harness registers from an extension, which Models knows.
@@ -668,9 +668,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 			if err != nil {
 				return nil, nil, ai.StreamOptions{}, err
 			}
-			provider = newProviderAttributionProvider(provider, providerID, entry.BaseURL, func() bool {
-				return runtime.services.settings != nil && runtime.services.settings.IsInstallTelemetryEnabled()
-			}, nil)
+			provider = newRequestOptionsProvider(provider, providerID, nil)
 			configuredHeaders = nil
 		}
 	}
@@ -685,6 +683,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 		prepared.APIKey = nativeAuth.Auth.APIKey
 		prepared.Headers = ai.MergeProviderHeaders(nativeAuth.Auth.Headers, prepared.Headers)
 	}
+	prepared.Headers = withOpenCodeSessionHeaders(providerID, requestModel.ProviderMeta.BaseURL, options.SessionID, prepared.Headers)
 	if options.TransformHeaders != nil {
 		transformed, err := options.TransformHeaders(ctx, maps.Clone(prepared.Headers))
 		if err != nil {

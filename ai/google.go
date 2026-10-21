@@ -1026,7 +1026,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 		httpReq.Header.Set("Content-Type", "application/json")
 		// undici's default accept header, which the SDK's fetch sends.
 		httpReq.Header.Set("Accept", "*/*")
-		httpReq.Header.Set("User-Agent", PiUserAgent())
+		applyIdentityHeaders(httpReq.Header, ClientIdentityTarget{Provider: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL}, opts.Identity)
 		if p.cfg.APIKey != "" {
 			httpReq.Header.Set("x-goog-api-key", p.cfg.APIKey)
 		}

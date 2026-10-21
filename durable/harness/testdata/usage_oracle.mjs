@@ -16,7 +16,9 @@ const load = (path) => import(pathToFileURL(`${packages}durable/src/${path}`).hr
 const { MemoryStorage } = await load("storage/memory.ts");
 const { createSession } = await load("session/session.ts");
 const { UsageDoc, recordUsage, addUsageState } = await load("harness/usage.ts");
-const ctx = {};
+// Pi 0ed1b043 (2ec55d80) reads ctx.telemetry in the scheduler and the harness, so an empty object is no longer a Context.
+const { BACKGROUND_CONTEXT } = await import(pathToFileURL(`${packages}chord/src/context/index.ts`).href);
+const ctx = BACKGROUND_CONTEXT;
 
 const settle = async (run) => {
 	try {

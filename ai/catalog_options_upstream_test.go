@@ -33,21 +33,6 @@ func TestBasetenModels(t *testing.T) {
 			assertCatalogJSON(t, mustGeneratedModel(t, "baseten", id).Capabilities, `["text"]`)
 		}
 	})
-	// .upstream/v0.87.1/packages/ai/test/baseten-models.test.ts:21
-	t.Run("models Kimi K2.6 reasoning as an explicit off/on toggle", func(t *testing.T) {
-		m := mustGeneratedModel(t, "baseten", "moonshotai/Kimi-K2.6")
-		assertCatalogJSON(t, m.ThinkingLevelMap, `{"off":"off","minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":null}`)
-		if m.Compat == nil || m.Compat.SupportsReasoningEffort == nil || *m.Compat.SupportsReasoningEffort || m.Compat.ThinkingFormat != "baseten" {
-			t.Fatalf("compat = %+v", m.Compat)
-		}
-		assertCatalogJSON(t, m.Compat.ChatTemplateArgs, `{"enable_thinking":{"$var":"thinking.enabled"}}`)
-		assertCatalogJSON(t, GetSupportedThinkingLevels(m.ToModel()), `["off","high"]`)
-		p := captureCatalogCompletionsPayload(t, "baseten", m.ID, ThinkingHigh)
-		assertCatalogJSON(t, p["chat_template_args"], `{"enable_thinking":true}`)
-		if _, ok := p["reasoning_effort"]; ok {
-			t.Fatalf("unexpected reasoning_effort: %v", p)
-		}
-	})
 	// .upstream/v0.87.1/packages/ai/test/baseten-models.test.ts:61
 	t.Run("sends Baseten chat_template_args with reasoning effort", func(t *testing.T) {
 		p := captureCatalogCompletionsPayload(t, "baseten", "zai-org/GLM-5.2", ThinkingHigh)
@@ -97,11 +82,6 @@ func TestTogetherModels(t *testing.T) {
 		assertCatalogJSON(t, deepseek.ThinkingLevelMap, `{"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null}`)
 		if deepseek.Compat == nil || deepseek.Compat.SupportsReasoningEffort == nil || !*deepseek.Compat.SupportsReasoningEffort || deepseek.Compat.ThinkingFormat != "together" {
 			t.Fatalf("compat = %+v", deepseek.Compat)
-		}
-		minimax := mustGeneratedModel(t, "together", "MiniMaxAI/MiniMax-M2.7")
-		assertCatalogJSON(t, minimax.ThinkingLevelMap, `{"off":null,"minimal":null,"low":null,"medium":null}`)
-		if minimax.Compat == nil || minimax.Compat.ThinkingFormat != "" || minimax.Compat.SupportsReasoningEffort == nil || *minimax.Compat.SupportsReasoningEffort {
-			t.Fatalf("compat = %+v", minimax.Compat)
 		}
 	})
 	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:80

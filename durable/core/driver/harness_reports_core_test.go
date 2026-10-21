@@ -248,8 +248,9 @@ func TestReports(t *testing.T) {
 			}
 			startOwned(t, root, sleeper.Erased())
 			opened.h.Resume()
-			pollUntil(t, "the alarm and timer reports", func() bool {
-				for _, message := range []string{"alarm", "no timers"} {
+			// The commit listener runs after the commit that publishes it, so it reports on its own schedule: wait for every report.
+			pollUntil(t, "the alarm, timer, wrapper and listener reports", func() bool {
+				for _, message := range []string{"alarm", "no timers", "listener", "Wrapper renamed echo to renamed"} {
 					if _, ok := findReport(opened.reports, message); !ok {
 						return false
 					}

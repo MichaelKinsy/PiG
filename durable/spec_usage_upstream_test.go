@@ -44,11 +44,11 @@ type paymentsService interface {
 
 func specUsageExamples(session Session, conversationId ConversationId, payments paymentsService, newKey func() string, receiptEntry func(receipt) EntryDraft) (map[string]func(context.Context) error, Task[JsonValue, charge, paymentResult, struct{}]) {
 	planModeDoc := DefineDoc(DocDefinition[planMode]{
-		CommonDocDefinition: CommonDocDefinition[planMode]{Kind: "app.plan-mode", Version: 1, Initial: func() planMode { return planMode{Enabled: false} }},
+		CommonDocDefinition: CommonDocDefinition[planMode]{Kind: "app.plan-mode", Version: 1, Initial: func() planMode { return planMode{Enabled: false} }, CheckpointWhen: func(planMode, []Op, CheckpointInfo) bool { return false }},
 		DocumentSemantics:   DocumentSemantics{Scope: ScopeConversation, History: HistoryLatest, Fork: ForkCurrent},
 	})
 	containerDoc := DefineDoc(DocDefinition[container]{
-		CommonDocDefinition: CommonDocDefinition[container]{Kind: "app.container", Version: 1, Initial: func() container { return container{Image: "node:22"} }},
+		CommonDocDefinition: CommonDocDefinition[container]{Kind: "app.container", Version: 1, Initial: func() container { return container{Image: "node:22"} }, CheckpointWhen: func(container, []Op, CheckpointInfo) bool { return false }},
 		DocumentSemantics:   DocumentSemantics{Scope: ScopeConversation, History: HistoryLatest, Fork: ForkCurrent},
 	})
 

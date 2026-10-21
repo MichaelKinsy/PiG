@@ -202,6 +202,8 @@ func (p *piMessagesProvider) send(ctx context.Context, transcript TranscriptCont
 	if err != nil {
 		return nil, err
 	}
+	// Identity headers are the lowest layer, below the fixed request headers (pi-messages.ts: providerHeadersToRecord(getIdentityHeaders(model, identity), {...}, options.headers)).
+	applyIdentityHeaders(request.Header, ClientIdentityTarget{Provider: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL}, opts.Identity)
 	request.Header.Set("authorization", "Bearer "+apiKey)
 	request.Header.Set("accept", "text/event-stream")
 	request.Header.Set("content-type", "application/json")

@@ -698,7 +698,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 		}
 	}
 
-	// upstream: agent-session.ts:526 restores the transcript's loadout while the AgentSession is constructed, so the replay's TypeError for a wrong-typed system message fails the construction. The transcript is replayed here, before the Session owns any work, and its tools are applied once the Session exists.
+	// upstream: agent-session.ts:526 restores the transcript's loadout while the AgentSession is constructed, so the replay's TypeError for a wrong-typed tool list fails the construction. The transcript is replayed here, before the Session owns any work, and its tools are applied once the Session exists.
 	restoredTranscript, err := replayedTranscriptIf((opts.existing != nil && opts.toolRegistry == nil) || (opts.existing == nil && usesDefaultTools(opts)), inner)
 	if err != nil {
 		return nil, err
@@ -788,10 +788,17 @@ func replayedTranscriptIf(replay bool, inner *icodingagent.Session) ([]agent.Age
 	return replayedTranscript(inner)
 }
 
-// replayedTranscript projects the session's current branch and replays its system messages as Pi's getCurrentSystemMessage does, returning the TypeError it throws for a wrong-typed member.
+// replayedTranscript is the system messages of the session's whole current branch, including those before a compaction, which Pi's _restoreToolsFromTranscript replays for the loadout, with the TypeError that replay throws for a wrong-typed tool list.
+//
+// upstream: agent-session.ts:1815-1844 (_restoreToolsFromTranscript)
 func replayedTranscript(inner *icodingagent.Session) ([]agent.AgentMessage, error) {
-	messages := inner.BuildSessionProjection().Messages
-	return messages, agent.SystemReplayError(messages)
+	var systems []agent.AgentMessage
+	for _, entry := range inner.GetBranch() {
+		if message, ok := icodingagent.AsMessage(entry); ok && message.Message.System != nil {
+			systems = append(systems, message.Message)
+		}
+	}
+	return systems, agent.ToolReplayError(systems)
 }
 
 // persistMessage records one message the agent produced, as Pi's message_end

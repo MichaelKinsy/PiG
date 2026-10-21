@@ -20,7 +20,7 @@ func TestCrossProviderHandoffUpstream(t *testing.T) {
 	}{
 		{"anthropic", "claude-sonnet-4-5", "anthropic-claude-sonnet-4-5", ""}, {"google", "gemini-3-flash-preview", "google-gemini-3-flash-preview", ""},
 		{"openai", "gpt-4o-mini", "openai-completions-gpt-4o-mini", ai.APIOpenAICompletions}, {"openai", "gpt-5-mini", "openai-responses-gpt-5-mini", ""}, {"azure", "gpt-4o-mini", "azure-gpt-4o-mini", ""},
-		{"openai-codex", "gpt-5.5", "openai-codex-gpt-5.5", ""}, {"github-copilot", "claude-sonnet-4.5", "copilot-claude-sonnet-4.5", ""}, {"github-copilot", "gpt-5.1-codex", "copilot-gpt-5.1-codex", ""},
+		{"openai-codex", "gpt-6.1-sol", "openai-codex-gpt-6.1-sol", ""}, {"github-copilot", "claude-sonnet-4.5", "copilot-claude-sonnet-4.5", ""}, {"github-copilot", "gpt-5.1-codex", "copilot-gpt-5.1-codex", ""},
 		{"github-copilot", "gemini-3-flash-preview", "copilot-gemini-3-flash-preview", ""}, {"github-copilot", "grok-code-fast-1", "copilot-grok-code-fast-1", ""},
 		{"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "bedrock-claude-sonnet-4-5", ""}, {"xai", "grok-4.3", "xai-grok-4.3", ""}, {"cerebras", "zai-glm-4.7", "cerebras-zai-glm-4.7", ""},
 		{"cloudflare-workers-ai", "@cf/moonshotai/kimi-k2.6", "cloudflare-kimi-k2.6", ""}, {"cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6", "cloudflare-gateway-kimi-k2.6", ""},

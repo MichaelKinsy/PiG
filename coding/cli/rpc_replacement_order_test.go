@@ -594,11 +594,10 @@ func TestRPCEarlyReplacementErrorFollowsTheCompactionStart(t *testing.T) {
 	}
 }
 
-// Pi's switch_session to a Session whose system message holds a content or toolsAdded member the loadout replay cannot read fails with the replay's TypeError (agent-session.ts:526 _restoreToolsFromTranscript, rpc-mode.ts error frame), and get_messages afterwards answers from the outgoing Session, which holds no message.
+// Pi's switch_session to a Session whose system message holds a toolsAdded member the loadout replay cannot read fails with the replay's TypeError (agent-session.ts:526 _restoreToolsFromTranscript, rpc-mode.ts error frame), and get_messages afterwards answers from the outgoing Session, which holds no message.
 func TestRPCSwitchSessionFailsWithTheSystemReplayTypeError(t *testing.T) {
 	cases := map[string]string{
-		"content.jsonl": "content.filter is not a function",
-		"tools.jsonl":   "number 5 is not iterable (cannot read property Symbol(Symbol.iterator))",
+		"tools.jsonl": "(message.toolsAdded ?? []) is not iterable",
 	}
 	for name, want := range cases {
 		t.Run(name, func(t *testing.T) {

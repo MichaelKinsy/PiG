@@ -24,7 +24,7 @@ type todos struct {
 // 11-extension-state.ts: an extension keeps its own document, written by its tool and rendered into the prompt.
 func TestExample11ExtensionState(t *testing.T) {
 	todosDoc := durable.DefineDoc(durable.DocDefinition[todos]{
-		CommonDocDefinition: durable.CommonDocDefinition[todos]{Kind: "example.todos", Version: 1, Initial: func() todos { return todos{Items: []string{}} }},
+		CommonDocDefinition: durable.CommonDocDefinition[todos]{Kind: "example.todos", Version: 1, Initial: func() todos { return todos{Items: []string{}} }, CheckpointWhen: func(todos, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 	})
 	todoTool := &durable.ToolRegistration{

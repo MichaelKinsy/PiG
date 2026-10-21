@@ -193,6 +193,10 @@
   },
   {
     "provider": "opencode",
+    "id": "minimax-m3.1-flash-free"
+  },
+  {
+    "provider": "opencode",
     "id": "mistral-large-4"
   },
   {
@@ -210,10 +214,6 @@
   {
     "provider": "opencode",
     "id": "qwen3.8-max"
-  },
-  {
-    "provider": "opencode",
-    "id": "space-bunny-free"
   },
   {
     "provider": "opencode",
@@ -332,6 +332,10 @@
     "id": "muse-spark-1.3"
   },
   {
+    "provider": "opencode",
+    "id": "muse-wonder-1.0"
+  },
+  {
     "provider": "opencode-go",
     "id": "claude-haiku-5-5"
   },
@@ -421,7 +425,7 @@
   },
   {
     "provider": "opencode-go",
-    "id": "space-bunny"
+    "id": "minimax-m3.1-flash-free"
   },
   {
     "provider": "opencode-go",

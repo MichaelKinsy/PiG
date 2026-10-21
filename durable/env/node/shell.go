@@ -7,7 +7,6 @@ import (
 	"maps"
 	"math"
 	"os/exec"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/internal/shellconfig"
 )
 
 const (
@@ -52,11 +52,8 @@ type shellConfig struct {
 	commandFromStdin bool
 }
 
-var legacyWslBashPath = regexp.MustCompile(`^[a-z]:\\windows\\(?:system32|sysnative)\\bash\.exe$`)
-
-func isLegacyWslBashPath(path string) bool {
-	return legacyWslBashPath.MatchString(strings.ToLower(strings.ReplaceAll(path, "/", `\`)))
-}
+// isLegacyWslBashPath is upstream's isLegacyWslBashPath, the one function shell.ts also uses.
+func isLegacyWslBashPath(path string) bool { return shellconfig.IsLegacyWSLBashPath(path) }
 
 // getBashShellConfig passes the command as an argument, except for legacy WSL
 // bash, which reads it from stdin.

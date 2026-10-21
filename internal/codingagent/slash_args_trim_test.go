@@ -27,7 +27,7 @@ func TestCompactHandlerTrimsInstructionsLikeJavaScript(t *testing.T) {
 func TestBugCommandPrefillsItsHintTrimmedLikeJavaScript(t *testing.T) {
 	for _, tc := range slashArgsTrimCases {
 		var prefill []string
-		sc := &SlashContext{Args: tc.args, ShowExtensionEditor: func(_, _, text string) (string, bool) { prefill = append(prefill, text); return "", false }}
+		sc := &SlashContext{Args: tc.args, ShowBugReportEditor: func(_, _, text string) (string, bool) { prefill = append(prefill, text); return "", false }}
 		promptBugReportChoices(sc)
 		if len(prefill) != 1 || prefill[0] != tc.want {
 			t.Errorf("/bug %q prefilled %q, want %q", tc.args, prefill, tc.want)

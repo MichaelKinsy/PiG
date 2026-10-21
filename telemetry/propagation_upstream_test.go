@@ -2,13 +2,13 @@ package telemetry_test
 
 // Ports packages/telemetry/test/propagation.test.ts.
 //
-// An unreadable Proxy argument has no Go form: a Go carrier map cannot fail to read. Its Go forms are a context whose
-// methods panic and a value whose methods panic. TypeScript's concurrent Promises are goroutines the test sequences with
+// TypeScript's concurrent Promises are goroutines the test sequences with
 // channels in the order the JavaScript microtasks run, and the worker is a re-executed test binary (see
 // propagation_worker_test.go).
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"os/exec"
 	"reflect"
@@ -158,7 +158,7 @@ func TestPropagationUpstream(t *testing.T) {
 		if !reflect.DeepEqual(adapter.Inject(target), original) {
 			t.Fatal("mutating an injected carrier changed the span's identity")
 		}
-		if err := adapter.StartSpan(telemetry.SpanOptions{Name: "linked", Links: []telemetry.SpanLink{{Context: target, Attributes: telemetry.SpanAttributes{"tags": []string{"original"}}}}}, func(telemetry.TelemetrySpan) error { return nil }); err != nil {
+		if err := adapter.StartSpan(telemetry.SpanOptions{Name: "linked", Links: []telemetry.SpanLink{{Context: target, Attributes: telemetry.SpanAttributes{telemetry.Attr("tags", []string{"original"})}}}}, func(telemetry.TelemetrySpan) error { return nil }); err != nil {
 			t.Fatal(err)
 		}
 		spans := adapter.GetSpans()
@@ -168,9 +168,9 @@ func TestPropagationUpstream(t *testing.T) {
 		}
 		first.Context["pi-memory-span"] = "123"
 		linked.Links[0].Context["pi-memory-span"] = "456"
-		linked.Links[0].Attributes["tags"].([]string)[0] = "mutated"
-		linked.Links[0].Attributes["tags"] = []string{"mutated"}
-		if got := adapter.GetSpans()[1].Links; !reflect.DeepEqual(got, []telemetry.RecordedTelemetryLink{{Context: original, Attributes: telemetry.SpanAttributes{"tags": []string{"original"}}}}) {
+		linked.Links[0].Attributes.Value("tags").([]string)[0] = "mutated"
+		linked.Links[0].Attributes.Set("tags", []string{"mutated"})
+		if got := adapter.GetSpans()[1].Links; !reflect.DeepEqual(got, []telemetry.RecordedTelemetryLink{{Context: original, Attributes: telemetry.SpanAttributes{telemetry.Attr("tags", []string{"original"})}}}) {
 			t.Fatalf("links = %v, want the original target and attributes", got)
 		}
 	})
@@ -195,7 +195,7 @@ func TestPropagationUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 		target := receiver.Extract(wire)
-		if err := receiver.StartSpan(telemetry.SpanOptions{Name: "background", Links: []telemetry.SpanLink{{Context: target, Attributes: telemetry.SpanAttributes{"reason": "restart"}}}}, func(span telemetry.TelemetrySpan) error {
+		if err := receiver.StartSpan(telemetry.SpanOptions{Name: "background", Links: []telemetry.SpanLink{{Context: target, Attributes: telemetry.SpanAttributes{telemetry.Attr("reason", "restart")}}}}, func(span telemetry.TelemetrySpan) error {
 			span.AddLink(telemetry.SpanLink{Context: target})
 			return nil
 		}); err != nil {
@@ -206,41 +206,56 @@ func TestPropagationUpstream(t *testing.T) {
 			t.Fatalf("parentContext = %v, want null", recorded.ParentContext)
 		}
 		if want := []telemetry.RecordedTelemetryLink{
-			{Context: carrier, Attributes: telemetry.SpanAttributes{"reason": "restart"}},
+			{Context: carrier, Attributes: telemetry.SpanAttributes{telemetry.Attr("reason", "restart")}},
 			{Context: carrier, Attributes: telemetry.SpanAttributes{}},
 		}; !reflect.DeepEqual(recorded.Links, want) {
 			t.Fatalf("links = %v, want %v", recorded.Links, want)
 		}
 	})
 
-	t.Run("propagation and links › rejects malformed memory carriers and never inspects no-op payloads", func(t *testing.T) {
-		// upstream: packages/telemetry/test/propagation.test.ts:124
+	t.Run("propagation and links › uses the root for absent and unknown carriers", func(t *testing.T) {
+		// upstream: packages/telemetry/test/propagation.test.ts:116
 		adapter := telemetry.NewInMemoryTelemetryContext()
-		// Upstream's second carrier is an unreadable Proxy, which has no Go form: a Go map cannot fail to read.
-		if got := adapter.Extract(telemetry.TelemetryCarrier{"pi-memory-scope": "bad", "pi-memory-span": "1"}); got != telemetry.TelemetryContext(adapter) {
-			t.Fatalf("Extract returned %v, want the recorder root", got)
+		for _, carrier := range []telemetry.TelemetryCarrier{nil, {}, {"unknown": "format"}} {
+			if got := adapter.Extract(carrier); got != telemetry.TelemetryContext(adapter) {
+				t.Fatalf("Extract(%v) = %v, want the recorder root", carrier, got)
+			}
 		}
-		if carrier := telemetry.NoopTelemetryPropagation.Inject(panickingContext{}); carrier != nil {
+		if carrier := telemetry.NoopTelemetryPropagation.Inject(telemetry.NoopTelemetryContext); carrier != nil {
 			t.Fatalf("no-op Inject returned %v, want undefined", carrier)
 		}
-		if got := telemetry.NoopTelemetryPropagation.Extract(telemetry.TelemetryCarrier{"bad": "value"}); got != telemetry.TelemetryContext(telemetry.NoopTelemetryContext) {
+		if got := telemetry.NoopTelemetryPropagation.Extract(telemetry.TelemetryCarrier{"unknown": "format"}); got != telemetry.TelemetryContext(telemetry.NoopTelemetryContext) {
 			t.Fatalf("no-op Extract returned %v, want the no-op context", got)
 		}
 		if err := telemetry.NoopTelemetryContext.StartSpan(telemetry.SpanOptions{Name: "noop"}, func(span telemetry.TelemetrySpan) error {
-			span.AddLink(telemetry.SpanLink{Context: span, Attributes: telemetry.SpanAttributes{"secret": panickingValue{}}})
-			span.AddLink(telemetry.SpanLink{Context: panickingContext{}})
+			span.AddLink(telemetry.SpanLink{Context: span})
 			return nil
 		}); err != nil {
 			t.Fatal(err)
 		}
 	})
+
+	t.Run("propagation and links › treats recognized carrier identifiers as opaque strings", func(t *testing.T) {
+		// upstream: packages/telemetry/test/propagation.test.ts:130
+		adapter := telemetry.NewInMemoryTelemetryContext()
+		carrier := telemetry.TelemetryCarrier{
+			"pi-memory-scope": "external-recorder",
+			"pi-memory-span":  "external-span",
+			"pi-memory-trace": "external-trace",
+		}
+		if err := adapter.Extract(carrier).StartSpan(telemetry.SpanOptions{Name: "receiver"}, func(telemetry.TelemetrySpan) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+		if got := adapter.GetSpans()[0].ParentContext; !reflect.DeepEqual(got, carrier) {
+			t.Fatalf("parentContext = %v, want %v", got, carrier)
+		}
+	})
 }
 
-// A carrier is accepted only with both keys, a lowercase hexadecimal UUID scope and a decimal span ID of a safe integer without sign or leading zero, whatever other keys it
-// holds. A rejected carrier falls back to the recorder root, and an accepted one whose scope and span belong to this recorder reports the local parent ID. The cases are the
-// ones the Pi oracle programs reach, pinned here without Node.
+// A carrier is accepted when it holds all three identity keys, whatever other keys it holds, and its identifiers are opaque. An incomplete carrier falls back to the recorder
+// root, and an accepted one whose scope and span belong to this recorder reports the local parent ID. Local span IDs are the decimal span counter.
 // upstream: packages/telemetry/src/memory.ts extract
-func TestExtractAcceptsOnlyWellFormedMemoryCarriers(t *testing.T) {
+func TestExtractAcceptsCompleteMemoryCarriers(t *testing.T) {
 	adapter := telemetry.NewInMemoryTelemetryContext()
 	var own telemetry.TelemetryCarrier
 	if err := adapter.StartSpan(telemetry.SpanOptions{Name: "own"}, func(span telemetry.TelemetrySpan) error {
@@ -250,6 +265,15 @@ func TestExtractAcceptsOnlyWellFormedMemoryCarriers(t *testing.T) {
 		t.Fatal(err)
 	}
 	const foreign = "0a0b0c0d-0e0f-4a0b-8c0d-0e0f0a0b0c0d"
+	complete := telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "1", "pi-memory-trace": "trace"}
+	without := func(key string) telemetry.TelemetryCarrier {
+		carrier := telemetry.TelemetryCarrier{}
+		maps.Copy(carrier, complete)
+		delete(carrier, key)
+		return carrier
+	}
+	withExtra := telemetry.TelemetryCarrier{"extra": "key"}
+	maps.Copy(withExtra, own)
 	for _, test := range []struct {
 		name      string
 		carrier   telemetry.TelemetryCarrier
@@ -258,20 +282,13 @@ func TestExtractAcceptsOnlyWellFormedMemoryCarriers(t *testing.T) {
 	}{
 		{"nil", nil, false, false},
 		{"empty", telemetry.TelemetryCarrier{}, false, false},
-		{"missing span", telemetry.TelemetryCarrier{"pi-memory-scope": foreign}, false, false},
-		{"missing scope", telemetry.TelemetryCarrier{"pi-memory-span": "1"}, false, false},
-		{"scope is not a UUID", telemetry.TelemetryCarrier{"pi-memory-scope": "X", "pi-memory-span": "1"}, false, false},
-		{"scope is upper case", telemetry.TelemetryCarrier{"pi-memory-scope": "0A0B0C0D-0E0F-4A0B-8C0D-0E0F0A0B0C0D", "pi-memory-span": "1"}, false, false},
-		{"span zero", telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "0"}, false, false},
-		{"span with a leading zero", telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "01"}, false, false},
-		{"span with a sign", telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "+1"}, false, false},
-		{"span above the safe integers", telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "9007199254740992"}, false, false},
-		{"span that overflows 64 bits", telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "99999999999999999999999"}, false, false},
-		{"largest safe span", telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "9007199254740991"}, true, false},
-		{"foreign recorder", telemetry.TelemetryCarrier{"pi-memory-scope": foreign, "pi-memory-span": "1"}, true, false},
-		{"own scope, unknown span", telemetry.TelemetryCarrier{"pi-memory-scope": own["pi-memory-scope"], "pi-memory-span": "99999"}, true, false},
+		{"missing scope", without("pi-memory-scope"), false, false},
+		{"missing span", without("pi-memory-span"), false, false},
+		{"missing trace", without("pi-memory-trace"), false, false},
+		{"foreign recorder", complete, true, false},
+		{"external identifiers", telemetry.TelemetryCarrier{"pi-memory-scope": "s", "pi-memory-span": "x", "pi-memory-trace": "t"}, true, false},
 		{"own span", own, true, true},
-		{"own span with extra keys", telemetry.TelemetryCarrier{"pi-memory-scope": own["pi-memory-scope"], "pi-memory-span": "1", "extra": "key"}, true, true},
+		{"own span with extra keys", withExtra, true, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			parent := adapter.Extract(test.carrier)
@@ -293,7 +310,7 @@ func TestExtractAcceptsOnlyWellFormedMemoryCarriers(t *testing.T) {
 					t.Fatalf("child = %+v, want local parent 1 with context %v", child, own)
 				}
 			default:
-				want := telemetry.TelemetryCarrier{"pi-memory-scope": test.carrier["pi-memory-scope"], "pi-memory-span": test.carrier["pi-memory-span"]}
+				want := telemetry.TelemetryCarrier{"pi-memory-scope": test.carrier["pi-memory-scope"], "pi-memory-span": test.carrier["pi-memory-span"], "pi-memory-trace": test.carrier["pi-memory-trace"]}
 				if child.ParentID != nil || !reflect.DeepEqual(child.ParentContext, want) {
 					t.Fatalf("child = %+v, want a remote parent %v", child, want)
 				}

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -247,6 +248,7 @@ func compactionSummarizeHandler(ctx context.Context, task compactionTask, runtim
 	options := streamOptionsOf(forwarded, runtime.Signal(), request.ThinkingLevel)
 	options.CacheRetention = ai.CacheRetention("none")
 	options.MaxTokens = request.MaxTokens
+	options.Telemetry = chordctx.Telemetry(ctx)
 	if options.SessionID, err = ensureProviderSessionId(ctx, runtime); err != nil {
 		return err
 	}
@@ -709,11 +711,11 @@ func placeSummary(tx durable.Tx, runtime compactionRuntime, current compactionTa
 	if current.Owner == nil {
 		requestId := fmt.Sprintf("compaction:%d", runtime.TaskId())
 		draft := durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, RequestId: &requestId, Entry: &entry}
-		id, err := AdmitSubmission(tx, runtime.ConversationId(), draft, runtime.Now(), QueueModesOf(runtime.Settings()))
+		admission, err := AdmitSubmission(tx, runtime.ConversationId(), draft, runtime.Now(), QueueModesOf(runtime.Settings()), nil)
 		if err != nil {
 			return nil, err
 		}
-		result.SubmissionId = &id
+		result.SubmissionId = &admission.Id
 	} else {
 		appended, err := tx.AppendEntry(runtime.ConversationId(), entry)
 		if err != nil {

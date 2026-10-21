@@ -19,7 +19,9 @@ const { createSession } = await load("session/session.ts");
 const { admitSubmission } = await load("harness/submissions.ts");
 const { applyBoundary, prepareBoundary, withdrawQueuedInputs } = await load("harness/inbox.ts");
 const { LiveDoc } = await load("harness/live.ts");
-const ctx = {};
+// Pi 0ed1b043 (2ec55d80) reads ctx.telemetry in the scheduler and the harness, so an empty object is no longer a Context.
+const { BACKGROUND_CONTEXT } = await import(pathToFileURL(`${packages}chord/src/context/index.ts`).href);
+const ctx = BACKGROUND_CONTEXT;
 
 const settle = async (run) => {
 	try {
@@ -49,7 +51,8 @@ async function runProgram(program) {
 				case "append":
 					return await session.commit((tx) => tx.appendEntry(conv, withHead(step.draft, entries)), ctx);
 				case "admit":
-					return await session.commitWith((tx) => admitSubmission(tx, conv, withHead(step.draft, entries, true), step.now, step.modes), ctx);
+					// Pi 0ed1b043 (2ec55d80): admitSubmission answers {id, status}; the status only labels the submit span, so the program compares the id.
+					return (await session.commitWith((tx) => admitSubmission(tx, conv, withHead(step.draft, entries, true), step.now, step.modes), ctx)).id;
 				case "endRun":
 					return await session.commitWith(async (tx) => {
 						const live = await tx.doc(LiveDoc, conv);

@@ -36,7 +36,7 @@ func TestNavigateTreeOntoAWrongTypedSystemBranchMovesTheLeafThenFails(t *testing
 	h := newRuntimeTestHarness(t, runtimeTestOptions{})
 	log := `{"type":"session","version":3,"id":"nav-wrong","timestamp":"2026-01-01T00:00:00.000Z","cwd":` + strconv.Quote(h.runtime.CWD()) + `}` + "\n" +
 		`{"type":"message","id":"m-1","parentId":null,"timestamp":"2026-01-01T00:01:00.000Z","message":{"role":"user","content":"root","timestamp":1}}` + "\n" +
-		`{"type":"message","id":"m-2","parentId":"m-1","timestamp":"2026-01-01T00:01:01.000Z","message":{"role":"system","content":5,"timestamp":2}}` + "\n" +
+		`{"type":"message","id":"m-2","parentId":"m-1","timestamp":"2026-01-01T00:01:01.000Z","message":{"role":"system","content":"","toolsAdded":5,"timestamp":2}}` + "\n" +
 		`{"type":"message","id":"m-3","parentId":"m-2","timestamp":"2026-01-01T00:01:02.000Z","message":{"role":"user","content":"bad branch","timestamp":3}}` + "\n" +
 		`{"type":"message","id":"m-4","parentId":"m-1","timestamp":"2026-01-01T00:01:03.000Z","message":{"role":"user","content":"good branch","timestamp":4}}` + "\n"
 	path := filepath.Join(t.TempDir(), "nav-wrong.jsonl")
@@ -48,8 +48,8 @@ func TestNavigateTreeOntoAWrongTypedSystemBranchMovesTheLeafThenFails(t *testing
 	}
 	session := h.runtime.Session()
 	_, err := session.NavigateTree(t.Context(), "m-3", NavigateTreeOptions{})
-	if err == nil || err.Error() != "content.filter is not a function" {
-		t.Fatalf("navigate error = %v, want content.filter is not a function", err)
+	if err == nil || err.Error() != "(message.toolsAdded ?? []) is not iterable" {
+		t.Fatalf("navigate error = %v, want the toolsAdded spread TypeError", err)
 	}
 	leaf := session.inner.GetLeafID()
 	if leaf == nil || *leaf != "m-2" {

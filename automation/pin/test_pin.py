@@ -678,6 +678,77 @@ class ClosureTests(unittest.TestCase):
         finally:
             oracle.ROOT = saved
 
+    def host_fixture(self, shared_store: bool):
+        """A Cloudflare host with a locked tree that holds the published packages, and a pinned durable oracle with the pin's."""
+        root = Path(tempfile.mkdtemp())
+        host = root / "host"
+        host.mkdir()
+        locked = (root / "store" / "host-abc" / "node_modules") if shared_store else host / "node_modules"
+        pinned = root / "oracle" / "node_modules"
+        for tree, kind in ((locked, "published"), (pinned, "pinned")):
+            for name in ("@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"):
+                (tree / name).mkdir(parents=True)
+                (tree / name / "package.json").write_text(json.dumps({"name": name, "version": "1.3.0", "kind": kind}))
+        (locked / "@earendil-works" / "pi-codemode").mkdir()  # a published package the pinned oracle holds only nested
+        (locked / "miniflare").mkdir()
+        (locked / ".pig-deps-ready").write_text("stamp")
+        if shared_store:
+            (host / "node_modules").symlink_to(locked, target_is_directory=True)
+        return host, locked, pinned
+
+    def kind_of(self, host: Path, name: str) -> str:
+        return json.loads((host / "node_modules" / name / "package.json").read_text())["kind"]
+
+    def test_a_commit_pins_host_imports_pis_packages_from_the_pinned_build_and_keeps_its_other_packages(self):
+        pin = pinlib.committed()
+        if pin.kind == "tag":
+            self.skipTest("a release pin installs the published packages")
+        for shared_store in (False, True):
+            with self.subTest(shared_store=shared_store):
+                host, locked, pinned = self.host_fixture(shared_store)
+                with mock.patch.object(oracle, "check_durable"), mock.patch.object(oracle, "durable_modules", return_value=pinned):
+                    with self.assertRaisesRegex(pinlib.PinError, "does not use the pinned build"):
+                        oracle.check_host(pin, host)  # the freshly locked tree is the published release: the failure this guards
+                    linked = oracle.link_host(pin, host)
+                    self.assertEqual(linked, ["@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"])
+                    for name in linked:
+                        self.assertEqual(self.kind_of(host, name), "pinned", name)
+                        self.assertEqual((host / "node_modules" / name).resolve(), (pinned / name).resolve())
+                    self.assertTrue((host / "node_modules" / "miniflare").exists(), "a package only the host locks stays")
+                    self.assertTrue((host / "node_modules" / "@earendil-works" / "pi-codemode").exists())
+                    self.assertTrue((host / "node_modules" / ".pig-deps-ready").exists(), "the lock stamp survives, so the locked install is not repeated")
+                    self.assertEqual(oracle.link_host(pin, host), linked, "linking again changes nothing")
+                    oracle.check_host(pin, host)
+                    if shared_store:
+                        for name in ("@earendil-works/chord", "@earendil-works/pi-ai", "@earendil-works/pi-durable", "typebox"):
+                            self.assertEqual(json.loads((locked / name / "package.json").read_text())["kind"], "published", "the shared store is never edited")
+                        self.assertFalse((host / "node_modules").is_symlink())
+
+    def test_a_host_tree_of_another_pi_version_than_the_pin_is_rejected(self):
+        pin = pinlib.committed()
+        if pin.kind == "tag":
+            self.skipTest("a release pin installs the published packages")
+        host, _locked, pinned = self.host_fixture(False)
+        (pinned / "@earendil-works" / "pi-durable" / "package.json").write_text(json.dumps({"name": oracle.DURABLE, "version": "0.0.1", "kind": "pinned"}))
+        with mock.patch.object(oracle, "check_durable"), mock.patch.object(oracle, "durable_modules", return_value=pinned):
+            with self.assertRaisesRegex(pinlib.PinError, "the pin needs"):
+                oracle.link_host(pin, host)
+
+    def test_a_release_pins_host_keeps_the_published_install_and_checks_its_version(self):
+        host, _locked, _pinned = self.host_fixture(False)
+        pin = pinlib.Pin("v1.3.0", "a" * 40, "1.3.0", "1.3.0")
+        self.assertEqual(oracle.link_host(pin, host), [])
+        self.assertEqual(self.kind_of(host, "@earendil-works/pi-durable"), "published")
+        oracle.check_host(pin, host)
+        with self.assertRaisesRegex(pinlib.PinError, "the release pin needs 1.4.0"):
+            oracle.check_host(pinlib.Pin("v1.4.0", "a" * 40, "1.4.0", "1.4.0"), host)
+
+    def test_the_host_manifest_follows_the_pin(self):
+        pin = pinlib.committed()
+        manifest = json.loads((oracle.ROOT / "durable/core/host/cf/package.json").read_text())["dependencies"]
+        for name in pin_tool.CF_HOST:
+            self.assertEqual(manifest[name], pin.package_version, name)
+
     def test_the_durable_closure_has_its_own_frozen_file(self):
         pin = pinlib.committed()
         self.assertNotEqual(oracle.frozen_lock_path(pin), oracle.frozen_lock_path(pin, oracle.DURABLE))

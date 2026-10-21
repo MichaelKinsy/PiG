@@ -251,6 +251,8 @@ func TestNodeRuntimeShimsExportEveryPinnedPiValue(t *testing.T) {
 		"@earendil-works/pi-tui":              "tui/src/index.ts",
 		"@earendil-works/pi-ai":               "ai/src/compat.ts",
 		"@earendil-works/pi-ai/compat":        "ai/src/compat.ts",
+		"@earendil-works/pi-ai/models":        "ai/src/models.ts",
+		"@mariozechner/pi-ai/models":          "ai/src/models.ts",
 		"@earendil-works/pi-ai/providers/all": "ai/src/providers/all.ts",
 		"@earendil-works/pi-agent-core":       "agent/src/index.ts",
 		"@mariozechner/pi-agent-core":         "agent/src/index.ts",
@@ -287,7 +289,8 @@ if (missing.length) { console.log(missing.join(" ")); process.exit(1); }`
 // export names, with the same kinds of values, through the loader as through Pi, in both directions: a missing name fails
 // an extension's ESM link, and an extra one is visible to `import * as` enumeration. Pi's namespaces are read in a
 // process without the loader hooks: with them, the pinned dist's own `@earendil-works/*` imports resolve to Pig's shims
-// and the comparison would be Pig against itself.
+// and the comparison would be Pig against itself. The pinned package is the oracle's source build of the pinned commit, so
+// its table has the pi-ai/models entries Pi added in 22dc6c26 (#11156) and the comparison covers them.
 func TestNodeRuntimeVirtualModulesMatchPiNamespaces(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {

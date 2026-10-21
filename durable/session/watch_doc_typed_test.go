@@ -208,7 +208,7 @@ type watchedText struct {
 // typedWatchState is the token of watch.state read as T, the same stored document through another Go type.
 func typedWatchState[T any]() durable.DocToken[T] {
 	return durable.DefineDoc(durable.DocDefinition[T]{
-		CommonDocDefinition: durable.CommonDocDefinition[T]{Kind: "watch.state", Version: 1, Initial: func() T { var zero T; return zero }},
+		CommonDocDefinition: durable.CommonDocDefinition[T]{Kind: "watch.state", Version: 1, Initial: func() T { var zero T; return zero }, CheckpointWhen: func(T, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   sessionScope,
 	})
 }

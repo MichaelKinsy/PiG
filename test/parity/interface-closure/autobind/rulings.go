@@ -12,8 +12,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 // Rule families for the lead rulings (questions/LEAD-RULINGS-1520.md): each closes a whole class of rows from one condition the
@@ -21,7 +19,7 @@ import (
 //
 //	CC carried without consumer: a member Pi declares and only copies (`name: x.name`), which nothing in Pi's source reads, is designed
 //	   out when a reviewed declaration lists it and the Go owner carries a member of the same type that no production code reads
-//	   (StreamOptions.telemetryContext, simple-options.ts:48; the design-out audit confirmed it at Pi 1.1.0 as reason class a)
+//	   (Pi 1.1.0 carried ProviderRequestOptions.telemetryContext this way; Pi 2ec55d80 reads it as telemetry in observeModelRequest, so no declaration is reviewed now)
 //	TG type guard on a sealed union: an upstream function `(p: U) => p is T` whose U is a Go sealed interface (an unexported method)
 //	   and whose T is a Go type implementing it is designed out: a Go caller narrows with a type switch (LEAD-RULINGS-1520 unblock-types 2)
 //	TR test-runner adapter: an upstream interface made only of test-runner globals (describe, it, test, expect and the hooks) whose
@@ -46,10 +44,7 @@ type carriedDecl struct {
 }
 
 // carriedDecls are the declarations rule CC may design out. The rule re-checks Pi's source on every run: a read anywhere refutes it.
-var carriedDecls = []carriedDecl{{
-	pkg: "ai", file: "src/types.ts", owner: "ProviderRequestOptions", member: "telemetryContext",
-	why: "Pi " + pigversion.UpstreamVersion + " declares ProviderRequestOptions.telemetryContext (ai/src/types.ts:160), which StreamOptions and the option types built on it inherit, and only copies it (ai/src/api/simple-options.ts:48 buildBaseOptions); no Pi code reads it (grep of the " + pigversion.UpstreamVersion + " package sources). Go carries the value with the same type (ai/types.go StreamOptions.TelemetryContext, copied by value with the rest of the options in BuildBaseOptions) and fabricates no read. Designed out under reason class a of the design-out audit (no Pi reader, proven by that probe); a rebind needs a production reader, which neither side has, so the row becomes a port the day Pi reads the member.",
-}}
+var carriedDecls []carriedDecl
 
 // carriedWithoutConsumer applies rule CC to a property whose Go member m agrees in type but no production code reads. It returns the
 // designed-out rationale, or "".

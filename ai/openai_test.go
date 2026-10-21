@@ -743,7 +743,7 @@ func TestConvertMessagesWithCompat_DeepSeekAddsReasoningContent(t *testing.T) {
 	}}
 	messages, cmErr := p.convertMessagesWithCompat([]Message{AssistantMessage{Content: []AssistantContentBlock{
 		TextContent{Text: "answer"},
-	}}}, nil, "system", false, true)
+	}}}, nil, "system", toolAnchors{}, true)
 	if cmErr != nil {
 		t.Fatalf("convertMessagesWithCompat: %v", cmErr)
 	}
@@ -751,7 +751,7 @@ func TestConvertMessagesWithCompat_DeepSeekAddsReasoningContent(t *testing.T) {
 		t.Fatalf("expected empty reasoning_content on assistant message, got %+v", messages)
 	}
 	// openai-completions.ts convertMessages: the empty reasoning_content needs `model.reasoning` as well as the compat flag.
-	plain, cmErr := p.convertMessagesWithCompat([]Message{AssistantMessage{Content: []AssistantContentBlock{TextContent{Text: "answer"}}}}, nil, "system", false, false)
+	plain, cmErr := p.convertMessagesWithCompat([]Message{AssistantMessage{Content: []AssistantContentBlock{TextContent{Text: "answer"}}}}, nil, "system", toolAnchors{}, false)
 	if cmErr != nil || len(plain) != 1 || plain[0].ReasoningContent != nil {
 		t.Fatalf("a non-reasoning model gets no reasoning_content: %+v, %v", plain, cmErr)
 	}
@@ -797,7 +797,7 @@ func TestConvertMessagesWithCompat_OpencodeGoRemapsHistoricalReasoning(t *testin
 	messages, err := provider.convertMessagesWithCompat([]Message{AssistantMessage{Content: []AssistantContentBlock{
 		ThinkingContent{Thinking: "prior reasoning", ThinkingSignature: "reasoning"},
 		TextContent{Text: "answer"},
-	}}}, nil, "system", false, false)
+	}}}, nil, "system", toolAnchors{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1026,7 +1026,7 @@ func TestConvertMessagesWithCompat_ThinkingAsText(t *testing.T) {
 			TextContent{Text: "Here's my answer"},
 		}},
 	}
-	out, cmErr := p.convertMessagesWithCompat(messages, nil, "system", false, false)
+	out, cmErr := p.convertMessagesWithCompat(messages, nil, "system", toolAnchors{}, false)
 	if cmErr != nil {
 		t.Fatalf("convertMessages: %v", cmErr)
 	}

@@ -25,7 +25,7 @@ type tkNotes struct {
 
 func tkSessionNotes(kind string) durable.DocToken[tkNotes] {
 	return durable.DefineDoc(durable.DocDefinition[tkNotes]{
-		CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: kind, Version: 1, Initial: func() tkNotes { return tkNotes{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: kind, Version: 1, Initial: func() tkNotes { return tkNotes{} }, CheckpointWhen: func(tkNotes, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
 	})
 }
@@ -197,7 +197,7 @@ func TestTaskRuntime(t *testing.T) {
 	// harness-tasks.test.ts:579 it("reads committed documents and context through the runtime, and forwards the clock and reports")
 	t.Run("reads committed documents and context through the runtime, and forwards the clock and reports", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[tkNotes]{
-			CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: "test.runtime-notes", Version: 1, Initial: func() tkNotes { return tkNotes{} }},
+			CommonDocDefinition: durable.CommonDocDefinition[tkNotes]{Kind: "test.runtime-notes", Version: 1, Initial: func() tkNotes { return tkNotes{} }, CheckpointWhen: func(tkNotes, []durable.Op, durable.CheckpointInfo) bool { return false }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 		})
 		captured := &syncValue[stepRuntime]{}

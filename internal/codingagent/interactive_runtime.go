@@ -113,6 +113,7 @@ func (m *InteractiveMode) resetWorkingStatus() {
 // resetExtensionUIForReplacement detaches what the outgoing Session's extensions put on screen before their contexts go stale.
 func (m *InteractiveMode) resetExtensionUIForReplacement() {
 	reset := func() {
+		m.resetExtensionDialogs()
 		m.detachSubprocess()
 		if m.widgetContainer != nil {
 			m.clearExtensionWidgets()

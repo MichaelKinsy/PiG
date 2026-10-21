@@ -1,25 +1,98 @@
 # Reviewed per-file ledger for testprune lint: each entry satisfies the expected-value finding of exactly one commit+path.
 
 [[entry]]
-path = "internal/codingagent/compaction/compaction_test.go"
-commit = "ad3567de30"
+path = "ai/openai_record_validation_norace_test.go"
+commit = "af4aea65387d7eb84dcacb6b28f2ad309aa8c71e"
 class = "NOBEHAVIOR"
-reason = "call-site rename only: CompactUsing(..., completer, ...) -> Compact(..., CompleterStreamFn(completer), ...); expected summaries and errors unchanged (Pi has one compact(), agent-session.ts:2633-2661)"
+cite = ""
+reason = "The test replaces a wall-clock CPU ratio with a count of the wire-record scans through recordScanHook, so a loaded machine cannot fail it; the asserted behavior (each record is scanned once beyond the decode) is unchanged and Pi has no counterpart."
 
 [[entry]]
-path = "internal/codingagent/compaction/over_window_review_test.go"
-commit = "ad3567de30"
-class = "NOBEHAVIOR"
-reason = "call-site rename only: CompactUsing -> Compact with CompleterStreamFn; expected values unchanged"
+path = "ai/telemetry_upstream_test.go"
+commit = "7987ae7da13447ef81e271cc0e91c1d59859b143"
+class = "CITE"
+cite = "packages/ai/src/telemetry.ts:145"
+reason = "The span, event and metric attribute expectations move from unordered maps to ordered SpanAttributes in Pi's key order: the start attributes are provider, model, api and then the scalar reasoning (telemetry.ts:145-149), and the end attributes follow. The values are the ones the test already asserted."
 
 [[entry]]
-path = "test/parity/runner/go_prebuild_test.go"
-commit = "538e10357f"
+path = "telemetry/memory_ids_detached_test.go"
+commit = "4ca61cee8c939660e13fe5a86c60c7b98890c1f7"
 class = "NOBEHAVIOR"
-reason = "PiG's own parity-runner tooling (prebuilding Go programs for scenario scripts); no Pi behavior, expectations follow the new prebuild helper's contract"
+cite = ""
+reason = "SpanAttributes becomes an ordered list (Pi's JS objects keep insertion order, Go maps do not); the test builds and mutates the same attributes through Attr, Set and Value, and asserts the same detached copies and values."
 
 [[entry]]
-path = "extensions/sdk/upgrade/rules_test.go"
-commit = "96edeab595"
+path = "telemetry/memory_recording_test.go"
+commit = "4ca61cee8c939660e13fe5a86c60c7b98890c1f7"
 class = "NOBEHAVIOR"
-reason = "PiG-only pig extension upgrade rewriter (no Pi counterpart); expectations change because one run now rewrites every changed API and may add a helper file"
+cite = ""
+reason = "SpanAttributes becomes an ordered list (Pi's JS objects keep insertion order, Go maps do not); the test builds and mutates the same attributes through Attr, Set and Value, and asserts the same merged values and detached snapshots."
+
+[[entry]]
+path = "telemetry/conformance_capability_cases_test.go"
+commit = "8a01515289e7382bbefcc61ed66dff855ad5eccc"
+class = "CITE"
+cite = "packages/telemetry/src/testing/conformance.ts:109"
+reason = "The expected case lists follow Pi d9025a5f: the capabilities case is new (conformance.ts:51), the metrics case is renamed to 'copies instrument metadata and measurement attributes' (:109), the links case to 'ignores links added after source settlement' (:149) and the propagation case 'absent and unknown carriers produce recorded roots' is new (:179)."
+
+[[entry]]
+path = "chord/context/chordctx_upstream_test.go"
+commit = "2ea25c07563ed54611f11698ce3b80bb983afd6a"
+class = "CITE"
+cite = "packages/chord/src/context/index.ts:13"
+reason = "Pi 2ec55d80 narrows Context.telemetry from TelemetryContext to TelemetrySpan (index.ts:13); the test derives the context from spans started inside a recorder, as Pi's rewritten case does, and compares Telemetry(ctx) with the span."
+
+[[entry]]
+path = "durable/session/session_definitions_test.go"
+commit = "71b4b1e3b6a5cf2d9f2fb089267b91138c614e70"
+class = "CITE"
+cite = "packages/durable/src/types.ts:78"
+reason = "Pi 5c1736f8 makes checkpointWhen required on a document definition (types.ts:78), so every definition in the test gains a checkpointWhen that returns false; no other expectation changes."
+
+[[entry]]
+path = "durable/env/node/shell_test.go"
+commit = "4fd80d1cb2cd846ac6b4c6842f357121ff8aba0f"
+class = "CITE"
+cite = "packages/durable/src/env/node.ts:211"
+reason = "Pi 28bea006 recognizes the legacy WSL bash launcher under the actual Windows directory taken from SystemRoot (node.ts:211-219); the case now runs over SystemRoot unset and set to a custom directory, as the upstream case does."
+
+[[entry]]
+path = "internal/shellconfig/shellconfig_test.go"
+commit = "4fd80d1cb2cd846ac6b4c6842f357121ff8aba0f"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/shell.ts:15"
+reason = "Pi 28bea006 recognizes the legacy WSL bash launcher under the actual Windows directory taken from SystemRoot (shell.ts:15-26); the helper now takes the SystemRoot value, and the existing path cases pass it empty so they assert the conventional-path fallback unchanged."
+
+[[entry]]
+path = "ai/cache_affinity_e2e_upstream_test.go"
+commit = "4fe586eeb8"
+class = "NOBEHAVIOR"
+reason = "restores the gpt-5.4 cache-affinity request body that an earlier bulk edit had altered; the expected value returns to the one Pi's oracle produced"
+
+[[entry]]
+path = "ai/cache_affinity_e2e_upstream_test.go"
+commit = "ae40b2b820"
+class = "CITE"
+cite = "packages/ai/src/providers/openai-codex.models.ts:9"
+reason = "Pi fdce48eb (#11173) drops gpt-5.5 and gpt-5.3-codex-spark from the openai-codex catalog (OPENAI_CODEX_MODELS, flattened from data/openai-codex.json); the Codex cases take Pi's replacement model gpt-6.1-sol, and the remaining gpt-5.4 body is the request-tools resolution of openai-responses.ts:344."
+
+[[entry]]
+path = "ai/registry_test.go"
+commit = "ae40b2b820"
+class = "CITE"
+cite = "packages/ai/src/providers/openai-codex.models.ts:9"
+reason = "The Codex registry case takes Pi's replacement model gpt-5.6-sol with the context window and prices of Pi's regenerated openai-codex catalog (data/openai-codex.json), after Pi fdce48eb (#11173) removed gpt-5.3-codex-spark."
+
+[[entry]]
+path = "ai/usage_cost_test.go"
+commit = "ae40b2b820"
+class = "CITE"
+cite = "packages/ai/src/providers/openai-codex.models.ts:9"
+reason = "The Codex priority usage-cost case takes Pi's replacement model gpt-5.6-sol; the expected cost is recomputed from that model's prices in the regenerated catalog."
+
+[[entry]]
+path = "ai/transcript_tool_changes_test.go"
+commit = "c371a134cc"
+class = "CITE"
+cite = "packages/ai/src/api/openai-responses-shared.ts:159"
+reason = "Pi caa6967b and 530015d9 (#11142) declare every tool in additional_tools items from the head of the input, precede each later item with the incremental-tools notice and announce removals as text (openai-responses-shared.ts:159-176), so the expected request shape and instructions of the tool-change cases change with them."

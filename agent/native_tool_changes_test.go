@@ -124,8 +124,9 @@ func TestAgentToolLoadoutChangesUseNativeProviderToolChanges(t *testing.T) {
 				}}), ai.APIOpenAIResponses
 			},
 			check: func(t *testing.T, body map[string]any) {
-				if got := nativeToolChangeNames(body["tools"]); !slices.Equal(got, []string{"first"}) {
-					t.Errorf("tools = %v", got)
+				// Every tool, the first one too, is declared in an additional_tools item (Pi #11142).
+				if got := nativeToolChangeNames(body["tools"]); len(got) != 0 {
+					t.Errorf("tools = %v, want none", got)
 				}
 				var additions []string
 				for _, item := range nativeToolChangeItems(body["input"]) {
@@ -133,7 +134,7 @@ func TestAgentToolLoadoutChangesUseNativeProviderToolChanges(t *testing.T) {
 						additions = append(additions, nativeToolChangeNames(item["tools"])...)
 					}
 				}
-				if !slices.Equal(additions, []string{"second"}) {
+				if !slices.Equal(additions, []string{"first", "second"}) {
 					t.Errorf("additional_tools = %v", additions)
 				}
 			},
@@ -292,10 +293,11 @@ func TestNativeToolChangesPoisonedPersistedHistoryRequests(t *testing.T) {
 				}
 				return append(shape, "tools="+strings.Join(nativeToolChangeNames(body["tools"]), ","))
 			},
-			// Pi 0.87.1 holds the addition until the pending tool output is emitted.
+			// Pi fdce48eb: every tool is declared in an additional_tools item, the later one after the incremental-tools notice, and
+			// the addition is held until the pending tool output is emitted.
 			want: []string{
-				"developer", "user", "function_call:call_a", "function_call_output:call_a", "additional_tools:read",
-				"user", "function_call:toolu_1", "function_call_output:toolu_1", "user", "tools=bash",
+				"additional_tools:bash", "developer", "user", "function_call:call_a", "function_call_output:call_a", "developer", "additional_tools:read",
+				"user", "function_call:toolu_1", "function_call_output:toolu_1", "user", "tools=",
 			},
 		},
 		{

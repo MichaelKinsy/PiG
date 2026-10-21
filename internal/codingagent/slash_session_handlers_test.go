@@ -1084,7 +1084,7 @@ func (f *importCommandFixture) context(args string) *SlashContext {
 	return &SlashContext{
 		Args:   args,
 		Append: func(s string) { f.status = append(f.status, "append:"+s) },
-		ShowExtensionSelector: func(title string, options []string, _ string) (string, bool) {
+		ShowExtensionSelector: func(title string, options []string) (string, bool) {
 			f.prompts = append(f.prompts, title+" "+strings.Join(options, "/"))
 			if len(f.answers) == 0 {
 				return "", false
@@ -1256,7 +1256,7 @@ func TestTreeSelectorDoesNotEmitSessionBeforeTree(t *testing.T) {
 		NavigateTreeFull: func(context.Context, string, bool, string) (NavigateTreeResult, error) {
 			return NavigateTreeResult{Cancelled: true}, nil
 		},
-		ShowExtensionSelector: func(string, []string, string) (string, bool) { return "No summary", true },
+		ShowExtensionSelector: func(string, []string) (string, bool) { return "No summary", true },
 		ShowStatus:            func(message string) { status = append(status, message) },
 		Append:                func(string) {},
 	}
@@ -1462,7 +1462,7 @@ func TestTreeNavigationSkippingThePromptReportsEveryResult(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sc, _ := newFakeSlashCtx()
 			sc.SettingsManager = &SettingsManager{merged: Settings{BranchSummary: &BranchSummaryConfig{SkipPrompt: true}}}
-			sc.ShowExtensionSelector = func(string, []string, string) (string, bool) {
+			sc.ShowExtensionSelector = func(string, []string) (string, bool) {
 				t.Fatal("the summarize prompt opened despite skipPrompt")
 				return "", false
 			}

@@ -32,7 +32,7 @@ pkg:ai/.#ClassifierModel::property:headers	optional	unknown	O2	ai/model_types.go
 pkg:ai/.#ClassifierOptions::property:apiKey	optional	no	O2	ai/classifier.go#ClassifierOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#ClassifierOptions::property:env	optional	unknown	O2	ai/classifier.go#ClassifierOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#ClassifierOptions::property:headers	optional	unknown	O2	ai/classifier.go#ClassifierOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/.#ClassifierOptions::property:telemetryContext	optional	unknown	O2	ai/classifier.go#ClassifierOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/.#ClassifierOptions::property:telemetry	optional	unknown	O2	ai/classifier.go#ClassifierOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#ClassifierResult::property:errorMessage	optional	no	O2	ai/classifier.go#ClassifierResult.ErrorMessage	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#Context::property:systemPrompt	optional	no	O2	ai/transcript.go#Context.SystemPrompt	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#Context::property:tools	optional	unknown	O2	ai/transcript.go#Context.Tools	optional property of nilable type has no json tag, so the unset encoding is not stated
@@ -44,7 +44,7 @@ pkg:ai/.#CreateProviderOptions::property:images	optional	unknown	O2	ai/models_pr
 pkg:ai/.#DeferredFetchOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#DeferredFetchOptions::property:env	optional	unknown	O2	ai/types.go#StreamOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#DeferredFetchOptions::property:headers	optional	unknown	O2	ai/types.go#StreamOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/.#DeferredFetchOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/.#DeferredFetchOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#FauxModelDefinition::property:contextWindow	optional	no	O2	ai/faux.go#FauxModelDefinition.ContextWindow	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#FauxModelDefinition::property:input	optional	unknown	O2	ai/faux.go#FauxModelDefinition.Input	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#FauxModelDefinition::property:maxTokens	optional	no	O2	ai/faux.go#FauxModelDefinition.MaxTokens	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
@@ -57,7 +57,7 @@ pkg:ai/.#ImagesOptions::property:env	optional	unknown	O2	ai/images.go#ImagesOpti
 pkg:ai/.#ImagesOptions::property:headers	optional	unknown	O2	ai/images.go#ImagesOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#ImagesOptions::property:maxRetries	optional	no	O2	ai/images.go#ImagesOptions.MaxRetries	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#ImagesOptions::property:metadata	optional	unknown	O2	ai/images.go#ImagesOptions.Metadata	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/.#ImagesOptions::property:telemetryContext	optional	unknown	O2	ai/images.go#ImagesOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/.#ImagesOptions::property:telemetry	optional	unknown	O2	ai/images.go#ImagesOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#ImagesOptions::property:timeoutMs	optional	no	O2	ai/images.go#ImagesOptions.TimeoutMs	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#LazyApiCapabilities::property:cancelDeferred	optional	no	O2	ai/provider_streams.go#LazyAPICapabilities.CancelDeferred	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#LazyApiCapabilities::property:fetchDeferred	optional	no	O2	ai/provider_streams.go#LazyAPICapabilities.FetchDeferred	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
@@ -89,7 +89,7 @@ pkg:ai/.#Provider::property:baseUrl	optional	no	O2	ai/models_runtime.go#ModelsPr
 pkg:ai/.#ProviderRequestOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#ProviderRequestOptions::property:env	optional	unknown	O2	ai/types.go#StreamOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#ProviderRequestOptions::property:headers	optional	unknown	O2	ai/types.go#StreamOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/.#ProviderRequestOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/.#ProviderRequestOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#SimpleStreamOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#SimpleStreamOptions::property:cacheRetention	optional	no	O2	ai/types.go#StreamOptions.CacheRetention	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#SimpleStreamOptions::property:env	optional	unknown	O2	ai/types.go#StreamOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
@@ -98,7 +98,7 @@ pkg:ai/.#SimpleStreamOptions::property:maxTokens	optional	no	O2	ai/types.go#Stre
 pkg:ai/.#SimpleStreamOptions::property:metadata	optional	unknown	O2	ai/types.go#StreamOptions.Metadata	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#SimpleStreamOptions::property:samplingParams	optional	unknown	O2	ai/types.go#StreamOptions.SamplingParams	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#SimpleStreamOptions::property:sessionId	optional	no	O2	ai/types.go#StreamOptions.SessionID	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
-pkg:ai/.#SimpleStreamOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/.#SimpleStreamOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#SimpleStreamOptions::property:temperature	optional	no	O2	ai/types.go#StreamOptions.Temperature	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#SimpleStreamOptions::property:transport	optional	no	O2	ai/types.go#StreamOptions.Transport	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#StreamOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
@@ -109,7 +109,7 @@ pkg:ai/.#StreamOptions::property:maxTokens	optional	no	O2	ai/types.go#StreamOpti
 pkg:ai/.#StreamOptions::property:metadata	optional	unknown	O2	ai/types.go#StreamOptions.Metadata	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#StreamOptions::property:samplingParams	optional	unknown	O2	ai/types.go#StreamOptions.SamplingParams	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#StreamOptions::property:sessionId	optional	no	O2	ai/types.go#StreamOptions.SessionID	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
-pkg:ai/.#StreamOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/.#StreamOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/.#StreamOptions::property:temperature	optional	no	O2	ai/types.go#StreamOptions.Temperature	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#StreamOptions::property:transport	optional	no	O2	ai/types.go#StreamOptions.Transport	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/.#ThinkingBudgets::property:high	optional	no	O2	ai/simple_options.go#ThinkingBudgets.High	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
@@ -132,7 +132,7 @@ pkg:ai/compat#ClassifierModel::property:headers	optional	unknown	O2	ai/model_typ
 pkg:ai/compat#ClassifierOptions::property:apiKey	optional	no	O2	ai/classifier.go#ClassifierOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#ClassifierOptions::property:env	optional	unknown	O2	ai/classifier.go#ClassifierOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#ClassifierOptions::property:headers	optional	unknown	O2	ai/classifier.go#ClassifierOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/compat#ClassifierOptions::property:telemetryContext	optional	unknown	O2	ai/classifier.go#ClassifierOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/compat#ClassifierOptions::property:telemetry	optional	unknown	O2	ai/classifier.go#ClassifierOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#ClassifierResult::property:errorMessage	optional	no	O2	ai/classifier.go#ClassifierResult.ErrorMessage	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#Context::property:systemPrompt	optional	no	O2	ai/transcript.go#Context.SystemPrompt	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#Context::property:tools	optional	unknown	O2	ai/transcript.go#Context.Tools	optional property of nilable type has no json tag, so the unset encoding is not stated
@@ -144,7 +144,7 @@ pkg:ai/compat#CreateProviderOptions::property:images	optional	unknown	O2	ai/mode
 pkg:ai/compat#DeferredFetchOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#DeferredFetchOptions::property:env	optional	unknown	O2	ai/types.go#StreamOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#DeferredFetchOptions::property:headers	optional	unknown	O2	ai/types.go#StreamOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/compat#DeferredFetchOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/compat#DeferredFetchOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#FauxModelDefinition::property:contextWindow	optional	no	O2	ai/faux.go#FauxModelDefinition.ContextWindow	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#FauxModelDefinition::property:input	optional	unknown	O2	ai/faux.go#FauxModelDefinition.Input	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#FauxModelDefinition::property:maxTokens	optional	no	O2	ai/faux.go#FauxModelDefinition.MaxTokens	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
@@ -157,7 +157,7 @@ pkg:ai/compat#ImagesOptions::property:env	optional	unknown	O2	ai/images.go#Image
 pkg:ai/compat#ImagesOptions::property:headers	optional	unknown	O2	ai/images.go#ImagesOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#ImagesOptions::property:maxRetries	optional	no	O2	ai/images.go#ImagesOptions.MaxRetries	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#ImagesOptions::property:metadata	optional	unknown	O2	ai/images.go#ImagesOptions.Metadata	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/compat#ImagesOptions::property:telemetryContext	optional	unknown	O2	ai/images.go#ImagesOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/compat#ImagesOptions::property:telemetry	optional	unknown	O2	ai/images.go#ImagesOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#ImagesOptions::property:timeoutMs	optional	no	O2	ai/images.go#ImagesOptions.TimeoutMs	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#LazyApiCapabilities::property:cancelDeferred	optional	no	O2	ai/provider_streams.go#LazyAPICapabilities.CancelDeferred	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#LazyApiCapabilities::property:fetchDeferred	optional	no	O2	ai/provider_streams.go#LazyAPICapabilities.FetchDeferred	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
@@ -189,7 +189,7 @@ pkg:ai/compat#Provider::property:baseUrl	optional	no	O2	ai/models_runtime.go#Mod
 pkg:ai/compat#ProviderRequestOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#ProviderRequestOptions::property:env	optional	unknown	O2	ai/types.go#StreamOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#ProviderRequestOptions::property:headers	optional	unknown	O2	ai/types.go#StreamOptions.Headers	optional property of nilable type has no json tag, so the unset encoding is not stated
-pkg:ai/compat#ProviderRequestOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/compat#ProviderRequestOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#SimpleStreamOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#SimpleStreamOptions::property:cacheRetention	optional	no	O2	ai/types.go#StreamOptions.CacheRetention	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#SimpleStreamOptions::property:env	optional	unknown	O2	ai/types.go#StreamOptions.Env	optional property of nilable type has no json tag, so the unset encoding is not stated
@@ -198,7 +198,7 @@ pkg:ai/compat#SimpleStreamOptions::property:maxTokens	optional	no	O2	ai/types.go
 pkg:ai/compat#SimpleStreamOptions::property:metadata	optional	unknown	O2	ai/types.go#StreamOptions.Metadata	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#SimpleStreamOptions::property:samplingParams	optional	unknown	O2	ai/types.go#StreamOptions.SamplingParams	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#SimpleStreamOptions::property:sessionId	optional	no	O2	ai/types.go#StreamOptions.SessionID	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
-pkg:ai/compat#SimpleStreamOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/compat#SimpleStreamOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#SimpleStreamOptions::property:temperature	optional	no	O2	ai/types.go#StreamOptions.Temperature	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#SimpleStreamOptions::property:transport	optional	no	O2	ai/types.go#StreamOptions.Transport	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#StreamOptions::property:apiKey	optional	no	O2	ai/types.go#StreamOptions.APIKey	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
@@ -209,7 +209,7 @@ pkg:ai/compat#StreamOptions::property:maxTokens	optional	no	O2	ai/types.go#Strea
 pkg:ai/compat#StreamOptions::property:metadata	optional	unknown	O2	ai/types.go#StreamOptions.Metadata	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#StreamOptions::property:samplingParams	optional	unknown	O2	ai/types.go#StreamOptions.SamplingParams	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#StreamOptions::property:sessionId	optional	no	O2	ai/types.go#StreamOptions.SessionID	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
-pkg:ai/compat#StreamOptions::property:telemetryContext	optional	unknown	O2	ai/types.go#StreamOptions.TelemetryContext	optional property of nilable type has no json tag, so the unset encoding is not stated
+pkg:ai/compat#StreamOptions::property:telemetry	optional	unknown	O2	ai/types.go#StreamOptions.Telemetry	optional property of nilable type has no json tag, so the unset encoding is not stated
 pkg:ai/compat#StreamOptions::property:temperature	optional	no	O2	ai/types.go#StreamOptions.Temperature	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#StreamOptions::property:transport	optional	no	O2	ai/types.go#StreamOptions.Transport	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty
 pkg:ai/compat#ThinkingBudgets::property:high	optional	no	O2	ai/simple_options.go#ThinkingBudgets.High	optional property is a Go value with no unset state: use *T, a presence wrapper or omitempty

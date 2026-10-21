@@ -55,22 +55,41 @@ type TelemetryAttributeMetadata struct {
 	Cardinality TelemetryAttributeCardinality `json:"cardinality,omitempty"`
 }
 
-// TelemetryAttributeDefinition declares one attribute's type and optional closed value set.
+// TelemetryAttributeDefinition declares one attribute's type and optional closed value set and examples.
 //
-// Values applies to scalar types and ElementValues to array types; Examples holds values of Type. A nil slice is an
-// absent member and an empty slice serializes as [], as JSON.stringify writes the schema object.
+// Upstream's `values`, `elementValues` and `examples` take the element type of `type` ("string" takes readonly string[],
+// "number[]" takes readonly number[] for elementValues and readonly (readonly number[])[] for examples). Go has no sum of
+// slice types, so each arm is a field of its own element type; the one that applies to Type is the one read and written, and
+// serializes under upstream's member name. A nil slice is an absent member and an empty slice serializes as [], as
+// JSON.stringify writes the schema object.
 type TelemetryAttributeDefinition struct {
 	TelemetryAttributeMetadata
-	Type          TelemetryAttributeType `json:"type"`
-	Values        []AttributeValue       `json:"values,omitzero"`
-	ElementValues []AttributeValue       `json:"elementValues,omitzero"`
-	Examples      []AttributeValue       `json:"examples,omitzero"`
+	Type TelemetryAttributeType
+
+	// Values and Examples are the members of a "string" attribute.
+	Values   []string
+	Examples []string
+	// NumberValues and NumberExamples are the members of a "number" attribute.
+	NumberValues   []float64
+	NumberExamples []float64
+	// BooleanValues and BooleanExamples are the members of a "boolean" attribute.
+	BooleanValues   []bool
+	BooleanExamples []bool
+	// ElementValues and ArrayExamples are the members of a "string[]" attribute.
+	ElementValues []string
+	ArrayExamples [][]string
+	// NumberElementValues and NumberArrayExamples are the members of a "number[]" attribute.
+	NumberElementValues []float64
+	NumberArrayExamples [][]float64
+	// BooleanElementValues and BooleanArrayExamples are the members of a "boolean[]" attribute.
+	BooleanElementValues []bool
+	BooleanArrayExamples [][]bool
 }
 
 // TelemetryStartAttributeDefinition is an attribute supplied when a span starts.
 type TelemetryStartAttributeDefinition struct {
 	TelemetryAttributeDefinition
-	Required bool `json:"required"`
+	Required bool
 }
 
 // TelemetryEventAttributeDefinition is an attribute of a span event; it has the start-attribute shape.

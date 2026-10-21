@@ -15,6 +15,7 @@ import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/tru
 import { spawnProcess, spawnProcessSync, waitForChildProcess } from "./utils/child-process.js";
 import { canonicalizePath, getCwdRelativePath } from "./utils/paths.js";
 import { getPiUserAgent } from "./utils/pi-user-agent.js";
+import { stripBom } from "./utils/text.js";
 import { formatVersionCheckError, getLatestPiRelease, isNewerPackageVersion } from "./utils/version-check.js";
 import { cleanupWindowsSelfUpdateQuarantine, quarantineWindowsNativeDependencies, } from "./utils/windows-self-update.js";
 const DEFAULT_INSTALLER_API_BASE = "https://pi-in-go.dev/api/installer/releases";
@@ -32,7 +33,7 @@ function getActiveManagedInstallRoot() {
         return undefined;
     const markerPath = join(managedRoot, MANAGED_INSTALL_MARKER);
     try {
-        const marker = JSON.parse(readFileSync(markerPath, "utf8"));
+        const marker = JSON.parse(stripBom(readFileSync(markerPath, "utf8")));
         if (marker.kind !== "pi-managed-install" || marker.schemaVersion !== 1 || marker.layout !== "releases-v1") {
             throw new Error();
         }

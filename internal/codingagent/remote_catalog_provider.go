@@ -222,7 +222,7 @@ func newCatalogRequest(ctx context.Context, providerID, catalogBaseURL, validato
 	}
 	request.Header.Set("accept", "application/json")
 	// pig divergence (D65): PiG identifies as pig/<version>, where Pi sends pi/<version> (remote-catalog-provider.ts:getPiUserAgent).
-	request.Header.Set("User-Agent", ai.PiUserAgent())
+	request.Header.Set("User-Agent", ai.FormatUserAgent(nil))
 	if validator != "" {
 		request.Header.Set("if-none-match", validator)
 	}

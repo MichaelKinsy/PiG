@@ -929,9 +929,9 @@ func TestFrontendEditorSendableTransitions(t *testing.T) {
 	expect("external editor", false, true)
 	m.externalEditorActive = false
 	// An extension dialog takes the keys without taking the focus.
-	m.extensionDialog = &extensionDialog{component: tui.NewText("dialog")}
+	m.extensionDialogs = []*extensionDialog{{component: tui.NewText("dialog"), handle: func(string) {}}}
 	expect("extension dialog", false, true)
-	m.extensionDialog = nil
+	m.extensionDialogs = nil
 	expect("extension dialog closed", true, true)
 	handle := m.tuiInst.ShowOverlay(tui.NewText("overlay"), tui.OverlayOptions{})
 	expect("overlay", false, false)

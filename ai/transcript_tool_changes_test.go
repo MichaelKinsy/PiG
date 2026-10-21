@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -473,11 +474,12 @@ func TestTranscriptToolChangesOpenAIResponsesRequests(t *testing.T) {
 		instructions []string
 	}{
 		{
-			name:   "anchors additions at their developer message",
+			name:   "declares every OpenAI tool in additional_tools at its developer message",
 			compat: &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)}, transcript: additionContext(),
-			tools:        []string{"base_tool"},
-			shape:        []string{"developer", "user", "additional_tools[late_tool]", "developer"},
-			instructions: []string{"base prompt", "updated guidance"},
+			// A later additional_tools item cannot replace a top-level tool, so no tool is declared there.
+			tools:        nil,
+			shape:        []string{"additional_tools[base_tool]", "developer", "user", "developer", "additional_tools[late_tool]", "developer"},
+			instructions: []string{"base prompt", incrementalToolsNotice, "updated guidance"},
 		},
 		{
 			name:   "maps system-message additions into synthetic tool search",
@@ -489,9 +491,9 @@ func TestTranscriptToolChangesOpenAIResponsesRequests(t *testing.T) {
 		{
 			name:   "additional tools win over tool search",
 			compat: &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true), SupportsToolSearch: new(true)}, transcript: additionContext(),
-			tools:        []string{"base_tool"},
-			shape:        []string{"developer", "user", "additional_tools[late_tool]", "developer"},
-			instructions: []string{"base prompt", "updated guidance"},
+			tools:        nil,
+			shape:        []string{"additional_tools[base_tool]", "developer", "user", "developer", "additional_tools[late_tool]", "developer"},
+			instructions: []string{"base prompt", incrementalToolsNotice, "updated guidance"},
 		},
 		{
 			name:   "folds updates into the leading developer message without native support",
@@ -501,11 +503,11 @@ func TestTranscriptToolChangesOpenAIResponsesRequests(t *testing.T) {
 			instructions: []string{foldedPrompt},
 		},
 		{
-			name:   "falls back to the complete current tool state when removals are unsupported",
+			name:   "announces OpenAI removals as text",
 			compat: &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)}, transcript: foldContext(),
-			tools:        []string{"late_tool"},
-			shape:        []string{"developer", "user", "developer"},
-			instructions: []string{"base prompt\n\n<rules>\nold rules\n</rules>\n\n<docs>\nread docs\n</docs>", RenderSystemMessageUpdate(foldContext().Messages()[2].(SystemMessage))},
+			tools:        nil,
+			shape:        []string{"additional_tools[base_tool]", "developer", "user", "developer", "additional_tools[late_tool]", "developer"},
+			instructions: []string{"base prompt\n\n<rules>\nold rules\n</rules>\n\n<docs>\nread docs\n</docs>", incrementalToolsNotice, RenderSystemMessageUpdate(foldContext().Messages()[2].(SystemMessage)) + "\n\nThe following tools are no longer available. Do not call them:\n- base_tool"},
 		},
 		{
 			name:   "sends every current tool when mid-conversation messages lack tool support",
@@ -557,35 +559,37 @@ func TestTranscriptToolChangesOpenAIResponsesToolSearchItems(t *testing.T) {
 func TestTranscriptToolChangesOpenAIResponsesAdditionalToolsItem(t *testing.T) {
 	compat := &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true), SupportsStrictMode: new(true)}
 	request := captureResponsesToolChanges(t, compat, additionContext())
-	item := jsonItems(request.body["input"])[2]
-	tools := jsonItems(item["tools"])
-	// Added tools use the request tool conversion, including strict mode.
-	if item["role"] != "developer" || len(tools) != 1 || tools[0]["strict"] != false || tools[0]["defer_loading"] != nil {
-		t.Errorf("additional_tools = %#v", item)
+	input := jsonItems(request.body["input"])
+	// The initial and the later tools use the request tool conversion, including strict mode.
+	for _, index := range []int{0, 4} {
+		item := input[index]
+		tools := jsonItems(item["tools"])
+		if item["type"] != "additional_tools" || item["role"] != "developer" || len(tools) != 1 || tools[0]["strict"] != false || tools[0]["defer_loading"] != nil {
+			t.Errorf("additional_tools at %d = %#v", index, item)
+		}
 	}
 }
 
 func TestTranscriptToolChangesOpenAIResponsesPoisonedHistory(t *testing.T) {
 	compat := &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)}
 	request := captureResponsesToolChanges(t, compat, poisonedToolChangeContext())
-	// Pi 0.87.1 transformMessages drops failed turns and holds system updates behind tool results.
+	// Pi transformMessages drops failed turns and holds system updates behind tool results; every tool is declared in additional_tools items, the later one after the incremental notice.
 	want := []string{
-		"developer", "user",
-		"additional_tools[late_tool]", "developer", "user",
+		"additional_tools[base_tool]", "developer", "user",
+		"developer", "additional_tools[late_tool]", "developer", "user",
 		"function_call:call_1", "function_call_output:call_1", "developer", "user",
 	}
 	input := jsonItems(request.body["input"])
-	// Pi 0.87.1 replay-history-pi.mjs drops failed turns and places the held update after the real result.
 	encoded, err := json.Marshal(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertShapeJSON(t, encoded, `[{"content":"base prompt","role":"developer"},{"content":[{"text":"before","type":"input_text"}],"role":"user"},{"role":"developer","tools":[{"description":"late_tool tool","name":"late_tool","parameters":{"properties":{},"type":"object"},"type":"function"}],"type":"additional_tools"},{"content":"load late tool","role":"developer"},{"content":[{"text":"retry","type":"input_text"}],"role":"user"},{"arguments":"{}","call_id":"call_1","name":"late_tool","type":"function_call"},{"call_id":"call_1","output":"done","type":"function_call_output"},{"content":"between call and result","role":"developer"},{"content":[{"text":"go on","type":"input_text"}],"role":"user"}]`)
+	assertShapeJSON(t, encoded, `[{"role":"developer","tools":[{"description":"base_tool tool","name":"base_tool","parameters":{"properties":{},"type":"object"},"type":"function"}],"type":"additional_tools"},{"content":"base prompt","role":"developer"},{"content":[{"text":"before","type":"input_text"}],"role":"user"},{"content":"`+incrementalToolsNotice+`","role":"developer"},{"role":"developer","tools":[{"description":"late_tool tool","name":"late_tool","parameters":{"properties":{},"type":"object"},"type":"function"}],"type":"additional_tools"},{"content":"load late tool","role":"developer"},{"content":[{"text":"retry","type":"input_text"}],"role":"user"},{"arguments":"{}","call_id":"call_1","name":"late_tool","type":"function_call"},{"call_id":"call_1","output":"done","type":"function_call_output"},{"content":"between call and result","role":"developer"},{"content":[{"text":"go on","type":"input_text"}],"role":"user"}]`)
 	if got := responsesInputShape(input); !slices.Equal(got, want) {
 		t.Errorf("input = %v, want %v", got, want)
 	}
-	if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"base_tool"}) {
-		t.Errorf("tools = %v", got)
+	if tools, ok := request.body["tools"]; ok {
+		t.Errorf("tools = %v, want none", tools)
 	}
 }
 
@@ -799,6 +803,364 @@ func TestTranscriptToolChangesKimiCodingAdditions(t *testing.T) {
 			}
 			if !slices.Equal(anchored, tc.anchored) {
 				t.Errorf("tool-bearing message tools = %v, want %v", anchored, tc.anchored)
+			}
+		})
+	}
+}
+
+// ─── Tool history across a removal and later loads (Pi #11142, #10940) ───────
+
+// incrementalToolsNotice precedes every additional_tools item after the first (openai-responses-shared.ts renderIncrementalToolsNotice).
+const incrementalToolsNotice = "This is an incremental tools update. Previously declared tools remain available unless explicitly marked unavailable. A tool declared again here is available again, and its latest definition replaces the earlier one."
+
+// toolHistoryTranscripts is transcript-tool-changes.test.ts captureToolHistory's request sequence: the initial tools, the removal of
+// drop_tool, then two loads, each transcript the previous one plus one step.
+func toolHistoryTranscripts() []TranscriptContext {
+	steps := [][]Message{
+		{UserMessage{Content: UserText("first"), Timestamp: 1}},
+		{
+			SystemMessage{Content: SystemText(""), ToolsRemoved: []ToolReference{{Name: "drop_tool"}}, Timestamp: 2},
+			UserMessage{Content: UserText("after removal"), Timestamp: 3},
+		},
+		{
+			SystemMessage{Content: SystemText(""), ToolsAdded: []ToolSchema{replayTool("late_tool")}, Timestamp: 4},
+			UserMessage{Content: UserText("after first load"), Timestamp: 5},
+		},
+		{
+			SystemMessage{Content: SystemText(""), ToolsAdded: []ToolSchema{replayTool("later_tool")}, Timestamp: 6},
+			UserMessage{Content: UserText("after second load"), Timestamp: 7},
+		},
+	}
+	messages := []Message{SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{replayTool("base_tool"), replayTool("drop_tool")}}}
+	var transcripts []TranscriptContext
+	for _, step := range steps {
+		messages = append(messages, step...)
+		transcripts = append(transcripts, NormalizeContext(Context{Messages: slices.Clone(messages)}))
+	}
+	return transcripts
+}
+
+// expectGrowingPrefix requires every request's list to start with the previous request's whole list.
+func expectGrowingPrefix(t *testing.T, lists [][]map[string]any) {
+	t.Helper()
+	for index := 1; index < len(lists); index++ {
+		previous := lists[index-1]
+		if len(lists[index]) < len(previous) || !reflect.DeepEqual(lists[index][:len(previous)], previous) {
+			t.Errorf("request %d does not start with request %d:\n got %v\nwant prefix %v", index, index-1, lists[index], previous)
+		}
+	}
+}
+
+func toolHistoryResponses(t *testing.T, compat *OpenAIResponsesCompat) []toolChangeRequest {
+	t.Helper()
+	var requests []toolChangeRequest
+	for _, transcript := range toolHistoryTranscripts() {
+		requests = append(requests, captureResponsesToolChanges(t, compat, transcript))
+	}
+	return requests
+}
+
+// #10940: deferred loads after a removal must not rewrite the cached prefix.
+func TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads(t *testing.T) {
+	requests := toolHistoryResponses(t, &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)})
+	var inputs [][]map[string]any
+	for _, request := range requests {
+		if tools, ok := request.body["tools"]; ok {
+			t.Errorf("tools = %v, want none", tools)
+		}
+		inputs = append(inputs, jsonItems(request.body["input"]))
+	}
+	expectGrowingPrefix(t, inputs)
+	last := inputs[len(inputs)-1]
+	var declared []string
+	var noticed, removed bool
+	var notices []string
+	for _, item := range last {
+		if item["type"] == "additional_tools" {
+			declared = append(declared, strings.Join(jsonStrings(jsonItems(item["tools"]), "name"), ","))
+		}
+		content, _ := item["content"].(string)
+		removed = removed || strings.Contains(content, "no longer available. Do not call them:\n- drop_tool")
+		if strings.Contains(content, "incremental tools update") {
+			noticed = true
+			notices = append(notices, content)
+		}
+	}
+	if want := []string{"base_tool,drop_tool", "late_tool", "later_tool"}; !slices.Equal(declared, want) {
+		t.Errorf("additional_tools = %v, want %v", declared, want)
+	}
+	if !removed || !noticed {
+		t.Errorf("removal announced = %t, incremental notice = %t", removed, noticed)
+	}
+	// Each later load restates the tools that are still unavailable.
+	if want := []string{incrementalToolsNotice + "\nStill unavailable: drop_tool.", incrementalToolsNotice + "\nStill unavailable: drop_tool."}; !slices.Equal(notices, want) {
+		t.Errorf("notices = %q, want %q", notices, want)
+	}
+}
+
+func TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval(t *testing.T) {
+	base := replayTool("base_tool")
+	request := captureResponsesToolChanges(t, &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)}, NormalizeContext(Context{Messages: []Message{
+		SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{base}},
+		UserMessage{Content: UserText("before"), Timestamp: 1},
+		SystemMessage{Content: SystemText(""), ToolsRemoved: []ToolReference{{Name: "base_tool"}}, ToolsAdded: []ToolSchema{replayTool("base_tool", "changed")}, Timestamp: 2},
+	}}))
+	input := jsonItems(request.body["input"])
+	if got, want := responsesInputShape(input), []string{"additional_tools[base_tool]", "developer", "user", "developer", "additional_tools[base_tool]"}; !slices.Equal(got, want) {
+		t.Fatalf("input = %v, want %v", got, want)
+	}
+	if got := jsonStrings(jsonItems(input[0]["tools"]), "description"); !slices.Equal(got, []string{"base_tool tool"}) {
+		t.Errorf("first definition = %v", got)
+	}
+	if got := jsonStrings(jsonItems(input[4]["tools"]), "description"); !slices.Equal(got, []string{"changed"}) {
+		t.Errorf("redefinition = %v", got)
+	}
+	if text, _ := input[3]["content"].(string); !strings.Contains(text, "latest definition replaces the earlier one") || strings.Contains(text, "Still unavailable") {
+		t.Errorf("notice = %q", text)
+	}
+	if tools, ok := request.body["tools"]; ok {
+		t.Errorf("tools = %v, want none", tools)
+	}
+}
+
+func TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain(t *testing.T) {
+	request := captureResponsesToolChanges(t, &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)}, NormalizeContext(Context{Messages: []Message{
+		SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{replayTool("base_tool"), replayTool("drop_tool")}},
+		SystemMessage{Content: SystemText(""), ToolsRemoved: []ToolReference{{Name: "drop_tool"}}, Timestamp: 1},
+		SystemMessage{Content: SystemText(""), ToolsAdded: []ToolSchema{replayTool("drop_tool")}, Timestamp: 2},
+		UserMessage{Content: UserText("go"), Timestamp: 3},
+	}}))
+	input := jsonItems(request.body["input"])
+	var notice string
+	for _, item := range input {
+		if text, _ := item["content"].(string); strings.Contains(text, "incremental tools update") {
+			notice = text
+			break
+		}
+	}
+	if notice == "" || strings.Contains(notice, "Still unavailable") {
+		t.Errorf("notice = %q", notice)
+	}
+	if item := input[len(input)-2]; item["type"] != "additional_tools" || !slices.Equal(jsonStrings(jsonItems(item["tools"]), "name"), []string{"drop_tool"}) {
+		t.Errorf("input before the user message = %v", item)
+	}
+}
+
+func TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced(t *testing.T) {
+	request := captureResponsesToolChanges(t, &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)}, NormalizeContext(Context{Messages: []Message{
+		SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{replayTool("base_tool"), replayTool("drop_tool")}},
+		SystemMessage{Content: SystemText(""), ToolsAdded: []ToolSchema{replayTool("late_tool")}, ToolsRemoved: []ToolReference{{Name: "drop_tool"}}, Timestamp: 1},
+		UserMessage{Content: UserText("go"), Timestamp: 2},
+	}}))
+	input := jsonItems(request.body["input"])
+	// Like Codex: notice, then the tools, then the removal notice.
+	tail := input[len(input)-4:]
+	if text, _ := tail[0]["content"].(string); text != incrementalToolsNotice {
+		t.Errorf("notice = %q", text)
+	}
+	if got, want := responsesInputShape(tail[1:]), []string{"additional_tools[late_tool]", "developer", "user"}; !slices.Equal(got, want) {
+		t.Errorf("tail = %v, want %v", got, want)
+	}
+	if text, _ := tail[2]["content"].(string); !strings.Contains(text, "no longer available. Do not call them:\n- drop_tool") {
+		t.Errorf("removal notice = %q", text)
+	}
+}
+
+// #10940: synthetic tool search cannot remove tools, so a removal rewrites the prefix once.
+func TestTranscriptToolChangesOpenAIResponsesToolSearchPrefixAcrossLoadsAfterARemoval(t *testing.T) {
+	requests := toolHistoryResponses(t, &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsToolSearch: new(true)})
+	if got := jsonStrings(jsonItems(requests[0].body["tools"]), "name"); !slices.Equal(got, []string{"base_tool", "drop_tool"}) {
+		t.Errorf("tools before the removal = %v", got)
+	}
+	var inputs [][]map[string]any
+	for _, request := range requests[1:] {
+		if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, []string{"base_tool"}) {
+			t.Errorf("tools after the removal = %v", got)
+		}
+		inputs = append(inputs, jsonItems(request.body["input"]))
+	}
+	expectGrowingPrefix(t, inputs)
+	var loaded []string
+	for _, item := range inputs[len(inputs)-1] {
+		if item["type"] == "tool_search_output" {
+			loaded = append(loaded, jsonStrings(jsonItems(item["tools"]), "name")[0])
+		}
+	}
+	if !slices.Equal(loaded, []string{"late_tool", "later_tool"}) {
+		t.Errorf("tool_search_output tools = %v", loaded)
+	}
+}
+
+// #10940: removals and redeclarations move the top-level boundary once; plain additions stay anchored.
+func TestResolveTranscriptToolsBoundaryPerTransport(t *testing.T) {
+	base, drop := replayTool("base_tool"), replayTool("drop_tool")
+	lateX, lateY := replayTool("late_tool", "x"), replayTool("late_tool", "y")
+	messages := []SystemMessage{
+		{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{base, drop}},
+		{Content: SystemText(""), ToolsRemoved: []ToolReference{{Name: "drop_tool"}}, Timestamp: 1},
+		{Content: SystemText(""), ToolsAdded: []ToolSchema{drop}, Timestamp: 2},
+		{Content: SystemText(""), ToolsAdded: []ToolSchema{lateX}, Timestamp: 3},
+		{Content: SystemText(""), ToolsAdded: []ToolSchema{lateY}, Timestamp: 4},
+	}
+	check := func(name string, got TranscriptTools, tools []ToolSchema, folded int) {
+		t.Helper()
+		if got.FoldedSystemMessages != folded || len(got.RequestTools) != len(tools) {
+			t.Errorf("%s = %+v, want %d tools folded %d", name, got, len(tools), folded)
+			return
+		}
+		for i := range tools {
+			if got.RequestTools[i].Name != tools[i].Name || got.RequestTools[i].Description != tools[i].Description {
+				t.Errorf("%s tool %d = %+v, want %+v", name, i, got.RequestTools[i], tools[i])
+			}
+		}
+	}
+	check("removal", ResolveTranscriptTools(messages[:2], TranscriptToolSupportAdditions), []ToolSchema{base}, 2)
+	// Kimi K3 ignores a removed tool that a later tool message declares again, so the re-added drop_tool moves the boundary; the new
+	// late_tool after it stays anchored.
+	check("re-added", ResolveTranscriptTools(messages[:4], TranscriptToolSupportAdditions), []ToolSchema{base, drop}, 3)
+	// The redefinition of late_tool moves the boundary to its message.
+	check("redefined", ResolveTranscriptTools(messages, TranscriptToolSupportAdditions), []ToolSchema{base, drop, lateY}, 5)
+	check("changes", ResolveTranscriptTools(messages, TranscriptToolSupportChanges), nil, 0)
+	check("none", ResolveTranscriptTools(messages, TranscriptToolSupportNone), []ToolSchema{base, drop, lateY}, 5)
+}
+
+// #10940: Kimi tool messages cannot remove tools, so a removal rewrites the prefix once.
+func TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval(t *testing.T) {
+	var requests []toolChangeRequest
+	for _, transcript := range toolHistoryTranscripts() {
+		requests = append(requests, captureCompletionsToolChanges(t, "moonshotai", kimiToolAdditionsCompat, transcript))
+	}
+	if got := completionsToolNames(requests[0].body["tools"]); !slices.Equal(got, []string{"base_tool", "drop_tool"}) {
+		t.Errorf("tools before the removal = %v", got)
+	}
+	var messages [][]map[string]any
+	for _, request := range requests[1:] {
+		if got := completionsToolNames(request.body["tools"]); !slices.Equal(got, []string{"base_tool"}) {
+			t.Errorf("tools after the removal = %v", got)
+		}
+		messages = append(messages, jsonItems(request.body["messages"]))
+	}
+	expectGrowingPrefix(t, messages)
+	var loaded []string
+	for _, message := range messages[len(messages)-1] {
+		if tools, ok := message["tools"]; ok {
+			loaded = append(loaded, completionsToolNames(tools)[0])
+		}
+	}
+	if !slices.Equal(loaded, []string{"late_tool", "later_tool"}) {
+		t.Errorf("tool-bearing messages = %v", loaded)
+	}
+}
+
+// ─── Request tools resolve over the transcript as given (openai-responses.ts buildParams) ─
+
+// captureToolChangesForResponsesProviders sends one request through each Responses provider that shares the converter and returns
+// the request bodies by provider name.
+func captureToolChangesForResponsesProviders(t *testing.T, compat *OpenAIResponsesCompat, transcript TranscriptContext) map[string]toolChangeRequest {
+	t.Helper()
+	capture := func(name string, install func(*http.Client), stream func() (*AssistantMessageEventStream, error)) toolChangeRequest {
+		var started *AssistantMessageEventStream
+		requests := captureToolChangeRequests(t, install, func() (*AssistantMessageEventStream, error) {
+			result, err := stream()
+			started = result
+			return result, err
+		}, toolChangeReply{200, responsesToolChangeDone})
+		if len(requests) != 1 {
+			message := ""
+			if started != nil {
+				message = started.Result().ErrorMessage
+			}
+			t.Fatalf("%s requests = %d (stream error %q)", name, len(requests), message)
+		}
+		return requests[0]
+	}
+	out := map[string]toolChangeRequest{}
+	openai := NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "test-key", Model: "custom-model", ProviderID: "openai", IsReasoning: true, Compat: compat}).(*openAIResponsesProvider)
+	out["openai-responses"] = capture("openai-responses", func(client *http.Client) { openai.client = client }, func() (*AssistantMessageEventStream, error) {
+		return openai.Stream(context.Background(), transcript, StreamOptions{})
+	})
+	azure := NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{APIKey: "test-key", Model: "custom-deployment", IsReasoning: true, Compat: compat}).(*openAIResponsesProvider)
+	out["azure-openai-responses"] = capture("azure-openai-responses", func(client *http.Client) { azure.client = client }, func() (*AssistantMessageEventStream, error) {
+		return azure.Stream(context.Background(), transcript, StreamOptions{AzureBaseURL: "https://example.test/openai/v1", AzureResourceName: "acme"})
+	})
+	codex := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{APIKey: codexTestToken(t, "acc_test"), Model: "custom-model", ProviderID: "openai-codex", Compat: compat, ModelMetadata: &Model{ID: "custom-model", DisplayName: "custom-model", ProviderMeta: ProviderMetadata{API: APIOpenAICodexResponses, ProviderID: "openai-codex", Reasoning: true}, Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 400000, MaxOutputTokens: 128000, MaxThinking: ThinkingLevelHigh}}}).(*openAIResponsesProvider)
+	// The Codex transport sends its body in its own wire form, which the Codex tests decode with codexUpstreamBody.
+	var codexBody map[string]json.RawMessage
+	codex.client = &http.Client{Transport: codexRoundTripper(func(r *http.Request) (*http.Response, error) {
+		codexBody = codexUpstreamBody(t, r)
+		return codexUpstreamHTTP(codexUpstreamSSE("completed", nil)), nil
+	})}
+	stream, err := codex.Stream(context.Background(), transcript, StreamOptions{APIKey: codexTestToken(t, "acc_test"), Transport: TransportSSE})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = stream.Result()
+	decoded := map[string]any{}
+	for key, raw := range codexBody {
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			t.Fatal(err)
+		}
+		decoded[key] = value
+	}
+	out["openai-codex-responses"] = toolChangeRequest{body: decoded}
+	return out
+}
+
+// Pi's buildParams and convertResponsesMessages resolve the tools over the transcript after resolveTranscript and before
+// transformMessages, so these two histories send what Pi sends on every Responses provider.
+func TestTranscriptToolChangesResponsesRequestToolsResolveBeforeTransformMessages(t *testing.T) {
+	aborted := AssistantMessage{API: APIAnthropicMessages, Provider: "anthropic", Model: "custom", Content: []AssistantContentBlock{TextContent{Text: ""}}, StopReason: StopReasonAborted, Timestamp: 1}
+	for _, tc := range []struct {
+		name       string
+		compat     *OpenAIResponsesCompat
+		transcript TranscriptContext
+		tools      []string
+		// loaded is the tools each tool_search_output item declares.
+		loaded [][]string
+	}{
+		{
+			// The assistant is dropped by transformMessages, but the transcript after resolveTranscript (what Pi's buildParams and
+			// converter resolve over) has no initial system message: no top-level tools, and the leading system message declares its
+			// tools in place.
+			name:   "an aborted assistant before the first system message with tool search",
+			compat: &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsToolSearch: new(true)},
+			transcript: NormalizeContext(Context{Messages: []Message{
+				aborted,
+				SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{replayTool("a")}, Timestamp: 2},
+				UserMessage{Content: UserText("go"), Timestamp: 3},
+			}}),
+			tools:  nil,
+			loaded: [][]string{{"a"}},
+		},
+		{
+			// Without mid-conversation system messages the transcript collapses into one leading system message holding every current
+			// tool, which the request's tool list carries; nothing is declared in place.
+			name:   "tool search without mid-conversation system messages",
+			compat: &OpenAIResponsesCompat{SupportsToolSearch: new(true)},
+			transcript: NormalizeContext(Context{Messages: []Message{
+				SystemMessage{Content: SystemText("base prompt"), ToolsAdded: []ToolSchema{replayTool("a")}},
+				UserMessage{Content: UserText("go"), Timestamp: 1},
+				SystemMessage{Content: SystemText("update"), ToolsAdded: []ToolSchema{replayTool("b")}, Timestamp: 2},
+			}}),
+			tools:  []string{"a", "b"},
+			loaded: nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for provider, request := range captureToolChangesForResponsesProviders(t, tc.compat, tc.transcript) {
+				if got := jsonStrings(jsonItems(request.body["tools"]), "name"); !slices.Equal(got, tc.tools) {
+					t.Errorf("%s tools = %v, want %v", provider, got, tc.tools)
+				}
+				var loaded [][]string
+				for _, item := range jsonItems(request.body["input"]) {
+					if item["type"] == "tool_search_output" {
+						loaded = append(loaded, jsonStrings(jsonItems(item["tools"]), "name"))
+					}
+				}
+				if !reflect.DeepEqual(loaded, tc.loaded) {
+					t.Errorf("%s tool_search_output tools = %v, want %v", provider, loaded, tc.loaded)
+				}
 			}
 		})
 	}

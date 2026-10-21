@@ -37,7 +37,7 @@ func TestResponseIDUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:104
 		{"GitHub Copilot Provider/Anthropic path should expose responseId", "github-copilot", "claude-sonnet-4.6", APIAnthropicMessages, false},
 		// .upstream/v0.87.1/packages/ai/test/responseid.test.ts:115
-		{"OpenAI Codex Provider/should expose responseId", "openai-codex", "gpt-5.5", APIOpenAICodexResponses, false},
+		{"OpenAI Codex Provider/should expose responseId", "openai-codex", "gpt-6.1-sol", APIOpenAICodexResponses, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()

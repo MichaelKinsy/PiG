@@ -86,7 +86,7 @@ func TestTotalTokensUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:842
 		{"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "", false, false, ""},
 		// .upstream/v0.87.1/packages/ai/test/total-tokens.test.ts:865
-		{"openai-codex", "gpt-5.5", "", true, false, ""},
+		{"openai-codex", "gpt-6.1-sol", "", true, false, ""},
 	} {
 		t.Run(tc.provider+"/"+tc.id+" should return totalTokens equal to sum of components", func(t *testing.T) {
 			gm, ok := LookupModelExact(tc.provider + "/" + tc.id)

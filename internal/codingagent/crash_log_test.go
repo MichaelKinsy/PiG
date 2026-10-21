@@ -338,7 +338,7 @@ func TestFatalSessionReplacementHandlersUseCrashPath(t *testing.T) {
 		}},
 		{name: "import", want: "Failed to import session", run: func(sc *SlashContext) error {
 			sc.Args = "session.jsonl"
-			sc.ShowExtensionSelector = func(string, []string, string) (string, bool) { return "Yes", true }
+			sc.ShowExtensionSelector = func(string, []string) (string, bool) { return "Yes", true }
 			sc.ImportSession = func(string, string) (bool, error) { return false, boom }
 			return importHandler(sc)
 		}},

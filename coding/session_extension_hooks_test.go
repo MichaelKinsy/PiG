@@ -370,16 +370,16 @@ func TestBeforeProviderRequestRewritesPayloadInSDKSession(t *testing.T) {
 }
 
 // before_provider_headers handlers mutate the merged request headers in place
-// before the provider sends them (sdk.ts transformHeaders): after attribution,
-// and a nil value deletes a header.
+// before the provider sends them (sdk.ts transformHeaders): after the OpenCode
+// session header, and a nil value deletes a header.
 func TestBeforeProviderHeadersReachProviderRequest(t *testing.T) {
 	capture := &attributionCaptureProvider{}
-	provider := newProviderAttributionProvider(capture, "opencode", "https://opencode.ai/zen/v1", func() bool { return false }, nil)
+	provider := newRequestOptionsProvider(capture, "opencode", nil)
 	runner := inproc.NewRunner([]extension.Extension{{Path: "/ext/trace", Handlers: map[string][]extension.HandlerFn{
 		"before_provider_headers": {func(args ...any) (any, error) {
 			headers := args[0].(extension.BeforeProviderHeadersEvent).Headers
 			headers["x-test"] = new("traced")
-			headers["x-opencode-client"] = nil
+			headers["x-opencode-session"] = nil
 			return nil, nil
 		}},
 	}}}, t.TempDir())
@@ -396,11 +396,8 @@ func TestBeforeProviderHeadersReachProviderRequest(t *testing.T) {
 	if value := headers["x-test"]; value == nil || *value != "traced" {
 		t.Fatalf("provider headers = %v, want x-test: traced", headers)
 	}
-	if value, ok := headers["x-opencode-client"]; !ok || value != nil {
-		t.Fatalf("provider headers = %v, want the attribution header deleted (nil)", headers)
-	}
-	if value := headers["x-opencode-session"]; value == nil || *value != sess.ID() {
-		t.Fatalf("provider headers = %v, want the attribution session header kept", headers)
+	if value, ok := headers["x-opencode-session"]; !ok || value != nil {
+		t.Fatalf("provider headers = %v, want the OpenCode session header, which the hook saw, deleted (nil)", headers)
 	}
 }
 

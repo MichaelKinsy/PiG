@@ -309,6 +309,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/autocomplete/13-at-regex-metacharacters.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "@[id\n────────────────────────────────────────────────────────────────────────────────────────────────────",
+            "capture_end": "pages/[id].tsx"
+          },
+          "reason": "Owned visible surface: Typing @[id lists exactly pages/[id].tsx.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/cli-utils/01-print-initial-message-file-args.toml",
       "transforms": [
         {
@@ -1697,6 +1715,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/36-resume-activates-extension-tools.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "active-tools:",
+            "capture_end": ":end"
+          },
+          "reason": "Owned visible surface: Resume activates extension tools the branch never mentioned and keeps removed and defaultActive false tools inactive.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/37-imported-registry-relative-session-dir.toml",
       "transforms": [
         {
@@ -2362,10 +2398,10 @@
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "displacing-result:",
-            "capture_end": "displacing-result:Ada"
+            "capture_start": "dialog-stack-result:",
+            "capture_end": "displaced=one"
           },
-          "reason": "Owned visible surface: An extension input opened while a selector is shown displaces it and receives the keys",
+          "reason": "Owned visible surface: An extension input opened while a selector is shown stacks over it and receives the keys; the selector is shown again after the input is answered",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -5339,7 +5375,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "post-login-state:",
-            "capture_end": "post-login-state: current=github-copilot/gpt-5.4 default=github-copilot/gpt-5.4"
+            "capture_end": "post-login-state: current=github-copilot/gpt-6.1-sol default=github-copilot/gpt-6.1-sol"
           },
           "reason": "Owned visible surface: OAuth login from unknown selects the catalog default and persists it",
           "limitations": "No claim about output outside this crop or transient terminal bytes."

@@ -34,6 +34,7 @@ type customCall struct {
 	torn      bool
 	disposed  bool
 	isOverlay bool
+	entry     *extensionDialog // the editor-slot stack entry once mounted
 	savedText string
 }
 
@@ -182,8 +183,8 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 			options.OnHandle(c.handle)
 		}
 	} else {
-		m.takeEditorSlot(component)
-		m.tuiInst.SetFocus(component)
+		c.entry = &extensionDialog{component: component, dispose: c.dispose}
+		m.pushExtensionDialog(c.entry)
 	}
 	c.mounted = true
 	m.tuiInst.RequestRender()
@@ -226,12 +227,15 @@ func (c *customCall) teardown() {
 	c.restoreEditor()
 }
 
-// restoreEditor puts the editor back in its slot with the text it held when the component opened and focuses it.
+// restoreEditor takes the component out of the editor-slot dialog stack, which shows the previous dialog or the editor, and puts back
+// the text the editor held when the component opened.
+// upstream: interactive-mode.ts showExtensionCustom restoreEditor
 func (c *customCall) restoreEditor() {
 	m := c.u.m
-	m.editorContainer.SetChildren(m.editor)
+	if c.entry != nil {
+		m.removeExtensionDialog(c.entry)
+	}
 	m.editor.SetText(c.savedText)
-	m.tuiInst.SetFocus(m.editor)
 	m.tuiInst.RequestRender()
 }
 

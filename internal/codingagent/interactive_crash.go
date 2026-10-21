@@ -185,6 +185,8 @@ func (m *InteractiveMode) uncaughtOffLoop(value any, stack []byte) {
 		if m.opts.TerminateExtensionProcesses != nil {
 			m.opts.TerminateExtensionProcesses()
 		}
+		// Pi's uncaughtCrash calls ui.stop() before it reports; the exit handler restores the alternate screen and every mode first (9df819de, #11170).
+		tui.RestoreTerminalOnExit()
 		tui.RestoreTerminalFromSignal()
 	}
 	m.uncaughtCrash(value, stack, os.Stderr)

@@ -57,7 +57,7 @@ func TestExample23SubagentBackground(t *testing.T) {
 	subagentsDoc := durable.DefineDoc(durable.DocDefinition[subagentsState]{
 		CommonDocDefinition: durable.CommonDocDefinition[subagentsState]{Kind: "app.subagents", Version: 1, Initial: func() subagentsState {
 			return subagentsState{Agents: map[string]subagentRecord{}, Reporters: map[string]durable.TaskId{}}
-		}},
+		}, CheckpointWhen: func(subagentsState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
 	})
 

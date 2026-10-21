@@ -39,10 +39,10 @@ func TestExtensionDialogDropsKittyKeyRelease(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			sel := tui.NewExtensionSelectorComponent("pick", []string{"alpha", "beta", "gamma", "delta", "epsilon"}, nil, nil)
-			m := &InteractiveMode{extensionDialog: &extensionDialog{
+			m := &InteractiveMode{extensionDialogs: []*extensionDialog{{
 				component: sel,
 				handle:    func(data string) { sel.HandleInput(data) },
-			}}
+			}}}
 
 			for _, chunk := range tc.input {
 				if err := m.dispatchKey(context.Background(), chunk); err != nil {

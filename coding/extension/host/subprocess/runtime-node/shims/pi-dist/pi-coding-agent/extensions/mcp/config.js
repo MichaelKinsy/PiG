@@ -32,6 +32,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { CONFIG_DIR_NAME } from "../../config.js";
 import { mcpNamespace, validateMcpServerConfig, } from "../../core/mcp-servers.js";
+import { stripBom } from "../../utils/text.js";
 export { getMcpToolExposure } from "../../core/mcp-servers.js";
 const OVERRIDE_KEYS = ["enabled", "exposure", "toolExposure"];
 /** Whether an entry overrides a server defined elsewhere instead of defining one. */
@@ -47,7 +48,7 @@ function readConfigFile(path, scope, state) {
         return;
     let parsed;
     try {
-        parsed = JSON.parse(readFileSync(path, "utf8"));
+        parsed = JSON.parse(stripBom(readFileSync(path, "utf8")));
     }
     catch (error) {
         errors.push(`${path}: ${error instanceof Error ? error.message : String(error)}`);
@@ -179,7 +180,7 @@ export function removeMcpServerConfig(path, name) {
  * it back with its indentation when `edit` returns true. Other content is kept.
  */
 function editMcpServers(path, edit) {
-    const text = existsSync(path) ? readFileSync(path, "utf8") : undefined;
+    const text = existsSync(path) ? stripBom(readFileSync(path, "utf8")) : undefined;
     const parsed = text === undefined ? {} : JSON.parse(text);
     if (!isRecord(parsed) || (parsed.mcpServers !== undefined && !isRecord(parsed.mcpServers))) {
         throw new Error(`${path}: expected an object with an "mcpServers" object`);

@@ -46,7 +46,7 @@ func TestTreeNavigationFillsAnEditorBlankByJSTrim(t *testing.T) {
 					}
 				} else {
 					sc := m.buildSlashContext(t.Context())
-					sc.ShowExtensionSelector = func(string, []string, string) (string, bool) { return "No summary", true }
+					sc.ShowExtensionSelector = func(string, []string) (string, bool) { return "No summary", true }
 					if err := treeNavigateWithSummarize(sc, "target"); err != nil {
 						t.Fatal(err)
 					}

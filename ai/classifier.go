@@ -154,15 +154,17 @@ type ClassifierResult struct {
 
 // ClassifierOptions configures classifier provider requests. Cancellation comes from the request context.
 type ClassifierOptions struct {
-	// TelemetryContext parents provider request spans; nil means no recording backend.
-	TelemetryContext telemetry.TelemetryContext
+	// Telemetry is the explicit parent span for telemetry produced by this logical request; nil is Pi's omitted option, which uses the no-op span.
+	Telemetry telemetry.TelemetrySpan
 	// Fetch replaces HTTP execution without changing the caller's request context or redirect policy.
 	Fetch  *http.Client
 	APIKey string
 	// APIKeySet distinguishes an explicit empty key from an omitted override.
 	APIKeySet bool
 	Headers   ProviderHeaders
-	Env       ProviderEnv
+	// Identity is how the request identifies the calling app: `User-Agent` and provider attribution headers.
+	Identity *ClientIdentity
+	Env      ProviderEnv
 	// TimeoutMs bounds each HTTP attempt. Nil means no timeout.
 	TimeoutMs *int
 	// MaxRetries is the retry budget after a retryable failure. Nil means 2.
@@ -229,7 +231,7 @@ func (m *Models) classify(ctx context.Context, model *ClassifierModel, request C
 	if provider.Classify == nil {
 		return ClassifierResult{}, NewModelsError(ModelsErrorProvider, "Provider "+model.Provider+" does not support classification", nil)
 	}
-	auth, err := m.resolveRequestAuth(ctx, model, options.APIKey, options.APIKeySet, options.Headers, options.Env, options.TransformHeaders)
+	auth, err := m.resolveRequestAuth(ctx, model, options.APIKey, options.APIKeySet, options.Headers, options.Env, "", options.Identity, options.TransformHeaders)
 	if err != nil {
 		return ClassifierResult{}, err
 	}
@@ -239,7 +241,7 @@ func (m *Models) classify(ctx context.Context, model *ClassifierModel, request C
 		requestModel.BaseURL = auth.baseURL
 	}
 	requestOptions := options.ClassifierOptions
-	requestOptions.APIKey, requestOptions.Headers, requestOptions.Env = auth.apiKey, auth.headers, auth.env
+	requestOptions.APIKey, requestOptions.Headers, requestOptions.Env, requestOptions.Identity = auth.apiKey, auth.headers, auth.env, auth.identity
 	return provider.Classify(ctx, requestModel, request, requestOptions)
 }
 

@@ -8,8 +8,10 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/durable/src/session/transaction.ts
@@ -598,7 +600,48 @@ func copyEntryRecord(record durable.EntryRecord) (durable.EntryRecord, error) {
 
 // CreateTaskErased creates a task of an erased definition.
 func (tx *Transaction) CreateTaskErased(task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions) (durable.TaskId, error) {
+	return tx.createTask(task, input, options, nil)
+}
+
+// CreateTaskFromSubmissions is CreateTaskErased with transaction.ts's internal TaskCreationOptions.submissionIds: run
+// creation resolves the carriers of the submissions it starts for against staged records before reading storage. The first
+// submission's carrier becomes the task's trace ("root" when it has none) and the carriers of the others its links.
+func (tx *Transaction) CreateTaskFromSubmissions(task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions, submissionIds []durable.SubmissionId) (durable.TaskId, error) {
+	return tx.createTask(task, input, options, submissionIds)
+}
+
+// createTask is Tx.createTask; submissionIds is TaskCreationOptions.submissionIds, where nil is undefined.
+func (tx *Transaction) createTask(task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions, submissionIds []durable.SubmissionId) (durable.TaskId, error) {
 	return write(tx, func() (durable.TaskId, error) {
+		if submissionIds != nil {
+			var trace *durable.TaskTrace
+			var links []telemetry.TelemetryCarrier
+			for index, id := range submissionIds {
+				tx.mu.Lock()
+				staged, ok := tx.submissions[id]
+				tx.mu.Unlock()
+				var found *durable.SubmissionRecord
+				if ok {
+					found = &staged
+				} else {
+					stored, err := tx.host.storage.Submission(tx.ctx, id)
+					if err != nil {
+						return 0, err
+					}
+					found = stored
+				}
+				switch {
+				case index == 0:
+					trace = &durable.TaskTrace{Root: true}
+					if found != nil && found.Trace != nil {
+						trace = &durable.TaskTrace{Carrier: found.Trace}
+					}
+				case found != nil && found.Trace != nil:
+					links = append(links, found.Trace)
+				}
+			}
+			options.Trace, options.Links = trace, links
+		}
 		ownership := options.Ownership
 		// transaction.ts:387-389 dereferences options.ownership.kind, so a missing ownership throws before any work.
 		if ownership.Kind != durable.TaskOwnedByConversation && ownership.Kind != durable.TaskOwnedByTask {
@@ -666,7 +709,19 @@ func (tx *Transaction) CreateTaskErased(task durable.AnyTask, input durable.Json
 			return 0, err
 		}
 		id := durable.TaskId(minted)
+		var trace telemetry.TelemetryCarrier
+		switch {
+		case options.Trace == nil:
+			span := chordctx.Telemetry(tx.ctx)
+			if propagation := span.Propagation(); propagation != nil {
+				trace = propagation.Inject(span)
+			}
+		case !options.Trace.Root:
+			trace = options.Trace.Carrier
+		}
 		record := &AnyTaskRecord{
+			Trace:            trace,
+			Links:            options.Links,
 			Id:               id,
 			ConversationId:   conversationId,
 			Kind:             definition.Name,
@@ -1139,12 +1194,24 @@ func (tx *Transaction) settleFailure() {
 	tx.sealed = true
 	tx.abortChangesLocked()
 	tx.drainLocked()
+	tx.releaseContextLocked()
 	tx.mu.Unlock()
 }
+
+// releaseContextLocked drops the caller's context, which carries its telemetry span, once the transaction can no longer
+// read: a transaction or draft that outlives its commit must not keep the span and what it references reachable
+// (transaction.ts `this.#context = BACKGROUND_CONTEXT`). Called with no pending operation left.
+func (tx *Transaction) releaseContextLocked() { tx.ctx = unscoped }
 
 // settleSuccess seals after callback success, prepares every open change, and assembles the atomic batch. Any
 // failure aborts every change before Storage admission.
 func (tx *Transaction) settleSuccess() ([]durable.StorageWrite, error) {
+	// The context is released however settlement ends, once assembly has finished reading with it.
+	defer func() {
+		tx.mu.Lock()
+		tx.releaseContextLocked()
+		tx.mu.Unlock()
+	}()
 	tx.mu.Lock()
 	tx.sealed = true
 	if tx.pendingOps > 0 {
@@ -1412,19 +1479,17 @@ func (tx *Transaction) assemble() ([]durable.StorageWrite, error) {
 		change := plan.change
 		// Checkpoint predicates run last, after every validation.
 		if content, ok := plan.content.(durable.DocumentChangeWrite); ok && content.Content.Kind == durable.ContentDelta && change != nil && change.loaded != nil {
-			if change.definition != nil && change.definition.CheckpointWhen != nil {
-				info := durable.CheckpointInfo{DeltasSinceBase: change.loaded.deltaCount()}
-				var base bool
-				err := callDefinition(func() (err error) {
-					base, err = change.definition.CheckpointWhen(change.prepared.Value(), change.prepared.Ops(), info)
-					return err
-				})
-				if err != nil {
-					return nil, err
-				}
-				if base {
-					plan.content = durable.DocumentChangeWrite{Id: content.Id, Content: durable.DocumentContent{Version: change.version, Kind: durable.ContentBase, Value: change.prepared.Value()}}
-				}
+			info := durable.CheckpointInfo{DeltasSinceBase: change.loaded.deltaCount()}
+			var base bool
+			err := callDefinition(func() (err error) {
+				base, err = change.definition.CheckpointWhen(change.prepared.Value(), change.prepared.Ops(), info)
+				return err
+			})
+			if err != nil {
+				return nil, err
+			}
+			if base {
+				plan.content = durable.DocumentChangeWrite{Id: content.Id, Content: durable.DocumentContent{Version: change.version, Kind: durable.ContentBase, Value: change.prepared.Value()}}
 			}
 		}
 		if plan.content != nil {

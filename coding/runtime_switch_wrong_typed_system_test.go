@@ -9,13 +9,14 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// Pi's switchSession builds the destination's Session after it tears the current one down, and the AgentSession constructor restores the loadout the transcript declares (agent-session.ts:526, _restoreToolsFromTranscript :1815-1818). That replays every system message with getCurrentSystemMessage, which throws a TypeError for a content or toolsAdded member the replay cannot read, so the switch fails with the TypeError and the runtime keeps the outgoing Session object.
+// Pi's switchSession builds the destination's Session after it tears the current one down, and the AgentSession constructor restores the loadout the transcript declares (agent-session.ts:526, _restoreToolsFromTranscript). That reads the toolsAdded and toolsRemoved of every system message on the branch, which throws a TypeError for a member the replay cannot read, so the switch fails with the TypeError and the runtime keeps the outgoing Session object. A content it cannot read does not fail the restore.
 func TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi(t *testing.T) {
 	cases := []struct {
 		name, system, want string
 	}{
-		{"numeric content", `{"role":"system","content":5,"timestamp":25}`, "content.filter is not a function"},
-		{"numeric toolsAdded", `{"role":"system","content":"","toolsAdded":5,"timestamp":25}`, "number 5 is not iterable (cannot read property Symbol(Symbol.iterator))"},
+		{"numeric toolsAdded", `{"role":"system","content":"","toolsAdded":5,"timestamp":25}`, "(message.toolsAdded ?? []) is not iterable"},
+		{"object toolsRemoved", `{"role":"system","content":"","toolsRemoved":{"a":1},"timestamp":25}`, "(message.toolsRemoved ?? []) is not iterable"},
+		{"null tool", `{"role":"system","content":"","toolsAdded":[null],"timestamp":25}`, "Cannot read properties of null (reading 'name')"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -471,7 +471,7 @@ func FetchUpdateManifest(ctx context.Context, client *http.Client, rawURL string
 	}
 	// upstream: packages/coding-agent/src/utils/version-check.ts:getLatestPiRelease sends these two headers.
 	// pig divergence (D65): the User-Agent is PiG's product identity, not Pi's.
-	req.Header.Set("User-Agent", ai.PiUserAgent())
+	req.Header.Set("User-Agent", ai.FormatUserAgent(nil))
 	req.Header.Set("Accept", "application/json")
 	maxRetries := 0
 	if len(options) > 0 && options[0].Retry {

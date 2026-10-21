@@ -1,0 +1,14 @@
+### Changed
+
+- PiG shows images in the Rex terminal (`TERM_PROGRAM=rex`) through the Kitty graphics protocol. Rex implements the protocol only in part (no Unicode placeholders), but enough for Pi's image output; hyperlinks and true color were already on (Pi 396ecd7b). <!-- fix: fd3dbad86a -->
+- `PI_CODEMODE_MAX_WORKERS` sets how many codemode workers may be alive at once across all sessions in the process (default 2). Each worker's script may use up to 256 MB, so raise it when one process runs several sessions (Pi 885a564b, #11184). <!-- fix: e73e536f2c -->
+
+### Fixed
+
+- An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it. A display-math block never spans a table, and the streaming pending-math fallback no longer treats a following table as pending math (Pi 2ed3118b, #11159). <!-- fix: 9c980381eb -->
+- The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`). The modes are restored in Pi's order, once, and not again after a normal stop (Pi 9df819de, #11170). <!-- fix: 909581ef0b -->
+- Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in interactive mode no longer replace each other: a second dialog used to take the editor slot and leave the first one's promise pending. They stack, the last one is visible, closing it shows the previous one again, and a hidden dialog's abort or timeout removes only itself. `/reload` and session replacement dispose every stacked dialog, and an editor-slot custom component restores the editor text it found (Pi 38847563, #11166, #9909). <!-- fix: 90f69085ce -->
+- Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the `wl-copy`, `xclip` or `xsel` process that keeps serving the clipboard now runs in its own session and is not stopped with pig (Pi f8ab362c, #11179). <!-- fix: 9be7181948 -->
+- Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents. A script waits up to 60 seconds, in arrival order, for a free worker; the wait counts toward its `timeout_ms` (Pi 885a564b, #11184). <!-- fix: e73e536f2c -->
+- Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156). <!-- fix: 0aa31c48e4 -->
+- `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191). <!-- fix: 00933e586a -->

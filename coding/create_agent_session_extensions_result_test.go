@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// sdk.ts:480-486: createAgentSession returns `extensionsResult = resourceLoader.getExtensions()`, the load of the services'
+// sdk.ts:472-476: createAgentSession returns `extensionsResult = resourceLoader.getExtensions()`, the load of the services'
 // resource loader, beside the Session and the model fallback message.
 func TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions(t *testing.T) {
 	cwd, agentDir := t.TempDir(), filepath.Join(t.TempDir(), "agent")

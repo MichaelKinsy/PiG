@@ -7,7 +7,9 @@ import (
 	"maps"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -152,13 +154,20 @@ func renderCodemodeCards(t *testing.T, probes []toolCardProbe) [][]string {
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	t.Cleanup(func() { tui.SetAppKeyTextResolver(nil) })
+	// The card clock reads cardClock, which stands at the probe's start until its result lands, as the Pi probe moves Date.now().
+	var cardClock atomic.Int64
+	previousNow := toolTimerNow
+	t.Cleanup(func() { toolTimerNow = previousNow })
+	toolTimerNow = func() time.Time { return time.UnixMilli(cardClock.Load()) }
 	definition := extension.ToolDefinition{Name: "codemode", RenderCall: CodemodeRenderers.RenderCall, RenderResult: CodemodeRenderers.RenderResult}
 	out := make([][]string, len(probes))
 	for i, probe := range probes {
 		installCardBindings(t, probe)
 		raw, _ := json.Marshal(probe.Args)
+		cardClock.Store(toolCardClockStart)
 		f := toolComponentRaw(t, "codemode", "id1", raw, &definition)
 		f.mode.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: f.id, ToolName: f.name, Args: raw})
+		cardClock.Store(toolCardClockStart + probe.ElapsedMs)
 		if r := probe.Result; r != nil {
 			var content []ai.ToolResultMessageContent
 			for _, block := range r.Content {

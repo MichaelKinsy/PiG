@@ -24,7 +24,9 @@ type AnyDocDefinition struct {
 	Initial func(seed JsonValue) (JsonObject, error)
 	// Migrate is nil when the definition has no migration.
 	Migrate func(value JsonObject, fromVersion int) (JsonObject, error)
-	// CheckpointWhen is nil when the definition has no checkpoint predicate.
+	// CheckpointWhen decides whether an ordinary change is stored as a complete base. Every definition has one: DefineDoc
+	// and DefineDocFamily reject a definition with neither CheckpointWhen nor CheckpointWhenRaw, as upstream's types require
+	// checkpointWhen on every definition (documents.ts AnyDocDefinition, types.ts CommonDocDefinition).
 	CheckpointWhen func(value JsonObject, ops []Op, info CheckpointInfo) (bool, error)
 }
 
@@ -50,8 +52,10 @@ func (DocFamilyToken[T, I]) docType(T) {}
 
 // DefineDoc defines a singleton document. Scope selects a Session, conversation, or task document; conversation
 // documents also declare History and Fork. It panics when the version is not a positive integer, where upstream
-// throws a TypeError at definition time, and when DocumentSemantics is not a member of upstream's union (types.ts:42-60),
-// which upstream's overloads reject at compile time.
+// throws a TypeError at definition time, when DocumentSemantics is not a member of upstream's union (types.ts:42-60),
+// which upstream's overloads reject at compile time, and when the definition has neither CheckpointWhen nor
+// CheckpointWhenRaw: upstream's types require checkpointWhen with no default (types.ts:77-78), so the Go definition names
+// its policy too, `func(T, []Op, CheckpointInfo) bool { return false }` to keep every change a delta.
 func DefineDoc[T any](definition DocDefinition[T]) DocToken[T] {
 	initial := definition.Initial
 	erased := eraseDocDefinition(definition.CommonDocDefinition, definition.DocumentSemantics, false, func(_ JsonValue) (JsonObject, error) {
@@ -62,7 +66,7 @@ func DefineDoc[T any](definition DocDefinition[T]) DocToken[T] {
 }
 
 // DefineDocFamily defines a keyed document family; Initial(seed) runs only when a member is absent. It panics when
-// the version is not a positive integer, DocumentSemantics is not a member of upstream's union (types.ts:42-60), or Family is not true: upstream's FamilyInput requires `family: true` at compile time (documents.ts:31-34),
+// the version is not a positive integer, DocumentSemantics is not a member of upstream's union (types.ts:42-60), CheckpointWhen is absent (see [DefineDoc]), or Family is not true: upstream's FamilyInput requires `family: true` at compile time (documents.ts:31-34),
 // and the erased definition's family flag is what addressing reads (resolveAddress).
 func DefineDocFamily[T, I any](definition DocFamilyDefinition[T, I]) DocFamilyToken[T, I] {
 	if !definition.Family {
@@ -126,6 +130,9 @@ func validateDefinition(definition *AnyDocDefinition) {
 	}
 	if err := validateDocumentSemantics(definition.DocumentSemantics); err != nil {
 		panic(fmt.Sprintf("Document %s %v", definition.Kind, err))
+	}
+	if definition.CheckpointWhen == nil {
+		panic(fmt.Sprintf("Document %s checkpointWhen is required", definition.Kind))
 	}
 }
 

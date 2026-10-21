@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // extensionSessionController supplies the Session-owned replacement operations
@@ -31,7 +30,7 @@ const (
 	statusResumeCancelled = "Resume cancelled"
 )
 
-// resumeHost is where a resume runs. The /resume command runs on the owner loop, so its replacement is awaited while that loop serves extension dialogs and its confirmation is an editor-slot selector. An extension's ctx.switchSession runs on the extension host's call goroutine, so its replacement runs there and its confirmation is an extension dialog.
+// resumeHost is where a resume runs. The /resume command runs on the owner loop, so its replacement is awaited while that loop serves extension dialogs and its confirmation is a stacked dialog that the same loop awaits (interactive-mode.ts promptForMissingSessionCwd). An extension's ctx.switchSession runs on the extension host's call goroutine, so its replacement runs there and its confirmation is an extension dialog.
 type resumeHost struct {
 	await   func(ctx context.Context, work func(context.Context) error) error
 	confirm func(ctx context.Context, title, message string) bool
@@ -40,7 +39,7 @@ type resumeHost struct {
 func (m *InteractiveMode) commandResumeHost() resumeHost {
 	return resumeHost{
 		await:   m.awaitExtensionUI,
-		confirm: func(_ context.Context, title, message string) bool { return m.confirmSelection(title, message) },
+		confirm: m.askConfirm,
 	}
 }
 
@@ -136,17 +135,6 @@ func (m *InteractiveMode) replaceThroughRuntime(ctx context.Context, operation, 
 		m.editor.SetText(text)
 	}
 	return nil
-}
-
-// confirmSelection asks a yes/no question in the editor slot, as upstream showExtensionConfirm does.
-func (m *InteractiveMode) confirmSelection(title, message string) bool {
-	// interactive-mode.ts:2755 reports the confirmation as a permission request named by the title alone.
-	reporter := m.programStatusReporter()
-	reporter.SetBlocked(extensionDialogStatusSource, &BlockedStatus{Kind: tui.ProgramStatusKindPermission, Message: title})
-	defer reporter.SetBlocked(extensionDialogStatusSource, nil)
-	sel := tui.NewExtensionSelectorComponent(title+"\n"+message, []string{"Yes", "No"}, nil, nil)
-	idx, ok := m.runEditorSlotExtensionSelector(sel)
-	return ok && idx == 0
 }
 
 // replaceSessionFromCommand awaits the same Session owner used by extension commands while servicing extension dialogs and event barriers on the input loop.

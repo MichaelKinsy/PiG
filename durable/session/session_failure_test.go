@@ -109,7 +109,7 @@ func openScripted(t *testing.T) (*session.SessionImpl, *scriptedStorage, *report
 	t.Helper()
 	scripted := newScripted()
 	reports := &reportLog{}
-	kernel := session.NewSessionImpl(scripted, session.Hooks{Report: func(err error, _ durable.ReportInfo) { reports.add(err) }}, nil, nil)
+	kernel := session.NewSessionImpl(scripted, session.Hooks{Report: func(_ context.Context, err error, _ durable.ReportInfo) { reports.add(err) }}, nil, nil)
 	return kernel, scripted, reports
 }
 
@@ -148,7 +148,7 @@ func TestAFailedStorageCallFailsTheSession(t *testing.T) {
 			t.Fatalf("reports = %v, want the first error once", reported)
 		}
 		// A second failure does not replace the first.
-		kernel.Fail(errors.New("later"))
+		kernel.Fail(context.Background(), errors.New("later"))
 		if !errors.Is(kernel.Failure(), disk) || len(reports.all()) != 1 {
 			t.Fatalf("failure %v, reports %v: the first error stays", kernel.Failure(), reports.all())
 		}
@@ -208,7 +208,7 @@ func TestAFailedStorageCallFailsTheSession(t *testing.T) {
 		<-entered
 		// Another call fails the Session while the read is underway.
 		disk := errors.New("disk gone")
-		kernel.Fail(disk)
+		kernel.Fail(context.Background(), disk)
 		for range 200 {
 			select {
 			case <-scripted.closed:
@@ -265,7 +265,7 @@ func TestAFailedStorageCallFailsTheSession(t *testing.T) {
 		earlier, scriptedEarlier, _ := openScripted(t)
 		first := errors.New("disk gone")
 		scriptedEarlier.closeErr = closeErr
-		earlier.Fail(first)
+		earlier.Fail(context.Background(), first)
 		<-earlier.Closed()
 		if end := earlier.End(); !errors.Is(end.Error, first) {
 			t.Fatalf("end = %+v, want the first failure as the cause", end)

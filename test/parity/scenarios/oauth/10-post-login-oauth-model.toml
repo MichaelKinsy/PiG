@@ -15,7 +15,7 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
 capture_start = "post-login-state:"
-capture_end = "post-login-state: current=github-copilot/gpt-5.4 default=github-copilot/gpt-5.4"
+capture_end = "post-login-state: current=github-copilot/gpt-6.1-sol default=github-copilot/gpt-6.1-sol"
 settle_seconds = 1
 cwd = "../selectors/testdata/login-empty-project"
 
@@ -30,10 +30,10 @@ keys = ["github-copilot", "Enter"]
 wait_contains = ["GitHub Enterprise URL/domain"]
 [[tmux.steps]]
 keys = ["Enter"]
-wait_contains = ["Logged in to GitHub Copilot. Selected gpt-5.4."]
+wait_contains = ["Logged in to GitHub Copilot. Selected gpt-6.1-sol."]
 [[tmux.steps]]
 keys = ["/post-login-state", "Enter"]
-wait_visible_contains = ["post-login-state: current=github-copilot/gpt-5.4 default=github-copilot/gpt-5.4"]
+wait_visible_contains = ["post-login-state: current=github-copilot/gpt-6.1-sol default=github-copilot/gpt-6.1-sol"]
 
 [env]
 pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "PIG_PARITY_HARNESS=1", "PIG_PARITY_LOGIN_DIALOG=complete", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]  # gitleaks:allow -- synthetic parity fixture
@@ -45,6 +45,6 @@ pi_extensions = ["../../testdata/oauth-harness.ts", "../../testdata/post-login-s
 
 [assert]
 both_reach_ready = true
-both_contain = ["post-login-state: current=github-copilot/gpt-5.4 default=github-copilot/gpt-5.4"]
+both_contain = ["post-login-state: current=github-copilot/gpt-6.1-sol default=github-copilot/gpt-6.1-sol"]
 output_equal = true
 runs = 3

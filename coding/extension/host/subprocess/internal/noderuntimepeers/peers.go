@@ -21,7 +21,7 @@ var hostPeers = map[string]map[string]string{
 	// Pi's pi-ai exports its dist subpaths with patterns ("./providers/*": "./dist/providers/*.js"): a "*" key expands to every module the runtime has under the target pattern.
 	"@earendil-works/pi-ai": {
 		".": "shims/pi-ai.mjs", "./compat": "shims/pi-ai.mjs", "./oauth": "shims/pi-ai-oauth.mjs",
-		"./models": "shims/pi-dist/pi-ai/models.js", "./bedrock-provider": "shims/pi-dist/pi-ai/bedrock-provider.js", "./bun-oauth": "shims/pi-dist/pi-ai/bun-oauth.js",
+		"./models": "shims/pi-ai-models.mjs", "./bedrock-provider": "shims/pi-dist/pi-ai/bedrock-provider.js", "./bun-oauth": "shims/pi-dist/pi-ai/bun-oauth.js",
 		"./providers/*": "shims/pi-dist/pi-ai/providers/*.js", "./api/*": "shims/pi-dist/pi-ai/api/*.js", "./utils/*": "shims/pi-dist/pi-ai/utils/*.js",
 	},
 	"@earendil-works/pi-tui": {".": "shims/pi-tui.mjs"},

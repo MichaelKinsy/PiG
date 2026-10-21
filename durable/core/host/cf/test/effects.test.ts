@@ -45,9 +45,9 @@ test("model_context: the host streams the faux provider and returns batched mode
 // Pi consumes the stream in microtasks and arms its partial flush timer (100 ms) when text_start arrives (generation.ts:415-420): the
 // host delivers an event in the microtask checkpoint where the stream yielded it, not a macrotask later. A macrotask batch armed
 // the flush behind another stream's equal-deadline chunk timer and flipped E23's commit order (c23).
-// Pi (generation.ts :201-205) builds the request options as { ...streamOptions, signal, sessionId, ...reasoning }: a provider that
-// enumerates or serialises its options sees signal before sessionId.
-test("model_context: the provider receives the signal before sessionId, as in Pi's generation", async () => {
+// Pi (generation.ts :226-232) builds the request options as { ...streamOptions, signal, telemetry, sessionId, ...reasoning }: a provider that
+// enumerates or serialises its options sees signal and telemetry before sessionId.
+test("model_context: the provider receives the signal and telemetry before sessionId, as in Pi's generation", async () => {
   const { models, ref } = fauxModels(fauxAssistantMessage("ok"))
   const seen: string[][] = []
   const call = models.streamSimple.bind(models)
@@ -56,21 +56,26 @@ test("model_context: the provider receives the signal before sessionId, as in Pi
   const r = rig(ev => ev.kind === EVENT.open ? { effects: [effect(7, EFFECT.model_context, { model: ref, context: { messages: [{ role: "user", content: "hi", timestamp: 1 }] }, options })] } : undefined, { registry: registryOf([]), models })
   r.host.send(EVENT.open)
   await until(() => seen.length === 1, "no request")
-  assert.deepEqual(seen[0]!.slice(0, 4), ["headers", "signal", "sessionId", "reasoning"])
+  assert.deepEqual(seen[0]!.slice(0, 5), ["headers", "signal", "telemetry", "sessionId", "reasoning"])
 })
 
-test("withSignal: before sessionId, in place when present, last when there is no sessionId, and the input is not changed", () => {
+test("withSignal: signal then telemetry before sessionId, in place when present, last when there is no sessionId, and the input is not changed", () => {
   const signal = new AbortController().signal
+  const telemetry = { span: true }
   const keys = (o: Record<string, unknown>) => Object.keys(o).join(",")
-  assert.equal(keys(withSignal({ sessionId: "s" }, signal)), "signal,sessionId")
-  assert.equal(keys(withSignal({ headers: {}, sessionId: "s", reasoning: "low" }, signal)), "headers,signal,sessionId,reasoning")
-  assert.equal(keys(withSignal({ headers: {} }, signal)), "headers,signal")
-  assert.equal(keys(withSignal(undefined, signal)), "signal")
+  assert.equal(keys(withSignal({ sessionId: "s" }, signal, telemetry)), "signal,telemetry,sessionId")
+  assert.equal(keys(withSignal({ headers: {}, sessionId: "s", reasoning: "low" }, signal, telemetry)), "headers,signal,telemetry,sessionId,reasoning")
+  assert.equal(keys(withSignal({ headers: {} }, signal, telemetry)), "headers,signal,telemetry")
+  assert.equal(keys(withSignal(undefined, signal, telemetry)), "signal,telemetry")
   const given = { a: 1, signal: "x", sessionId: "s" }
-  const out = withSignal(given, signal)
-  assert.equal(keys(out), "a,signal,sessionId")
+  const out = withSignal(given, signal, telemetry)
+  assert.equal(keys(out), "a,signal,sessionId,telemetry", "a signal already in the options keeps its place; the missing telemetry is added after the spread's keys, as `{ ...options, signal, telemetry }` does")
   assert.equal(out.signal, signal)
+  assert.equal(out.telemetry, telemetry)
   assert.equal(given.signal, "x")
+  const both = withSignal({ telemetry: "y", a: 1, signal: "x" }, signal, telemetry)
+  assert.equal(keys(both), "telemetry,a,signal")
+  assert.equal(both.telemetry, telemetry)
 })
 
 test("model_context: the batch holding text_start ends with it (microtask delivery)", async () => {

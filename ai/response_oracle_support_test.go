@@ -20,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/bodyreadhook/readbarrier"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/requestvalidity"
 )
@@ -45,6 +46,8 @@ type responseProbe struct {
 	AbortAfterMs int `json:"abortAfterMs,omitempty"`
 	// CheckRequest compares the request path, method and headers instead of the events and the message.
 	CheckRequest bool `json:"-"`
+	// KeepUserAgent also compares the User-Agent header, which a probe's custom identity makes the same on both sides.
+	KeepUserAgent bool `json:"-"`
 	// MessageOnly compares the final message without the stream events: Pi's delta events carry a mistyped delta raw, which a Go string cannot hold.
 	MessageOnly bool `json:"-"`
 	// StrayAt names the side ("pi" or "pig") whose server a client other than the provider's requests before the probe runs: a process polling a port
@@ -167,6 +170,13 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 		if value, ok := p.Options["maxRetryDelayMs"].(float64); ok {
 			options.MaxRetryDelayMs = new(int(value))
 		}
+		if identity, ok := p.Options["identity"]; ok {
+			raw, _ := json.Marshal(identity)
+			options.Identity = new(ai.ClientIdentity)
+			if err := json.Unmarshal(raw, options.Identity); err != nil {
+				t.Fatal(err)
+			}
+		}
 		if p.Options["transport"] == "sse" {
 			options.Transport = ai.TransportSSE
 		}
@@ -225,13 +235,13 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 		// A generated tool call id carries the clock (`name_<Date.now()>_<n>`).
 		gotJSON, wantJSON = generatedIDClock.ReplaceAll(gotJSON, []byte("_CLOCK_N")), generatedIDClock.ReplaceAll(wantJSON, []byte("_CLOCK_N"))
 		if p.CheckRequest {
-			gotJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(gotRequest)})
-			wantJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(want[i].Request)})
+			gotJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(gotRequest, p.KeepUserAgent)})
+			wantJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(want[i].Request, p.KeepUserAgent)})
 		}
 		if !bytes.Equal(gotJSON, wantJSON) {
 			if p.CheckRequest {
-				gotHeaders, _ := comparableRequest(gotRequest)["headers"].(map[string]any)
-				wantHeaders, _ := comparableRequest(want[i].Request)["headers"].(map[string]any)
+				gotHeaders, _ := comparableRequest(gotRequest, p.KeepUserAgent)["headers"].(map[string]any)
+				wantHeaders, _ := comparableRequest(want[i].Request, p.KeepUserAgent)["headers"].(map[string]any)
 				var diff []string
 				for name, value := range wantHeaders {
 					if gotHeaders[name] != value {
@@ -323,15 +333,19 @@ func strayRequest(t *testing.T, base string) {
 
 // comparableRequest drops the headers that name the client library or the transport (user agent, the SDKs' x-stainless telemetry, length, host,
 // encoding), which differ between a Node SDK and Go's HTTP client by design.
-func comparableRequest(request map[string]any) map[string]any {
+func comparableRequest(request map[string]any, keepUserAgent bool) map[string]any {
 	headers, _ := request["headers"].(map[string]any)
 	kept := map[string]any{}
 	for name, value := range headers {
 		switch {
-		case strings.HasPrefix(name, "x-stainless-"), name == "user-agent", name == "x-goog-api-client", name == "accept-encoding", name == "content-length", name == "host", name == "connection", name == "accept-language", name == "sec-fetch-mode":
+		case strings.HasPrefix(name, "x-stainless-"), name == "user-agent" && !keepUserAgent, name == "x-goog-api-client", name == "accept-encoding", name == "content-length", name == "host", name == "connection", name == "accept-language", name == "sec-fetch-mode":
 		default:
 			kept[name] = value
 		}
+	}
+	// pig divergence (D26): PiG names itself as the Codex originator where Pi sends `pi`.
+	if keepUserAgent && kept["originator"] == "pi" {
+		kept["originator"] = pigidentity.CodexOriginator
 	}
 	return map[string]any{"path": request["path"], "method": request["method"], "headers": kept}
 }

@@ -23,6 +23,7 @@ var chordHelpers = []string{
 	"internal/chord/chordjson",
 	"internal/entered", // the shared parked-goroutine check behind goEntered
 	"internal/goroutineid",
+	"internal/jsclock", // Date.now() and performance.now() with a replaceable source, read by the telemetry recorders
 	"internal/jsnumber",
 	"internal/jsparity",
 	"internal/jsstring",

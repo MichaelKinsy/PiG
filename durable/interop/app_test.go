@@ -50,12 +50,12 @@ type sessions struct {
 }
 
 var notesDoc = durable.DefineDoc(durable.DocDefinition[notes]{
-	CommonDocDefinition: durable.CommonDocDefinition[notes]{Kind: "app.notes", Version: 1, Initial: func() notes { return notes{Lines: []string{}} }},
+	CommonDocDefinition: durable.CommonDocDefinition[notes]{Kind: "app.notes", Version: 1, Initial: func() notes { return notes{Lines: []string{}} }, CheckpointWhen: func(notes, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 })
 
 var sessionsDoc = durable.DefineDoc(durable.DocDefinition[sessions]{
-	CommonDocDefinition: durable.CommonDocDefinition[sessions]{Kind: "app.sessions", Version: 1, Initial: func() sessions { return sessions{Items: map[string]any{}} }},
+	CommonDocDefinition: durable.CommonDocDefinition[sessions]{Kind: "app.sessions", Version: 1, Initial: func() sessions { return sessions{Items: map[string]any{}} }, CheckpointWhen: func(sessions, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
 })
 
@@ -68,7 +68,7 @@ type blob struct {
 }
 
 var planDoc = durable.DefineDoc(durable.DocDefinition[plan]{
-	CommonDocDefinition: durable.CommonDocDefinition[plan]{Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }},
+	CommonDocDefinition: durable.CommonDocDefinition[plan]{Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }, CheckpointWhen: func(plan, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 })
 
@@ -77,6 +77,7 @@ var blobDoc = durable.DefineDocFamily(durable.DocFamilyDefinition[blob, blob]{
 	Kind:   "app.blob", Version: 1,
 	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 	Initial:           func(seed blob) blob { return blob{Content: seed.Content} },
+	CheckpointWhen:    func(blob, []durable.Op, durable.CheckpointInfo) bool { return false },
 })
 
 type jobState struct {

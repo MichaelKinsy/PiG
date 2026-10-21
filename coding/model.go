@@ -6,16 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // BuildModel constructs an *ai.Model from a "provider/model" spec
@@ -106,9 +103,7 @@ func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEnt
 	if err != nil {
 		return nil, err
 	}
-	provider = newProviderAttributionProvider(provider, providerID, entry.BaseURL, func() bool {
-		return svcs.settings != nil && svcs.settings.IsInstallTelemetryEnabled()
-	}, entry.Headers)
+	provider = newRequestOptionsProvider(provider, providerID, entry.Headers)
 
 	if providerID == "test-faux" {
 		entry.Input = []string{"text", "image"}
@@ -548,99 +543,19 @@ func (registry *ModelRegistry) Complete(ctx context.Context, model *ai.Model, re
 	return registry.runtime.Complete(ctx, model, request, options)
 }
 
-const (
-	openRouterHost        = "openrouter.ai"
-	nvidiaNIMHost         = "integrate.api.nvidia.com"
-	cloudflareAPIHost     = "api.cloudflare.com"
-	cloudflareGatewayHost = "gateway.ai.cloudflare.com"
-	openCodeHost          = "opencode.ai"
-)
-
-// mergeProviderAttributionHeaders mirrors upstream mergeProviderAttributionHeaders
-// (provider-attribution.ts): getSessionHeaders' OpenCode pair is unconditional,
-// getDefaultAttributionHeaders' OpenRouter/NVIDIA/Cloudflare headers are gated
-// on telemetryEnabled.
-// pig divergence (D26): every value below substitutes pig branding for
-// upstream's pi-branded literal (host/gate matching is unchanged).
-func mergeProviderAttributionHeaders(providerID, baseURL string, telemetryEnabled bool, sessionID string, headerSources ...ai.ProviderHeaders) ai.ProviderHeaders {
-	headers := make(ai.ProviderHeaders)
-	set := func(name, value string) { headers[name] = new(value) }
-	if sessionID != "" && (providerID == "opencode" || providerID == "opencode-go" || matchesProviderHost(baseURL, openCodeHost)) {
-		set("x-opencode-session", sessionID)
-		set("x-opencode-client", pigidentity.OpenCodeClient)
-	}
-
-	if telemetryEnabled {
-		switch {
-		// Upstream isOpenRouterModel matches the base URL by substring, not host.
-		case providerID == "openrouter" || strings.Contains(baseURL, openRouterHost):
-			set("HTTP-Referer", pigidentity.OpenRouterReferer)
-			set("X-OpenRouter-Title", pigidentity.OpenRouterTitle)
-			set("X-OpenRouter-Categories", pigidentity.OpenRouterCategories)
-		case providerID == "nvidia" || matchesProviderHost(baseURL, nvidiaNIMHost):
-			set("X-BILLING-INVOKE-ORIGIN", pigidentity.NvidiaBillingOrigin)
-		case providerID == "cloudflare-workers-ai" || providerID == "cloudflare-ai-gateway" || matchesProviderHost(baseURL, cloudflareAPIHost) || matchesProviderHost(baseURL, cloudflareGatewayHost):
-			set("User-Agent", pigidentity.CloudflareUserAgent)
-		}
-	}
-
-	for _, source := range headerSources {
-		for name, value := range source {
-			for existing := range headers {
-				if strings.EqualFold(existing, name) {
-					delete(headers, existing)
-				}
-			}
-			headers[name] = value
-		}
-	}
-	if len(headers) == 0 {
-		return nil
-	}
-	return headers
-}
-
-// matchesProviderHost is `new URL(baseUrl).hostname === expectedHost` (provider-attribution.ts matchesHost); a URL the WHATWG parser rejects never matches.
-func matchesProviderHost(baseURL, expectedHost string) bool {
-	input := nodeurl.PrepareInput(baseURL)
-	scheme, rest, ok := strings.Cut(input, ":")
-	if !ok {
-		return false
-	}
-	switch strings.ToLower(scheme) {
-	case "http", "https":
-	case "ws", "wss", "ftp":
-		// The other special schemes with a network host parse their host as http does.
-		input = "https:" + rest
-	default:
-		// A non-special scheme keeps its opaque host as written, letter case included.
-		parsed, err := url.Parse(input)
-		return err == nil && parsed.Hostname() == expectedHost
-	}
-	parsed, err := nodeurl.ParseHTTPURL(input)
-	return err == nil && parsed.Hostname == expectedHost
-}
-
-type providerAttributionProvider struct {
+// requestOptionsProvider wraps a built provider with the request preparation ModelRuntime applies to a registry-built provider.
+type requestOptionsProvider struct {
 	ai.Provider
-	providerID       string
-	baseURL          string
-	telemetryEnabled func() bool
-	configured       map[string]string
+	providerID string
+	configured map[string]string
 }
 
-func newProviderAttributionProvider(provider ai.Provider, providerID, baseURL string, telemetryEnabled func() bool, configured map[string]string) ai.Provider {
-	return &providerAttributionProvider{
-		Provider:         provider,
-		providerID:       providerID,
-		baseURL:          baseURL,
-		telemetryEnabled: telemetryEnabled,
-		configured:       maps.Clone(configured),
-	}
+func newRequestOptionsProvider(provider ai.Provider, providerID string, configured map[string]string) ai.Provider {
+	return &requestOptionsProvider{Provider: provider, providerID: providerID, configured: maps.Clone(configured)}
 }
 
 // SimpleStreamOptions prepares the request options of a simple stream the way ModelRuntime.StreamSimple does for a registry-built provider (start): an omitted reasoning level sends the API's native thinking off, and the output budget stays within the room the context window leaves (simple-options.ts buildBaseOptions). A provider of extension-registered stream callbacks or a native provider prepares its own options.
-func (provider *providerAttributionProvider) SimpleStreamOptions(model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) ai.StreamOptions {
+func (provider *requestOptionsProvider) SimpleStreamOptions(model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) ai.StreamOptions {
 	switch provider.Provider.(type) {
 	case *registeredStreamProvider, *nativeModelProvider:
 		return options
@@ -650,22 +565,12 @@ func (provider *providerAttributionProvider) SimpleStreamOptions(model *ai.Model
 	return options
 }
 
-// pig divergence (D74): a direct pi-ai call that the extension bridge streams through BuildModel also receives these attribution headers; Pi's pi-ai sends only its User-Agent there (packages/ai/src/api/openai-completions.ts:760).
-func (provider *providerAttributionProvider) Stream(ctx context.Context, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-	telemetryEnabled := false
-	if provider.telemetryEnabled != nil {
-		telemetryEnabled = provider.telemetryEnabled()
-	}
-	options.Headers = mergeProviderAttributionHeaders(
-		provider.providerID,
-		provider.baseURL,
-		telemetryEnabled,
-		options.SessionID,
-		ai.ProviderHeadersFromStrings(provider.configured),
-		options.Headers,
-	)
-	// Upstream transformHeaders merges the attribution headers and then runs
-	// the request's header transform (before_provider_headers) on the result.
+// Stream merges the configured headers under the request's and runs the request's header transform (before_provider_headers) on the result, as ModelRuntime applyAuth does for a registry-built provider. The built-in OpenCode providers add the session header below both, as providers/opencode.ts withOpenCodeSessionHeader does; a direct pi-ai call that the extension bridge streams through BuildModel carries no attribution, as under Pi.
+func (provider *requestOptionsProvider) Stream(ctx context.Context, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	configured := ai.ProviderHeadersFromStrings(provider.configured)
+	configured = ai.MergeProviderHeaders(ai.GetOpenCodeSessionHeaders(ai.ClientIdentityTarget{Provider: provider.providerID}, options.SessionID), configured)
+	options.Headers = ai.MergeProviderHeaders(configured, options.Headers)
+	// The request's header transform (before_provider_headers) runs on the merged headers.
 	if options.TransformHeaders != nil {
 		if options.Headers == nil {
 			options.Headers = ai.ProviderHeaders{}
@@ -678,4 +583,9 @@ func (provider *providerAttributionProvider) Stream(ctx context.Context, transcr
 		options.TransformHeaders = nil
 	}
 	return provider.Provider.Stream(ctx, transcript, options)
+}
+
+// withOpenCodeSessionHeaders adds OpenCode's per-conversation routing header, including for custom providers pointing at OpenCode, below the auth and request headers and before the request's header transform sees them (model-runtime.ts applyAuth getOpenCodeSessionHeaders).
+func withOpenCodeSessionHeaders(providerID, baseURL, sessionID string, headers ai.ProviderHeaders) ai.ProviderHeaders {
+	return ai.MergeProviderHeaders(ai.GetOpenCodeSessionHeaders(ai.ClientIdentityTarget{Provider: providerID, BaseURL: baseURL}, sessionID), headers)
 }

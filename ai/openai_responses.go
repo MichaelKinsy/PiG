@@ -122,10 +122,17 @@ func NewOpenAIResponsesProvider(cfg OpenAIResponsesConfig) Provider {
 
 const chatGPTUsageURL = "https://chatgpt.com/settings/usage"
 
-// withChatGPTUsageLink points a Sign in with ChatGPT user at their usage page: the subscription's usage limit is shared with other apps (openai-responses.ts stream catch).
+// chatGPTWorkspaceLimitHint is openai-responses.ts CHATGPT_WORKSPACE_LIMIT_HINT.
+const chatGPTWorkspaceLimitHint = "You've reached your ChatGPT workspace's usage limit. Ask your workspace admin to increase it at admin.openai.com → Workspace → Usage limits."
+
+// withChatGPTUsageLink points a Sign in with ChatGPT user at their usage page: the subscription's usage limit is shared with other apps.
+// On ChatGPT Business plans the workspace admin also sets a per-user limit, and the hint names the admin (openai-responses.ts stream catch, Pi cedefc5326).
 func withChatGPTUsageLink(message string) string {
 	if strings.Contains(message, "subscription_sharing_usage_limit_exceeded") {
 		return message + "\nCheck your ChatGPT usage: " + chatGPTUsageURL
+	}
+	if strings.Contains(message, "subscription_sharing_workplace_individual_usage_limit_exceeded") {
+		return message + "\n" + chatGPTWorkspaceLimitHint
 	}
 	return message
 }
@@ -810,66 +817,182 @@ func (p *openAIResponsesProvider) messageConverter(compat responsesCompat, gramm
 	}
 }
 
-// systemToolAdditions mirrors upstream appendSystemToolAdditions: when the
-// transcript anchors additions, a later system message's added tools load in
-// place as an additional_tools item, or else as a synthetic client
-// tool_search_call and tool_search_output pair.
-func (c responsesMessageConverter) systemToolAdditions(message SystemMessage, seed string, anchorsAdditions bool) ([]ResponsesInputItem, error) {
-	if !anchorsAdditions || len(message.ToolsAdded) == 0 || (!c.options.SupportsAdditionalTools && !c.options.SupportsToolSearch) {
+// ResponsesToolSupportOptions are the compat flags GetResponsesToolSupport reads.
+type ResponsesToolSupportOptions struct {
+	SupportsMidConvoSystemMessages bool
+	SupportsAdditionalTools        bool
+	SupportsToolSearch             bool
+}
+
+// GetResponsesToolSupport is how a Responses transport expresses tool changes.
+//
+// additional_tools items accumulate: a later item adds tools and replaces same-name definitions from earlier items, but it
+// cannot replace a top-level tool and cannot remove any tool (verified with strict schemas on the OpenAI, Codex, and Copilot
+// backends, October 2026). Like Codex, every tool is therefore declared in additional_tools items, starting with one at the
+// head of the input, and removals are announced as text. Synthetic tool search can only add tools. Without mid-conversation
+// system messages there is nothing to anchor.
+// Ports packages/ai/src/api/openai-responses-shared.ts getResponsesToolSupport.
+func GetResponsesToolSupport(options ResponsesToolSupportOptions) TranscriptToolSupport {
+	if options.SupportsMidConvoSystemMessages && options.SupportsAdditionalTools {
+		return TranscriptToolSupportChanges
+	}
+	if options.SupportsToolSearch {
+		return TranscriptToolSupportAdditions
+	}
+	return TranscriptToolSupportNone
+}
+
+// toolSupport is the converter's options as GetResponsesToolSupport reads them.
+func (c responsesMessageConverter) toolSupport() TranscriptToolSupport {
+	return GetResponsesToolSupport(ResponsesToolSupportOptions{
+		SupportsMidConvoSystemMessages: c.options.SupportsMidConvoSystemMessages,
+		SupportsAdditionalTools:        c.options.SupportsAdditionalTools,
+		SupportsToolSearch:             c.options.SupportsToolSearch,
+	})
+}
+
+// renderIncrementalToolsNotice precedes every additional_tools item after the first. Without it, models read the latest item as
+// the complete tool set once a removal was announced; Codex precedes its incremental tool batches with the same guidance.
+// Restating the tools that are still unavailable keeps smaller models from calling them again after later loads.
+func renderIncrementalToolsNotice(unavailable []string) string {
+	const notice = "This is an incremental tools update. Previously declared tools remain available unless explicitly marked unavailable. A tool declared again here is available again, and its latest definition replaces the earlier one."
+	if len(unavailable) == 0 {
+		return notice
+	}
+	return notice + "\nStill unavailable: " + strings.Join(unavailable, ", ") + "."
+}
+
+func renderToolRemovalNotice(names []string) string {
+	var notice strings.Builder
+	notice.WriteString("The following tools are no longer available. Do not call them:")
+	for _, name := range names {
+		notice.WriteString("\n- ")
+		notice.WriteString(name)
+	}
+	return notice.String()
+}
+
+// responsesToolChanges is the state convertAnchored keeps across a transcript's system messages.
+type responsesToolChanges struct {
+	// declaredAdditionalTools is set once an additional_tools item was written.
+	declaredAdditionalTools bool
+	// unavailable lists, in the order announced, the tools announced as removed and not declared again since.
+	unavailable []string
+}
+
+// systemToolAdditions mirrors upstream appendSystemToolAdditions: a system message's added tools load in place as an
+// additional_tools item (preceded by the incremental notice after the first), or else as a synthetic client tool_search_call and
+// tool_search_output pair.
+func (c responsesMessageConverter) systemToolAdditions(state *responsesToolChanges, message SystemMessage, seed string) ([]ResponsesInputItem, error) {
+	for _, tool := range message.ToolsAdded {
+		state.unavailable = slices.DeleteFunc(state.unavailable, func(name string) bool { return name == tool.Name })
+	}
+	if len(message.ToolsAdded) == 0 {
 		return nil, nil
 	}
-	options := c.options.ToolOptions
-	if c.options.SupportsAdditionalTools {
+	switch c.toolSupport() {
+	case TranscriptToolSupportChanges:
+		tools, err := ConvertResponsesTools(message.ToolsAdded, c.options.ToolOptions)
+		if err != nil {
+			return nil, err
+		}
+		var items []ResponsesInputItem
+		if state.declaredAdditionalTools {
+			content, _ := json.Marshal(renderIncrementalToolsNotice(state.unavailable))
+			items = append(items, ResponsesInputItem{Role: c.instructionRole, Content: content})
+		}
+		state.declaredAdditionalTools = true
+		return append(items, ResponsesInputItem{Type: "additional_tools", Role: "developer", Tools: tools}), nil
+	case TranscriptToolSupportAdditions:
+		options := c.options.ToolOptions
+		options.ToolSearchResult = true
 		tools, err := ConvertResponsesTools(message.ToolsAdded, options)
 		if err != nil {
 			return nil, err
 		}
-		return []ResponsesInputItem{{Type: "additional_tools", Role: "developer", Tools: tools}}, nil
+		names := make([]string, len(message.ToolsAdded))
+		for i, tool := range message.ToolsAdded {
+			names[i] = tool.Name
+		}
+		callID := "pi_tool_load_" + ShortHash(seed+":"+strings.Join(names, ","))
+		arguments, _ := json.Marshal(respToolSearchArguments{Query: strings.Join(names, " "), Limit: len(names)})
+		return []ResponsesInputItem{
+			{Type: "tool_search_call", CallID: callID, Execution: "client", Status: "completed", Arguments: arguments},
+			{Type: "tool_search_output", CallID: callID, Execution: "client", Status: "completed", Tools: tools},
+		}, nil
 	}
-	options.ToolSearchResult = true
-	tools, err := ConvertResponsesTools(message.ToolsAdded, options)
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, len(message.ToolsAdded))
-	for i, tool := range message.ToolsAdded {
-		names[i] = tool.Name
-	}
-	callID := "pi_tool_load_" + ShortHash(seed+":"+strings.Join(names, ","))
-	arguments, _ := json.Marshal(respToolSearchArguments{Query: strings.Join(names, " "), Limit: len(names)})
-	return []ResponsesInputItem{
-		{Type: "tool_search_call", CallID: callID, Execution: "client", Status: "completed", Arguments: arguments},
-		{Type: "tool_search_output", CallID: callID, Execution: "client", Status: "completed", Tools: tools},
-	}, nil
+	return nil, nil
 }
 
+// systemMessageInstruction is a system message's text for the instruction item: the leading message's prompt or a later
+// message's update, followed by the announcement of its true removals. A redefinition is a removal plus an addition of the same
+// name; only true removals are announced. The removals join the unavailable tools after this message's additions, whose notice
+// precedes this removal notice.
+func (state *responsesToolChanges) systemMessageInstruction(message SystemMessage, isLeading, anchorsToolChanges bool) string {
+	var first string
+	if isLeading {
+		first = GetSystemMessageText(message)
+	} else {
+		first = RenderSystemMessageUpdate(message)
+	}
+	if !anchorsToolChanges || len(message.ToolsRemoved) == 0 {
+		return first
+	}
+	var removed []string
+	for _, tool := range message.ToolsRemoved {
+		if !slices.ContainsFunc(message.ToolsAdded, func(added ToolSchema) bool { return added.Name == tool.Name }) {
+			removed = append(removed, tool.Name)
+		}
+	}
+	if len(removed) == 0 {
+		return first
+	}
+	for _, name := range removed {
+		if !slices.Contains(state.unavailable, name) {
+			state.unavailable = append(state.unavailable, name)
+		}
+	}
+	if first == "" {
+		return renderToolRemovalNotice(removed)
+	}
+	return first + "\n\n" + renderToolRemovalNotice(removed)
+}
+
+// convertMessages converts messages as a whole transcript with every tool declared at the request's top level.
 func (p *openAIResponsesProvider) convertMessages(messages []Message, grammarProps map[string]string) ([]ResponsesInputItem, error) {
-	return p.convertAnchoredMessages(messages, grammarProps, false)
+	return p.messageConverter(getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault), grammarProps).convertAnchored(messages, ResolveTranscriptTools(messages, TranscriptToolSupportNone), true)
 }
 
-// convertAnchoredMessages converts the conversation after the leading system
-// message; anchorsAdditions is ResolveTranscriptTools over the whole
-// transcript.
-func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, grammarProps map[string]string, anchorsAdditions bool) ([]ResponsesInputItem, error) {
-	return p.messageConverter(getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault), grammarProps).convertAnchored(messages, anchorsAdditions)
-}
-
-// convertAnchored converts the conversation after the leading system message.
-func (c responsesMessageConverter) convertAnchored(messages []Message, anchorsAdditions bool) ([]ResponsesInputItem, error) {
+// convertAnchored converts the whole transcript, the leading system message included. transcriptTools is
+// ResolveTranscriptTools over it: the first FoldedSystemMessages system messages leave their tool changes to the request's
+// tool list, every later one carries its own in place. The leading system message's text is written only with
+// includeSystemPrompt; its tools are declared either way.
+func (c responsesMessageConverter) convertAnchored(messages []Message, transcriptTools TranscriptTools, includeSystemPrompt bool) ([]ResponsesInputItem, error) {
 	items := []ResponsesInputItem{}
 	messageIndex := 0
+	systemIndex := 0
 	supportsImages := c.supportsImages
-	for _, message := range messages {
+	var changes responsesToolChanges
+	for sourceIndex, message := range messages {
+		_, isSystem := message.(SystemMessage)
+		isLeadingSystemMessage := sourceIndex == 0 && isSystem
 		switch message := message.(type) {
 		case SystemMessage:
-			additions, err := c.systemToolAdditions(message, fmt.Sprintf("system:%d", messageIndex), anchorsAdditions)
-			if err != nil {
-				return nil, err
+			// transformMessages keeps system messages in order, so their position matches the transcript.
+			anchorsToolChanges := systemIndex >= transcriptTools.FoldedSystemMessages
+			systemIndex++
+			if anchorsToolChanges {
+				additions, err := c.systemToolAdditions(&changes, message, fmt.Sprintf("system:%d", messageIndex))
+				if err != nil {
+					return nil, err
+				}
+				items = append(items, additions...)
 			}
-			items = append(items, additions...)
-			if text := RenderSystemMessageUpdate(message); text != "" {
-				content, _ := json.Marshal(sanitizeSurrogates(text))
-				items = append(items, ResponsesInputItem{Role: c.instructionRole, Content: content})
+			if !isLeadingSystemMessage || includeSystemPrompt {
+				if text := changes.systemMessageInstruction(message, isLeadingSystemMessage, anchorsToolChanges); text != "" {
+					content, _ := json.Marshal(sanitizeSurrogates(text))
+					items = append(items, ResponsesInputItem{Role: c.instructionRole, Content: content})
+				}
 			}
 		case UserMessage:
 			var parts []any
@@ -970,7 +1093,9 @@ func (c responsesMessageConverter) convertAnchored(messages []Message, anchorsAd
 				items = slices.Insert(items, initialItemCount, configurationUpdateItem(message.ProviderThinkingLevel))
 			}
 		}
-		messageIndex++
+		if !isLeadingSystemMessage {
+			messageIndex++
+		}
 	}
 	if c.options.ConfigurationUpdateEffort != "" {
 		items = append(items, configurationUpdateItem(c.options.ConfigurationUpdateEffort))
@@ -992,10 +1117,10 @@ func responsesToolCallNormalizer(allowedToolCallProviders map[string]bool) func(
 
 // prepareResponsesTranscript resolves the transcript's system updates, transforms its messages for the model and resolves which
 // tools the request carries (convertResponsesMessages: resolveTranscript, transformMessages, resolveTranscriptTools).
-func prepareResponsesTranscript(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, supportsMidConvoSystemMessages, supportsToolAdditions bool) ([]Message, TranscriptTools) {
-	messages := TransformMessages(resolvedMessages(transcript, supportsMidConvoSystemMessages), model, responsesToolCallNormalizer(allowedToolCallProviders))
-	messages = omitEmptyResponsesCallIDs(messages)
-	return messages, ResolveTranscriptTools(messages, supportsToolAdditions)
+func prepareResponsesTranscript(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, supportsMidConvoSystemMessages bool, toolSupport TranscriptToolSupport) ([]Message, TranscriptTools) {
+	resolved := resolvedMessages(transcript, supportsMidConvoSystemMessages)
+	messages := omitEmptyResponsesCallIDs(TransformMessages(resolved, model, responsesToolCallNormalizer(allowedToolCallProviders)))
+	return messages, ResolveTranscriptTools(resolved, toolSupport)
 }
 
 // omitEmptyResponsesCallIDs omits, with the tool results that name it, a tool call whose {call_id}|{item_id} id still has an empty
@@ -1040,22 +1165,18 @@ func omitEmptyResponsesCallIDs(messages []Message) []Message {
 	return prepareProviderToolFlow(TranscriptContext{messages: blanked}).messages
 }
 
-// withLeadingSystem puts the transcript's leading system message, when it has text, before the converted conversation.
-func (c responsesMessageConverter) withLeadingSystem(messages []Message, items []ResponsesInputItem) []ResponsesInputItem {
-	systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))])
-	if systemPrompt == "" {
-		return items
-	}
-	content, _ := json.Marshal(sanitizeSurrogates(systemPrompt))
-	return append([]ResponsesInputItem{{Role: c.instructionRole, Content: content}}, items...)
-}
-
 // ConvertResponsesMessages converts a transcript to the Responses API "input" array for model: the leading system message (unless
 // options.IncludeSystemPrompt is false), user, assistant and tool-result messages, with tool-call ids normalized for the providers
-// in allowedToolCallProviders.
+// in allowedToolCallProviders. Tools are declared as GetResponsesToolSupport says: in additional_tools items, in synthetic tool
+// search items, or not at all (the request's tool list carries them).
 // Ports packages/ai/src/api/openai-responses-shared.ts convertResponsesMessages.
 func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowedToolCallProviders map[string]bool, options ConvertResponsesMessagesOptions) ([]ResponsesInputItem, error) {
-	messages, transcriptTools := prepareResponsesTranscript(model, transcript, allowedToolCallProviders, options.SupportsMidConvoSystemMessages, options.SupportsAdditionalTools || options.SupportsToolSearch)
+	toolSupport := GetResponsesToolSupport(ResponsesToolSupportOptions{
+		SupportsMidConvoSystemMessages: options.SupportsMidConvoSystemMessages,
+		SupportsAdditionalTools:        options.SupportsAdditionalTools,
+		SupportsToolSearch:             options.SupportsToolSearch,
+	})
+	messages, transcriptTools := prepareResponsesTranscript(model, transcript, allowedToolCallProviders, options.SupportsMidConvoSystemMessages, toolSupport)
 	var supportsDeveloperRole *bool
 	if model.ProviderMeta.Compat != nil {
 		supportsDeveloperRole = model.ProviderMeta.Compat.SupportsDeveloperRole
@@ -1069,14 +1190,7 @@ func ConvertResponsesMessages(model *Model, transcript TranscriptContext, allowe
 		allowedToolCallProviders: allowedToolCallProviders,
 		options:                  options,
 	}
-	items, err := converter.convertAnchored(withoutInitialSystemMessage(messages), transcriptTools.AnchorsAdditions)
-	if err != nil {
-		return nil, err
-	}
-	if options.IncludeSystemPrompt == nil || *options.IncludeSystemPrompt {
-		items = converter.withLeadingSystem(messages, items)
-	}
-	return items, nil
+	return converter.convertAnchored(messages, transcriptTools, options.IncludeSystemPrompt == nil || *options.IncludeSystemPrompt)
 }
 
 // responsesToolCallProviders lists the openai-responses providers whose models
@@ -1293,7 +1407,15 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if p.modelSupportsImages() {
 		target.Input = append(target.Input, "image")
 	}
-	messages, transcriptTools := prepareResponsesTranscript(target, transcript, p.messageConverter(compat, nil).allowedToolCallProviders, compat.SupportsMidConvoSystemMessages, compat.SupportsAdditionalTools || compat.SupportsToolSearch)
+	toolSupport := GetResponsesToolSupport(ResponsesToolSupportOptions{
+		SupportsMidConvoSystemMessages: compat.SupportsMidConvoSystemMessages,
+		SupportsAdditionalTools:        compat.SupportsAdditionalTools,
+		SupportsToolSearch:             compat.SupportsToolSearch,
+	})
+	messages, transcriptTools := prepareResponsesTranscript(target, transcript, p.messageConverter(compat, nil).allowedToolCallProviders, compat.SupportsMidConvoSystemMessages, toolSupport)
+	// Pi's stream functions pass buildParams the transcript after resolveTranscript and before transformMessages, so the request
+	// tools and the anchored system messages resolve over the same messages: a transcript whose first message is an aborted
+	// assistant has no initial system message there, though transformMessages drops that assistant.
 	tools := transcriptTools.RequestTools
 	grammarProps, err := createGrammarToolInputProperties(GetDeclaredTools(messages), compat.SupportsOpenAIGrammarTools)
 	if err != nil {
@@ -1315,12 +1437,10 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	configurationUpdateEffort := p.configurationUpdateEffort(compat, opts, apiKey)
 	converter := p.messageConverter(compat, grammarProps)
 	converter.options.ConfigurationUpdateEffort = configurationUpdateEffort
-	msgs, err := converter.convertAnchored(withoutInitialSystemMessage(messages), transcriptTools.AnchorsAdditions)
+	// Codex sends the leading system message as `instructions`; its tools stay in the input either way.
+	msgs, err := converter.convertAnchored(messages, transcriptTools, !p.cfg.Codex)
 	if err != nil {
 		return nil, err
-	}
-	if !p.cfg.Codex {
-		msgs = converter.withLeadingSystem(messages, msgs)
 	}
 
 	inputJSON, marshalErr := json.Marshal(msgs)
@@ -1554,7 +1674,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	}
 	body.prepare(httpReq)
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("User-Agent", PiUserAgent())
+	applyIdentityHeaders(httpReq.Header, ClientIdentityTarget{Provider: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL}, opts.Identity)
 	// The OpenAI SDK's default `accept` header; the Codex transport asks for an event stream.
 	httpReq.Header.Set("Accept", "application/json")
 	if p.cfg.Codex {

@@ -28,6 +28,7 @@ func TestRunRemoteOverlayHonorsOverlayFlag(t *testing.T) {
 		m := &InteractiveMode{
 			tuiInst:         tui.NewWithOutput(io.Discard, 120, 40),
 			layout:          tui.NewContainer(),
+			chatContainer:   tui.NewContainer(),
 			editorContainer: editorContainer,
 			editor:          editor,
 		}

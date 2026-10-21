@@ -143,7 +143,7 @@ type harnessImpl struct {
 	line        sessionLine
 	storage     durable.Storage
 	options     HarnessOptions
-	report      func(err error, info durable.ReportInfo)
+	report      func(ctx context.Context, err error, info durable.ReportInfo)
 	host        *conversationHost
 	tasks       *TaskScheduler
 	submissions *Submissions
@@ -181,7 +181,7 @@ func (harness *harnessImpl) resolveAgent(ctx context.Context, id durable.Convers
 		return durable.Agent{}, err
 	}
 	return ResolveAgent(state, registry, harness.settings(), func(err error, extension string) {
-		harness.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
+		harness.report(ctx, err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
 	}), nil
 }
 
@@ -576,8 +576,10 @@ func joinNames(names []string) string {
 }
 
 func newHarness(ctx context.Context, storage durable.Storage, options HarnessOptions) *harnessImpl {
-	harness := &harnessImpl{storage: storage, options: options, report: SafeReport(options.OnReport)}
-	now := SafeNow(options.Now, harness.report)
+	options = options.WithModelsView() // a plain Models is wrapped once (harness.ts currentModels)
+	harness := &harnessImpl{storage: storage, options: options, report: telemetryReport(SafeReport(options.OnReport), rootTelemetry(options.Telemetry))}
+	// A clock failure reports without a phase context.
+	now := SafeNow(options.Now, func(err error, info durable.ReportInfo) { harness.report(context.Background(), err, info) })
 	harness.SessionImpl = session.NewSessionImpl(storage, session.Hooks{
 		ConversationCreated: harness.conversationCreated,
 		// Join task invocations after admission is sealed and before Storage closes; writes no task outcome.
@@ -590,10 +592,11 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 	harness.storage = storage
 	harness.line = sessionLine{harness.SessionImpl}
 	harness.tasks = NewTaskScheduler(TaskSchedulerOptions{
-		Session:  harness.SessionImpl,
-		Storage:  storage,
-		Registry: options.Registry,
-		Models:   options.CurrentModels,
+		Telemetry: options.Telemetry,
+		Session:   harness.SessionImpl,
+		Storage:   storage,
+		Registry:  options.Registry,
+		Models:    options.CurrentModels,
 		Agent: func(callCtx context.Context, id durable.ConversationId, snapshot durable.RegistrySnapshot) (durable.Agent, error) {
 			return harness.resolveAgent(callCtx, id, snapshot)
 		},
@@ -602,7 +605,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		Now:      now,
 		OnWake:   options.OnWake,
 		Timers: durable.HostTimers(options.SetTimer, func(err error) {
-			harness.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+			harness.report(context.Background(), err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 		}),
 		WriteAtClose: func(writes func() []durable.StorageWrite) error {
 			// A close writes what it stops straight to Storage, off the published changes, with no caller to cancel it.
@@ -623,7 +626,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		},
 		Context: context.WithoutCancel(ctx),
 	})
-	harness.submissions = NewSubmissions(harness.SessionImpl, storage, now, func() QueueModes { return QueueModesOf(harness.settings()) }, func() { harness.tasks.Resume() })
+	harness.submissions = NewSubmissions(harness.SessionImpl, storage, now, func() QueueModes { return QueueModesOf(harness.settings()) }, func() { harness.tasks.Resume() }, options.Telemetry)
 	harness.taskGraph = NewTaskGraphView(harness.SessionImpl, storage, TaskGraphBlocking{
 		Blocked:          harness.tasks.BlockedReason,
 		SubscribeBlocked: harness.tasks.SubscribeBlocked,

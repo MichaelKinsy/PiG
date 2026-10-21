@@ -303,7 +303,7 @@ func footerNode(d footerData) frontend.Footer {
 // so neither clears it.
 func (m *InteractiveMode) frontendEditorSendable() bool {
 	return m.frontendInputRunning && !m.requestExit.Load() && !m.tuiTornDown &&
-		m.extensionDialog == nil && !m.externalEditorActive &&
+		len(m.extensionDialogs) == 0 && !m.externalEditorActive &&
 		m.tuiInst.GetFocusedComponent() == tui.Component(m.editor)
 }
 

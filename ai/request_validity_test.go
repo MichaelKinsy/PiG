@@ -55,7 +55,7 @@ func textAfterCall() []Message {
 // A provider that receives a tool result with no tool call in the previous assistant message is a bug in the code that built the history, whatever the provider answers. In a test binary the request checker records it on every API's send path: wire bodies for the JSON APIs, the Converse input for Bedrock, and the transcript for every provider.
 func TestProviderSendSeamChecksEveryAPIsRequest(t *testing.T) {
 	for _, spec := range []string{
-		"anthropic/claude-sonnet-4-5", "openai/gpt-5", "azure/gpt-4.1", "openai-codex/gpt-5.5", "groq/llama-3.1-8b-instant",
+		"anthropic/claude-sonnet-4-5", "openai/gpt-5", "azure/gpt-4.1", "openai-codex/gpt-5.6-sol", "groq/llama-3.1-8b-instant",
 		"google/gemini-2.5-flash", "mistral/devstral-medium-latest", "amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
 	} {
 		t.Run(spec, func(t *testing.T) {

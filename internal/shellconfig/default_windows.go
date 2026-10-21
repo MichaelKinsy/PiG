@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // Default resolves bash on Windows, mirroring upstream getShellConfig's win32
@@ -13,6 +15,8 @@ import (
 // (%ProgramFiles%\Git\bin\bash.exe, then the x86 variant), then bash.exe on
 // PATH (Cygwin, MSYS2, WSL), else a helpful error. cmd.exe and PowerShell are
 // not substitutes for bash syntax.
+//
+// Ports packages/coding-agent/src/utils/shell.ts (getShellConfig, win32 branch).
 func Default() (Config, error) {
 	var searched []string
 	for _, base := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
@@ -21,7 +25,7 @@ func Default() (Config, error) {
 		}
 		p := base + `\Git\bin\bash.exe`
 		searched = append(searched, "  "+p)
-		if _, err := os.Stat(p); err == nil {
+		if nodefs.Access(p) {
 			return ForBash(p), nil
 		}
 	}

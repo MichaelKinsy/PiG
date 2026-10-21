@@ -1,0 +1,226 @@
+pkg:agent/.#AgentLoopConfig	agent	child-gap	agent/standalone_loop.go#AgentLoopConfig
+pkg:agent/.#AgentLoopConfig::property:telemetry	agent	member-missing	agent/standalone_loop.go#AgentLoopConfig
+pkg:ai/.#AI_TELEMETRY_SCHEMA	ai	no-go-symbol	
+pkg:ai/.#AnthropicOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#AnthropicOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#AzureOpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#AzureOpenAIResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#BedrockOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#BedrockOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#ClassifierOptions	ai	child-gap	ai/classifier.go#ClassifierOptions
+pkg:ai/.#ClassifierOptions::property:telemetry	ai	member-missing	ai/classifier.go#ClassifierOptions
+pkg:ai/.#DeferredFetchOptions	ai	child-gap	ai/models_runtime.go#DeferredFetchOptions
+pkg:ai/.#DeferredFetchOptions::property:telemetry	ai	member-missing	ai/models_runtime.go#DeferredFetchOptions
+pkg:ai/.#GoogleOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#GoogleOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#GoogleVertexOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#GoogleVertexOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#ImagesOptions	ai	child-gap	ai/images.go#ImagesOptions
+pkg:ai/.#ImagesOptions::property:telemetry	ai	member-missing	ai/images.go#ImagesOptions
+pkg:ai/.#LazyStreamObserver	ai	no-go-symbol	
+pkg:ai/.#LazyStreamObserver::property:onEvent	ai	child-gap	
+pkg:ai/.#LazyStreamObserver::property:onResult	ai	child-gap	
+pkg:ai/.#MistralOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#MistralOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#ModelsClassifierOptions	ai	type-mismatch	ai/classifier.go#ModelsClassifierOptions
+pkg:ai/.#ModelsDeferredFetchOptions	ai	type-mismatch	ai/models_runtime.go#DeferredFetchOptions
+pkg:ai/.#ModelsImagesOptions	ai	type-mismatch	ai/models_runtime_typed.go#ModelsImagesOptions
+pkg:ai/.#ModelsSimpleStreamOptions	ai	type-mismatch	ai/types.go#StreamOptions
+pkg:ai/.#OpenAICodexResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#OpenAICodexResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#OpenAICompletionsOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#OpenAICompletionsOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#OpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#OpenAIResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#PiMessagesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#PiMessagesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#ProviderRequestOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#ProviderRequestOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#SimpleStreamOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#SimpleStreamOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#StreamOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/.#StreamOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/.#lazyStream	ai	child-gap	ai/provider_streams.go#LazyStream
+pkg:ai/.#lazyStream::call:0	ai	signature-mismatch	ai/provider_streams.go#LazyStream
+pkg:ai/api/anthropic-messages#AnthropicOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/anthropic-messages#AnthropicOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/azure-openai-config#AzureEndpointOptions	ai	child-gap	ai/azure_config.go#AzureEndpointOptions
+pkg:ai/api/azure-openai-config#AzureEndpointOptions::property:telemetry	ai	member-missing	ai/azure_config.go#AzureEndpointOptions
+pkg:ai/api/azure-openai-responses#AzureOpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/azure-openai-responses#AzureOpenAIResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/bedrock-converse-stream#BedrockOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/bedrock-converse-stream#BedrockOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/google-generative-ai#GoogleOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/google-generative-ai#GoogleOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/google-vertex#GoogleVertexOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/google-vertex#GoogleVertexOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/lazy#LazyStreamObserver	ai	no-go-symbol	
+pkg:ai/api/lazy#LazyStreamObserver::property:onEvent	ai	child-gap	
+pkg:ai/api/lazy#LazyStreamObserver::property:onResult	ai	child-gap	
+pkg:ai/api/lazy#lazyStream	ai	child-gap	ai/provider_streams.go#LazyStream
+pkg:ai/api/lazy#lazyStream::call:0	ai	signature-mismatch	ai/provider_streams.go#LazyStream
+pkg:ai/api/mistral-conversations#MistralOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/mistral-conversations#MistralOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/openai-codex-responses#OpenAICodexResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/openai-codex-responses#OpenAICodexResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/openai-completions#OpenAICompletionsOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/openai-completions#OpenAICompletionsOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/openai-responses#OpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/openai-responses#OpenAIResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/api/pi-messages#PiMessagesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/api/pi-messages#PiMessagesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#AI_TELEMETRY_SCHEMA	ai	no-go-symbol	
+pkg:ai/compat#AnthropicOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#AnthropicOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#AzureOpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#AzureOpenAIResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#BedrockOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#BedrockOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#ClassifierOptions	ai	child-gap	ai/classifier.go#ClassifierOptions
+pkg:ai/compat#ClassifierOptions::property:telemetry	ai	member-missing	ai/classifier.go#ClassifierOptions
+pkg:ai/compat#DeferredFetchOptions	ai	child-gap	ai/models_runtime.go#DeferredFetchOptions
+pkg:ai/compat#DeferredFetchOptions::property:telemetry	ai	member-missing	ai/models_runtime.go#DeferredFetchOptions
+pkg:ai/compat#GoogleOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#GoogleOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#GoogleVertexOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#GoogleVertexOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#ImagesOptions	ai	child-gap	ai/images.go#ImagesOptions
+pkg:ai/compat#ImagesOptions::property:telemetry	ai	member-missing	ai/images.go#ImagesOptions
+pkg:ai/compat#LazyStreamObserver	ai	no-go-symbol	
+pkg:ai/compat#LazyStreamObserver::property:onEvent	ai	child-gap	
+pkg:ai/compat#LazyStreamObserver::property:onResult	ai	child-gap	
+pkg:ai/compat#MistralOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#MistralOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#ModelsClassifierOptions	ai	type-mismatch	ai/classifier.go#ModelsClassifierOptions
+pkg:ai/compat#ModelsDeferredFetchOptions	ai	type-mismatch	ai/models_runtime.go#DeferredFetchOptions
+pkg:ai/compat#ModelsImagesOptions	ai	type-mismatch	ai/models_runtime_typed.go#ModelsImagesOptions
+pkg:ai/compat#ModelsSimpleStreamOptions	ai	type-mismatch	ai/types.go#StreamOptions
+pkg:ai/compat#OpenAICodexResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#OpenAICodexResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#OpenAICompletionsOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#OpenAICompletionsOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#OpenAIResponsesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#OpenAIResponsesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#PiMessagesOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#PiMessagesOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#ProviderRequestOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#ProviderRequestOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#SimpleStreamOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#SimpleStreamOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#StreamOptions	ai	child-gap	ai/types.go#StreamOptions
+pkg:ai/compat#StreamOptions::property:telemetry	ai	member-missing	ai/types.go#StreamOptions
+pkg:ai/compat#lazyStream	ai	child-gap	ai/provider_streams.go#LazyStream
+pkg:ai/compat#lazyStream::call:0	ai	signature-mismatch	ai/provider_streams.go#LazyStream
+pkg:ai/models#AI_TELEMETRY_SCHEMA	ai	no-go-symbol	
+pkg:ai/models#ModelsClassifierOptions	ai	type-mismatch	ai/classifier.go#ModelsClassifierOptions
+pkg:ai/models#ModelsDeferredFetchOptions	ai	type-mismatch	ai/models_runtime.go#DeferredFetchOptions
+pkg:ai/models#ModelsImagesOptions	ai	type-mismatch	ai/models_runtime_typed.go#ModelsImagesOptions
+pkg:ai/models#ModelsSimpleStreamOptions	ai	type-mismatch	ai/types.go#StreamOptions
+pkg:chord/.#Context	chord	no-go-symbol	
+pkg:chord/.#Context::property:telemetry	chord	child-gap	
+pkg:chord/.#Context::property:toString	chord	child-gap	
+pkg:chord/.#Context::property:toString::call:0	chord	child-gap	
+pkg:chord/.#Context::property:value	chord	child-gap	
+pkg:chord/.#Context::property:value::call:0	chord	child-gap	
+pkg:chord/context#Context	chord	no-go-symbol	
+pkg:chord/context#Context::property:telemetry	chord	child-gap	
+pkg:chord/context#Context::property:toString	chord	child-gap	
+pkg:chord/context#Context::property:toString::call:0	chord	child-gap	
+pkg:chord/context#Context::property:value	chord	child-gap	
+pkg:chord/context#Context::property:value::call:0	chord	child-gap	
+pkg:chord/context#traceIn	chord	child-gap	chord/context/chordctx.go#TraceIn
+pkg:chord/context#traceIn::call:0	chord	signature-mismatch	chord/context/chordctx.go#TraceIn
+pkg:chord/telemetry-sqlite#SqliteTelemetry	chord	no-go-symbol	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:close	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:close::call:0	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:droppedMeasurements	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:droppedSpans	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:findMetrics	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:findMetrics::call:0	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:findTraces	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:findTraces::call:0	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:flush	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:flush::call:0	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:getTrace	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:getTrace::call:0	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:metrics	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:propagation	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:startSpan	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetry::property:startSpan::call:0	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetryOptions	chord	no-go-symbol	
+pkg:chord/telemetry-sqlite#SqliteTelemetryOptions::property:maxQueuedSpans	chord	child-gap	
+pkg:chord/telemetry-sqlite#SqliteTelemetryOptions::property:retentionMs	chord	child-gap	
+pkg:chord/telemetry-sqlite#createSqliteTelemetry	chord	no-go-symbol	
+pkg:chord/telemetry-sqlite#createSqliteTelemetry::call:0	chord	child-gap	
+pkg:durable/.#DURABLE_TELEMETRY_SCHEMA	durable	no-go-symbol	
+pkg:durable/.#Submission	durable	child-gap	durable/harness_types.go#Submission
+pkg:durable/.#Submission::property:wait	durable	child-gap	durable/harness_types.go#Submission.Wait
+pkg:durable/.#Submission::property:wait::call:0	durable	signature-mismatch	durable/harness_types.go#Submission.Wait
+pkg:durable/.#SubmissionCreate	durable	type-mismatch	durable/types.go#SubmissionCreate
+pkg:durable/.#SubmissionRecord	durable	type-mismatch	durable/types.go#SubmissionRecord
+pkg:durable/.#TaskOptions	durable	type-mismatch	durable/types.go#TaskOptions
+pkg:durable/.#TaskRecord	durable	type-mismatch	durable/types.go#TaskRecord
+pkg:durable/.#Tx	durable	child-gap	durable/types.go#Tx
+pkg:durable/.#Tx::property:createSubmission	durable	child-gap	durable/types.go#Tx.CreateSubmission
+pkg:durable/.#Tx::property:createSubmission::call:0	durable	signature-mismatch	durable/types.go#Tx.CreateSubmission
+pkg:telemetry/.#InMemoryTelemetryContext	telemetry	child-gap	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#InMemoryTelemetryContext::property:findMetrics	telemetry	member-missing	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#InMemoryTelemetryContext::property:findMetrics::call:0	telemetry	member-missing	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#InMemoryTelemetryContext::property:findTraces	telemetry	member-missing	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#InMemoryTelemetryContext::property:findTraces::call:0	telemetry	member-missing	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#InMemoryTelemetryContext::property:getTrace	telemetry	member-missing	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#InMemoryTelemetryContext::property:getTrace::call:0	telemetry	member-missing	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#InMemoryTelemetryContext::property:metrics	telemetry	undecidable	telemetry/memory.go#InMemoryTelemetryContext.GetMetrics
+pkg:telemetry/.#InMemoryTelemetryContext::property:propagation	telemetry	member-missing	telemetry/memory.go#InMemoryTelemetryContext
+pkg:telemetry/.#MetricQuery	telemetry	no-go-symbol	
+pkg:telemetry/.#MetricQuery::property:attributes	telemetry	child-gap	
+pkg:telemetry/.#MetricQuery::property:name	telemetry	child-gap	
+pkg:telemetry/.#MetricQuery::property:startMax	telemetry	child-gap	
+pkg:telemetry/.#MetricQuery::property:startMin	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric	telemetry	no-go-symbol	
+pkg:telemetry/.#StoredMetric::property:attributes	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:count	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:intervalMs	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:kind	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:max	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:min	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:name	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:sum	telemetry	child-gap	
+pkg:telemetry/.#StoredMetric::property:unit	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan	telemetry	no-go-symbol	
+pkg:telemetry/.#StoredSpan::property:attributes	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:endedMs	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:events	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:id	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:links	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:name	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:parentId	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:startedMs	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:status	telemetry	child-gap	
+pkg:telemetry/.#StoredSpan::property:traceId	telemetry	child-gap	
+pkg:telemetry/.#StoredTrace	telemetry	no-go-symbol	
+pkg:telemetry/.#StoredTrace::property:spans	telemetry	child-gap	
+pkg:telemetry/.#StoredTrace::property:traceId	telemetry	child-gap	
+pkg:telemetry/.#TelemetryContext	telemetry	child-gap	telemetry/context.go#TelemetryContext
+pkg:telemetry/.#TelemetryContext::property:metrics	telemetry	member-missing	telemetry/context.go#TelemetryContext
+pkg:telemetry/.#TelemetryContext::property:propagation	telemetry	member-missing	telemetry/context.go#TelemetryContext
+pkg:telemetry/.#TelemetrySpan	telemetry	child-gap	telemetry/context.go#TelemetrySpan
+pkg:telemetry/.#TelemetrySpan::property:metrics	telemetry	member-missing	telemetry/context.go#TelemetrySpan
+pkg:telemetry/.#TelemetrySpan::property:propagation	telemetry	member-missing	telemetry/context.go#TelemetrySpan
+pkg:telemetry/.#TelemetryStore	telemetry	no-go-symbol	
+pkg:telemetry/.#TelemetryStore::property:findMetrics	telemetry	child-gap	
+pkg:telemetry/.#TelemetryStore::property:findMetrics::call:0	telemetry	child-gap	
+pkg:telemetry/.#TelemetryStore::property:findTraces	telemetry	child-gap	
+pkg:telemetry/.#TelemetryStore::property:findTraces::call:0	telemetry	child-gap	
+pkg:telemetry/.#TelemetryStore::property:getTrace	telemetry	child-gap	
+pkg:telemetry/.#TelemetryStore::property:getTrace::call:0	telemetry	child-gap	
+pkg:telemetry/.#TraceQuery	telemetry	no-go-symbol	
+pkg:telemetry/.#TraceQuery::property:attributes	telemetry	child-gap	
+pkg:telemetry/.#TraceQuery::property:cursor	telemetry	child-gap	
+pkg:telemetry/.#TraceQuery::property:errors	telemetry	child-gap	
+pkg:telemetry/.#TraceQuery::property:limit	telemetry	child-gap	
+pkg:telemetry/.#TraceQuery::property:name	telemetry	child-gap	
+pkg:telemetry/.#TraceQuery::property:startMax	telemetry	child-gap	
+pkg:telemetry/.#TraceQuery::property:startMin	telemetry	child-gap	
+pkg:telemetry/render#renderTrace	telemetry	no-go-symbol	
+pkg:telemetry/render#renderTrace::call:0	telemetry	child-gap	

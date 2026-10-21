@@ -26,7 +26,7 @@ func TestConvertMessagesWithCompatSendsThinkingAsTextOnlyWhenTheCompatAsksFor(t 
 		{"no compat", nil, false},
 	} {
 		p := &openAIProvider{cfg: OpenAIConfig{Model: "m", ProviderID: "custom", Compat: tc.compat}}
-		out, err := p.convertMessagesWithCompat(messages, nil, "system", false, true)
+		out, err := p.convertMessagesWithCompat(messages, nil, "system", toolAnchors{}, true)
 		if err != nil {
 			t.Fatalf("%s: %v", tc.name, err)
 		}

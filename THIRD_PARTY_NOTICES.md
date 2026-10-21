@@ -178,9 +178,9 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## Marked 15.0.4
+## Marked 18.0.11
 
-Source: <https://github.com/markedjs/marked/tree/v15.0.4>
+Source: <https://github.com/markedjs/marked/tree/v18.0.11>
 
 Distributed file: `internal/codingagent/export/assets/vendor/marked.min.js`
 
@@ -221,6 +221,39 @@ Redistribution and use in source and binary forms, with or without modification,
 * Neither the name “Markdown” nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 
 This software is provided by the copyright holders and contributors “as is” and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the copyright owner or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
+```
+
+## marked-cjk-friendly 0.1.2
+
+Source: <https://github.com/tats-u/markdown-cjk-friendly/tree/main/packages/marked-cjk-friendly>
+
+Distributed files: `internal/codingagent/export/assets/vendor/marked-cjk-friendly.min.js`, which the exported HTML embeds, and `coding/extension/host/subprocess/runtime-node/shims/marked-cjk-friendly/`, the unmodified `dist/index.js`, `package.json` and `LICENSE` that pi-tui's Markdown component imports in Node extensions. PiG's Markdown renderer ports the package's `emStrong` rules to Go in `tui/markdown_marked.go` and `tui/markdown_cjk.go`.
+
+```text
+MIT License
+
+Copyright (c) 2024 Tatsunori Uchino, and authors and contributors of original packages
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ## TypeBox 1.3.27

@@ -273,27 +273,27 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 625 / 627 intended-portable entries ✅ (99.7%); **Verification:** 563 behavioral (90.1%), 62 untested.
-Raw PORT_MAP rows: 701. Breakdown: 74 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 631 / 633 intended-portable entries ✅ (99.7%); **Verification:** 569 behavioral (90.2%), 62 untested.
+Raw PORT_MAP rows: 708. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
-| `ai` | 205 | 22 | 183 | 182 | 1 | 0 | 99.5% | 98.4% |
-| `chord` | 37 | 5 | 32 | 32 | 0 | 0 | 100.0% | 31.2% |
+| `ai` | 207 | 22 | 185 | 184 | 1 | 0 | 99.5% | 97.8% |
+| `chord` | 39 | 5 | 34 | 34 | 0 | 0 | 100.0% | 35.3% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 53.8% |
-| `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 97.8% |
-| `durable` | 83 | 8 | 75 | 75 | 0 | 0 | 100.0% | 85.3% |
+| `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 97.4% |
+| `durable` | 85 | 9 | 76 | 76 | 0 | 0 | 100.0% | 86.8% |
 | `env` | 23 | 3 | 20 | 19 | 1 | 0 | 95.0% | 26.3% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 15 | 0 | 0 | 100.0% | 100.0% |
-| `telemetry` | 7 | 1 | 6 | 6 | 0 | 0 | 100.0% | 83.3% |
+| `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 0 | 46 | 46 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 460 / 461 intended-portable files ✅ (99.8%) from 511 rows; 452 behavioral (98.3%), 0 weak-only, 8 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 494 / 495 intended-portable files ✅ (99.8%) from 553 rows; 479 behavioral (97.0%), 0 weak-only, 15 untested.
-- **Whole monorepo (11 packages):** 625 / 627 intended-portable files ✅ (99.7%) from 701 rows; 563 behavioral (90.1%), 0 weak-only, 62 untested.
-- **Interface closure:** 12999 of 12999 semantic interface IDs closed (216 designed-out, 12783 ported). A file-level ✅ does not close an interface ID.
+- **Four core packages (agent, ai, coding-agent, tui):** 462 / 463 intended-portable files ✅ (99.8%) from 513 rows; 452 behavioral (97.8%), 0 weak-only, 10 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 497 / 498 intended-portable files ✅ (99.8%) from 556 rows; 481 behavioral (96.8%), 0 weak-only, 16 untested.
+- **Whole monorepo (11 packages):** 631 / 633 intended-portable files ✅ (99.7%) from 708 rows; 569 behavioral (90.2%), 0 weak-only, 62 untested.
+- **Interface closure:** 13271 of 13271 semantic interface IDs closed (215 designed-out, 13056 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
@@ -302,13 +302,13 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 |---|---:|---:|---:|---:|---:|---:|---|
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
 | `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
-| `autocomplete` | 13 | 13 | 0 | 0 | 0 | 5 | not run |
+| `autocomplete` | 14 | 14 | 0 | 0 | 0 | 5 | not run |
 | `cli-utils` | 33 | 33 | 0 | 0 | 0 | 15 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
-| `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
+| `compaction` | 15 | 15 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 136 | 135 | 0 | 1 | 0 | 62 | not run |
+| `extensions-runtime` | 137 | 136 | 0 | 1 | 0 | 62 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 13 | 13 | 0 | 0 | 0 | 10 | not run |
 | `interactive-rendering` | 68 | 67 | 1 | 0 | 0 | 37 | not run |

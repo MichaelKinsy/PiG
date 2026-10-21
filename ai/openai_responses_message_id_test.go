@@ -11,7 +11,7 @@ import (
 // (#11000) drops another model's thinking in transformMessages, so the
 // upstream test builds the two text blocks directly.
 func TestResponsesConvertMessages_MultipleTextBlocksGetUniqueMessageIDs(t *testing.T) {
-	p := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai-codex", Model: "gpt-5.5"}}
+	p := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai-codex", Model: "gpt-6.1-sol"}}
 	messages := []Message{
 		UserMessage{Content: UserText("hello")},
 		AssistantMessage{Content: []AssistantContentBlock{
@@ -46,7 +46,7 @@ func TestResponsesConvertMessages_MultipleTextBlocksGetUniqueMessageIDs(t *testi
 
 // A single-text-block turn keeps the un-suffixed msg_pi_<n> fallback id.
 func TestResponsesConvertMessages_SingleTextBlockMessageID(t *testing.T) {
-	p := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai-codex", Model: "gpt-5.5"}}
+	p := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai-codex", Model: "gpt-6.1-sol"}}
 	messages := []Message{
 		UserMessage{Content: UserText("hello")},
 		AssistantMessage{Content: []AssistantContentBlock{TextContent{Text: "answer"}}},

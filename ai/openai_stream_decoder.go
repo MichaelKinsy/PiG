@@ -134,7 +134,7 @@ func (decoder *openAIStreamDecoder) parse(sse *serverSentEvent) error {
 	if cap(data) <= openAIStreamRecordReuse {
 		decoder.record = data
 	}
-	if !json.Valid(data) {
+	if !jsonValidRecord(data) {
 		var invalid json.RawMessage
 		err := json.Unmarshal(data, &invalid)
 		return &openAIStreamDecodeError{SSE: *sse, Cause: err}

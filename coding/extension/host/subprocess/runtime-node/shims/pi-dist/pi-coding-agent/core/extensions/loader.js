@@ -57,6 +57,7 @@ function getAliases() {
     // superset of the core entrypoint): existing extensions using the old
     // global API keep working at runtime until compat is removed.
     const piAiCompatEntry = resolveWorkspaceOrImport("ai/dist/compat.js", "@earendil-works/pi-ai/compat");
+    const piAiModelsEntry = resolveWorkspaceOrImport("ai/dist/models.js", "@earendil-works/pi-ai/models");
     const piAiOauthEntry = resolveWorkspaceOrImport("ai/dist/oauth.js", "@earendil-works/pi-ai/oauth");
     const piAiProvidersEntry = resolveWorkspaceOrImport("ai/dist/providers/all.js", "@earendil-works/pi-ai/providers/all");
     _aliases = {
@@ -65,6 +66,7 @@ function getAliases() {
         "@earendil-works/pi-tui": piTuiEntry,
         "@earendil-works/pi-ai/providers/all": piAiProvidersEntry,
         "@earendil-works/pi-ai/compat": piAiCompatEntry,
+        "@earendil-works/pi-ai/models": piAiModelsEntry,
         "@earendil-works/pi-ai/oauth": piAiOauthEntry,
         "@earendil-works/pi-ai": piAiCompatEntry,
         "@mariozechner/pi-coding-agent": piCodingAgentEntry,
@@ -72,6 +74,7 @@ function getAliases() {
         "@mariozechner/pi-tui": piTuiEntry,
         "@mariozechner/pi-ai/providers/all": piAiProvidersEntry,
         "@mariozechner/pi-ai/compat": piAiCompatEntry,
+        "@mariozechner/pi-ai/models": piAiModelsEntry,
         "@mariozechner/pi-ai/oauth": piAiOauthEntry,
         "@mariozechner/pi-ai": piAiCompatEntry,
         typebox: typeboxEntry,

@@ -11,7 +11,7 @@ import { apiResult, apis, published, ScriptedCore, type Seen } from "./scripted.
 
 const context = BACKGROUND_CONTEXT
 const models = () => { const faux = fauxProvider(); const m = createModels(); m.setProvider(faux.provider); return m as any }
-const Notes = defineDoc({ kind: "example.notes", version: 1, scope: "session", initial: () => ({ n: 0 }) })
+const Notes = defineDoc({ kind: "example.notes", checkpointWhen: () => false, version: 1, scope: "session", initial: () => ({ n: 0 }) })
 
 /**
  * A core that answers watch.open with `first` and replays `frames` (published notices) when the test sends a `registry` event

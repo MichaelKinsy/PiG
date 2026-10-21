@@ -44,7 +44,7 @@ type (
 )
 
 var specPlanModeDoc = durable.DefineDoc(durable.DocDefinition[specPlanMode]{
-	CommonDocDefinition: durable.CommonDocDefinition[specPlanMode]{Kind: "app.plan-mode", Version: 1, Initial: func() specPlanMode { return specPlanMode{Enabled: false} }},
+	CommonDocDefinition: durable.CommonDocDefinition[specPlanMode]{Kind: "app.plan-mode", Version: 1, Initial: func() specPlanMode { return specPlanMode{Enabled: false} }, CheckpointWhen: func(specPlanMode, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 })
 
@@ -287,7 +287,7 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 			// Absent: the conversation runs locally. Only conversations with this document run in a container.
 			// Subagents do not copy it: their creator writes it too when they should run in the container.
 			containerDoc := durable.DefineDoc(durable.DocDefinition[specContainer]{
-				CommonDocDefinition: durable.CommonDocDefinition[specContainer]{Kind: "app.container", Version: 1, Initial: func() specContainer { return specContainer{Image: "node:22"} }},
+				CommonDocDefinition: durable.CommonDocDefinition[specContainer]{Kind: "app.container", Version: 1, Initial: func() specContainer { return specContainer{Image: "node:22"} }, CheckpointWhen: func(specContainer, []durable.Op, durable.CheckpointInfo) bool { return false }},
 				DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
 			})
 			_, err := harness.OpenHarness(ctx, names.storage, harness.HarnessOptions{

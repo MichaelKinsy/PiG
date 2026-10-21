@@ -1,10 +1,7 @@
 {
-  "openRouterReferer": "https://github.com/MichaelKinsy/PiG",
-  "openRouterTitle": "PiG",
-  "openRouterCategories": "cli-agent",
-  "nvidiaBillingOrigin": "PiG",
-  "cloudflareUserAgent": "pig-coding-agent",
-  "openCodeClient": "pig",
+  "attributionName": "PiG",
+  "attributionUrl": "https://github.com/MichaelKinsy/PiG",
+  "attributionCategory": "cli-agent",
   "codexOriginator": "pig",
   "chatgptAgentName": "PiG",
   "xaiReferrer": "pig",

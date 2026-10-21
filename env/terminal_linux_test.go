@@ -56,15 +56,27 @@ func TestTerminalEnvironmentIsOrderedByName(t *testing.T) {
 	})
 }
 
-// pty.rs resets every signal to its default before exec, so a daemon started with SIGINT and SIGHUP ignored (from a
+// signalMask is the mask a /proc/<pid>/status line such as "SigIgn:\t0000000080000000" holds.
+func signalMask(line, field string) (uint64, error) {
+	return strconv.ParseUint(strings.TrimSpace(strings.TrimPrefix(line, field+":")), 16, 64)
+}
+
+// resetSignals is the signals 1 through 31, the ones pty.rs's pre_exec hook sets to their default (`for signal in 1..32`).
+// A signal above them keeps the disposition the program's ancestry gave it, in Pi's daemon as in PiG's: glibc's posix_spawn,
+// which GNU make 4.4 runs its recipes with, leaves SIGCANCEL (32) and SIGSETXID (33), signals glibc keeps for itself and
+// sigaction refuses to change, ignored in every process below a recipe, so a test run by `make test` sees 0x80000000.
+const resetSignals = 1<<31 - 1
+
+// pty.rs resets every signal its hook covers to its default before exec, so a daemon started with SIGINT and SIGHUP ignored (from a
 // background job or nohup) still gives the terminal's program Ctrl-C and hangup.
 func TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem(t *testing.T) {
 	eachDaemon(t, func(t *testing.T) {
 		connection := NewConnection(ConnectionOptions{Command: []string{"sh", "-c", `trap '' INT HUP; exec "$0" "$@"`, terminalDaemon}})
 		t.Cleanup(connection.Close)
 		got := terminalOutput(t, connection, TerminalOptions{Argv: []string{"grep", "^SigIgn:", "/proc/self/status"}})
-		if want := "SigIgn:\t0000000000000000\n"; got != want {
-			t.Fatalf("ignored signals of the terminal's program = %q, want %q", got, want)
+		mask, err := signalMask(got, "SigIgn")
+		if err != nil || mask&resetSignals != 0 {
+			t.Fatalf("ignored signals of the terminal's program = %q, want none of the signals 1 to 31", got)
 		}
 	})
 }
@@ -86,7 +98,7 @@ os.execv(sys.argv[1], sys.argv[1:])`
 		// The precondition: the daemon's own main thread carries the block (a terminal's program's parent is the daemon).
 		const blocked = 1<<(syscall.SIGUSR1-1) | 1<<(syscall.SIGUSR2-1) | 1<<(syscall.SIGWINCH-1)
 		parent := terminalOutput(t, connection, TerminalOptions{Argv: []string{"sh", "-c", "grep ^SigBlk: /proc/$PPID/status"}})
-		mask, err := strconv.ParseUint(strings.TrimSpace(strings.TrimPrefix(parent, "SigBlk:")), 16, 64)
+		mask, err := signalMask(parent, "SigBlk")
 		if err != nil || mask&blocked != blocked {
 			t.Fatalf("the daemon's blocked signals = %q, want SIGUSR1, SIGUSR2 and SIGWINCH among them", parent)
 		}

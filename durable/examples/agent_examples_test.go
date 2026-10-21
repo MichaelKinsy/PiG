@@ -140,7 +140,7 @@ type plan struct {
 func TestExample27PlanMode(t *testing.T) {
 	// The current plan of a conversation. A fork keeps the plan it had at the fork entry.
 	planDoc := durable.DefineDoc(durable.DocDefinition[plan]{
-		CommonDocDefinition: durable.CommonDocDefinition[plan]{Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }},
+		CommonDocDefinition: durable.CommonDocDefinition[plan]{Kind: "app.plan", Version: 1, Initial: func() plan { return plan{Steps: []string{}} }, CheckpointWhen: func(plan, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 	})
 	submitPlan := new(durable.ToolRegistration{

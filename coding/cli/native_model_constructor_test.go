@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -89,27 +90,30 @@ func TestModelConstructorsPreserveNativeResponsesCompat(t *testing.T) {
 					if result := stream.Result(); result.StopReason == ai.StopReasonError {
 						t.Fatal(result.ErrorMessage)
 					}
-					tools, ok := body["tools"].([]any)
-					if !ok || len(tools) != 1 || tools[0].(map[string]any)["name"] != "initial" {
-						t.Fatalf("request tools = %#v; native compat lost", body["tools"])
-					}
-					expected := "additional_tools"
+					// Pi fdce48eb (#11142): with supportsAdditionalTools every tool, the initial one too, is declared in an
+					// additional_tools item and the request has no top-level tools; synthetic tool search keeps the initial
+					// tool at the top level and loads the later one.
+					expected, want := "additional_tools", []string{"initial", "later"}
 					if capability == "supportsToolSearch" {
-						expected = "tool_search_output"
+						expected, want = "tool_search_output", []string{"later"}
+						tools, ok := body["tools"].([]any)
+						if !ok || len(tools) != 1 || tools[0].(map[string]any)["name"] != "initial" {
+							t.Fatalf("request tools = %#v; native compat lost", body["tools"])
+						}
+					} else if body["tools"] != nil {
+						t.Fatalf("request tools = %#v; every tool belongs in additional_tools", body["tools"])
 					}
-					var count int
+					var declared []string
 					for _, raw := range body["input"].([]any) {
 						item := raw.(map[string]any)
 						if item["type"] == expected {
-							count++
-							added := item["tools"].([]any)
-							if len(added) != 1 || added[0].(map[string]any)["name"] != "later" {
-								t.Fatalf("native tools = %#v", added)
+							for _, added := range item["tools"].([]any) {
+								declared = append(declared, added.(map[string]any)["name"].(string))
 							}
 						}
 					}
-					if count != 1 {
-						t.Fatalf("native %s count=%d; input=%#v", expected, count, body["input"])
+					if !slices.Equal(declared, want) {
+						t.Fatalf("native %s tools = %v, want %v; input=%#v", expected, declared, want, body["input"])
 					}
 				})
 			}

@@ -339,7 +339,7 @@ test("a caller's transaction interrupted while a turn is live: the reopened core
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
-const Live = defineDoc<{ items: number[] }>({ kind: "recycle.live", version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ items: [] }) })
+const Live = defineDoc<{ items: number[] }>({ kind: "recycle.live", checkpointWhen: () => false, version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ items: [] }) })
 const noModels = { getModel: () => undefined, streamSimple: () => { throw new Error("a Session has no models") } }
 
 test("a watch survives a trap at any event of a commit: it ends on the committed value and goes on receiving frames", { skip }, async () => {

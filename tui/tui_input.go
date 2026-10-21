@@ -180,6 +180,11 @@ func writeColorSchemeNotifications(out io.Writer, enabled bool) {
 		sequence = "\x1b[?2031h"
 	}
 	_, _ = io.WriteString(out, sequence)
+	if writer, ok := out.(terminalWriter); ok {
+		if process, ok := writer.terminal.(*ProcessTerminal); ok {
+			process.colorSchemeReports.Store(enabled)
+		}
+	}
 }
 
 // ConsumeTerminalColorSchemeReport notifies the listeners of a light/dark report and reports whether data was one.

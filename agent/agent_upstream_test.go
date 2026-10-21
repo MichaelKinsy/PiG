@@ -692,6 +692,31 @@ func TestAgent_ForwardsSessionIDToStreamOptions(t *testing.T) {
 	}
 }
 
+// Ports packages/agent/test/agent.test.ts "attributes requests to pi by default and merges a configured identity over it".
+// pig divergence (D26): the default attribution is PiG's (ai.PiAttribution).
+func TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt(t *testing.T) {
+	provider := &scriptedProvider{respond: replyText("ok")}
+	a := mustNewAgent(AgentOptions{Model: scriptedModel(provider)})
+
+	mustSend(t, a, "hello")
+	acme := &ai.ClientAttribution{Name: "acme", URL: "https://acme.example"}
+	a.SetIdentity(&ai.ClientIdentity{UserAgent: new(ai.UserAgentShort), Attribution: acme})
+	mustSend(t, a, "hello again")
+	a.SetIdentity(&ai.ClientIdentity{UserAgent: new(ai.UserAgentShort)})
+	mustSend(t, a, "and again")
+
+	want := []*ai.ClientIdentity{
+		{Attribution: &ai.PiAttribution},
+		{Attribution: acme, UserAgent: new(ai.UserAgentShort)},
+		{Attribution: &ai.PiAttribution, UserAgent: new(ai.UserAgentShort)},
+	}
+	for i, identity := range want {
+		if got := provider.request(i + 1).opts.Identity; !reflect.DeepEqual(got, identity) {
+			t.Errorf("request %d identity = %#v, want %#v", i+1, got, identity)
+		}
+	}
+}
+
 // .upstream/v0.99.1/packages/agent/test/agent.test.ts:1169
 // upstream: "forwards provider stream event observers through AgentOptions"
 func TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions(t *testing.T) {

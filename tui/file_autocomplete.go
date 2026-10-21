@@ -710,11 +710,11 @@ func toDisplayPath(path string) string {
 }
 
 // buildFdPathQuery converts a query with / separators into an fd-compatible
-// regex pattern. Mirrors upstream buildFdPathQuery (autocomplete.ts:17-43).
+// regex pattern. Mirrors upstream buildFdPathQuery (autocomplete.ts:21-47).
 func buildFdPathQuery(query string) string {
 	normalized := toDisplayPath(query)
 	if !strings.Contains(normalized, "/") {
-		return normalized
+		return escapeRegex(normalized)
 	}
 	hasTrailingSep := strings.HasSuffix(normalized, "/")
 	trimmed := strings.Trim(normalized, "/")
@@ -728,9 +728,6 @@ func buildFdPathQuery(query string) string {
 		if s != "" {
 			filtered = append(filtered, escapeRegex(s))
 		}
-	}
-	if len(filtered) == 0 {
-		return normalized
 	}
 	pattern := strings.Join(filtered, sepPattern)
 	if hasTrailingSep {

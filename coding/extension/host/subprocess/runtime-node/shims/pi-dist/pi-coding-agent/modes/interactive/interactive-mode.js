@@ -321,9 +321,9 @@ export class InteractiveMode {
     bugReportHintShown = false;
     installChangeWarningShown = false;
     // Extension UI state
-    extensionSelector = undefined;
-    extensionInput = undefined;
-    extensionEditor = undefined;
+    // Extension dialogs shown in the editor slot (select, confirm, input, editor, inline custom).
+    // The last entry is visible; see pushExtensionDialog().
+    extensionDialogs = [];
     extensionTerminalInputSubscriptions = new Set();
     // Extension widgets (components rendered above/below the editor)
     extensionWidgetsAbove = new Map();
@@ -1896,14 +1896,12 @@ export class InteractiveMode {
         this.renderWidgets();
     }
     resetExtensionUI() {
-        if (this.extensionSelector) {
-            this.hideExtensionSelector();
-        }
-        if (this.extensionInput) {
-            this.hideExtensionInput();
-        }
-        if (this.extensionEditor) {
-            this.hideExtensionEditor();
+        if (this.extensionDialogs.length > 0) {
+            for (const dialog of this.extensionDialogs) {
+                dialog.component.dispose?.();
+            }
+            this.extensionDialogs = [];
+            this.showTopExtensionDialog();
         }
         this.ui.hideOverlay();
         this.clearExtensionTerminalInputListeners();
@@ -2104,6 +2102,35 @@ export class InteractiveMode {
         };
     }
     /**
+     * Show an extension dialog in the editor slot.
+     * Dialogs form a stack: a new dialog hides the visible one, and closing the visible dialog shows
+     * the previous one again. Every dialog stays answerable, so no dialog promise is left pending,
+     * and dialogs opened from inside another dialog (for example a confirm from a custom component) work.
+     */
+    pushExtensionDialog(component, blocked) {
+        this.disposeActiveSelector();
+        this.extensionDialogs.push({ component, blocked });
+        this.showTopExtensionDialog();
+    }
+    /** Remove an extension dialog. If it was visible, show the previous dialog or the editor. */
+    removeExtensionDialog(component) {
+        const index = this.extensionDialogs.findIndex((dialog) => dialog.component === component);
+        if (index === -1)
+            return;
+        this.extensionDialogs.splice(index, 1);
+        if (index === this.extensionDialogs.length)
+            this.showTopExtensionDialog();
+    }
+    showTopExtensionDialog() {
+        const top = this.extensionDialogs.at(-1);
+        const component = top?.component ?? this.editor;
+        this.editorContainer.clear();
+        this.editorContainer.addChild(component);
+        this.ui.setFocus(component);
+        this.programStatus.setBlocked("extension-dialog", top?.blocked);
+        this.ui.requestRender();
+    }
+    /**
      * Show a selector for extensions.
      */
     showExtensionSelector(title, options, opts, blocked = { kind: "question", message: title }) {
@@ -2112,40 +2139,17 @@ export class InteractiveMode {
                 resolve(undefined);
                 return;
             }
-            const onAbort = () => {
-                this.hideExtensionSelector();
-                resolve(undefined);
-            };
-            opts?.signal?.addEventListener("abort", onAbort, { once: true });
-            this.extensionSelector = new ExtensionSelectorComponent(title, options, (option) => {
+            const finish = (option) => {
                 opts?.signal?.removeEventListener("abort", onAbort);
-                this.hideExtensionSelector();
+                selector.dispose();
+                this.removeExtensionDialog(selector);
                 resolve(option);
-            }, () => {
-                opts?.signal?.removeEventListener("abort", onAbort);
-                this.hideExtensionSelector();
-                resolve(undefined);
-            }, { tui: this.ui, timeout: opts?.timeout, onToggleToolsExpanded: () => this.toggleToolOutputExpansion() });
-            this.disposeActiveSelector();
-            this.editorContainer.clear();
-            this.editorContainer.addChild(this.extensionSelector);
-            this.ui.setFocus(this.extensionSelector);
-            // Extension dialogs share the editor slot: opening one replaces the status of a displaced one.
-            this.programStatus.setBlocked("extension-dialog", blocked);
-            this.ui.requestRender();
+            };
+            const onAbort = () => finish(undefined);
+            opts?.signal?.addEventListener("abort", onAbort, { once: true });
+            const selector = new ExtensionSelectorComponent(title, options, (option) => finish(option), () => finish(undefined), { tui: this.ui, timeout: opts?.timeout, onToggleToolsExpanded: () => this.toggleToolOutputExpansion() });
+            this.pushExtensionDialog(selector, blocked);
         });
-    }
-    /**
-     * Hide the extension selector.
-     */
-    hideExtensionSelector() {
-        this.extensionSelector?.dispose();
-        this.editorContainer.clear();
-        this.editorContainer.addChild(this.editor);
-        this.extensionSelector = undefined;
-        this.programStatus.setBlocked("extension-dialog", undefined);
-        this.ui.setFocus(this.editor);
-        this.ui.requestRender();
     }
     /**
      * Show a confirmation dialog for extensions.
@@ -2170,70 +2174,30 @@ export class InteractiveMode {
                 resolve(undefined);
                 return;
             }
-            const onAbort = () => {
-                this.hideExtensionInput();
-                resolve(undefined);
-            };
-            opts?.signal?.addEventListener("abort", onAbort, { once: true });
-            this.extensionInput = new ExtensionInputComponent(title, placeholder, (value) => {
+            const finish = (value) => {
                 opts?.signal?.removeEventListener("abort", onAbort);
-                this.hideExtensionInput();
+                input.dispose();
+                this.removeExtensionDialog(input);
                 resolve(value);
-            }, () => {
-                opts?.signal?.removeEventListener("abort", onAbort);
-                this.hideExtensionInput();
-                resolve(undefined);
-            }, { tui: this.ui, timeout: opts?.timeout });
-            this.disposeActiveSelector();
-            this.editorContainer.clear();
-            this.editorContainer.addChild(this.extensionInput);
-            this.ui.setFocus(this.extensionInput);
-            this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
-            this.ui.requestRender();
+            };
+            const onAbort = () => finish(undefined);
+            opts?.signal?.addEventListener("abort", onAbort, { once: true });
+            const input = new ExtensionInputComponent(title, placeholder, (value) => finish(value), () => finish(undefined), { tui: this.ui, timeout: opts?.timeout });
+            this.pushExtensionDialog(input, { kind: "question", message: title });
         });
-    }
-    /**
-     * Hide the extension input.
-     */
-    hideExtensionInput() {
-        this.extensionInput?.dispose();
-        this.editorContainer.clear();
-        this.editorContainer.addChild(this.editor);
-        this.extensionInput = undefined;
-        this.programStatus.setBlocked("extension-dialog", undefined);
-        this.ui.setFocus(this.editor);
-        this.ui.requestRender();
     }
     /**
      * Show a multi-line editor for extensions (with Ctrl+G support).
      */
     showExtensionEditor(title, prefill) {
         return new Promise((resolve) => {
-            this.extensionEditor = new ExtensionEditorComponent(this.ui, this.keybindings, title, prefill, (value) => {
-                this.hideExtensionEditor();
+            const finish = (value) => {
+                this.removeExtensionDialog(editor);
                 resolve(value);
-            }, () => {
-                this.hideExtensionEditor();
-                resolve(undefined);
-            }, undefined, this.settingsManager.getExternalEditorCommand());
-            this.disposeActiveSelector();
-            this.editorContainer.clear();
-            this.editorContainer.addChild(this.extensionEditor);
-            this.ui.setFocus(this.extensionEditor);
-            this.programStatus.setBlocked("extension-dialog", { kind: "question", message: title });
-            this.ui.requestRender();
+            };
+            const editor = new ExtensionEditorComponent(this.ui, this.keybindings, title, prefill, (value) => finish(value), () => finish(undefined), undefined, this.settingsManager.getExternalEditorCommand());
+            this.pushExtensionDialog(editor, { kind: "question", message: title });
         });
-    }
-    /**
-     * Hide the extension editor.
-     */
-    hideExtensionEditor() {
-        this.editorContainer.clear();
-        this.editorContainer.addChild(this.editor);
-        this.extensionEditor = undefined;
-        this.programStatus.setBlocked("extension-dialog", undefined);
-        this.ui.setFocus(this.editor);
-        this.ui.requestRender();
     }
     /**
      * Set a custom editor component from an extension.
@@ -2324,17 +2288,16 @@ export class InteractiveMode {
     async showExtensionCustom(factory, options) {
         const savedText = this.editor.getText();
         const isOverlay = options?.overlay ?? false;
-        const restoreEditor = () => {
-            this.editorContainer.clear();
-            this.editorContainer.addChild(this.editor);
-            this.editor.setText(savedText);
-            this.ui.setFocus(this.editor);
-            this.ui.requestRender();
-        };
         return new Promise((resolve, reject) => {
             let component;
             let overlayHandle;
             let closed = false;
+            const restoreEditor = () => {
+                if (component)
+                    this.removeExtensionDialog(component);
+                this.editor.setText(savedText);
+                this.ui.requestRender();
+            };
             const close = (result) => {
                 if (closed)
                     return;
@@ -2368,19 +2331,15 @@ export class InteractiveMode {
                             return opts;
                         }
                         // Fallback: use component's width property if available
-                        const w = component.width;
+                        const w = c.width;
                         return w ? { width: w } : undefined;
                     };
-                    overlayHandle = this.ui.showOverlay(component, resolveOptions());
+                    overlayHandle = this.ui.showOverlay(c, resolveOptions());
                     // Expose handle to caller for visibility control
                     options?.onHandle?.(overlayHandle);
                 }
                 else {
-                    this.disposeActiveSelector();
-                    this.editorContainer.clear();
-                    this.editorContainer.addChild(component);
-                    this.ui.setFocus(component);
-                    this.ui.requestRender();
+                    this.pushExtensionDialog(c);
                 }
             })
                 .catch((err) => {

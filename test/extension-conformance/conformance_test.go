@@ -2064,6 +2064,63 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					return nil
 				},
 			},
+			"dialog-stack-probe": {
+				Name:        "dialog-stack-probe",
+				Description: "Open concurrent dialogs from one command",
+				Handler: func(ctx context.Context, scenario string) error {
+					dialogs := commandUI(ctx, ui)
+					// A dismissed dialog answers "cancelled" (a confirm "false"), as the SDK fixtures report it.
+					text := func(value string, err error) (string, error) {
+						if errors.Is(err, context.Canceled) {
+							return "cancelled", nil
+						}
+						return value, err
+					}
+					confirm := func(title string) (string, error) {
+						confirmed, err := dialogs.Confirm(ctx, title, "message", extension.ExtensionUIDialogOptions{})
+						if errors.Is(err, context.Canceled) {
+							return "false", nil
+						}
+						return strconv.FormatBool(confirmed), err
+					}
+					open := map[string]func() (string, error){
+						"A": func() (string, error) {
+							return text(dialogs.Select(ctx, "A", []string{"a1", "a2"}, extension.ExtensionUIDialogOptions{}))
+						},
+						"B": func() (string, error) { return confirm("B") },
+						"S": func() (string, error) {
+							return text(dialogs.Select(ctx, "S", []string{"s1", "s2"}, extension.ExtensionUIDialogOptions{}))
+						},
+						"C": func() (string, error) { return confirm("C") },
+						"I": func() (string, error) {
+							return text(dialogs.Input(ctx, "I", "placeholder", extension.ExtensionUIDialogOptions{}))
+						},
+						"E": func() (string, error) { return text(dialogs.Editor(ctx, "E", "prefill")) },
+					}
+					names := []string{"A", "B"}
+					if scenario == "mix" {
+						names = []string{"S", "C", "I", "E"}
+					}
+					errs := make([]error, len(names))
+					var wg sync.WaitGroup
+					for index, name := range names {
+						wg.Go(func() {
+							value, err := open[name]()
+							if err != nil {
+								errs[index] = err
+								return
+							}
+							ui.Notify("stack settled "+name+"="+value, "info")
+						})
+					}
+					wg.Wait()
+					if err := errors.Join(errs...); err != nil {
+						return err
+					}
+					ui.Notify("stack done", "info")
+					return nil
+				},
+			},
 			"focused-probe": {
 				Name:        "focused-probe",
 				Description: "Exercise focused subprocess UI",
@@ -2394,6 +2451,9 @@ type recordingUI struct {
 	editor        extension.RemoteEditor
 	toolsExpanded bool
 
+	// dialogs, when a test sets it, holds every select, confirm, input and editor the host receives until the test answers or dismisses it.
+	dialogs *dialogGate
+
 	// terminalInput captures the raw-input handler an extension registers, so
 	// the conformance gate can feed keystrokes through each transport.
 	terminalInputMu sync.Mutex
@@ -2420,15 +2480,25 @@ func newRecordingUI(notify, status *[]string) *recordingUI {
 	return &recordingUI{notify: notify, status: status}
 }
 
-func (u *recordingUI) Select(context.Context, string, []string, extension.ExtensionUIDialogOptions) (string, error) {
+func (u *recordingUI) Select(ctx context.Context, title string, _ []string, _ extension.ExtensionUIDialogOptions) (string, error) {
+	if u.dialogs != nil {
+		return u.dialogs.hold(ctx, "select", title)
+	}
 	return "second", nil
 }
 
-func (u *recordingUI) Confirm(context.Context, string, string, extension.ExtensionUIDialogOptions) (bool, error) {
+func (u *recordingUI) Confirm(ctx context.Context, title, _ string, _ extension.ExtensionUIDialogOptions) (bool, error) {
+	if u.dialogs != nil {
+		answer, err := u.dialogs.hold(ctx, "confirm", title)
+		return answer == "true", err
+	}
 	return true, nil
 }
 
-func (u *recordingUI) Input(context.Context, string, string, extension.ExtensionUIDialogOptions) (string, error) {
+func (u *recordingUI) Input(ctx context.Context, title, _ string, _ extension.ExtensionUIDialogOptions) (string, error) {
+	if u.dialogs != nil {
+		return u.dialogs.hold(ctx, "input", title)
+	}
 	return "typed", nil
 }
 
@@ -2662,7 +2732,10 @@ func (u *recordingUI) GetEditorText() string {
 	defer u.recordMu.Unlock()
 	return u.editorText
 }
-func (u *recordingUI) Editor(context.Context, string, string) (string, error) {
+func (u *recordingUI) Editor(ctx context.Context, title, _ string) (string, error) {
+	if u.dialogs != nil {
+		return u.dialogs.hold(ctx, "editor", title)
+	}
 	return "edited", nil
 }
 func (u *recordingUI) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error {

@@ -80,6 +80,12 @@ type Terminal interface {
 	// latest status is sent again when support is confirmed or the terminal restarts.
 	// upstream: terminal.ts Terminal.setProgramStatus
 	SetProgramStatus(status ProgramStatus)
+
+	// RestoreOnExit synchronously writes before, then this terminal's own mode resets, then after, when the process
+	// exits without Stop having run. [RestoreTerminalOnExit] calls it for the started process terminal; a terminal that
+	// owns no process modes writes nothing.
+	// upstream: terminal.ts Terminal.restoreOnExit (Pi 9df819de)
+	RestoreOnExit(before, after string)
 }
 
 // ProcessTerminal is the concrete terminal control implementation backed by
@@ -118,6 +124,10 @@ type ProcessTerminal struct {
 	programStatusQueryPending bool
 	// programStatusElsewhere is whether a frontend session shows the status instead (SetProgramStatusElsewhere).
 	programStatusElsewhere bool
+	// colorSchemeReports is whether the terminal's light/dark reports (mode 2031) are on, which the exit restore turns off (tui.ts getExitRestorePrefix).
+	colorSchemeReports atomic.Bool
+	// exitRestored is set once the exit restore has written: every later write is dropped, so a frame still in flight cannot repaint over a crash report or hide the cursor again. Entering raw mode again clears it.
+	exitRestored atomic.Bool
 	// sizeCache is the window size kept between SIGWINCHs while the interactive resize handler holds it.
 	sizeCache terminalSizeCache
 }
@@ -365,12 +375,20 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		return nil, err
 	}
 	rememberSignalRestore(fd, state)
+	t.exitRestored.Store(false)
 	// On Windows, enable VT output processing so pig's ANSI renderer displays;
 	// term.MakeRaw only configures raw input. No-op on unix.
 	vtRestore := t.enableVTProcessing()
 	t.writeUnlogged("\x1b[?2004h")
 	t.queryAndEnableKittyProtocol()
+	// The process-exit restore (RestoreTerminalOnExit) owns the terminal from here until restore runs, as Pi's exit handler
+	// owns it from start() to stop(). It also hands the terminal back in cooked mode, which libuv does when Node exits.
+	registerExitRestoreTerminal(t, func() {
+		_ = term.Restore(fd, state)
+		vtRestore()
+	})
 	return func() {
+		unregisterExitRestoreTerminal(t)
 		t.stopProgramStatus()
 		// Stop the terminal generating extended-key sequences before anything
 		// else, so the drain below has a finite amount of input to consume.
@@ -712,7 +730,7 @@ func (t *ProcessTerminal) writeUnlogged(data string) {
 }
 
 func (t *ProcessTerminal) write(data string) {
-	if t.out == nil {
+	if t.out == nil || t.exitRestored.Load() {
 		return
 	}
 	_, _ = io.WriteString(t.out, data)

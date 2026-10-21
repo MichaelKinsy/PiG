@@ -136,7 +136,8 @@ def ci_commit(pin: Pin, text: str) -> str:
 
 
 # (path, transform(pin, text), command to refresh a lock when the file changed or None)
-INTEROP = ['@earendil-works/chord', '@earendil-works/pi-ai', '@earendil-works/pi-durable']
+INTEROP = ['@earendil-works/chord', '@earendil-works/pi-ai', '@earendil-works/pi-durable', '@earendil-works/pi-telemetry']
+CF_HOST = ['@earendil-works/chord', '@earendil-works/pi-ai', '@earendil-works/pi-durable']
 ORACLE_PACKAGES = ['@earendil-works/pi-agent-core', '@earendil-works/pi-ai', '@earendil-works/pi-coding-agent', '@earendil-works/pi-tui']
 RULES: list[tuple[str, object, str | None]] = [
     ("README.md", lambda p, t: readme(p, t), None),
@@ -150,6 +151,7 @@ RULES: list[tuple[str, object, str | None]] = [
     ("automation/images/ci-parity/metadata.env", lambda p, t: ci_tag(p, t), None),
     ("automation/images/ci-parity/package.json", package_deps(ORACLE_PACKAGES), "automation/images/ci-parity"),
     ("durable/interop/package.json", package_deps(INTEROP), "durable/interop"),
+    ("durable/core/host/cf/package.json", package_deps(CF_HOST), "durable/core/host/cf"),
     ("bench/k8s/image/pi-durable/package.json", package_deps(INTEROP), "bench/k8s/image/pi-durable"),
     ("coding/extension/host/subprocess/runtime-node/harness/package.json", regex_rule(r'^(  "version": ")[^"]+(")', r'\g<1>{v}\g<2>', "package_version"), None),
 ]
@@ -441,6 +443,24 @@ def cmd_link_mirror(_: argparse.Namespace) -> None:
         print(f"link-mirror: .upstream/{pin.mirror_dir}/node_modules -> {modules}")
 
 
+def cmd_link_durable_host(args: argparse.Namespace) -> None:
+    import oracle
+
+    pin, _override = pinlib.effective()
+    host = (ROOT / args.host).resolve()
+    linked = oracle.link_host(pin, host)
+    where = f"the pinned build of {pin.commit[:8]}" if linked else f"the published release {pin.package_version}"
+    print(f"link-durable-host: {args.host}/node_modules uses {where}" + (f" for {', '.join(linked)}" if linked else ""))
+
+
+def cmd_check_durable_host(args: argparse.Namespace) -> None:
+    import oracle
+
+    pin, _override = pinlib.effective()
+    oracle.check_host(pin, (ROOT / args.host).resolve())
+    print(f"check-durable-host: {args.host}/node_modules matches Pi {pin.version}")
+
+
 def cmd_check_oracle(_: argparse.Namespace) -> None:
     import oracle
 
@@ -494,6 +514,10 @@ def main() -> None:
     inst.add_argument("--force", action="store_true")
     inst.set_defaults(fn=cmd_install_oracle)
     sub_.add_parser("check-oracle").set_defaults(fn=cmd_check_oracle)
+    for name, fn in (("link-durable-host", cmd_link_durable_host), ("check-durable-host", cmd_check_durable_host)):
+        host = sub_.add_parser(name)
+        host.add_argument("host", help="the host directory (with its package.json and locked npm tree), relative to the repository")
+        host.set_defaults(fn=fn)
     sub_.add_parser("link-mirror").set_defaults(fn=cmd_link_mirror)
     ledgers = sub_.add_parser("ledgers")
     ledgers.add_argument("--from", dest="previous")

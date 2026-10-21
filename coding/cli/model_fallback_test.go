@@ -12,12 +12,12 @@ func TestBuildModelParsesMaxThinkingSuffix(t *testing.T) {
 	agentDirForModelOverride = dir
 	t.Cleanup(func() { agentDirForModelOverride = "" })
 
-	model, thinking, _, err := buildModel("github-copilot/gpt-5.4:max", testServices(t, dir))
+	model, thinking, _, err := buildModel("github-copilot/gpt-6.1-sol:max", testServices(t, dir))
 	if err != nil {
 		t.Fatalf("buildModel: %v", err)
 	}
-	if model.ID != "gpt-5.4" || thinking != "max" {
-		t.Fatalf("model/thinking = %q/%q, want gpt-5.4/max", model.ID, thinking)
+	if model.ID != "gpt-6.1-sol" || thinking != "max" {
+		t.Fatalf("model/thinking = %q/%q, want gpt-6.1-sol/max", model.ID, thinking)
 	}
 }
 
@@ -28,15 +28,15 @@ func TestResolveModel_ExactCatalog_NoWarning(t *testing.T) {
 	agentDirForModelOverride = dir
 	t.Cleanup(func() { agentDirForModelOverride = "" })
 
-	model, _, warning, err := resolveModel("github-copilot/gpt-5.4", "", codingagent.Settings{}, testServices(t, dir))
+	model, _, warning, err := resolveModel("github-copilot/gpt-6.1-sol", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}
 	if warning != "" {
 		t.Errorf("warning = %q, want empty for a catalogued model", warning)
 	}
-	if model.Capabilities.ContextWindow != 1000000 {
-		t.Errorf("context window = %d, want 1000000 (copilot gpt-5.4)", model.Capabilities.ContextWindow)
+	if model.Capabilities.ContextWindow != 1050000 {
+		t.Errorf("context window = %d, want 1050000 (copilot gpt-6.1-sol)", model.Capabilities.ContextWindow)
 	}
 }
 

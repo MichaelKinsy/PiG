@@ -1497,8 +1497,8 @@ func TestLoaders(t *testing.T) {
 	}
 }
 
-// TestReviewedTypesInTheDetector: a reviewed exception closes an undecided property (a field or a getter method) and an undecided
-// alias for their recorded Go targets and nothing else.
+// TestReviewedTypesInTheDetector: a reviewed exception closes an undecided property (a field or a getter method), an undecided
+// alias and an undecided value (a Go variable) for their recorded Go targets and nothing else.
 func TestReviewedTypesInTheDetector(t *testing.T) {
 	lib := fxLib + `
 // Pick holds a picked size.
@@ -1512,11 +1512,14 @@ func (p Pick) Size() *int { return p.Basis }
 
 // Name is the Go form of the upstream Name alias.
 type Name = string
+
+// Table is the Go form of the upstream Table value.
+var Table = map[string]string{"a": "b"}
 `
 	test := fxTest + `
 func TestPick(t *testing.T) {
 	var n Name = "a"
-	if (Pick{}).Basis != nil || (Pick{}).Size() != nil || n != "a" {
+	if (Pick{}).Basis != nil || (Pick{}).Size() != nil || n != "a" || Table["a"] != "b" {
 		t.Fatal("pick")
 	}
 }
@@ -1527,24 +1530,25 @@ func TestPick(t *testing.T) {
 				"shape": m{"name": "basis", "type": `number | "auto" | undefined`, "optional": true}},
 			{"id": "pkg:fx/.#Pick::property:size", "parentId": "pkg:fx/.#Pick", "role": "property", "name": "Pick.size", "kind": "property",
 				"shape": m{"name": "size", "type": `number | "auto"`, "readonly": true}},
-			{"id": "pkg:fx/.#Name", "name": "Name", "kind": "type-alias", "shape": m{"type": "Name", "aliasTarget": "Name"}}}
+			{"id": "pkg:fx/.#Name", "name": "Name", "kind": "type-alias", "shape": m{"type": "Name", "aliasTarget": "Name"}},
+			{"id": "pkg:fx/.#Table", "name": "Table", "kind": "variable", "shape": m{"type": "{ readonly a: number; readonly b: string; }", "aliasTarget": "Table"}}}
 	}
 	files := func(reviewed string) map[string]string {
 		f := map[string]string{"lib/lib.go": lib, "lib/lib_test.go": test,
-			".upstream/current/packages/fx/src/pick.ts": "export interface Pick { basis?: number | \"auto\" }\nexport type Name = Base | Mod<Base>;\n"}
+			".upstream/current/packages/fx/src/pick.ts": "export interface Pick { basis?: number | \"auto\" }\nexport type Name = Base | Mod<Base>;\nexport const Table = { a: 1, b: \"x\" } as const;\n"}
 		if reviewed != "" {
 			f[reviewedTypesFile] = reviewed
 		}
 		return f
 	}
-	ids := []string{"pkg:fx/.#Pick::property:basis", "pkg:fx/.#Pick::property:size", "pkg:fx/.#Name"}
+	ids := []string{"pkg:fx/.#Pick::property:basis", "pkg:fx/.#Pick::property:size", "pkg:fx/.#Name", "pkg:fx/.#Table"}
 	without := fixtureRun(t, files(""), row, nil, nil)
 	for _, id := range ids {
 		if d := without[id]; d.Reason != reasonUndecided {
 			t.Fatalf("%s without an exception: got %+v: %s", id, d, d.Detail)
 		}
 	}
-	with := fixtureRun(t, files(`{"pkg:fx/.#Pick::property:basis": {"go": "lib/lib.go#Pick.Basis", "reason": "r"}, "pkg:fx/.#Pick::property:size": {"go": "lib/lib.go#Pick.Size", "reason": "r"}, "pkg:fx/.#Name": {"go": "lib/lib.go#Name", "reason": "r"}}`), row, nil, nil)
+	with := fixtureRun(t, files(`{"pkg:fx/.#Pick::property:basis": {"go": "lib/lib.go#Pick.Basis", "reason": "r"}, "pkg:fx/.#Pick::property:size": {"go": "lib/lib.go#Pick.Size", "reason": "r"}, "pkg:fx/.#Name": {"go": "lib/lib.go#Name", "reason": "r"}, "pkg:fx/.#Table": {"go": "lib/lib.go#Table", "reason": "r"}}`), row, nil, nil)
 	for _, id := range ids {
 		if d := with[id]; d.Reason == reasonUndecided || d.Reason == reasonType {
 			t.Errorf("%s with an exception: got %+v: %s", id, d, d.Detail)

@@ -74,6 +74,12 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 		// .upstream/v0.99.1/packages/ai/test/retry.test.ts:97 (both rows)
 		{"retries temporary ChatGPT subscription errors/usage_unavailable", "subscription_sharing_usage_unavailable: Usage cannot be checked."},
 		{"retries temporary ChatGPT subscription errors/user_unavailable", "subscription_sharing_user_unavailable: User cannot be loaded."},
+		// Pi 29057ece (#11057): the Codex CLI mid-stream disconnect, relayed by a proxy.
+		{"matches Codex CLI stream disconnects relayed by proxies", "stream disconnected before completion: stream closed before response.completed"},
+		// Pi 6e491cfa: a status code stays retryable next to punctuation, whitespace and at either end.
+		{"matches standalone status codes/prefix", "429"},
+		{"matches standalone status codes/in parentheses", "OpenAI API error (503): upstream"},
+		{"matches standalone status codes/trailing", "status: 504"},
 	}
 	for _, tc := range retryable {
 		t.Run(tc.name, func(t *testing.T) {
@@ -89,6 +95,19 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/retry.test.ts:88
 	if IsRetryableAssistantError(errorFaux(`OpenAI API error (429): {"code":"subscription_sharing_usage_limit_exceeded","message":"Usage limit reached."}`)) {
 		t.Error("the ChatGPT subscription usage limit must stay non-retryable")
+	}
+	// Pi cedefc5326 retry.test.ts: the ChatGPT Business workspace usage limit is not retried.
+	if IsRetryableAssistantError(errorFaux(`OpenAI API error (429): {"code":"subscription_sharing_workplace_individual_usage_limit_exceeded","message":"Usage limit reached."}`)) {
+		t.Error("the ChatGPT Business workspace usage limit must stay non-retryable")
+	}
+	// Pi 6e491cfa retry.test.ts (#11057): status codes inside ids or longer numbers are not status codes.
+	for _, message := range []string{
+		`401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CU503xyz"}`,
+		"400 image exceeds 5 MB maximum: 5316784 bytes > 5242880 bytes",
+	} {
+		if IsRetryableAssistantError(errorFaux(message)) {
+			t.Errorf("status code inside an id or number matched: %q", message)
+		}
 	}
 	if IsRetryableAssistantError(retryFaux("not an error", "", "")) {
 		t.Error("successful message classified retryable")

@@ -22,6 +22,7 @@ func TestIsRetryableAssistantErrorMatchesPiOracle(t *testing.T) {
 	}
 	messages = append(messages,
 		"", " ", "429", "HTTP 429 quota exceeded", "429 Billing issue", "BILLING", "billing\n429", "GoUsageLimitError 503", "OVERLOADED", "Overloaded", "überloaded", "OVERLOADED\u212a", "\u212aey", "RATE\u017f", "timed\u212a out", "timeout", "TIMEOUT", "timed  out",
+		"5000", "429x", "x429", "_429_", "(503)", "req_011CU503xyz", "400 image exceeds 5 MB maximum: 5316784 bytes > 5242880 bytes", "stream disconnected before completion: stream closed before response.completed", "subscription_sharing_workplace_individual_usage_limit_exceeded 429",
 		"ſerver error", "server\u00a0error", "SERVER_ERROR", "sErVeR.eRrOr", "5xx", "500", "5000", "x500x", "50", "reset before headers", "RESET BEFORE HEADERS", "upstream\u2028connect", "upstream\u2029connect", "upstream\nconnect", "upstream\rconnect", "upstream connect",
 		"😀 429", "stream ended before message_stop", "stream ended before a terminal response event", "HTTP2 request did not get a response", "pending stream has been canceled", "you can retry your request", "TRY YOUR REQUEST AGAIN",
 		"subscription_sharing_usage_limit_exceeded 503", "subscription_sharing_usage_unavailable", "Monthly usage limit reached 429", "available balance", "AVAILABLE BALANCE 500", "out of budget", "Out Of Budget",

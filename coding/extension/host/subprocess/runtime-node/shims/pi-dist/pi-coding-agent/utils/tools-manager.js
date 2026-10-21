@@ -4,8 +4,9 @@ import { arch, platform } from "os";
 import { join } from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
-import { APP_NAME, getBinDir } from "../config.js";
+import { getBinDir, VERSION } from "../config.js";
 import { fetchWithRetry } from "./management-http.js";
+import { getPiUserAgent } from "./pi-user-agent.js";
 const TOOLS_DIR = getBinDir();
 const NETWORK_TIMEOUT_MS = 10_000;
 const DOWNLOAD_TIMEOUT_MS = 120_000;
@@ -98,7 +99,7 @@ export function getToolPath(tool) {
 // and lives on the same origin as the binary download itself.
 export async function getLatestVersion(repo) {
     const response = await fetchWithRetry(`https://github.com/${repo}/releases/latest`, {
-        headers: { "User-Agent": `${APP_NAME}-coding-agent` },
+        headers: { "User-Agent": getPiUserAgent(VERSION) },
         redirect: "manual",
     }, { timeoutMs: NETWORK_TIMEOUT_MS });
     // Only the status and headers matter here. Discard the body so the
@@ -178,7 +179,7 @@ function extractTarGzArchive(archivePath, extractDir, assetName) {
     }
 }
 function getWindowsTarCommand() {
-    const systemRoot = process.env.SystemRoot ?? process.env.WINDIR;
+    const systemRoot = process.env.SystemRoot;
     if (systemRoot) {
         const systemTar = join(systemRoot, "System32", "tar.exe");
         if (existsSync(systemTar)) {

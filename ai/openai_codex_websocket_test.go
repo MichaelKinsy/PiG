@@ -23,8 +23,8 @@ func TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta(t *testing.T) {
 	requests := make(chan map[string]any, 2)
 	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("User-Agent"); got != PiUserAgent() {
-			t.Errorf("WebSocket User-Agent = %q, want %q", got, PiUserAgent())
+		if got := r.Header.Get("User-Agent"); got != FormatUserAgent(nil) {
+			t.Errorf("WebSocket User-Agent = %q, want %q", got, FormatUserAgent(nil))
 		}
 		if got := r.Header.Get("chatgpt-account-id"); got != "acct_ws" {
 			t.Errorf("WebSocket chatgpt-account-id = %q, want acct_ws", got)

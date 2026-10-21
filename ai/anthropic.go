@@ -1174,7 +1174,7 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 		} else if !anthropicHasRequestAuth(apiKey, optionsHeaders) {
 			return nil, fmt.Errorf("No API key for provider: %s", p.cfg.ProviderID)
 		}
-		client = p.createClient(apiKey, optionsHeaders, dynamicHeaders, p.sessionAffinityHeaders(opts.SessionID, resolveAnthropicCacheRetention(opts.CacheRetention, requestEnv)), lease)
+		client = p.createClient(apiKey, opts.Identity, optionsHeaders, dynamicHeaders, p.sessionAffinityHeaders(opts.SessionID, resolveAnthropicCacheRetention(opts.CacheRetention, requestEnv)), lease)
 	}
 	// anthropic-messages.ts:647 options?.signal?.throwIfAborted() at the top of the request loop, after the client and auth checks: an
 	// aborted request ends with the signal's reason ("This operation was aborted" for a plain abort()), not retryProviderRequest's.

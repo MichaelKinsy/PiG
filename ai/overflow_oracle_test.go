@@ -48,7 +48,7 @@ func overflowProbes() []overflowProbe {
 		"Prompt too long", "Prompt exceeds max length", "model_context_window_exceeded", "prompt too long; exceeded max context length by 5 tokens", "Range of input length should be [1, 8192]",
 		"context_length_exceeded", "Context length exceeded", "Too many tokens", "token limit exceeded", "400 (no body)", "413 status code (no body)", "400 status code(no body)", "413 (no body) trailing",
 		"ThrottlingException: Too many tokens, please wait", "Throttling error: Too many tokens", "Service unavailable: prompt is too long", "rate limit: prompt is too long", "Too many requests: context_length_exceeded",
-		"unrelated failure", "", "input is too long for requested model", "exceeds maximum context length", "exceeds the model maximum context length of 5 tokens", "exceeds the maximum context length (1,000)",
+		`github-copilot API error (413): {"message":"failed to parse request","code":""}`, "custom API error (413): Payload Too Large", `413 {"error":{"message":"x"}}`, "413", "413:", "4130 failed", "custom API error (4130): x", "x API error (400): invalid value 413", "mentioned OpenAI API error (413): x", "unrelated failure", "", "input is too long for requested model", "exceeds maximum context length", "exceeds the model maximum context length of 5 tokens", "exceeds the maximum context length (1,000)",
 	}
 	swaps := []string{"K", "\u212a", "s", "\u017f", "i", "\u0130", "\u0131", "İ"}
 	spaces := []string{" ", "  ", "\t", "\n", "\u00a0", "\ufeff", "\u2028", "\u2029", "\u3000", "\u180e", "\u200b"}

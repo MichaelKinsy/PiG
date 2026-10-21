@@ -491,6 +491,8 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	case <-done:
 	case <-time.After(time.Second):
 	}
+	// The exit handler of Pi's process.exit (9df819de, #11170): a shutdown that timed out left the alternate screen and its modes on.
+	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
 	EndSessionMarker()
 	os.Exit(130)

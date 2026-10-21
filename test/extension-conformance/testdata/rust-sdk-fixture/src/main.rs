@@ -656,6 +656,39 @@ fn main() {
         ctx.set_tools_expanded(true);
         CommandResult::Ok
     });
+    // dialog-stack-probe opens its dialogs at the same time, each from its own thread, and reports each one's answer as it settles (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
+    ext.command("dialog-stack-probe", "Open concurrent dialogs from one command", |ctx, scenario| {
+        let names: &[&str] = if scenario == "mix" { &["S", "C", "I", "E"] } else { &["A", "B"] };
+        let workers: Vec<_> = names
+            .iter()
+            .map(|name| {
+                let ctx = ctx.clone();
+                let name = name.to_string();
+                thread::spawn(move || -> std::io::Result<()> {
+                    let chosen = |(value, ok): (String, bool)| if ok { value } else { "cancelled".to_string() };
+                    let value = match name.as_str() {
+                        "A" => chosen(ctx.select("A", &["a1", "a2"])?),
+                        "B" => ctx.confirm("B", "message")?.to_string(),
+                        "S" => chosen(ctx.select("S", &["s1", "s2"])?),
+                        "C" => ctx.confirm("C", "message")?.to_string(),
+                        "I" => chosen(ctx.input("I", "placeholder")?),
+                        _ => chosen(ctx.editor("E", "prefill")?),
+                    };
+                    ctx.notify(&format!("stack settled {name}={value}"), "info");
+                    Ok(())
+                })
+            })
+            .collect();
+        for worker in workers {
+            match worker.join() {
+                Ok(Ok(())) => {}
+                Ok(Err(err)) => return CommandResult::Error(err.to_string()),
+                Err(_) => return CommandResult::Error("a dialog thread panicked".to_string()),
+            }
+        }
+        ctx.notify("stack done", "info");
+        CommandResult::Ok
+    });
     let installed = installed_factory;
     ext.command("editor-clear", "Restore the host's editor", move |ctx, _args| {
         *installed.lock().unwrap() = None;

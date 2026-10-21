@@ -30,6 +30,7 @@ PiG detects image, true-color, and hyperlink capabilities from environment varia
 | VS Code | no | yes | yes |
 | Alacritty | no | yes | yes |
 | Zed | no | yes | yes |
+| Rex | yes | yes | yes |
 | Windows Terminal | no | yes | yes |
 | JetBrains | no | yes | no |
 | Apple Terminal | no | with `COLORTERM` | no |

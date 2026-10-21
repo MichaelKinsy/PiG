@@ -108,7 +108,7 @@ func generateOpenRouterImages(ctx context.Context, model ImageModel, imagesCtx I
 		out.ErrorMessage = err.Error()
 		return out
 	}
-	req.Header = openRouterImagesHeaders(apiKey, model.Headers, options.Headers)
+	req.Header = openRouterImagesHeaders(apiKey, ClientIdentityTarget{Provider: model.Provider, BaseURL: model.BaseURL}, options.Identity, model.Headers, options.Headers)
 
 	resp, err := providerHTTPClient(streamingHTTPClient(), options.Fetch).Do(req)
 	if err != nil {
@@ -173,20 +173,13 @@ func imagesStopReasonForContext(ctx context.Context) ImagesStopReason {
 	return ImagesStopReasonError
 }
 
-func openRouterImagesHeaders(apiKey string, modelHeaders map[string]string, optionsHeaders ProviderHeaders) http.Header {
+func openRouterImagesHeaders(apiKey string, target ClientIdentityTarget, identity *ClientIdentity, modelHeaders map[string]string, optionsHeaders ProviderHeaders) http.Header {
 	headers := make(http.Header)
 	headers.Set("Authorization", "Bearer "+apiKey)
 	headers.Set("Content-Type", "application/json")
-	for key, value := range modelHeaders {
-		if override, exists := optionsHeaders[key]; exists && override == nil {
-			continue
-		}
+	// providerHeadersToRecord(getIdentityHeaders(model, identity), model.headers, optionsHeaders): a null request header removes an identity or model header.
+	for key, value := range providerHeadersToRecord(identityProviderHeaders(target, identity), ProviderHeadersFromStrings(modelHeaders), optionsHeaders) {
 		headers.Set(key, value)
-	}
-	for key, value := range optionsHeaders {
-		if value != nil {
-			headers.Set(key, *value)
-		}
 	}
 	return headers
 }

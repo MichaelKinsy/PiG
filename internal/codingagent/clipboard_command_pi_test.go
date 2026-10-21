@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"regexp"
+	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -84,4 +88,29 @@ func TestRunClipboardCommandMatchesPi(t *testing.T) {
 			t.Fatal("1024 bytes accepted under a 16-byte limit")
 		}
 	})
+}
+
+// Ports packages/coding-agent/test/clipboard-command.test.ts "runs commands outside pi's process group" (#11179): a clipboard daemon in pi's
+// process group is stopped by the Ctrl+Z SIGTSTP, so the helper path must start every command in its own session as Node's detached: true does.
+func TestRunClipboardCommandRunsOutsideOwnProcessGroup(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Pi skips this case on win32: detached is POSIX-only")
+	}
+	controlClipboardCommandDeadline(t, 3*time.Second)
+	childOut, ok := runClipboardCommand("sh", []string{"-c", "ps -o pgid= -p $$"}, clipboardCommandOptions{})
+	if !ok {
+		t.Fatal("sh -c 'ps -o pgid= -p $$' failed")
+	}
+	ownOut, ok := runClipboardCommand("ps", []string{"-o", "pgid=", "-p", strconv.Itoa(os.Getpid())}, clipboardCommandOptions{})
+	if !ok {
+		t.Fatal("ps for the test process failed")
+	}
+	childPgid, ownPgid := strings.TrimSpace(string(childOut)), strings.TrimSpace(string(ownOut))
+	digits := regexp.MustCompile(`^\d+$`)
+	if !digits.MatchString(childPgid) || !digits.MatchString(ownPgid) {
+		t.Fatalf("pgids = %q, %q; want digits", childPgid, ownPgid)
+	}
+	if childPgid == ownPgid {
+		t.Fatalf("clipboard helper pgid %s shares pi's process group", childPgid)
+	}
 }

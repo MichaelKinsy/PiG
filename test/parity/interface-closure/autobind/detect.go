@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/test/parity/interface-closure/autobind/rules"
@@ -638,7 +639,7 @@ func (d *detector) evalValue(e *upstreamEntry, c *sym, chk *checker, out map[str
 	if s := chk.aliases[satisfiesKey+parseID(e.ID).Pkg][e.Name]; s != nil {
 		up = *s // V3: `as const satisfies X` narrows the literal at compile time only; the declared contract is X
 	}
-	v := valueVerdict(chk, up, c.Obj)
+	v := d.reviewedVerdict(e.ID, c.Target(), valueVerdict(chk, up, c.Obj)) // a reviewed exception closes a value no rule decided, as for a function value, a call, an alias or a member
 	r := refute(v, reasonType, c.Target())
 	if r == nil {
 		r = d.exercise(c, []string{c.Key}, selfExclude(c.Name))
@@ -1503,7 +1504,12 @@ func decodeTSString(body string) string {
 				b.WriteRune(rs[i])
 				continue
 			}
-			b.WriteRune(rune(code))
+			// A code point above U+10FFFF is not a rune; strings.Builder.WriteRune writes U+FFFD for it, so write that.
+			decoded := unicode.ReplacementChar
+			if code <= unicode.MaxRune {
+				decoded = rune(code)
+			}
+			b.WriteRune(decoded)
 			i = end - 1
 			if rs[start-1] == '{' {
 				i = end

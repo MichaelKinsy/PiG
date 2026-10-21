@@ -55,7 +55,7 @@ func TestExtensionDialogTimeoutCountsDownAndCancels(t *testing.T) {
 			if elapsed < tc.after-100*time.Millisecond {
 				t.Fatalf("dialog expired after %v; want the %v countdown", elapsed, tc.after)
 			}
-			if m.extensionDialog != nil {
+			if m.shownExtensionDialog() != nil {
 				t.Fatal("expired dialog is still installed")
 			}
 			plain := widthx.StripAnsi(output.String())
@@ -120,7 +120,7 @@ func runTimedExtensionDialog(t *testing.T, m *InteractiveMode, call func() (stri
 		select {
 		case task := <-m.uiTaskCh:
 			task()
-			if !installed && m.extensionDialog != nil {
+			if !installed && m.shownExtensionDialog() != nil {
 				installed = true
 				for _, key := range keys {
 					if err := m.dispatchKey(context.Background(), key); err != nil {

@@ -19,10 +19,12 @@ yaml="$agent/node_modules/yaml"
 eaw="$agent/node_modules/get-east-asian-width"
 pjson="$agent/node_modules/partial-json"
 marked="$agent/node_modules/marked"
+markedCjk="$agent/node_modules/marked-cjk-friendly"
 hljs="$agent/node_modules/highlight.js"
 jiti="$agent/node_modules/jiti"
 core="$agent/node_modules/@earendil-works/pi-agent-core"
 codemode="$agent/node_modules/@earendil-works/pi-codemode"
+telemetry="$agent/node_modules/@earendil-works/pi-telemetry"
 mcp="$agent/node_modules/@earendil-works/pi-mcp"
 ignore="$agent/node_modules/ignore"
 jsdiff="$agent/node_modules/diff"
@@ -39,8 +41,8 @@ copy() {
   done
 }
 
-rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
-mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
+rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
+mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/marked-cjk-friendly/dist" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
 
 # pi-tui: every runtime module, including locally constructed screens and scroll views. Native helpers keep the package's platform/architecture layout at one of getNativeModuleCandidates' unchanged lookup locations.
@@ -52,8 +54,14 @@ sed 's#^export { Marked } from "marked";$#export { Marked } from "../../marked/l
   "$tui/dist/index.js" >"$dist/pi-tui/index.js"
 sed 's#^import { eastAsianWidth } from "get-east-asian-width";$#import { eastAsianWidth } from "../../get-east-asian-width/index.js";#' \
   "$tui/dist/utils.js" >"$dist/pi-tui/utils.js"
-sed 's#^import { Marked, Tokenizer } from "marked";$#import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";#' \
+sed -e 's#^import { Marked, Tokenizer } from "marked";$#import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";#' \
+  -e 's#^import markedCjkFriendly from "marked-cjk-friendly";$#import markedCjkFriendly from "../../../marked-cjk-friendly/dist/index.js";#' \
   "$tui/dist/components/markdown.js" >"$dist/pi-tui/components/markdown.js"
+
+# pi-telemetry: the runtime modules pi-ai's telemetry.ts imports (the testing entry is test support).
+while IFS= read -r file; do
+  copy "$telemetry/dist" "$dist/pi-telemetry" "$file"
+done < <(cd "$telemetry/dist" && find . -name '*.js' -not -path './testing/*' | sed 's#^\./##' | sort)
 
 # pi-ai: the whole release (its compat entry is what Pi serves for the pi-ai
 # root), except the builtin API implementations, which are bridge stubs.
@@ -75,6 +83,7 @@ for api in $bridged_apis; do
 done
 printf '// PiG: image generation has no host provider (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeImages } from "../../../pi-ai-bridge.mjs";\nexport const generateImages = bridgeImages("openrouter-images");\n' >"$dist/pi-ai/api/openrouter-images.js"
 sed 's#^export { Type } from "typebox";$#export { Type } from "../../typebox.mjs";#' "$ai/dist/index.js" >"$dist/pi-ai/index.js"
+sed 's#^\(import .* from \)"@earendil-works/pi-telemetry";$#\1"../pi-telemetry/index.js";#' "$ai/dist/telemetry.js" >"$dist/pi-ai/telemetry.js"
 sed 's#^import { parse as partialParse } from "partial-json";$#import { parse as partialParse } from "../../../partial-json/dist/index.js";#' \
   "$ai/dist/utils/json-parse.js" >"$dist/pi-ai/utils/json-parse.js"
 sed -e 's#^import { Compile } from "typebox/compile";$#import { Compile } from "../../../typebox-compile.mjs";#' \
@@ -106,6 +115,7 @@ node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
     "@earendil-works/pi-agent-core": { "root": "$core", "to": "pi-dist/pi-agent-core" },
     "@earendil-works/pi-codemode": { "root": "$codemode", "to": "pi-dist/pi-codemode" },
     "@earendil-works/pi-mcp": { "root": "$mcp", "to": "pi-dist/pi-mcp" },
+    "@earendil-works/pi-telemetry": { "root": "$telemetry", "to": "pi-dist/pi-telemetry", "vendored": true },
     "@earendil-works/pi-ai": { "root": "$ai", "to": "pi-dist/pi-ai", "vendored": true }
   },
   "overrides": {
@@ -158,6 +168,8 @@ cp "$pjson/dist/index.js" "$pjson/dist/options.js" "$shims/partial-json/dist/"
 cp "$pjson/package.json" "$pjson/LICENSE" "$shims/partial-json/"
 cp "$marked/lib/marked.esm.js" "$shims/marked/lib/"
 cp "$marked/package.json" "$marked/LICENSE" "$shims/marked/"
+cp "$markedCjk/dist/index.js" "$shims/marked-cjk-friendly/dist/"
+cp "$markedCjk/package.json" "$markedCjk/LICENSE" "$shims/marked-cjk-friendly/"
 cp -R "$hljs/lib" "$shims/highlight.js/lib"
 cp "$hljs/package.json" "$hljs/LICENSE" "$shims/highlight.js/"
 cp -R "$jiti/lib" "$jiti/dist" "$shims/jiti/"
@@ -182,11 +194,13 @@ rewrote() {
 rewrote "$dist/pi-tui/index.js" "$tui/dist/index.js" marked ../../marked/lib/marked.esm.js
 rewrote "$dist/pi-tui/utils.js" "$tui/dist/utils.js" get-east-asian-width ../../get-east-asian-width/index.js
 rewrote "$dist/pi-tui/components/markdown.js" "$tui/dist/components/markdown.js" marked ../../../marked/lib/marked.esm.js
+rewrote "$dist/pi-tui/components/markdown.js" "$tui/dist/components/markdown.js" marked-cjk-friendly ../../../marked-cjk-friendly/dist/index.js
 rewrote "$dist/pi-ai/utils/json-parse.js" "$ai/dist/utils/json-parse.js" partial-json ../../../partial-json/dist/index.js
 rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" typebox/compile ../../../typebox-compile.mjs
 rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" typebox/value ../../../typebox-value.mjs
 rewrote "$dist/pi-ai/utils/typebox-helpers.js" "$ai/dist/utils/typebox-helpers.js" typebox ../../../typebox.mjs
 rewrote "$dist/pi-ai/index.js" "$ai/dist/index.js" typebox ../../typebox.mjs
+rewrote "$dist/pi-ai/telemetry.js" "$ai/dist/telemetry.js" @earendil-works/pi-telemetry ../pi-telemetry/index.js
 rewrote "$dist/pi-coding-agent/utils/frontmatter.js" "$agent/dist/utils/frontmatter.js" yaml ../../../yaml/index.js
 rewrote "$dist/pi-coding-agent/utils/syntax-highlight.js" "$agent/dist/utils/syntax-highlight.js" highlight.js/lib/core.js ../../../highlight.js/lib/core.js
 rewrote "$dist/pi-coding-agent/core/settings-manager.js" "$agent/dist/core/settings-manager.js" proper-lockfile ../../../proper-lockfile.mjs
@@ -211,4 +225,4 @@ node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
 node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
 
 version() { node -p "require('$1/package.json').version"; }
-echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked"), highlight.js $(version "$hljs"), jiti $(version "$jiti"), ignore $(version "$ignore") and diff $(version "$jsdiff") into $shims"
+echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked"), marked-cjk-friendly $(version "$markedCjk"), highlight.js $(version "$hljs"), jiti $(version "$jiti"), ignore $(version "$ignore") and diff $(version "$jsdiff") into $shims"

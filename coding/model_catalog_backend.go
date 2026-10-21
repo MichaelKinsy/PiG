@@ -11,7 +11,7 @@ import (
 // registryOwnsModelBackend distinguishes lazy registry bindings from caller-owned callbacks. Metadata alone does not transfer callback or authentication ownership.
 func registryOwnsModelBackend(provider ai.Provider) bool {
 	switch provider.(type) {
-	case nil, *catalogModelBackend, *nativeModelBackend, *nativeModelProvider, *providerAttributionProvider:
+	case nil, *catalogModelBackend, *nativeModelBackend, *nativeModelProvider, *requestOptionsProvider:
 		return true
 	default:
 		return false

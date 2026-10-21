@@ -33,6 +33,7 @@ func TestAltScreenKeptRowsFitTheWidthAcrossFrames(t *testing.T) {
 		lines := &fixedLines{}
 		ui := NewTuiAltScreenWithOutput(io.Discard, width, height, TuiAltScreenOptions{})
 		ui.Start()
+		t.Cleanup(ui.Stop)
 		ui.Add(lines)
 		rows := make([]string, height)
 		for i := range rows {
@@ -51,6 +52,7 @@ func TestAltScreenKeptRowsFitTheWidthAcrossFrames(t *testing.T) {
 			ui.Render()
 			fresh := NewTuiAltScreenWithOutput(io.Discard, width, height, TuiAltScreenOptions{})
 			fresh.Start()
+			t.Cleanup(fresh.Stop)
 			freshLines := fixedLines(slices.Clone(rows))
 			fresh.Add(&freshLines)
 			fresh.Render()

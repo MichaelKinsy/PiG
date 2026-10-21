@@ -217,16 +217,16 @@
     "mutation": "internal/codingagent/settings.go: case \"1\", \"true\", \"yes\" -> case \"1\", \"true\" (TestInstallTelemetryEnvFlag FAIL); os.LookupEnv ok -> ok && env != \"\" (empty PI_TELEMETRY no longer overrides the setting, TestInstallTelemetryEnvFlag FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
-    "upstream": "packages/coding-agent/src/core/provider-attribution.ts",
-    "package": "./coding",
+    "upstream": "packages/ai/src/utils/identity.ts",
+    "package": "./ai",
     "tests": [
-      "TestProviderAttributionHostMatchingIsExact",
-      "TestProviderAttributionWrapperRequestHeadersReplaceConfigured",
-      "TestMergeProviderAttributionHeadersMatchesPinnedProvidersAndHosts",
-      "TestMergeProviderAttributionHeadersUsesSourceOrder"
+      "TestIdentityHostMatchingFollowsTheWHATWGParser",
+      "TestGetOpenCodeSessionHeaders",
+      "TestIdentityAttributesNVIDIAWithACapitalizedNameAndOpenCodeWithTheName",
+      "TestIdentityAttributesOpenRouterRequests"
     ],
-    "upstream_reference": "packages/coding-agent/src/core/provider-attribution.ts:12-86",
-    "mutation": "coding/model.go: matchesProviderHost == expectedHost -> strings.HasSuffix(host, expectedHost) (TestProviderAttributionHostMatchingIsExact FAIL); providerID == \"opencode\" || providerID == \"opencode-go\" -> providerID == \"opencode\" (FAIL); configured/request header source order swapped in the wrapper (TestProviderAttributionWrapperRequestHeadersReplaceConfigured FAIL); matchesProviderHost nodeurl.ParseHTTPURL -> url.Parse + strings.ToLower (TestProviderAttributionHostMatchingIsExact FAIL on leading space, tab/newline, https:host, backslash path, percent-encoded host, invalid port, non-special scheme case); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "upstream_reference": "packages/ai/src/utils/identity.ts:getAttributionHeaders, getOpenCodeSessionHeaders, matchesHost",
+    "mutation": "ai/identity.go: matchesHost parsed.Hostname == expectedHost -> strings.HasSuffix(parsed.Hostname, expectedHost) (TestIdentityHostMatchingFollowsTheWHATWGParser FAIL); isOpenCode without || target.Provider == \"opencode-go\" (TestGetOpenCodeSessionHeaders FAIL); matchesHost nodeurl.ParseHTTPURL -> url.Parse + strings.ToLower (TestIdentityHostMatchingFollowsTheWHATWGParser FAIL); isNvidiaNIM without target.Provider == \"nvidia\" (TestIdentityAttributesNVIDIAWithACapitalizedNameAndOpenCodeWithTheName FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/tui/src/native-modifiers.ts",
@@ -249,7 +249,7 @@
       "TestThinkingSelectorSearchSelectAndCancel"
     ],
     "upstream_reference": "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts:21-135; packages/coding-agent/test/thinking-selector.test.ts",
-    "mutation": "internal/codingagent/thinking_selector.go: description += \" \u00b7 default\" -> \" (default)\" (TestThinkingSelectorDescribesEveryLevel FAIL); applyFilter selected-value preservation disabled (TestThinkingSelectorKeepsTheHighlightedLevelWhileFiltering FAIL); label \"\u2713 \" -> \"* \" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "mutation": "internal/codingagent/thinking_selector.go: description += \" · default\" -> \" (default)\" (TestThinkingSelectorDescribesEveryLevel FAIL); applyFilter selected-value preservation disabled (TestThinkingSelectorKeepsTheHighlightedLevelWhileFiltering FAIL); label \"✓ \" -> \"* \" (FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/coding-agent/src/modes/interactive/components/auth-url.ts",

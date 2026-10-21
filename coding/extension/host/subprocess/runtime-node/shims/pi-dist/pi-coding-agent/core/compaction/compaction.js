@@ -698,7 +698,7 @@ export async function compact(preparation, model, apiKey, headers, customInstruc
             historyText = historyResult.text;
             historyUsage = historyResult.usage;
         }
-        const turnPrefixResult = await generateTurnPrefixSummary(turnPrefixMessages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId);
+        const turnPrefixResult = await generateTurnPrefixSummary(turnPrefixMessages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId, customInstructions);
         // Merge into single summary
         summary = `${historyText}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult.text}`;
         summaryUsage = historyUsage ? combineUsage(historyUsage, turnPrefixResult.usage) : turnPrefixResult.usage;
@@ -726,10 +726,13 @@ export async function compact(preparation, model, apiKey, headers, customInstruc
 /**
  * Generate a summary for a turn prefix (when splitting a turn).
  */
-async function generateTurnPrefixSummary(messages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId) {
+async function generateTurnPrefixSummary(messages, model, apiKey, headers, env, signal, thinkingLevel, streamFn, retry, callbacks, sessionId, customInstructions) {
     const llmMessages = convertToLlm(messages);
     const conversationText = serializeConversation(llmMessages);
-    const promptText = `# Conversation\n${conversationText}\n\n# Instructions\n${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
+    let promptText = `# Conversation\n${conversationText}\n\n# Instructions\n${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
+    if (customInstructions) {
+        promptText = `${promptText}\n\nAdditional focus: ${customInstructions}`;
+    }
     const response = await completeSummarization(model, buildSummarizationContext(promptText), createSummarizationOptions(model, apiKey, headers, env, signal, thinkingLevel, sessionId), streamFn, retry, callbacks);
     const failure = getSummarizationFailure(response, "Turn prefix summarization");
     if (failure) {

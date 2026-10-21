@@ -20,12 +20,11 @@ import (
 // pi (<platform>...) user agents.
 var piIdentity = regexp.MustCompile(`(?i)(^pi$|^pi[ /(]|pi\.dev|^pi-coding-agent$)`)
 
-// D26 extends to the whole Services-owned request path: a model call through
-// ModelRuntime reaches the provider's HTTP endpoint carrying PiG's attribution
-// (provider-attribution.ts values with PiG branding), never Pi's. The recorder
+// D26 extends to the Services-owned request path: a model call through
+// ModelRuntime with the identity the Session sends (getClientIdentity) reaches the
+// provider's HTTP endpoint carrying PiG's attribution, never Pi's. The recorder
 // stands in for OpenRouter-, NVIDIA- and OpenCode-shaped endpoints selected by
-// provider id, exactly as Pi selects them (provider-attribution.ts:
-// isOpenRouterModel, isNvidiaNimModel, getSessionHeaders).
+// provider id, as Pi's getAttributionHeaders selects them.
 func TestModelRuntimeRequestsCarryPiGAttributionNeverPis(t *testing.T) {
 	type wire struct {
 		provider string
@@ -35,15 +34,15 @@ func TestModelRuntimeRequestsCarryPiGAttributionNeverPis(t *testing.T) {
 	}
 	cases := []wire{
 		{provider: "openrouter", enabled: true, want: map[string]string{
-			"HTTP-Referer": pigidentity.OpenRouterReferer, "X-OpenRouter-Title": pigidentity.OpenRouterTitle, "X-OpenRouter-Categories": pigidentity.OpenRouterCategories,
+			"HTTP-Referer": pigidentity.AttributionURL, "X-OpenRouter-Title": pigidentity.AttributionName, "X-OpenRouter-Categories": pigidentity.AttributionCategory,
 		}},
 		{provider: "openrouter", enabled: false, absent: []string{"HTTP-Referer", "X-OpenRouter-Title", "X-OpenRouter-Categories"}},
-		{provider: "nvidia", enabled: true, want: map[string]string{"X-BILLING-INVOKE-ORIGIN": pigidentity.NvidiaBillingOrigin}},
+		{provider: "nvidia", enabled: true, want: map[string]string{"X-BILLING-INVOKE-ORIGIN": pigidentity.AttributionName}},
 		{provider: "nvidia", enabled: false, absent: []string{"X-BILLING-INVOKE-ORIGIN"}},
-		// The OpenCode pair is unconditional on the telemetry gate (provider-attribution.ts getSessionHeaders).
-		{provider: "opencode", enabled: true, want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.OpenCodeClient}},
-		{provider: "opencode", enabled: false, want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.OpenCodeClient}},
-		{provider: "opencode-go", enabled: true, want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.OpenCodeClient}},
+		// The OpenCode session header is not attribution: it does not depend on the telemetry gate.
+		{provider: "opencode", enabled: true, want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.AttributionName}},
+		{provider: "opencode", enabled: false, want: map[string]string{"x-opencode-session": "session-1"}, absent: []string{"x-opencode-client"}},
+		{provider: "opencode-go", enabled: true, want: map[string]string{"x-opencode-session": "session-1", "x-opencode-client": pigidentity.AttributionName}},
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%s/telemetry=%v", tc.provider, tc.enabled), func(t *testing.T) {
@@ -74,7 +73,8 @@ func TestModelRuntimeRequestsCarryPiGAttributionNeverPis(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			stream := services.ModelRuntime().Stream(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, ai.StreamOptions{SessionID: "session-1"})
+			options := ai.StreamOptions{SessionID: "session-1", Identity: getClientIdentity(services.SettingsManager())}
+			stream := services.ModelRuntime().Stream(t.Context(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, options)
 			if result := stream.Result(); result == nil || result.StopReason != ai.StopReasonStop {
 				t.Fatalf("result = %#v", result)
 			}

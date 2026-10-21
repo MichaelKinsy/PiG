@@ -41,6 +41,40 @@ func SystemReplayError(messages []AgentMessage) error {
 	return nil
 }
 
+// ToolReplayError returns the TypeError Pi's _restoreToolsFromTranscript throws for the system messages of a whole branch, or nil. It first collects the tools the branch ever added or removed, `systemMessages.flatMap((message) => [...(message.toolsAdded ?? []), ...(message.toolsRemoved ?? [])]).map((tool) => tool.name)`, and then replays them with getCurrentTools; every member getCurrentTools cannot read fails in the first step, so only the first step's errors are reported. Unlike SystemReplayError it never reads a message's content. A spread of a value that is not iterable, in any message, throws before any element's name is read, a message's added list before its removed list; a string spreads into characters that have no name.
+func ToolReplayError(messages []AgentMessage) error {
+	var lists [][]byte
+	for _, message := range messages {
+		if message.System == nil || message.source == nil {
+			continue
+		}
+		object, err := orderedjson.Parse(message.source.text)
+		if err != nil {
+			continue
+		}
+		for _, member := range []string{"toolsAdded", "toolsRemoved"} {
+			tools, ok := object.Get(member)
+			if !ok || tools[0] == 'n' {
+				continue
+			}
+			switch tools[0] {
+			case '"':
+			case '[':
+				lists = append(lists, tools)
+			default:
+				return errors.New("(message." + member + " ?? []) is not iterable")
+			}
+		}
+	}
+	// The names are read after every message's lists were spread.
+	for _, list := range lists {
+		if err := elementError(list, "name"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CurrentSystemMessageError returns the TypeError Pi's getCurrentSystemMessage throws while it replays the agent's history, or nil (see SystemReplayError). It reads the history under the lock a run appends under, without copying it.
 func (a *Agent) CurrentSystemMessageError() error {
 	a.messagesMu.RLock()

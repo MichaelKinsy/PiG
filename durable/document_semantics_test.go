@@ -25,14 +25,15 @@ func panicMessage(define func()) (message string) {
 func defineWithSemantics(semantics DocumentSemantics) (singleton, family string) {
 	singleton = panicMessage(func() {
 		DefineDoc(DocDefinition[semanticsState]{
-			CommonDocDefinition: CommonDocDefinition[semanticsState]{Kind: "t.semantics", Version: 1, Initial: func() semanticsState { return semanticsState{} }},
+			CommonDocDefinition: CommonDocDefinition[semanticsState]{Kind: "t.semantics", Version: 1, Initial: func() semanticsState { return semanticsState{} }, CheckpointWhen: func(semanticsState, []Op, CheckpointInfo) bool { return false }},
 			DocumentSemantics:   semantics,
 		})
 	})
 	family = panicMessage(func() {
 		DefineDocFamily(DocFamilyDefinition[semanticsState, string]{
 			Family: true, Kind: "t.semantics", Version: 1, DocumentSemantics: semantics,
-			Initial: func(string) semanticsState { return semanticsState{} },
+			Initial:        func(string) semanticsState { return semanticsState{} },
+			CheckpointWhen: func(semanticsState, []Op, CheckpointInfo) bool { return false },
 		})
 	})
 	return singleton, family

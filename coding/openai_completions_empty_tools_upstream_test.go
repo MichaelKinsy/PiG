@@ -96,7 +96,7 @@ func BenchmarkModelRuntimeSimpleReplyBudget(b *testing.B) {
 		return stream, nil
 	}}
 	// Measure the stock-leaf branch through its production attribution wrapper; a bare caller-owned callback must not lower options.
-	stock := newProviderAttributionProvider(provider, "benchmark", "", func() bool { return false }, nil)
+	stock := newRequestOptionsProvider(provider, "benchmark", nil)
 	model := &ai.Model{ID: "model", Provider: stock, Capabilities: ai.ModelCapabilities{ContextWindow: 10000, MaxOutputTokens: 8000}}
 	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText(strings.Repeat("x", 8000))}}}
 	b.ReportAllocs()

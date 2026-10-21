@@ -18,6 +18,9 @@ func hideClipboardWindow(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 }
 
+// detachClipboardChild does nothing on Windows: Pi detaches only when process.platform !== "win32" (clipboard-command.ts:15).
+func detachClipboardChild(*exec.Cmd) {}
+
 // clipboardPipe returns a connected byte pipe for a clipboard command's stdin or stdout. As libuv does for a child's stdio pipe, the parent end is a named pipe server opened for overlapped I/O and the child end is a synchronous client. Closing the overlapped parent end cancels its pending read or write through the runtime poller; closing a synchronous anonymous pipe does not reliably cancel a write that a descendant keeps blocked. Only the current user can open the pipe's unguessable name.
 func clipboardPipe(parentReads bool) (parentEnd, childEnd *os.File, err error) {
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()

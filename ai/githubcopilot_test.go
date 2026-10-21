@@ -609,7 +609,7 @@ func TestNewCopilotProvider_APIRouting(t *testing.T) {
 	// anthropic-messages → anthropic provider (Copilot Claude models).
 	p, err = NewCopilotProvider(CopilotProviderConfig{
 		Auth:  auth,
-		Model: "claude-opus-4.7",
+		Model: "claude-opus-5",
 		API:   APIAnthropicMessages,
 	})
 	if err != nil {
@@ -628,7 +628,7 @@ func TestNewCopilotProvider_APIRouting(t *testing.T) {
 // Ports packages/ai/test/github-copilot-anthropic.test.ts:59,83,117.
 func TestCopilotAnthropicUpstream(t *testing.T) {
 	t.Run("applies Copilot-specific adaptive thinking effort overrides", func(t *testing.T) {
-		for _, id := range []string{"claude-opus-4.7", "claude-opus-5", "claude-opus-5.5", "claude-sonnet-4.6"} {
+		for _, id := range []string{"claude-opus-5", "claude-opus-5.5", "claude-sonnet-4.6"} {
 			m := mustGeneratedModel(t, "github-copilot", id)
 			levels := GetSupportedThinkingLevels(m.ToModel())
 			if !slices.Contains(levels, ThinkingMax) || (id != "claude-sonnet-4.6" && !slices.Contains(levels, ThinkingXHigh)) || (id == "claude-sonnet-4.6" && slices.Contains(levels, ThinkingXHigh)) {
@@ -714,7 +714,7 @@ func TestCopilotAnthropicUpstream(t *testing.T) {
 func TestCopilotSSE_AnthropicMessages(t *testing.T) {
 	// Anthropic-format SSE that the Copilot proxy returns for Claude models.
 	sseData := `event: message_start
-data: {"type":"message_start","message":{"id":"msg-1","type":"message","role":"assistant","content":[],"model":"claude-opus-4.7","stop_reason":null,"usage":{"input_tokens":100,"output_tokens":0}}}
+data: {"type":"message_start","message":{"id":"msg-1","type":"message","role":"assistant","content":[],"model":"claude-opus-5","stop_reason":null,"usage":{"input_tokens":100,"output_tokens":0}}}
 
 event: content_block_start
 data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}
@@ -758,7 +758,7 @@ data: {"type":"message_stop"}
 	// Build provider directly using the Anthropic config with Copilot callbacks,
 	// matching what NewCopilotProvider does for APIAnthropicMessages.
 	inner := NewAnthropicProvider(AnthropicConfig{
-		Model:        "claude-opus-4.7",
+		Model:        "claude-opus-5",
 		ProviderID:   "github-copilot",
 		ExtraHeaders: copilotStaticHeaders,
 		Compat:       &AnthropicMessagesCompat{ForceAdaptiveThinking: new(true)},
@@ -868,8 +868,8 @@ data: {"type":"message_stop"}
 	if err := json.Unmarshal(capturedBody, &body); err != nil {
 		t.Fatalf("unmarshal body: %v", err)
 	}
-	if m, ok := body["model"]; !ok || m != "claude-opus-4.7" {
-		t.Errorf("body model = %v, want %q", m, "claude-opus-4.7")
+	if m, ok := body["model"]; !ok || m != "claude-opus-5" {
+		t.Errorf("body model = %v, want %q", m, "claude-opus-5")
 	}
 	// Anthropic format uses "messages" array and "max_tokens"
 	if _, ok := body["messages"]; !ok {
@@ -1050,9 +1050,9 @@ func TestParseGitHubCopilotModelCatalog(t *testing.T) {
 		},
 		{
 			name:          "unconfigured known model needs a policy call",
-			body:          body(item("gpt-5.4", true, "unconfigured", true)),
-			wantAvailable: []string{"gpt-5.4"},
-			wantPolicy:    []string{"gpt-5.4"},
+			body:          body(item("gpt-6.1-sol", true, "unconfigured", true)),
+			wantAvailable: []string{"gpt-6.1-sol"},
+			wantPolicy:    []string{"gpt-6.1-sol"},
 		},
 		{
 			name:          "unconfigured unknown model is picker-visible but not policy-enabled",
@@ -1061,23 +1061,23 @@ func TestParseGitHubCopilotModelCatalog(t *testing.T) {
 		},
 		{
 			name: "disabled state drops the model from the picker",
-			body: body(item("gpt-5.4", true, "disabled", true)),
+			body: body(item("gpt-6.1-sol", true, "disabled", true)),
 		},
 		{
 			name: "tool_calls:false drops the model entirely",
-			body: body(item("gpt-5.4", true, "unconfigured", false)),
+			body: body(item("gpt-6.1-sol", true, "unconfigured", false)),
 		},
 		{
 			name:                "policy fallback surfaces an enabled model despite picker=false",
-			body:                body(item("gpt-5.4", false, "enabled", true)),
+			body:                body(item("gpt-6.1-sol", false, "enabled", true)),
 			allowPolicyFallback: true,
-			wantAvailable:       []string{"gpt-5.4"},
+			wantAvailable:       []string{"gpt-6.1-sol"},
 		},
 		{
 			name:                "policy fallback also authorizes an unconfigured model despite picker=false",
-			body:                body(item("gpt-5.4", false, "unconfigured", true)),
+			body:                body(item("gpt-6.1-sol", false, "unconfigured", true)),
 			allowPolicyFallback: true,
-			wantPolicy:          []string{"gpt-5.4"},
+			wantPolicy:          []string{"gpt-6.1-sol"},
 		},
 		{
 			name:    "missing data key is rejected",
@@ -1233,7 +1233,7 @@ func TestLoginGitHubCopilot_PolicyOnlyForUnconfigured(t *testing.T) {
 	}
 
 	t.Run("catalog model already enabled: no policy POST, no progress message", func(t *testing.T) {
-		paths, progress := run(t, "gpt-5.4", "enabled")
+		paths, progress := run(t, "gpt-6.1-sol", "enabled")
 		if len(paths) != 0 {
 			t.Errorf("policy POSTs = %v, want none", paths)
 		}
@@ -1243,8 +1243,8 @@ func TestLoginGitHubCopilot_PolicyOnlyForUnconfigured(t *testing.T) {
 	})
 
 	t.Run("catalog model unconfigured: exactly one policy POST, progress message shown", func(t *testing.T) {
-		paths, progress := run(t, "gpt-5.4", "unconfigured")
-		if want := []string{"/models/gpt-5.4/policy"}; !slices.Equal(paths, want) {
+		paths, progress := run(t, "gpt-6.1-sol", "unconfigured")
+		if want := []string{"/models/gpt-6.1-sol/policy"}; !slices.Equal(paths, want) {
 			t.Errorf("policy POSTs = %v, want %v", paths, want)
 		}
 		if !progress {
@@ -1293,7 +1293,7 @@ func TestCopilotRuntimeTokenOutranksStoredCredential(t *testing.T) {
 // upstream API leaves read model.compat. github-copilot.json gives
 // claude-haiku-4.5 supportsEagerToolInputStreaming false, so its tools omit
 // eager_input_streaming (.upstream/v0.87.1/packages/ai/src/api/anthropic-messages.ts:209),
-// and gemini-3.5-flash supportsDeveloperRole false, so its instructions use the
+// and gemini-3.8-flash supportsDeveloperRole false, so its instructions use the
 // system role (openai-completions.ts:1225).
 func TestNewCopilotProviderCatalogCompat(t *testing.T) {
 	cases := []struct {
@@ -1311,9 +1311,9 @@ func TestNewCopilotProviderCatalogCompat(t *testing.T) {
 				t.Errorf("claude-opus-5 tools must keep eager_input_streaming (compat unset): %s", body)
 			}
 		}},
-		{"gemini-3.5-flash", APIOpenAICompletions, func(t *testing.T, body string) {
+		{"gemini-3.8-flash", APIOpenAICompletions, func(t *testing.T, body string) {
 			if !strings.Contains(body, `"role":"system"`) || strings.Contains(body, `"role":"developer"`) {
-				t.Errorf("gemini-3.5-flash must send the system role: %s", body)
+				t.Errorf("gemini-3.8-flash must send the system role: %s", body)
 			}
 		}},
 	}

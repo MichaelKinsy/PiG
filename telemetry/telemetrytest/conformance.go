@@ -6,33 +6,16 @@ package telemetrytest
 // rejected Promise is the callback's returned error, compared by identity as strictEqual does. A callback that
 // awaits before rejecting returns the error it receives from another goroutine; a synchronous throw also has the
 // Go form of a panic, which the adapter records and re-raises with the same value. A Promise that the callback does
-// not await is a goroutine the callback joins. Upstream's unreadable error (a Proxy whose traps throw) is an error
-// whose Error method panics, and an unreadable payload value is one whose String, MarshalJSON and MarshalText methods
-// panic: an adapter that inspects it fails, while one that only stores it does not. The three passivity cases that
-// read a Proxy-trapped SpanOptions, SpanAttributes or SpanStatus keep their upstream names. Reading a Go SpanOptions
-// or SpanAttributes struct or map cannot fail, so the two that build one assert what survives in Go: the callback
-// runs once, no panic escapes, the span is recorded and succeeds, and each call with the unreadable payload is atomic
-// (an adapter that inspects the payload records none of it, one that only stores it records all of it). Upstream's
-// stricter "nothing was recorded" state is one of those two outcomes. "ignores failed status calls atomically" is not ported: a Go SpanStatus holds two
-// strings and has no failing read. A rejection with undefined has no Go form, because a nil error is success.
-//
-// The metrics, links and propagation cases follow the same rule. A Go options struct, link, carrier or attribute bag
-// cannot fail to read, so upstream's Proxy-trapped inputs have these forms: an unreadable options bag and an unreadable
-// carrier have none and are not ported; an unreadable link object is a link with no target or with a target whose
-// methods panic, which no adapter may record or call; and an unreadable attribute array is a value whose methods
-// panic, after which a call records all of its payload or none of it. Mutating an input after the call is mutating the
-// Go slice or pointer in place, as Go values are not shared by reference otherwise. A fixture without Propagation or
-// Metrics skips those cases, as upstream's fixtures without the optional capability do.
+// not await is a goroutine the callback joins. A rejection with undefined has no Go form, because a nil error is
+// success. The adapter contract trusts typed inputs, so there are no cases for malformed ones. A fixture without
+// Propagation or Metrics skips those cases, as upstream's fixtures without the optional capability do.
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
-	"math"
 	"reflect"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -107,19 +90,6 @@ func strictEqual[T comparable](actual, expected T, what string) error {
 	return nil
 }
 
-// unreadableValue is the Go form of upstream's unreadable payload: every way an adapter might inspect it panics.
-type unreadableValue struct{}
-
-func (unreadableValue) String() string               { panic("read") }
-func (unreadableValue) GoString() string             { panic("read") }
-func (unreadableValue) MarshalJSON() ([]byte, error) { panic("read") }
-func (unreadableValue) MarshalText() ([]byte, error) { panic("read") }
-
-// unreadableError is the Go form of upstream's unreadable thrown value: inspecting it panics.
-type unreadableError struct{ kind string }
-
-func (*unreadableError) Error() string { panic("read") }
-
 // afterAwait returns err from another goroutine, the Go form of a callback that awaits before rejecting.
 func afterAwait(err error) error {
 	result := make(chan error, 1)
@@ -132,13 +102,6 @@ func panicsWith(operation func() error) (value any) {
 	defer func() { value = recover() }()
 	_ = operation()
 	return nil
-}
-
-// unreadableContext is the Go form of upstream's unreadable link target: every method an adapter might call on it panics.
-type unreadableContext struct{}
-
-func (unreadableContext) StartSpan(telemetry.SpanOptions, func(telemetry.TelemetrySpan) error) error {
-	panic("read")
 }
 
 // doesNotThrow is node:assert's doesNotThrow: a panic out of operation is the failure.
@@ -164,10 +127,6 @@ func roundTrip(carrier telemetry.TelemetryCarrier) (telemetry.TelemetryCarrier, 
 	return decoded, json.Unmarshal(encoded, &decoded) //perf:ok conformance test support: the JSON round trip is the transport under test, not a clone
 }
 
-func measurementsNamed(measurements []telemetry.RecordedTelemetryMeasurement, name string) []telemetry.RecordedTelemetryMeasurement {
-	return slices.DeleteFunc(slices.Clone(measurements), func(measurement telemetry.RecordedTelemetryMeasurement) bool { return measurement.Name != name })
-}
-
 func stringPointerEqual(actual *string, expected string, what string) error {
 	if actual == nil {
 		return fmt.Errorf("%s: expected %q, got undefined", what, expected)
@@ -186,6 +145,49 @@ func errorStatus(name, message string) telemetry.SpanStatus {
 // CreateTelemetryAdapterConformance creates runner-independent cases for the callback telemetry adapter contract.
 func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) []TelemetryAdapterConformanceCase {
 	return []TelemetryAdapterConformanceCase{
+		createCase(factory, "capabilities", "carries adapter capabilities through contexts and spans", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
+			metrics := fixture.Metrics
+			if metrics == nil {
+				metrics = fixture.Context.Metrics()
+			}
+			propagation := fixture.Propagation
+			if propagation == nil {
+				propagation = fixture.Context.Propagation()
+			}
+			assertCapabilities := func(context telemetry.TelemetryContext) error {
+				return errors.Join(
+					strictEqual(context.Metrics(), metrics, "metrics"),
+					strictEqual(context.Propagation(), propagation, "propagation"),
+				)
+			}
+			if err := assertCapabilities(fixture.Context); err != nil {
+				return err
+			}
+			var settled telemetry.TelemetrySpan
+			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "capabilities"}, func(span telemetry.TelemetrySpan) error {
+				settled = span
+				if err := assertCapabilities(span); err != nil {
+					return err
+				}
+				if err := span.StartSpan(telemetry.SpanOptions{Name: "capabilities.child"}, func(child telemetry.TelemetrySpan) error { return assertCapabilities(child) }); err != nil {
+					return err
+				}
+				if propagation != nil {
+					parent := propagation.Extract(propagation.Inject(span))
+					if err := assertCapabilities(parent); err != nil {
+						return err
+					}
+					return parent.StartSpan(telemetry.SpanOptions{Name: "capabilities.extracted"}, func(extracted telemetry.TelemetrySpan) error { return assertCapabilities(extracted) })
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
+			if settled == nil {
+				return errors.New("Expected settled span")
+			}
+			return settled.StartSpan(telemetry.SpanOptions{Name: "capabilities.inert"}, func(inert telemetry.TelemetrySpan) error { return assertCapabilities(inert) })
+		}),
 		createCase(factory, "metrics", "records ordered measurements and optional histogram exemplars", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
 			if fixture.Metrics == nil {
 				return nil
@@ -194,13 +196,13 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return errors.New("Metrics fixtures require a normalized measurement reader")
 			}
 			fixture.Metrics.Counter("bytes", telemetry.InstrumentOptions{Description: new("Encoded bytes"), Unit: new("By")}).
-				Add(12, telemetry.SpanAttributes{"direction": "out"})
+				Add(12, telemetry.SpanAttributes{telemetry.Attr("direction", "out")})
 			active := fixture.Metrics.UpDownCounter("active", telemetry.InstrumentOptions{})
 			active.Add(1, nil)
 			active.Add(-1, nil)
 			histogram := fixture.Metrics.Histogram("duration", telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Unit: new("ms")}, Boundaries: []float64{1, 10}})
 			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "measured"}, func(span telemetry.TelemetrySpan) error {
-				histogram.Record(5, telemetry.SpanAttributes{"method": "read"}, span)
+				histogram.Record(5, telemetry.SpanAttributes{telemetry.Attr("method", "read")}, span)
 				return nil
 			}); err != nil {
 				return err
@@ -231,7 +233,7 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return err
 			}
 			return errors.Join(
-				deepStrictEqual(measurements[0].Attributes, telemetry.SpanAttributes{"direction": "out"}, "counter attributes"),
+				deepStrictEqual(measurements[0].Attributes, telemetry.SpanAttributes{telemetry.Attr("direction", "out")}, "counter attributes"),
 				stringPointerEqual(measurements[0].Description, "Encoded bytes", "counter description"),
 				stringPointerEqual(measurements[0].Unit, "By", "counter unit"),
 				deepStrictEqual(measurements[3].Boundaries, []float64{1, 10}, "histogram boundaries"),
@@ -239,7 +241,7 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			)
 		}),
 
-		createCase(factory, "metrics", "copies inputs and suppresses invalid measurements atomically", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
+		createCase(factory, "metrics", "copies instrument metadata and measurement attributes", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
 			if fixture.Metrics == nil {
 				return nil
 			}
@@ -254,46 +256,20 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			boundaries[0], boundaries[1] = 2, 100
 			description = "Changed"
 			tags := []string{"original"}
-			histogram.Record(-1, telemetry.SpanAttributes{"tags": tags}, nil)
+			histogram.Record(-1, telemetry.SpanAttributes{telemetry.Attr("tags", tags)}, nil)
 			tags[0] = "changed"
-			counter := fixture.Metrics.Counter("invalid", telemetry.InstrumentOptions{})
-			for _, value := range []float64{math.NaN(), math.Inf(1), math.Inf(-1), -1} {
-				if err := doesNotThrow(func() { counter.Add(value, nil) }); err != nil {
-					return err
-				}
-			}
-			// Upstream's attribute bag holds an unreadable array, so the call fails and records nothing. A Go bag cannot fail to
-			// read, but a value whose methods panic can: an adapter that cannot read it records none of the call, and one that
-			// only stores the values records all of it (checked below).
-			if err := doesNotThrow(func() {
-				counter.Add(1, telemetry.SpanAttributes{"partial": true, "broken": unreadableValue{}})
-			}); err != nil {
-				return err
-			}
-			// Upstream's unreadable options bag has no Go form: a Go options struct cannot fail to read.
-			if err := doesNotThrow(func() {
-				fixture.Metrics.Histogram("bad-boundaries", telemetry.HistogramOptions{Boundaries: []float64{2, 1}}).Record(1, nil, nil)
-			}); err != nil {
-				return err
-			}
 			measurements, err := fixture.GetMetrics(ctx)
 			if err != nil {
 				return err
 			}
-			snapshots := measurementsNamed(measurements, "snapshot")
-			if err := strictEqual(len(snapshots), 1, "snapshot measurements"); err != nil {
+			if err := strictEqual(len(measurements), 1, "measurement count"); err != nil {
 				return err
 			}
-			invalid := measurementsNamed(measurements, "invalid")
-			if len(invalid) > 1 || (len(invalid) == 1 && (invalid[0].Value != 1 || len(invalid[0].Attributes) != 2)) {
-				return fmt.Errorf("invalid measurements: expected none or the whole unreadable call, got %v", invalid)
-			}
 			return errors.Join(
-				strictEqual(len(measurements), 1+len(invalid), "measurement count"),
-				deepStrictEqual(snapshots[0].Attributes, telemetry.SpanAttributes{"tags": []string{"original"}}, "attributes"),
-				deepStrictEqual(snapshots[0].Boundaries, []float64{1, 10}, "boundaries"),
-				stringPointerEqual(snapshots[0].Description, "Original", "description"),
-				deepStrictEqual(snapshots[0].Context, telemetry.TelemetryCarrier(nil), "context"),
+				deepStrictEqual(measurements[0].Attributes, telemetry.SpanAttributes{telemetry.Attr("tags", []string{"original"})}, "attributes"),
+				deepStrictEqual(measurements[0].Boundaries, []float64{1, 10}, "boundaries"),
+				stringPointerEqual(measurements[0].Description, "Original", "description"),
+				deepStrictEqual(measurements[0].Context, telemetry.TelemetryCarrier(nil), "context"),
 			)
 		}),
 
@@ -309,9 +285,9 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return errors.New("Expected target span")
 			}
 			reason := []string{"initial"}
-			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "linked", Links: []telemetry.SpanLink{{Context: target, Attributes: telemetry.SpanAttributes{"reason": reason}}}}, func(span telemetry.TelemetrySpan) error {
+			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "linked", Links: []telemetry.SpanLink{{Context: target, Attributes: telemetry.SpanAttributes{telemetry.Attr("reason", reason)}}}}, func(span telemetry.TelemetrySpan) error {
 				reason[0] = "mutated"
-				span.AddLink(telemetry.SpanLink{Context: target, Attributes: telemetry.SpanAttributes{"reason": "late"}})
+				span.AddLink(telemetry.SpanLink{Context: target, Attributes: telemetry.SpanAttributes{telemetry.Attr("reason", "late")}})
 				span.AddLink(telemetry.SpanLink{Context: telemetry.NoopTelemetryContext})
 				return nil
 			}); err != nil {
@@ -335,49 +311,29 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			return errors.Join(
 				deepStrictEqual(linked.ParentContext, telemetry.TelemetryCarrier(nil), "linked.parentContext"),
 				deepStrictEqual(linked.Links, []telemetry.RecordedTelemetryLink{
-					{Context: targetSpan.Context, Attributes: telemetry.SpanAttributes{"reason": []string{"initial"}}},
-					{Context: targetSpan.Context, Attributes: telemetry.SpanAttributes{"reason": "late"}},
+					{Context: targetSpan.Context, Attributes: telemetry.SpanAttributes{telemetry.Attr("reason", []string{"initial"})}},
+					{Context: targetSpan.Context, Attributes: telemetry.SpanAttributes{telemetry.Attr("reason", "late")}},
 				}, "links"),
 			)
 		}),
 
-		createCase(factory, "links", "suppresses malformed links atomically and ignores settled sources", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
+		createCase(factory, "links", "ignores links added after source settlement", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
 			var source telemetry.TelemetrySpan
 			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "link-source"}, func(span telemetry.TelemetrySpan) error {
 				source = span
-				// Upstream's unreadable link object has no Go form. A target with no identity (no context) and an unsupported
-				// target whose every method panics stand for a malformed link: neither may be recorded or inspected.
-				if err := doesNotThrow(func() { span.AddLink(telemetry.SpanLink{}) }); err != nil {
-					return err
-				}
-				if err := doesNotThrow(func() { span.AddLink(telemetry.SpanLink{Context: unreadableContext{}}) }); err != nil {
-					return err
-				}
-				// The attribute bag holds a value whose methods panic: an adapter that cannot read it records none of the link, and
-				// one that only stores the values records the whole link (checked below).
-				return doesNotThrow(func() {
-					span.AddLink(telemetry.SpanLink{Context: span, Attributes: telemetry.SpanAttributes{"partial": true, "broken": unreadableValue{}}})
-				})
+				return nil
 			}); err != nil {
 				return err
 			}
 			if source == nil {
 				return errors.New("Expected source span")
 			}
-			if err := doesNotThrow(func() {
-				source.AddLink(telemetry.SpanLink{Context: source, Attributes: telemetry.SpanAttributes{"late": true}})
-			}); err != nil {
-				return err
-			}
+			source.AddLink(telemetry.SpanLink{Context: source})
 			linkSource, err := findRecorded(ctx, fixture, "link-source")
 			if err != nil {
 				return err
 			}
-			links := linkSource.Links
-			if len(links) > 1 || (len(links) == 1 && (len(links[0].Attributes) != 2 || links[0].Attributes["partial"] == nil || links[0].Attributes["broken"] == nil)) {
-				return fmt.Errorf("links: expected none or the whole unreadable link, got %v", links)
-			}
-			return nil
+			return deepStrictEqual(linkSource.Links, []telemetry.RecordedTelemetryLink{}, "link-source links")
 		}),
 
 		createCase(factory, "propagation", "roundtrips parent identity through JSON without retaining the carrier", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
@@ -420,14 +376,13 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			return deepStrictEqual(receiver.ParentContext, sender.Context, "receiver.parentContext")
 		}),
 
-		createCase(factory, "propagation", "unknown and unreadable carriers produce recorded roots", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
+		createCase(factory, "propagation", "absent and unknown carriers produce recorded roots", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
 			if fixture.Propagation == nil {
 				return nil
 			}
 			if carrier := fixture.Propagation.Inject(telemetry.NoopTelemetryContext); carrier != nil {
 				return fmt.Errorf("a no-op context injects %v, expected undefined", carrier)
 			}
-			// Upstream's fourth carrier is an unreadable Proxy, which has no Go form: a Go map cannot fail to read.
 			for index, carrier := range []telemetry.TelemetryCarrier{nil, {}, {"unknown": "format"}} {
 				result := 0
 				if err := doesNotThrow(func() {
@@ -550,14 +505,6 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			if err := rejectsWithSameValue(start("async-error", func(telemetry.TelemetrySpan) error { return afterAwait(asyncError) }), asyncError); err != nil {
 				return err
 			}
-			var unreadable error = &unreadableError{kind: "unreadable"}
-			if err := rejectsWithSameValue(start("unreadable-error", func(telemetry.TelemetrySpan) error { return unreadable }), unreadable); err != nil {
-				return err
-			}
-			var asyncUnreadable error = &unreadableError{kind: "async-unreadable"}
-			if err := rejectsWithSameValue(start("async-unreadable-error", func(telemetry.TelemetrySpan) error { return afterAwait(asyncUnreadable) }), asyncUnreadable); err != nil {
-				return err
-			}
 			thrown := &struct{ kind string }{"panic"}
 			if value := panicsWith(func() error {
 				return start("panic-error", func(telemetry.TelemetrySpan) error { panic(thrown) })
@@ -569,7 +516,7 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			if err != nil {
 				return err
 			}
-			for _, name := range []string{"sync-error", "async-error", "unreadable-error", "async-unreadable-error", "panic-error"} {
+			for _, name := range []string{"sync-error", "async-error", "panic-error"} {
 				span, err := findSpan(spans, name)
 				if err != nil {
 					return err
@@ -640,12 +587,12 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 		createCase(factory, "recording", "merges attributes and records ordered events", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
 			if err := fixture.Context.StartSpan(telemetry.SpanOptions{
 				Name:       "recording",
-				Attributes: telemetry.SpanAttributes{"start": "value", "overwrite": "start", "ignored": nil},
+				Attributes: telemetry.SpanAttributes{telemetry.Attr("start", "value"), telemetry.Attr("overwrite", "start"), telemetry.Attr("ignored", nil)},
 			}, func(span telemetry.TelemetrySpan) error {
-				span.SetAttributes(telemetry.SpanAttributes{"count": 1, "overwrite": "middle"})
-				span.SetAttributes(telemetry.SpanAttributes{"count": nil, "overwrite": "end"})
-				span.AddEvent("first", telemetry.SpanAttributes{"index": 1, "ignored": nil})
-				span.AddEvent("second", telemetry.SpanAttributes{"index": 2})
+				span.SetAttributes(telemetry.SpanAttributes{telemetry.Attr("count", 1), telemetry.Attr("overwrite", "middle")})
+				span.SetAttributes(telemetry.SpanAttributes{telemetry.Attr("count", nil), telemetry.Attr("overwrite", "end")})
+				span.AddEvent("first", telemetry.SpanAttributes{telemetry.Attr("index", 1), telemetry.Attr("ignored", nil)})
+				span.AddEvent("second", telemetry.SpanAttributes{telemetry.Attr("index", 2)})
 				return nil
 			}); err != nil {
 				return err
@@ -656,38 +603,17 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return err
 			}
 			return errors.Join(
-				deepStrictEqual(span.Attributes, telemetry.SpanAttributes{"start": "value", "overwrite": "end", "count": 1}, "attributes"),
+				deepStrictEqual(span.Attributes, telemetry.SpanAttributes{telemetry.Attr("start", "value"), telemetry.Attr("overwrite", "end"), telemetry.Attr("count", 1)}, "attributes"),
 				deepStrictEqual(span.Events, []telemetry.RecordedTelemetryEvent{
-					{Name: "first", Attributes: telemetry.SpanAttributes{"index": 1}},
-					{Name: "second", Attributes: telemetry.SpanAttributes{"index": 2}},
+					{Name: "first", Attributes: telemetry.SpanAttributes{telemetry.Attr("index", 1)}},
+					{Name: "second", Attributes: telemetry.SpanAttributes{telemetry.Attr("index", 2)}},
 				}, "events"),
 			)
 		}),
 
-		createCase(factory, "recording", "ignores failed attribute calls atomically", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
-			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "atomic-attributes", Attributes: telemetry.SpanAttributes{"retained": "value"}}, func(span telemetry.TelemetrySpan) error {
-				span.SetAttributes(telemetry.SpanAttributes{"partial": "must not survive alone", "unreadable": []any{unreadableValue{}}})
-				return nil
-			}); err != nil {
-				return err
-			}
-			span, err := findRecorded(ctx, fixture, "atomic-attributes")
-			if err != nil {
-				return err
-			}
-			// The call is atomic: an adapter that cannot read the payload records none of it, and one that only
-			// stores the values records all of them.
-			_, partial := span.Attributes["partial"]
-			_, unreadable := span.Attributes["unreadable"]
-			if partial != unreadable || len(span.Attributes) != map[bool]int{false: 1, true: 3}[partial] {
-				return fmt.Errorf("attributes: expected all or none of the failed call, got keys %v", slices.Sorted(maps.Keys(span.Attributes)))
-			}
-			return strictEqual(span.Attributes["retained"], any("value"), "retained attribute")
-		}),
-
 		createCase(factory, "recording", "makes calls after settlement inert", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
 			var settledSpan telemetry.TelemetrySpan
-			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "settled", Attributes: telemetry.SpanAttributes{"value": "initial"}}, func(span telemetry.TelemetrySpan) error {
+			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "settled", Attributes: telemetry.SpanAttributes{telemetry.Attr("value", "initial")}}, func(span telemetry.TelemetrySpan) error {
 				settledSpan = span
 				return nil
 			}); err != nil {
@@ -697,8 +623,8 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return errors.New("Expected callback span")
 			}
 
-			settledSpan.SetAttributes(telemetry.SpanAttributes{"value": "late"})
-			settledSpan.AddEvent("late", telemetry.SpanAttributes{"value": true})
+			settledSpan.SetAttributes(telemetry.SpanAttributes{telemetry.Attr("value", "late")})
+			settledSpan.AddEvent("late", telemetry.SpanAttributes{telemetry.Attr("value", true)})
 			settledSpan.SetStatus(status(telemetry.SpanStatusCodeError))
 			childAdmitted := false
 			childResult := 0
@@ -721,7 +647,7 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return err
 			}
 			return errors.Join(
-				deepStrictEqual(spans[0].Attributes, telemetry.SpanAttributes{"value": "initial"}, "attributes"),
+				deepStrictEqual(spans[0].Attributes, telemetry.SpanAttributes{telemetry.Attr("value", "initial")}, "attributes"),
 				deepStrictEqual(spans[0].Events, []telemetry.RecordedTelemetryEvent{}, "events"),
 				deepStrictEqual(spans[0].Status, status(telemetry.SpanStatusCodeOK), "status"),
 			)
@@ -785,55 +711,6 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 				return fmt.Errorf("end order: second %d, first %d, parent %d", *second.EndSequence, *first.EndSequence, *parent.EndSequence)
 			}
 			return nil
-		}),
-
-		createCase(factory, "passivity", "suppresses unreadable telemetry payload failures", func(ctx context.Context, fixture TelemetryAdapterFixture) error {
-			calls, result := 0, 0
-			options := telemetry.SpanOptions{Name: "unreadable-options", Attributes: telemetry.SpanAttributes{"secret": unreadableValue{}}}
-			if err := fixture.Context.StartSpan(options, func(telemetry.TelemetrySpan) error {
-				calls++
-				result = 9
-				return nil
-			}); err != nil {
-				return err
-			}
-			if err := errors.Join(strictEqual(calls, 1, "calls"), strictEqual(result, 9, "result")); err != nil {
-				return err
-			}
-			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "unreadable-recording"}, func(span telemetry.TelemetrySpan) error {
-				attributes := telemetry.SpanAttributes{"secret": unreadableValue{}}
-				span.SetAttributes(attributes)
-				span.AddEvent("unreadable-event", attributes)
-				return nil
-			}); err != nil {
-				return err
-			}
-
-			// The span with the unreadable payload is still recorded once and succeeds; each failed call leaves
-			// nothing or all of its payload.
-			spans, err := fixture.GetSpans(ctx)
-			if err != nil {
-				return err
-			}
-			recorded := 0
-			for _, span := range spans {
-				switch span.Name {
-				case "unreadable-recording":
-					recorded++
-					if err := deepStrictEqual(span.Status, status(telemetry.SpanStatusCodeOK), "status"); err != nil {
-						return err
-					}
-					for _, event := range span.Events {
-						if _, secret := event.Attributes["secret"]; event.Name != "unreadable-event" || !secret || len(event.Attributes) != 1 {
-							return fmt.Errorf("events: expected none or the whole unreadable event, got %v", event.Name)
-						}
-					}
-				case "unreadable-options":
-				default:
-					return fmt.Errorf("unexpected span %s", span.Name)
-				}
-			}
-			return strictEqual(recorded, 1, "unreadable-recording spans")
 		}),
 	}
 }

@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-946 bugs. 896 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+979 bugs. 921 own defects, 29 fixed ahead of Pi, 29 Pi fixes ported. 146 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -939,13 +939,13 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-7fae4f5](#bf-7fae4f5) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | Unreleased |
 | [BF-f6a360d](#bf-f6a360d) | A compaction, branch summary or bug-report summary request is now sent through the session's own stream… | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | Unreleased |
+| [BF-4fd80d1](#bf-4fd80d1) | On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under… | PiG's own defect | Windows | Unreleased |
+| [BF-4fd80d1-2](#bf-4fd80d1-2) | On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in… | PiG's own defect | Windows, WSL | Unreleased |
+| [BF-4fd80d1-3](#bf-4fd80d1-3) | On Windows, an empty `SystemRoot` takes `C:\Windows` for `taskkill.exe`, as an unset one already did, in the… | PiG's own defect | Windows | Unreleased |
+| [BF-4fd80d1-4](#bf-4fd80d1-4) | On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path… | PiG's own defect | Windows | Unreleased |
 | [BF-c1d1a4c](#bf-c1d1a4c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | Unreleased |
-| [BF-aca002e](#bf-aca002e) | CI: `make interface-gaps` passes on main again | PiG's own defect | All platforms | Unreleased |
-| [BF-6811585](#bf-6811585) | CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary… | PiG's own defect | Windows | Unreleased |
-| [BF-626f830](#bf-626f830) | `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path… | PiG's own defect | Windows | Unreleased |
 | [BF-0ef8071](#bf-0ef8071) | RPC mode no longer runs `ctx.ui.setWidget` component factories or emits `setWidget` requests carrying their… | PiG's own defect | All platforms | Unreleased |
 | [BF-2e967c7](#bf-2e967c7) | A run that an extension's `sendMessage` with `triggerTurn` starts now carries the session's system prompt | PiG's own defect | All platforms | Unreleased |
-| [BF-3853a96](#bf-3853a96) | `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac1e5d](#bf-4ac1e5d) | A tool that an extension activates with `setActiveTools` now appears in the system prompt's tool list of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ab1324d](#bf-ab1324d) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | Unreleased |
 | [BF-6b381a3](#bf-6b381a3) | The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit | PiG's own defect | All platforms | Unreleased |
@@ -958,13 +958,46 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-d988f58](#bf-d988f58) | `pig update --extensions` no longer fails when two Git Packages come from one repository | PiG's own defect | All platforms | Unreleased |
 | [BF-df5e91e](#bf-df5e91e) | A Go, Python or Rust extension tool that awaits a host call such as `exec` before its first dialog no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-e6d1b69](#bf-e6d1b69) | Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends… | PiG's own defect | All platforms | Unreleased |
-| [BF-f086ba5](#bf-f086ba5) | fix(extension/node): load the virtual-model routing modules of the ModelRuntime on first use | PiG's own defect | All platforms | Unreleased |
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | Unreleased |
-| [BF-1d7c591](#bf-1d7c591) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | Unreleased |
-| [BF-dad1c42](#bf-dad1c42) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | Unreleased |
-| [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
+| [BF-333229c](#bf-333229c) | An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead… | PiG's own defect | All platforms | Unreleased |
+| [BF-668b3fa](#bf-668b3fa) | Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only | PiG's own defect | All platforms | Unreleased |
+| [BF-692bdf7](#bf-692bdf7) | Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or… | PiG's own defect | All platforms | Unreleased |
+| [BF-9076cd5](#bf-9076cd5) | Markdown bold and italic render next to CJK punctuation in the terminal, for example… | PiG's own defect | All platforms | Unreleased |
+| [BF-c371a13](#bf-c371a13) | OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142) | PiG's own defect | All platforms | Unreleased |
+| [BF-9abc6ac](#bf-9abc6ac) | Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions… | PiG's own defect | All platforms | Unreleased |
 | [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
+| [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-909581e](#bf-909581e) | The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-9be7181](#bf-9be7181) | Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the… | PiG's own defect | Linux | Unreleased |
+| [BF-e73e536](#bf-e73e536) | Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | Unreleased |
+| [BF-0aa31c4](#bf-0aa31c4) | Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-90f6908](#bf-90f6908) | Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in… | PiG's own defect | All platforms | Unreleased |
+| [BF-3853a96](#bf-3853a96) | `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again | PiG's own defect | All platforms | Unreleased |
+| [BF-6811585](#bf-6811585) | CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary… | PiG's own defect | Windows | Unreleased |
+| [BF-aca002e](#bf-aca002e) | CI: `make interface-gaps` passes on main again | PiG's own defect | All platforms | Unreleased |
+| [BF-626f830](#bf-626f830) | `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path… | PiG's own defect | Windows | Unreleased |
+| [BF-725e104](#bf-725e104) | The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks… | PiG's own defect | Windows | Unreleased |
+| [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | Unreleased |
+| [BF-dc003a9](#bf-dc003a9) | Automatic retry no longer treats digits inside a request id or another number (for example `req_011CU503xyz`… | PiG's own defect | All platforms | Unreleased |
+| [BF-dc003a9-2](#bf-dc003a9-2) | Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the… | PiG's own defect | All platforms | Unreleased |
+| [BF-dc003a9-3](#bf-dc003a9-3) | Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error… | PiG's own defect | All platforms | Unreleased |
+| [BF-43d2597](#bf-43d2597) | `@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-43d2597-2](#bf-43d2597-2) | `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-43d2597-3](#bf-43d2597-3) | A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-43d2597-4](#bf-43d2597-4) | Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-53385a3](#bf-53385a3) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | Unreleased |
+| [BF-8a18a6b](#bf-8a18a6b) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
+| [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | Unreleased |
+| [BF-46abed3](#bf-46abed3) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | Unreleased |
+| [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
+| [BF-7f3a71c](#bf-7f3a71c) | fix(durable): the reference Harness wraps a plain Models once too | PiG's own defect | All platforms | Unreleased |
+| [BF-a6932b4](#bf-a6932b4) | fix(coding): pass a Node extension request's client identity to the provider | PiG's own defect | All platforms | Unreleased |
+| [BF-36e192b](#bf-36e192b) | fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits | PiG's own defect | All platforms | Unreleased |
+| [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
+| [BF-d0c2727](#bf-d0c2727) | fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -5564,7 +5597,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `d249c707fe` (2026-10-10)
-- **Tests:** `coding/provider_attribution_host_test.go::TestAttributionMixedCaseHostProductionRequests`, `coding/session_dispose_leak_test.go::TestSessionDisposeReleasesEventProducers`, `coding/session_dispose_leak_test.go::TestSessionDisposeReleasesTheSession`, `coding/session_rpc33_observation_test.go::TestSessionObservationCloseJoinsClaimedCallback`, `coding/session_rpc33_observation_test.go::TestSessionObservationReservationCanceledBeforeAdmission`
+- **Tests:** `coding/session_dispose_leak_test.go::TestSessionDisposeReleasesEventProducers`, `coding/session_dispose_leak_test.go::TestSessionDisposeReleasesTheSession`, `coding/session_rpc33_observation_test.go::TestSessionObservationCloseJoinsClaimedCallback`, `coding/session_rpc33_observation_test.go::TestSessionObservationReservationCanceledBeforeAdmission`
 - **Release note:** SDK: `Session.Dispose` now releases the Session as Pi's `dispose` does. Its `Events` stream closes, publishing and flushing events stop waiting, and the model registry no longer keeps a disposed Session reachable.
 
 ### BF-b4f1d4a
@@ -8172,7 +8205,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `34f7594aa5` (2026-10-11), `007c91dcbb` (2026-10-13), `1848633092` (2026-10-13), `2a055a7a3a` (2026-10-13), `588884c3e8` (2026-10-13), `d87b70c54c` (2026-10-13)
-- **Tests:** `coding/extension/host/inproc/specialized_dispatch_test.go::TestEmitBeforeAgentStart_ForcedPromptWinsAndInvalidSectionFailsTheHandler`, `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `extensions/sdk-py/tests/test_system_prompt_render.py` and 22 more in docs/bug-ledger.json
+- **Tests:** `coding/extension/host/inproc/specialized_dispatch_test.go::TestEmitBeforeAgentStart_ForcedPromptWinsAndInvalidSectionFailsTheHandler`, `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `extensions/sdk-py/tests/test_system_prompt_render.py` and 21 more in docs/bug-ledger.json
 - **Release note:** A second `ctx.ui.custom` component opened while one is shown now opens over it at once, as in Pi, whether it is an overlay or not and whichever extension process opens it. The component on top takes focus and the keys, and when it closes focus returns to the component below, which receives the next key. Before, a subprocess extension's custom component waited until the shown one closed, and a subprocess custom component kept reading the keys while another custom component shown over it had focus.
 
 ### BF-bada2af
@@ -8200,7 +8233,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `34f7594aa5` (2026-10-11), `1848633092` (2026-10-13), `2a055a7a3a` (2026-10-13)
-- **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay` and 8 more in docs/bug-ledger.json
+- **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult` and 7 more in docs/bug-ledger.json
 - **Release note:** An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component holds the terminal now shows at once and takes focus, as in Pi. Closing the dialog gives focus back to a custom overlay, which receives the next key. A custom component in the editor slot that the dialog replaced stays off screen, and focus goes to the editor. Before, a subprocess extension's dialog waited until the custom component closed. A dialog from an in-process extension opened at once, but the custom component kept focus, and a subprocess custom component kept reading the keys meant for the dialog.
 
 ### BF-976af87
@@ -9240,7 +9273,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `34f7594aa5` (2026-10-11), `007c91dcbb` (2026-10-13), `2a055a7a3a` (2026-10-13)
-- **Tests:** `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `extensions/sdk-py/tests/test_system_prompt_render.py`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRendersTheCurrentOptions`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay` and 10 more in docs/bug-ledger.json
+- **Tests:** `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `extensions/sdk-py/tests/test_system_prompt_render.py`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRendersTheCurrentOptions`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult` and 9 more in docs/bug-ledger.json
 - **Release note:** Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the context's system prompt getter now return the prompt the shared options render when read, as Pi and Node do. A handler sees its own edit to `systemPromptOptions` at once, a later handler sees it, and after a handler returns `systemPrompt` later handlers read exactly that prompt; before, they read the prompt rendered before the handler ran, and the context getter returned the Session's prompt.
 
 ### BF-a13bae4
@@ -10405,7 +10438,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Commit that wrote the release note (the fix commit is not identified):** `1364791228` (2026-10-13)
-- **Tests:** `codemode/job_poll_test.go::TestAMicrotaskSpinEndsAtTheJobPollNotTheHardStop`, `codemode/lifetime_test.go::TestCloseAbortsEveryRunningExecution`, `codemode/lifetime_test.go::TestEveryTerminalKindClosesItsVMWithoutHaltingTheInstance`, `codemode/worker_admission_test.go::TestAFailedModuleLoadAcquiresNoAdmission`, `codemode/worker_admission_test.go::TestAFailingOnWorkerStartedEndsTheWorker`, `codemode/worker_admission_test.go::TestAdmissionIsReleasedOnExitNotOnTheResult`, `codemode/worker_admission_test.go::TestDeniedAdmissionStartsNoWorker`, `codemode/worker_admission_test.go::TestReportsTheActualExitOfExecuteAndStartWorkers` and 4 more in docs/bug-ledger.json
+- **Tests:** `codemode/job_poll_test.go::TestAMicrotaskSpinEndsAtTheJobPollNotTheHardStop`, `codemode/lifetime_test.go::TestCloseAbortsEveryRunningExecution`, `codemode/lifetime_test.go::TestEveryTerminalKindClosesItsVMWithoutHaltingTheInstance`, `codemode/worker_admission_test.go::TestAFailedModuleLoadAcquiresNoAdmission`, `codemode/worker_admission_test.go::TestAFailingOnWorkerStartedEndsTheWorker`, `codemode/worker_admission_test.go::TestAdmissionIsReleasedOnExitNotOnTheResult`, `codemode/worker_admission_test.go::TestDeniedAdmissionStartsNoWorker`, `codemode/worker_admission_test.go::TestReportsTheActualExitOfExecuteAndStartWorkers` and 3 more in docs/bug-ledger.json
 - **Release note:** Stopping a codemode script or reaching its deadline no longer waits up to half a second for a built-in that does not poll the interrupt flag ([#10748](https://github.com/earendil-works/pi/issues/10748)).
 
 ### BF-4027b34
@@ -10433,7 +10466,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `007c91dcbb` (2026-10-13), `1848633092` (2026-10-13), `2a055a7a3a` (2026-10-13), `d87b70c54c` (2026-10-13), `ec2080a75f` (2026-10-13)
-- **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `extensions/sdk-py/tests/test_system_prompt_render.py`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError` and 16 more in docs/bug-ledger.json
+- **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `extensions/sdk-py/tests/test_system_prompt_render.py`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError` and 15 more in docs/bug-ledger.json
 - **Release note:** A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes focus and when focus comes back, as Pi's `setFocus` tells it: the overlay handle's `isFocused()` follows, the component's `focused` flag is cleared and set again (Node, Go `SetFocused`, Python `focused`) and the component renders again. This holds for Node, Go, Rust and Python extensions. Before, the component kept reporting focus until its next key arrived.
 
 ### BF-7472171
@@ -10447,7 +10480,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `74721716a1` (2026-10-13), `ef0d4cb621` (2026-10-13)
-- **Tests:** `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogsDoNotWaitForEachOther`, `internal/codingagent/ext_ui_dialog_displace_test.go::TestAbortingADisplacedDialogHidesTheShownDialog`, `internal/codingagent/ext_ui_dialog_displace_test.go::TestExtensionDialogDisplacesTheOpenDialog`, `test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml`
+- **Tests:** `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogsDoNotWaitForEachOther`, `test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml`
 - **Release note:** An extension dialog (`select`, `confirm`, `input`, `editor`) that opens while another is shown now replaces it, as in Pi. This includes dialogs from subprocess extensions. The replaced dialog stays pending until its signal aborts it. Previously the second dialog failed with "another extension dialog is already open" or waited for the first to close.
 
 ### BF-9f4702c
@@ -10489,7 +10522,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `1848633092` (2026-10-13), `2a055a7a3a` (2026-10-13), `a9058bf992` (2026-10-13), `ab0ee713e2` (2026-10-13), `cc9370b309` (2026-10-13), `d87b70c54c` (2026-10-13), `ec2080a75f` (2026-10-13)
-- **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeSurfaceFactoryTuiShowsOverlays`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown` and 23 more in docs/bug-ledger.json
+- **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeSurfaceFactoryTuiShowsOverlays`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown` and 22 more in docs/bug-ledger.json
 - **Release note:** A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a `ctx.ui.custom` factory, as in Pi: `showOverlay`, `hideOverlay`, `setFocus` and `terminal` work there, and `tui.requestRender()` also redraws the overlays the extension shows.
 
 ### BF-fd7f660
@@ -11385,7 +11418,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `2a055a7a3a` (2026-10-13), `a9058bf992` (2026-10-13), `ab0ee713e2` (2026-10-13), `d87b70c54c` (2026-10-13), `ec2080a75f` (2026-10-13)
-- **Tests:** `coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay` and 18 more in docs/bug-ledger.json
+- **Tests:** `coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay` and 17 more in docs/bug-ledger.json
 - **Release note:** Hiding an overlay whose preFocus is another overlay, such as a panel focused when the overlay was shown over it, focuses that panel as an overlay, as Pi does: its handle reports `isFocused()` and its own `hide()` moves focus on.
 
 ### BF-2d99958
@@ -13790,6 +13823,62 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** None recorded.
 - **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted.
 
+### BF-4fd80d1
+
+**On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under `%ProgramFiles%\PowerShell\7` after `PATH`, and Windows PowerShell under `%SystemRoot%\System32\WindowsPowerShell\v1.0` as the last fallback, on any drive (Pi 61060ddf, #9490).
+- **Root cause:** PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `4fd80d1cb2` (2026-10-19)
+- **Tests:** `durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases`, `internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort` and 6 more in docs/bug-ledger.json
+- **Release note:** On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under `%ProgramFiles%\PowerShell\7` after `PATH`, and Windows PowerShell under `%SystemRoot%\System32\WindowsPowerShell\v1.0` as the last fallback, on any drive (Pi 61060ddf, #9490).
+
+### BF-4fd80d1-2
+
+**On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in `SystemRoot` (`System32` and `Sysnative`), not only under `C:\Windows`, so its command goes over stdin (Pi 61060ddf, #9490).
+- **Root cause:** PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows, WSL
+- **Fixed in:** Unreleased
+- **Fix commits:** `4fd80d1cb2` (2026-10-19)
+- **Tests:** `durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases`, `internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort` and 6 more in docs/bug-ledger.json
+- **Release note:** On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in `SystemRoot` (`System32` and `Sysnative`), not only under `C:\Windows`, so its command goes over stdin (Pi 61060ddf, #9490).
+
+### BF-4fd80d1-3
+
+**On Windows, an empty `SystemRoot` takes `C:\Windows` for `taskkill.exe`, as an unset one already did, in the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, an empty `SystemRoot` takes `C:\Windows` for `taskkill.exe`, as an unset one already did, in the shell tools and the Durable node environment (Pi 61060ddf, #9490).
+- **Root cause:** PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `4fd80d1cb2` (2026-10-19)
+- **Tests:** `durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases`, `internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort` and 6 more in docs/bug-ledger.json
+- **Release note:** On Windows, an empty `SystemRoot` takes `C:\Windows` for `taskkill.exe`, as an unset one already did, in the shell tools and the Durable node environment (Pi 61060ddf, #9490).
+
+### BF-4fd80d1-4
+
+**On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path, `bash.exe` and `pwsh.exe` found by `where`, and the Git Bash locations are checked with an attribute check (`access(F_OK)`) instead of a stat that follows the alias (Pi 28bea006, nodejs/node#36790).
+- **Root cause:** PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `4fd80d1cb2` (2026-10-19)
+- **Tests:** `durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules`, `internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder`, `internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks`, `internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases`, `internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort` and 6 more in docs/bug-ledger.json
+- **Release note:** On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path, `bash.exe` and `pwsh.exe` found by `where`, and the Git Bash locations are checked with an attribute check (`access(F_OK)`) instead of a stat that follows the alias (Pi 28bea006, nodejs/node#36790). Not yet run on a Windows host.
+
 ### BF-c1d1a4c
 
 **CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit**
@@ -13803,48 +13892,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `c1d1a4ce72` (2026-10-20)
 - **Tests:** `test/ci-images/verification_shards_test.go::TestLinuxShardsRetainEveryCheck`, `test/ci-images/verification_shards_test.go::TestPortmapShardsAreWiredEndToEnd`, `test/parity/cmd/portmapcheck/main_test.go::TestAChildOfTheEvidenceBinaryHasACoverageDirectory`, `test/parity/cmd/portmapcheck/main_test.go::TestAKilledMutantIsCachedWithItsRecord`, `test/parity/cmd/portmapcheck/main_test.go::TestASkippedRowIsNotAProblem`, `test/parity/cmd/portmapcheck/main_test.go::TestMain`, `test/parity/cmd/portmapcheck/main_test.go::TestParseShard`, `test/parity/cmd/portmapcheck/main_test.go::TestPartitionAssignsEveryRowToOneBalancedShard` and 3 more in docs/bug-ledger.json
 - **Release note:** CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit. `portmapcheck` builds each evidence package's test binary once instead of once per PORT_MAP row, runs rows that name the same tests of a package once, and keeps a marker row's killed-mutant verdict in its cached record. CI runs the check as three shards (`make portmap-check-N`, `portmapcheck -shard N/3`); every shard computes the same plan and judges its own rows, and the Linux verification job still requires all of them. Each row's requirement is unchanged: its named tests pass, they execute its mapped cited files, and a marker row's mutant makes them fail.
-
-### BF-aca002e
-
-**CI: `make interface-gaps` passes on main again**
-
-- **Source:** PiG's own defect
-- **Symptom:** The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `aca002e54b` (2026-10-20)
-- **Tests:** `chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener`
-- **Release note:** CI: `make interface-gaps` passes on main again. The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.
-
-### BF-6811585
-
-**CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary…**
-
-- **Source:** PiG's own defect
-- **Symptom:** CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does.
-- **Root cause:** The notice prints each extension path through commandWord, which quotes a path with a character outside the plain set. Windows runner temp directories carry the "~" of an 8.3 short name (RUNNER~1), so the path prints in double quotes and three assertions that expected the raw path failed on Windows (TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch). The tests now build the expected command with commandWord, as the notice test beside them already does.
-- **User impact:** An operation failed or was rejected
-- **Platform:** Windows
-- **Fixed in:** Unreleased
-- **Fix commits:** `6811585d05` (2026-10-20)
-- **Tests:** `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_startup_test.go::TestStartupNamesSDKDriftAndExitsInPrintMode`
-- **Release note:** CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does. The notice already quotes such a path for the Windows shell (`"C:\Users\RUNNER~1\..."`) and is unchanged; the tests expected the raw path and now expect the quoted word, as the notice test beside them does.
-
-### BF-626f830
-
-**`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path…**
-
-- **Source:** PiG's own defect
-- **Symptom:** The backslash printed bare and the shell read it as an escape, so the command named a different path.
-- **Root cause:** The plain-word set of the printed command held "\\" on every OS, so a POSIX path with a backslash printed unquoted and the shell read the backslash as an escape. The set is now per platform: a backslash is plain only on Windows, where it separates path elements. Windows quoting is unchanged.
-- **User impact:** Behavior differed from Pi
-- **Platform:** Windows
-- **Fixed in:** Unreleased
-- **Fix commits:** `626f83000c` (2026-10-20)
-- **Tests:** `coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform`
-- **Release note:** `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path that holds a backslash. Before, the backslash printed bare and the shell read it as an escape, so the command named a different path. A backslash stays plain in a Windows path, where it separates elements.
 
 ### BF-0ef8071
 
@@ -13873,20 +13920,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `2e967c7c8b` (2026-10-20)
 - **Tests:** `coding/session_custom_run_first_system_prompt_test.go::TestCustomMessageFirstRunCarriesTheSessionSystemPrompt`
 - **Release note:** A run that an extension's `sendMessage` with `triggerTurn` starts now carries the session's system prompt. The first run of a session reached the model with no system prompt, as did any later run that a custom message started after the instructions changed. Pi records the run's prompt sections for a custom starting message as for a prompt.
-
-### BF-3853a96
-
-**`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again**
-
-- **Source:** PiG's own defect
-- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again.
-- **Root cause:** piglets/standard and piglets/aot require the same version, because a fused member cannot require a newer SDK than the Pig source pins and a pseudo-version sorts below v0.5.0. check-module-publication.py accepts a pseudo-version for a nested requirement: it has no tag, and its download into an empty cache with the committed checksums proves the commit is public. module-tags.sh 0.5.2 still refuses the pin until make set-version --release-modules replaces it with the tag.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `3853a96b00` (2026-10-20)
-- **Tests:** `test/gomodule/gomodule_test.go::TestModuleTagsScriptRefusesAPseudoVersionPin`
-- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again. The root `go.mod` required `extensions/sdk v0.5.0`, which lacks `Result.Drift`, `FileChange.Created` and `Skipped.Suggest` that `pig extension upgrade` uses, so building the module outside the workspace failed, and `make module-size` failed on every pull request. Between releases the root `go.mod` (and `piglets/standard` and `piglets/aot`) now require the SDK at the pseudo-version of the `main` commit that holds the API the root uses; the release replaces it with the tag. `make module-publication` accepts such a pseudo-version, and proves by downloading it into an empty cache, with the committed checksums, that the commit is public.
 
 ### BF-4ac1e5d
 
@@ -14056,19 +14089,6 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `agent/settle_order_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `agent/settle_order_test.go::TestSettleGateRunsActionsInSettleOrder`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived`
 - **Release note:** Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.
 
-### BF-f086ba5
-
-**fix(extension/node): load the virtual-model routing modules of the ModelRuntime on first use**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(extension/node): load the virtual-model routing modules of the ModelRuntime on first use
-- **Root cause:** The ModelRuntime of ctx.modelRegistry imported Pi's virtual-models and pi-ai bundle modules at startup, which TestNodeStartupDefersPresentationDependencies and TestNodeColdStartLoadsSDKOnlyOnImport reject. getPhysicalModel reads the virtual API id directly (virtual-models.ts isVirtualModel), and resolveModel imports the modules when it routes.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `f086ba5ce8` (2026-10-20)
-- **Tests:** `coding/extension/host/subprocess/node_cold_start_test.go::TestNodeColdStartLoadsSDKOnlyOnImport`, `coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies`
-
 ### BF-0e3411c
 
 **Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…**
@@ -14083,47 +14103,88 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** None recorded.
 - **Release note:** Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.
 
-### BF-1d7c591
+### BF-333229c
 
-**Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…**
+**An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.
-- **Root cause:** Not recorded.
+- **Symptom:** An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead of showing a raw API error.
+- **Root cause:** Adds Pi's provider-independent 413 pattern to ai.IsContextOverflow and to Durable's own classifier (generated patterns.go), and teaches Durable's regexp subset the $ anchor and \w, which the pattern needs. Ports the overflow, Copilot request-size and session-path recovery tests.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `1d7c591b61` (2026-10-21), `53385a3d93` (2026-10-21, #268)
-- **Tests:** `codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled`, `coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog`
-- **Release note:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.
+- **Fix commits:** `333229c85a` (2026-10-19)
+- **Tests:** `ai/github_copilot_request_size_overflow_upstream_test.go::TestGitHubCopilotRequestSizeErrors`, `ai/overflow_test.go::TestIsContextOverflowUpstreamCases`, `ai/overflow_upstream_test.go::TestOverflowRequestSizeUpstream`, `ai/overflow_upstream_test.go::TestOverflowUpstream`, `coding/copilot_request_size_overflow_upstream_test.go::TestCopilotRequestSizeOverflowRecoveryUpstream`, `durable/core/turn/classify_test.go::TestHTTP413IsContextOverflowForEveryProvider`, `internal/codingagent/classifier_parity_test.go::TestClassifiersMatchPiAI`
+- **Release note:** An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead of showing a raw API error. GitHub Copilot answers a request over its byte-size limit (for example a history of many images) with a 413 and a generic `failed to parse request` body that the token-count patterns never matched (Pi 73f8de80, #11016).
 
-### BF-dad1c42
+### BF-668b3fa
 
-**A user_bash `operations` object from an extension is no longer released while a command is running through it**
+**Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only**
 
 - **Source:** PiG's own defect
-- **Symptom:** A user_bash `operations` object from an extension is no longer released while a command is running through it.
-- **Root cause:** The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+- **Symptom:** Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `668b3fa13b` (2026-10-19)
+- **Tests:** `telemetry/store_upstream_test.go::TestInMemoryMetricRowsKeepAttributeInsertionOrder`
+
+### BF-692bdf7
+
+**Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or metric attribute bags, and `ai.Models.Stream` without a parent span captures nothing for the telemetry observer, so both allocate as before the telemetry integration; Durable's reflective restore also caches each struct type's field list.
+- **Root cause:** With the no-op parent (or no telemetry) the phase and submit spans, entry and submission events, tool attributes, checkpoint and replay events, report events and metric attribute bags are not built; recording output is unchanged. The reflect field list of a struct type is cached for Durable's ordered restore. Adds BenchmarkDurableGeneration.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `692bdf76eb` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or metric attribute bags, and `ai.Models.Stream` without a parent span captures nothing for the telemetry observer, so both allocate as before the telemetry integration; Durable's reflective restore also caches each struct type's field list. The AI telemetry schema is built on first use instead of at process start, and non-numeric attribute names no longer allocate in `jsstring.ArrayIndex`, which cuts the allocations of a recorded `ai` stream.
+
+### BF-9076cd5
+
+**Markdown bold and italic render next to CJK punctuation in the terminal, for example…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Markdown bold and italic render next to CJK punctuation in the terminal, for example `**这是测试。**后面` (Pi #10730).
+- **Root cause:** Port marked-cjk-friendly 0.1.2's emStrong rules to the Go inline lexer: CJK characters count as punctuation in the opening flanking test and in the closing-delimiter classes, and a run next to CJK text can both open and close.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9076cd5cb8` (2026-10-20)
+- **Tests:** `tui/component_width_sweep_test.go::TestComponentRowsMatchUpstream`, `tui/markdown_cjk_test.go::TestMarkdownCJKEmphasisMatchesPi`, `tui/markdown_cjk_test.go::TestMarkedCJKClassMatchesPinnedPackage`, `tui/markdown_marked_test.go::TestMarkedRightDelimiterScanMatchesRegexps`
+- **Release note:** Markdown bold and italic render next to CJK punctuation in the terminal, for example `**这是测试。**后面` (Pi #10730). Text without CJK keeps the CommonMark flanking rules.
+
+### BF-c371a13
+
+**OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142)**
+
+- **Source:** PiG's own defect
+- **Symptom:** OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142).
+- **Root cause:** resolveTranscriptTools takes a TranscriptToolSupport (none, additions, changes) and reports FoldedSystemMessages instead of AnchorsAdditions. A transport that takes additional_tools declares every tool in additional_tools items from the head of the input, precedes each later item with the incremental-tools notice, and announces removals as text with the still-unavailable tools restated. Synthetic tool search and Kimi tool messages move the top-level boundary to the last removal or redeclaration, so later loads stay anchored. The openai-responses, azure-openai-responses and openai-codex-responses paths share one converter; openai-completions counts system messages from the transcript's start.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `6d3cfc863d` (2026-10-21, #278), `dad1c42d7e` (2026-10-21)
-- **Tests:** `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns`, `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsExecAbortsWithTheContext`
-- **Release note:** A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+- **Fix commits:** `c371a134cc` (2026-10-20)
+- **Tests:** `ai/transcript_tool_changes_test.go::TestResolveTranscriptToolsBoundaryPerTransport`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesToolSearchPrefixAcrossLoadsAfterARemoval`
+- **Release note:** OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142). Every tool is declared in `additional_tools` items from the head of the input, a removal is announced as text with the still-unavailable tools restated, and synthetic tool search and Kimi tool messages move the top-level tool list only at the last removal or redefinition, so a later tool load no longer rewrites the cached prefix. Applies to `openai-responses`, `azure-openai-responses`, `openai-codex-responses` and Kimi on `openai-completions`.
 
-### BF-18022b2
+### BF-9abc6ac
 
-**A Node extension no longer keeps reading an entry the host refused**
+**Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A Node extension no longer keeps reading an entry the host refused.
-- **Root cause:** The Node runtime shows pi.appendEntry's entry at once (Pi's log is in process and the append cannot fail), keeps it in pendingEntries and sends the append to the host without waiting. A host that answered with an error left the entry in the mirror: nothing took it back, and every later state push preserved it because the replicated log does not hold it, so getEntries, getBranch, getLeafId and the id index kept presenting an entry that was in no session.
-- **User impact:** Lost or altered data
+- **Symptom:** Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions render through pi-tui, matching the terminal (Pi #11168, #10730).
+- **Root cause:** pi-tui's Markdown component imports marked-cjk-friendly from Pi. vendor-pi-dist.sh copies the package into the shims, points the import at it and checks the rewrite; the vendored pi-dist is regenerated from the pinned Pi.
+- **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `18022b2234` (2026-10-21)
-- **Tests:** `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds`, `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused`, `test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs`
-- **Release note:** A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.
+- **Fix commits:** `9abc6acfde` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/builder_node_embed_test.go::TestNodeRuntimeEmbedsVendoredPiDistAndDependencies`, `coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage`
+- **Release note:** Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions render through pi-tui, matching the terminal (Pi #11168, #10730).
 
 ### BF-d084d86
 
@@ -14152,6 +14213,433 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f6e6b97f00` (2026-10-21)
 - **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
 - **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+
+### BF-9c98038
+
+**An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it.
+- **Root cause:** Port Pi (packages/tui/src/components/markdown.ts containsTableStart, TABLE_DELIMITER_ROW_REGEX, tokenizeBlockLatex, #11159): a block-math token no longer spans a GFM table and the pending-math fallback skips one; a pending \[ also needs a non-empty body. The eight upstream 'unclosed display math before tables' cases are ported verbatim, with a live-Pi comparison of them and their neighbours.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9c980381eb` (2026-10-20)
+- **Tests:** `tui/markdown_latex_table_test.go::TestMarkdownContainsTableStart`, `tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTables`, `tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi`
+- **Release note:** An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it. A display-math block never spans a table, and the streaming pending-math fallback no longer treats a following table as pending math (Pi 2ed3118b, #11159).
+
+### BF-909581e
+
+**The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`).
+- **Root cause:** Port Pi (#11170): Pi's process 'exit' handler writes the mode resets synchronously when stop() did not run. Go has no exit hook, so tui.RestoreTerminalOnExit is that handler and every exit path reachable while a TUI runs (coding/cli exitProcess; emergencyTerminalExit, handleInterruptSignal, uncaughtOffLoop) calls it before os.Exit. Order matches TuiAltScreen: end synchronized output, mouse off, autowrap on, cursor, progress clear, bracketed paste off, Kitty pop, modifyOtherKeys off, then alternate-screen exit and cursor show; cooked mode is restored as libuv does. Registered terminals and alt screens leave on normal stop, so nothing is written twice.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `909581ef0b` (2026-10-20)
+- **Tests:** `coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal`, `tui/terminal_exit_restore_test.go::TestExitRestoreFixture`, `tui/terminal_exit_restore_test.go::TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode`, `tui/terminal_exit_restore_test.go::TestTerminalRestoreOnProcessExit`, `tui/terminal_exit_restore_test.go::TestTerminalRestoreOnProcessExitDoesNotRepeatAfterStop`
+- **Release note:** The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`). The modes are restored in Pi's order, once, and not again after a normal stop (Pi 9df819de, #11170).
+
+### BF-9be7181
+
+**Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the `wl-copy`, `xclip` or `xsel` process that keeps serving the clipboard now runs in its own session and is not stopped with pig (Pi f8ab362c, #11179).
+- **Root cause:** Ports Pi (#11179): runClipboardCommand spawns with detached on POSIX, so a wl-copy/xclip/xsel daemon leaves PiG's process group. Ports the outside-process-group test.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `9be7181948` (2026-10-20)
+- **Tests:** `internal/codingagent/clipboard_command_pi_test.go::TestRunClipboardCommandRunsOutsideOwnProcessGroup`
+- **Release note:** Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the `wl-copy`, `xclip` or `xsel` process that keeps serving the clipboard now runs in its own session and is not stopped with pig (Pi f8ab362c, #11179).
+
+### BF-e73e536
+
+**Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents.
+- **Root cause:** Ports Pi (#11184): scripts wait up to 60 s in arrival order for a free VM, PI_CODEMODE_MAX_WORKERS raises the limit of two, aborts and deadlines count the wait, a launch resuming after its result settled starts no worker, and the reservation is released exactly once.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e73e536f2c` (2026-10-20)
+- **Tests:** `codemode/worker_settled_launch_test.go::TestLaunchResumingAfterTheResultSettledTakesNoWorker`, `coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionBoundsSurvivingWorkers`, `coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionDropsAbortedAndTimedOutWaiters`, `coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionIgnoresAnInvalidPICodemodeMaxWorkers`, `coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionQueuesABurstInArrivalOrder`, `coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionReadsTheLimitFromPICodemodeMaxWorkers`, `coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionRefusesAnAbortedCallerAtOnce`, `coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerSlotIsReturnedAfterSuccessAndTimeout` and 2 more in docs/bug-ledger.json
+- **Release note:** Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents. A script waits up to 60 seconds, in arrival order, for a free worker; the wait counts toward its `timeout_ms` (Pi 885a564b, #11184).
+
+### BF-00933e5
+
+**`mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191).
+- **Root cause:** Ports Pi (#11191): readFile and editMcpServers strip the BOM; the Radius MCP offer reads the file the same way, as Pi does through loadMcpConfig.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `00933e586a` (2026-10-20)
+- **Tests:** `coding/mcpext/config_test.go::TestMCPConfigReadsAndEditsMcpJSONFilesThatStartWithAUTF8BOM`, `internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusMcpServerConfigReadsAMcpJSONThatStartsWithAUTF8BOM`
+- **Release note:** `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191).
+
+### BF-0aa31c4
+
+**Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).
+- **Root cause:** Ports Pi (#11156): loader shim table, register-loader and runtime-modules lists, a pi-ai models bundle entry, the host peer, and sdk-ts declarations. Needs make vendor-pi-dist and make generate to produce sdk-bundle/models.js.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0aa31c48e4` (2026-10-20)
+- **Tests:** `coding/extension/host/subprocess/node_pi_ai_models_test.go::TestNodeExtensionImportsPiAiModelsSubpath`, `coding/extension/host/subprocess/required_tools_test.go::TestRequiredSDKToolsFailWhenMissing`
+- **Release note:** Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).
+
+### BF-90f6908
+
+**Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in interactive mode no longer replace each other: a second dialog used to take the editor slot and leave the first one's promise pending.
+- **Root cause:** Select, confirm, input, editor and editor-slot custom components (in-process and remote) now share one stack on the owner loop: a new dialog hides the visible one, closing it shows the previous one again, an abort/timeout of a hidden dialog removes only that dialog, and a session replacement disposes every dialog. Ports Pi 38847563 (#11166, #9909); adds a cross-SDK concurrent-dialog conformance row, a host-bridge test and an RPC verification test.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `90f69085ce` (2026-10-20)
+- **Tests:** `coding/cli/rpc_ui_concurrent_dialogs_test.go::TestRpcConcurrentExtensionDialogsResolveEachByItsOwnID`, `internal/codingagent/ext_ui_dialog_bridge_test.go::TestExtensionDialogsFromOneExtensionStackThroughTheHostBridge`, `internal/codingagent/ext_ui_dialog_displace_test.go::TestAbortingAHiddenDialogLeavesTheShownDialog`, `internal/codingagent/ext_ui_dialog_displace_test.go::TestExtensionDialogStacksOverTheOpenDialog`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogStacksOverFocusedEditorSlotCustom`, `internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogOverACustomComponentLeavesTheDialogShownWhenTheComponentEnds`, `internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogOverARemoteEditorSlotComponentHandsFocusBack`, `internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog` and 8 more in docs/bug-ledger.json
+- **Release note:** Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in interactive mode no longer replace each other: a second dialog used to take the editor slot and leave the first one's promise pending. They stack, the last one is visible, closing it shows the previous one again, and a hidden dialog's abort or timeout removes only itself. `/reload` and session replacement dispose every stacked dialog, and an editor-slot custom component restores the editor text it found (Pi 38847563, #11166, #9909).
+
+### BF-3853a96
+
+**`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again**
+
+- **Source:** PiG's own defect
+- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again.
+- **Root cause:** piglets/standard and piglets/aot require the same version, because a fused member cannot require a newer SDK than the Pig source pins and a pseudo-version sorts below v0.5.0. check-module-publication.py accepts a pseudo-version for a nested requirement: it has no tag, and its download into an empty cache with the committed checksums proves the commit is public. module-tags.sh 0.5.2 still refuses the pin until make set-version --release-modules replaces it with the tag.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3853a96b00` (2026-10-20)
+- **Tests:** `test/gomodule/gomodule_test.go::TestModuleTagsScriptRefusesAPseudoVersionPin`
+- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again. The root `go.mod` required `extensions/sdk v0.5.0`, which lacks `Result.Drift`, `FileChange.Created` and `Skipped.Suggest` that `pig extension upgrade` uses, so building the module outside the workspace failed, and `make module-size` failed on every pull request. Between releases the root `go.mod` (and `piglets/standard` and `piglets/aot`) now require the SDK at the pseudo-version of the `main` commit that holds the API the root uses; the release replaces it with the tag. `make module-publication` accepts such a pseudo-version, and proves by downloading it into an empty cache, with the committed checksums, that the commit is public.
+
+### BF-6811585
+
+**CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does.
+- **Root cause:** The notice prints each extension path through commandWord, which quotes a path with a character outside the plain set. Windows runner temp directories carry the "~" of an 8.3 short name (RUNNER~1), so the path prints in double quotes and three assertions that expected the raw path failed on Windows (TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch). The tests now build the expected command with commandWord, as the notice test beside them already does.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `6811585d05` (2026-10-20)
+- **Tests:** `coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll`, `coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch`, `coding/cli/extension_upgrade_startup_test.go::TestStartupNamesSDKDriftAndExitsInPrintMode`
+- **Release note:** CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does. The notice already quotes such a path for the Windows shell (`"C:\Users\RUNNER~1\..."`) and is unchanged; the tests expected the raw path and now expect the quoted word, as the notice test beside them does.
+
+### BF-aca002e
+
+**CI: `make interface-gaps` passes on main again**
+
+- **Source:** PiG's own defect
+- **Symptom:** The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `aca002e54b` (2026-10-20)
+- **Tests:** `chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener`
+- **Release note:** CI: `make interface-gaps` passes on main again. The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.
+
+### BF-626f830
+
+**`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The backslash printed bare and the shell read it as an escape, so the command named a different path.
+- **Root cause:** The plain-word set of the printed command held "\\" on every OS, so a POSIX path with a backslash printed unquoted and the shell read the backslash as an escape. The set is now per platform: a backslash is plain only on Windows, where it separates path elements. Windows quoting is unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `626f83000c` (2026-10-20)
+- **Tests:** `coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform`
+- **Release note:** `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path that holds a backslash. Before, the backslash printed bare and the shell read it as an escape, so the command named a different path. A backslash stays plain in a Windows path, where it separates elements.
+
+### BF-725e104
+
+**The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `725e104b55` (2026-10-20)
+- **Tests:** None recorded.
+- **Release note:** The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner. The release gate no longer reports it as an open hot-path gap.
+
+### BF-be6803c
+
+**The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import confirmation and the missing-session-cwd confirmation of /resume and /import are dialogs on the same stack as an extension's, as in Pi.
+- **Root cause:** The interface mapping is re-derived (a test file next removed no longer backs an evidence reference) and the bug ledger is rebuilt from the merged history.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `be6803c903` (2026-10-20)
+- **Tests:** `internal/codingagent/owner_dialog_stack_test.go::TestBugReportPromptsStayOutsideTheDialogStackAndReportNoStatus`, `internal/codingagent/owner_dialog_stack_test.go::TestExtensionDialogOpenedDuringATreeSummaryPromptTakesTheKeys`, `internal/codingagent/owner_dialog_stack_test.go::TestMissingCwdConfirmationStacksWithAnOpenExtensionDialog`, `internal/codingagent/owner_dialog_stack_test.go::TestSessionReplacementDismissesAnOpenTreeSummaryPrompt`, `internal/codingagent/owner_dialog_stack_test.go::TestStackedPromptsReportTheirBlockedStatus`
+- **Release note:** The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import confirmation and the missing-session-cwd confirmation of /resume and /import are dialogs on the same stack as an extension's, as in Pi. A dialog an extension opens while one of them is shown takes the keys, closing the prompt shows the earlier dialog again instead of hiding it, each reports its blocked status to the terminal, and a session replacement or `/reload` removes the prompt with the other dialogs. `/bug` keeps its own prompts outside the stack and no longer reports a blocked status for its description editor, as in Pi (Pi 38847563, bug-report.ts).
+
+### BF-dc003a9
+
+**Automatic retry no longer treats digits inside a request id or another number (for example `req_011CU503xyz`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Automatic retry no longer treats digits inside a request id or another number (for example `req_011CU503xyz` or `5242880 bytes`) as a retryable HTTP status code: 429, 500, 502, 503, 504, 520 and 524 count only as standalone numbers.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dc003a9b7f` (2026-10-21)
+- **Tests:** `ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification`, `ai/openai_responses_chatgpt_upstream_test.go::TestOpenAIResponsesChatGPTUsageLimitUpstream`, `coding/cli/model_fallback_test.go::TestBuildModelParsesMaxThinkingSuffix`, `coding/cli/model_fallback_test.go::TestResolveModel_ExactCatalog_NoWarning`, `internal/codingagent/interactive_post_login_discovery_test.go::TestPostLoginModelSelectionRules`
+- **Release note:** Automatic retry no longer treats digits inside a request id or another number (for example `req_011CU503xyz` or `5242880 bytes`) as a retryable HTTP status code: 429, 500, 502, 503, 504, 520 and 524 count only as standalone numbers. Carried forward from Pi 6e491cfa (earendil-works/pi#11057).
+
+### BF-dc003a9-2
+
+**Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the Codex CLI relays.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dc003a9b7f` (2026-10-21)
+- **Tests:** `ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification`, `ai/openai_responses_chatgpt_upstream_test.go::TestOpenAIResponsesChatGPTUsageLimitUpstream`, `coding/cli/model_fallback_test.go::TestBuildModelParsesMaxThinkingSuffix`, `coding/cli/model_fallback_test.go::TestResolveModel_ExactCatalog_NoWarning`, `internal/codingagent/interactive_post_login_discovery_test.go::TestPostLoginModelSelectionRules`
+- **Release note:** Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the Codex CLI relays. Carried forward from Pi 29057ece (earendil-works/pi#11057).
+
+### BF-dc003a9-3
+
+**Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`) is not retried, and its message tells the user to ask their workspace admin to increase the limit.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dc003a9b7f` (2026-10-21)
+- **Tests:** `ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification`, `ai/openai_responses_chatgpt_upstream_test.go::TestOpenAIResponsesChatGPTUsageLimitUpstream`, `coding/cli/model_fallback_test.go::TestBuildModelParsesMaxThinkingSuffix`, `coding/cli/model_fallback_test.go::TestResolveModel_ExactCatalog_NoWarning`, `internal/codingagent/interactive_post_login_discovery_test.go::TestPostLoginModelSelectionRules`
+- **Release note:** Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`) is not retried, and its message tells the user to ask their workspace admin to increase the limit. Carried forward from Pi cedefc53.
+
+### BF-43d2597
+
+**`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43d259770e` (2026-10-21)
+- **Tests:** `agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi`, `coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError`, `coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi`, `coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort`, `internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn`, `test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs`, `tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD`, `tui/file_autocomplete_test.go::TestBuildFdPathQuery`
+- **Release note:** `@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).
+
+### BF-43d2597-2
+
+**`/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).
+- **Root cause:** `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43d259770e` (2026-10-21)
+- **Tests:** `agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi`, `coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError`, `coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi`, `coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort`, `internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn`, `test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs`, `tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD`, `tui/file_autocomplete_test.go::TestBuildFdPathQuery`
+- **Release note:** `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).
+
+### BF-43d2597-3
+
+**A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43d259770e` (2026-10-21)
+- **Tests:** `agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi`, `coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError`, `coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi`, `coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort`, `internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn`, `test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs`, `tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD`, `tui/file_autocomplete_test.go::TestBuildFdPathQuery`
+- **Release note:** A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive. Built-in tools keep following `defaultTools` (Pi bd3c9b82, #11062, #11075).
+
+### BF-43d2597-4
+
+**Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43d259770e` (2026-10-21)
+- **Tests:** `agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi`, `coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError`, `coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi`, `coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort`, `internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn`, `test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs`, `tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD`, `tui/file_autocomplete_test.go::TestBuildFdPathQuery`
+- **Release note:** Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).
+
+### BF-53385a3
+
+**Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `53385a3d93` (2026-10-21, #268)
+- **Tests:** `codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled`, `coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog`
+- **Release note:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.
+
+### BF-8a18a6b
+
+**A Node extension no longer keeps reading an entry the host refused**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension no longer keeps reading an entry the host refused.
+- **Root cause:** Fixes #264
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8a18a6bb2d` (2026-10-21, #272)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds`, `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused`, `test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs`
+- **Release note:** A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.
+
+### BF-6d3cfc8
+
+**A user_bash `operations` object from an extension is no longer released while a command is running through it**
+
+- **Source:** PiG's own defect
+- **Symptom:** A user_bash `operations` object from an extension is no longer released while a command is running through it.
+- **Root cause:** The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d3cfc863d` (2026-10-21, #278)
+- **Tests:** `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns`
+- **Release note:** A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+
+### BF-46abed3
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `46abed3453` (2026-10-21)
+- **Tests:** None recorded.
+
+### BF-a1da44d
+
+**The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, and on `stream disconnected before completion`; a ChatGPT Business workspace usage-limit error is not retried.
+- **Root cause:** Also fixes the gocritic appendAssign in the exit-restore test.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a1da44daec` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, and on `stream disconnected before completion`; a ChatGPT Business workspace usage-limit error is not retried. Carried forward from Pi 6e491cfa, 29057ece and cedefc53.
+
+### BF-33dc8a0
+
+**fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `33dc8a0a22` (2026-10-21)
+- **Tests:** `ai/identity_bedrock_oracle_test.go::TestBedrockUserAgentMatchesPi`, `ai/identity_bedrock_test.go::TestBedrockUserAgentCarriesTheClientIdentity`
+
+### BF-7f3a71c
+
+**fix(durable): the reference Harness wraps a plain Models once too**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable): the reference Harness wraps a plain Models once too
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7f3a71c014` (2026-10-21)
+- **Tests:** None recorded.
+
+### BF-a6932b4
+
+**fix(coding): pass a Node extension request's client identity to the provider**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): pass a Node extension request's client identity to the provider
+- **Root cause:** The model-stream host call decoded no `identity` option, so a Node extension's createAgentSession (core/sdk.ts getClientIdentity) and any pi-ai call that names an identity sent no attribution headers. Decode it as ai.ClientIdentity, including an explicit null attribution.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a6932b4c2b` (2026-10-21)
+- **Tests:** `internal/codingagent/subprocess_identity_options_test.go::TestSubprocessStreamOptionsCarryTheRequestIdentity`
+
+### BF-36e192b
+
+**fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits
+- **Root cause:** EncodeKitty measured and sliced the payload in bytes where Pi's encodeKitty uses .length and .slice (UTF-16 units). EncodeITerm2's size is Node's (units * 3) >>> 2. The codemode worker wait is computed in integers, and the doubleclose, numbers, env-stat and bare-recover sites name their Pi counterpart or invariant.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `36e192bef8` (2026-10-21)
+- **Tests:** `tui/terminal_image_iterm2_options_test.go::TestEncodeKittyChunksByUTF16Units`
+
+### BF-b9db06c
+
+**fix(subprocess): keep a user_bash operations object alive while its exec runs**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(subprocess): keep a user_bash operations object alive while its exec runs
+- **Root cause:** The cleanup that releases the extension's operations handle runs when the object is unreachable, and Exec's last use of the object is the request it sends. A collection during the exec released the handle under the running extension exec, and the cancel test read the release notify where it expected the cancel (red: TestUserBashOperationsStayAliveWhileTheirExecRuns).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b9db06c809` (2026-10-21)
+- **Tests:** None recorded.
+
+### BF-d0c2727
+
+**fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization inventory
+- **Root cause:** It reads userAgent, version and attribution from the decoded fields with the same errors. The test's Pi user-agent pattern no longer uses (?i).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d0c2727053` (2026-10-21)
+- **Tests:** None recorded.
 
 ## Divergences from Pi added in this release
 

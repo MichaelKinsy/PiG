@@ -18,7 +18,7 @@ import (
 // mutation-checked: removing the invocation check from taskRuntime.SnapshotAsOfErased (driver/taskruntime.go) lets the late read succeed.
 func TestCoreTaskRuntimeSnapshotAsOfRejectsAfterTheInvocationEnds(t *testing.T) {
 	notes := durable.DefineDoc(durable.DocDefinition[runtimeNotes]{
-		CommonDocDefinition: durable.CommonDocDefinition[runtimeNotes]{Kind: "test.asof-after-end", Version: 1, Initial: func() runtimeNotes { return runtimeNotes{} }},
+		CommonDocDefinition: durable.CommonDocDefinition[runtimeNotes]{Kind: "test.asof-after-end", Version: 1, Initial: func() runtimeNotes { return runtimeNotes{} }, CheckpointWhen: func(runtimeNotes, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 	})
 	captured := make(chan stepRuntime, 1)

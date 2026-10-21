@@ -136,7 +136,7 @@ func TestExample03OwnedConversations(t *testing.T) {
 		},
 	})
 	registryDoc := durable.DefineDoc(durable.DocDefinition[agentRegistry]{
-		CommonDocDefinition: durable.CommonDocDefinition[agentRegistry]{Kind: "example.agent-registry", Version: 1, Initial: func() agentRegistry { return agentRegistry{Agents: map[string]agentRef{}} }},
+		CommonDocDefinition: durable.CommonDocDefinition[agentRegistry]{Kind: "example.agent-registry", Version: 1, Initial: func() agentRegistry { return agentRegistry{Agents: map[string]agentRef{}} }, CheckpointWhen: func(agentRegistry, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
 	})
 

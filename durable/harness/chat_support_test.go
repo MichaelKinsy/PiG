@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // fauxHandle is the faux provider surface the harness tests drive (pi-ai FauxProviderHandle).
@@ -84,8 +85,12 @@ type openChatOptions struct {
 	// env is one environment for every conversation; envFunc an Env function.
 	env     env.ExecutionEnv
 	envFunc func(ctx context.Context, target EnvTarget) (env.ExecutionEnv, error)
+	// telemetry is HarnessOptions.telemetry.
+	telemetry telemetry.TelemetryContext
 	// setTimer is HarnessOptions.SetTimer.
 	setTimer durable.SetTimer
+	// identity is HarnessOptions.Identity.
+	identity *ai.ClientIdentity
 }
 
 // openChat opens a Harness over storage and returns its root, configured with the faux model on first creation.
@@ -110,8 +115,10 @@ func openChat(t *testing.T, storage durable.Storage, setup *chatState, options .
 			setup.mu.Unlock()
 			return now()
 		},
-		OnReport: setup.Reports.add,
-		SetTimer: option.setTimer,
+		OnReport:  setup.Reports.add,
+		Telemetry: option.telemetry,
+		SetTimer:  option.setTimer,
+		Identity:  option.identity,
 	}
 	switch {
 	case option.envFunc != nil:

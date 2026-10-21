@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 var testContext = context.Background()
@@ -90,6 +91,8 @@ type chat struct {
 	faux     *ai.FauxProviderHandle
 	models   *ai.Models
 	registry harness.Registry
+	// telemetry is the adapter the Harness opens with; nil opens it without telemetry.
+	telemetry telemetry.TelemetryContext
 }
 
 func chatSetup() *chat {
@@ -107,7 +110,7 @@ func (c *chat) open(t *testing.T, storage durable.Storage) (harness.Harness, har
 // openWith opens the Harness with an execution environment, when given.
 func (c *chat) openWith(t *testing.T, storage durable.Storage, environment env.ExecutionEnv) (harness.Harness, harness.Conversation) {
 	t.Helper()
-	options := harness.HarnessOptions{Models: c.models, Registry: c.registry}
+	options := harness.HarnessOptions{Models: c.models, Registry: c.registry, Telemetry: c.telemetry}
 	if environment != nil {
 		options.Env = func(context.Context, harness.EnvTarget) (env.ExecutionEnv, error) { return environment, nil }
 	}

@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"os/exec"
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -29,9 +28,9 @@ type outcomeSpec struct {
 
 // linkSpec is a span link: its target (a kept span, nothing, the shared no-op context or the recorder root) and attributes.
 type linkSpec struct {
-	Target string         `json:"target"`
-	Idx    int            `json:"idx"`
-	Attrs  map[string]any `json:"attrs,omitempty"`
+	Target string   `json:"target"`
+	Idx    int      `json:"idx"`
+	Attrs  attrList `json:"attrs,omitempty"`
 }
 
 // opSpec is one step of a span program: setAttributes, addEvent, setStatus, addLink, keeping the span, using a kept span (possibly after it settled), awaiting a child span, or
@@ -39,7 +38,7 @@ type linkSpec struct {
 type opSpec struct {
 	Op      string          `json:"op"`
 	Name    string          `json:"name"`
-	Attrs   map[string]any  `json:"attrs,omitempty"`
+	Attrs   attrList        `json:"attrs,omitempty"`
 	Status  json.RawMessage `json:"status,omitempty"`
 	Idx     int             `json:"idx"`
 	Sub     *opSpec         `json:"sub,omitempty"`
@@ -51,11 +50,11 @@ type opSpec struct {
 }
 
 type rootSpec struct {
-	Name    string         `json:"name"`
-	Attrs   map[string]any `json:"attrs,omitempty"`
-	Links   []linkSpec     `json:"links,omitempty"`
-	Body    []opSpec       `json:"body"`
-	Outcome outcomeSpec    `json:"outcome"`
+	Name    string      `json:"name"`
+	Attrs   attrList    `json:"attrs,omitempty"`
+	Links   []linkSpec  `json:"links,omitempty"`
+	Body    []opSpec    `json:"body"`
+	Outcome outcomeSpec `json:"outcome"`
 }
 
 // foreignScope is a valid scope no recorder owns.
@@ -84,7 +83,7 @@ func linksOf(recorder *telemetry.InMemoryTelemetryContext, kept []telemetry.Tele
 	return out
 }
 
-// carrierOf is the carrier a remote step extracts: the injected carrier of a kept span, a malformed or foreign shape, or none.
+// carrierOf is the carrier a remote step extracts: the injected carrier of a kept span, an incomplete, foreign or opaque shape, or none.
 func carrierOf(recorder *telemetry.InMemoryTelemetryContext, kept []telemetry.TelemetrySpan, op opSpec) telemetry.TelemetryCarrier {
 	var own telemetry.TelemetryCarrier
 	if len(kept) > 0 {
@@ -92,7 +91,7 @@ func carrierOf(recorder *telemetry.InMemoryTelemetryContext, kept []telemetry.Te
 	}
 	scope := own["pi-memory-scope"]
 	foreign := func(span string) telemetry.TelemetryCarrier {
-		return telemetry.TelemetryCarrier{"pi-memory-scope": foreignScope, "pi-memory-span": span}
+		return telemetry.TelemetryCarrier{"pi-memory-scope": foreignScope, "pi-memory-span": span, "pi-memory-trace": "foreign-trace"}
 	}
 	switch op.Carrier {
 	case "kept":
@@ -102,36 +101,59 @@ func carrierOf(recorder *telemetry.InMemoryTelemetryContext, kept []telemetry.Te
 			own["extra"] = "key"
 		}
 		return own
-	case "missingSpan":
+	case "missingScope", "missingSpan", "missingTrace":
 		if own != nil {
-			return telemetry.TelemetryCarrier{"pi-memory-scope": scope}
+			delete(own, map[string]string{"missingScope": "pi-memory-scope", "missingSpan": "pi-memory-span", "missingTrace": "pi-memory-trace"}[op.Carrier])
+			return own
 		}
-	case "badScope":
-		return telemetry.TelemetryCarrier{"pi-memory-scope": "X", "pi-memory-span": "1"}
-	case "upperScope":
-		return telemetry.TelemetryCarrier{"pi-memory-scope": strings.ToUpper(foreignScope), "pi-memory-span": "1"}
-	case "spanZero":
-		return foreign("0")
-	case "spanLeadingZero":
-		return foreign("01")
-	case "spanSign":
-		return foreign("+1")
-	case "spanUnsafe":
-		return foreign("9007199254740992")
-	case "spanHuge":
-		return foreign("99999999999999999999999")
-	case "spanMaxSafe":
-		return foreign("9007199254740991")
 	case "foreign":
 		return foreign("1")
+	case "opaque":
+		return telemetry.TelemetryCarrier{"pi-memory-scope": "external-recorder", "pi-memory-span": "external-span", "pi-memory-trace": "external-trace"}
 	case "ownUnknown":
 		if own != nil {
-			return telemetry.TelemetryCarrier{"pi-memory-scope": scope, "pi-memory-span": "99999"}
+			return telemetry.TelemetryCarrier{"pi-memory-scope": scope, "pi-memory-span": "99999", "pi-memory-trace": own["pi-memory-trace"]}
 		}
 	case "empty":
 		return telemetry.TelemetryCarrier{}
 	}
 	return nil
+}
+
+// The oracleSpanJSON family writes getSpans() as JSON.stringify does: members in the order Pi's snapshot creates them,
+// so a comparison with Pi's output text is sensitive to member order, attribute order included.
+type oracleSpanJSON struct {
+	ID            int                      `json:"id"`
+	ParentID      *int                     `json:"parentId"`
+	Context       map[string]string        `json:"context"`
+	ParentContext map[string]string        `json:"parentContext"`
+	Links         []oracleLinkJSON         `json:"links"`
+	Name          string                   `json:"name"`
+	Attributes    telemetry.SpanAttributes `json:"attributes"`
+	Events        []oracleEventJSON        `json:"events"`
+	Status        statusJSON               `json:"status"`
+	Settled       bool                     `json:"settled"`
+	EndSequence   *int                     `json:"endSequence,omitempty"`
+}
+
+type oracleLinkJSON struct {
+	Context    map[string]string        `json:"context"`
+	Attributes telemetry.SpanAttributes `json:"attributes"`
+}
+
+type oracleEventJSON struct {
+	Name       string                   `json:"name"`
+	Attributes telemetry.SpanAttributes `json:"attributes"`
+}
+
+type statusJSON struct {
+	Status string           `json:"status"`
+	Error  *statusErrorJSON `json:"error,omitempty"`
+}
+
+type statusErrorJSON struct {
+	Name    string `json:"name"`
+	Message string `json:"message"`
 }
 
 // namedFailure is a JavaScript Error whose name was assigned.
@@ -140,17 +162,23 @@ type namedFailure struct{ name, message string }
 func (failure *namedFailure) Error() string { return failure.message }
 func (failure *namedFailure) Name() string  { return failure.name }
 
-func attributesOf(attrs map[string]any) telemetry.SpanAttributes {
+// attrList is an ordered attribute bag as JSON: an array of [name, value] pairs that the Pi oracle writes into an object in
+// order, so a repeated name overwrites in place and integer-like names come first, as in an object literal. The
+// value {"$undef": true} is undefined.
+type attrList [][2]any
+
+func attributesOf(attrs attrList) telemetry.SpanAttributes {
 	if attrs == nil {
 		return nil
 	}
 	out := telemetry.SpanAttributes{}
-	for name, value := range attrs {
-		if marker, ok := value.(map[string]any); ok && marker["$undef"] == true {
-			out[name] = nil
+	for _, pair := range attrs {
+		name := pair[0].(string)
+		if marker, ok := pair[1].(map[string]any); ok && marker["$undef"] == true {
+			out = out.Set(name, nil)
 			continue
 		}
-		out[name] = value
+		out = out.Set(name, pair[1])
 	}
 	return out
 }
@@ -217,28 +245,28 @@ func applyOp(recorder *telemetry.InMemoryTelemetryContext, span telemetry.Teleme
 func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 	rng := rand.New(rand.NewSource(151))
 	pick := func(items ...string) string { return items[rng.Intn(len(items))] }
-	attributes := func() map[string]any {
+	attributes := func() attrList {
 		if rng.Intn(5) == 0 {
 			return nil
 		}
-		out := map[string]any{}
-		for range rng.Intn(4) {
-			name := pick("a", "b", "c", "10", "2", "é", "")
+		var out attrList
+		for range rng.Intn(6) {
+			name := pick("a", "b", "c", "10", "2", "9", "é", "")
 			switch rng.Intn(7) {
 			case 0:
-				out[name] = pick("x", "", "é😀")
+				out = append(out, [2]any{name, pick("x", "", "é😀")})
 			case 1:
-				out[name] = float64(rng.Intn(10)) + []float64{0, 0.5}[rng.Intn(2)]
+				out = append(out, [2]any{name, float64(rng.Intn(10)) + []float64{0, 0.5}[rng.Intn(2)]})
 			case 2:
-				out[name] = rng.Intn(2) == 0
+				out = append(out, [2]any{name, rng.Intn(2) == 0})
 			case 3:
-				out[name] = []any{pick("p", "q"), pick("r", "s")}
+				out = append(out, [2]any{name, []any{pick("p", "q"), pick("r", "s")}})
 			case 4:
-				out[name] = []any{float64(rng.Intn(3)), float64(rng.Intn(3))}
+				out = append(out, [2]any{name, []any{float64(rng.Intn(3)), float64(rng.Intn(3))}})
 			case 5:
-				out[name] = []any{}
+				out = append(out, [2]any{name, []any{}})
 			default:
-				out[name] = map[string]any{"$undef": true}
+				out = append(out, [2]any{name, map[string]any{"$undef": true}})
 			}
 		}
 		return out
@@ -305,7 +333,7 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 					continue
 				}
 				o := outcome()
-				carrier := pick("kept", "kept", "kept", "extra", "missingSpan", "badScope", "upperScope", "spanZero", "spanLeadingZero", "spanSign", "spanUnsafe", "spanHuge", "spanMaxSafe", "foreign", "ownUnknown", "empty", "none")
+				carrier := pick("kept", "kept", "kept", "extra", "missingScope", "missingSpan", "missingTrace", "foreign", "opaque", "ownUnknown", "empty", "none")
 				return opSpec{Op: "remote", Carrier: carrier, Idx: rng.Intn(4), Name: pick("r1", "r2", ""), Attrs: attributes(), Links: links(), Body: body(depth + 1), Outcome: &o}
 			default:
 				if depth >= 3 {
@@ -375,31 +403,21 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 				remote++
 			}
 		}
-		got := make([]map[string]any, len(recorded))
+		got := make([]oracleSpanJSON, len(recorded))
 		for j, span := range recorded {
-			events := make([]map[string]any, len(span.Events))
+			events := make([]oracleEventJSON, len(span.Events))
 			for k, event := range span.Events {
-				events[k] = map[string]any{"name": event.Name, "attributes": event.Attributes}
+				events[k] = oracleEventJSON{Name: event.Name, Attributes: event.Attributes}
 			}
-			status := map[string]any{"status": string(span.Status.Status)}
+			status := statusJSON{Status: string(span.Status.Status)}
 			if span.Status.Error != nil {
-				status["error"] = map[string]any{"name": span.Status.Error.Name, "message": span.Status.Error.Message}
+				status.Error = &statusErrorJSON{Name: span.Status.Error.Name, Message: span.Status.Error.Message}
 			}
-			links := make([]map[string]any, len(span.Links))
+			links := make([]oracleLinkJSON, len(span.Links))
 			for k, link := range span.Links {
-				links[k] = map[string]any{"context": link.Context, "attributes": link.Attributes}
+				links[k] = oracleLinkJSON{Context: link.Context, Attributes: link.Attributes}
 			}
-			var parentContext any
-			if span.ParentContext != nil {
-				parentContext = span.ParentContext
-			}
-			got[j] = map[string]any{"id": span.ID, "parentId": nil, "context": span.Context, "parentContext": parentContext, "links": links, "name": span.Name, "attributes": span.Attributes, "events": events, "status": status, "settled": span.Settled}
-			if span.ParentID != nil {
-				got[j]["parentId"] = *span.ParentID
-			}
-			if span.EndSequence != nil {
-				got[j]["endSequence"] = *span.EndSequence
-			}
+			got[j] = oracleSpanJSON{ID: span.ID, ParentID: span.ParentID, Context: span.Context, ParentContext: span.ParentContext, Links: links, Name: span.Name, Attributes: span.Attributes, Events: events, Status: status, Settled: span.Settled, EndSequence: span.EndSequence}
 		}
 		gotJSON, err := json.Marshal(got)
 		if err != nil {
@@ -407,15 +425,8 @@ func TestInMemoryTelemetryMatchesPiOnRandomPrograms(t *testing.T) {
 		}
 		// The recorder's scope is a random UUID: Pi's output prints it as SCOPE, and so does PiG's.
 		gotJSON = scopePattern.ReplaceAll(gotJSON, []byte("SCOPE"))
-		var gotValue, wantValue any
-		if err := json.Unmarshal(gotJSON, &gotValue); err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(want[i], &wantValue); err != nil {
-			t.Fatal(err)
-		}
-		gotCanonical, _ := json.Marshal(gotValue)
-		wantCanonical, _ := json.Marshal(wantValue)
+		// The texts are compared as written, so member order, attribute order included, is part of the comparison.
+		gotCanonical, wantCanonical := gotJSON, []byte(want[i])
 		if !bytes.Equal(gotCanonical, wantCanonical) {
 			if failures++; failures <= 3 {
 				programJSON, _ := json.Marshal(program)

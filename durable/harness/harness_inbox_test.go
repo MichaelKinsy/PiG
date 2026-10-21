@@ -250,7 +250,7 @@ func TestInbox(t *testing.T) {
 		// Occupy the line, let the answer queue its boundary commit behind it, then change the mode.
 		held := store.holdCommits()
 		markerDoc := durable.DefineDoc(durable.DocDefinition[markerState]{
-			CommonDocDefinition: durable.CommonDocDefinition[markerState]{Kind: "test.marker", Version: 1, Initial: func() markerState { return markerState{} }},
+			CommonDocDefinition: durable.CommonDocDefinition[markerState]{Kind: "test.marker", Version: 1, Initial: func() markerState { return markerState{} }, CheckpointWhen: func(markerState, []durable.Op, durable.CheckpointInfo) bool { return false }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
 		})
 		occupying := make(chan error, 1)

@@ -141,6 +141,7 @@ var terminalBehavior = map[string]string{
 	"setProgramStatus": "stores the status and reports it to the terminal as an OSC 7501 sequence when the terminal answered the feature query",
 	"columns":          "synchronously returns current terminal columns", "rows": "synchronously returns current terminal rows", "kittyProtocolActive": "synchronously returns negotiated Kitty keyboard state", "moveBy": "moves cursor relatively by signed line count", "hideCursor": "emits cursor-hide control", "showCursor": "emits cursor-show control",
 	"clearLine": "clears the current terminal line", "clearFromCursor": "clears from cursor through screen end", "clearScreen": "clears screen and homes cursor", "setTitle": "sets terminal title to supplied text", "setProgress": "starts or clears terminal OSC progress indication",
+	"restoreOnExit": "synchronously writes the before sequence, this terminal's own mode resets, then the after sequence, from a process exit handler when stop() did not run",
 }
 
 var tuiBehavior = map[string]string{

@@ -464,7 +464,7 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	body.prepare(httpReq)
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "text/event-stream")
-	httpReq.Header.Set("User-Agent", PiUserAgent())
+	applyIdentityHeaders(httpReq.Header, ClientIdentityTarget{Provider: p.cfg.ProviderID, BaseURL: p.cfg.BaseURL}, opts.Identity)
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 
 	for k, v := range p.cfg.ExtraHeaders {

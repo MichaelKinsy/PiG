@@ -35,7 +35,7 @@ func TestSummarizationOfARegistryProviderIsASimpleStream(t *testing.T) {
 			model := faux.GetModel()
 			model.Capabilities.ContextWindow = test.window
 			model.ProviderMeta.API = test.api
-			model.Provider = newProviderAttributionProvider(faux, "fixture", "http://127.0.0.1:1", nil, nil)
+			model.Provider = newRequestOptionsProvider(faux, "fixture", nil)
 			messages := []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hello")}}}
 			if _, _, err := (compaction.ProviderCompleter{}).CompleteSimple(context.Background(), model, "system", messages, ai.StreamOptions{MaxTokens: test.asked}); err != nil {
 				t.Fatal(err)

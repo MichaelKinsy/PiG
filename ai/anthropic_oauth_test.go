@@ -439,11 +439,12 @@ func TestAnthropicOnPayloadReplacesBetas(t *testing.T) {
 	}
 }
 
-// TestAnthropicClientUserAgent covers mergeClientHeaders key order: the
-// seeded User-Agent key defaults to PiUserAgent() (D65) and takes an
-// exact-case request value in place, so the OAuth identity's lowercase
-// user-agent key, assigned later, wins over it (Q3: OAuth requests keep
-// claude-cli/2.1.280 regardless of a configured header).
+// TestAnthropicClientUserAgent covers createClient's header merge: an API-key
+// request seeds User-Agent from the client identity (D65) below the model and
+// request headers, and an OAuth request sends the Claude Code identity
+// (claude-cli/2.1.280, Q3) instead of the client identity. The identity's
+// user-agent key is the lowest source, so a configured header of any case
+// replaces it, as under Pi 1.3.0 adc5fa9f.
 func TestAnthropicClientUserAgent(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -451,11 +452,11 @@ func TestAnthropicClientUserAgent(t *testing.T) {
 		headers ProviderHeaders
 		want    string
 	}{
-		{name: "api key defaults to PiUserAgent", apiKey: "kimi-key", want: PiUserAgent()},
+		{name: "api key defaults to the identity User-Agent", apiKey: "kimi-key", want: FormatUserAgent(nil)},
 		{name: "oauth identity defaults to the Claude Code identity", apiKey: "sk-ant-oat-test", want: "claude-cli/2.1.280"},
 		// anthropic-auth-token.test.ts: lets explicit headers override the default Anthropic Messages User-Agent.
 		{name: "api key keeps a request User-Agent", apiKey: "kimi-key", headers: ProviderHeaders{"User-Agent": new("custom-client")}, want: "custom-client"},
-		{name: "oauth identity outranks an exact-case User-Agent", apiKey: "sk-ant-oat-test", headers: ProviderHeaders{"User-Agent": new("custom-client")}, want: "claude-cli/2.1.280"},
+		{name: "an exact-case User-Agent replaces the oauth identity", apiKey: "sk-ant-oat-test", headers: ProviderHeaders{"User-Agent": new("custom-client")}, want: "custom-client"},
 		{name: "a lowercase user-agent overrides the oauth identity", apiKey: "sk-ant-oat-test", headers: ProviderHeaders{"user-agent": new("custom-client")}, want: "custom-client"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

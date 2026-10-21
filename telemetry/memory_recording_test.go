@@ -15,9 +15,9 @@ import (
 func TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	var parent telemetry.TelemetrySpan
-	err := recorder.StartSpan(telemetry.SpanOptions{Name: "parent", Attributes: telemetry.SpanAttributes{"keep": "a", "over": "old"}}, func(span telemetry.TelemetrySpan) error {
+	err := recorder.StartSpan(telemetry.SpanOptions{Name: "parent", Attributes: telemetry.SpanAttributes{telemetry.Attr("keep", "a"), telemetry.Attr("over", "old")}}, func(span telemetry.TelemetrySpan) error {
 		parent = span
-		span.SetAttributes(telemetry.SpanAttributes{"over": "new", "added": int64(7)})
+		span.SetAttributes(telemetry.SpanAttributes{telemetry.Attr("over", "new"), telemetry.Attr("added", int64(7))})
 		return span.StartSpan(telemetry.SpanOptions{Name: "child"}, func(telemetry.TelemetrySpan) error { return nil })
 	})
 	if err != nil {
@@ -28,12 +28,12 @@ func TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents(t *testing.T) {
 	if len(spans) != 2 || spans[0].ID != 1 || spans[1].ID != 2 || spans[1].ParentID == nil || *spans[1].ParentID != 1 {
 		t.Fatalf("spans = %+v, want ids 1 and 2 with the child's parent 1", spans)
 	}
-	if want := (telemetry.SpanAttributes{"keep": "a", "over": "new", "added": int64(7)}); !reflect.DeepEqual(spans[0].Attributes, want) {
+	if want := (telemetry.SpanAttributes{telemetry.Attr("keep", "a"), telemetry.Attr("over", "new"), telemetry.Attr("added", int64(7))}); !reflect.DeepEqual(spans[0].Attributes, want) {
 		t.Fatalf("attributes = %v, want %v", spans[0].Attributes, want)
 	}
 
-	spans[0].Attributes["keep"] = "mutated"
-	if got := recorder.GetSpans()[0].Attributes["keep"]; got != "a" {
+	spans[0].Attributes.Set("keep", "mutated")
+	if got := recorder.GetSpans()[0].Attributes.Value("keep"); got != "a" {
 		t.Fatalf("a caller's change to a snapshot reached the recorder: keep = %v", got)
 	}
 

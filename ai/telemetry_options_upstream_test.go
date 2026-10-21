@@ -7,12 +7,12 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/ai/test/telemetry-options.test.ts. TelemetryContext is upstream ProviderRequestOptions.telemetryContext
+// Ports packages/ai/test/telemetry-options.test.ts. Telemetry is upstream ProviderRequestOptions.telemetry
 // (types.ts:135), inherited by StreamOptions, DeferredFetchOptions, DeferredCancelOptions and ImagesOptions.
 // Go has no separate buildBaseOptions: StreamSimple takes the same StreamOptions value, so the simple-stream
 // conversion (simple-options.ts:32) is the value copy asserted below.
 
-var telemetryOptionsContext telemetry.TelemetryContext = telemetry.NoopTelemetryContext
+var telemetryOptionsContext telemetry.TelemetrySpan = telemetry.NoopTelemetryContext
 
 func telemetryTestModel() *Model {
 	return &Model{ID: "model", DisplayName: "Model", ProviderMeta: ProviderMetadata{API: "telemetry-test", ProviderID: "telemetry-provider", BaseURL: "https://example.test"}, Input: []string{"text"}, Capabilities: ModelCapabilities{ContextWindow: 1000, MaxOutputTokens: 100}}
@@ -27,52 +27,55 @@ func telemetryCompletedStream(model *Model) (*AssistantMessageEventStream, error
 	return stream, nil
 }
 
-// Ports packages/ai/test/telemetry-options.test.ts:69 (1.0.4: "is inherited by every request option surface and simple-stream conversion").
-// Pi: packages/ai/src/api/simple-options.ts:48 (telemetryContext)
+// Ports packages/ai/test/telemetry-options.test.ts:69 (2ec55d80: "is inherited by every request option surface and simple-stream conversion").
+// Pi: packages/ai/src/api/simple-options.ts:48 (telemetry)
 func TestTelemetryOptionsInheritedByEveryRequestOptionSurfaceUpstream(t *testing.T) {
-	if got := (StreamOptions{TelemetryContext: telemetryOptionsContext}).TelemetryContext; got != telemetryOptionsContext {
-		t.Errorf("StreamOptions.TelemetryContext = %v", got)
+	if got := (StreamOptions{Telemetry: telemetryOptionsContext}).Telemetry; got != telemetryOptionsContext {
+		t.Errorf("StreamOptions.Telemetry = %v", got)
 	}
-	if got := (DeferredFetchOptions{StreamOptions: StreamOptions{TelemetryContext: telemetryOptionsContext}}).TelemetryContext; got != telemetryOptionsContext {
-		t.Errorf("DeferredFetchOptions.TelemetryContext = %v", got)
+	if got := (DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: telemetryOptionsContext}}).Telemetry; got != telemetryOptionsContext {
+		t.Errorf("DeferredFetchOptions.Telemetry = %v", got)
 	}
-	if got := (DeferredCancelOptions{TelemetryContext: telemetryOptionsContext}).TelemetryContext; got != telemetryOptionsContext {
-		t.Errorf("DeferredCancelOptions.TelemetryContext = %v", got)
+	if got := (DeferredCancelOptions{Telemetry: telemetryOptionsContext}).Telemetry; got != telemetryOptionsContext {
+		t.Errorf("DeferredCancelOptions.Telemetry = %v", got)
 	}
-	if got := (ImagesOptions{TelemetryContext: telemetryOptionsContext}).TelemetryContext; got != telemetryOptionsContext {
-		t.Errorf("ImagesOptions.TelemetryContext = %v", got)
+	if got := (ImagesOptions{Telemetry: telemetryOptionsContext}).Telemetry; got != telemetryOptionsContext {
+		t.Errorf("ImagesOptions.Telemetry = %v", got)
+	}
+	if got := BuildBaseOptions(telemetryTestModel(), NormalizeContext(Context{Messages: []Message{}}), StreamOptions{Telemetry: telemetryOptionsContext}, "").Telemetry; got != telemetryOptionsContext {
+		t.Errorf("BuildBaseOptions(...).Telemetry = %v", got)
 	}
 }
 
-// Ports packages/ai/test/telemetry-options.test.ts:75 (1.0.4: "survives provider and Models stream/deferred dispatch").
-// Pi: packages/ai/src/types.ts:137 (telemetryContext)
+// Ports packages/ai/test/telemetry-options.test.ts:75 (2ec55d80: "survives provider and Models stream/deferred dispatch").
+// Pi: packages/ai/src/types.ts:137 (telemetry)
 func TestTelemetryOptionsSurviveProviderAndModelsDispatchUpstream(t *testing.T) {
-	var observed []telemetry.TelemetryContext
+	var observed []telemetry.TelemetrySpan
 	model := telemetryTestModel()
 	handle := DeferredHandle{Provider: model.ProviderMeta.ProviderID, ModelID: model.ID, API: model.ProviderMeta.API, ID: "response"}
 	provider := CreateProvider(CreateProviderOptions{
 		ID: model.ProviderMeta.ProviderID, Auth: configuredTestAuth(), Models: []AnyModel{model},
 		API: &ProviderStreams{
 			Stream: func(_ context.Context, requestModel *Model, _ TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
-				observed = append(observed, options.TelemetryContext)
+				observed = append(observed, options.Telemetry)
 				return telemetryCompletedStream(requestModel)
 			},
 			StreamSimple: func(_ context.Context, requestModel *Model, _ TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
-				observed = append(observed, options.TelemetryContext)
+				observed = append(observed, options.Telemetry)
 				return telemetryCompletedStream(requestModel)
 			},
 			FetchDeferred: func(_ context.Context, requestModel *Model, _ DeferredHandle, options DeferredFetchOptions) (*AssistantMessageEventStream, error) {
-				observed = append(observed, options.TelemetryContext)
+				observed = append(observed, options.Telemetry)
 				return telemetryCompletedStream(requestModel)
 			},
 			CancelDeferred: func(_ context.Context, _ *Model, _ DeferredHandle, options DeferredCancelOptions) error {
-				observed = append(observed, options.TelemetryContext)
+				observed = append(observed, options.Telemetry)
 				return nil
 			},
 		},
 	})
 	request := NormalizeContext(Context{Messages: []Message{}})
-	streamOptions := StreamOptions{TelemetryContext: telemetryOptionsContext}
+	streamOptions := StreamOptions{Telemetry: telemetryOptionsContext}
 	for _, call := range []func() error{
 		func() error {
 			s, err := provider.Stream(t.Context(), model, request, streamOptions)
@@ -130,14 +133,14 @@ func drain(t *testing.T, stream *AssistantMessageEventStream) {
 	}
 }
 
-// Ports packages/ai/test/telemetry-options.test.ts:122 (1.0.4: "survives direct and Models image dispatch").
-// Pi: packages/ai/src/types.ts:137 (telemetryContext)
+// Ports packages/ai/test/telemetry-options.test.ts:122 (2ec55d80: "survives direct and Models image dispatch").
+// Pi: packages/ai/src/types.ts:137 (telemetry)
 func TestTelemetryOptionsSurviveImageDispatchUpstream(t *testing.T) {
-	var observed []telemetry.TelemetryContext
+	var observed []telemetry.TelemetrySpan
 	imageModel := ImageModel{ID: "image-model", Name: "Image Model", API: "telemetry-test-images", Provider: "telemetry-image-provider", BaseURL: "https://example.test", Input: []string{"text"}, Output: []string{"image"}}
 	imagesRequest := ImagesContext{Input: []ContentBlock{TextContent{Text: "circle"}}}
 	RegisterImagesAPIProvider(ImagesAPIProvider{API: imageModel.API, GenerateImages: func(_ context.Context, requestModel ImageModel, _ ImagesContext, options ProviderImagesOptions) AssistantImages {
-		observed = append(observed, options.TelemetryContext)
+		observed = append(observed, options.Telemetry)
 		return AssistantImages{API: requestModel.API, Provider: requestModel.Provider, Model: requestModel.ID, Output: []ContentBlock{}, StopReason: ImagesStopReasonStop}
 	}})
 	t.Cleanup(func() {
@@ -145,7 +148,7 @@ func TestTelemetryOptionsSurviveImageDispatchUpstream(t *testing.T) {
 		defer imagesAPIProviderMu.Unlock()
 		delete(imagesAPIProviderRegistry, imageModel.API)
 	})
-	if _, err := GenerateImages(t.Context(), imageModel, imagesRequest, ImagesOptions{TelemetryContext: telemetryOptionsContext}); err != nil {
+	if _, err := GenerateImages(t.Context(), imageModel, imagesRequest, ImagesOptions{Telemetry: telemetryOptionsContext}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -154,11 +157,11 @@ func TestTelemetryOptionsSurviveImageDispatchUpstream(t *testing.T) {
 	models.SetProvider(CreateProvider(CreateProviderOptions{
 		ID: imageModel.Provider, Auth: configuredTestAuth(), Models: []AnyModel{&imageModel},
 		Images: ProviderImageAPIMap{imageModel.API: {GenerateImages: func(_ context.Context, requestModel *ImageModel, _ ImagesContext, options ImagesOptions) (AssistantImages, error) {
-			observed = append(observed, options.TelemetryContext)
+			observed = append(observed, options.Telemetry)
 			return AssistantImages{API: requestModel.API, Provider: requestModel.Provider, Model: requestModel.ID, Output: []ContentBlock{}, StopReason: ImagesStopReasonStop}, nil
 		}}},
 	}))
-	result := models.GenerateImages(t.Context(), &imageModel, imagesRequest, ModelsImagesOptions{ImagesOptions: ImagesOptions{TelemetryContext: telemetryOptionsContext}})
+	result := models.GenerateImages(t.Context(), &imageModel, imagesRequest, ModelsImagesOptions{ImagesOptions: ImagesOptions{Telemetry: telemetryOptionsContext}})
 	if result.StopReason != ImagesStopReasonStop {
 		t.Fatalf("models.GenerateImages = %s", result.ErrorMessage)
 	}
@@ -168,21 +171,21 @@ func TestTelemetryOptionsSurviveImageDispatchUpstream(t *testing.T) {
 }
 
 // ClassifierOptions extends ProviderRequestOptions too (.upstream/v0.99.2/packages/ai/src/types.ts:324), so
-// Models.classify forwards telemetryContext with the rest of the request options (models.ts classify). Upstream
+// Models.classify forwards telemetry with the rest of the request options (models.ts classify). Upstream
 // telemetry-options.test.ts has no classifier case; this guards the sibling surface of the image case above.
 func TestTelemetryOptionsSurviveClassifierDispatch(t *testing.T) {
-	var observed []telemetry.TelemetryContext
+	var observed []telemetry.TelemetrySpan
 	classifier := classifierTestModel("telemetry-classifier-provider", "classifier-model")
 	models := CreateModels(CreateModelsOptions{})
 	defer models.Close()
 	models.SetProvider(CreateProvider(CreateProviderOptions{
 		ID: classifier.Provider, Auth: configuredTestAuth(), Models: []AnyModel{classifier},
 		Classifiers: ProviderClassifierMap{classifier.API: {Classify: func(_ context.Context, model *ClassifierModel, _ ClassifierContext, options ClassifierOptions) (ClassifierResult, error) {
-			observed = append(observed, options.TelemetryContext)
+			observed = append(observed, options.Telemetry)
 			return ClassifierResult{API: model.API, Provider: model.Provider, Model: model.ID, StopReason: ClassifierStopReasonStop}, nil
 		}}},
 	}))
-	result := models.Classify(t.Context(), classifier, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{TelemetryContext: telemetryOptionsContext}})
+	result := models.Classify(t.Context(), classifier, classifierTestContext(), ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{Telemetry: telemetryOptionsContext}})
 	if result.StopReason != ClassifierStopReasonStop {
 		t.Fatalf("models.Classify = %s", result.ErrorMessage)
 	}

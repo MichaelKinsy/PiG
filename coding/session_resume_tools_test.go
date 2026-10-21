@@ -23,6 +23,10 @@ func TestResumeRestoresTheTranscriptsActiveTools(t *testing.T) {
 		for range first.Events() { //nolint:revive // drain
 		}
 	}()
+	// beta is recorded and then removed: a tool the branch never mentioned would activate on resume (Pi bd3c9b82).
+	if _, err := first.Send(context.Background(), "with both"); err != nil {
+		t.Fatal(err)
+	}
 	first.SetActiveToolsByName([]string{"alpha"})
 	if _, err := first.Send(context.Background(), "with alpha only"); err != nil {
 		t.Fatal(err)

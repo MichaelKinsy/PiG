@@ -65,7 +65,7 @@ type Api = { Harness: { open(storage: unknown, options: unknown, context: unknow
 
 /** Commit, close and reopen twice; returns the document's items after each open. */
 async function reopenTwice(api: Api, open: () => Promise<unknown>, options: Record<string, unknown>) {
-  const Live = api.defineDoc<{ items: number[] }>({ kind: "prefixed.live", version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ items: [] }) })
+  const Live = api.defineDoc<{ items: number[] }>({ kind: "prefixed.live", checkpointWhen: () => false, version: 1, scope: "conversation", history: "latest", fork: "initial", initial: () => ({ items: [] }) })
   const registry = api.createRegistry()
   const seen: (number[] | undefined)[] = []
   let id: unknown

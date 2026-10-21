@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
 // Ports packages/coding-agent/src/extensions/mcp/config.ts.
@@ -111,6 +112,8 @@ func (s *configState) readFile(path, scope string) {
 		s.errors = append(s.errors, fmt.Sprintf("%s: %s", path, nodeReadError(path, err)))
 		return
 	}
+	// upstream: config.ts readConfigFile `JSON.parse(stripBom(readFileSync(path, "utf8")))` (#11191)
+	data = text.StripBomBytes(data)
 	if !json.Valid(data) {
 		message := "Unexpected end of JSON input"
 		if err := jsonparse.Validate(data); err != nil {
@@ -388,10 +391,12 @@ var indentPattern = lazyregexp.New(`(?m)^([ \t]+)\S`)
 // returns true. Other content is kept. The servers object edit receives is
 // written back into the file's `mcpServers` member, in place.
 func editMcpServers(path string, edit func(servers, parsed *orderedjson.Object) (bool, error)) error {
-	var text []byte
+	var existing []byte
 	parsed := orderedjson.New()
 	if data, err := os.ReadFile(path); err == nil {
-		text = data
+		// upstream: config.ts editMcpServers `stripBom(readFileSync(path, "utf8"))` (#11191)
+		data = text.StripBomBytes(data)
+		existing = data
 		if !json.Valid(data) {
 			if err := jsonparse.Validate(data); err != nil {
 				return err
@@ -419,7 +424,7 @@ func editMcpServers(path string, edit func(servers, parsed *orderedjson.Object) 
 		parsed.Set("mcpServers", raw)
 	}
 	indent := "  "
-	if match := indentPattern.FindSubmatch(text); match != nil {
+	if match := indentPattern.FindSubmatch(existing); match != nil {
 		indent = string(match[1])
 	}
 	// JSON.stringify uses at most the first 10 characters of a string indent.

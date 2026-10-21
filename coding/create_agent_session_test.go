@@ -191,7 +191,7 @@ type promptLoader struct {
 
 func (l promptLoader) GetSystemPrompt() (string, bool) { return l.prompt, true }
 
-// sdk.ts createAgentSession (Pi 1.1.0): the options name the cwd, the agent directory and the loader; the services are built from them, the
+// sdk.ts:194-206 createAgentSession (Pi 1.1.0): the options name the cwd, the agent directory and the loader; the services are built from them, the
 // defaultTools setting under that agent directory selects the tools (default-tools-setting.test.ts), and the resourceLoader option is the one the
 // session builds its system prompt from.
 func TestCreateAgentSessionBuildsItsServicesFromTheOptions(t *testing.T) {
@@ -245,7 +245,7 @@ type extensionsLoader struct {
 
 func (l extensionsLoader) GetExtensions() LoadExtensionsResult { return l.loaded }
 
-// sdk.ts:480-486: createAgentSession returns resourceLoader.getExtensions() as its result's extensionsResult.
+// sdk.ts:472-476: createAgentSession returns resourceLoader.getExtensions() as its result's extensionsResult.
 func TestCreateAgentSessionReturnsTheLoadersExtensionsResult(t *testing.T) {
 	services := servicesWithDefaultTools(t, nil)
 	loaded := LoadExtensionsResult{Errors: []ExtensionLoadError{{Path: "broken.ts", Error: "boom"}}, Warnings: []ExtensionLoadWarning{{Path: "old.ts", Warning: "deprecated"}}}

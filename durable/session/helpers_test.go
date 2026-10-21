@@ -49,7 +49,7 @@ func withCheckpoint(checkpoint func(value obj, ops []durable.Op, info durable.Ch
 }
 
 func defineDoc(kind string, version int, semantics durable.DocumentSemantics, initial func() obj, options ...docOption) durable.DocToken[obj] {
-	common := durable.CommonDocDefinition[obj]{Kind: kind, Version: version}
+	common := durable.CommonDocDefinition[obj]{Kind: kind, Version: version, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }}
 	for _, option := range options {
 		option(&common)
 	}
@@ -58,7 +58,7 @@ func defineDoc(kind string, version int, semantics durable.DocumentSemantics, in
 }
 
 func defineFamily[I any](kind string, version int, semantics durable.DocumentSemantics, initial func(seed I) obj, options ...docOption) durable.DocFamilyToken[obj, I] {
-	common := durable.CommonDocDefinition[obj]{Kind: kind, Version: version}
+	common := durable.CommonDocDefinition[obj]{Kind: kind, Version: version, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }}
 	for _, option := range options {
 		option(&common)
 	}

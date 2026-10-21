@@ -116,5 +116,6 @@ func overflowPatternSamples() []string {
 		"context_length_exceeded",
 		"too many tokens",
 		"token limit exceeded",
+		`github-copilot API error (413): {"message":"failed to parse request","code":""}`, // Pi 73f8de80: HTTP 413 request-size overflow
 	}
 }

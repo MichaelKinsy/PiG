@@ -23,7 +23,7 @@ type notes struct {
 
 // notesDoc is the conversation-scoped, rewindable `example.notes` document of examples 01 to 05.
 var notesDoc = durable.DefineDoc(durable.DocDefinition[notes]{
-	CommonDocDefinition: durable.CommonDocDefinition[notes]{Kind: "example.notes", Version: 1, Initial: func() notes { return notes{} }},
+	CommonDocDefinition: durable.CommonDocDefinition[notes]{Kind: "example.notes", Version: 1, Initial: func() notes { return notes{} }, CheckpointWhen: func(notes, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 })
 

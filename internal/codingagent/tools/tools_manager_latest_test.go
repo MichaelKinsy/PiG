@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 )
 
 type toolsRoundTrip func(*http.Request) (*http.Response, error)
@@ -54,6 +57,19 @@ func TestGetLatestVersionResolvesTheReleasePageRedirect(t *testing.T) {
 	}
 	if len(*requests) != 1 || (*requests)[0].URL.String() != "https://github.com/sharkdp/fd/releases/latest" {
 		t.Fatalf("requests = %v, want one GET of https://github.com/sharkdp/fd/releases/latest", *requests)
+	}
+}
+
+// Pi adc5fa9f: getLatestVersion sends getPiUserAgent(VERSION), the detailed identity User-Agent, in place of `${APP_NAME}-coding-agent`.
+func TestGetLatestVersionSendsTheDetailedIdentityUserAgent(t *testing.T) {
+	tm, requests := latestVersionManager(t, func(*http.Request) *http.Response {
+		return redirectTo("https://github.com/sharkdp/fd/releases/tag/v10.4.2")
+	})
+	if _, err := tm.getLatestVersion(context.Background(), "sharkdp/fd"); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := (*requests)[0].Header.Get("User-Agent"), ai.FormatUserAgent(nil); got != want || !strings.HasPrefix(got, pigidentity.UserAgentProduct+"/") {
+		t.Fatalf("User-Agent = %q, want the detailed identity %q", got, want)
 	}
 }
 

@@ -1,0 +1,47 @@
+# Behavior family: autocomplete
+# Surface: `@` file autocomplete matches regex metacharacters in the query literally.
+#
+# Pi 612a172e (#10972): a query without `/` is escaped before it reaches fd as a regex, as the segments of a path query already were. In the
+# immutable fixture `@[id` finds pages/[id].tsx; before the fix fd rejected the unbalanced `[` and the popup stayed empty. The runner snapshots this CWD
+# independently for Pi and PiG.
+#
+# Upstream evidence (2026-10-21, 100x35 tmux, pinned Pi 1.3.0+bd3c9b82 built from the oracle): `go test -tags=parity ./test/parity/runner -run
+# 'TestParity/13-at-regex-metacharacters$'` passed 3 of 3 declared pairs with byte-identical crops.
+
+name = "13-at-regex-metacharacters"
+description = "Typing @[id lists exactly pages/[id].tsx."
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/editor.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/metachar-project"
+ready_pattern_pig = "Warning: No models available."
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "@[id\n────────────────────────────────────────────────────────────────────────────────────────────────────"
+capture_end = "pages/[id].tsx"
+
+[[tmux.steps]]
+keys = ["@", "[", "i", "d"]
+wait_contains = ["pages/[id].tsx"]
+wait_timeout_seconds = 8
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine ", "(group).ts", "index.tsx"]
+output_equal = true
+runtime_ratio_max = 1.5
+runs = 3

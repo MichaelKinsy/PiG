@@ -48,8 +48,8 @@ func TestConformanceUpstream(t *testing.T) {
 		recorder := telemetry.NewInMemoryTelemetryContext()
 		var openSettled *bool
 		var openEndSequence *int
-		if err := recorder.StartSpan(telemetry.SpanOptions{Name: "snapshot", Attributes: telemetry.SpanAttributes{"tags": []string{"initial"}}}, func(span telemetry.TelemetrySpan) error {
-			span.AddEvent("event", telemetry.SpanAttributes{"value": 1})
+		if err := recorder.StartSpan(telemetry.SpanOptions{Name: "snapshot", Attributes: telemetry.SpanAttributes{telemetry.Attr("tags", []string{"initial"})}}, func(span telemetry.TelemetrySpan) error {
+			span.AddEvent("event", telemetry.SpanAttributes{telemetry.Attr("value", 1)})
 			open := recorder.GetSpans()
 			if len(open) > 0 {
 				openSettled = &open[0].Settled
@@ -71,15 +71,15 @@ func TestConformanceUpstream(t *testing.T) {
 			t.Fatalf("settled snapshot = %+v, want settled with endSequence 1", first)
 		}
 		// A Go slice aliases its backing array, so the element is mutated in place as well as replaced.
-		first.Attributes["tags"].([]string)[0] = "mutated"
-		first.Attributes["tags"] = []string{"mutated"}
-		first.Events[0].Attributes["value"] = 2
+		first.Attributes.Value("tags").([]string)[0] = "mutated"
+		first.Attributes.Set("tags", []string{"mutated"})
+		first.Events[0].Attributes.Set("value", 2)
 
 		second := recorder.GetSpans()[0]
-		if !reflect.DeepEqual(second.Attributes, telemetry.SpanAttributes{"tags": []string{"initial"}}) {
+		if !reflect.DeepEqual(second.Attributes, telemetry.SpanAttributes{telemetry.Attr("tags", []string{"initial"})}) {
 			t.Fatalf("attributes = %#v", second.Attributes)
 		}
-		if !reflect.DeepEqual(second.Events, []telemetry.RecordedTelemetryEvent{{Name: "event", Attributes: telemetry.SpanAttributes{"value": 1}}}) {
+		if !reflect.DeepEqual(second.Events, []telemetry.RecordedTelemetryEvent{{Name: "event", Attributes: telemetry.SpanAttributes{telemetry.Attr("value", 1)}}}) {
 			t.Fatalf("events = %#v", second.Events)
 		}
 	})

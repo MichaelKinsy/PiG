@@ -695,7 +695,7 @@ func TestDocWritesFollowTheOrderTheTransactionAcquiredTheDocuments(t *testing.T)
 	tokens := make([]durable.AnyDocToken, len(kinds))
 	for i, kind := range kinds {
 		tokens[i] = durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-			CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{Kind: kind, Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }},
+			CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{Kind: kind, Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false }},
 			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
 		})
 	}
@@ -749,7 +749,7 @@ func TestDocWritesFollowTheOrderTheTransactionAcquiredTheDocuments(t *testing.T)
 // host sends the retired incarnation's write after the retirement, as facade/tx.ts flush does. The proxy dropped the draft.
 func TestRetiringAnAcquiredDocumentStillWritesItsFinalContent(t *testing.T) {
 	token := durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{Kind: "t.retired", Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }},
+		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{Kind: "t.retired", Version: 1, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }, CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false }},
 		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
 	})
 	var ops []string

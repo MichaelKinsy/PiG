@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"os/exec"
 	"runtime"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/shellconfig"
 )
 
@@ -29,10 +32,11 @@ const PowerShellPromptSnippet = "Execute PowerShell commands"
 
 // GetPowerShellConfig resolves PowerShell on Windows, preferring PowerShell 7
 // (pwsh.exe) over Windows PowerShell (powershell.exe). Mirrors upstream
-// getPowerShellConfig: on any other platform it reports that the tool is
-// Windows-only.
+// getPowerShellConfig: each executable is looked up on PATH, then PowerShell 7 in
+// its ProgramFiles installation directory and Windows PowerShell in its SystemRoot
+// one; on any other platform it reports that the tool is Windows-only.
 func GetPowerShellConfig() (ShellConfig, error) {
-	return powerShellConfigFor(runtime.GOOS, findExecutableOnPath)
+	return powerShellConfigFor(runtime.GOOS, findExecutableOnPath, os.Getenv, nodefs.Access)
 }
 
 // findExecutableOnPath resolves a command name as Pi's findExecutableOnPath does (shellconfig), in the shape of exec.LookPath.
@@ -43,16 +47,36 @@ func findExecutableOnPath(name string) (string, error) {
 	return "", exec.ErrNotFound
 }
 
-func powerShellConfigFor(goos string, lookPath func(string) (string, error)) (ShellConfig, error) {
+// powerShellConfigFor is [GetPowerShellConfig] for a platform, a PATH lookup, an environment and an existence check. The
+// installation directories may be on any drive and need not be on PATH, so they are joined with Windows path rules
+// whatever the host.
+func powerShellConfigFor(goos string, lookPath func(string) (string, error), getenv func(string) string, exists func(string) bool) (ShellConfig, error) {
 	if goos != "windows" {
 		return ShellConfig{}, errors.New("The powershell tool is only available on Windows.")
 	}
-	for _, name := range []string{"pwsh.exe", "powershell.exe"} {
-		if path, err := lookPath(name); err == nil {
-			return ShellConfig{Path: path, Args: append([]string(nil), PowerShellArgs...)}, nil
+	shell, err := lookPath("pwsh.exe")
+	if err != nil {
+		shell = ""
+		if programFiles := getenv("ProgramFiles"); programFiles != "" {
+			if pwsh7 := nodepath.Win32Join(programFiles, "PowerShell", "7", "pwsh.exe"); exists(pwsh7) {
+				shell = pwsh7
+			}
 		}
 	}
-	return ShellConfig{}, errors.New("No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH.")
+	if shell == "" {
+		if shell, err = lookPath("powershell.exe"); err != nil {
+			shell = ""
+			if systemRoot := getenv("SystemRoot"); systemRoot != "" {
+				if windowsPowerShell := nodepath.Win32Join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe"); exists(windowsPowerShell) {
+					shell = windowsPowerShell
+				}
+			}
+		}
+	}
+	if shell == "" {
+		return ShellConfig{}, errors.New("No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH.")
+	}
+	return ShellConfig{Path: shell, Args: append([]string(nil), PowerShellArgs...)}, nil
 }
 
 // PowerShellTool executes PowerShell commands. It mirrors upstream

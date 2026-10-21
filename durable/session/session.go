@@ -27,9 +27,11 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/lineadmission"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // ErrSessionClosed is upstream's "Session is closed".
@@ -46,7 +48,9 @@ type Hooks struct {
 	BeforeClose func()
 	// Report receives the Session's failure and the errors of listeners, which never fail what ran them; info says
 	// which. A plain Session drops them.
-	Report func(err error, info durable.ReportInfo)
+	//
+	// ctx carries the telemetry span the report is raised under (chord/context.Telemetry); context.Background() has none.
+	Report func(ctx context.Context, err error, info durable.ReportInfo)
 	// SetTimer arms the timers that evict idle documents (HarnessOptions.SetTimer); nil selects Go timers.
 	SetTimer durable.SetTimer
 }
@@ -142,7 +146,7 @@ func NewSessionImpl(storage durable.Storage, hooks Hooks, now func() float64, do
 	}
 	session := &SessionImpl{hooks: hooks, scheduler: newPending(), documents: map[string]*LoadedDocument{}, cache: newDocumentCache(), now: now, retentionSource: documentRetentionMs, failed: make(chan struct{}), closed: make(chan struct{})}
 	session.timers = durable.HostTimers(hooks.SetTimer, func(err error) {
-		session.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+		session.report(unscoped, err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 	})
 	session.storage = newGuardedStorage(storage, session)
 	session.host = &transactionHost{
@@ -285,32 +289,52 @@ func (session *SessionImpl) End() durable.SessionEnd {
 	return session.end
 }
 
+// unscoped is the context of a report raised where upstream's `report(error, info)` has no context argument: it carries no
+// telemetry span, so the report is counted and no event is recorded.
+//
+//portlint:allow ctxbackground a report with no caller context records no span event; nothing is started from it
+var unscoped = context.Background()
+
 // listenerInfo is the default source of a report: a listener, which never fails what ran it (session.ts LISTENER).
 var listenerInfo = durable.ReportInfo{Type: durable.ReportListenerError}
 
 // Report is session.ts report with its default info: it hands a non-fatal failure, such as the error of a state or
 // watch listener, to the host; a plain Session drops it.
-func (session *SessionImpl) Report(err error) { session.report(err, listenerInfo) }
+func (session *SessionImpl) Report(err error) {
+	session.report(unscoped, err, listenerInfo)
+}
 
 // ReportAs is session.ts report with info: it hands a non-fatal failure to the host; a plain Session drops it.
-func (session *SessionImpl) ReportAs(err error, info durable.ReportInfo) { session.report(err, info) }
+func (session *SessionImpl) ReportAs(ctx context.Context, err error, info durable.ReportInfo) {
+	session.report(ctx, err, info)
+}
 
 // reportListener hands the error of a listener to the host.
-func (session *SessionImpl) reportListener(err error) { session.report(err, listenerInfo) }
+func (session *SessionImpl) reportListener(err error) {
+	session.report(unscoped, err, listenerInfo)
+}
+
+// reportListenerIn hands the error of a commit listener to the host under the telemetry of the commit's context.
+func (session *SessionImpl) reportListenerIn(ctx context.Context) func(error) {
+	return func(err error) { session.report(ctx, err, listenerInfo) }
+}
 
 // report hands the Session's failure, or the error of a listener, to the host; a plain Session drops it.
-func (session *SessionImpl) report(err error, info durable.ReportInfo) {
+func (session *SessionImpl) report(ctx context.Context, err error, info durable.ReportInfo) {
 	if session.hooks.Report != nil {
-		session.hooks.Report(err, info)
+		session.hooks.Report(ctx, err, info)
 	}
 }
 
 // Fail fails the Session with err: the first wins, and it is reported once. Admission ends, and the close listeners run
 // now; they read the error from Failure. The Storage guard calls it; the Harness also calls it for an error in its
 // scheduler's own commits.
-func (session *SessionImpl) Fail(err error) { session.fail(err) }
+func (session *SessionImpl) Fail(ctx context.Context, err error) { session.failIn(ctx, err) }
 
-func (session *SessionImpl) fail(err error) {
+func (session *SessionImpl) fail(err error) { session.failIn(unscoped, err) }
+
+// failIn fails the Session and reports it under the telemetry of ctx, which is where upstream's `fail(error, context)` records it.
+func (session *SessionImpl) failIn(ctx context.Context, err error) {
 	session.mu.Lock()
 	if session.failureErr != nil {
 		session.mu.Unlock()
@@ -322,8 +346,9 @@ func (session *SessionImpl) fail(err error) {
 	// Seal first, so a report handler that calls back finds the Session failed. Closing runs the close listeners
 	// synchronously; a failing backend close is the caller's to see, and here nobody waits.
 	//portlint:allow ctxbackground session.ts's guarded-storage failure starts close with no caller to cancel it; nobody waits on this close
+	//portlint:allow ctxmapping the close is not the caller's work: ctx only names the span the failure is reported under, and may hold the failing commit's line ticket
 	session.beginClose(context.WithoutCancel(context.Background()))
-	session.report(err, durable.ReportInfo{Type: durable.ReportSessionFailed})
+	session.report(ctx, err, durable.ReportInfo{Type: durable.ReportSessionFailed})
 }
 
 // Commit runs one atomic transaction on the Session mutation line.
@@ -720,7 +745,7 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 			}
 			session.mu.Unlock()
 			if reported {
-				session.report(err, durable.ReportInfo{Type: durable.ReportSessionFailed})
+				session.report(unscoped, err, durable.ReportInfo{Type: durable.ReportSessionFailed})
 			}
 			close(session.closed)
 		}()
@@ -930,7 +955,7 @@ func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Trans
 	documents, err := tx.adopt(seq)
 	if err != nil {
 		// Storage already committed; a failed adoption leaves memory behind durable state.
-		session.fail(err)
+		session.failIn(ctx, err)
 		return nil, err
 	}
 	session.touchChanged(documents)
@@ -944,14 +969,45 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 	internal := append([]*commitListener(nil), session.internalOrder...)
 	listeners := append([]*commitListener(nil), session.commitOrder...)
 	session.mu.Unlock()
-	if len(listeners) == 0 && len(internal) == 0 {
-		return
+	observed := len(listeners) > 0 || len(internal) > 0
+	span := chordctx.Telemetry(ctx)
+	traced := span != telemetry.NoopTelemetryContext
+	var changes []durable.CommitChange
+	if observed {
+		changes = make([]durable.CommitChange, 0, len(writes)+len(documents))
 	}
-	changes := make([]durable.CommitChange, 0, len(writes)+len(documents))
 	for _, staged := range writes {
-		if table, ok := staged.(durable.TableCommitChange); ok {
+		table, ok := staged.(durable.TableCommitChange)
+		if !ok {
+			continue
+		}
+		switch write := table.(type) {
+		case durable.EntryWrite:
+			if !traced {
+				break
+			}
+			span.AddEvent("pi.durable.entry", telemetry.SpanAttributes{
+				telemetry.Attr("entry.id", float64(write.Value.Id)),
+				telemetry.Attr("entry.kind", write.Value.Kind),
+			})
+		case durable.SubmissionWrite:
+			if traced && (write.Value.Status == durable.SubmissionDone || write.Value.Status == durable.SubmissionUnanswered) {
+				attributes := telemetry.SpanAttributes{
+					telemetry.Attr("submission.id", float64(write.Value.Id)),
+					telemetry.Attr("status", string(write.Value.Status)),
+				}
+				if write.Value.Answer != nil {
+					attributes = attributes.Set("answer.entry_id", float64(*write.Value.Answer))
+				}
+				span.AddEvent("pi.durable.submission", attributes)
+			}
+		}
+		if observed {
 			changes = append(changes, table)
 		}
+	}
+	if !observed {
+		return
 	}
 	for _, document := range documents {
 		changes = append(changes, document)
@@ -973,10 +1029,10 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 		}
 	}()
 	for _, listener := range internal {
-		contained(func() { listener.listener(ctx, publication) }, session.fail)
+		contained(func() { listener.listener(ctx, publication) }, func(err error) { session.failIn(ctx, err) })
 	}
 	for _, listener := range listeners {
-		contained(func() { listener.listener(ctx, publication) }, session.reportListener)
+		contained(func() { listener.listener(ctx, publication) }, session.reportListenerIn(ctx))
 	}
 }
 

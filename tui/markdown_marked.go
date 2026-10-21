@@ -969,7 +969,7 @@ func (l *markedInlineState) linkInText(text []rune) bool {
 	return false
 }
 
-// emStrong ports Tokenizer.ts:764-843: a delimiter run opens when it is left-flanking (and, for "_", not intraword), then closing runs are counted on the masked source with CommonMark's rule of 3.
+// emStrong ports Tokenizer.ts:764-843 as pi-tui's marked-cjk-friendly 0.1.2 emStrong replaces it (packages/tui/src/components/markdown.ts): a delimiter run opens when it is left-flanking (and, for "_", not intraword), then closing runs are counted on the masked source with CommonMark's rule of 3. CJK characters count as punctuation next to a delimiter run, so emphasis closes next to CJK punctuation.
 func (l *markedInlineState) emStrong(src []rune, str string, maskedSrc func() []rune, prevChar rune) (markedToken, bool) {
 	run, next := markedLeftDelimiter(src)
 	if next == markedDelimNone {
@@ -979,8 +979,9 @@ func (l *markedInlineState) emStrong(src []rune, str string, maskedSrc func() []
 	if src[0] == '_' && next == markedDelimOther && prevChar != markedPrevNone && (unicode.IsLetter(prevChar) || unicode.IsNumber(prevChar)) {
 		return markedToken{}, false
 	}
-	// A run followed by punctuation is left-flanking only after whitespace, punctuation or the start.
-	if next == markedDelimPunctuation && prevChar != markedPrevNone && !markedPunctuation(prevChar) {
+	// A run followed by punctuation is left-flanking only after whitespace, punctuation, CJK text or the start, or when the
+	// punctuation itself is CJK.
+	if next == markedDelimPunctuation && prevChar != markedPrevNone && !markedPunctuation(prevChar) && !markedCJK(src[run]) && !markedPrevCharCJK(prevChar, maskedSrc(), len(src)) {
 		return markedToken{}, false
 	}
 	lLength := run
@@ -999,15 +1000,19 @@ func (l *markedInlineState) emStrong(src []rune, str string, maskedSrc func() []
 		if group == 0 {
 			continue
 		}
-		if group == 3 || group == 4 {
+		// A delimiter run next to CJK text can both open and close, like one between punctuation (isCjkAdjacentToDelimiter).
+		cjkAdjacent := group <= 4 && (markedCJK(masked[index]) || end < len(masked) && markedCJK(masked[end]))
+		if (group == 3 || group == 4) && !cjkAdjacent {
 			delimTotal += rLength
 			continue
-		} else if group == 5 || group == 6 {
+		}
+		both := group == 5 || group == 6
+		if both || cjkAdjacent {
 			if lLength%3 != 0 && (lLength+rLength)%3 == 0 {
 				midDelimTotal += rLength
 				continue
 			}
-			if midRun {
+			if midRun && both {
 				break
 			}
 		}
@@ -1060,14 +1065,15 @@ func markedLeftDelimiter(src []rune) (run int, next markedDelimNext) {
 	return run, markedDelimNone
 }
 
-// markedRightDelimiterMatch evaluates one global exec of marked's closing-delimiter rule from pos: emStrongRDelimAst (GFM, delim "*") or emStrongRDelimUnd (delim "_"), rules.ts:332-383. It returns the match start and end, the capturing group (1-6) holding the delimiter run and the run's length; group 0 is a skip match (the orphan-delimiter and consume-to-delimiter alternatives). At each position the alternatives are tried in order; every run alternative takes the whole run, because a shorter run leaves the delimiter itself next, which none of the lookaheads accept.
+// markedRightDelimiterMatch evaluates one global exec of the closing-delimiter rule from pos: emStrongRDelimAst (GFM, delim "*") or emStrongRDelimUnd (delim "_") as marked-cjk-friendly 0.1.2 builds them from marked 18.0.11's rules.ts:332-383, with every CJK character in the punctuation classes. It returns the match start and end, the capturing group (1-6) holding the delimiter run and the run's length; group 0 is a skip match (the orphan-delimiter and consume-to-delimiter alternatives). At each position the alternatives are tried in order; every run alternative takes the whole run, because a shorter run leaves the delimiter itself next, which none of the lookaheads accept.
 func markedRightDelimiterMatch(m []rune, pos int, delim rune) (index, end, group, length int, ok bool) {
 	gfm := delim == '*'
 	other := '_'
 	if !gfm {
 		other = '*'
 	}
-	ps := func(c rune) bool { return unicode.IsPunct(c) || unicode.IsSymbol(c) }
+	// marked-cjk-friendly's closing rules (buildRDelimAst, buildRDelimUnd) put every CJK character in the punctuation class.
+	ps := func(c rune) bool { return unicode.IsPunct(c) || unicode.IsSymbol(c) || markedCJK(c) }
 	// punct, punctSpace and notPunctSpace; the GFM "*" rule lets "~" act as a letter for strikethrough.
 	punct := func(c rune) bool { return ps(c) && (!gfm || c != '~') }
 	punctSpace := func(c rune) bool { return (jsstring.IsSpace(c) || ps(c)) && (!gfm || c != '~') }

@@ -22,6 +22,7 @@ import (
 	envnode "github.com/MichaelKinsy/PiG/durable/env/node"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/storage"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 var modelsUsage = ai.Usage{Input: 10, Output: 2, TotalTokens: 12, Cost: ai.UsageCost{Input: 0.001, Output: 0.0002, Total: 0.0012}}
@@ -49,8 +50,9 @@ func modelsChat(t *testing.T) *modelsFixture {
 		ID:     "test",
 		Auth:   ai.ProviderAuth{APIKey: &ai.APIKeyAuth{Name: "Test", Resolve: func(context.Context, ai.APIKeyAuthInput) (*ai.AuthResult, error) { return &ai.AuthResult{}, nil }}},
 		Models: []ai.AnyModel{judge, painter},
-		Classifiers: ai.ProviderClassifierMap{"test-classifier": {Classify: func(ctx context.Context, model *ai.ClassifierModel, request ai.ClassifierContext, _ ai.ClassifierOptions) (ai.ClassifierResult, error) {
+		Classifiers: ai.ProviderClassifierMap{"test-classifier": {Classify: func(ctx context.Context, model *ai.ClassifierModel, request ai.ClassifierContext, options ai.ClassifierOptions) (ai.ClassifierResult, error) {
 			f.calls.classify.Add(1)
+			f.probe(options.Telemetry, "test.classify")
 			ids := []string{}
 			for _, question := range request.Questions {
 				ids = append(ids, question.ID)
@@ -85,8 +87,9 @@ func modelsChat(t *testing.T) *modelsFixture {
 			result.Usage, result.StopReason = &usage, ai.ClassifierStopReasonStop
 			return result, nil
 		}}},
-		Images: ai.ProviderImageAPIMap{"test-images": {GenerateImages: func(_ context.Context, model *ai.ImageModel, _ ai.ImagesContext, _ ai.ImagesOptions) (ai.AssistantImages, error) {
+		Images: ai.ProviderImageAPIMap{"test-images": {GenerateImages: func(_ context.Context, model *ai.ImageModel, _ ai.ImagesContext, options ai.ImagesOptions) (ai.AssistantImages, error) {
 			f.calls.images.Add(1)
+			f.probe(options.Telemetry, "test.images")
 			return ai.AssistantImages{API: model.API, Provider: model.Provider, Model: model.ID, Output: []ai.ImagesOutputContent{ai.ImageContent{Data: tinyPNG, MimeType: "image/png"}}, StopReason: ai.ImagesStopReasonStop}, nil
 		}}},
 	}))
@@ -99,6 +102,13 @@ func modelsChat(t *testing.T) *modelsFixture {
 		t.Fatal(err)
 	}
 	return f
+}
+
+// probe records an event on the span a provider call is given, as a provider that reports into its caller's trace does.
+func (f *modelsFixture) probe(span telemetry.TelemetrySpan, name string) {
+	if span != nil {
+		span.AddEvent(name, nil)
+	}
 }
 
 // valueAnswer is the answer the Pi test's provider returns, `{ good: { value: true } }` cast past ClassifierAnswer: an
@@ -333,4 +343,49 @@ func (e *slowTempFiles) CreateTempDir(ctx context.Context, prefix *string) (stri
 	e.release()
 	time.Sleep(100 * time.Millisecond)
 	return e.ExecutionEnv.CreateTempDir(ctx, prefix)
+}
+
+// Pi 2ec55d80 packages/durable/src/codemode/models.ts: models.classify() and models.generateImages() pass the calling
+// phase's telemetry to the model call, so a provider's spans and events land in the trace of the tool call that made them.
+func TestCodeModeModelCallsRunInTheCallingPhasesTrace(t *testing.T) {
+	f := modelsChat(t)
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	f.setup.telemetry = recorder
+	f.run(t, `const judge = await models.getModelOfType("classifier", "test", "judge");
+		const painter = await models.getModelOfType("image", "test", "painter");
+		await models.classify(judge, { state: {}, questions: `+boolQuestion+` });
+		await models.generateImages(painter, { input: [{ type: "text", text: "a cat" }] });
+		return "ok";`)
+	spans := recorder.GetSpans()
+	byID := map[int]telemetry.RecordedTelemetrySpan{}
+	for _, span := range spans {
+		byID[span.ID] = span
+	}
+	inPhase := func(span telemetry.RecordedTelemetrySpan) bool {
+		for {
+			if span.Name == "pi.durable.phase" {
+				return true
+			}
+			if span.ParentID == nil {
+				return false
+			}
+			span = byID[*span.ParentID]
+		}
+	}
+	for _, event := range []string{"test.classify", "test.images"} {
+		found := false
+		for _, span := range spans {
+			for _, recorded := range span.Events {
+				if recorded.Name == event {
+					found = true
+					if !inPhase(span) {
+						t.Errorf("%s is on span %q, which is not under a pi.durable.phase span", event, span.Name)
+					}
+				}
+			}
+		}
+		if !found {
+			t.Errorf("no span recorded %s: the model call did not receive the phase's telemetry", event)
+		}
+	}
 }

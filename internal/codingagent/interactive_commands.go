@@ -469,11 +469,17 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			return nil
 		},
 		ShowTrustSelector: m.runTrustSelector,
-		// Three-option summarize-branch selector dialog.
-		// Mirrors upstream showExtensionSelector (interactive-mode.ts:1935-1969):
-		// a bordered editor-slot overlay (no filter input, fixed title + hint),
-		// not the floating FilterableList overlay this used to be.
-		ShowExtensionSelector: func(title string, options []string, description string) (string, bool) {
+		// Pi awaits showExtensionSelector, showExtensionConfirm and showExtensionEditor from the /tree summary prompts, the
+		// import confirmation and the missing-cwd confirmation (interactive-mode.ts:5565, 5580, 6547,
+		// promptForMissingSessionCwd). Each is a dialog on the extension dialog stack, so it stacks with the dialogs an
+		// extension opens meanwhile and reports its blocked status.
+		ShowExtensionSelector: func(title string, options []string) (string, bool) { return m.askSelector(ctx, title, options) },
+		ShowExtensionConfirm:  func(title, message string) bool { return m.askConfirm(ctx, title, message) },
+		ShowExtensionEditor:   func(title, prefill string) (string, bool) { return m.askEditor(ctx, title, prefill) },
+		// Pi's /bug does not use the dialog stack: bug-report.ts builds its own ExtensionSelectorComponent and
+		// ExtensionEditorComponent, puts them in the editor slot with focus and puts the editor back when each closes
+		// (showOverlay, restoreEditor). It reports no blocked status, as it never touches the program status.
+		ShowBugReportSelector: func(title string, options []string, description string) (string, bool) {
 			sel := tui.NewExtensionSelectorComponent(title, options, nil, nil)
 			sel.SetDescription(description)
 			idx, ok := m.runEditorSlotExtensionSelector(sel)
@@ -482,12 +488,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 			return options[idx], true
 		},
-		// Faithful ExtensionEditorComponent in the editor
-		// slot. Mirrors upstream showExtensionEditor
-		// (interactive-mode.ts:2065-2090) which creates an
-		// ExtensionEditorComponent (border + spacer + Editor + spacer +
-		// border + hint) and swaps it into the editorContainer.
-		ShowExtensionEditor: func(title, description, prefill string) (string, bool) {
+		ShowBugReportEditor: func(title, description, prefill string) (string, bool) {
 			var value string
 			var done, cancelled bool
 			ed := NewExtensionEditorComponent(m.tuiInst, m.keybindings, title, prefill,
@@ -495,8 +496,6 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				func() { done, cancelled = true, true },
 				&ExtensionEditorOptions{Description: description}, m.externalEditorCommand())
 			ed.SetFocused(true)
-			m.programStatusReporter().SetBlocked(extensionDialogStatusSource, &BlockedStatus{Kind: tui.ProgramStatusKindQuestion, Message: title})
-			defer m.programStatusReporter().SetBlocked(extensionDialogStatusSource, nil)
 			return m.runEditorSlotExtensionEditor(ed, func() (string, bool, bool) { return value, done, cancelled })
 		},
 		BugReportInputs:       m.bugReportInputs,
@@ -733,6 +732,8 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if err := m.settleUserBash(); err != nil {
 				return err
 			}
+			// upstream: handleReloadCommand calls resetExtensionUI before it shows the reload box, which disposes every stacked extension dialog.
+			m.resetExtensionDialogs()
 			m.setRemoteEditor(nil)
 			m.resetAutocompleteWrappers()
 			dismiss := m.beginReloadBlocker()

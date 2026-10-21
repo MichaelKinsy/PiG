@@ -77,7 +77,7 @@ func TestGoogleVertexAPIKeyResolutionUpstream(t *testing.T) {
 			}
 			userAgent := tc.userAgent
 			if userAgent == "" {
-				userAgent = PiUserAgent()
+				userAgent = FormatUserAgent(nil)
 			}
 			if captured.Header.Get("User-Agent") != userAgent {
 				t.Errorf("User-Agent=%q want=%q", captured.Header.Get("User-Agent"), userAgent)

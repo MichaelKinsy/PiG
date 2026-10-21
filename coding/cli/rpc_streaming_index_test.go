@@ -15,17 +15,33 @@ import (
 // Pi's Anthropic stream keeps the provider's event index on every open block, and RPC serializes the partial as it is (packages/ai/src/api/anthropic-messages.ts:626-750). The wire object that RPC builds for text and thinking blocks must carry that index after their stable fields.
 func TestRPCAssistantContentCarriesOpenBlockIndex(t *testing.T) {
 	sse := func(event, data string) string { return fmt.Sprintf("event: %s\ndata: %s\n\n", event, data) }
-	body := sse("message_start", `{"type":"message_start","message":{"id":"m","model":"probe","usage":{"input_tokens":1,"output_tokens":1}}}`) +
-		sse("content_block_start", `{"type":"content_block_start","index":3,"content_block":{"type":"thinking","thinking":"","signature":""}}`) +
-		sse("content_block_start", `{"type":"content_block_start","index":4,"content_block":{"type":"text","text":"hi"}}`) +
-		sse("content_block_start", `{"type":"content_block_start","index":5,"content_block":{"type":"redacted_thinking","data":"sig"}}`) +
+	// The partial an event carries is the live message, so the server sends one block start at a time and waits until the test
+	// has serialized it: a client that lags the stream would otherwise see the finished message, in which Pi has deleted the
+	// index of every closed block.
+	chunks := []string{
+		sse("message_start", `{"type":"message_start","message":{"id":"m","model":"probe","usage":{"input_tokens":1,"output_tokens":1}}}`) +
+			sse("content_block_start", `{"type":"content_block_start","index":3,"content_block":{"type":"thinking","thinking":"","signature":""}}`),
+		sse("content_block_start", `{"type":"content_block_start","index":4,"content_block":{"type":"text","text":"hi"}}`),
+		sse("content_block_start", `{"type":"content_block_start","index":5,"content_block":{"type":"redacted_thinking","data":"sig"}}`),
 		sse("content_block_stop", `{"type":"content_block_stop","index":3}`) +
-		sse("message_delta", `{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":2}}`) +
-		sse("message_stop", `{"type":"message_stop"}`)
+			sse("message_delta", `{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":2}}`) +
+			sse("message_stop", `{"type":"message_stop"}`),
+	}
+	serialized := make(chan struct{}, len(chunks))
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, body)
+		for index, chunk := range chunks {
+			_, _ = io.WriteString(w, chunk)
+			w.(http.Flusher).Flush()
+			if index < len(chunks)-1 {
+				select {
+				case <-serialized:
+				case <-r.Context().Done():
+					return
+				}
+			}
+		}
 	}))
 	defer server.Close()
 	provider := ai.NewAnthropicProvider(ai.AnthropicConfig{Model: "probe", APIKey: "k", BaseURL: server.URL})
@@ -55,6 +71,7 @@ func TestRPCAssistantContentCarriesOpenBlockIndex(t *testing.T) {
 			t.Fatal(err)
 		}
 		wire = append(wire, string(encoded))
+		serialized <- struct{}{}
 	}
 	want := []string{
 		`[{"type":"thinking","thinking":"","thinkingSignature":"","index":3}]`,

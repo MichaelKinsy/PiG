@@ -169,7 +169,8 @@ type SandboxOptions struct {
 	// AcquireWorker reserves capacity immediately before each worker VM is created, after the module is loaded. An error
 	// denies admission without starting a VM and fails the execution as a sandbox error with its message. Otherwise the
 	// returned release, which may be nil, is called once when the VM actually exits, not when the result is returned.
-	// Reservations can be shared across sandboxes.
+	// Reservations can be shared across sandboxes. It is not called for a launch that resumes after the execution has
+	// settled (aborted or closed while the module loaded): that launch starts no VM and takes no reservation.
 	AcquireWorker func() (release func(), err error)
 	// OnWorkerStarted is called once for each worker VM started by Execute or Start. exited is closed when that VM
 	// actually exits, which may be after the result and Close return: a call that does not poll the interrupt flag runs

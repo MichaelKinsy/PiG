@@ -20,7 +20,7 @@ func TestAbortMatrixUpstream(t *testing.T) {
 		{"anthropic", "claude-sonnet-4-6"}, {"mistral", "devstral-medium-latest"}, {"together", "moonshotai/Kimi-K3"}, {"baseten", "zai-org/GLM-5.2"},
 		{"minimax", "MiniMax-M2.7"}, {"xiaomi", "mimo-v2.6-pro"}, {"xiaomi-token-plan-cn", "mimo-v2.6-pro"}, {"xiaomi-token-plan-ams", "mimo-v2.6-pro"},
 		{"xiaomi-token-plan-sgp", "mimo-v2.6-pro"}, {"qwen-token-plan", "qwen3.7-max"}, {"qwen-token-plan-individual", "qwen3.8-max"}, {"qwen-token-plan-cn", "qwen3.7-max"},
-		{"kimi-coding", "kimi-for-coding"}, {"vercel-ai-gateway", "google/gemini-2.5-flash"}, {"openai-codex", "gpt-5.5"}, {"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0"},
+		{"kimi-coding", "kimi-for-coding"}, {"vercel-ai-gateway", "google/gemini-2.5-flash"}, {"openai-codex", "gpt-6.1-sol"}, {"amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0"},
 	}
 	cases := upstreamCaseSites(t, "packages/ai/test/abort.test.ts")
 	if len(cases) != len(specs)*2+1 {

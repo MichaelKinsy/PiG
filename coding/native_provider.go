@@ -84,7 +84,7 @@ func prepareNativeRequest(ctx context.Context, model *ai.Model, options ai.Strea
 	prepared := options
 	prepared.APIKey = resolution.Auth.APIKey
 	prepared.ModelCost = model.CostRates()
-	prepared.Headers = ai.MergeProviderHeaders(resolution.Auth.Headers, options.Headers)
+	prepared.Headers = withOpenCodeSessionHeaders(p.ID, requestModel.ProviderMeta.BaseURL, options.SessionID, ai.MergeProviderHeaders(resolution.Auth.Headers, options.Headers))
 	prepared.Env = maps.Clone(resolution.Env)
 	if prepared.Env == nil && options.Env != nil {
 		prepared.Env = ai.ProviderEnv{}

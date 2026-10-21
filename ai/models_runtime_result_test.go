@@ -14,7 +14,7 @@ func TestModelsLazyStreamForwardsResultWithoutEvents(t *testing.T) {
 	result := &AssistantMessage{Content: []AssistantContentBlock{TextContent{Text: "end-only"}}, StopReason: StopReasonStop}
 	inner := NewAssistantMessageEventStream()
 	inner.End(result)
-	outer := models.lazyStream(ctx, &Model{ID: "test"}, func() (*AssistantMessageEventStream, error) { return inner, nil })
+	outer := models.lazyStream(ctx, &Model{ID: "test"}, func() (*AssistantMessageEventStream, error) { return inner, nil }, nil)
 	for event := range outer.Events(ctx) {
 		t.Fatalf("invented event: %T", event)
 	}

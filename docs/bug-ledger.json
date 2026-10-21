@@ -14114,7 +14114,6 @@
         }
       ],
       "tests": [
-        "coding/provider_attribution_host_test.go::TestAttributionMixedCaseHostProductionRequests",
         "coding/session_dispose_leak_test.go::TestSessionDisposeReleasesEventProducers",
         "coding/session_dispose_leak_test.go::TestSessionDisposeReleasesTheSession",
         "coding/session_rpc33_observation_test.go::TestSessionObservationCloseJoinsClaimedCallback",
@@ -19943,7 +19942,6 @@
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayStacksOverHostOverlay",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayStacksOverRemoteEditorSlotComponent",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlaysStackAndHandFocusBack",
-        "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
         "internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult",
@@ -20015,7 +20013,6 @@
         "coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI",
         "coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged",
         "coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt",
-        "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
         "internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult",
@@ -22323,7 +22320,6 @@
         "extensions/sdk-py/tests/test_system_prompt_render.py",
         "extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError",
         "extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRendersTheCurrentOptions",
-        "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
         "internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult",
@@ -24546,7 +24542,6 @@
         "codemode/worker_admission_test.go::TestDeniedAdmissionStartsNoWorker",
         "codemode/worker_admission_test.go::TestReportsTheActualExitOfExecuteAndStartWorkers",
         "codemode/worker_lifetime_test.go::TestCancellationSettlesWithoutWaitingForTheVMToExit",
-        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionAdmitsOnlyTheLimitFromABurst",
         "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionBoundsSurvivingWorkers",
         "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerHoldsItsSlotWhileRunning"
       ]
@@ -24622,7 +24617,6 @@
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayStacksOverHostOverlay",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlayStacksOverRemoteEditorSlotComponent",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlaysStackAndHandFocusBack",
-        "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
         "internal/codingagent/widget_key_namespace_test.go::TestHostAndProcessExtensionsShareOneWidgetKeyNamespace",
@@ -24658,8 +24652,6 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogsDoNotWaitForEachOther",
-        "internal/codingagent/ext_ui_dialog_displace_test.go::TestAbortingADisplacedDialogHidesTheShownDialog",
-        "internal/codingagent/ext_ui_dialog_displace_test.go::TestExtensionDialogDisplacesTheOpenDialog",
         "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml"
       ]
     },
@@ -24775,7 +24767,6 @@
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlaysStackAndHandFocusBack",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteRawOverlayCloseRemovesOnlyItsEntry",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteRawOverlaysFollowPiShowOverlay",
-        "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
         "internal/codingagent/widget_key_namespace_test.go::TestHostAndProcessExtensionsShareOneWidgetKeyNamespace",
@@ -26532,7 +26523,6 @@
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteCustomOverlaysStackAndHandFocusBack",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteRawOverlayCloseRemovesOnlyItsEntry",
         "internal/codingagent/ext_ui_custom_stack_test.go::TestRemoteRawOverlaysFollowPiShowOverlay",
-        "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogDisplacesFocusedEditorSlotCustom",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay",
         "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay",
         "test/extension-conformance/overlay_handle_test.go::TestCustomOverlayFocusChangesReachSDKs",
@@ -31197,6 +31187,146 @@
       "tests": []
     },
     {
+      "id": "BF-4fd80d1",
+      "title": "On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under…",
+      "symptom": "On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under `%ProgramFiles%\\PowerShell\\7` after `PATH`, and Windows PowerShell under `%SystemRoot%\\System32\\WindowsPowerShell\\v1.0` as the last fallback, on any drive (Pi 61060ddf, #9490).",
+      "rootCause": "PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under `%ProgramFiles%\\PowerShell\\7` after `PATH`, and Windows PowerShell under `%SystemRoot%\\System32\\WindowsPowerShell\\v1.0` as the last fallback, on any drive (Pi 61060ddf, #9490).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4fd80d1cb2",
+          "date": "2026-10-19"
+        }
+      ],
+      "tests": [
+        "durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases",
+        "internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort",
+        "internal/nodefs/access_windows_test.go::TestAccessAcceptsReparsePointWithMissingTarget",
+        "internal/shellconfig/default_unix_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/shellconfig/shellconfig_test.go::TestEmptySystemRootFallsBackToConventionalLauncherPaths",
+        "internal/shellconfig/shellconfig_test.go::TestFirstMatch",
+        "internal/shellconfig/shellconfig_test.go::TestIsLegacyWSLBashPath",
+        "internal/shellconfig/shellconfig_test.go::TestUpstreamLegacyWSLBashDetection"
+      ]
+    },
+    {
+      "id": "BF-4fd80d1-2",
+      "title": "On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in…",
+      "symptom": "On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in `SystemRoot` (`System32` and `Sysnative`), not only under `C:\\Windows`, so its command goes over stdin (Pi 61060ddf, #9490).",
+      "rootCause": "PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows, WSL",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in `SystemRoot` (`System32` and `Sysnative`), not only under `C:\\Windows`, so its command goes over stdin (Pi 61060ddf, #9490).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4fd80d1cb2",
+          "date": "2026-10-19"
+        }
+      ],
+      "tests": [
+        "durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases",
+        "internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort",
+        "internal/nodefs/access_windows_test.go::TestAccessAcceptsReparsePointWithMissingTarget",
+        "internal/shellconfig/default_unix_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/shellconfig/shellconfig_test.go::TestEmptySystemRootFallsBackToConventionalLauncherPaths",
+        "internal/shellconfig/shellconfig_test.go::TestFirstMatch",
+        "internal/shellconfig/shellconfig_test.go::TestIsLegacyWSLBashPath",
+        "internal/shellconfig/shellconfig_test.go::TestUpstreamLegacyWSLBashDetection"
+      ]
+    },
+    {
+      "id": "BF-4fd80d1-3",
+      "title": "On Windows, an empty `SystemRoot` takes `C:\\Windows` for `taskkill.exe`, as an unset one already did, in the…",
+      "symptom": "On Windows, an empty `SystemRoot` takes `C:\\Windows` for `taskkill.exe`, as an unset one already did, in the shell tools and the Durable node environment (Pi 61060ddf, #9490).",
+      "rootCause": "PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, an empty `SystemRoot` takes `C:\\Windows` for `taskkill.exe`, as an unset one already did, in the shell tools and the Durable node environment (Pi 61060ddf, #9490).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4fd80d1cb2",
+          "date": "2026-10-19"
+        }
+      ],
+      "tests": [
+        "durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases",
+        "internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort",
+        "internal/nodefs/access_windows_test.go::TestAccessAcceptsReparsePointWithMissingTarget",
+        "internal/shellconfig/default_unix_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/shellconfig/shellconfig_test.go::TestEmptySystemRootFallsBackToConventionalLauncherPaths",
+        "internal/shellconfig/shellconfig_test.go::TestFirstMatch",
+        "internal/shellconfig/shellconfig_test.go::TestIsLegacyWSLBashPath",
+        "internal/shellconfig/shellconfig_test.go::TestUpstreamLegacyWSLBashDetection"
+      ]
+    },
+    {
+      "id": "BF-4fd80d1-4",
+      "title": "On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path…",
+      "symptom": "On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path, `bash.exe` and `pwsh.exe` found by `where`, and the Git Bash locations are checked with an attribute check (`access(F_OK)`) instead of a stat that follows the alias (Pi 28bea006, nodejs/node#36790).",
+      "rootCause": "PowerShell 7 is looked for under ProgramFiles after PATH and Windows PowerShell under SystemRoot as the last fallback. The legacy WSL launcher is matched under the actual SystemRoot (System32 and Sysnative). taskkill takes C:\\Windows for an empty SystemRoot (|| not ??). Shell paths are checked with access(F_OK) semantics (nodefs.Access) so runnable Store aliases pass. Windows-native behavior is not run in this change.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path, `bash.exe` and `pwsh.exe` found by `where`, and the Git Bash locations are checked with an attribute check (`access(F_OK)`) instead of a stat that follows the alias (Pi 28bea006, nodejs/node#36790). Not yet run on a Windows host.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4fd80d1cb2",
+          "date": "2026-10-19"
+        }
+      ],
+      "tests": [
+        "durable/env/node/shell_test.go::TestShellUsesStdinCommandTransportForLegacyWSLBashPaths",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestPowerShellInstallationCandidatesUseWindowsPathRules",
+        "internal/codingagent/tools/powershell_config_upstream_test.go::TestUpstreamPowerShellConfig",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolutionOrder",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/codingagent/tools/shell_path_exists_upstream_test.go::TestUpstreamWindowsStoreShellAliases",
+        "internal/codingagent/tools/taskkill_port_test.go::TestTaskkillSpawnFailurePort",
+        "internal/nodefs/access_windows_test.go::TestAccessAcceptsReparsePointWithMissingTarget",
+        "internal/shellconfig/default_unix_test.go::TestUpstreamUnixShellExistenceChecks",
+        "internal/shellconfig/shellconfig_test.go::TestEmptySystemRootFallsBackToConventionalLauncherPaths",
+        "internal/shellconfig/shellconfig_test.go::TestFirstMatch",
+        "internal/shellconfig/shellconfig_test.go::TestIsLegacyWSLBashPath",
+        "internal/shellconfig/shellconfig_test.go::TestUpstreamLegacyWSLBashDetection"
+      ]
+    },
+    {
       "id": "BF-c1d1a4c",
       "title": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit",
       "symptom": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit.",
@@ -31226,74 +31356,6 @@
         "test/parity/cmd/portmapcheck/main_test.go::TestRowsSharingAPackageKeepTheirOwnVerdicts",
         "test/parity/cmd/portmapcheck/main_test.go::TestShardsJudgeEveryRowOnce",
         "test/parity/cmd/portmapcheck/main_test.go::TestWidget"
-      ]
-    },
-    {
-      "id": "BF-aca002e",
-      "title": "CI: `make interface-gaps` passes on main again",
-      "symptom": "The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "CI: `make interface-gaps` passes on main again. The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "aca002e54b",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener"
-      ]
-    },
-    {
-      "id": "BF-6811585",
-      "title": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary…",
-      "symptom": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does.",
-      "rootCause": "The notice prints each extension path through commandWord, which quotes a path with a character outside the plain set. Windows runner temp directories carry the \"~\" of an 8.3 short name (RUNNER~1), so the path prints in double quotes and three assertions that expected the raw path failed on Windows (TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch). The tests now build the expected command with commandWord, as the notice test beside them already does.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "Windows",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does. The notice already quotes such a path for the Windows shell (`\"C:\\Users\\RUNNER~1\\...\"`) and is unchanged; the tests expected the raw path and now expect the quoted word, as the notice test beside them does.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "6811585d05",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll",
-        "coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch",
-        "coding/cli/extension_upgrade_startup_test.go::TestStartupNamesSDKDriftAndExitsInPrintMode"
-      ]
-    },
-    {
-      "id": "BF-626f830",
-      "title": "`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path…",
-      "symptom": "The backslash printed bare and the shell read it as an escape, so the command named a different path.",
-      "rootCause": "The plain-word set of the printed command held \"\\\\\" on every OS, so a POSIX path with a backslash printed unquoted and the shell read the backslash as an escape. The set is now per platform: a backslash is plain only on Windows, where it separates path elements. Windows quoting is unchanged.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "Windows",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path that holds a backslash. Before, the backslash printed bare and the shell read it as an escape, so the command named a different path. A backslash stays plain in a Windows path, where it separates elements.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "626f83000c",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform"
       ]
     },
     {
@@ -31363,28 +31425,6 @@
       ],
       "tests": [
         "coding/session_custom_run_first_system_prompt_test.go::TestCustomMessageFirstRunCarriesTheSessionSystemPrompt"
-      ]
-    },
-    {
-      "id": "BF-3853a96",
-      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again",
-      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again.",
-      "rootCause": "piglets/standard and piglets/aot require the same version, because a fused member cannot require a newer SDK than the Pig source pins and a pseudo-version sorts below v0.5.0. check-module-publication.py accepts a pseudo-version for a nested requirement: it has no tag, and its download into an empty cache with the committed checksums proves the commit is public. module-tags.sh 0.5.2 still refuses the pin until make set-version --release-modules replaces it with the tag.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again. The root `go.mod` required `extensions/sdk v0.5.0`, which lacks `Result.Drift`, `FileChange.Created` and `Skipped.Suggest` that `pig extension upgrade` uses, so building the module outside the workspace failed, and `make module-size` failed on every pull request. Between releases the root `go.mod` (and `piglets/standard` and `piglets/aot`) now require the SDK at the pseudo-version of the `main` commit that holds the API the root uses; the release replaces it with the tag. `make module-publication` accepts such a pseudo-version, and proves by downloading it into an empty cache, with the committed checksums, that the commit is public.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3853a96b00",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "test/gomodule/gomodule_test.go::TestModuleTagsScriptRefusesAPseudoVersionPin"
       ]
     },
     {
@@ -31760,28 +31800,6 @@
       ]
     },
     {
-      "id": "BF-f086ba5",
-      "title": "fix(extension/node): load the virtual-model routing modules of the ModelRuntime on first use",
-      "symptom": "fix(extension/node): load the virtual-model routing modules of the ModelRuntime on first use",
-      "rootCause": "The ModelRuntime of ctx.modelRegistry imported Pi's virtual-models and pi-ai bundle modules at startup, which TestNodeStartupDefersPresentationDependencies and TestNodeColdStartLoadsSDKOnlyOnImport reject. getPhysicalModel reads the virtual API id directly (virtual-models.ts isVirtualModel), and resolveModel imports the modules when it routes.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "f086ba5ce8",
-          "date": "2026-10-20"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/node_cold_start_test.go::TestNodeColdStartLoadsSDKOnlyOnImport",
-        "coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies"
-      ]
-    },
-    {
       "id": "BF-0e3411c",
       "title": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`…",
       "symptom": "Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone.",
@@ -31803,86 +31821,148 @@
       "tests": []
     },
     {
-      "id": "BF-1d7c591",
-      "title": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…",
-      "symptom": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.",
-      "rootCause": "",
-      "rootCauseSource": "",
+      "id": "BF-333229c",
+      "title": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead…",
+      "symptom": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead of showing a raw API error.",
+      "rootCause": "Adds Pi's provider-independent 413 pattern to ai.IsContextOverflow and to Durable's own classifier (generated patterns.go), and teaches Durable's regexp subset the $ anchor and \\w, which the pattern needs. Ports the overflow, Copilot request-size and session-path recovery tests.",
+      "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.",
+      "releaseNote": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead of showing a raw API error. GitHub Copilot answers a request over its byte-size limit (for example a history of many images) with a 413 and a generic `failed to parse request` body that the token-count patterns never matched (Pi 73f8de80, #11016).",
       "origin": "release note",
       "commits": [
         {
-          "hash": "1d7c591b61",
-          "date": "2026-10-21"
-        },
-        {
-          "hash": "53385a3d93",
-          "date": "2026-10-21",
-          "pr": "268"
+          "hash": "333229c85a",
+          "date": "2026-10-19"
         }
       ],
       "tests": [
-        "codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates",
-        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
-        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName",
-        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled",
-        "coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog"
+        "ai/github_copilot_request_size_overflow_upstream_test.go::TestGitHubCopilotRequestSizeErrors",
+        "ai/overflow_test.go::TestIsContextOverflowUpstreamCases",
+        "ai/overflow_upstream_test.go::TestOverflowRequestSizeUpstream",
+        "ai/overflow_upstream_test.go::TestOverflowUpstream",
+        "coding/copilot_request_size_overflow_upstream_test.go::TestCopilotRequestSizeOverflowRecoveryUpstream",
+        "durable/core/turn/classify_test.go::TestHTTP413IsContextOverflowForEveryProvider",
+        "internal/codingagent/classifier_parity_test.go::TestClassifiersMatchPiAI"
       ]
     },
     {
-      "id": "BF-dad1c42",
-      "title": "A user_bash `operations` object from an extension is no longer released while a command is running through it",
-      "symptom": "A user_bash `operations` object from an extension is no longer released while a command is running through it.",
-      "rootCause": "The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.",
-      "rootCauseSource": "release note",
+      "id": "BF-668b3fa",
+      "title": "Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only",
+      "symptom": "Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "668b3fa13b",
+          "date": "2026-10-19"
+        }
+      ],
+      "tests": [
+        "telemetry/store_upstream_test.go::TestInMemoryMetricRowsKeepAttributeInsertionOrder"
+      ]
+    },
+    {
+      "id": "BF-692bdf7",
+      "title": "Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or…",
+      "symptom": "Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or metric attribute bags, and `ai.Models.Stream` without a parent span captures nothing for the telemetry observer, so both allocate as before the telemetry integration; Durable's reflective restore also caches each struct type's field list.",
+      "rootCause": "With the no-op parent (or no telemetry) the phase and submit spans, entry and submission events, tool attributes, checkpoint and replay events, report events and metric attribute bags are not built; recording output is unchanged. The reflect field list of a struct type is cached for Durable's ordered restore. Adds BenchmarkDurableGeneration.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or metric attribute bags, and `ai.Models.Stream` without a parent span captures nothing for the telemetry observer, so both allocate as before the telemetry integration; Durable's reflective restore also caches each struct type's field list. The AI telemetry schema is built on first use instead of at process start, and non-numeric attribute names no longer allocate in `jsstring.ArrayIndex`, which cuts the allocations of a recorded `ai` stream.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "692bdf76eb",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-9076cd5",
+      "title": "Markdown bold and italic render next to CJK punctuation in the terminal, for example…",
+      "symptom": "Markdown bold and italic render next to CJK punctuation in the terminal, for example `**这是测试。**后面` (Pi #10730).",
+      "rootCause": "Port marked-cjk-friendly 0.1.2's emStrong rules to the Go inline lexer: CJK characters count as punctuation in the opening flanking test and in the closing-delimiter classes, and a run next to CJK text can both open and close.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Markdown bold and italic render next to CJK punctuation in the terminal, for example `**这是测试。**后面` (Pi #10730). Text without CJK keeps the CommonMark flanking rules.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9076cd5cb8",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "tui/component_width_sweep_test.go::TestComponentRowsMatchUpstream",
+        "tui/markdown_cjk_test.go::TestMarkdownCJKEmphasisMatchesPi",
+        "tui/markdown_cjk_test.go::TestMarkedCJKClassMatchesPinnedPackage",
+        "tui/markdown_marked_test.go::TestMarkedRightDelimiterScanMatchesRegexps"
+      ]
+    },
+    {
+      "id": "BF-c371a13",
+      "title": "OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142)",
+      "symptom": "OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142).",
+      "rootCause": "resolveTranscriptTools takes a TranscriptToolSupport (none, additions, changes) and reports FoldedSystemMessages instead of AnchorsAdditions. A transport that takes additional_tools declares every tool in additional_tools items from the head of the input, precedes each later item with the incremental-tools notice, and announces removals as text with the still-unavailable tools restated. Synthetic tool search and Kimi tool messages move the top-level boundary to the last removal or redeclaration, so later loads stay anchored. The openai-responses, azure-openai-responses and openai-codex-responses paths share one converter; openai-completions counts system messages from the transcript's start.",
+      "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.",
+      "releaseNote": "OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142). Every tool is declared in `additional_tools` items from the head of the input, a removal is announced as text with the still-unavailable tools restated, and synthetic tool search and Kimi tool messages move the top-level tool list only at the last removal or redefinition, so a later tool load no longer rewrites the cached prefix. Applies to `openai-responses`, `azure-openai-responses`, `openai-codex-responses` and Kimi on `openai-completions`.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "6d3cfc863d",
-          "date": "2026-10-21",
-          "pr": "278"
-        },
-        {
-          "hash": "dad1c42d7e",
-          "date": "2026-10-21"
+          "hash": "c371a134cc",
+          "date": "2026-10-20"
         }
       ],
       "tests": [
-        "coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
-        "coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsExecAbortsWithTheContext"
+        "ai/transcript_tool_changes_test.go::TestResolveTranscriptToolsBoundaryPerTransport",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesKimiPrefixAcrossLoadsAfterARemoval",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain",
+        "ai/transcript_tool_changes_test.go::TestTranscriptToolChangesOpenAIResponsesToolSearchPrefixAcrossLoadsAfterARemoval"
       ]
     },
     {
-      "id": "BF-18022b2",
-      "title": "A Node extension no longer keeps reading an entry the host refused",
-      "symptom": "A Node extension no longer keeps reading an entry the host refused.",
-      "rootCause": "The Node runtime shows pi.appendEntry's entry at once (Pi's log is in process and the append cannot fail), keeps it in pendingEntries and sends the append to the host without waiting. A host that answered with an error left the entry in the mirror: nothing took it back, and every later state push preserved it because the replicated log does not hold it, so getEntries, getBranch, getLeafId and the id index kept presenting an entry that was in no session.",
+      "id": "BF-9abc6ac",
+      "title": "Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions…",
+      "symptom": "Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions render through pi-tui, matching the terminal (Pi #11168, #10730).",
+      "rootCause": "pi-tui's Markdown component imports marked-cjk-friendly from Pi. vendor-pi-dist.sh copies the package into the shims, points the import at it and checks the rewrite; the vendored pi-dist is regenerated from the pinned Pi.",
       "rootCauseSource": "commit",
-      "userImpact": "Lost or altered data",
+      "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.",
+      "releaseNote": "Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions render through pi-tui, matching the terminal (Pi #11168, #10730).",
       "origin": "release note",
       "commits": [
         {
-          "hash": "18022b2234",
-          "date": "2026-10-21"
+          "hash": "9abc6acfde",
+          "date": "2026-10-20"
         }
       ],
       "tests": [
-        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds",
-        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused",
-        "test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs"
+        "coding/extension/host/subprocess/builder_node_embed_test.go::TestNodeRuntimeEmbedsVendoredPiDistAndDependencies",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage"
       ]
     },
     {
@@ -31929,6 +32009,757 @@
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
       ]
+    },
+    {
+      "id": "BF-9c98038",
+      "title": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it",
+      "symptom": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it.",
+      "rootCause": "Port Pi (packages/tui/src/components/markdown.ts containsTableStart, TABLE_DELIMITER_ROW_REGEX, tokenizeBlockLatex, #11159): a block-math token no longer spans a GFM table and the pending-math fallback skips one; a pending \\[ also needs a non-empty body. The eight upstream 'unclosed display math before tables' cases are ported verbatim, with a live-Pi comparison of them and their neighbours.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it. A display-math block never spans a table, and the streaming pending-math fallback no longer treats a following table as pending math (Pi 2ed3118b, #11159).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9c980381eb",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "tui/markdown_latex_table_test.go::TestMarkdownContainsTableStart",
+        "tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTables",
+        "tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-909581e",
+      "title": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or…",
+      "symptom": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`).",
+      "rootCause": "Port Pi (#11170): Pi's process 'exit' handler writes the mode resets synchronously when stop() did not run. Go has no exit hook, so tui.RestoreTerminalOnExit is that handler and every exit path reachable while a TUI runs (coding/cli exitProcess; emergencyTerminalExit, handleInterruptSignal, uncaughtOffLoop) calls it before os.Exit. Order matches TuiAltScreen: end synchronized output, mouse off, autowrap on, cursor, progress clear, bracketed paste off, Kitty pop, modifyOtherKeys off, then alternate-screen exit and cursor show; cooked mode is restored as libuv does. Registered terminals and alt screens leave on normal stop, so nothing is written twice.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or alternate-screen mode when pig exits through a path that skips the normal teardown (a direct exit, an emergency exit, an off-loop crash, a panic unwinding through `Main`). The modes are restored in Pi's order, once, and not again after a normal stop (Pi 9df819de, #11170).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "909581ef0b",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal",
+        "tui/terminal_exit_restore_test.go::TestExitRestoreFixture",
+        "tui/terminal_exit_restore_test.go::TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
+        "tui/terminal_exit_restore_test.go::TestTerminalRestoreOnProcessExit",
+        "tui/terminal_exit_restore_test.go::TestTerminalRestoreOnProcessExitDoesNotRepeatAfterStop"
+      ]
+    },
+    {
+      "id": "BF-9be7181",
+      "title": "Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the…",
+      "symptom": "Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the `wl-copy`, `xclip` or `xsel` process that keeps serving the clipboard now runs in its own session and is not stopped with pig (Pi f8ab362c, #11179).",
+      "rootCause": "Ports Pi (#11179): runClipboardCommand spawns with detached on POSIX, so a wl-copy/xclip/xsel daemon leaves PiG's process group. Ports the outside-process-group test.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the `wl-copy`, `xclip` or `xsel` process that keeps serving the clipboard now runs in its own session and is not stopped with pig (Pi f8ab362c, #11179).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9be7181948",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/clipboard_command_pi_test.go::TestRunClipboardCommandRunsOutsideOwnProcessGroup"
+      ]
+    },
+    {
+      "id": "BF-e73e536",
+      "title": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel…",
+      "symptom": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents.",
+      "rootCause": "Ports Pi (#11184): scripts wait up to 60 s in arrival order for a free VM, PI_CODEMODE_MAX_WORKERS raises the limit of two, aborts and deadlines count the wait, a launch resuming after its result settled starts no worker, and the reservation is released exactly once.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel codemode calls or in-process subagents. A script waits up to 60 seconds, in arrival order, for a free worker; the wait counts toward its `timeout_ms` (Pi 885a564b, #11184).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e73e536f2c",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "codemode/worker_settled_launch_test.go::TestLaunchResumingAfterTheResultSettledTakesNoWorker",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionBoundsSurvivingWorkers",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionDropsAbortedAndTimedOutWaiters",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionIgnoresAnInvalidPICodemodeMaxWorkers",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionQueuesABurstInArrivalOrder",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionReadsTheLimitFromPICodemodeMaxWorkers",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionRefusesAnAbortedCallerAtOnce",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerSlotIsReturnedAfterSuccessAndTimeout",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestMaxCodemodeWorkersFollowsNumberOfTheEnvironmentValue",
+        "coding/extension/builtin/codemode/worker_admission_test.go::TestWorkerReservationReleasesExactlyOnce"
+      ]
+    },
+    {
+      "id": "BF-00933e5",
+      "title": "`mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load…",
+      "symptom": "`mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191).",
+      "rootCause": "Ports Pi (#11191): readFile and editMcpServers strip the BOM; the Radius MCP offer reads the file the same way, as Pi does through loadMcpConfig.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00933e586a",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/config_test.go::TestMCPConfigReadsAndEditsMcpJSONFilesThatStartWithAUTF8BOM",
+        "internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusMcpServerConfigReadsAMcpJSONThatStartsWithAUTF8BOM"
+      ]
+    },
+    {
+      "id": "BF-0aa31c4",
+      "title": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node…",
+      "symptom": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
+      "rootCause": "Ports Pi (#11156): loader shim table, register-loader and runtime-modules lists, a pi-ai models bundle entry, the host peer, and sdk-ts declarations. Needs make vendor-pi-dist and make generate to produce sdk-bundle/models.js.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0aa31c48e4",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_pi_ai_models_test.go::TestNodeExtensionImportsPiAiModelsSubpath",
+        "coding/extension/host/subprocess/required_tools_test.go::TestRequiredSDKToolsFailWhenMissing"
+      ]
+    },
+    {
+      "id": "BF-90f6908",
+      "title": "Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in…",
+      "symptom": "Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in interactive mode no longer replace each other: a second dialog used to take the editor slot and leave the first one's promise pending.",
+      "rootCause": "Select, confirm, input, editor and editor-slot custom components (in-process and remote) now share one stack on the owner loop: a new dialog hides the visible one, closing it shows the previous one again, an abort/timeout of a hidden dialog removes only that dialog, and a session replacement disposes every dialog. Ports Pi 38847563 (#11166, #9909); adds a cross-SDK concurrent-dialog conformance row, a host-bridge test and an RPC verification test.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in interactive mode no longer replace each other: a second dialog used to take the editor slot and leave the first one's promise pending. They stack, the last one is visible, closing it shows the previous one again, and a hidden dialog's abort or timeout removes only itself. `/reload` and session replacement dispose every stacked dialog, and an editor-slot custom component restores the editor text it found (Pi 38847563, #11166, #9909).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "90f69085ce",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_ui_concurrent_dialogs_test.go::TestRpcConcurrentExtensionDialogsResolveEachByItsOwnID",
+        "internal/codingagent/ext_ui_dialog_bridge_test.go::TestExtensionDialogsFromOneExtensionStackThroughTheHostBridge",
+        "internal/codingagent/ext_ui_dialog_displace_test.go::TestAbortingAHiddenDialogLeavesTheShownDialog",
+        "internal/codingagent/ext_ui_dialog_displace_test.go::TestExtensionDialogStacksOverTheOpenDialog",
+        "internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogStacksOverFocusedEditorSlotCustom",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogOverACustomComponentLeavesTheDialogShownWhenTheComponentEnds",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogOverARemoteEditorSlotComponentHandsFocusBack",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogTimeoutOfAHiddenDialogLeavesTheVisibleDialog",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogsAnswerASelectInputAndEditorMixInStackOrder",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogsRemoveAHiddenDialogWhenItsSignalAborts",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogsShowAConfirmOpenedFromACustomComponentThenRestoreIt",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogsShowTheEarlierConfirmAgainAfterTheLaterIsAnswered",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestExtensionDialogsStackConcurrentInlineCustomComponents",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestRemoteEditorSlotComponentsStackAndHandFocusBack",
+        "internal/codingagent/ext_ui_dialog_stack_test.go::TestSessionReplacementDisposesEveryExtensionDialog",
+        "test/extension-conformance/ui_concurrent_dialogs_test.go::TestConformance_ConcurrentDialogsAgreeAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-3853a96",
+      "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again",
+      "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again.",
+      "rootCause": "piglets/standard and piglets/aot require the same version, because a fused member cannot require a newer SDK than the Pig source pins and a pseudo-version sorts below v0.5.0. check-module-publication.py accepts a pseudo-version for a nested requirement: it has no tag, and its download into an empty cache with the committed checksums proves the commit is public. module-tags.sh 0.5.2 still refuses the pin until make set-version --release-modules replaces it with the tag.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again. The root `go.mod` required `extensions/sdk v0.5.0`, which lacks `Result.Drift`, `FileChange.Created` and `Skipped.Suggest` that `pig extension upgrade` uses, so building the module outside the workspace failed, and `make module-size` failed on every pull request. Between releases the root `go.mod` (and `piglets/standard` and `piglets/aot`) now require the SDK at the pseudo-version of the `main` commit that holds the API the root uses; the release replaces it with the tag. `make module-publication` accepts such a pseudo-version, and proves by downloading it into an empty cache, with the committed checksums, that the commit is public.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3853a96b00",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "test/gomodule/gomodule_test.go::TestModuleTagsScriptRefusesAPseudoVersionPin"
+      ]
+    },
+    {
+      "id": "BF-6811585",
+      "title": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary…",
+      "symptom": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does.",
+      "rootCause": "The notice prints each extension path through commandWord, which quotes a path with a character outside the plain set. Windows runner temp directories carry the \"~\" of an 8.3 short name (RUNNER~1), so the path prints in double quotes and three assertions that expected the raw path failed on Windows (TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch). The tests now build the expected command with commandWord, as the notice test beside them already does.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: the Windows test jobs no longer fail the `pig extension upgrade` notice tests when the temporary directory holds a `~`, as a runner's 8.3 short name (`RUNNER~1`) does. The notice already quotes such a path for the Windows shell (`\"C:\\Users\\RUNNER~1\\...\"`) and is unchanged; the tests expected the raw path and now expect the quoted word, as the notice test beside them does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6811585d05",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_upgrade_completeness_startup_test.go::TestStartupOffersEveryDriftedExtensionAndOneYesUpgradesThemAll",
+        "coding/cli/extension_upgrade_completeness_test.go::TestSDKDriftOfOffersEveryExtensionTheUpgradeWouldTouch",
+        "coding/cli/extension_upgrade_startup_test.go::TestStartupNamesSDKDriftAndExitsInPrintMode"
+      ]
+    },
+    {
+      "id": "BF-aca002e",
+      "title": "CI: `make interface-gaps` passes on main again",
+      "symptom": "The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: `make interface-gaps` passes on main again. The interface mapping ledger had not been regenerated for the chord fork replay test that landed with the previous train, so `autobind -check` reported that the ledger is not what the detector derives; `make interface-gaps-update` rewrites the two stale rows.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aca002e54b",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener"
+      ]
+    },
+    {
+      "id": "BF-626f830",
+      "title": "`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path…",
+      "symptom": "The backslash printed bare and the shell read it as an escape, so the command named a different path.",
+      "rootCause": "The plain-word set of the printed command held \"\\\\\" on every OS, so a POSIX path with a backslash printed unquoted and the shell read the backslash as an escape. The set is now per platform: a backslash is plain only on Windows, where it separates path elements. Windows quoting is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path that holds a backslash. Before, the backslash printed bare and the shell read it as an escape, so the command named a different path. A backslash stays plain in a Windows path, where it separates elements.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "626f83000c",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform"
+      ]
+    },
+    {
+      "id": "BF-725e104",
+      "title": "The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks…",
+      "symptom": "The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner. The release gate no longer reports it as an open hot-path gap.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "725e104b55",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-be6803c",
+      "title": "The /tree \"Summarize branch?\" selector and \"Custom summarization instructions\" editor, the /import…",
+      "symptom": "The /tree \"Summarize branch?\" selector and \"Custom summarization instructions\" editor, the /import confirmation and the missing-session-cwd confirmation of /resume and /import are dialogs on the same stack as an extension's, as in Pi.",
+      "rootCause": "The interface mapping is re-derived (a test file next removed no longer backs an evidence reference) and the bug ledger is rebuilt from the merged history.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The /tree \"Summarize branch?\" selector and \"Custom summarization instructions\" editor, the /import confirmation and the missing-session-cwd confirmation of /resume and /import are dialogs on the same stack as an extension's, as in Pi. A dialog an extension opens while one of them is shown takes the keys, closing the prompt shows the earlier dialog again instead of hiding it, each reports its blocked status to the terminal, and a session replacement or `/reload` removes the prompt with the other dialogs. `/bug` keeps its own prompts outside the stack and no longer reports a blocked status for its description editor, as in Pi (Pi 38847563, bug-report.ts).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "be6803c903",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/owner_dialog_stack_test.go::TestBugReportPromptsStayOutsideTheDialogStackAndReportNoStatus",
+        "internal/codingagent/owner_dialog_stack_test.go::TestExtensionDialogOpenedDuringATreeSummaryPromptTakesTheKeys",
+        "internal/codingagent/owner_dialog_stack_test.go::TestMissingCwdConfirmationStacksWithAnOpenExtensionDialog",
+        "internal/codingagent/owner_dialog_stack_test.go::TestSessionReplacementDismissesAnOpenTreeSummaryPrompt",
+        "internal/codingagent/owner_dialog_stack_test.go::TestStackedPromptsReportTheirBlockedStatus"
+      ]
+    },
+    {
+      "id": "BF-dc003a9",
+      "title": "Automatic retry no longer treats digits inside a request id or another number (for example `req_011CU503xyz`…",
+      "symptom": "Automatic retry no longer treats digits inside a request id or another number (for example `req_011CU503xyz` or `5242880 bytes`) as a retryable HTTP status code: 429, 500, 502, 503, 504, 520 and 524 count only as standalone numbers.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Automatic retry no longer treats digits inside a request id or another number (for example `req_011CU503xyz` or `5242880 bytes`) as a retryable HTTP status code: 429, 500, 502, 503, 504, 520 and 524 count only as standalone numbers. Carried forward from Pi 6e491cfa (earendil-works/pi#11057).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dc003a9b7f",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/openai_responses_chatgpt_upstream_test.go::TestOpenAIResponsesChatGPTUsageLimitUpstream",
+        "coding/cli/model_fallback_test.go::TestBuildModelParsesMaxThinkingSuffix",
+        "coding/cli/model_fallback_test.go::TestResolveModel_ExactCatalog_NoWarning",
+        "internal/codingagent/interactive_post_login_discovery_test.go::TestPostLoginModelSelectionRules"
+      ]
+    },
+    {
+      "id": "BF-dc003a9-2",
+      "title": "Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the…",
+      "symptom": "Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the Codex CLI relays.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Automatic retry now triggers for `stream disconnected before completion` errors that a proxy wrapping the Codex CLI relays. Carried forward from Pi 29057ece (earendil-works/pi#11057).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dc003a9b7f",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/openai_responses_chatgpt_upstream_test.go::TestOpenAIResponsesChatGPTUsageLimitUpstream",
+        "coding/cli/model_fallback_test.go::TestBuildModelParsesMaxThinkingSuffix",
+        "coding/cli/model_fallback_test.go::TestResolveModel_ExactCatalog_NoWarning",
+        "internal/codingagent/interactive_post_login_discovery_test.go::TestPostLoginModelSelectionRules"
+      ]
+    },
+    {
+      "id": "BF-dc003a9-3",
+      "title": "Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error…",
+      "symptom": "Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`) is not retried, and its message tells the user to ask their workspace admin to increase the limit.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error (`subscription_sharing_workplace_individual_usage_limit_exceeded`) is not retried, and its message tells the user to ask their workspace admin to increase the limit. Carried forward from Pi cedefc53.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dc003a9b7f",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/openai_responses_chatgpt_upstream_test.go::TestOpenAIResponsesChatGPTUsageLimitUpstream",
+        "coding/cli/model_fallback_test.go::TestBuildModelParsesMaxThinkingSuffix",
+        "coding/cli/model_fallback_test.go::TestResolveModel_ExactCatalog_NoWarning",
+        "internal/codingagent/interactive_post_login_discovery_test.go::TestPostLoginModelSelectionRules"
+      ]
+    },
+    {
+      "id": "BF-43d2597",
+      "title": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query…",
+      "symptom": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query with or without a `/` (Pi 612a172e, #10972).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-43d2597-2",
+      "title": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction…",
+      "symptom": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
+      "rootCause": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/compact \u003cinstructions\u003e` applies the instructions to the summary of the start of a turn that compaction splits, and no longer ignores them when the split turn is the only new content since the last compaction (Pi adfc1446, #11058).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-43d2597-3",
+      "title": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such…",
+      "symptom": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such as tools of an extension installed after the session started, unless they are registered with `defaultActive: false`; a tool the branch removed, also before a compaction, stays inactive. Built-in tools keep following `defaultTools` (Pi bd3c9b82, #11062, #11075).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-43d2597-4",
+      "title": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore…",
+      "symptom": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "43d259770e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi",
+        "coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError",
+        "coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi",
+        "coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort",
+        "internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn",
+        "test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs",
+        "tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD",
+        "tui/file_autocomplete_test.go::TestBuildFdPathQuery"
+      ]
+    },
+    {
+      "id": "BF-53385a3",
+      "title": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…",
+      "symptom": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "53385a3d93",
+          "date": "2026-10-21",
+          "pr": "268"
+        }
+      ],
+      "tests": [
+        "codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates",
+        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
+        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName",
+        "coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled",
+        "coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog"
+      ]
+    },
+    {
+      "id": "BF-8a18a6b",
+      "title": "A Node extension no longer keeps reading an entry the host refused",
+      "symptom": "A Node extension no longer keeps reading an entry the host refused.",
+      "rootCause": "Fixes #264",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8a18a6bb2d",
+          "date": "2026-10-21",
+          "pr": "272"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds",
+        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused",
+        "test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-6d3cfc8",
+      "title": "A user_bash `operations` object from an extension is no longer released while a command is running through it",
+      "symptom": "A user_bash `operations` object from an extension is no longer released while a command is running through it.",
+      "rootCause": "The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d3cfc863d",
+          "date": "2026-10-21",
+          "pr": "278"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns"
+      ]
+    },
+    {
+      "id": "BF-46abed3",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "46abed3453",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-a1da44d",
+      "title": "The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands…",
+      "symptom": "The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, and on `stream disconnected before completion`; a ChatGPT Business workspace usage-limit error is not retried.",
+      "rootCause": "Also fixes the gocritic appendAssign in the exit-restore test.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, and on `stream disconnected before completion`; a ChatGPT Business workspace usage-limit error is not retried. Carried forward from Pi 6e491cfa, 29057ece and cedefc53.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a1da44daec",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-33dc8a0",
+      "title": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
+      "symptom": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "33dc8a0a22",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "ai/identity_bedrock_oracle_test.go::TestBedrockUserAgentMatchesPi",
+        "ai/identity_bedrock_test.go::TestBedrockUserAgentCarriesTheClientIdentity"
+      ]
+    },
+    {
+      "id": "BF-7f3a71c",
+      "title": "fix(durable): the reference Harness wraps a plain Models once too",
+      "symptom": "fix(durable): the reference Harness wraps a plain Models once too",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7f3a71c014",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-a6932b4",
+      "title": "fix(coding): pass a Node extension request's client identity to the provider",
+      "symptom": "fix(coding): pass a Node extension request's client identity to the provider",
+      "rootCause": "The model-stream host call decoded no `identity` option, so a Node extension's createAgentSession (core/sdk.ts getClientIdentity) and any pi-ai call that names an identity sent no attribution headers. Decode it as ai.ClientIdentity, including an explicit null attribution.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a6932b4c2b",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/subprocess_identity_options_test.go::TestSubprocessStreamOptionsCarryTheRequestIdentity"
+      ]
+    },
+    {
+      "id": "BF-36e192b",
+      "title": "fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits",
+      "symptom": "fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits",
+      "rootCause": "EncodeKitty measured and sliced the payload in bytes where Pi's encodeKitty uses .length and .slice (UTF-16 units). EncodeITerm2's size is Node's (units * 3) \u003e\u003e\u003e 2. The codemode worker wait is computed in integers, and the doubleclose, numbers, env-stat and bare-recover sites name their Pi counterpart or invariant.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "36e192bef8",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "tui/terminal_image_iterm2_options_test.go::TestEncodeKittyChunksByUTF16Units"
+      ]
+    },
+    {
+      "id": "BF-b9db06c",
+      "title": "fix(subprocess): keep a user_bash operations object alive while its exec runs",
+      "symptom": "fix(subprocess): keep a user_bash operations object alive while its exec runs",
+      "rootCause": "The cleanup that releases the extension's operations handle runs when the object is unreachable, and Exec's last use of the object is the request it sends. A collection during the exec released the handle under the running extension exec, and the cancel test read the release notify where it expected the cancel (red: TestUserBashOperationsStayAliveWhileTheirExecRuns).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b9db06c809",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-d0c2727",
+      "title": "fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization…",
+      "symptom": "fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization inventory",
+      "rootCause": "It reads userAgent, version and attribution from the decoded fields with the same errors. The test's Pi user-agent pattern no longer uses (?i).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d0c2727053",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [

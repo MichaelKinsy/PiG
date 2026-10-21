@@ -1,0 +1,113 @@
+[
+ {
+  "upstream": "packages/ai/src/telemetry.ts",
+  "package": "./ai",
+  "tests": [
+   "TestAITelemetryBoundsPollErrorMessagesUpstream",
+   "TestAITelemetryRecordsUsageForPollOnlyWhenFinalUpstream",
+   "TestAITelemetryCountsInterleavedToolDeltasIndependentlyUpstream",
+   "TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream",
+   "TestAIInstrumentCacheIsCreatedOncePerLiveAdapterAndReleasedWithIt",
+   "TestAITelemetryCreatesInstrumentsOncePerMetricsObjectUpstream",
+   "TestAITelemetryIncludesSetupFailuresAndOmitsNonScalarReasoningUpstream"
+  ],
+  "upstream_reference": "packages/ai/test/telemetry.test.ts and telemetry-options.test.ts (Pi 2ec55d80): observeModelRequest spans, events, metrics and the instrument cache",
+  "mutation": "ai/telemetry.go: `jsstring.Slice(message.ErrorMessage, 0, 500)` -> `jsstring.Slice(message.ErrorMessage, 0, 501)` (TestAITelemetryBoundsPollErrorMessagesUpstream FAIL); ai/telemetry.go: `if !o.poll || (message.StopReason != StopReasonPending && message.StopReason != StopReasonDeferred) {` -> `if true {` (TestAITelemetryRecordsUsageForPollOnlyWhenFinalUpstream FAIL); ai/telemetry.go: `o.toolChars[event.ContentIndex] += jsstring.Length(event.Delta)` -> `o.toolChars[0] += jsstring.Length(event.Delta)` (TestAITelemetryCountsInterleavedToolDeltasIndependentlyUpstream, TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream FAIL); ai/telemetry.go: `if cached, ok := aiInstruments.weak[key]; ok {` -> `if cached, ok := aiInstruments.weak[key]; ok && false {` (TestAIInstrumentCacheIsCreatedOncePerLiveAdapterAndReleasedWithIt, TestAITelemetryCreatesInstrumentsOncePerMetricsObjectUpstream FAIL); ai/telemetry.go: `o.span.AddEvent(\"pi.ai.first_chunk\", nil)` -> `o.span.AddEvent(\"pi.ai.first_chunk_\", nil)` (TestAITelemetryIncludesSetupFailuresAndOmitsNonScalarReasoningUpstream, TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream FAIL); ai/telemetry.go: `name = \"pi.ai.poll\"` -> `name = \"pi.ai.request\"` (TestAITelemetryObservesWithoutChangingDeliveredEventsOrResultsUpstream FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/telemetry/src/metrics.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
+   "TestMetricsUpstream"
+  ],
+  "upstream_reference": "packages/telemetry/test/metrics.test.ts: createTypedMetrics reads each declared instrument's description, unit and boundaries from the schema",
+  "mutation": "telemetry/metrics.go: `if definition.Unit != \"\" {` -> `if definition.Unit == \"\" {` (TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly, TestMetricsUpstream FAIL); telemetry/metrics.go: `maps.Copy(definitions, candidate.Metrics)` -> `if len(definitions) == 0 { maps.Copy(definitions, candidate.Metrics) }` (TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly, TestMetricsUpstream FAIL); telemetry/metrics.go: `Boundaries: typed.definitions[name].Boundaries}` -> `Boundaries: nil}` (TestMetricsUpstream FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/telemetry/src/render.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestRenderTrace"
+  ],
+  "upstream_reference": "packages/telemetry/test/render.test.ts (Pi d9025a5f): renderTrace order, roots, event rows",
+  "mutation": "telemetry/render.go: `slices.Reverse(roots)` -> `slices.Reverse(roots[:0])` (TestRenderTrace FAIL); telemetry/render.go: `indent+\"  · \"+event.Name` -> `indent+\"  - \"+event.Name` (TestRenderTrace FAIL); telemetry/render.go: `sorted[left].StartedMs < sorted[right].StartedMs` -> `sorted[left].StartedMs > sorted[right].StartedMs` (TestRenderTrace FAIL); telemetry/render.go: `} else if _, ok := byID[*span.ParentID]; !ok {` -> `} else if _, ok := byID[*span.ParentID]; ok {` (TestRenderTrace FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry-sqlite/index.ts",
+  "package": "./chord/telemetrysqlite",
+  "tests": [
+   "TestAggregatesCanonicalSeriesByIntervalAndWritesPartialIntervalsOnlyOnClose",
+   "TestFlushesOncePerSecondAndRetainsOnlyRowsInsideTheRetentionWindow",
+   "TestReusesMigrationsPreservesIdentitiesAcrossReopenAndMergesAggregates",
+   "TestSeparatesKindNameUnitAndCallerAttributes",
+   "TestSqliteTelemetryConformance",
+   "TestStrictlyBoundsQueuedSpansIncludingTheInFlightBatch"
+  ],
+  "upstream_reference": "packages/chord/test/telemetry-sqlite.test.ts (Pi d9025a5f): retention, interval aggregation, flush",
+  "mutation": "chord/telemetrysqlite/index.go: `cutoff := jsclock.DateNow() - recorder.retention` -> `cutoff := jsclock.DateNow() + recorder.retention` (TestAggregatesCanonicalSeriesByIntervalAndWritesPartialIntervalsOnlyOnClose, TestFlushesOncePerSecondAndRetainsOnlyRowsInsideTheRetentionWindow, TestReusesMigrationsPreservesIdentitiesAcrossReopenAndMergesAggregates, TestSeparatesKindNameUnitAndCallerAttributes, TestSqliteTelemetryConformance, TestStrictlyBoundsQueuedSpansIncludingTheInFlightBatch FAIL); chord/telemetrysqlite/index.go: `DO UPDATE SET count = count + excluded.count,` -> `DO UPDATE SET count = excluded.count,` (TestReusesMigrationsPreservesIdentitiesAcrossReopenAndMergesAggregates FAIL); chord/telemetrysqlite/index.go: `return tx.Run(\"DELETE FROM telemetry_metrics WHERE interval_ms < ?\", cutoff)` -> `return nil` (TestFlushesOncePerSecondAndRetainsOnlyRowsInsideTheRetentionWindow FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry-sqlite/store.ts",
+  "package": "./chord/telemetrysqlite",
+  "tests": [
+   "TestDurableObjectSqliteTelemetryStoreConformance",
+   "TestSqliteTelemetryStoreConformance"
+  ],
+  "upstream_reference": "packages/chord/test/telemetry-sqlite-store.test.ts and packages/telemetry/test/store-conformance.ts (Pi d9025a5f): trace paging and ordering",
+  "mutation": "chord/telemetrysqlite/store.go: `ORDER BY started_ms DESC, trace_id LIMIT ?` -> `ORDER BY started_ms, trace_id LIMIT ?` (TestDurableObjectSqliteTelemetryStoreConformance, TestSqliteTelemetryStoreConformance FAIL); chord/telemetrysqlite/store.go: `int64(limit)+1` -> `int64(limit)` (TestDurableObjectSqliteTelemetryStoreConformance, TestSqliteTelemetryStoreConformance FAIL); chord/telemetrysqlite/store.go: `ORDER BY started_ms, id LIMIT 1) = ?` -> `ORDER BY started_ms DESC, id LIMIT 1) = ?` (TestDurableObjectSqliteTelemetryStoreConformance, TestSqliteTelemetryStoreConformance FAIL); chord/telemetrysqlite/store.go: `ORDER BY started_ms, id\", string(encoded))` -> `ORDER BY started_ms DESC, id\", string(encoded))` (TestDurableObjectSqliteTelemetryStoreConformance, TestSqliteTelemetryStoreConformance FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/durable/src/harness/telemetry.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters",
+   "TestDurableTelemetrySchemaMatchesPi",
+   "TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan",
+   "TestDurableTelemetryReportsHookFailuresOnThePhaseAndClockFailuresWithoutAPhaseContext"
+  ],
+  "upstream_reference": "packages/durable/test/harness-telemetry.test.ts (Pi 2ec55d80): the report counter and event, and DURABLE_TELEMETRY_SCHEMA",
+  "mutation": "durable/harness/telemetry.go: `reports.Add(1, telemetry.SpanAttributes{telemetry.Attr(\"type\", string(info.Type))})` -> `reports.Add(2, telemetry.SpanAttributes{telemetry.Attr(\"type\", string(info.Type))})` (TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters FAIL); durable/harness/telemetry.go: `case durable.ReportHostError: taskId()` -> `case durable.ReportHostError: extension()` (TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters FAIL); durable/harness/telemetry.go: `Description: \"Live tasks held by this Harness; decremented at terminal settlement or close.\",` -> `Description: \"Live tasks held by this Harness.\",` (TestDurableTelemetrySchemaMatchesPi FAIL); durable/harness/telemetry.go: `span.AddEvent(\"pi.durable.report\", attributes)` -> `span.AddEvent(\"pi.durable.report\", nil)` (TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan, TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters, TestDurableTelemetryReportsHookFailuresOnThePhaseAndClockFailuresWithoutAPhaseContext FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/durable/src/codemode/models.ts",
+  "package": "./durable/codemode",
+  "tests": [
+   "TestCodeModeModelCallsRunInTheCallingPhasesTrace",
+   "TestCodeModeModels"
+  ],
+  "upstream_reference": "packages/durable/src/codemode/models.ts classify and generateImages pass context.telemetry (Pi 2ec55d80); packages/durable/test/codemode-models.test.ts for the call limit",
+  "mutation": "durable/codemode/models.go: `ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Telemetry: chordctx.Telemetry(ctx)}}` -> `ai.ModelsClassifierOptions{}` (TestCodeModeModelCallsRunInTheCallingPhasesTrace FAIL); durable/codemode/models.go: `ai.ModelsImagesOptions{ImagesOptions: ai.ImagesOptions{Telemetry: chordctx.Telemetry(ctx)}}` -> `ai.ModelsImagesOptions{}` (TestCodeModeModelCallsRunInTheCallingPhasesTrace FAIL); durable/codemode/models.go: `const maxConcurrentModelCalls = 4` -> `const maxConcurrentModelCalls = 5` (TestCodeModeModels FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/chord/src/context/index.ts",
+  "package": "./chord/context",
+  "tests": [
+   "TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation",
+   "TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors"
+  ],
+  "upstream_reference": "packages/chord/test/context.test.ts (Pi 2ec55d80): withTelemetry and traceIn derive the telemetry of a Context",
+  "mutation": "chord/context/chordctx.go: `return WithValue(parent, telemetryKey, t)` -> `return parent` (TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation, TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors FAIL); chord/context/chordctx.go: `return fn(WithTelemetry(ctx, span))` -> `return fn(ctx)` (TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation, TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot",
+   "TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters",
+   "TestDurableTelemetryRecordsContentFreeSubmitAndPhaseSpans",
+   "TestDurableTelemetryReturnsAdmissionResultsWithoutRereadingRecordsOrProbingRootLinkTargets"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts HarnessOptions.telemetry (Pi 2ec55d80); packages/durable/test/harness-telemetry.test.ts",
+  "mutation": "durable/harness/harness.go: `rootTelemetry(options.Telemetry))}` -> `rootTelemetry(nil))}` (TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot, TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters FAIL); durable/harness/harness.go: `func() { harness.tasks.Resume() }, options.Telemetry)` -> `func() { harness.tasks.Resume() }, nil)` (TestDurableTelemetryRecordsContentFreeSubmitAndPhaseSpans, TestDurableTelemetryReturnsAdmissionResultsWithoutRereadingRecordsOrProbingRootLinkTargets FAIL); each compiled with go test -overlay, baseline PASS"
+ },
+ {
+  "upstream": "packages/telemetry/src/memory.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestInMemoryTelemetryStoreConformance"
+  ],
+  "upstream_reference": "packages/telemetry/test/store-conformance.ts and store.test.ts (Pi d9025a5f): InMemoryTelemetryContext's TelemetryStore reads: span order and the errors filter",
+  "mutation": "telemetry/memory.go: `return stored[left].StartedMs < stored[right].StartedMs` -> `return stored[left].StartedMs > stored[right].StartedMs` (TestInMemoryTelemetryStoreConformance FAIL); telemetry/memory.go: `if query.Errors && !slices.ContainsFunc(trace.Spans` -> `if !query.Errors && !slices.ContainsFunc(trace.Spans` (TestInMemoryTelemetryStoreConformance FAIL); each compiled with go test -overlay, baseline PASS"
+ }
+]

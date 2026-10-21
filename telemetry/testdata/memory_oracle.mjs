@@ -15,7 +15,8 @@ for await (const chunk of process.stdin) input += chunk;
 const revive = (attributes) => {
 	if (attributes === null || attributes === undefined) return undefined;
 	const out = {};
-	for (const [name, value] of Object.entries(attributes)) out[name] = value !== null && typeof value === "object" && !Array.isArray(value) && value.$undef ? undefined : value;
+	// An attribute bag is a list of [name, value] pairs written into the object in order.
+	for (const [name, value] of attributes) out[name] = value !== null && typeof value === "object" && !Array.isArray(value) && value.$undef ? undefined : value;
 	return out;
 };
 const fail = (outcome) => {
@@ -36,25 +37,21 @@ const target = (recorder, kept, link) => {
 	return undefined;
 };
 const linksOf = (recorder, kept, links) => (links ? links.map((link) => ({ context: target(recorder, kept, link), attributes: revive(link.attrs) })) : undefined);
+const withoutKey = (carrier, key) => Object.fromEntries(Object.entries(carrier).filter(([name]) => name !== key));
 const FOREIGN = "0a0b0c0d-0e0f-4a0b-8c0d-0e0f0a0b0c0d";
-// The carrier a remote op extracts: the injected carrier of a kept span, one of the malformed or foreign shapes, or none.
+// The carrier a remote op extracts: the injected carrier of a kept span, an incomplete, foreign or opaque shape, or none.
 const carrierOf = (recorder, kept, op) => {
 	const own = kept.length > 0 ? recorder.inject(kept[op.idx % kept.length]) : undefined;
 	const scope = own?.["pi-memory-scope"];
 	switch (op.carrier) {
 		case "kept": return own;
 		case "extra": return own && { ...own, extra: "key" };
-		case "missingSpan": return own && { "pi-memory-scope": scope };
-		case "badScope": return { "pi-memory-scope": "X", "pi-memory-span": "1" };
-		case "upperScope": return { "pi-memory-scope": FOREIGN.toUpperCase(), "pi-memory-span": "1" };
-		case "spanZero": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "0" };
-		case "spanLeadingZero": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "01" };
-		case "spanSign": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "+1" };
-		case "spanUnsafe": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "9007199254740992" };
-		case "spanHuge": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "99999999999999999999999" };
-		case "spanMaxSafe": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "9007199254740991" };
-		case "foreign": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "1" };
-		case "ownUnknown": return scope && { "pi-memory-scope": scope, "pi-memory-span": "99999" };
+		case "missingScope": return own && withoutKey(own, "pi-memory-scope");
+		case "missingSpan": return own && withoutKey(own, "pi-memory-span");
+		case "missingTrace": return own && withoutKey(own, "pi-memory-trace");
+		case "foreign": return { "pi-memory-scope": FOREIGN, "pi-memory-span": "1", "pi-memory-trace": "foreign-trace" };
+		case "opaque": return { "pi-memory-scope": "external-recorder", "pi-memory-span": "external-span", "pi-memory-trace": "external-trace" };
+		case "ownUnknown": return scope && { "pi-memory-scope": scope, "pi-memory-span": "99999", "pi-memory-trace": own["pi-memory-trace"] };
 		case "empty": return {};
 	}
 	return undefined;

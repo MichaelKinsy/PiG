@@ -1,28 +1,26 @@
 # Behavior family: extensions-runtime
 # Surface: InteractiveMode.showExtensionSelector / showExtensionInput when a
-# dialog is already shown.
+# dialog is already shown (pushExtensionDialog, removeExtensionDialog,
+# showTopExtensionDialog).
 #
-# Upstream (Pi 1.2.0 interactive-mode.ts:2690-2826): a dialog never waits for
-# or refuses another. showExtensionInput clears the editor slot, installs the
-# input and focuses it, so it displaces an open selector; the displaced
-# selector's promise stays pending. testdata/ext/dialog-displace.mjs opens a
-# selector without awaiting it, then an input, and notifies the input's
-# result. PiG rejected the second dialog ("another extension dialog is already
-# open") until runDialog installed every dialog as Pi does.
+# Upstream (Pi 1.3.0+bdd9f039 interactive-mode.ts, commit 38847563, #11166):
+# dialogs in the editor slot form a stack. A new dialog hides the shown one
+# without settling it; closing the shown dialog shows the previous one again,
+# and it settles with its own answer. Before that commit the second dialog
+# replaced the first and the first promise never settled (Pi 1.2.0 behaviour,
+# which this scenario pinned until the pin bump).
+# testdata/ext/dialog-displace.mjs opens a selector without awaiting it, then
+# an input, answers the input, awaits the selector and notifies both results once. The tmux steps answer the input, wait for the earlier selector to
+# be shown again, and choose its first option.
 #
-# Upstream evidence (Pi 1.2.0, parity harness, 2026-10-13, 100x32 tmux):
-#   pi --no-extensions -e ../../testdata/test-faux-provider.ts \
-#     -e testdata/ext/dialog-displace.mjs --model test-faux/faux-1
-#   keys: "/dialog-displace" Enter; wait: "Displacing input"
-#   keys: "Ada" Enter; wait: "displacing-result:Ada"
-#   crop: start="displacing-result:" end="displacing-result:Ada"
-#   raw cropped upstream block:
-#     displacing-result:Ada
-#   The displaced selector never resolved and was not on screen. PiG's crop was
-#   byte-identical; 3 of 3 declared pairs passed.
+# Upstream evidence (2026-10-21, 100x32 tmux, pinned Pi 1.3.0+bd3c9b82 built
+# from the oracle): `go test -tags=parity ./test/parity/runner -run
+# 'TestParity/83-extension-dialog-displacement$'` passed 3 of 3 declared pairs
+# with byte-identical crops:
+#   dialog-stack-result:displacing=Ada displaced=one
 
 name = "83-extension-dialog-displacement"
-description = "An extension input opened while a selector is shown displaces it and receives the keys"
+description = "An extension input opened while a selector is shown stacks over it and receives the keys; the selector is shown again after the input is answered"
 covers = [
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
 ]
@@ -42,8 +40,8 @@ height = 32
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
-capture_start = "displacing-result:"
-capture_end = "displacing-result:Ada"
+capture_start = "dialog-stack-result:"
+capture_end = "displaced=one"
 
 [[tmux.steps]]
 keys = ["/dialog-displace", "Enter"]
@@ -52,12 +50,17 @@ wait_timeout_seconds = 20
 
 [[tmux.steps]]
 keys = ["Ada", "Enter"]
-wait_contains = ["displacing-result:Ada"]
+wait_contains = ["Displaced selector"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["dialog-stack-result:displacing=Ada displaced=one"]
 wait_timeout_seconds = 20
 
 [assert]
 both_reach_ready = true
-both_contain = ["displacing-result:Ada"]
-both_not_contain = ["displaced-resolved", "displaced-rejected", "displacing-rejected", "already open", "Displaced selector", "panic:"]
+both_contain = ["dialog-stack-result:displacing=Ada displaced=one"]
+both_not_contain = ["displaced-rejected", "displacing-rejected", "already open", "panic:"]
 output_equal = true
 runs = 3

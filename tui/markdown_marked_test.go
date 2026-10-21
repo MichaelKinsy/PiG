@@ -2,6 +2,7 @@ package tui
 
 import (
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"slices"
 	"strings"
@@ -130,9 +131,26 @@ func TestMarkedProceduralRulesMatchRegexps(t *testing.T) {
 	}
 }
 
-// TestMarkedRightDelimiterScanMatchesRegexps compares the hand-evaluated closing-delimiter scan with emStrongRDelimAst and emStrongRDelimUnd, match by match.
+// markedCJKRegexps are emStrongRDelimAst (GFM) and emStrongRDelimUnd as marked-cjk-friendly 0.1.2 builds them (src/index.ts buildRDelimAst, buildRDelimUnd) over the BMP part of its CJK class: the reference for markedRightDelimiterMatch. The regexp engine has no astral class escapes, so the astral ranges are covered by TestMarkedCJKClassMatchesPinnedPackage and the rendering oracle.
+func markedCJKRegexps() (ast, und *markedRegexp) {
+	var class strings.Builder
+	for _, r := range &markedCJKRanges {
+		if r[1] <= 0xffff {
+			fmt.Fprintf(&class, `\u%04x-\u%04x`, r[0], r[1])
+		}
+	}
+	cjk := class.String()
+	punct, punctSpace, notPunctSpace := `(?!~)[\p{P}\p{S}`+cjk+`]`, `(?!~)[\s\p{P}\p{S}`+cjk+`]`, `(?:[^\s\p{P}\p{S}`+cjk+`]|~)`
+	ast = newMarkedRegexp(`^[^_*]*?__[^_*]*?\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\*)` + punct + `(\*+)(?=[\s]|$)|` + notPunctSpace + `(\*+)(?!\*)(?=` + punctSpace + `|$)|(?!\*)` + punctSpace + `(\*+)(?=` + notPunctSpace + `)|[\s](\*+)(?!\*)(?=` + punct + `)|(?!\*)` + punct + `(\*+)(?!\*)(?=` + punct + `)|` + notPunctSpace + `(\*+)(?=` + notPunctSpace + `)`)
+	punct, punctSpace, notPunctSpace = `[\p{P}\p{S}`+cjk+`]`, `[\s\p{P}\p{S}`+cjk+`]`, `[^\s\p{P}\p{S}`+cjk+`]`
+	und = newMarkedRegexp(`^[^_*]*?\*\*[^_*]*?_[^_*]*?(?=\*\*)|[^_]+(?=[^_])|(?!_)` + punct + `(_+)(?=[\s]|$)|` + notPunctSpace + `(_+)(?!_)(?=` + punctSpace + `|$)|(?!_)` + punctSpace + `(_+)(?=` + notPunctSpace + `)|[\s](_+)(?!_)(?=` + punct + `)|(?!_)` + punct + `(_+)(?!_)(?=` + punct + `)`)
+	return ast, und
+}
+
+// TestMarkedRightDelimiterScanMatchesRegexps compares the hand-evaluated closing-delimiter scan with marked-cjk-friendly's emStrongRDelimAst and emStrongRDelimUnd, match by match.
 func TestMarkedRightDelimiterScanMatchesRegexps(t *testing.T) {
-	alphabet := []string{"a", "*", "**", "_", "__", "~", " ", "\n", ".", "(", "😀", "é", "\u3000", "+", "#", "日", "[aa]"}
+	alphabet := []string{"a", "*", "**", "_", "__", "~", " ", "\n", ".", "(", "😀", "é", "\u3000", "+", "#", "日", "。", "「", "한", "ー", "[aa]"}
+	astRegexp, undRegexp := markedCJKRegexps()
 	seed := uint32(7)
 	next := func(n int) int {
 		seed = seed*1664525 + 1013904223
@@ -145,9 +163,9 @@ func TestMarkedRightDelimiterScanMatchesRegexps(t *testing.T) {
 		}
 		src := []rune(b.String())
 		for _, delim := range []rune{'*', '_'} {
-			re := markedEmStrongRDelimUnd
+			re := undRegexp
 			if delim == '*' {
-				re = markedEmStrongRDelimAst
+				re = astRegexp
 			}
 			pos := 0
 			for m := re.exec(src); m != nil; m = re.next(m) {

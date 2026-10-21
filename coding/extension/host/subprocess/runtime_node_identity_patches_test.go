@@ -18,20 +18,18 @@ import (
 // The table is spelled out here independently of the patch script, so a wrong
 // or missing patch fails.
 var vendoredIdentityPatches = map[string][][2]string{
-	"pi-coding-agent/core/provider-attribution.js": {
-		{`"HTTP-Referer": "https://pi.dev",`, `"HTTP-Referer": "` + pigidentity.OpenRouterReferer + `",`},
-		{`"X-OpenRouter-Title": "pi",`, `"X-OpenRouter-Title": "` + pigidentity.OpenRouterTitle + `",`},
-		{`"X-BILLING-INVOKE-ORIGIN": "Pi",`, `"X-BILLING-INVOKE-ORIGIN": "` + pigidentity.NvidiaBillingOrigin + `",`},
-		{`"User-Agent": "pi-coding-agent",`, `"User-Agent": "` + pigidentity.CloudflareUserAgent + `",`},
-		{`"x-opencode-client": "pi" }`, `"x-opencode-client": "` + pigidentity.OpenCodeClient + `" }`},
+	"pi-ai/utils/identity.js": {
+		{`export const PI_ATTRIBUTION = { name: "pi", url: "https://pi.dev", categories: ["cli-agent"] };`,
+			`export const PI_ATTRIBUTION = { name: "` + pigidentity.AttributionName + `", url: "` + pigidentity.AttributionURL + `", categories: ["` + pigidentity.AttributionCategory + `"] };`},
+		{"    if (mode === \"short\")\n        return \"pi\";\n    const product = `pi/${getClientVersion(identity)}`;\n    const runtime = runtimeDescription();\n    return runtime ? `${product} (${process.platform}; ${runtime}; ${process.arch})` : `${product} (browser)`;",
+			"// pig divergence (D26, D65): PiG's product identity replaces Pi's; see automation/gen/pi-identity-patches.mjs.\n    if (mode === \"short\")\n        return \"" + pigidentity.UserAgentProduct + "\";\n    return pigUserAgent(\"" + pigidentity.UserAgentProduct + "\", identity?.version);"},
+		{`import { PI_AI_VERSION } from "./version.js";`, "import { PI_AI_VERSION } from \"./version.js\";\nimport { pigUserAgent } from \"../../../pig-identity.mjs\";"},
+	},
+	"pi-coding-agent/core/client-identity.js": {
+		{"        version: VERSION,", "// pig divergence (D26, D65): PiG's product identity replaces Pi's; see automation/gen/pi-identity-patches.mjs.\n        version: process.env.PIG_PRODUCT_VERSION ?? VERSION,"},
 	},
 	"pi-coding-agent/utils/pi-user-agent.js": {
-		{"export function getPiUserAgent(version) {\n    const runtime = process.versions.bun ? `bun/${process.versions.bun}` : `node/${process.version}`;\n    return `pi/${version} (${process.platform}; ${runtime}; ${process.arch})`;\n}",
-			"// pig divergence (D26, D65): PiG's product identity replaces Pi's; see automation/gen/pi-identity-patches.mjs.\nimport { pigUserAgent } from \"../../../pig-identity.mjs\";\nexport function getPiUserAgent(version) {\n    return pigUserAgent(\"" + pigidentity.UserAgentProduct + "\");\n}"},
-	},
-	"pi-ai/utils/pi-user-agent.js": {
-		{"export function getPiUserAgent() {\n    return nodeOs ? `pi (${nodeOs.platform()} ${nodeOs.release()}; ${nodeOs.arch()})` : \"pi (browser)\";\n}",
-			"// pig divergence (D26, D65): PiG's product identity replaces Pi's; see automation/gen/pi-identity-patches.mjs.\nimport { pigUserAgent } from \"../../../pig-identity.mjs\";\nexport function getPiUserAgent() {\n    return pigUserAgent(\"" + pigidentity.UserAgentProduct + "\");\n}"},
+		{`    return formatUserAgent({ userAgent: "detailed", version });`, "// pig divergence (D26, D65): PiG's product identity replaces Pi's; see automation/gen/pi-identity-patches.mjs.\n    return formatUserAgent({ userAgent: \"detailed\" });"},
 	},
 	"pi-ai/auth/oauth/openai-codex.js": {
 		{`async function createAuthorizationFlow(originator = "pi") {`, `async function createAuthorizationFlow(originator = "` + pigidentity.CodexOriginator + `") {`},

@@ -58,7 +58,7 @@ func openConversationsWith(t *testing.T, path string, store *controlledStore, op
 }
 
 var conversationNote = durable.DefineDoc(durable.DocDefinition[obj]{
-	CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.note", Version: 1, Initial: func() obj { return delta.JsonObjectOf("text", "") }},
+	CommonDocDefinition: durable.CommonDocDefinition[obj]{Kind: "test.note", Version: 1, Initial: func() obj { return delta.JsonObjectOf("text", "") }, CheckpointWhen: func(obj, []durable.Op, durable.CheckpointInfo) bool { return false }},
 	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryRewindable, Fork: durable.ForkAsOf},
 })
 

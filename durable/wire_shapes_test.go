@@ -53,6 +53,7 @@ func TestResolveAddressKeepsAnAbsentFamilyKeyAbsent(t *testing.T) {
 		Kind:   "notes", Version: 1,
 		DocumentSemantics: DocumentSemantics{Scope: ScopeSession},
 		Initial:           func(JsonValue) JsonObject { return delta.NewJsonObject(0) },
+		CheckpointWhen:    func(JsonObject, []Op, CheckpointInfo) bool { return false },
 	})
 	resolved, err := ResolveAddress(family.AnyDefinition(), nil)
 	if err != nil {
@@ -73,7 +74,7 @@ func TestResolveAddressKeepsAnAbsentFamilyKeyAbsent(t *testing.T) {
 // ownerId rejects a number that is not a safe integer (documents.ts ownerId: Number.isSafeInteger).
 func TestResolveAddressRejectsAnUnsafeOwnerId(t *testing.T) {
 	token := DefineDoc(DocDefinition[JsonObject]{
-		CommonDocDefinition: CommonDocDefinition[JsonObject]{Kind: "plan", Version: 1, Initial: func() JsonObject { return delta.NewJsonObject(0) }},
+		CommonDocDefinition: CommonDocDefinition[JsonObject]{Kind: "plan", Version: 1, Initial: func() JsonObject { return delta.NewJsonObject(0) }, CheckpointWhen: func(JsonObject, []Op, CheckpointInfo) bool { return false }},
 		DocumentSemantics:   DocumentSemantics{Scope: ScopeConversation, History: HistoryLatest, Fork: ForkCurrent},
 	})
 	for _, owner := range []any{ConversationId(1 << 53), int64(-(1 << 53)), 1 << 60} {
@@ -117,6 +118,7 @@ func TestDocFamilyTokenExposesItsDefinition(t *testing.T) {
 		Kind:   "notes", Version: 3,
 		DocumentSemantics: DocumentSemantics{Scope: ScopeSession},
 		Initial:           func(JsonValue) JsonObject { return delta.NewJsonObject(0) },
+		CheckpointWhen:    func(JsonObject, []Op, CheckpointInfo) bool { return false },
 	})
 	definition := token.AnyDefinition()
 	if definition.Kind != "notes" || definition.Version != 3 || definition.Scope != ScopeSession || !definition.Family {

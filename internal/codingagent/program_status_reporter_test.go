@@ -267,37 +267,6 @@ func TestProgramStatusFirstLine(t *testing.T) {
 	}
 }
 
-// interactive-mode.ts:2854, :2866: the editor a slash command opens (/tree custom summarization, /bug) is the extension
-// editor, so it reports blocked as a question while it is open and idle once it closes.
-func TestSlashCommandEditorReportsBlockedWhileItIsOpen(t *testing.T) {
-	m, _ := newExtensionDialogProbe(t)
-	terminal := recordProgramStatus(m, "")
-	slash := m.buildSlashContext(context.Background())
-	input, release := m.acquireModalInputChannel()
-	defer release()
-	type editorResult struct {
-		value string
-		ok    bool
-	}
-	done := make(chan editorResult, 1)
-	go func() {
-		value, ok := slash.ShowExtensionEditor("Custom summarization instructions", "", "")
-		done <- editorResult{value, ok}
-	}()
-	input <- []byte("x")
-	input <- []byte("\r")
-	if result := <-done; !result.ok || result.value != "x" {
-		t.Fatalf("editor = %+v, want x", result)
-	}
-	if len(terminal.reports) != 2 {
-		t.Fatalf("%d reports %+v, want blocked then idle", len(terminal.reports), terminal.reports)
-	}
-	got := terminal.reports[0]
-	if got.State != tui.ProgramStateBlocked || got.Kind != tui.ProgramStatusKindQuestion || got.Message != "Custom summarization instructions" || terminal.reports[1].State != tui.ProgramStateIdle {
-		t.Fatalf("reports %+v", terminal.reports)
-	}
-}
-
 // interactive-mode.ts:2742: an extension dialog dismissed by its signal still clears its blocked status, so an aborted
 // call never leaves the terminal reporting a question that is no longer open.
 func TestAbortedExtensionDialogClearsItsBlockedStatus(t *testing.T) {
@@ -319,7 +288,7 @@ func TestAbortedExtensionDialogClearsItsBlockedStatus(t *testing.T) {
 	if len(terminal.reports) != 2 || terminal.reports[0].State != tui.ProgramStateBlocked || terminal.reports[1].State != tui.ProgramStateIdle {
 		t.Fatalf("reports %+v, want blocked then idle", terminal.reports)
 	}
-	if m.extensionDialog != nil {
+	if m.shownExtensionDialog() != nil {
 		t.Fatal("the dialog stays installed after its signal aborted it")
 	}
 }

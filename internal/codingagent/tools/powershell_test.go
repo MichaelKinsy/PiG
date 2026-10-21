@@ -303,7 +303,7 @@ func TestPowerShellConfigResolutionOrder(t *testing.T) {
 			return "", errors.New("not found")
 		}
 	}
-	both, err := powerShellConfigFor("windows", look("powershell.exe", "pwsh.exe"))
+	both, err := powerShellConfigForPath("windows", look("powershell.exe", "pwsh.exe"))
 	if err != nil || both.Path != `C:\bin\pwsh.exe` || !slices.Equal(both.Args, PowerShellArgs) {
 		t.Fatalf("both installed = %+v, %v; want pwsh.exe first", both, err)
 	}
@@ -311,14 +311,14 @@ func TestPowerShellConfigResolutionOrder(t *testing.T) {
 	if PowerShellArgs[0] != "-NoProfile" {
 		t.Fatal("the resolved config shares the PowerShellArgs backing array")
 	}
-	if only, err := powerShellConfigFor("windows", look("powershell.exe")); err != nil || only.Path != `C:\bin\powershell.exe` {
+	if only, err := powerShellConfigForPath("windows", look("powershell.exe")); err != nil || only.Path != `C:\bin\powershell.exe` {
 		t.Fatalf("powershell.exe only = %+v, %v", only, err)
 	}
-	if _, err := powerShellConfigFor("windows", look()); err == nil || err.Error() != "No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH." {
+	if _, err := powerShellConfigForPath("windows", look()); err == nil || err.Error() != "No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH." {
 		t.Fatalf("none installed: %v", err)
 	}
 	for _, goos := range []string{"linux", "darwin"} {
-		if _, err := powerShellConfigFor(goos, look("pwsh.exe")); err == nil || err.Error() != "The powershell tool is only available on Windows." {
+		if _, err := powerShellConfigForPath(goos, look("pwsh.exe")); err == nil || err.Error() != "The powershell tool is only available on Windows." {
 			t.Fatalf("%s: %v", goos, err)
 		}
 	}
@@ -354,11 +354,11 @@ func TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly(t *tes
 			return "", exec.ErrNotFound
 		}
 	}
-	cfg, err := powerShellConfigFor("windows", onPath("powershell.exe", "pwsh.exe"))
+	cfg, err := powerShellConfigForPath("windows", onPath("powershell.exe", "pwsh.exe"))
 	if err != nil || cfg.Path != `C:\bin\pwsh.exe` {
 		t.Fatalf("with both on PATH = %+v, %v, want pwsh.exe", cfg, err)
 	}
-	cfg, err = powerShellConfigFor("windows", onPath("powershell.exe"))
+	cfg, err = powerShellConfigForPath("windows", onPath("powershell.exe"))
 	if err != nil || cfg.Path != `C:\bin\powershell.exe` {
 		t.Fatalf("with only powershell.exe = %+v, %v, want powershell.exe", cfg, err)
 	}
@@ -369,10 +369,10 @@ func TestPowerShellConfigResolvesPwshBeforeWindowsPowerShellOnWindowsOnly(t *tes
 	if PowerShellArgs[0] != "-NoProfile" {
 		t.Fatalf("the config's args alias the shared PowerShellArgs: %q", PowerShellArgs)
 	}
-	if _, err := powerShellConfigFor("windows", onPath()); err == nil || err.Error() != "No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH." {
+	if _, err := powerShellConfigForPath("windows", onPath()); err == nil || err.Error() != "No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH." {
 		t.Fatalf("with neither on PATH: %v", err)
 	}
-	if _, err := powerShellConfigFor("linux", onPath("pwsh.exe")); err == nil || err.Error() != "The powershell tool is only available on Windows." {
+	if _, err := powerShellConfigForPath("linux", onPath("pwsh.exe")); err == nil || err.Error() != "The powershell tool is only available on Windows." {
 		t.Fatalf("off Windows: %v", err)
 	}
 }
