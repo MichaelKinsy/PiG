@@ -1,6 +1,6 @@
 //! Fixture for the session graph conformance rows (test/extension-conformance/session_graph_test.go): the script of testfixture/sessiongraph (Go), testdata/session-graph.mjs (Node, Pi's own classes) and testdata/session_graph_python.py.
 
-use pig_sdk::{empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, ToolResult};
+use pig_sdk::{empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult};
 use serde_json::{json, Value};
 use std::io;
 use std::path::Path;
@@ -157,9 +157,218 @@ fn script(ctx: &Context, args: &Value) -> io::Result<Value> {
     Ok(Value::Object(r))
 }
 
+
+fn read_json(path: &Path) -> io::Result<Value> {
+    let text = std::fs::read_to_string(path)?;
+    serde_json::from_str(&text).map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error.to_string()))
+}
+
+macro_rules! read_all_getters {
+    ($s:ident, $($name:literal => $method:ident),* $(,)?) => {{
+        let mut report = serde_json::Map::new();
+        $( report.insert($name.into(), json!($s.$method()?)); )*
+        Ok(Value::Object(report))
+    }};
+}
+
+fn read_all(s: &SettingsManager) -> io::Result<Value> {
+    read_all_getters!(s,
+        "getDefaultProvider" => get_default_provider,
+        "getDefaultModel" => get_default_model,
+        "getDefaultThinkingLevel" => get_default_thinking_level,
+        "getTheme" => get_theme,
+        "getThemeSetting" => get_theme_setting,
+        "getSteeringMode" => get_steering_mode,
+        "getFollowUpMode" => get_follow_up_mode,
+        "getTransport" => get_transport,
+        "getSessionShareDestination" => get_session_share_destination,
+        "getCompactionEnabled" => get_compaction_enabled,
+        "getBranchSummarySkipPrompt" => get_branch_summary_skip_prompt,
+        "getRetryEnabled" => get_retry_enabled,
+        "getHttpIdleTimeoutMs" => get_http_idle_timeout_ms,
+        "getCacheWarmingMode" => get_cache_warming_mode,
+        "getWebSocketConnectTimeoutMs" => get_web_socket_connect_timeout_ms,
+        "getHideThinkingBlock" => get_hide_thinking_block,
+        "getShowCacheMissNotices" => get_show_cache_miss_notices,
+        "getExternalEditorCommand" => get_external_editor_command,
+        "getShellPath" => get_shell_path,
+        "getQuietStartup" => get_quiet_startup,
+        "getDefaultProjectTrust" => get_default_project_trust,
+        "getShellCommandPrefix" => get_shell_command_prefix,
+        "getNpmCommand" => get_npm_command,
+        "getCollapseChangelog" => get_collapse_changelog,
+        "getEnableInstallTelemetry" => get_enable_install_telemetry,
+        "getEnableAnalytics" => get_enable_analytics,
+        "getPackages" => get_packages,
+        "getExtensionPaths" => get_extension_paths,
+        "getSkillPaths" => get_skill_paths,
+        "getPromptTemplatePaths" => get_prompt_template_paths,
+        "getThemePaths" => get_theme_paths,
+        "getEnableSkillCommands" => get_enable_skill_commands,
+        "getThinkingBudgets" => get_thinking_budgets,
+        "getTerminalCapabilityOverrides" => get_terminal_capability_overrides,
+        "getShowImages" => get_show_images,
+        "getImageWidthCells" => get_image_width_cells,
+        "getClearOnShrink" => get_clear_on_shrink,
+        "getShowTerminalProgress" => get_show_terminal_progress,
+        "getTuiMode" => get_tui_mode,
+        "getFullscreenExitOutput" => get_fullscreen_exit_output,
+        "getFullscreenScrollbar" => get_fullscreen_scrollbar,
+        "getFullscreenCopyOnSelect" => get_fullscreen_copy_on_select,
+        "getFullscreenWheelScrollLines" => get_fullscreen_wheel_scroll_lines,
+        "getImageAutoResize" => get_image_auto_resize,
+        "getBlockImages" => get_block_images,
+        "getEnabledModels" => get_enabled_models,
+        "getDefaultTools" => get_default_tools,
+        "getDoubleEscapeAction" => get_double_escape_action,
+        "getTreeFilterMode" => get_tree_filter_mode,
+        "getShowHardwareCursor" => get_show_hardware_cursor,
+        "getEditorPaddingX" => get_editor_padding_x,
+        "getOutputPad" => get_output_pad,
+        "getAutocompleteMaxVisible" => get_autocomplete_max_visible,
+        "getCodeBlockIndent" => get_code_block_indent,
+        "getMermaidRenderingMode" => get_mermaid_rendering_mode,
+        "getWarnings" => get_warnings,
+        "getAllModelThinkingLevels" => get_all_model_thinking_levels,
+        "getBranchSummarySettings" => get_branch_summary_settings,
+        "getRetrySettings" => get_retry_settings,
+        "getProviderRetrySettings" => get_provider_retry_settings,
+        "getLastChangelogVersion" => get_last_changelog_version,
+        "getSessionDir" => get_session_dir,
+        "getSettings" => get_settings,
+        "getGlobalSettings" => get_global_settings,
+        "getProjectSettings" => get_project_settings,
+        "isProjectTrusted" => is_project_trusted,
+    )
+}
+
+fn settings_script(ctx: &Context, args: &Value) -> io::Result<Value> {
+    let (cwd, agent_dir, config_dir, broken_cwd) = (text(&args["cwd"]), text(&args["agentDir"]), text(&args["configDir"]), text(&args["brokenCwd"]));
+    let mut r = serde_json::Map::new();
+    let model = || Some(json!({"provider": "p", "id": "m"}));
+    let s = SettingsManager::create(ctx, cwd, Some(agent_dir), None)?;
+    r.insert("initial".into(), read_all(&s)?);
+    r.insert("modelBudget".into(), json!({
+        "reserve": s.get_compaction_reserve_tokens(model())?, "reserveNone": s.get_compaction_reserve_tokens(None)?, "keep": s.get_compaction_keep_recent_tokens(None)?,
+        "settings": s.get_compaction_settings(model())?, "thinking": s.get_model_thinking_level("p", "m")?,
+    }));
+    s.set_default_provider("openai")?;
+    s.set_default_model("gpt")?;
+    s.set_default_thinking_level("high")?;
+    s.set_theme("light")?;
+    s.set_steering_mode("one-at-a-time")?;
+    s.set_follow_up_mode("one-at-a-time")?;
+    s.set_compaction_enabled(true)?;
+    s.set_retry_enabled(false)?;
+    s.set_packages(json!(["npm:a", {"source": "npm:b", "extensions": ["x"]}]))?;
+    s.set_extension_paths(&["a", "b"])?;
+    s.set_skill_paths(&["s1"])?;
+    s.set_prompt_template_paths(&["p1"])?;
+    s.set_theme_paths(&["t1"])?;
+    s.set_enabled_models(Some(&["m1", "m2"]))?;
+    s.set_quiet_startup(json!("header"))?;
+    s.set_shell_path(Some("/bin/sh"))?;
+    s.set_shell_command_prefix(Some("set -e"))?;
+    s.set_npm_command(Some(&["pnpm", "dlx"]))?;
+    s.set_model_thinking_level("p", "m", "low")?;
+    s.set_http_idle_timeout_ms(5000.0)?;
+    s.set_image_width_cells(40)?;
+    s.set_output_pad(0)?;
+    s.set_tui_mode("fullscreen")?;
+    s.set_fullscreen_wheel_scroll_lines(json!(3))?;
+    s.set_warnings(json!({"anthropicExtraUsage": true}))?;
+    s.set_default_project_trust("never")?;
+    s.set_last_changelog_version("9.9.9")?;
+    s.set_enable_analytics(false)?;
+    s.set_transport("sse")?;
+    s.set_cache_warming_mode("idle")?;
+    s.set_hide_thinking_block(true)?;
+    s.set_show_images(false)?;
+    s.set_clear_on_shrink(true)?;
+    s.set_double_escape_action("tree")?;
+    s.set_tree_filter_mode("user-only")?;
+    s.set_mermaid_rendering_mode("off")?;
+    s.set_editor_padding_x(2)?;
+    s.set_autocomplete_max_visible(7)?;
+    s.set_collapse_changelog(true)?;
+    s.set_block_images(true)?;
+    s.set_session_share_destination("gist")?;
+    s.set_fullscreen_exit_output("resume-hint")?;
+    s.set_fullscreen_scrollbar("hidden")?;
+    s.set_fullscreen_copy_on_select(false)?;
+    s.set_show_hardware_cursor(true)?;
+    s.set_image_auto_resize(false)?;
+    s.set_show_terminal_progress(true)?;
+    s.set_enable_skill_commands(false)?;
+    s.set_enable_install_telemetry(false)?;
+    s.set_show_cache_miss_notices(false)?;
+    s.set_default_model_and_provider("anthropic", "opus")?;
+    s.set_project_packages(json!(["npm:proj"]))?;
+    s.set_project_extension_paths(&["pe"])?;
+    s.set_project_skill_paths(&["ps"])?;
+    s.set_project_prompt_template_paths(&["pp"])?;
+    s.set_project_theme_paths(&["pt"])?;
+    s.flush()?;
+    r.insert("afterSet".into(), read_all(&s)?);
+    r.insert("modelThinking".into(), json!(s.get_model_thinking_level("p", "m")?));
+    r.insert("files".into(), json!({"global": read_json(&Path::new(agent_dir).join("settings.json"))?, "project": read_json(&Path::new(cwd).join(config_dir).join("settings.json"))?}));
+
+    let persisted = SettingsManager::create(ctx, cwd, Some(agent_dir), None)?;
+    r.insert("persisted".into(), read_all(&persisted)?);
+    std::fs::write(Path::new(agent_dir).join("settings.json"), r#"{"defaultProvider":"external"}"#)?;
+    persisted.reload()?;
+    r.insert("reload".into(), json!({"provider": persisted.get_default_provider()?, "model": persisted.get_default_model()?, "merged": persisted.get_settings()?}));
+    persisted.set_shell_path(None)?;
+    persisted.set_shell_command_prefix(None)?;
+    persisted.set_npm_command(None)?;
+    persisted.set_enabled_models(None)?;
+    persisted.set_default_model("kept")?;
+    persisted.flush()?;
+    r.insert("cleared".into(), json!({
+        "shellPath": persisted.get_shell_path()?, "prefix": persisted.get_shell_command_prefix()?, "npm": persisted.get_npm_command()?, "enabled": persisted.get_enabled_models()?,
+        "file": read_json(&Path::new(agent_dir).join("settings.json"))?,
+    }));
+
+    let memory = SettingsManager::in_memory(ctx, Some(json!({"defaultProvider": "mem", "compaction": {"enabled": false}, "retry": {"maxRetries": 9}})), None)?;
+    r.insert("memory".into(), json!({
+        "provider": memory.get_default_provider()?, "compaction": memory.get_compaction_settings(None)?, "retry": memory.get_retry_settings()?, "merged": memory.get_settings()?,
+        "trusted": memory.is_project_trusted()?,
+    }));
+    memory.set_default_model("mm")?;
+    memory.apply_overrides(json!({"defaultModel": "ov"}))?;
+    r.insert("memoryAfter".into(), json!({"model": memory.get_default_model()?, "global": memory.get_global_settings()?, "merged": memory.get_settings()?}));
+    let untrusted = SettingsManager::in_memory(ctx, None, Some(&SettingsManagerCreateOptions { project_trusted: Some(false) }))?;
+    r.insert("untrustedMemory".into(), json!({"trusted": untrusted.is_project_trusted()?, "write": failure(untrusted.set_project_packages(json!(["x"])), "refusing to write project settings")}));
+
+    let broken = SettingsManager::create(ctx, broken_cwd, Some(agent_dir), None)?;
+    let drained = broken.drain_errors()?;
+    let mut entry = serde_json::Map::new();
+    entry.insert("count".into(), json!(drained.len()));
+    if let Some(first) = drained.first() {
+        entry.insert("scope".into(), json!(first.scope));
+        entry.insert("pathSuffix".into(), json!(first.path.as_deref().is_some_and(|path| path.ends_with(&*Path::new(config_dir).join("settings.json").to_string_lossy()))));
+        entry.insert("hasMessage".into(), json!(!first.error.is_empty()));
+    }
+    entry.insert("again".into(), json!(broken.drain_errors()?.len()));
+    r.insert("errors".into(), Value::Object(entry));
+
+    let distrust = SettingsManager::create(ctx, cwd, Some(agent_dir), Some(&SettingsManagerCreateOptions { project_trusted: Some(false) }))?;
+    r.insert("distrusted".into(), json!({
+        "trusted": distrust.is_project_trusted()?, "project": distrust.get_project_settings()?, "merged": distrust.get_settings()?,
+        "write": failure(distrust.set_project_extension_paths(&["z"]), "refusing to write project settings"),
+    }));
+    distrust.set_project_trusted(true)?;
+    r.insert("retrusted".into(), json!({"trusted": distrust.is_project_trusted()?, "projectModel": distrust.get_project_settings()?["defaultModel"]}));
+    Ok(Value::Object(r))
+}
+
 pub fn new_extension() -> Extension {
     let mut ext = Extension::new("session-graph");
     ext.tool("session_manager", "Runs the SessionManager script.", empty_schema(), |ctx, args| match script(ctx, &args) {
+        Ok(report) => ToolResult::text(report.to_string()),
+        Err(error) => ToolResult::Error(error.to_string()),
+    });
+    ext.tool("settings_manager", "Runs the SettingsManager script.", empty_schema(), |ctx, args| match settings_script(ctx, &args) {
         Ok(report) => ToolResult::text(report.to_string()),
         Err(error) => ToolResult::Error(error.to_string()),
     });

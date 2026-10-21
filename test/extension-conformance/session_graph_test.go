@@ -16,10 +16,17 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture/sessiongraph"
 )
 
 // The session graph: the classes an extension constructs around a session. Each SDK runs the same script (testfixture/sessiongraph for Go, testdata/session-graph-rust, testdata/session_graph_python.py, and testdata/session-graph.mjs, where Node runs Pi's own SessionManager) against the real host and reports what it saw; every report must equal the literal table below. The table is Pi's behavior (session-manager.ts) as the Node row shows it, so an SDK that returns a constant, never calls the host, or builds the object differently fails its own row.
+
+// The settings files of the script: the global file in the agent directory and the project file in the project's configuration directory.
+const (
+	sessionGraphGlobalSettings  = `{"defaultProvider":"anthropic","defaultModel":"opus","theme":"dark","steeringMode":"all","quietStartup":true,"externalEditor":"vim","enabledModels":["a*"],"compaction":{"enabled":false,"reserveTokens":1234},"retry":{"maxRetries":5},"packages":["npm:pkg-a",{"source":"npm:pkg-b","extensions":["x"]}],"unmodelled":{"kept":1}}`
+	sessionGraphProjectSettings = `{"defaultModel":"sonnet","skills":["./s"],"compaction":{"reserveTokens":99}}`
+)
 
 //go:embed testdata/session_graph_python.py
 var sessionGraphPython string
@@ -59,9 +66,22 @@ func (r *sessionGraphRig) script(tool string) (map[string]any, string) {
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	args := map[string]any{"cwd": filepath.Join(root, "project"), "dir": filepath.Join(root, "sessions"), "otherDir": filepath.Join(root, "other"), "junk": filepath.Join(root, "junk.jsonl")}
-	for _, dir := range []string{"project", "other"} {
-		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
+	configDir := icodingagent.ConfigDirName()
+	args := map[string]any{
+		"cwd": filepath.Join(root, "project"), "dir": filepath.Join(root, "sessions"), "otherDir": filepath.Join(root, "other"), "junk": filepath.Join(root, "junk.jsonl"),
+		"agentDir": filepath.Join(root, "agent"), "configDir": configDir, "brokenCwd": filepath.Join(root, "broken"),
+	}
+	files := map[string]string{
+		filepath.Join(root, "agent", "settings.json"):              sessionGraphGlobalSettings,
+		filepath.Join(root, "project", configDir, "settings.json"): sessionGraphProjectSettings,
+		filepath.Join(root, "broken", configDir, "settings.json"):  "{bad",
+		filepath.Join(root, "other", ".keep"):                      "",
+	}
+	for path, content := range files {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			r.t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			r.t.Fatal(err)
 		}
 	}
@@ -189,6 +209,30 @@ func normalizeSessionGraph(t *testing.T, report map[string]any, root string) map
 	return out
 }
 
+// diffSessionGraph lists the members at which got differs from want, by path.
+func diffSessionGraph(path string, got, want any, out *[]string) {
+	gotMap, gotIsMap := got.(map[string]any)
+	wantMap, wantIsMap := want.(map[string]any)
+	if gotIsMap && wantIsMap {
+		keys := map[string]bool{}
+		for key := range gotMap {
+			keys[key] = true
+		}
+		for key := range wantMap {
+			keys[key] = true
+		}
+		for key := range keys {
+			diffSessionGraph(path+"."+key, gotMap[key], wantMap[key], out)
+		}
+		return
+	}
+	if !reflect.DeepEqual(got, want) {
+		g, _ := json.Marshal(got)
+		w, _ := json.Marshal(want)
+		*out = append(*out, fmt.Sprintf("%s:\n got  %s\n want %s", path, g, w))
+	}
+}
+
 // requireSessionGraphReport fails with the differing members when got is not want.
 func requireSessionGraphReport(t *testing.T, got map[string]any, want string) {
 	t.Helper()
@@ -196,22 +240,11 @@ func requireSessionGraphReport(t *testing.T, got map[string]any, want string) {
 	if err := json.Unmarshal([]byte(want), &expected); err != nil {
 		t.Fatal(err)
 	}
-	if reflect.DeepEqual(got, expected) {
-		return
-	}
-	keys := map[string]bool{}
-	for key := range got {
-		keys[key] = true
-	}
-	for key := range expected {
-		keys[key] = true
-	}
-	for key := range keys {
-		if !reflect.DeepEqual(got[key], expected[key]) {
-			g, _ := json.Marshal(got[key])
-			w, _ := json.Marshal(expected[key])
-			t.Errorf("%s:\n got  %s\n want %s", key, g, w)
-		}
+	var diffs []string
+	diffSessionGraph("", got, expected, &diffs)
+	sort.Strings(diffs)
+	for _, diff := range diffs {
+		t.Error(diff)
 	}
 }
 
@@ -228,3 +261,22 @@ func TestSessionGraphSessionManagerAcrossSDKs(t *testing.T) {
 		requireSessionGraphReport(t, got, sessionGraphSessionManagerWant)
 	})
 }
+
+// settings-manager.ts SettingsManager (create, inMemory, every getter and setter, flush, reload, drainErrors, project trust) for every SDK.
+func TestSessionGraphSettingsManagerAcrossSDKs(t *testing.T) {
+	t.Parallel()
+	eachSessionGraphSDK(t, func(t *testing.T, r *sessionGraphRig, _ string) {
+		report, root := r.script("settings_manager")
+		got := normalizeSessionGraph(t, report, root)
+		if path := os.Getenv("SESSION_GRAPH_PRINT"); path != "" {
+			encoded, _ := json.MarshalIndent(got, "", "\t")
+			_ = os.WriteFile(path, encoded, 0o600)
+		}
+		requireSessionGraphReport(t, got, sessionGraphSettingsManagerWant)
+	})
+}
+
+// sessionGraphSettingsManagerWant is the report of Pi's own SettingsManager (the Node row).
+//
+//go:embed testdata/session-graph-settings-manager.json
+var sessionGraphSettingsManagerWant string

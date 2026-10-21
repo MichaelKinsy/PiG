@@ -36,6 +36,7 @@ from . import editor_component as _editor_component
 from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
 from .session_manager import ReadonlySessionManager, SessionManager, SetupSessionManager
+from .settings_manager import SettingsManager
 from .host_info import HostInfoUnavailable as HostInfoUnavailable, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_version as get_version
 from .file_mutation_queue import with_file_mutation_queue as with_file_mutation_queue
 from .language import get_language_from_path as get_language_from_path

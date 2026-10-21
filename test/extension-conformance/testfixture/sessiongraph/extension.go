@@ -195,5 +195,17 @@ func Extension() *sdk.Extension {
 			return string(encoded), err
 		},
 	})
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "settings_manager", Label: "settings_manager", Description: "Runs the SettingsManager script.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, args map[string]any) (result any, err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("%v", recovered)
+				}
+			}()
+			encoded, err := json.Marshal(settingsScript(ctx, args))
+			return string(encoded), err
+		},
+	})
 	return e
 }

@@ -24,6 +24,8 @@ func (*SessionGraph) New(_ context.Context, kind, op string, args json.RawMessag
 	switch kind {
 	case subprocess.SessionGraphSessionManager:
 		return icodingagent.NewGraphSessionManager(op, args)
+	case subprocess.SessionGraphSettingsManager:
+		return icodingagent.NewGraphSettingsManager(op, args)
 	}
 	return nil, fmt.Errorf("the host does not construct %s", kind)
 }

@@ -1,6 +1,9 @@
 // The Node fixture of the session graph conformance rows (session_graph_test.go). It runs the script of testfixture/sessiongraph (Go), testdata/session-graph-rust and the inline Python fixture with Pi's own SessionManager, so the report it makes is Pi's.
-import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+
+const readJson = (path) => JSON.parse(readFileSync(path, "utf-8"));
 
 const shape = (entries) => {
   const index = new Map(entries.map((entry, i) => [entry.id, i]));
@@ -119,9 +122,208 @@ async function script({ cwd, dir, otherDir, junk }) {
   return r;
 }
 
+
+const failureOf = (fn, contains) => {
+  try {
+    fn();
+  } catch (error) {
+    return String(error.message).includes(contains) ? `error: ${contains}` : `error: ${error.message}`;
+  }
+  return "no error";
+};
+
+const readAll = (s) => ({
+    getDefaultProvider: orNull(s.getDefaultProvider()),
+    getDefaultModel: orNull(s.getDefaultModel()),
+    getDefaultThinkingLevel: orNull(s.getDefaultThinkingLevel()),
+    getTheme: orNull(s.getTheme()),
+    getThemeSetting: orNull(s.getThemeSetting()),
+    getSteeringMode: orNull(s.getSteeringMode()),
+    getFollowUpMode: orNull(s.getFollowUpMode()),
+    getTransport: orNull(s.getTransport()),
+    getSessionShareDestination: orNull(s.getSessionShareDestination()),
+    getCompactionEnabled: orNull(s.getCompactionEnabled()),
+    getBranchSummarySkipPrompt: orNull(s.getBranchSummarySkipPrompt()),
+    getRetryEnabled: orNull(s.getRetryEnabled()),
+    getHttpIdleTimeoutMs: orNull(s.getHttpIdleTimeoutMs()),
+    getCacheWarmingMode: orNull(s.getCacheWarmingMode()),
+    getWebSocketConnectTimeoutMs: orNull(s.getWebSocketConnectTimeoutMs()),
+    getHideThinkingBlock: orNull(s.getHideThinkingBlock()),
+    getShowCacheMissNotices: orNull(s.getShowCacheMissNotices()),
+    getExternalEditorCommand: orNull(s.getExternalEditorCommand()),
+    getShellPath: orNull(s.getShellPath()),
+    getQuietStartup: orNull(s.getQuietStartup()),
+    getDefaultProjectTrust: orNull(s.getDefaultProjectTrust()),
+    getShellCommandPrefix: orNull(s.getShellCommandPrefix()),
+    getNpmCommand: orNull(s.getNpmCommand()),
+    getCollapseChangelog: orNull(s.getCollapseChangelog()),
+    getEnableInstallTelemetry: orNull(s.getEnableInstallTelemetry()),
+    getEnableAnalytics: orNull(s.getEnableAnalytics()),
+    getPackages: orNull(s.getPackages()),
+    getExtensionPaths: orNull(s.getExtensionPaths()),
+    getSkillPaths: orNull(s.getSkillPaths()),
+    getPromptTemplatePaths: orNull(s.getPromptTemplatePaths()),
+    getThemePaths: orNull(s.getThemePaths()),
+    getEnableSkillCommands: orNull(s.getEnableSkillCommands()),
+    getThinkingBudgets: orNull(s.getThinkingBudgets()),
+    getTerminalCapabilityOverrides: orNull(s.getTerminalCapabilityOverrides()),
+    getShowImages: orNull(s.getShowImages()),
+    getImageWidthCells: orNull(s.getImageWidthCells()),
+    getClearOnShrink: orNull(s.getClearOnShrink()),
+    getShowTerminalProgress: orNull(s.getShowTerminalProgress()),
+    getTuiMode: orNull(s.getTuiMode()),
+    getFullscreenExitOutput: orNull(s.getFullscreenExitOutput()),
+    getFullscreenScrollbar: orNull(s.getFullscreenScrollbar()),
+    getFullscreenCopyOnSelect: orNull(s.getFullscreenCopyOnSelect()),
+    getFullscreenWheelScrollLines: orNull(s.getFullscreenWheelScrollLines()),
+    getImageAutoResize: orNull(s.getImageAutoResize()),
+    getBlockImages: orNull(s.getBlockImages()),
+    getEnabledModels: orNull(s.getEnabledModels()),
+    getDefaultTools: orNull(s.getDefaultTools()),
+    getDoubleEscapeAction: orNull(s.getDoubleEscapeAction()),
+    getTreeFilterMode: orNull(s.getTreeFilterMode()),
+    getShowHardwareCursor: orNull(s.getShowHardwareCursor()),
+    getEditorPaddingX: orNull(s.getEditorPaddingX()),
+    getOutputPad: orNull(s.getOutputPad()),
+    getAutocompleteMaxVisible: orNull(s.getAutocompleteMaxVisible()),
+    getCodeBlockIndent: orNull(s.getCodeBlockIndent()),
+    getMermaidRenderingMode: orNull(s.getMermaidRenderingMode()),
+    getWarnings: orNull(s.getWarnings()),
+    getAllModelThinkingLevels: orNull(s.getAllModelThinkingLevels()),
+    getBranchSummarySettings: orNull(s.getBranchSummarySettings()),
+    getRetrySettings: orNull(s.getRetrySettings()),
+    getProviderRetrySettings: orNull(s.getProviderRetrySettings()),
+    getLastChangelogVersion: orNull(s.getLastChangelogVersion()),
+    getSessionDir: orNull(s.getSessionDir()),
+    getSettings: orNull(s.getSettings()),
+    getGlobalSettings: orNull(s.getGlobalSettings()),
+    getProjectSettings: orNull(s.getProjectSettings()),
+    isProjectTrusted: orNull(s.isProjectTrusted()),
+});
+
+async function settingsScript({ cwd, agentDir, configDir, brokenCwd }) {
+  const r = {};
+  const s = SettingsManager.create(cwd, agentDir);
+  r.initial = readAll(s);
+  r.modelBudget = {
+    reserve: s.getCompactionReserveTokens({ provider: "p", id: "m" }), reserveNone: s.getCompactionReserveTokens(), keep: s.getCompactionKeepRecentTokens(),
+    settings: s.getCompactionSettings({ provider: "p", id: "m" }), thinking: orNull(s.getModelThinkingLevel("p", "m")),
+  };
+  s.setDefaultProvider("openai");
+  s.setDefaultModel("gpt");
+  s.setDefaultThinkingLevel("high");
+  s.setTheme("light");
+  s.setSteeringMode("one-at-a-time");
+  s.setFollowUpMode("one-at-a-time");
+  s.setCompactionEnabled(true);
+  s.setRetryEnabled(false);
+  s.setPackages(["npm:a", {"source": "npm:b", "extensions": ["x"]}]);
+  s.setExtensionPaths(["a", "b"]);
+  s.setSkillPaths(["s1"]);
+  s.setPromptTemplatePaths(["p1"]);
+  s.setThemePaths(["t1"]);
+  s.setEnabledModels(["m1", "m2"]);
+  s.setQuietStartup("header");
+  s.setShellPath("/bin/sh");
+  s.setShellCommandPrefix("set -e");
+  s.setNpmCommand(["pnpm", "dlx"]);
+  s.setModelThinkingLevel("p", "m", "low");
+  s.setHttpIdleTimeoutMs(5000);
+  s.setImageWidthCells(40);
+  s.setOutputPad(0);
+  s.setTuiMode("fullscreen");
+  s.setFullscreenWheelScrollLines(3);
+  s.setWarnings({"anthropicExtraUsage": true});
+  s.setDefaultProjectTrust("never");
+  s.setLastChangelogVersion("9.9.9");
+  s.setEnableAnalytics(false);
+  s.setTransport("sse");
+  s.setCacheWarmingMode("idle");
+  s.setHideThinkingBlock(true);
+  s.setShowImages(false);
+  s.setClearOnShrink(true);
+  s.setDoubleEscapeAction("tree");
+  s.setTreeFilterMode("user-only");
+  s.setMermaidRenderingMode("off");
+  s.setEditorPaddingX(2);
+  s.setAutocompleteMaxVisible(7);
+  s.setCollapseChangelog(true);
+  s.setBlockImages(true);
+  s.setSessionShareDestination("gist");
+  s.setFullscreenExitOutput("resume-hint");
+  s.setFullscreenScrollbar("hidden");
+  s.setFullscreenCopyOnSelect(false);
+  s.setShowHardwareCursor(true);
+  s.setImageAutoResize(false);
+  s.setShowTerminalProgress(true);
+  s.setEnableSkillCommands(false);
+  s.setEnableInstallTelemetry(false);
+  s.setShowCacheMissNotices(false);
+  s.setDefaultModelAndProvider("anthropic", "opus");
+  s.setProjectPackages(["npm:proj"]);
+  s.setProjectExtensionPaths(["pe"]);
+  s.setProjectSkillPaths(["ps"]);
+  s.setProjectPromptTemplatePaths(["pp"]);
+  s.setProjectThemePaths(["pt"]);
+  await s.flush();
+  r.afterSet = readAll(s);
+  r.modelThinking = orNull(s.getModelThinkingLevel("p", "m"));
+  r.files = { global: readJson(join(agentDir, "settings.json")), project: readJson(join(cwd, configDir, "settings.json")) };
+
+  const persisted = SettingsManager.create(cwd, agentDir);
+  r.persisted = readAll(persisted);
+  writeFileSync(join(agentDir, "settings.json"), '{"defaultProvider":"external"}');
+  await persisted.reload();
+  r.reload = { provider: orNull(persisted.getDefaultProvider()), model: orNull(persisted.getDefaultModel()), merged: persisted.getSettings() };
+  persisted.setShellPath(undefined);
+  persisted.setShellCommandPrefix(undefined);
+  persisted.setNpmCommand(undefined);
+  persisted.setEnabledModels(undefined);
+  persisted.setDefaultModel("kept");
+  await persisted.flush();
+  r.cleared = {
+    shellPath: orNull(persisted.getShellPath()), prefix: orNull(persisted.getShellCommandPrefix()), npm: orNull(persisted.getNpmCommand()), enabled: orNull(persisted.getEnabledModels()),
+    file: readJson(join(agentDir, "settings.json")),
+  };
+
+  const memory = SettingsManager.inMemory({ defaultProvider: "mem", compaction: { enabled: false }, retry: { maxRetries: 9 } });
+  r.memory = {
+    provider: orNull(memory.getDefaultProvider()), compaction: memory.getCompactionSettings(), retry: memory.getRetrySettings(), merged: memory.getSettings(), trusted: memory.isProjectTrusted(),
+  };
+  memory.setDefaultModel("mm");
+  memory.applyOverrides({ defaultModel: "ov" });
+  r.memoryAfter = { model: orNull(memory.getDefaultModel()), global: memory.getGlobalSettings(), merged: memory.getSettings() };
+  const untrusted = SettingsManager.inMemory({}, { projectTrusted: false });
+  r.untrustedMemory = { trusted: untrusted.isProjectTrusted(), write: failureOf(() => untrusted.setProjectPackages(["x"]), "refusing to write project settings") };
+
+  const broken = SettingsManager.create(brokenCwd, agentDir);
+  const drained = broken.drainErrors();
+  const entry = { count: drained.length };
+  if (drained.length > 0) {
+    entry.scope = drained[0].scope;
+    entry.pathSuffix = typeof drained[0].path === "string" && drained[0].path.endsWith(join(configDir, "settings.json"));
+    entry.hasMessage = !!drained[0].error && drained[0].error.message !== "";
+  }
+  entry.again = broken.drainErrors().length;
+  r.errors = entry;
+
+  const distrust = SettingsManager.create(cwd, agentDir, { projectTrusted: false });
+  r.distrusted = {
+    trusted: distrust.isProjectTrusted(), project: distrust.getProjectSettings(), merged: distrust.getSettings(),
+    write: failureOf(() => distrust.setProjectExtensionPaths(["z"]), "refusing to write project settings"),
+  };
+  distrust.setProjectTrusted(true);
+  r.retrusted = { trusted: distrust.isProjectTrusted(), projectModel: distrust.getProjectSettings().defaultModel };
+  return r;
+}
+
 export default function (pi) {
   pi.registerTool({
     name: "session_manager", label: "session_manager", description: "Runs the SessionManager script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await script(params)) }] }),
+  });
+  pi.registerTool({
+    name: "settings_manager", label: "settings_manager", description: "Runs the SettingsManager script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await settingsScript(params)) }] }),
   });
 }

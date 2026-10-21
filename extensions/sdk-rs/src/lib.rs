@@ -89,6 +89,8 @@ pub use session_manager::ReadonlySessionManager;
 mod graph;
 mod session_manager_class;
 pub use session_manager_class::{NewSessionOptions, SessionInfo, SessionManager};
+mod settings_manager;
+pub use settings_manager::{SettingsError, SettingsManager, SettingsManagerCreateOptions};
 mod host_info;
 pub use host_info::{get_agent_dir, get_config_dir_name, get_version};
 mod file_mutation_queue;
