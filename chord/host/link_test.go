@@ -502,3 +502,30 @@ func TestWebSocketLinkPacksLargePayloadsAsBinaryMessages(t *testing.T) {
 		t.Fatalf("refused binary: reasons = %q", got)
 	}
 }
+
+// link.ts `ended` sets closed and calls the close handlers in one synchronous block. Here the handlers run after the
+// link reads closed and after its transport shut down, outside the link's lock (a handler may use the link), so a caller
+// that polls Closed() can see it true before a handler has returned, or run: it waits for the handler when it needs its
+// effect.
+func TestLinkIsClosedWhileItsCloseHandlersRun(t *testing.T) {
+	a, _ := MemoryLinkPair()
+	inHandler, release := make(chan bool), make(chan struct{})
+	a.OnClose(func(string) {
+		inHandler <- a.Closed()
+		<-release
+	})
+	done := make(chan struct{})
+	go func() {
+		a.Close("done")
+		close(done)
+	}()
+	if !<-inHandler {
+		t.Fatal("the link read open inside its close handler")
+	}
+	// The handler has not returned, and the link already reads closed.
+	if !a.Closed() {
+		t.Fatal("the link read open while its close handler ran")
+	}
+	close(release)
+	<-done
+}
