@@ -3,7 +3,7 @@ import json
 import os
 
 import pig_sdk
-from pig_sdk import ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
+from pig_sdk import DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
 
 
 def shape(entries):
@@ -364,9 +364,101 @@ def trust_tool(ctx, params):
     return json.dumps(trust_script(ctx, params))
 
 
+def skill_report(result):
+    skills = sorted(
+        (
+            {
+                "name": skill["name"], "description": skill["description"], "disable": bool(skill.get("disableModelInvocation")), "file": os.path.basename(skill["filePath"]),
+                "baseDir": os.path.basename(skill["baseDir"]), "scope": skill["sourceInfo"]["scope"], "origin": skill["sourceInfo"]["origin"], "source": skill["sourceInfo"]["source"],
+            }
+            for skill in result["skills"]
+        ),
+        key=lambda skill: skill["name"],
+    )
+    return {"skills": skills, "diagnostics": len(result["diagnostics"])}
+
+
+def prompt_report(result):
+    prompts = sorted(
+        (
+            {
+                "name": prompt["name"], "description": prompt["description"], "argumentHint": prompt.get("argumentHint") or "", "content": prompt["content"],
+                "file": os.path.basename(prompt["filePath"]), "scope": prompt["sourceInfo"]["scope"],
+            }
+            for prompt in result["prompts"]
+        ),
+        key=lambda prompt: prompt["name"],
+    )
+    return {"prompts": prompts, "diagnostics": len(result["diagnostics"])}
+
+
+def resource_report(loader):
+    extensions = loader.get_extensions()
+    source = loader.get_system_prompt_source()
+    return {
+        "extensions": len(extensions["extensions"]), "extensionErrors": len(extensions["errors"]), "themes": len(loader.get_themes()["themes"]),
+        "skills": skill_report(loader.get_skills()), "prompts": prompt_report(loader.get_prompts()),
+        "agentsFiles": [{"path": file["path"], "content": file["content"]} for file in loader.get_agents_files()["agentsFiles"]],
+        "systemPrompt": loader.get_system_prompt(), "systemPromptSource": source["path"] if source else None,
+        "appendSystemPrompt": loader.get_append_system_prompt(), "appendSources": [item["path"] for item in loader.get_append_system_prompt_sources()],
+    }
+
+
+def loader_script(ctx, args):
+    root, cwd, agent_dir = args["root"], args["cwd"], args["agentDir"]
+    extra_skills, extra_prompts = os.path.join(root, "extra-skills"), os.path.join(root, "extra-prompts")
+    r = {}
+    plain = DefaultResourceLoader(ctx, cwd=cwd, agent_dir=agent_dir)
+    plain.reload()
+    r["plain"] = resource_report(plain)
+
+    def append_override(base):
+        return list(base) + ["z"]
+
+    def skills_override(base):
+        return {"skills": [skill for skill in base["skills"] if skill["name"] != "beta"], "diagnostics": base["diagnostics"]}
+
+    def prompts_override(base):
+        return {"prompts": [{**prompt, "description": "overridden " + prompt["name"]} for prompt in base["prompts"]], "diagnostics": base["diagnostics"]}
+
+    overridden = DefaultResourceLoader(
+        ctx, cwd=cwd, agent_dir=agent_dir, no_skills=True, additional_skill_paths=[extra_skills], no_prompt_templates=True, additional_prompt_template_paths=[extra_prompts],
+        no_context_files=True, system_prompt="inline prompt", append_system_prompt=["a1", "a2"],
+        system_prompt_override=lambda base: None if base is None else base + "!", append_system_prompt_override=append_override,
+        skills_override=skills_override, prompts_override=prompts_override,
+        agents_files_override=lambda base: {"agentsFiles": [{"path": "/virtual/AGENTS.md", "content": "virtual"}]},
+    )
+    overridden.reload()
+    r["overridden"] = resource_report(overridden)
+
+    plain.extend_resources({"skillPaths": [{"path": os.path.join(extra_skills, "beta"), "metadata": {"source": "test", "scope": "project", "origin": "top-level"}}]})
+    r["extended"] = skill_report(plain.get_skills())
+
+    settings = SettingsManager.in_memory(ctx, {"skills": [extra_skills]})
+    via_settings = DefaultResourceLoader(ctx, cwd=cwd, agent_dir=agent_dir, settings_manager=settings)
+    via_settings.reload()
+    r["viaSettings"] = skill_report(via_settings.get_skills())
+
+    calls = {"n": 0}
+
+    def resolve(_result):
+        calls["n"] += 1
+        return True
+
+    trusting = DefaultResourceLoader(ctx, cwd=cwd, agent_dir=agent_dir)
+    trusting.reload({"resolveProjectTrust": resolve})
+    r["trust"] = {"calls": calls["n"], "skills": len(trusting.get_skills()["skills"])}
+    return r
+
+
+def loader_tool(ctx, params):
+    return json.dumps(loader_script(ctx, params))
+
+
 def new_extension():
     ext = pig_sdk.Extension("session-graph")
     ext.register_tool(pig_sdk.ToolDefinition(name="session_manager", label="session_manager", description="Runs the SessionManager script.", parameters={"type": "object"}, execute=session_manager_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="settings_manager", label="settings_manager", description="Runs the SettingsManager script.", parameters={"type": "object"}, execute=settings_manager_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="project_trust_store", label="project_trust_store", description="Runs the ProjectTrustStore script.", parameters={"type": "object"}, execute=trust_tool))
+    ext.register_tool(pig_sdk.ToolDefinition(name="resource_loader", label="resource_loader", description="Runs the DefaultResourceLoader script.", parameters={"type": "object"}, execute=loader_tool))
     return ext

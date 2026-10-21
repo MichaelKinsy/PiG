@@ -1,6 +1,6 @@
 //! Fixture for the session graph conformance rows (test/extension-conformance/session_graph_test.go): the script of testfixture/sessiongraph (Go), testdata/session-graph.mjs (Node, Pi's own classes) and testdata/session_graph_python.py.
 
-use pig_sdk::{empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
+use pig_sdk::{DefaultResourceLoader, DefaultResourceLoaderOptions, empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 use serde_json::{json, Value};
 use std::io;
 use std::path::Path;
@@ -405,6 +405,82 @@ fn trust_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     Ok(Value::Object(r))
 }
 
+fn base_name(value: &Value) -> String {
+    Path::new(text(value)).file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default()
+}
+
+fn skill_report(result: &Value) -> Value {
+    let mut skills: Vec<Value> = result["skills"].as_array().map(|list| list.iter().map(|skill| json!({
+        "name": skill["name"], "description": skill["description"], "disable": skill["disableModelInvocation"].as_bool().unwrap_or(false), "file": base_name(&skill["filePath"]),
+        "baseDir": base_name(&skill["baseDir"]), "scope": skill["sourceInfo"]["scope"], "origin": skill["sourceInfo"]["origin"], "source": skill["sourceInfo"]["source"],
+    })).collect()).unwrap_or_default();
+    skills.sort_by(|a, b| text(&a["name"]).cmp(text(&b["name"])));
+    json!({"skills": skills, "diagnostics": result["diagnostics"].as_array().map_or(0, Vec::len)})
+}
+
+fn prompt_report(result: &Value) -> Value {
+    let mut prompts: Vec<Value> = result["prompts"].as_array().map(|list| list.iter().map(|prompt| json!({
+        "name": prompt["name"], "description": prompt["description"], "argumentHint": prompt["argumentHint"].as_str().unwrap_or(""), "content": prompt["content"],
+        "file": base_name(&prompt["filePath"]), "scope": prompt["sourceInfo"]["scope"],
+    })).collect()).unwrap_or_default();
+    prompts.sort_by(|a, b| text(&a["name"]).cmp(text(&b["name"])));
+    json!({"prompts": prompts, "diagnostics": result["diagnostics"].as_array().map_or(0, Vec::len)})
+}
+
+fn resource_report(loader: &DefaultResourceLoader) -> io::Result<Value> {
+    let extensions = loader.get_extensions()?;
+    let source = loader.get_system_prompt_source()?;
+    let files: Vec<Value> = loader.get_agents_files()?["agentsFiles"].as_array().map(|list| list.iter().map(|file| json!({"path": file["path"], "content": file["content"]})).collect()).unwrap_or_default();
+    let sources: Vec<Value> = loader.get_append_system_prompt_sources()?.as_array().map(|list| list.iter().map(|item| item["path"].clone()).collect()).unwrap_or_default();
+    Ok(json!({
+        "extensions": extensions["extensions"].as_array().map_or(0, Vec::len), "extensionErrors": extensions["errors"].as_array().map_or(0, Vec::len),
+        "themes": loader.get_themes()?["themes"].as_array().map_or(0, Vec::len),
+        "skills": skill_report(&loader.get_skills()?), "prompts": prompt_report(&loader.get_prompts()?), "agentsFiles": files,
+        "systemPrompt": loader.get_system_prompt()?, "systemPromptSource": if source.is_null() { Value::Null } else { source["path"].clone() },
+        "appendSystemPrompt": loader.get_append_system_prompt()?, "appendSources": sources,
+    }))
+}
+
+fn loader_script(ctx: &Context, args: &Value) -> io::Result<Value> {
+    let (root, cwd, agent_dir) = (text(&args["root"]), text(&args["cwd"]), text(&args["agentDir"]));
+    let extra_skills = Path::new(root).join("extra-skills");
+    let extra_prompts = Path::new(root).join("extra-prompts");
+    let mut r = serde_json::Map::new();
+    let options = |cwd: &str, agent_dir: &str| DefaultResourceLoaderOptions { cwd: cwd.into(), agent_dir: agent_dir.into(), ..Default::default() };
+    let plain = DefaultResourceLoader::new(ctx, options(cwd, agent_dir))?;
+    plain.reload(None)?;
+    r.insert("plain".into(), resource_report(&plain)?);
+
+    let overridden = DefaultResourceLoader::new(ctx, DefaultResourceLoaderOptions {
+        no_skills: true, additional_skill_paths: vec![extra_skills.to_string_lossy().into_owned()], no_prompt_templates: true,
+        additional_prompt_template_paths: vec![extra_prompts.to_string_lossy().into_owned()], no_context_files: true,
+        system_prompt: Some("inline prompt".into()), append_system_prompt: Some(vec!["a1".into(), "a2".into()]),
+        system_prompt_override: Some(std::sync::Arc::new(|base| match base.as_str() { Some(text) => json!(format!("{text}!")), None => Value::Null })),
+        append_system_prompt_override: Some(std::sync::Arc::new(|base| { let mut list = base.as_array().cloned().unwrap_or_default(); list.push(json!("z")); Value::Array(list) })),
+        skills_override: Some(std::sync::Arc::new(|base| json!({"skills": base["skills"].as_array().map(|list| list.iter().filter(|skill| skill["name"] != "beta").cloned().collect::<Vec<_>>()).unwrap_or_default(), "diagnostics": base["diagnostics"]}))),
+        prompts_override: Some(std::sync::Arc::new(|base| json!({"prompts": base["prompts"].as_array().map(|list| list.iter().map(|prompt| { let mut prompt = prompt.clone(); prompt["description"] = json!(format!("overridden {}", text(&prompt["name"]))); prompt }).collect::<Vec<_>>()).unwrap_or_default(), "diagnostics": base["diagnostics"]}))),
+        agents_files_override: Some(std::sync::Arc::new(|_| json!({"agentsFiles": [{"path": "/virtual/AGENTS.md", "content": "virtual"}]}))),
+        ..options(cwd, agent_dir)
+    })?;
+    overridden.reload(None)?;
+    r.insert("overridden".into(), resource_report(&overridden)?);
+
+    plain.extend_resources(json!({"skillPaths": [{"path": extra_skills.join("beta").to_string_lossy(), "metadata": {"source": "test", "scope": "project", "origin": "top-level"}}]}))?;
+    r.insert("extended".into(), skill_report(&plain.get_skills()?));
+
+    let settings = SettingsManager::in_memory(ctx, Some(json!({"skills": [extra_skills.to_string_lossy()]})), None)?;
+    let via_settings = DefaultResourceLoader::new(ctx, DefaultResourceLoaderOptions { settings_manager: Some(&settings), ..options(cwd, agent_dir) })?;
+    via_settings.reload(None)?;
+    r.insert("viaSettings".into(), skill_report(&via_settings.get_skills()?));
+
+    let calls = std::sync::Arc::new(std::sync::atomic::AtomicI64::new(0));
+    let counter = calls.clone();
+    let trusting = DefaultResourceLoader::new(ctx, options(cwd, agent_dir))?;
+    trusting.reload(Some(std::sync::Arc::new(move |_| { counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst); true })))?;
+    r.insert("trust".into(), json!({"calls": calls.load(std::sync::atomic::Ordering::SeqCst), "skills": trusting.get_skills()?["skills"].as_array().map_or(0, Vec::len)}));
+    Ok(Value::Object(r))
+}
+
 pub fn new_extension() -> Extension {
     let mut ext = Extension::new("session-graph");
     ext.tool("session_manager", "Runs the SessionManager script.", empty_schema(), |ctx, args| match script(ctx, &args) {
@@ -416,6 +492,10 @@ pub fn new_extension() -> Extension {
         Err(error) => ToolResult::Error(error.to_string()),
     });
     ext.tool("project_trust_store", "Runs the ProjectTrustStore script.", empty_schema(), |ctx, args| match trust_script(ctx, &args) {
+        Ok(report) => ToolResult::text(report.to_string()),
+        Err(error) => ToolResult::Error(error.to_string()),
+    });
+    ext.tool("resource_loader", "Runs the DefaultResourceLoader script.", empty_schema(), |ctx, args| match loader_script(ctx, &args) {
         Ok(report) => ToolResult::text(report.to_string()),
         Err(error) => ToolResult::Error(error.to_string()),
     });

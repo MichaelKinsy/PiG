@@ -37,6 +37,7 @@ from .editor_component import EditorBase as EditorBase, EditorComponent as Edito
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
 from .session_manager import ReadonlySessionManager, SessionManager, SetupSessionManager
 from .settings_manager import SettingsManager
+from .resource_loader import DefaultResourceLoader
 from .project_trust import ProjectTrustStore, has_trust_requiring_project_resources
 from .host_info import HostInfoUnavailable as HostInfoUnavailable, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_version as get_version
 from .file_mutation_queue import with_file_mutation_queue as with_file_mutation_queue

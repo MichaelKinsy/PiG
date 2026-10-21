@@ -31,6 +31,11 @@ impl GraphObject {
         Ok(GraphObject { context: context.clone(), handle })
     }
 
+    /// The connection the object was made on, which names the functions of its later calls.
+    pub(crate) fn context(&self) -> &Context {
+        &self.context
+    }
+
     /// The host's name for the object, which an option that takes the object (`create_agent_session`) puts on the wire.
     pub(crate) fn handle(&self) -> &str {
         &self.handle

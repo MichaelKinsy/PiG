@@ -307,3 +307,22 @@ func TestSessionGraphProjectTrustStoreAcrossSDKs(t *testing.T) {
 //
 //go:embed testdata/session-graph-project-trust-store.json
 var sessionGraphProjectTrustStoreWant string
+
+// resource-loader.ts DefaultResourceLoader (options, results, overrides as callbacks, extendResources, settings handle, resolveProjectTrust) for every SDK. The options extensionFactories and extensionsOverride are not in the row: the native SDKs refuse them (gap SdkSessionGraph).
+func TestSessionGraphDefaultResourceLoaderAcrossSDKs(t *testing.T) {
+	t.Parallel()
+	eachSessionGraphSDK(t, func(t *testing.T, r *sessionGraphRig, _ string) {
+		report, root := r.script("resource_loader")
+		got := normalizeSessionGraph(t, report, root)
+		if path := os.Getenv("SESSION_GRAPH_PRINT"); path != "" {
+			encoded, _ := json.MarshalIndent(got, "", "\t")
+			_ = os.WriteFile(path, encoded, 0o600)
+		}
+		requireSessionGraphReport(t, got, sessionGraphDefaultResourceLoaderWant)
+	})
+}
+
+// sessionGraphDefaultResourceLoaderWant is the report of Pi's own DefaultResourceLoader (the Node row).
+//
+//go:embed testdata/session-graph-default-resource-loader.json
+var sessionGraphDefaultResourceLoaderWant string

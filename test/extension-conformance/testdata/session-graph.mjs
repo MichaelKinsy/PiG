@@ -1,5 +1,5 @@
 // The Node fixture of the session graph conformance rows (session_graph_test.go). It runs the script of testfixture/sessiongraph (Go), testdata/session-graph-rust and the inline Python fixture with Pi's own SessionManager, so the report it makes is Pi's.
-import { ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
+import { DefaultResourceLoader, ProjectTrustStore, SessionManager, SettingsManager, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -350,6 +350,74 @@ async function trustScript({ root, cwd, agentDir, otherDir }) {
   return r;
 }
 
+import { basename } from "node:path";
+
+const skillReport = (result) => ({
+  skills: result.skills
+    .map((skill) => ({
+      name: skill.name, description: skill.description, disable: !!skill.disableModelInvocation, file: basename(skill.filePath), baseDir: basename(skill.baseDir),
+      scope: skill.sourceInfo.scope, origin: skill.sourceInfo.origin, source: skill.sourceInfo.source,
+    }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+  diagnostics: result.diagnostics.length,
+});
+
+const promptReport = (result) => ({
+  prompts: result.prompts
+    .map((prompt) => ({
+      name: prompt.name, description: prompt.description, argumentHint: prompt.argumentHint ?? "", content: prompt.content, file: basename(prompt.filePath), scope: prompt.sourceInfo.scope,
+    }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+  diagnostics: result.diagnostics.length,
+});
+
+const resourceReport = (loader) => {
+  const extensions = loader.getExtensions();
+  const source = loader.getSystemPromptSource();
+  return {
+    extensions: extensions.extensions.length, extensionErrors: extensions.errors.length, themes: loader.getThemes().themes.length,
+    skills: skillReport(loader.getSkills()), prompts: promptReport(loader.getPrompts()),
+    agentsFiles: loader.getAgentsFiles().agentsFiles.map((file) => ({ path: file.path, content: file.content })),
+    systemPrompt: orNull(loader.getSystemPrompt()), systemPromptSource: source === undefined ? null : source.path,
+    appendSystemPrompt: loader.getAppendSystemPrompt(), appendSources: loader.getAppendSystemPromptSources().map((item) => item.path),
+  };
+};
+
+async function loaderScript({ root, cwd, agentDir }) {
+  const extraSkills = join(root, "extra-skills");
+  const extraPrompts = join(root, "extra-prompts");
+  const r = {};
+  const plain = new DefaultResourceLoader({ cwd, agentDir });
+  await plain.reload();
+  r.plain = resourceReport(plain);
+
+  const overridden = new DefaultResourceLoader({
+    cwd, agentDir, noSkills: true, additionalSkillPaths: [extraSkills], noPromptTemplates: true, additionalPromptTemplatePaths: [extraPrompts],
+    noContextFiles: true, systemPrompt: "inline prompt", appendSystemPrompt: ["a1", "a2"],
+    systemPromptOverride: (base) => (base === undefined ? undefined : base + "!"),
+    appendSystemPromptOverride: (base) => [...base, "z"],
+    skillsOverride: (base) => ({ skills: base.skills.filter((skill) => skill.name !== "beta"), diagnostics: base.diagnostics }),
+    promptsOverride: (base) => ({ prompts: base.prompts.map((prompt) => ({ ...prompt, description: "overridden " + prompt.name })), diagnostics: base.diagnostics }),
+    agentsFilesOverride: () => ({ agentsFiles: [{ path: "/virtual/AGENTS.md", content: "virtual" }] }),
+  });
+  await overridden.reload();
+  r.overridden = resourceReport(overridden);
+
+  plain.extendResources({ skillPaths: [{ path: join(extraSkills, "beta"), metadata: { source: "test", scope: "project", origin: "top-level" } }] });
+  r.extended = skillReport(plain.getSkills());
+
+  const settings = SettingsManager.inMemory({ skills: [extraSkills] });
+  const viaSettings = new DefaultResourceLoader({ cwd, agentDir, settingsManager: settings });
+  await viaSettings.reload();
+  r.viaSettings = skillReport(viaSettings.getSkills());
+
+  let calls = 0;
+  const trusting = new DefaultResourceLoader({ cwd, agentDir });
+  await trusting.reload({ resolveProjectTrust: () => { calls++; return true; } });
+  r.trust = { calls, skills: trusting.getSkills().skills.length };
+  return r;
+}
+
 export default function (pi) {
   pi.registerTool({
     name: "session_manager", label: "session_manager", description: "Runs the SessionManager script.", parameters: { type: "object" },
@@ -362,5 +430,9 @@ export default function (pi) {
   pi.registerTool({
     name: "project_trust_store", label: "project_trust_store", description: "Runs the ProjectTrustStore script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await trustScript(params)) }] }),
+  });
+  pi.registerTool({
+    name: "resource_loader", label: "resource_loader", description: "Runs the DefaultResourceLoader script.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await loaderScript(params)) }] }),
   });
 }
