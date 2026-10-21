@@ -1121,6 +1121,16 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("set_model", "Switch to the model in the arguments", set_model)
     ext.command("append_entry", "Append a custom entry", lambda ctx, args: ctx.append_entry("conformance-entry", "hello-entry"))
 
+    def append_entries_probe(ctx: pig_sdk.Context, args: str) -> None:
+        # Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
+        for custom_type in args.split(","):
+            try:
+                ctx.append_entry(custom_type, f"data-of-{custom_type}")
+            except pig_sdk.HostCallError:
+                pass
+
+    ext.command("append-entries-probe", "Append a custom entry for each comma-separated type", append_entries_probe)
+
     def event_field_probe(ctx, args):
         name, field = args.split()
         ext.on_event(name, lambda hctx, data: hctx.notify("event_field:%s.%s=%s" % (name, field, json.dumps(data[field], separators=(",", ":")) if field in data else "absent"), "info"))

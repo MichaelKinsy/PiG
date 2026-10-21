@@ -737,6 +737,7 @@ export default function (pi) {
   pi.registerCommand("set_label", { description: "Set an entry label", handler: async () => pi.setLabel("label-entry", "conformance-label") });
   pi.registerShortcut("ctrl+alt+y", { description: "Conformance shortcut", handler: async () => {} });
   pi.registerCommand("append_entry", { description: "Append a custom entry", handler: async () => pi.appendEntry("conformance-entry", "hello-entry") });
+  pi.registerCommand("append-entries-probe", { description: "Append a custom entry for each comma-separated type", handler: async (args) => { for (const customType of String(args).split(",")) pi.appendEntry(customType, `data-of-${customType}`); } });
   pi.registerCommand("scoped-models-probe", { description: "Report the model scope", handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.scopedModels), "info") });
   pi.registerCommand("ui-availability", {
     description: "Probe bound UI and headless defaults",

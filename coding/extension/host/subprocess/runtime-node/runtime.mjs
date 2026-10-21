@@ -75,6 +75,13 @@ export function isHostCancellation(error) {
   return hostCancellations.has(error);
 }
 
+// A host call the host answered with an error: it ran the call and refused it, so the call took no effect. A caller that showed the effect ahead of the answer (RuntimeSessionManager.appendCustomEntry) takes it back. A cancelled call (isHostCancellation) has no answer, and whether it took effect is unknown.
+const hostRejections = new WeakSet();
+
+export function isHostRejection(error) {
+  return hostRejections.has(error);
+}
+
 process.on("unhandledRejection", (reason) => {
   if (hostCancellations.has(reason)) return;
   // Node raises only when no listener handles the event; this listener is registered before any extension loads.
@@ -270,7 +277,9 @@ class RuntimeSessionManager {
 
   // _entries is the replicated log followed by the entries appendCustomEntry
   // appended that the host has not yet sent back, so a read sees an append at
-  // once, as upstream's in-process log does.
+  // once, as upstream's in-process log does. The host's log is the truth: an
+  // appended entry stays only until the host sends it back (it then takes the
+  // host's record) or refuses it (retractPending).
   _entries() {
     this.runtime.ensureSessionLog();
     const entries = this.runtime.state.session?.entries || [];
@@ -286,14 +295,22 @@ class RuntimeSessionManager {
     const replicated = new Map();
     entries.forEach((entry, index) => replicated.set(entry?.id, index));
     const unconfirmed = [];
+    let collided = false;
     for (const entry of pending) {
       const index = replicated.get(entry.id);
-      if (index === undefined) {
+      const hosted = index === undefined ? undefined : entries[index];
+      if (hosted === undefined) {
         unconfirmed.push(entry);
         continue;
       }
-      // The host's copy holds the same values; keep the object the caller
-      // holds, as upstream's log holds the entry it returned.
+      // A record of another kind under the id is not this entry: the host refuses an id its log holds, and the refusal retracts an append. The entries adoptHostLeafEntry adds (a label, a session name, a custom message) are the host's own records, so their copies match.
+      if (hosted.type !== entry.type || hosted.customType !== entry.customType) {
+        collided = true;
+        unconfirmed.push(entry);
+        continue;
+      }
+      // The host's copy holds the same values, except that it links the entry to its own leaf when it appends it, not to the entry this process showed last (an append the host refused, a message it appended meanwhile). Keep the object the caller holds, as upstream's log holds the entry it returned, with the host's parent.
+      entry.parentId = hosted.parentId;
       entries[index] = entry;
     }
     if (unconfirmed.length !== pending.length) {
@@ -305,7 +322,7 @@ class RuntimeSessionManager {
       return entries;
     }
     const combined = entries.concat(unconfirmed);
-    this._view = { base: entries, baseLength: entries.length, pending: this.runtime.pendingEntries, pendingLength: unconfirmed.length, entries: combined };
+    this._view = { base: entries, baseLength: entries.length, pending: this.runtime.pendingEntries, pendingLength: unconfirmed.length, entries: combined, collided };
     return combined;
   }
 
@@ -424,6 +441,7 @@ class RuntimeSessionManager {
   // extension (upstream pi.appendEntry calls it). The id is generated here,
   // against the replicated log, so it returns synchronously as upstream's does.
   // event marks pi.appendEntry, after which the host emits entry_appended as upstream's runtime action does (agent-session.ts:3406-3411); a direct ctx.sessionManager.appendCustomEntry only writes the log.
+  // Upstream's append cannot fail. Here the entry is shown before the host has appended it, so a host that answers with an error takes it back out.
   appendCustomEntry(customType, data, event = false) {
     const entry = {
       type: "custom",
@@ -436,8 +454,36 @@ class RuntimeSessionManager {
     this.runtime.pendingEntries.push(entry);
     const direct = { id: entry.id, timestamp: entry.timestamp };
     if (event) direct.event = true;
-    this.runtime.fireAndForget("appendEntry", { customType, data, direct });
+    this.runtime.fireAndForget("appendEntry", { customType, data, direct }, () => this.retractPending(entry.id));
     return entry.id;
+  }
+
+  // retractPending removes the entry appendCustomEntry showed when the host refused to append it, and only that entry: the others in flight stay. The entries appended after it were linked to it here, so they take its parent, where the host links them when it appends them; the host's copy corrects any other parent when it arrives. An entry the replicated log already holds is the host's and stays.
+  retractPending(id) {
+    // Confirm what the replicated log holds first, so the refusal drops only what the host does not have.
+    this._entries();
+    const pending = this.runtime.pendingEntries;
+    const at = pending.findIndex((entry) => entry.id === id);
+    if (at < 0) return;
+    const dropped = pending[at];
+    for (let i = at + 1; i < pending.length; i++) {
+      if (pending[i].parentId === dropped.id) pending[i].parentId = dropped.parentId;
+    }
+    pending.splice(at, 1);
+    // The view and the id index follow the removal, so a refusal costs the entries in flight and not the log. A view that does not match, or one that sits beside a host record of the same id, is rebuilt by the next read.
+    const view = this._view;
+    const position = view === undefined ? -1 : view.baseLength + at;
+    if (view === undefined || view.collided || view.pending !== pending || view.pendingLength !== pending.length + 1 || view.entries[position] !== dropped) {
+      this._view = undefined;
+      return;
+    }
+    view.entries.splice(position, 1);
+    view.pendingLength = pending.length;
+    const index = this._cachedIndex;
+    if (index !== undefined && index.entries === view.entries && index.count > position) {
+      index.count--;
+      if (index.byId.get(dropped.id) === dropped) index.byId.delete(dropped.id);
+    }
   }
 }
 
@@ -1253,6 +1299,7 @@ export class Connection {
       const info = env.call_result.error;
       const error = new Error(info.code ? `${info.code}: ${info.message}` : info.message);
       error.code = info.code || "";
+      hostRejections.add(error);
       pending.reject(error);
     } else pending.resolve(env.call_result?.result ?? null);
   }
@@ -1983,8 +2030,8 @@ export class Runtime {
     this.nativeProviderObjects = nativeProviderObjects;
     // Pi keeps one effective registered configuration root per provider (model-runtime.ts:438-443,753-766). Members of one Node cell share that root and its original children, functions and descriptors.
     this.providerConfigObjects = providerConfigObjects;
-    // Entries ctx.sessionManager.appendCustomEntry appended that the host's
-    // replicated log does not hold yet.
+    // Entries ctx.sessionManager.appendCustomEntry showed that the host's
+    // replicated log does not hold yet and has not refused.
     this.pendingEntries = [];
     // After the register frame the host has this extension's providers, and
     // a registration applies immediately, as after upstream's bindCore.
@@ -5043,7 +5090,8 @@ export class Runtime {
     return entry;
   }
 
-  fireAndForget(method, args = {}) {
+  // onRejected runs when the host answers the call with an error, for a caller that showed the call's effect ahead of the answer.
+  fireAndForget(method, args = {}, onRejected = undefined) {
     if (!this.conn) return;
     // The caller does not await, but the dispatcher owns the operation through
     // its parent request. The response cannot report completed while this call
@@ -5058,6 +5106,7 @@ export class Runtime {
     if (parentRequestId && !synchronousRPC && !conn.closed) conn.requestState(parentRequestId, "blocked", "host_call");
     let operation;
     operation = conn.call(method, args, parentRequestId).catch((err) => {
+      if (onRejected !== undefined && isHostRejection(err)) onRejected();
       // A host cancellation (the connection closed or the parent request was cancelled) and a call made after the close are not failures: Pi's calls are in-process and never fail at shutdown or with their caller, so they have nothing to report.
       if (isHostCancellation(err) || conn.closed) return;
       const reason = err && err.message ? err.message : String(err);

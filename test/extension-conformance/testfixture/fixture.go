@@ -1092,6 +1092,13 @@ func Extension() *sdk.Extension {
 	ext.Command("append_entry", "Append a custom entry", func(ctx sdk.Context, args string) error {
 		return ctx.AppendEntry("conformance-entry", "hello-entry")
 	})
+	// append-entries-probe appends one custom entry for each comma-separated type in order. Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
+	ext.Command("append-entries-probe", "Append a custom entry for each comma-separated type", func(ctx sdk.Context, args string) error {
+		for customType := range strings.SplitSeq(args, ",") {
+			_ = ctx.AppendEntry(customType, "data-of-"+customType)
+		}
+		return nil
+	})
 
 	ext.Command("sprite-probe", "Exercise sprite registration and host errors", func(ctx sdk.Context, args string) error {
 		definition := conformanceSpriteDefinition()

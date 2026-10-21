@@ -1821,6 +1821,17 @@ fn main() {
         },
     );
     ext.command(
+        "append-entries-probe",
+        "Append a custom entry for each comma-separated type",
+        |ctx, args| {
+            for custom_type in args.split(',') {
+                // Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
+                let _ = ctx.append_entry(custom_type, json!(format!("data-of-{custom_type}")));
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "sprite-probe",
         "Exercise sprite registration and host errors",
         |ctx, _args| {
