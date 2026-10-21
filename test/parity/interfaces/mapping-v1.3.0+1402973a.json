@@ -109661,9 +109661,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:durable/storage/sqlite/sqlite_storage_test.go#TestPicoSqliteStorage",
-        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations"
       ]
     },
     {
@@ -109683,9 +109683,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109706,9 +109706,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
-        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"
+        "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -225052,7 +225052,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -225073,7 +225075,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -225087,13 +225091,14 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion"
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
       ],
       "evidence": [
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -225114,7 +225119,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
+        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
       ]
     },
     {

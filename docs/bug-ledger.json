@@ -32066,6 +32066,30 @@
       "tests": []
     },
     {
+      "id": "BF-c6cb4f6",
+      "title": "Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it",
+      "symptom": "Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it.",
+      "rootCause": "PiG's Durable writes schema version 2 (Pi main's sleeping task status), which pi-durable 1.3.0 refuses. Opening a version 1 store by file path upgraded it in place, so a user who tried PiG on their Pi data could not go back to the released Pi. driver.OpenHarness and node.OpenNodeSqliteStorage now copy such a store to \u003cpath\u003e.schema-v1.bak (VACUUM INTO) before the upgrade; an earlier copy is never replaced, and a failed copy fails the open. pi-durable 1.3.0 opens the copy.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it. PiG's Durable writes schema version 2, which no Pi release reads yet, and it upgraded the store in place. `driver.OpenHarness` and `node.OpenNodeSqliteStorage` now copy a store at an older schema version to `\u003cpath\u003e.schema-1.bak` before upgrading it; pi-durable 1.3.0 opens that copy. An earlier copy is never replaced, and if the copy cannot be written the open fails and the store is left as it was (D188, #245; the commit that made the change calls it D186, its number before the renumber).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c6cb4f6c37",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/schema_backup_core_test.go::TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading",
+        "durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore"
+      ]
+    },
+    {
       "id": "BF-fd51f36",
       "title": "A Go or Rust extension edited while it was being built could be cached under the hash of the source from…",
       "symptom": "A Go or Rust extension edited while it was being built could be cached under the hash of the source from before the edit.",
@@ -32517,6 +32541,28 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/sdk_fingerprint_marker_test.go::TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker"
+      ]
+    },
+    {
+      "id": "BF-ea32019",
+      "title": "An extension's `ctx.hasPendingMessages()` now asks the Host instead of reading a cached state snapshot, so it…",
+      "symptom": "An extension's `ctx.hasPendingMessages()` now asks the Host instead of reading a cached state snapshot, so it reports a steering or follow-up message queued while a handler is awaited, as Pi's live getter does.",
+      "rootCause": "pi-queue-steer checks that flag right after pi.sendUserMessage() with deliverAs and re-queues on a false negative, which surfaced as \"Pi did not accept the queued message at this delivery boundary\" even though the message was delivered.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's `ctx.hasPendingMessages()` now asks the Host instead of reading a cached state snapshot, so it reports a steering or follow-up message queued while a handler is awaited, as Pi's live getter does. Extensions that gate delivery on that flag, such as `pi-queue-steer`, no longer report `Pi did not accept the queued message at this delivery boundary` after a message that was delivered.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ea32019f45",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_has_pending_messages_test.go::TestNodeContextHasPendingMessagesReadsTheHostLive"
       ]
     },
     {
@@ -33033,6 +33079,10 @@
     {
       "id": "D187",
       "title": "A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single…"
+    },
+    {
+      "id": "D188",
+      "title": "Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place"
     }
   ],
   "exemptCommits": {
