@@ -387,9 +387,9 @@ func resultIdentityRoots(cwd, temp string, env []string) map[string]string {
 		switch key {
 		case "PIG_HOME":
 			roots["agent"] = value + "/agent"
-			// Each PiG build writes its pages to docs/bundle-<hash>/ (internal/pigdocs); Pi's docs are one directory.
+			// Each PiG build writes its pages to docs/bundle-<hash>/ (internal/pigdocs); Pi's docs are one directory. The 16-digit pattern leaves out the session's lease file, docs/bundle-<hash>.lease, which is no bundle.
 			docs := value + "/docs"
-			if bundles, _ := filepath.Glob(filepath.Join(value, "docs", "bundle-*")); len(bundles) == 1 {
+			if bundles, _ := filepath.Glob(filepath.Join(value, "docs", "bundle-????????????????")); len(bundles) == 1 {
 				docs = filepath.ToSlash(bundles[0])
 			}
 			roots["docs"] = docs
