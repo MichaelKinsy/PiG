@@ -1,6 +1,6 @@
 //! Fixture for the session graph conformance rows (test/extension-conformance/session_graph_test.go): the script of testfixture/sessiongraph (Go), testdata/session-graph.mjs (Node, Pi's own classes) and testdata/session_graph_python.py.
 
-use pig_sdk::{DefaultPackageManager, PackageManagerOptions, DefaultResourceLoader, DefaultResourceLoaderOptions, empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
+use pig_sdk::{ModelRuntime, ModelRuntimeCreateOptions, ModelRoute, VirtualModel, DefaultPackageManager, PackageManagerOptions, DefaultResourceLoader, DefaultResourceLoaderOptions, empty_schema, Context, Extension, NewSessionOptions, SessionInfo, SessionManager, SettingsManager, SettingsManagerCreateOptions, ToolResult, has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 use serde_json::{json, Value};
 use std::io;
 use std::path::Path;
@@ -526,6 +526,154 @@ fn packages_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     Ok(Value::Object(r))
 }
 
+fn pick_model(model: &Value) -> Value {
+    if model.is_null() {
+        return Value::Null;
+    }
+    json!({"id": model["id"], "provider": model["provider"], "api": model["api"], "name": model["name"], "reasoning": model["reasoning"].as_bool().unwrap_or(false), "contextWindow": model["contextWindow"], "maxTokens": model["maxTokens"]})
+}
+
+fn pick_models(models: &Value) -> Vec<Value> {
+    models.as_array().map(Vec::as_slice).unwrap_or_default().iter().map(pick_model).collect()
+}
+
+fn ids(models: &Value, provider: Option<&str>) -> Vec<Value> {
+    models.as_array().map(Vec::as_slice).unwrap_or_default().iter().filter(|model| provider.is_none_or(|provider| model["provider"] == provider)).map(|model| model["id"].clone()).collect()
+}
+
+fn error_text<T>(result: io::Result<T>) -> String {
+    match result {
+        Ok(_) => "no error".into(),
+        Err(error) => format!("error: {error}"),
+    }
+}
+
+fn message_text(message: &Value) -> String {
+    message["content"].as_array().map(Vec::as_slice).unwrap_or_default().iter().map(|block| text(&block["text"])).collect()
+}
+
+fn model_runtime_script(ctx: &Context, args: &Value) -> io::Result<Value> {
+    let (auth, models, store, server) = (text(&args["mrAuth"]), text(&args["mrModels"]), text(&args["mrStore"]), text(&args["mrServer"]));
+    let mut r = serde_json::Map::new();
+    let rt = ModelRuntime::create(ctx, ModelRuntimeCreateOptions { auth_path: Some(auth.into()), models_path: Some(models.into()), models_store_path: Some(store.into()), ..Default::default() })?;
+    let local = rt.get_model("mr-local", "m1")?;
+    r.insert("catalog".into(), json!({
+        "error": rt.get_error()?, "models": pick_models(&rt.get_models(Some("mr-local"))?), "all": rt.get_all_models(Some("mr-local"))?.as_array().map_or(0, Vec::len), "one": pick_model(&local),
+        "missing": rt.get_model("mr-local", "nope")?.is_null(), "builtinListed": !ids(&rt.get_models(None)?, Some("anthropic")).is_empty(),
+        "ofType": ids(&rt.get_models_of_type("chat", Some("mr-local"))?, None), "oneOfType": pick_model(&rt.get_model_of_type("chat", "mr-local", "m1")?),
+        "imagesOfType": rt.get_models_of_type("image", Some("mr-local"))?.as_array().map_or(0, Vec::len), "physical": pick_model(&rt.get_physical_model("mr-local", "m1")?),
+        "physicalMissing": rt.get_physical_model("mr-local", "nope")?.is_null(),
+    }));
+    r.insert("auth".into(), json!({
+        "configured": rt.has_configured_auth("mr-local")?, "unconfigured": rt.has_configured_auth("nope-prov")?, "oauth": rt.is_using_oauth("mr-local")?, "subscription": rt.is_using_subscription("mr-local")?,
+        "status": rt.get_provider_auth_status("mr-local")?, "storedStatus": rt.get_provider_auth_status("stored-prov")?, "unknownStatus": rt.get_provider_auth_status("nope-prov")?,
+        "byProvider": rt.get_auth(json!("mr-local"), None)?, "byModel": rt.get_auth(local.clone(), None)?, "unconfiguredAuth": rt.get_auth(json!("nope-prov"), None)?,
+        "overridden": rt.get_auth(json!("mr-local"), Some(json!({"apiKey": "override"})))?,
+        "check": rt.check_auth("mr-local")?, "uncheckedProvider": rt.check_auth("nope-prov")?, "compat": rt.get_compatibility_request_config(&local)?,
+    }));
+    rt.set_runtime_api_key("rt-prov", "rk")?;
+    let with_key = json!({"status": rt.get_provider_auth_status("rt-prov")?, "configured": rt.has_configured_auth("rt-prov")?, "auth": rt.get_auth(json!("rt-prov"), None)?});
+    rt.remove_runtime_api_key("rt-prov")?;
+    r.insert("runtimeKey".into(), json!({"withKey": with_key, "removed": rt.get_provider_auth_status("rt-prov")?, "configuredAfter": rt.has_configured_auth("rt-prov")?}));
+    let mut credentials: Vec<Value> = rt.list_credentials()?.as_array().cloned().unwrap_or_default().iter().map(|c| json!({"providerId": c["providerId"], "type": c["type"]})).collect();
+    credentials.sort_by(|a, b| text(&a["providerId"]).cmp(text(&b["providerId"])));
+    r.insert("credentials".into(), json!(credentials));
+
+    let before = rt.get_registered_provider_ids()?;
+    rt.register_provider("reg-prov", json!({
+        "baseUrl": server, "apiKey": "regkey", "api": "openai-completions", "headers": {"x-reg": "1"},
+        "models": [{"id": "r1", "name": "Reg One", "reasoning": false, "input": ["text"], "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 4000, "maxTokens": 500}],
+    }))?;
+    rt.register_provider("reg-prov", json!({"baseUrl": format!("{server}/v2")}))?;
+    let config = rt.get_registered_provider_config("reg-prov")?;
+    let rejected = error_text(rt.register_provider("bad-prov", json!({"models": [{"id": "x"}]})));
+    let mut registered = json!({
+        "before": before, "ids": rt.get_registered_provider_ids()?, "models": pick_models(&rt.get_models(Some("reg-prov"))?), "baseUrl": config["baseUrl"], "apiKey": config["apiKey"], "api": config["api"], "headers": config["headers"], "modelIds": ids(&config["models"], None),
+        "configured": rt.has_configured_auth("reg-prov")?, "unregisteredConfig": rt.get_registered_provider_config("nope-prov")?.is_null(), "rejected": rejected,
+    });
+    rt.unregister_provider("reg-prov")?;
+    registered["after"] = json!({"ids": rt.get_registered_provider_ids()?, "models": rt.get_models(Some("reg-prov"))?.as_array().map_or(0, Vec::len), "config": rt.get_registered_provider_config("reg-prov")?.is_null()});
+    r.insert("registered".into(), registered);
+
+    let requests = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Value>::new()));
+    let sink = requests.clone();
+    let route_rt = std::sync::Arc::new(ModelRuntime::create(ctx, ModelRuntimeCreateOptions { auth_path: Some(auth.into()), models_path: Some(models.into()), models_store_path: Some(store.into()), ..Default::default() })?);
+    let physical_source = route_rt.clone();
+    let mut virtual_model = VirtualModel::new("mr-virtual", "v1", "Virtual One", move |_ctx, request| {
+        let mut requests = sink.lock().unwrap();
+        requests.push(json!({"model": request.model["id"], "thinkingLevel": request.thinking_level, "reason": request.reason, "messages": request.messages.len(), "state": request.state}));
+        let model = physical_source.get_physical_model("mr-local", "m1").map_err(|error| error.to_string())?;
+        Ok(ModelRoute { model, thinking_level: "off".into(), state: Some(json!({"n": requests.len()})) })
+    });
+    virtual_model.thinking_levels = Some(vec!["off".into(), "high".into()]);
+    virtual_model.context_window = Some(1000);
+    virtual_model.max_tokens = Some(100);
+    virtual_model.input = Some(vec!["text".into()]);
+    rt.register_virtual_model(virtual_model)?;
+    let virtual_object = rt.get_model("mr-virtual", "v1")?;
+    let messages = json!([{"role": "user", "content": "hi", "timestamp": 1}]);
+    let routed = rt.resolve_model(&virtual_object, messages.clone(), json!({"reason": "user", "thinkingLevel": "high"}))?;
+    let second = rt.resolve_model(&virtual_object, messages, json!({"reason": "continuation", "thinkingLevel": "off", "state": {"n": 1}}))?;
+    let unknown = error_text(rt.resolve_model(&local, json!([]), json!({"reason": "user", "thinkingLevel": "off"})));
+    r.insert("virtual".into(), json!({
+        "model": pick_model(&virtual_object), "thinkingLevels": virtual_object["thinkingLevels"], "route": {"model": pick_model(&routed["model"]), "thinkingLevel": routed["thinkingLevel"], "state": routed["state"]}, "second": second["state"], "requests": requests.lock().unwrap().clone(),
+        "physicalIsNull": rt.get_physical_model("mr-virtual", "v1")?.is_null(), "unknown": unknown,
+    }));
+    rt.unregister_virtual_model("mr-virtual", "v1")?;
+    r.get_mut("virtual").unwrap()["after"] = json!(rt.get_model("mr-virtual", "v1")?.is_null());
+
+    let refreshed = rt.refresh(Some(json!({"allowNetwork": false})))?;
+    r.insert("refresh".into(), json!({"aborted": refreshed["aborted"], "errors": refreshed["errors"]}));
+    r.insert("available".into(), json!({
+        "ofProvider": ids(&rt.get_available(Some("mr-local"))?, None), "all": ids(&rt.get_available(None)?, Some("mr-local")), "snapshot": ids(&rt.get_available_snapshot()?, Some("mr-local")),
+        "allOfProvider": ids(&rt.get_all_available(Some("mr-local"))?, None), "ofType": ids(&rt.get_available_of_type("chat", Some("mr-local"))?, None), "unavailableProvider": rt.get_available(Some("nope-prov"))?.as_array().map_or(0, Vec::len),
+    }));
+
+    let conversation = json!({"systemPrompt": "Be brief.", "messages": [{"role": "user", "content": "say hello", "timestamp": 1}]});
+    let options = json!({"maxTokens": 50});
+    let stream = rt.stream_simple(local.clone(), conversation.clone(), options.clone());
+    let mut events = Vec::new();
+    while let Some(event) = stream.next() {
+        events.push(event["type"].clone());
+    }
+    let message = stream.result().unwrap_or(Value::Null);
+    let completed = rt.complete_simple(local.clone(), conversation.clone(), options.clone()).unwrap_or(Value::Null);
+    let full = rt.complete(local.clone(), conversation.clone(), options).unwrap_or(Value::Null);
+    let mut unknown_model = local.clone();
+    unknown_model["provider"] = json!("nope-prov");
+    let unknown_stop = rt.complete_simple(unknown_model, conversation, json!({})).unwrap_or(Value::Null);
+    r.insert("stream".into(), json!({
+        "events": events, "stopReason": message["stopReason"], "text": message_text(&message), "provider": message["provider"], "model": message["model"], "api": message["api"],
+        "completed": message_text(&completed), "full": full["stopReason"], "unknownProvider": unknown_stop["stopReason"],
+    }));
+    let classified = rt.classify(&local, json!({"state": {}, "questions": {}}), None);
+    let imaged = rt.generate_images(&local, json!({"input": [{"type": "text", "text": "a cat"}]}), None);
+    r.insert("typed".into(), json!({"classifyStop": classified["stopReason"], "classifyError": classified["errorMessage"], "imagesStop": imaged["stopReason"], "imagesError": imaged["errorMessage"]}));
+
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Value>::new()));
+    let notified = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Value>::new()));
+    let (seen_sink, notified_sink) = (seen.clone(), notified.clone());
+    let credential = rt.login(
+        "openai",
+        "api_key",
+        std::sync::Arc::new(move |prompt| { seen_sink.lock().unwrap().push(prompt["type"].clone()); Ok("sk-login".to_string()) }),
+        Some(std::sync::Arc::new(move |event| notified_sink.lock().unwrap().push(event["type"].clone()))),
+        None,
+        None,
+    )?;
+    let listed = |rt: &ModelRuntime| -> io::Result<Vec<String>> {
+        let mut out: Vec<String> = rt.list_credentials()?.as_array().cloned().unwrap_or_default().iter().map(|c| text(&c["providerId"]).to_string()).collect();
+        out.sort();
+        Ok(out)
+    };
+    let mut login = json!({"credential": credential, "prompts": seen.lock().unwrap().clone(), "events": notified.lock().unwrap().clone(), "listed": listed(&rt)?, "status": rt.get_provider_auth_status("openai")?});
+    rt.logout("openai")?;
+    login["afterLogout"] = json!(listed(&rt)?);
+    r.insert("login".into(), login);
+    r.insert("stored".into(), serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?);
+    Ok(Value::Object(r))
+}
+
 pub fn new_extension() -> Extension {
     let mut ext = Extension::new("session-graph");
     ext.tool("session_manager", "Runs the SessionManager script.", empty_schema(), |ctx, args| match script(ctx, &args) {
@@ -541,6 +689,10 @@ pub fn new_extension() -> Extension {
         Err(error) => ToolResult::Error(error.to_string()),
     });
     ext.tool("resource_loader", "Runs the DefaultResourceLoader script.", empty_schema(), |ctx, args| match loader_script(ctx, &args) {
+        Ok(report) => ToolResult::text(report.to_string()),
+        Err(error) => ToolResult::Error(error.to_string()),
+    });
+    ext.tool("model_runtime", "Runs the ModelRuntime script.", empty_schema(), |ctx, args| match model_runtime_script(ctx, &args) {
         Ok(report) => ToolResult::text(report.to_string()),
         Err(error) => ToolResult::Error(error.to_string()),
     });

@@ -116,6 +116,18 @@ lane = "SdkLedgerHygiene"
 row = "a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines"
 
 [[unreached]]
+key = "pi-coding-agent: DefaultPackageManager.remove"
+sdks = ["python"]
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (the Python package manager fixture calls remove_and_persist only)"
+
+[[unreached]]
+key = "pi-coding-agent: DefaultResourceLoader.loadProjectTrustExtensions"
+sdks = ["go", "python", "rust"]
+lane = "SdkSessionGraph"
+row = "a conformance fixture under test/extension-conformance that calls it (it needs a project with trust-gated extensions the loader fixture does not build yet)"
+
+[[unreached]]
 key = "pi-coding-agent: ProjectTrustStore.set"
 sdks = ["python", "rust"]
 lane = "SdkSessionGraph"
@@ -596,51 +608,51 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: ModelRegistry.streamSimple" = { go = "native:ModelRegistry.StreamSimple", rust = "native:ModelRegistry::stream_simple", python = "native:ModelRegistry.stream_simple" }
 "pi-coding-agent: ModelRegistry.unregisterProvider" = { go = "native:ModelRegistry.UnregisterProvider", rust = "native:ModelRegistry::unregister_provider", python = "native:ModelRegistry.unregister_provider" }
 "pi-coding-agent: ModelRegistry.unregisterVirtualModel" = { go = "native:ModelRegistry.UnregisterVirtualModel", rust = "native:ModelRegistry::unregister_virtual_model", python = "native:ModelRegistry.unregister_virtual_model" }
-"pi-coding-agent: ModelRuntime" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ModelRuntime" = { go = "native:ModelRuntime", rust = "native:ModelRuntime", python = "native:ModelRuntime" }
 "pi-coding-agent: ModelRuntime.cancelDeferred" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.checkAuth" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.classify" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.complete" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.completeSimple" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ModelRuntime.checkAuth" = { go = "native:ModelRuntime.CheckAuth", rust = "native:ModelRuntime::check_auth", python = "native:ModelRuntime.check_auth" }
+"pi-coding-agent: ModelRuntime.classify" = { go = "native:ModelRuntime.Classify", rust = "native:ModelRuntime::classify", python = "native:ModelRuntime.classify" }
+"pi-coding-agent: ModelRuntime.complete" = { go = "native:ModelRuntime.Complete", rust = "native:ModelRuntime::complete", python = "native:ModelRuntime.complete" }
+"pi-coding-agent: ModelRuntime.completeSimple" = { go = "native:ModelRuntime.CompleteSimple", rust = "native:ModelRuntime::complete_simple", python = "native:ModelRuntime.complete_simple" }
 "pi-coding-agent: ModelRuntime.fetchDeferred" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.generateImages" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getAllAvailable" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getAllModels" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getAuth" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getAvailable" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getAvailableOfType" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getAvailableSnapshot" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getCompatibilityRequestConfig" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getError" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getModel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getModelOfType" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getModels" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getModelsOfType" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getPhysicalModel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ModelRuntime.generateImages" = { go = "native:ModelRuntime.GenerateImages", rust = "native:ModelRuntime::generate_images", python = "native:ModelRuntime.generate_images" }
+"pi-coding-agent: ModelRuntime.getAllAvailable" = { go = "native:ModelRuntime.GetAllAvailable", rust = "native:ModelRuntime::get_all_available", python = "native:ModelRuntime.get_all_available" }
+"pi-coding-agent: ModelRuntime.getAllModels" = { go = "native:ModelRuntime.GetAllModels", rust = "native:ModelRuntime::get_all_models", python = "native:ModelRuntime.get_all_models" }
+"pi-coding-agent: ModelRuntime.getAuth" = { go = "native:ModelRuntime.GetAuth", rust = "native:ModelRuntime::get_auth", python = "native:ModelRuntime.get_auth" }
+"pi-coding-agent: ModelRuntime.getAvailable" = { go = "native:ModelRuntime.GetAvailable", rust = "native:ModelRuntime::get_available", python = "native:ModelRuntime.get_available" }
+"pi-coding-agent: ModelRuntime.getAvailableOfType" = { go = "native:ModelRuntime.GetAvailableOfType", rust = "native:ModelRuntime::get_available_of_type", python = "native:ModelRuntime.get_available_of_type" }
+"pi-coding-agent: ModelRuntime.getAvailableSnapshot" = { go = "native:ModelRuntime.GetAvailableSnapshot", rust = "native:ModelRuntime::get_available_snapshot", python = "native:ModelRuntime.get_available_snapshot" }
+"pi-coding-agent: ModelRuntime.getCompatibilityRequestConfig" = { go = "native:ModelRuntime.GetCompatibilityRequestConfig", rust = "native:ModelRuntime::get_compatibility_request_config", python = "native:ModelRuntime.get_compatibility_request_config" }
+"pi-coding-agent: ModelRuntime.getError" = { go = "native:ModelRuntime.GetError", rust = "native:ModelRuntime::get_error", python = "native:ModelRuntime.get_error" }
+"pi-coding-agent: ModelRuntime.getModel" = { go = "native:ModelRuntime.GetModel", rust = "native:ModelRuntime::get_model", python = "native:ModelRuntime.get_model" }
+"pi-coding-agent: ModelRuntime.getModelOfType" = { go = "native:ModelRuntime.GetModelOfType", rust = "native:ModelRuntime::get_model_of_type", python = "native:ModelRuntime.get_model_of_type" }
+"pi-coding-agent: ModelRuntime.getModels" = { go = "native:ModelRuntime.GetModels", rust = "native:ModelRuntime::get_models", python = "native:ModelRuntime.get_models" }
+"pi-coding-agent: ModelRuntime.getModelsOfType" = { go = "native:ModelRuntime.GetModelsOfType", rust = "native:ModelRuntime::get_models_of_type", python = "native:ModelRuntime.get_models_of_type" }
+"pi-coding-agent: ModelRuntime.getPhysicalModel" = { go = "native:ModelRuntime.GetPhysicalModel", rust = "native:ModelRuntime::get_physical_model", python = "native:ModelRuntime.get_physical_model" }
 "pi-coding-agent: ModelRuntime.getProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getProviderAuthStatus" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ModelRuntime.getProviderAuthStatus" = { go = "native:ModelRuntime.GetProviderAuthStatus", rust = "native:ModelRuntime::get_provider_auth_status", python = "native:ModelRuntime.get_provider_auth_status" }
 "pi-coding-agent: ModelRuntime.getProviders" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: ModelRuntime.getRegisteredNativeProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getRegisteredProviderConfig" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.getRegisteredProviderIds" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.hasConfiguredAuth" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.isUsingOAuth" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.isUsingSubscription" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.listCredentials" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.login" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.logout" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.refresh" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ModelRuntime.getRegisteredProviderConfig" = { go = "native:ModelRuntime.GetRegisteredProviderConfig", rust = "native:ModelRuntime::get_registered_provider_config", python = "native:ModelRuntime.get_registered_provider_config" }
+"pi-coding-agent: ModelRuntime.getRegisteredProviderIds" = { go = "native:ModelRuntime.GetRegisteredProviderIDs", rust = "native:ModelRuntime::get_registered_provider_ids", python = "native:ModelRuntime.get_registered_provider_ids" }
+"pi-coding-agent: ModelRuntime.hasConfiguredAuth" = { go = "native:ModelRuntime.HasConfiguredAuth", rust = "native:ModelRuntime::has_configured_auth", python = "native:ModelRuntime.has_configured_auth" }
+"pi-coding-agent: ModelRuntime.isUsingOAuth" = { go = "native:ModelRuntime.IsUsingOAuth", rust = "native:ModelRuntime::is_using_oauth", python = "native:ModelRuntime.is_using_oauth" }
+"pi-coding-agent: ModelRuntime.isUsingSubscription" = { go = "native:ModelRuntime.IsUsingSubscription", rust = "native:ModelRuntime::is_using_subscription", python = "native:ModelRuntime.is_using_subscription" }
+"pi-coding-agent: ModelRuntime.listCredentials" = { go = "native:ModelRuntime.ListCredentials", rust = "native:ModelRuntime::list_credentials", python = "native:ModelRuntime.list_credentials" }
+"pi-coding-agent: ModelRuntime.login" = { go = "native:ModelRuntime.Login", rust = "native:ModelRuntime::login", python = "native:ModelRuntime.login" }
+"pi-coding-agent: ModelRuntime.logout" = { go = "native:ModelRuntime.Logout", rust = "native:ModelRuntime::logout", python = "native:ModelRuntime.logout" }
+"pi-coding-agent: ModelRuntime.refresh" = { go = "native:ModelRuntime.Refresh", rust = "native:ModelRuntime::refresh", python = "native:ModelRuntime.refresh" }
 "pi-coding-agent: ModelRuntime.registerNativeProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.registerProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.registerVirtualModel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.removeRuntimeApiKey" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.resolveModel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.setRuntimeApiKey" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.stream" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ModelRuntime.registerProvider" = { go = "native:ModelRuntime.RegisterProvider", rust = "native:ModelRuntime::register_provider", python = "native:ModelRuntime.register_provider" }
+"pi-coding-agent: ModelRuntime.registerVirtualModel" = { go = "native:ModelRuntime.RegisterVirtualModel", rust = "native:ModelRuntime::register_virtual_model", python = "native:ModelRuntime.register_virtual_model" }
+"pi-coding-agent: ModelRuntime.removeRuntimeApiKey" = { go = "native:ModelRuntime.RemoveRuntimeAPIKey", rust = "native:ModelRuntime::remove_runtime_api_key", python = "native:ModelRuntime.remove_runtime_api_key" }
+"pi-coding-agent: ModelRuntime.resolveModel" = { go = "native:ModelRuntime.ResolveModel", rust = "native:ModelRuntime::resolve_model", python = "native:ModelRuntime.resolve_model" }
+"pi-coding-agent: ModelRuntime.setRuntimeApiKey" = { go = "native:ModelRuntime.SetRuntimeAPIKey", rust = "native:ModelRuntime::set_runtime_api_key", python = "native:ModelRuntime.set_runtime_api_key" }
+"pi-coding-agent: ModelRuntime.stream" = { go = "native:ModelRuntime.Stream", rust = "native:ModelRuntime::stream", python = "native:ModelRuntime.stream" }
 "pi-coding-agent: ModelRuntime.streamDeferred" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.streamSimple" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.unregisterProvider" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
-"pi-coding-agent: ModelRuntime.unregisterVirtualModel" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
+"pi-coding-agent: ModelRuntime.streamSimple" = { go = "native:ModelRuntime.StreamSimple", rust = "native:ModelRuntime::stream_simple", python = "native:ModelRuntime.stream_simple" }
+"pi-coding-agent: ModelRuntime.unregisterProvider" = { go = "native:ModelRuntime.UnregisterProvider", rust = "native:ModelRuntime::unregister_provider", python = "native:ModelRuntime.unregister_provider" }
+"pi-coding-agent: ModelRuntime.unregisterVirtualModel" = { go = "native:ModelRuntime.UnregisterVirtualModel", rust = "native:ModelRuntime::unregister_virtual_model", python = "native:ModelRuntime.unregister_virtual_model" }
 "pi-coding-agent: ModelSelectorComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: ModelSelectorComponent.addChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
 "pi-coding-agent: ModelSelectorComponent.children" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger" }
@@ -1760,15 +1772,3 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-agent-core: runToolCall" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: setDefaultStreamFn" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-agent-core: streamProxy" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-
-[[unreached]]
-key = "pi-coding-agent: DefaultPackageManager.remove"
-sdks = ["python"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (the Python package manager fixture calls remove_and_persist only)"
-
-[[unreached]]
-key = "pi-coding-agent: DefaultResourceLoader.loadProjectTrustExtensions"
-sdks = ["go", "python", "rust"]
-lane = "SdkSessionGraph"
-row = "a conformance fixture under test/extension-conformance that calls it (it needs a project with trust-gated extensions the loader fixture does not build yet)"

@@ -154,8 +154,8 @@ func (r *ModelRuntime) CheckAuth(provider string) (*AuthCheck, error) {
 	return graphMethodAsync[*AuthCheck](r.object, "checkAuth", provider)
 }
 
-// GetRegisteredProviderIds lists the ids of the providers registered with RegisterProvider.
-func (r *ModelRuntime) GetRegisteredProviderIds() ([]string, error) {
+// GetRegisteredProviderIDs lists the ids of the providers registered with RegisterProvider.
+func (r *ModelRuntime) GetRegisteredProviderIDs() ([]string, error) {
 	return graphMethodCall[[]string](r.object, "getRegisteredProviderIds")
 }
 
@@ -199,14 +199,14 @@ func (r *ModelRuntime) GetAuth(providerOrModel any, overrides *AuthOverrides) (*
 	return graphMethodAsync[*AuthResult](r.object, "getAuth", providerOrModel, overrides)
 }
 
-// SetRuntimeApiKey sets an API key that lives for the runtime's lifetime and is not stored.
-func (r *ModelRuntime) SetRuntimeApiKey(provider, apiKey string) error {
+// SetRuntimeAPIKey sets an API key that lives for the runtime's lifetime and is not stored.
+func (r *ModelRuntime) SetRuntimeAPIKey(provider, apiKey string) error {
 	_, err := graphMethodAsync[graphDone](r.object, "setRuntimeApiKey", provider, apiKey)
 	return err
 }
 
-// RemoveRuntimeApiKey removes the runtime API key of provider.
-func (r *ModelRuntime) RemoveRuntimeApiKey(provider string) error {
+// RemoveRuntimeAPIKey removes the runtime API key of provider.
+func (r *ModelRuntime) RemoveRuntimeAPIKey(provider string) error {
 	_, err := graphMethodAsync[graphDone](r.object, "removeRuntimeApiKey", provider)
 	return err
 }

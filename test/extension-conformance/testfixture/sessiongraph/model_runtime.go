@@ -90,9 +90,9 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 		"overridden": plain(ok(rt.GetAuth("mr-local", &sdk.AuthOverrides{APIKey: &override}))),
 		"check": plain(ok(rt.CheckAuth("mr-local"))), "uncheckedProvider": plain(ok(rt.CheckAuth("nope-prov"))), "compat": plain(ok(rt.GetCompatibilityRequestConfig(local))),
 	}
-	check(rt.SetRuntimeApiKey("rt-prov", "rk"))
+	check(rt.SetRuntimeAPIKey("rt-prov", "rk"))
 	withKey := map[string]any{"status": plain(ok(rt.GetProviderAuthStatus("rt-prov"))), "configured": ok(rt.HasConfiguredAuth("rt-prov")), "auth": plain(ok(rt.GetAuth("rt-prov", nil)))}
-	check(rt.RemoveRuntimeApiKey("rt-prov"))
+	check(rt.RemoveRuntimeAPIKey("rt-prov"))
 	r["runtimeKey"] = map[string]any{"withKey": withKey, "removed": plain(ok(rt.GetProviderAuthStatus("rt-prov"))), "configuredAfter": ok(rt.HasConfiguredAuth("rt-prov"))}
 	credentials := []map[string]any{}
 	for _, credential := range ok(rt.ListCredentials()) {
@@ -101,7 +101,7 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 	slices.SortFunc(credentials, func(a, b map[string]any) int { return strings.Compare(fmt.Sprint(a["providerId"]), fmt.Sprint(b["providerId"])) })
 	r["credentials"] = credentials
 
-	before := ok(rt.GetRegisteredProviderIds())
+	before := ok(rt.GetRegisteredProviderIDs())
 	check(rt.RegisterProvider("reg-prov", map[string]any{
 		"baseUrl": server, "apiKey": "regkey", "api": "openai-completions", "headers": map[string]any{"x-reg": "1"},
 		"models": []any{map[string]any{"id": "r1", "name": "Reg One", "reasoning": false, "input": []any{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 4000, "maxTokens": 500}},
@@ -113,12 +113,12 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 		configModels = append(configModels, fmt.Sprint(model.(map[string]any)["id"]))
 	}
 	r["registered"] = map[string]any{
-		"before": before, "ids": ok(rt.GetRegisteredProviderIds()), "models": pickModels(ok(rt.GetModels("reg-prov"))), "baseUrl": config["baseUrl"], "apiKey": config["apiKey"], "api": config["api"], "headers": plain(config["headers"]), "modelIds": configModels,
+		"before": before, "ids": ok(rt.GetRegisteredProviderIDs()), "models": pickModels(ok(rt.GetModels("reg-prov"))), "baseUrl": config["baseUrl"], "apiKey": config["apiKey"], "api": config["api"], "headers": plain(config["headers"]), "modelIds": configModels,
 		"configured": ok(rt.HasConfiguredAuth("reg-prov")), "unregisteredConfig": ok(rt.GetRegisteredProviderConfig("nope-prov")) == nil,
 		"rejected": errText(rt.RegisterProvider("bad-prov", map[string]any{"models": []any{map[string]any{"id": "x"}}})),
 	}
 	check(rt.UnregisterProvider("reg-prov"))
-	r["registered"].(map[string]any)["after"] = map[string]any{"ids": ok(rt.GetRegisteredProviderIds()), "models": len(ok(rt.GetModels("reg-prov"))), "config": ok(rt.GetRegisteredProviderConfig("reg-prov")) == nil}
+	r["registered"].(map[string]any)["after"] = map[string]any{"ids": ok(rt.GetRegisteredProviderIDs()), "models": len(ok(rt.GetModels("reg-prov"))), "config": ok(rt.GetRegisteredProviderConfig("reg-prov")) == nil}
 
 	requests := []any{}
 	check(rt.RegisterVirtualModel(sdk.VirtualModel{
