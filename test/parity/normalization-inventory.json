@@ -1888,6 +1888,16 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/53-node-shared-model-runtime-session.toml",
+      "transforms": [
+        {
+          "kind": "artifact_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A Node extension's nested Session shares ctx.modelRegistry's model runtime and the parent's credentials",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/54-extension-context-usage-presence.toml",
       "transforms": [
         {
