@@ -161,11 +161,11 @@ func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
 			a.SetLoopTurns(&turns)
 			deferredAtToolEnd, tickAtToolEnd, tickAfterTicked := -1, -1, -1
 			a.Subscribe(func(_ context.Context, event agent.AgentEvent) error {
-				if _, ok := event.(agent.ToolExecutionEndEvent); ok {
+				if ended, ok := event.(agent.ToolExecutionEndEvent); ok {
 					deferredAtToolEnd = deferredNotices(h)
 					tickAtToolEnd = tickNotices(h)
 					// The RPC mode releases the process.nextTick callbacks of the tool that ended here, as Pi runs them before the tool result message.
-					turns.Ticked()
+					turns.Ticked(ended.ToolCallID)
 					tickAfterTicked = tickNotices(h)
 				}
 				return nil

@@ -4690,7 +4690,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 					if holdsForLoopTurn(call.Method) && (!native || !conn.requestsInFlight()) {
 						switch {
 						case call.Tick:
-							turns.Tick(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+							turns.Tick(call.OriginToolCallID, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
 						case native:
 							turns.MacrotaskDoneFor(conn, func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
 						default:

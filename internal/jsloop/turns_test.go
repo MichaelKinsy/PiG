@@ -127,13 +127,13 @@ func TestTurnsRunTicksAtTheTickBoundaryBeforeTimers(t *testing.T) {
 	end := turns.Chain()
 	done := turns.Wait()
 	tick := func(label string) {
-		turns.Tick(func(written func()) { got = append(got, label); written() })
+		turns.Tick("", func(written func()) { got = append(got, label); written() })
 	}
 	// A wait is open, which releases timers but not ticks: they wait for the tool_execution_end that follows.
 	turns.Macrotask(func() { got = append(got, "timer-while-waiting") })
 	tick("tick-a")
 	turns.Macrotask(func() { got = append(got, "timer-b") })
-	turns.Ticked()
+	turns.Ticked("tool-1")
 	if want := []string{"timer-while-waiting", "tick-a", "timer-b"}; !slices.Equal(got, want) {
 		t.Fatalf("order %v, want %v", got, want)
 	}
@@ -143,6 +143,80 @@ func TestTurnsRunTicksAtTheTickBoundaryBeforeTimers(t *testing.T) {
 	end()
 	if want := []string{"timer-while-waiting", "tick-a", "timer-b", "tick-c", "timer-d"}; !slices.Equal(got, want) {
 		t.Fatalf("after the chain ended: order %v, want %v", got, want)
+	}
+}
+
+// D189: a tick call is the call of a callback some tool call queued, and Pi runs it after that call's tool_execution_end. The runtime is another process, so the call can reach the host before or after the event: the order of the two decides nothing about where the call runs.
+func TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst(t *testing.T) {
+	var turns Turns
+	var got []string
+	tick := func(origin, label string) {
+		turns.Tick(origin, func(written func()) { got = append(got, label); written() })
+	}
+	end := turns.Chain()
+	// Tool 1 awaits real work for the whole run, so the loop turns while tool 2 runs and ends.
+	tool1 := turns.Wait()
+	tick("tool-2", "early")
+	tick("tool-1", "other-tool")
+	if len(got) != 0 {
+		t.Fatalf("ticks ran before any tool call ended: %v", got)
+	}
+	turns.Ticked("tool-2")
+	if want := []string{"early"}; !slices.Equal(got, want) {
+		t.Fatalf("the tick boundary of tool-2 ran %v, want %v: the tick of tool-1 waits for tool-1's end", got, want)
+	}
+	// A call that reaches the host after tool-2's end runs at once, behind what ran before it, as Pi's loop turns while tool-1 awaits.
+	tick("tool-2", "late")
+	turns.Macrotask(func() { got = append(got, "timer") })
+	if want := []string{"early", "late", "timer"}; !slices.Equal(got, want) {
+		t.Fatalf("after the boundary ran %v, want %v", got, want)
+	}
+	tool1()
+	turns.Ticked("tool-1")
+	if want := []string{"early", "late", "timer", "other-tool"}; !slices.Equal(got, want) {
+		t.Fatalf("the tick boundary of tool-1 ran %v, want %v", got, want)
+	}
+	end()
+}
+
+func TestTurnsHoldALateTickWhileTheChainAwaitsNothing(t *testing.T) {
+	var turns Turns
+	var got []string
+	end := turns.Chain()
+	turns.Ticked("tool-1")
+	turns.Tick("tool-1", func(written func()) { got = append(got, "late"); written() })
+	if len(got) != 0 || turns.Held() != 1 {
+		t.Fatalf("a late tick ran %v with %d held while no wait is open, want it held for the loop's turn", got, turns.Held())
+	}
+	turns.Turn()
+	if want := []string{"late"}; !slices.Equal(got, want) {
+		t.Fatalf("after a turn ran %v, want %v", got, want)
+	}
+	end()
+}
+
+func TestTurnsForgetATickBoundaryWhenTheToolCallStartsAgain(t *testing.T) {
+	var turns Turns
+	var got []string
+	end := turns.Chain()
+	wait := turns.Wait()
+	turns.Ticked("call_1")
+	// A provider can reuse an identifier for a later call of the run: its boundary is ahead again.
+	turns.ToolStarted("call_1")
+	turns.Tick("call_1", func(written func()) { got = append(got, "second-use"); written() })
+	if len(got) != 0 {
+		t.Fatalf("a tick of a call that started again ran before its end: %v", got)
+	}
+	turns.Ticked("call_1")
+	if want := []string{"second-use"}; !slices.Equal(got, want) {
+		t.Fatalf("ran %v, want %v", got, want)
+	}
+	wait()
+	end()
+	// The end of the chain forgets every boundary: outside a chain a callback runs at once whatever its origin.
+	turns.Tick("call_1", func(written func()) { got = append(got, "after-chain"); written() })
+	if want := []string{"second-use", "after-chain"}; !slices.Equal(got, want) {
+		t.Fatalf("ran %v, want %v", got, want)
 	}
 }
 
