@@ -58,15 +58,15 @@ owner = "SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resou
 opened = "0.5.2"
 closing = "Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK"
 
-[lane.SdkTuiHost]
-owner = "SdkTuiHost lane (host-backed pi-tui/theme surface: kit conversation views, scroll/mouse, input/editor/loader kinds, Theme.sourceInfo)"
-opened = "0.5.2"
-closing = "New kit view kinds with a host renderer in all four SDKs and a conformance row per SDK, one native or kit cell per class and member row"
-
 [lane.SdkTuiHelpers]
 owner = "SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16)"
 opened = "0.5.2"
 closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK"
+
+[lane.SdkTuiHost]
+owner = "SdkTuiHost lane (host-backed pi-tui/theme surface: kit conversation views, scroll/mouse, input/editor/loader kinds, Theme.sourceInfo)"
+opened = "0.5.2"
+closing = "New kit view kinds with a host renderer in all four SDKs and a conformance row per SDK, one native or kit cell per class and member row"
 
 [export]
 "pi-coding-agent: AgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }

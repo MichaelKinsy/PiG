@@ -181,8 +181,9 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 		for _, message := range h.ui.Recorded() {
 			if log, ok := strings.CutPrefix(message, "kit-widget="); ok {
 				for _, entry := range strings.Split(strings.TrimSuffix(log, ":info"), ",") {
-					// An earlier case's overlay closes when this one opens, and notifies an empty log.
-					if entry != "" && !strings.HasPrefix(entry, "change:") && !strings.HasPrefix(entry, "rawmouse:") && !strings.HasPrefix(entry, "input:") {
+					// An earlier case's overlay closes when this one opens, and notifies what it closed with: no callback
+					// (every callback is "<type>:<value>").
+					if strings.Contains(entry, ":") && !strings.HasPrefix(entry, "change:") && !strings.HasPrefix(entry, "rawmouse:") && !strings.HasPrefix(entry, "input:") {
 						got = append(got, entry)
 					}
 				}
