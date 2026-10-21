@@ -515,12 +515,6 @@ snippet = "now := func() float64 { return float64(time.Now().UnixMilli()) }"
 [[hit]]
 check = "clock"
 file = "internal/codingagent/session.go"
-func = "NewSession"
-snippet = "Timestamp:     time.Now().UTC().Format(\"2006-01-02T15:04:05.000Z\"),"
-
-[[hit]]
-check = "clock"
-file = "internal/codingagent/session.go"
 func = "Session.AppendCompaction"
 snippet = "now := time.Now().UTC()"
 
