@@ -27,7 +27,7 @@ import {
   createWriteTool,
   createWriteToolDefinition,
   withFileMutationQueue
-} from "./chunk-NF4F5DMY.js";
+} from "./chunk-VRNWEDLQ.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,

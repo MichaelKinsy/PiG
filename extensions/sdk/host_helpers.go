@@ -27,12 +27,14 @@ type ParsedFrontmatter struct {
 	Body        string
 }
 
-// HostHelpers are the host's parsers for a fused extension, which runs in the host's own process and has no connection before Run. The code that builds
-// the fused binary installs them with SetHostHelpers before it runs any factory.
+// HostHelpers are the host's parsers and file mutation queue for a fused extension, which runs in the host's own process and has no connection before Run. The code
+// that builds the fused binary installs them with SetHostHelpers before it runs any factory.
 type HostHelpers struct {
 	ParseFrontmatter func(content string) (ParsedFrontmatter, error)
 	// ParseDate is Date.parse: the time value in milliseconds, false for NaN.
 	ParseDate func(text string) (float64, bool)
+	// WithFileMutationQueue runs fn in the host's file mutation queue for the absolute path (the host's WithFileMutationQueue) and returns the resolve error or fn's error.
+	WithFileMutationQueue func(filePath string, fn func() error) error
 }
 
 var helpers struct {

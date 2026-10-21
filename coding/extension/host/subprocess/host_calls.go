@@ -36,6 +36,9 @@ func startsAsync(method string) bool {
 	switch method {
 	case "facet.host":
 		return true
+	case CallFileMutationEnter:
+		// The call takes its place in the queue and then waits for the earlier mutations of the file: the lane advances once it is registered (CallInitiated), so a call made after it is not held behind another extension's long mutation.
+		return true
 	case "ui.addAutocompleteProvider", "ui.autocomplete.invoke":
 		// The public call remains synchronous in its SDK. A reverse factory/provider callback can reenter the host, so release its call lane at callback initiation.
 		return true
@@ -373,6 +376,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleParseFrontmatter(call)
 	case call.Method == CallParseDate:
 		result, err = h.handleParseDate(call)
+	case call.Method == CallFileMutationEnter:
+		result, err = h.handleFileMutationEnter(callCtx, conn, call)
+	case call.Method == CallFileMutationExit:
+		result, err = h.handleFileMutationExit(conn, call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:
