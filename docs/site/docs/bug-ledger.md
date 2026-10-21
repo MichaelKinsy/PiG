@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-1046 bugs. 996 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 168 bugs have no recorded test.
+1049 bugs. 999 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 170 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -1065,6 +1065,9 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-b429de0](#bf-b429de0) | A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool… | PiG's own defect | All platforms | Unreleased |
 | [BF-d2aadd9](#bf-d2aadd9) | A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an… | PiG's own defect | All platforms | Unreleased |
 | [BF-4e8c517](#bf-4e8c517) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
+| [BF-7fc4ef4](#bf-7fc4ef4) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
+| [BF-5d24552](#bf-5d24552) | Shutting a host down while a child session is live no longer leaves its extension host running | PiG's own defect | All platforms | Unreleased |
+| [BF-3cb7131](#bf-3cb7131) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -15640,6 +15643,46 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fixed in:** Unreleased
 - **Fix commits:** `4e8c517e40` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-7fc4ef4
+
+**fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last holder lets go
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7fc4ef463d` (2026-10-21)
+- **Tests:** None recorded.
+
+### BF-5d24552
+
+**Shutting a host down while a child session is live no longer leaves its extension host running**
+
+- **Source:** PiG's own defect
+- **Symptom:** Shutting a host down while a child session is live no longer leaves its extension host running.
+- **Root cause:** A session an extension created with `createAgentSession` outlives the extension's `dispose()` of it, and a `DefaultResourceLoader` an extension built outlives the extension's handle while a session uses it; the host closed both only when the extension's connection closed, on a goroutine `Shutdown` did not wait for, and never stopped the loader's extension host.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5d24552e79` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** Shutting a host down while a child session is live no longer leaves its extension host running. A session an extension created with `createAgentSession` outlives the extension's `dispose()` of it, and a `DefaultResourceLoader` an extension built outlives the extension's handle while a session uses it; the host closed both only when the extension's connection closed, on a goroutine `Shutdown` did not wait for, and never stopped the loader's extension host. `Shutdown` now closes every live child session and releases every object it held before it returns, and a released loader stops the extension host it started.
+
+### BF-3cb7131
+
+**fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns gofmt-clean
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3cb7131f3a` (2026-10-21)
+- **Tests:** `extensions/sdk-py/bundle_test.go::TestEveryPackageSourceIsBundled`
 
 ## Divergences from Pi added in this release
 
