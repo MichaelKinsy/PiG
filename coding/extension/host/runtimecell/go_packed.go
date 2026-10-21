@@ -46,6 +46,9 @@ type GoExtension struct {
 	Factory          string
 	Hash             string
 	WorkspaceModules []string
+	// Verify, when set, reports an error when the extension's source no longer matches Hash. A caller that derived Hash from the
+	// source files sets it, so that a build proves the compiler read the source that was hashed (see cellInputsUnchanged).
+	Verify func() error
 }
 
 // goPackedBuildFlags are the `go build` flags for a packed cell.
@@ -213,6 +216,9 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 						return "", failure
 					}
 					return "", cacheBuildFailure(failure)
+				}
+				if err := cellInputsUnchanged(key, hash, goPackedCellHash(cacheRoot, key, normalized, sdkRoot), goExtensionVerifiers(normalized)); err != nil {
+					return "", err
 				}
 				return out, nil
 			})
