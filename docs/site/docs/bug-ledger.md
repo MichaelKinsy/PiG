@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-1036 bugs. 986 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 163 bugs have no recorded test.
+1041 bugs. 991 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 164 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -1053,8 +1053,13 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-94f2094](#bf-94f2094) | CI: a Node extension no longer holds the first request the host sends it behind its bytecode-cache flush | PiG's own defect | All platforms | Unreleased |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
 | [BF-adffe57](#bf-adffe57) | A Node extension tool that awaits real work and then takes the file mutation queue (the upstream `subagent`… | PiG's own defect | All platforms | Unreleased |
+| [BF-53385a3](#bf-53385a3) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | Unreleased |
+| [BF-8a18a6b](#bf-8a18a6b) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
+| [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | Unreleased |
 | [BF-5382ad9](#bf-5382ad9) | CI: a Node extension no longer holds a request the host sends it behind the highlight.js language load | PiG's own defect | All platforms | Unreleased |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
+| [BF-8343791](#bf-8343791) | CI: `TestStartupReusesPreTrustExtensionsAcrossEntrypoints` no longer reads an extension process that is still… | PiG's own defect | All platforms | Unreleased |
+| [BF-df96b6a](#bf-df96b6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -15468,6 +15473,48 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Tests:** `coding/extension/host/subprocess/tool_window_settled_test.go::TestNodeToolWithoutStartWindowTakesTheFileMutationQueueAfterAwaiting`
 - **Release note:** A Node extension tool that awaits real work and then takes the file mutation queue (the upstream `subagent` example, which writes a prompt file under `withFileMutationQueue` after a `mkdtemp`) no longer waits forever when it runs outside the dispatcher's parallel batch of an agent run, for instance when a tool is called directly or its batch runs sequentially. The runtime holds a tool's next queue call after it reports that the handler awaits, until the host says the edit and write calls waiting for the tool's start window registered; a tool that holds no start window had nobody waiting, and the host never said so.
 
+### BF-53385a3
+
+**Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `53385a3d93` (2026-10-21, #268)
+- **Tests:** `codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName`, `coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled`, `coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog`
+- **Release note:** Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool. Tool names are now assigned from a per-server count of the sanitized names, the sandbox keeps a name index beside its tool list, and a discovery call reads the host catalog once and resolves each tool's namespace by lookup. Names, collision suffixes, registration order, duplicate-tool errors and the first-entry-wins namespace of a repeated name are unchanged. Discovery also now stops when its context is cancelled and returns the context's error; before, it kept scanning. Pi resolves the same way for the sandbox (a `Map` by name) but scans per tool in the MCP extension and in codemode discovery; PiG's results match Pi's.
+
+### BF-8a18a6b
+
+**A Node extension no longer keeps reading an entry the host refused**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension no longer keeps reading an entry the host refused.
+- **Root cause:** Fixes #264
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8a18a6bb2d` (2026-10-21, #272)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds`, `coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused`, `test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs`
+- **Release note:** A Node extension no longer keeps reading an entry the host refused. When the host answers `pi.appendEntry` (or `ctx.sessionManager.appendCustomEntry`) with an error, `getEntries()`, `getBranch()`, `getLeafId()`, `getEntry()` and the other session reads stop showing that entry, also after later calls the host synchronizes; before, the entry stayed in the extension's session reads although the host's log never held it. Only the refused entry is taken back: appends still in flight stay, and an entry the host appended is read with the parent the host linked it to, where the extension could show the refused entry or an older leaf instead. A call that was cancelled or lost with its connection has no answer, so its entry stays until the host's log settles it.
+
+### BF-6d3cfc8
+
+**A user_bash `operations` object from an extension is no longer released while a command is running through it**
+
+- **Source:** PiG's own defect
+- **Symptom:** A user_bash `operations` object from an extension is no longer released while a command is running through it.
+- **Root cause:** The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d3cfc863d` (2026-10-21, #278)
+- **Tests:** `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns`
+- **Release note:** A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+
 ### BF-5382ad9
 
 **CI: a Node extension no longer holds a request the host sends it behind the highlight.js language load**
@@ -15493,6 +15540,33 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `6debb12f2e` (2026-10-21)
+- **Tests:** None recorded.
+
+### BF-8343791
+
+**CI: `TestStartupReusesPreTrustExtensionsAcrossEntrypoints` no longer reads an extension process that is still…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: `TestStartupReusesPreTrustExtensionsAcrossEntrypoints` no longer reads an extension process that is still dying as a leak.
+- **Root cause:** TestStartupReusesPreTrustExtensionsAcrossEntrypoints polled kill(pid, 0) for five seconds to prove that an entrypoint's extension process did not outlive it. The RPC entrypoint SIGKILLs the process group of every extension process and calls os.Exit without waiting.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8343791091` (2026-10-21)
+- **Tests:** `coding/cli/extensions_startup_test.go::TestStartupReusesPreTrustExtensionsAcrossEntrypoints`, `coding/cli/process_exit_test.go::TestProcessExitHelper`, `coding/cli/process_exit_test.go::TestWaitProcessExitWaitsForARunningProcess`, `coding/cli/process_exit_unix_test.go::TestWaitProcessExitDoesNotWaitForReaping`
+- **Release note:** CI: `TestStartupReusesPreTrustExtensionsAcrossEntrypoints` no longer reads an extension process that is still dying as a leak. The RPC entrypoint SIGKILLs its extension processes and exits without waiting, and the test polled `kill(pid, 0)` for five seconds, which also succeeds while the killed process waits for a CPU turn and while it is an unreaped zombie. The test now waits for the process's exit event (pidfd, kqueue `NOTE_EXIT`, process handle).
+
+### BF-df96b6a
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `df96b6a5ac` (2026-10-21)
 - **Tests:** None recorded.
 
 ## Divergences from Pi added in this release
