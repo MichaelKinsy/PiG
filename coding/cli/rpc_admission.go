@@ -79,6 +79,8 @@ type rpcAdmission struct {
 	commandDone func()
 	// commandsInFlight, when set, counts the extension commands whose prompt response is not yet written.
 	commandsInFlight *atomic.Int32
+	// background is the gate that holds the deferred UI calls of a replacement an extension command requested until the last in-flight command answered.
+	background *rpcBackgroundGate
 	// commands joins in-flight extension commands for the shutdown flush; nil when no subprocess runtime can report a suspended command.
 	commands *rpcCommandJoin
 	// commandRuns holds the start of a run an extension command sent while a command's handler runs.
@@ -258,7 +260,11 @@ func (a *rpcAdmission) command(id rpcRequestID, name, args string) {
 			// The answer releases a run the handler sent; it is deferred first, so it follows the response.
 			defer a.commandRuns.answered(flight, a)
 			if a.commandsInFlight != nil {
-				defer a.commandsInFlight.Add(-1)
+				defer func() {
+					if a.commandsInFlight.Add(-1) == 0 && a.background != nil {
+						a.background.endCommandHolds()
+					}
+				}()
 			}
 			if a.commands != nil {
 				if a.commands.isClosed() {

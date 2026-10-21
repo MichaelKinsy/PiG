@@ -574,28 +574,34 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	streaming := func() bool { return sess().IsStreaming() }
 
 	handleCycleModel := func(id rpcRequestID, currentSession *coding.Session, turn *rpcResponseTurn) {
+		// Pi's `await session.cycleModel()` resumes in microtasks once the model_select listeners returned, so the deferred UI calls of those listeners follow the response (rpcBackgroundGate).
+		release := host.background.hold()
+		// build runs in the continuation, where Pi samples the response's state (the thinking level) after its await.
+		answer := func(build func() any) { turn.after(func() { writeRPC(build()); release() }) }
 		result, complete, err := currentSession.BeginModelCycle(ctx, "forward")
 		if err != nil {
-			turn.complete(rpcError(id, "cycle_model", err.Error()))
+			answer(func() any { return rpcError(id, "cycle_model", err.Error()) })
 			return
 		}
 		if result == nil {
-			turn.after(func() { writeRPC(rpcSuccessNull(id, "cycle_model")) })
+			answer(func() any { return rpcSuccessNull(id, "cycle_model") })
 			return
 		}
 		if err := currentSession.FlushEvents(ctx); err != nil {
-			turn.complete(rpcError(id, "cycle_model", err.Error()))
+			answer(func() any { return rpcError(id, "cycle_model", err.Error()) })
 			return
 		}
 		publish := func() {
-			writeRPC(rpcSuccess(id, "cycle_model", RPCModelCycleResult{
-				Model: rpcModelValue(result.Model), ThinkingLevel: currentSession.ThinkingLevel(), IsScoped: result.IsScoped,
-			}))
+			answer(func() any {
+				return rpcSuccess(id, "cycle_model", RPCModelCycleResult{
+					Model: rpcModelValue(result.Model), ThinkingLevel: currentSession.ThinkingLevel(), IsScoped: result.IsScoped,
+				})
+			})
 		}
 		if complete == nil {
-			turn.after(publish)
+			publish()
 		} else {
-			commandWG.Go(func() { complete(); turn.after(publish) })
+			commandWG.Go(func() { complete(); publish() })
 		}
 	}
 
@@ -731,6 +737,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 				}
 			}
 		}
+		// The command's response ends the hold the replacement's rebind takes (acquireRPCReplacementHold), so the deferred UI calls of the replacement's extensions follow it.
+		hold := &rpcReplacementHold{gate: &host.background}
 		var applied *rpcPromise[any]
 		applied, replacementResolved = rpcAwaitInOrder(admission, previous, func() (any, error) {
 			defer close(pending.settled)
@@ -762,7 +770,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			}
-			data, cancelled, err := replace(replacementCtx)
+			data, cancelled, err := replace(withRPCReplacementHold(replacementCtx, hold))
 			if err != nil {
 				awaitHeadCompactionStarts()
 			}
@@ -773,6 +781,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		})
 		applied.then(func(data any, err error) {
 			defer replacementWG.Done()
+			defer hold.end()
 			if err != nil {
 				writeRPC(rpcError(id, command, err.Error()))
 				return
@@ -1044,9 +1053,12 @@ commandLoop:
 			replacementMu.Lock()
 			pendingSetModels = append(pendingSetModels, applied)
 			replacementMu.Unlock()
+			// The response follows the model_select listeners in microtasks, so their deferred UI calls follow it (rpcBackgroundGate).
+			release := host.background.hold()
 			checked.then(func(_ struct{}, err error) {
 				if err != nil {
 					writeRPC(rpcError(commandID, "set_model", err.Error()))
+					release()
 					close(applied)
 					return
 				}
@@ -1056,10 +1068,14 @@ commandLoop:
 				}
 				if err != nil {
 					writeRPC(rpcError(commandID, "set_model", err.Error()))
+					release()
 					close(applied)
 					return
 				}
-				publish := func() { writeRPC(rpcSuccess(commandID, "set_model", rpcModelValue(newModel))) }
+				publish := func() {
+					writeRPC(rpcSuccess(commandID, "set_model", rpcModelValue(newModel)))
+					release()
+				}
 				if complete == nil {
 					publish()
 					close(applied)

@@ -29,6 +29,8 @@ import (
 //
 // pig-specific: no upstream equivalent.
 type UIBridge struct {
+	// waitForIdleBlocks reports whether a waitForIdle call waits now (extension.CommandActions.WaitForIdleBlocks); guarded by mu.
+	waitForIdleBlocks   func() bool
 	modelCatalogEncoder func() (json.RawMessage, error)
 	// modelCatalogBatches counts open BatchModelCatalogPublication calls; modelCatalogPending records a publication one of them deferred.
 	modelCatalogBatches int
@@ -978,6 +980,11 @@ func (b *UIBridge) SetActions(actions *HostCallbacks) {
 // actions subprocess extensions call, as Runner.BindCommandActions does for
 // in-process extensions. A nil action keeps the one already bound.
 func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
+	if actions.WaitForIdleBlocks != nil {
+		b.mu.Lock()
+		b.waitForIdleBlocks = actions.WaitForIdleBlocks
+		b.mu.Unlock()
+	}
 	// Upstream's waitForIdle has no effect to apply before it returns its
 	// Promise, so the call is initiated before it waits for the session.
 	if actions.WaitForIdleContext != nil {
@@ -1545,7 +1552,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 
 	// Session control.
 	case "waitForIdle":
-		return b.handleWaitForIdle(ctx, actions)
+		return b.handleWaitForIdle(ctx, owner, call.ParentRequestID, actions)
 	case "newSession":
 		return b.handleNewSession(ctx, extName, owner, actions, call.Args)
 	case "fork":
@@ -2375,7 +2382,14 @@ func (b *UIBridge) handleCompact(ctx context.Context, actions *HostCallbacks, ar
 // Command-only session control
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func (b *UIBridge) handleWaitForIdle(ctx context.Context, actions *HostCallbacks) (*CallResultPayload, error) {
+func (b *UIBridge) handleWaitForIdle(ctx context.Context, owner *Conn, parentRequestID string, actions *HostCallbacks) (*CallResultPayload, error) {
+	if owner != nil {
+		// Pi's waitForIdle returns at once while the Session is idle (agent-session.ts), which includes a run that its own command sent and that has not begun: the handler is not suspended then.
+		b.mu.RLock()
+		blocks := b.waitForIdleBlocks
+		b.mu.RUnlock()
+		owner.settleBlockedCall(parentRequestID, blocks == nil || blocks())
+	}
 	if actions == nil || actions.WaitForIdle == nil {
 		extension.CallInitiated(ctx)
 		return &CallResultPayload{}, nil
