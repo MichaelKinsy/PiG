@@ -59,6 +59,7 @@ func OpenNodeSqliteStorage(path string, options NodeSqliteStorageOptions) (*dura
 		return nil, err
 	}
 	// pig divergence (D188): a store an older Pi release wrote is copied before the migrations upgrade it.
+	//portlint:allow ctxbackground Pi's openNodeSqliteStorage takes no abort signal and the open cannot be cancelled by a caller; the copy is a bounded local VACUUM INTO
 	if _, err := schemabackup.BeforeUpgrade(context.Background(), path, schema.Tables.DurableSchema, durablesqlite.CurrentSqliteSchemaVersion); err != nil {
 		return nil, err
 	}

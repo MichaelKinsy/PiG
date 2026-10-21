@@ -1388,12 +1388,6 @@ count = 2
 
 [[hit]]
 check = "emptydrop"
-file = "coding/cli/rpc_ui.go"
-func = "(decl)"
-snippet = "Options         []string    `json:\"options,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
 file = "coding/extension/aggregated_results.go"
 func = "(decl)"
 snippet = "Messages []CustomMessageRef `json:\"messages,omitempty\"`"
@@ -2737,60 +2731,8 @@ snippet = "result, _ := json.Marshal(map[string]any{\"pending\": pending})"
 [[hit]]
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSelect"
-snippet = "result, _ := json.Marshal(map[string]any{\"selected\": \"\", \"ok\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSelect"
-snippet = "result, _ := json.Marshal(map[string]any{\"selected\": selected, \"ok\": true})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleConfirm"
-snippet = "result, _ := json.Marshal(map[string]any{\"confirmed\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleConfirm"
-snippet = "result, _ := json.Marshal(map[string]any{\"confirmed\": confirmed})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleInput"
-snippet = "result, _ := json.Marshal(map[string]any{\"text\": \"\", \"ok\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleInput"
-snippet = "result, _ := json.Marshal(map[string]any{\"text\": text, \"ok\": true})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleCustom"
 snippet = "result, _ := json.Marshal(map[string]any{\"result\": value, \"ok\": true})"
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleEditor"
-snippet = "result, _ := json.Marshal(map[string]any{\"text\": \"\", \"ok\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleEditor"
-snippet = "result, _ := json.Marshal(map[string]any{\"text\": text, \"ok\": true})"
 
 [[hit]]
 check = "mapkeyorder"
