@@ -699,6 +699,7 @@ fn main() {
                 vec!["rust:custom".to_string()]
             }
             fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                mark(&self.0, "rust:custom");
                 Ok(RemoteComponentResult::done(Some(json!("closed"))))
             }
         }

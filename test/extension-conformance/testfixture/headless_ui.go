@@ -14,7 +14,9 @@ func (c headlessComponent) Render(int) []string {
 	return []string{"go:custom"}
 }
 
-func (headlessComponent) HandleInput(string) (sdk.RemoteComponentResult, error) {
+// HandleInput marks too: the TUI harness answers the overlay with a key as soon as it opens, which can close it before the first render.
+func (c headlessComponent) HandleInput(string) (sdk.RemoteComponentResult, error) {
+	c.mark("go:custom")
 	return sdk.RemoteComponentResult{Done: true, Value: "closed"}, nil
 }
 

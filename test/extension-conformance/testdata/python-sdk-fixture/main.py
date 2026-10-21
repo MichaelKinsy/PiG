@@ -299,6 +299,7 @@ def new_extension() -> pig_sdk.Extension:
                 return ["python:custom"]
 
             def handle_input(self, _data):
+                mark("python:custom")
                 return pig_sdk.RemoteComponentResult(done=True, value="closed")
 
         ctx.set_footer_renderer(footer)
