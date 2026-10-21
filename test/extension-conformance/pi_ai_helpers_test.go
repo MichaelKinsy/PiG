@@ -68,7 +68,7 @@ func piAiCanonicalJSON(t *testing.T, raw []byte, ordered bool) string {
 					b, _ := strconv.ParseUint(indexes[j].key, 10, 32)
 					return a < b
 				})
-				members = append(indexes, others...)
+				members = slices.Concat(indexes, others)
 			} else {
 				slices.SortFunc(members, func(a, b member) int { return strings.Compare(a.key, b.key) })
 			}
