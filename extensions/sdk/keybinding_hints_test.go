@@ -10,9 +10,9 @@ import (
 )
 
 // The vectors are what pi-coding-agent's own formatKeyText, keyText, keyDisplayText, keyHint and rawKeyHint return
-// (test/parity/sdk-vectors/gen-coding-agent.mjs), under the host's theme palette and keybinding table.
+// (test/parity/sdk-bulk/gen-coding-agent.mjs), under the host's theme palette and keybinding table.
 func TestKeyHintsMatchPi(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "test", "parity", "sdk-vectors", "pi-coding-agent-helpers.json"))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "test", "parity", "sdk-bulk", "pi-coding-agent-helpers.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

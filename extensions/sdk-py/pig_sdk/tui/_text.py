@@ -1,7 +1,7 @@
 """pi-tui's utils.ts: terminal width, grapheme, ANSI, wrap, truncate and slice helpers.
 
 A line-by-line port of the pinned Pi release's ``utils.ts``. The Unicode data comes from ``_tables`` (generated from the same sources Pi's
-runtime reads: get-east-asian-width, ICU property escapes, ``Intl.Segmenter`` grapheme rules). The vectors in ``test/parity/sdk-vectors`` are
+runtime reads: get-east-asian-width, ICU property escapes, ``Intl.Segmenter`` grapheme rules). The vectors in ``test/parity/sdk-bulk`` are
 what Pi's own functions return, and ``tests/test_tui_vectors.py`` holds this module to them.
 """
 

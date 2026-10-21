@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-// The vectors are what Pi's own functions return (test/parity/sdk-vectors/gen.mjs runs the pinned pi-tui sources); every SDK
+// The vectors are what Pi's own functions return (test/parity/sdk-bulk/gen.mjs runs the pinned pi-tui sources); every SDK
 // reproduces them, so a helper that returns a constant, or ports a different rule, fails here.
 func loadVectors(t *testing.T, name string, into any) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "parity", "sdk-vectors", name))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "parity", "sdk-bulk", name))
 	if err != nil {
 		t.Fatal(err)
 	}
