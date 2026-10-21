@@ -93166,17 +93166,6 @@
       "shapeHash": "sha256:17203e291e3d5855013477effff798ee623d4aadc7c286ceb1814806e181a90d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#watchSessionState",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "watchSessionState",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(bridge *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge, session *github.com/MichaelKinsy/PiG/coding.Session) func()"
-      },
-      "shapeHash": "sha256:17203e291e3d5855013477effff798ee623d4aadc7c286ceb1814806e181a90d"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#wazeroCacheDir",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "wazeroCacheDir",
@@ -117672,6 +117661,17 @@
         "type": "func(p *nativeProviderProxy)"
       },
       "shapeHash": "sha256:4c1b7db0732b5f440ca76da656c912f000fb75c289b70b77606c598cca0e02ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.publishVirtualModelChange",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.publishVirtualModelChange",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.pushStateTo",
@@ -186545,6 +186545,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#RuleModelRegistryFind",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
+      "name": "RuleModelRegistryFind",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#RuleNotComparable",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "RuleNotComparable",
@@ -189931,39 +189942,6 @@
         "type": "func(args []string, getenv func(string) string, lookup func(string) (string, bool), streamIsTTY bool) int"
       },
       "shapeHash": "sha256:0df77194db0abd18d6128d902c82549bfd5b1f4680c57a85cfe13c26222cc380"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ChangeObservers",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ChangeObservers",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "ChangeObservers"
-      },
-      "shapeHash": "sha256:1fd55bf43d5bc7b78fd768248f5ca14e9bf45087243931f45b95b53534c92941"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ChangeObservers.Add",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ChangeObservers.Add",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(observe func()) func()"
-      },
-      "shapeHash": "sha256:a843c70fb6d3261ac58d6032ee35268582d4f1e21319238faa27bcb9a6ea4641"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ChangeObservers.Notify",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ChangeObservers.Notify",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ChangelogEntry",
@@ -220819,17 +220797,6 @@
         "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#changeObserver",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "changeObserver",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "changeObserver"
-      },
-      "shapeHash": "sha256:b293ce786029e129288971c7e42a2b09aac5dafe67eb79a52a2a84c4d0947fac"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#changelogGitHubRepo",

@@ -31641,8 +31641,6 @@
       ],
       "tests": [
         "coding/cli/session_state_watch_test.go::TestPrintModeReportsSessionStateChangesToTheExtensionHost",
-        "coding/cli/session_state_watch_test.go::TestWatchSessionStateReportsSessionChangesUntilStopped",
-        "coding/cli/session_state_watch_test.go::TestWatchSessionStateWithoutABridgeOrSession",
         "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedAfterShutdownStartsNothing",
         "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedNeverBlocksItsCallerAndCoalescesABurst",
         "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedPushesStateTheHostChangedAndNothingElse",
@@ -31652,8 +31650,6 @@
         "coding/session_replicated_state_test.go::TestSessionReplicatedStateReportFollowsTheChange",
         "coding/session_replicated_state_test.go::TestSessionReportsAModelRefreshedFromTheRegistry",
         "coding/session_replicated_state_test.go::TestSessionReportsEveryChangeOfTheStateExtensionsReplicate",
-        "internal/codingagent/change_observers_test.go::TestChangeObserversRegisterWhileNotifying",
-        "internal/codingagent/change_observers_test.go::TestChangeObserversRunInRegistrationOrderUntilRemoved",
         "internal/codingagent/interactive_replicated_state_test.go::TestFooterDataProviderReportsABranchOrProviderCountChange",
         "internal/codingagent/interactive_replicated_state_test.go::TestInteractiveModeReportsReplicatedStateChangesToTheExtensionHost",
         "internal/codingagent/interactive_replicated_state_test.go::TestInteractiveModeWithABridgeThatTakesNoStateReportsDoesNotWatch",
@@ -31754,6 +31750,139 @@
         "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryRegistrationSurvivesLaterPublications",
         "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryWritesSurviveConcurrentPublications"
       ]
+    },
+    {
+      "id": "BF-5630b1c",
+      "title": "An extension that reads `pi.getMcpServers()` from a timer, thread or goroutine and has no…",
+      "symptom": "An extension that reads `pi.getMcpServers()` from a timer, thread or goroutine and has no `mcp_servers_change` handler now sees a server another extension registers or removes.",
+      "rootCause": "Pi's pi.getMcpServers() reads the runtime's registry live (loader.ts:495-497) and ctx.ui.theme is the global theme, read at every use (interactive-mode.ts:2665). A runtime replicates both, and the host pushed them only before a request, so an extension that reads from a timer, thread or goroutine and has no mcp_servers_change handler kept the old list after another extension registered or removed a server, and the old palette after the user selected another theme.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that reads `pi.getMcpServers()` from a timer, thread or goroutine and has no `mcp_servers_change` handler now sees a server another extension registers or removes. The host updated the registry but reached an extension only at its next request, so the reader kept the old list; Pi reads the registry live. The host now pushes the new list to every connected extension when the registry changes, off the call that changed it, and sends nothing to an extension that already holds it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5630b1c63a",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/session_state_watch_test.go::TestWatchHostStateReportsSessionAndThemeChangesUntilStopped",
+        "coding/cli/session_state_watch_test.go::TestWatchHostStateWithoutABridgeOrSession",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedPushesTheThemeAlone",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestMcpServerRegistryChangeAfterShutdownPushesNothing",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestMcpServerRegistryChangePushesTheListToEveryRuntime",
+        "coding/extension/mcp_servers_test.go::TestMcpServerRegistryObserverMayReadTheRegistry",
+        "coding/extension/mcp_servers_test.go::TestMcpServerRegistryObserversHearEveryChangeAfterTheListener",
+        "internal/changeobservers/changeobservers_test.go::TestObserversRegisterWhileNotifying",
+        "internal/changeobservers/changeobservers_test.go::TestObserversRunInRegistrationOrderUntilRemoved",
+        "internal/codingagent/interactive_replicated_state_test.go::TestInteractiveModeReportsReplicatedStateChangesToTheExtensionHost",
+        "tui/theme_observers_test.go::TestActiveThemeObserversReportWithoutAllocating",
+        "tui/theme_observers_test.go::TestObserveActiveThemeReportsEveryReplacementUntilStopped"
+      ]
+    },
+    {
+      "id": "BF-5630b1c-2",
+      "title": "An extension that reads `ctx.ui.theme` from a timer, thread or goroutine now sees the theme the user selects…",
+      "symptom": "An extension that reads `ctx.ui.theme` from a timer, thread or goroutine now sees the theme the user selects (`/settings`, a theme file edit, the terminal's reported colors).",
+      "rootCause": "Pi's pi.getMcpServers() reads the runtime's registry live (loader.ts:495-497) and ctx.ui.theme is the global theme, read at every use (interactive-mode.ts:2665). A runtime replicates both, and the host pushed them only before a request, so an extension that reads from a timer, thread or goroutine and has no mcp_servers_change handler kept the old list after another extension registered or removed a server, and the old palette after the user selected another theme.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that reads `ctx.ui.theme` from a timer, thread or goroutine now sees the theme the user selects (`/settings`, a theme file edit, the terminal's reported colors). The host replaced the active theme but sent the palette only with the extension's next request; Pi's `ctx.ui.theme` is the global theme, read at every use. The host now pushes the new palette to every connected extension when the theme changes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5630b1c63a",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/session_state_watch_test.go::TestWatchHostStateReportsSessionAndThemeChangesUntilStopped",
+        "coding/cli/session_state_watch_test.go::TestWatchHostStateWithoutABridgeOrSession",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestHostStateChangedPushesTheThemeAlone",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestMcpServerRegistryChangeAfterShutdownPushesNothing",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestMcpServerRegistryChangePushesTheListToEveryRuntime",
+        "coding/extension/mcp_servers_test.go::TestMcpServerRegistryObserverMayReadTheRegistry",
+        "coding/extension/mcp_servers_test.go::TestMcpServerRegistryObserversHearEveryChangeAfterTheListener",
+        "internal/changeobservers/changeobservers_test.go::TestObserversRegisterWhileNotifying",
+        "internal/changeobservers/changeobservers_test.go::TestObserversRunInRegistrationOrderUntilRemoved",
+        "internal/codingagent/interactive_replicated_state_test.go::TestInteractiveModeReportsReplicatedStateChangesToTheExtensionHost",
+        "tui/theme_observers_test.go::TestActiveThemeObserversReportWithoutAllocating",
+        "tui/theme_observers_test.go::TestObserveActiveThemeReportsEveryReplacementUntilStopped"
+      ]
+    },
+    {
+      "id": "BF-33ea9e4",
+      "title": "fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf…",
+      "symptom": "fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf read",
+      "rootCause": "The Go Find signature change is an incompatible API change: add its upgrade rule, classify the compiler's arity diagnostic for it and list the Go, Rust and Python changes under Upgrading.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "33ea9e4573",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/upgrade/rules_test.go::TestModelRegistryFindChangeIsNamed"
+      ]
+    },
+    {
+      "id": "BF-56fd9ec",
+      "title": "A Node extension that registers or unregisters a virtual model…",
+      "symptom": "A Node extension that registers or unregisters a virtual model (`pi.registerVirtualModel`/`unregisterVirtualModel`) sees the write on the next line, as Pi does: `ctx.modelRegistry.find`, `getAll` and `getAvailable` list the model, a provider of only virtual models is configured and available at once, and an unregistration removes the model.",
+      "rootCause": "Pi's registerVirtualModel and unregisterVirtualModel update the model snapshot before they return (model-runtime.ts:964-992), so find, getAll, getAvailable, hasConfiguredAuth and getProviderAuthStatus see the write on the next line, and a provider of only virtual models needs no credentials, so it is configured and available at once. The Node runtime answered these reads from the host's published registry, which the registry's change listener does not publish for a virtual model, so every read after the call saw nothing.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension that registers or unregisters a virtual model (`pi.registerVirtualModel`/`unregisterVirtualModel`) sees the write on the next line, as Pi does: `ctx.modelRegistry.find`, `getAll` and `getAvailable` list the model, a provider of only virtual models is configured and available at once, and an unregistration removes the model. The host also publishes the catalog when it serves either call, so another extension's registry sees the model.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "56fd9ec590",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryReRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryVirtualModelReachesAnotherExtension",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryVirtualModelRegistrationIsVisibleInTheSameTick",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryVirtualModelSurvivesLaterPublications",
+        "test/extension-conformance/node_sync_visibility_test.go::TestNodeRegistryVirtualWritesSurviveConcurrentPublications"
+      ]
+    },
+    {
+      "id": "BF-44f8d86",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "The Node adoption change edits runtime.mjs, so the embedded archive and its digest are regenerated (go generate ./coding/extension/host/subprocess).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "44f8d86c29",
+          "date": "2026-10-20"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [
