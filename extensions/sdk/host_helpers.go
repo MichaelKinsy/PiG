@@ -1,9 +1,11 @@
 package sdk
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"slices"
@@ -17,6 +19,12 @@ import (
 const (
 	callParseFrontmatter = "frontmatter.parse"
 	callParseDate        = "date.parse"
+	// The host's ports of Pi's generateDiffString, generateUnifiedPatch, copyToClipboard, convertToPng and resizeImage.
+	callGenerateDiffString   = "diff.string"
+	callGenerateUnifiedPatch = "diff.patch"
+	callCopyToClipboard      = "clipboard.copy"
+	callConvertToPng         = "image.convertToPng"
+	callResizeImage          = "image.resize"
 )
 
 // ParsedFrontmatter is the result of ParseFrontmatter: Pi's `{ frontmatter, body }`. Frontmatter is the JSON of `parse(yaml) ?? {}`, with each object's keys
@@ -33,6 +41,15 @@ type HostHelpers struct {
 	ParseFrontmatter func(content string) (ParsedFrontmatter, error)
 	// ParseDate is Date.parse: the time value in milliseconds, false for NaN.
 	ParseDate func(text string) (float64, bool)
+	// GenerateDiffString and GenerateUnifiedPatch are the host's ports of Pi's generateDiffString and generateUnifiedPatch; a nil contextLines is Pi's default of 4.
+	GenerateDiffString   func(oldContent, newContent string, contextLines *int) DiffString
+	GenerateUnifiedPatch func(path, oldContent, newContent string, contextLines *int) string
+	// CopyToClipboard is the host's copy function.
+	CopyToClipboard func(text string) error
+	// ConvertToPng is the host's convertToPng: false is Pi's null.
+	ConvertToPng func(data, mimeType string) (ConvertedImage, bool)
+	// ResizeImage is the host's resizeImage: false is Pi's null.
+	ResizeImage func(input []byte, mimeType string, options *ImageResizeOptions) (ResizedImage, bool, error)
 }
 
 var helpers struct {
@@ -199,4 +216,215 @@ func releaseHelperConn(c *conn) {
 	helpers.mu.Lock()
 	defer helpers.mu.Unlock()
 	helpers.running = slices.DeleteFunc(helpers.running, func(running runningConn) bool { return running.c == c })
+}
+
+// DiffString is the result of GenerateDiffString: Pi's `{ diff, firstChangedLine }`. FirstChangedLine is nil when the texts do not differ (undefined in Pi).
+type DiffString struct {
+	Diff             string
+	FirstChangedLine *int
+}
+
+// ConvertedImage is the result of ConvertToPng: Pi's `{ data, mimeType }`.
+type ConvertedImage struct {
+	Data     string
+	MimeType string
+}
+
+// ImageResizeOptions is Pi's ImageResizeOptions (utils/image-resize-core.ts). A zero field takes Pi's default.
+type ImageResizeOptions struct {
+	MaxWidth    int `json:"maxWidth,omitempty"`
+	MaxHeight   int `json:"maxHeight,omitempty"`
+	MaxBytes    int `json:"maxBytes,omitempty"`
+	JPEGQuality int `json:"jpegQuality,omitempty"`
+}
+
+func contextLinesArg(contextLines []int) *int {
+	if len(contextLines) == 0 {
+		return nil
+	}
+	return &contextLines[0]
+}
+
+// helperCall sends a pure-helper call over the connection a helper outside a handler uses.
+func helperCall(method string, args any) (*callResultMsg, error) {
+	c, err := helperConnection()
+	if err != nil {
+		return nil, err
+	}
+	return c.call(method, args)
+}
+
+func decodeResult(result *callResultMsg, err error, into any) error {
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(result.Result, into); err != nil {
+		return fmt.Errorf("decode host reply: %w", err)
+	}
+	return nil
+}
+
+// GenerateDiffString is Pi's generateDiffString (core/tools/edit-diff.ts, exported from index.ts): the line-numbered display diff of two texts, with the context around each
+// change cut to contextLines (default 4) lines, and the first changed line of the new text. The host's byte-exact port answers. It may be called before Run, like ParseFrontmatter.
+func GenerateDiffString(oldContent, newContent string, contextLines ...int) (DiffString, error) {
+	if hook := installedHelpers(); hook != nil && hook.GenerateDiffString != nil {
+		return hook.GenerateDiffString(oldContent, newContent, contextLinesArg(contextLines)), nil
+	}
+	return decodeDiffString(helperCall(callGenerateDiffString, diffStringArgs(oldContent, newContent, contextLines)))
+}
+
+// GenerateDiffString is GenerateDiffString over the handler's own connection.
+func (c Context) GenerateDiffString(oldContent, newContent string, contextLines ...int) (DiffString, error) {
+	return decodeDiffString(c.callHost(callGenerateDiffString, diffStringArgs(oldContent, newContent, contextLines)))
+}
+
+func diffStringArgs(oldContent, newContent string, contextLines []int) map[string]any {
+	args := map[string]any{"oldContent": oldContent, "newContent": newContent}
+	if len(contextLines) > 0 {
+		args["contextLines"] = contextLines[0]
+	}
+	return args
+}
+
+func decodeDiffString(result *callResultMsg, err error) (DiffString, error) {
+	var reply struct {
+		Diff             string `json:"diff"`
+		FirstChangedLine *int   `json:"firstChangedLine"`
+	}
+	if err := decodeResult(result, err, &reply); err != nil {
+		return DiffString{}, err
+	}
+	return DiffString{Diff: reply.Diff, FirstChangedLine: reply.FirstChangedLine}, nil
+}
+
+// GenerateUnifiedPatch is Pi's generateUnifiedPatch (core/tools/edit-diff.ts, exported from index.ts): a standard unified patch of two texts for one path, with contextLines
+// (default 4) lines of context around each change. The host's port of jsdiff answers. It may be called before Run.
+func GenerateUnifiedPatch(path, oldContent, newContent string, contextLines ...int) (string, error) {
+	if hook := installedHelpers(); hook != nil && hook.GenerateUnifiedPatch != nil {
+		return hook.GenerateUnifiedPatch(path, oldContent, newContent, contextLinesArg(contextLines)), nil
+	}
+	return decodePatch(helperCall(callGenerateUnifiedPatch, patchArgs(path, oldContent, newContent, contextLines)))
+}
+
+// GenerateUnifiedPatch is GenerateUnifiedPatch over the handler's own connection.
+func (c Context) GenerateUnifiedPatch(path, oldContent, newContent string, contextLines ...int) (string, error) {
+	return decodePatch(c.callHost(callGenerateUnifiedPatch, patchArgs(path, oldContent, newContent, contextLines)))
+}
+
+func patchArgs(path, oldContent, newContent string, contextLines []int) map[string]any {
+	args := diffStringArgs(oldContent, newContent, contextLines)
+	args["path"] = path
+	return args
+}
+
+func decodePatch(result *callResultMsg, err error) (string, error) {
+	var reply struct {
+		Patch string `json:"patch"`
+	}
+	if err := decodeResult(result, err, &reply); err != nil {
+		return "", err
+	}
+	return reply.Patch, nil
+}
+
+// CopyToClipboard is Pi's copyToClipboard (utils/clipboard.ts, exported from index.ts): the host copies text with the strategy its own copy commands use, and a failed copy is
+// the error. It may be called before Run.
+func CopyToClipboard(text string) error {
+	if hook := installedHelpers(); hook != nil && hook.CopyToClipboard != nil {
+		return hook.CopyToClipboard(text)
+	}
+	result, err := helperCall(callCopyToClipboard, map[string]string{"text": text})
+	return decodeResult(result, err, &struct{}{})
+}
+
+// CopyToClipboard is CopyToClipboard over the handler's own connection.
+func (c Context) CopyToClipboard(text string) error {
+	result, err := c.callHost(callCopyToClipboard, map[string]string{"text": text})
+	return decodeResult(result, err, &struct{}{})
+}
+
+type imageReply struct {
+	Image *struct {
+		Data           string   `json:"data"`
+		MimeType       string   `json:"mimeType"`
+		OriginalWidth  *float64 `json:"originalWidth"`
+		OriginalHeight *float64 `json:"originalHeight"`
+		Width          *float64 `json:"width"`
+		Height         *float64 `json:"height"`
+		WasResized     bool     `json:"wasResized"`
+	} `json:"image"`
+}
+
+// ConvertToPng is Pi's convertToPng (utils/image-convert.ts, exported from index.ts): base64 image data as base64 PNG data, which a PNG already is. It returns nil, as Pi
+// returns null, when the data does not decode. It may be called before Run.
+func ConvertToPng(base64Data, mimeType string) (*ConvertedImage, error) {
+	if hook := installedHelpers(); hook != nil && hook.ConvertToPng != nil {
+		converted, ok := hook.ConvertToPng(base64Data, mimeType)
+		if !ok {
+			return nil, nil
+		}
+		return &converted, nil
+	}
+	return decodeConverted(helperCall(callConvertToPng, map[string]string{"data": base64Data, "mimeType": mimeType}))
+}
+
+// ConvertToPng is ConvertToPng over the handler's own connection.
+func (c Context) ConvertToPng(base64Data, mimeType string) (*ConvertedImage, error) {
+	return decodeConverted(c.callHost(callConvertToPng, map[string]string{"data": base64Data, "mimeType": mimeType}))
+}
+
+func decodeConverted(result *callResultMsg, err error) (*ConvertedImage, error) {
+	var reply imageReply
+	if err := decodeResult(result, err, &reply); err != nil {
+		return nil, err
+	}
+	if reply.Image == nil {
+		return nil, nil
+	}
+	return &ConvertedImage{Data: reply.Image.Data, MimeType: reply.Image.MimeType}, nil
+}
+
+// ResizeImage is Pi's resizeImage (utils/image-resize.ts, exported from index.ts): the image fitted within the option limits (2000 pixels on a side, 4.5 MiB encoded unless
+// options say otherwise), as the host's image code does it. It returns nil, as Pi returns null, when the image cannot be made to fit. An image already within every limit comes
+// back as it was. It may be called before Run.
+func ResizeImage(inputBytes []byte, mimeType string, options *ImageResizeOptions) (*ResizedImage, error) {
+	if hook := installedHelpers(); hook != nil && hook.ResizeImage != nil {
+		resized, ok, err := hook.ResizeImage(inputBytes, mimeType, options)
+		if err != nil || !ok {
+			return nil, err
+		}
+		return &resized, nil
+	}
+	return decodeResized(helperCall(callResizeImage, resizeArgs(inputBytes, mimeType, options)))
+}
+
+// ResizeImage is ResizeImage over the handler's own connection.
+func (c Context) ResizeImage(inputBytes []byte, mimeType string, options *ImageResizeOptions) (*ResizedImage, error) {
+	return decodeResized(c.callHost(callResizeImage, resizeArgs(inputBytes, mimeType, options)))
+}
+
+func resizeArgs(inputBytes []byte, mimeType string, options *ImageResizeOptions) map[string]any {
+	args := map[string]any{"data": base64.StdEncoding.EncodeToString(inputBytes), "mimeType": mimeType}
+	if options != nil {
+		args["options"] = options
+	}
+	return args
+}
+
+func decodeResized(result *callResultMsg, err error) (*ResizedImage, error) {
+	var reply imageReply
+	if err := decodeResult(result, err, &reply); err != nil {
+		return nil, err
+	}
+	if reply.Image == nil {
+		return nil, nil
+	}
+	image := reply.Image
+	number := func(value *float64) float64 {
+		if value == nil {
+			return math.NaN()
+		}
+		return *value
+	}
+	return &ResizedImage{Data: image.Data, MimeType: image.MimeType, OriginalWidth: number(image.OriginalWidth), OriginalHeight: number(image.OriginalHeight), Width: number(image.Width), Height: number(image.Height), WasResized: image.WasResized}, nil
 }

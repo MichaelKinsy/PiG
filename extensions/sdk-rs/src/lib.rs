@@ -60,6 +60,8 @@ mod constrained_sampling;
 pub use constrained_sampling::ToolConstrainedSampling;
 mod context;
 #[cfg(test)]
+mod pi_ai_helpers_tests;
+#[cfg(test)]
 mod model_info_tests;
 #[cfg(test)]
 mod branch_entry_tests;
@@ -87,7 +89,7 @@ pub use replaced_session::{ReplacedSessionContext, WithSessionFn};
 mod session_manager;
 pub use session_manager::SessionManager;
 mod host_info;
-pub use host_info::{get_agent_dir, get_config_dir_name, get_version};
+pub use host_info::{ShellConfig, get_agent_dir, get_config_dir_name, get_package_dir, get_shell_config, get_version};
 mod file_mutation_queue;
 pub use file_mutation_queue::with_file_mutation_queue;
 mod language;
@@ -100,13 +102,24 @@ mod image_dimension_note;
 pub use image_dimension_note::{ResizedImage, format_dimension_note};
 mod llm_convert;
 pub use llm_convert::convert_to_llm;
+mod pi_ai_helpers;
+mod session_entry_messages;
+pub use session_entry_messages::session_entry_to_context_messages;
+mod stored_credential;
+pub use stored_credential::read_stored_credential;
+pub use pi_ai_helpers::{
+    DEFAULT_MAX_AGENT_RETRY_DELAY_MS, RetryPolicy, StringEnumOptions, TranscriptTools, calculate_cost, clamp_thinking_level, collapse_system_messages, content_text, create_initial_system_message,
+    env_api_key_auth, get_model_type, has_api, is_model_type, models_are_equal, get_current_system_message, get_current_system_prompt, get_current_tools, get_declared_tools, get_initial_system_message, get_supported_thinking_levels,
+    get_system_message_text, has_non_additive_tool_changes, is_context_overflow, is_recoverable_length, is_retryable_assistant_error, normalize_context, render_system_message_update,
+    resolve_transcript, resolve_transcript_tools, retry_delay_ms, string_enum, without_initial_system_message,
+};
 mod serialize_conversation;
 pub use serialize_conversation::{serialize_conversation, serialize_conversation_json};
 mod branch_summary;
 mod lossless_json;
 pub use branch_summary::{BranchPreparation, CollectEntriesResult, FileOperations, SessionReader, collect_entries_for_branch_summary, prepare_branch_entries, prepare_branch_entries_json};
 mod host_helpers;
-pub use host_helpers::{ParsedFrontmatter, parse_date, parse_frontmatter, strip_frontmatter};
+pub use host_helpers::{ConvertedImage, DiffString, ImageResizeOptions, ParsedFrontmatter, convert_to_png, copy_to_clipboard, generate_diff_string, generate_unified_patch, parse_date, parse_frontmatter, resize_image, strip_frontmatter};
 mod compaction_usage;
 pub use compaction_usage::{CompactionSettings, DEFAULT_COMPACTION_SETTINGS, calculate_context_tokens, get_last_assistant_usage, should_compact};
 mod session_skill_helpers;
@@ -132,7 +145,7 @@ pub use editor_component::{EditorBase, EditorComponent, EditorCursor, EditorFact
 
 pub use context::{
     CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,
-    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest, ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds, OverlayHandle, OverlayState, UnfocusTarget,
+    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, create_assistant_message_event_stream, ModelFetchRequest, ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds, OverlayHandle, OverlayState, UnfocusTarget,
     RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult, SendMessageOptions,
     SourceInfo, UsageInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, ToolInfoReachesTools, ViewComponent, message_role,
     message_text, is_tool_call_event_type, is_bash_tool_result, is_powershell_tool_result, is_read_tool_result, is_edit_tool_result, is_write_tool_result, is_grep_tool_result, is_find_tool_result, is_ls_tool_result,

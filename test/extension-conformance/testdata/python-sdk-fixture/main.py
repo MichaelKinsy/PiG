@@ -376,6 +376,128 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("file_queue:" + json.dumps({"log": log, "errors": sorted(failed)}) + ":end", "info")
 
     ext.command("file_queue_probe", "Run tasks through the file mutation queue and report the log", file_queue_probe)
+    # host_paths_probe reports getPackageDir() and getShellConfig() as this SDK answers them, for the default shell and for the existing and the missing custom shell path
+    # in args ("<existing>|<missing>") (TestConformance_HostPathsAgreeAcrossSDKs).
+    def host_paths_probe(ctx, args):
+        existing, _, missing = args.partition("|")
+
+        def shell(*custom):
+            try:
+                config = pig_sdk.get_shell_config(*custom)
+            except OSError as error:
+                return {"error": str(error)}
+            report = {"shell": config.shell, "args": list(config.args)}
+            if config.command_transport:
+                report["commandTransport"] = config.command_transport
+            return report
+
+        ctx.notify("host_paths:" + json.dumps({"packageDir": pig_sdk.get_package_dir(), "default": shell(), "custom": shell(existing), "missing": shell(missing)}) + ":end", "info")
+
+    ext.command("host_paths_probe", "Report getPackageDir and getShellConfig", host_paths_probe)
+    # host_helpers_probe runs the host-served pi helpers over the golden file's inputs (TestConformance_HostHelpersAgreeAcrossSDKs). args is
+    # "<golden>|<auth.json path>|<text to copy>".
+    def host_helpers_probe(ctx, args):
+        import base64
+
+        golden_path, auth_path, text = args.split("|", 2)
+        golden = json.loads(pathlib.Path(golden_path).read_text(encoding="utf-8"))
+        diffs = []
+        for case in golden["diffs"]:
+            lines = case.get("contextLines")
+            report = {"patch": ctx.generate_unified_patch(case.get("path", "src/a.ts"), case["oldContent"], case["newContent"], lines)}
+            if not case.get("patchOnly"):
+                diff = ctx.generate_diff_string(case["oldContent"], case["newContent"], lines)
+                report["diff"], report["firstChangedLine"] = diff.diff, diff.first_changed_line
+            diffs.append(report)
+        entries = [pig_sdk.session_entry_to_context_messages(case["entry"]) for case in golden["entries"]]
+        images = []
+        for case in golden["images"]:
+            if case["op"] == "convert":
+                converted = ctx.convert_to_png(case["data"], case["mimeType"])
+                images.append(None if converted is None else {"mimeType": converted.mime_type, "decodes": converted.data != ""})
+                continue
+            options = case.get("options")
+            options = None if options is None else pig_sdk.ImageResizeOptions(options.get("maxWidth"), options.get("maxHeight"), options.get("maxBytes"), options.get("jpegQuality"))
+            resized = ctx.resize_image(base64.b64decode(case["data"]), case["mimeType"], options)
+            images.append(None if resized is None else {"mimeType": resized.mime_type, "originalWidth": resized.original_width, "originalHeight": resized.original_height, "width": resized.width, "height": resized.height, "wasResized": resized.was_resized, "decodes": resized.data != ""})
+        creds = {
+            "explicit": pig_sdk.read_stored_credential("anthropic", auth_path), "default": pig_sdk.read_stored_credential("anthropic"),
+            "absentProvider": pig_sdk.read_stored_credential("nobody", auth_path), "missingFile": pig_sdk.read_stored_credential("anthropic", auth_path + ".missing"),
+            "notJSON": pig_sdk.read_stored_credential("anthropic", auth_path + ".bad"),
+        }
+        ctx.copy_to_clipboard(text)
+        ctx.notify("host_helpers:" + json.dumps({"diffs": diffs, "entries": entries, "images": images, "creds": creds}) + ":end", "info")
+
+    ext.command("host_helpers_probe", "Run the host-served pi helpers over the golden inputs", host_helpers_probe)
+    # pi_ai_helpers_probe runs every call of the golden file (test/parity/sdk-vectors/pi-ai-helpers/golden.json, Pi's own answers at the pin) through this SDK's pi-ai
+    # helpers and reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
+    def pi_ai_helpers_probe(ctx, args):
+        golden = json.loads(pathlib.Path(args).read_text(encoding="utf-8"))
+        calls = {
+            "StringEnum": pig_sdk.string_enum, "getSupportedThinkingLevels": pig_sdk.get_supported_thinking_levels, "clampThinkingLevel": pig_sdk.clamp_thinking_level,
+            "calculateCost": pig_sdk.calculate_cost, "contentText": pig_sdk.content_text, "getCurrentTools": pig_sdk.get_current_tools,
+            "getCurrentSystemMessage": pig_sdk.get_current_system_message, "getCurrentSystemPrompt": pig_sdk.get_current_system_prompt,
+            "getInitialSystemMessage": pig_sdk.get_initial_system_message, "getDeclaredTools": pig_sdk.get_declared_tools,
+            "hasNonAdditiveToolChanges": pig_sdk.has_non_additive_tool_changes, "resolveTranscriptTools": pig_sdk.resolve_transcript_tools,
+            "collapseSystemMessages": pig_sdk.collapse_system_messages, "resolveTranscript": pig_sdk.resolve_transcript,
+            "withoutInitialSystemMessage": pig_sdk.without_initial_system_message, "normalizeContext": pig_sdk.normalize_context,
+            "createInitialSystemMessage": pig_sdk.create_initial_system_message, "getSystemMessageText": pig_sdk.get_system_message_text,
+            "renderSystemMessageUpdate": pig_sdk.render_system_message_update, "isRetryableAssistantError": pig_sdk.is_retryable_assistant_error,
+            "isContextOverflow": pig_sdk.is_context_overflow, "isRecoverableLength": pig_sdk.is_recoverable_length, "retryDelayMs": pig_sdk.retry_delay_ms,
+            "getModelType": pig_sdk.get_model_type, "isModelType": pig_sdk.is_model_type, "hasApi": pig_sdk.has_api, "modelsAreEqual": pig_sdk.models_are_equal,
+        }
+        cases = []
+        for case in golden["cases"]:
+            if case["fn"] == "DEFAULT_MAX_AGENT_RETRY_DELAY_MS":
+                cases.append([pig_sdk.DEFAULT_MAX_AGENT_RETRY_DELAY_MS])
+                continue
+            value = calls[case["fn"]](*case["args"])
+            cases.append([] if value is None else [value])
+        auth = []
+        for case in golden["auth"]["cases"]:
+            seen = []
+
+            def env(name, case=case, seen=seen):
+                seen.append(name)
+                return case["env"].get(name)
+
+            result = pig_sdk.env_api_key_auth(case["name"], case["envVars"]).resolve(
+                pig_sdk.APIKeyAuthInput(pig_sdk.AuthContext(env, lambda path: False), case.get("credential"), pig_sdk.ProviderSignal())
+            )
+            auth.append({"result": None if result is None else {key: value for key, value in dataclasses.asdict(result).items() if value is not None}, "seen": seen})
+        prompts = []
+        credential = pig_sdk.env_api_key_auth("Name", ["FIRST", "SECOND"]).login(
+            pig_sdk.AuthInteraction(lambda request: prompts.append(request) or "typed-key", lambda request: None, pig_sdk.ProviderSignal())
+        )
+        timing = []
+        for case in golden["timing"]:
+            stream = pig_sdk.create_assistant_message_event_stream()
+
+            def message(now, case=case):
+                result = {"role": "assistant", "content": [], "stopReason": "error" if case["kind"] == "error" else "stop"}
+                if now or case["timestamp"] == "now":
+                    result["timestamp"] = int(time.time() * 1000)
+                elif case["timestamp"] == "old":
+                    result["timestamp"] = 1
+                if case["preset"] is not None and not now:
+                    result["durationMs"] = case["preset"]
+                return result
+
+            final, later = message(False), message(True)
+            if case["kind"] == "done":
+                stream.push({"type": "done", "reason": "stop", "message": final})
+            elif case["kind"] == "error":
+                stream.push({"type": "error", "reason": "error", "error": final})
+            elif case["kind"] == "end":
+                stream.end(final)
+            else:
+                stream.push({"type": "done", "reason": "stop", "message": final})
+                stream.end(later)
+            value = final.get("durationMs")
+            timing.append({"present": "durationMs" in final, "value": case["preset"] if case["preset"] is not None and value == case["preset"] else None, "laterTimed": "durationMs" in later})
+        ctx.notify("pi_ai_helpers:" + json.dumps({"cases": cases, "timing": timing, "auth": auth, "login": {"prompts": prompts, "result": credential}}) + ":end", "info")
+
+    ext.command("pi_ai_helpers_probe", "Run the golden pi-ai helper calls", pi_ai_helpers_probe)
     # host_info_probe reports Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION as this SDK answers them (TestConformance_HostConfigurationAgreesAcrossSDKs).
     ext.command(
         "host_info_probe",

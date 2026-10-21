@@ -313,6 +313,9 @@ func Extension() *sdk.Extension {
 		factoryAgentDir = "error: " + factoryAgentDirErr.Error()
 	}
 	registerAutocompleteFixture(ext)
+	registerPiAiHelpersFixture(ext)
+	registerHostPathsFixture(ext)
+	registerHostHelpersFixture(ext)
 	schemaRejected := RejectInvalidToolSchema(ext)
 	ext.Command("schema-probe", "Report schema rejection", func(ctx sdk.Context, _ string) error {
 		ctx.Notify(fmt.Sprintf("schema-rejected:%t", schemaRejected), "info")

@@ -17994,22 +17994,24 @@
     {
       "id": "pkg:ai/.#DEFAULT_MAX_AGENT_RETRY_DELAY_MS",
       "upstreamShapeHash": "sha256:b2593fc41f23f56f0c76a7cd3126f7b6bb1de54bb71ff817406c1234acab396d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#DefaultMaxAgentRetryDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#DefaultMaxAgentRetryDelayMs",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#DefaultMaxAgentRetryDelayMs"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -38463,22 +38465,24 @@
     {
       "id": "pkg:ai/.#RetryPolicy",
       "upstreamShapeHash": "sha256:41dd149d6e3e14dd97dd3a92e28dcf43fd5118bfab81d4de3ec5136b5199b149",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy"
+        "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -40161,22 +40165,24 @@
     {
       "id": "pkg:ai/.#StringEnum",
       "upstreamShapeHash": "sha256:3ce6981b851898e3a0c88ccc0c97064ab8f5f9c7e22633b22870dd4ebd16d81f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#StringEnum"
+        "go:github.com/MichaelKinsy/PiG/ai#StringEnum",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#StringEnum"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -41691,22 +41697,24 @@
     {
       "id": "pkg:ai/.#TranscriptTools",
       "upstreamShapeHash": "sha256:cd84208607f88934a3c95e8e2d9a9e01d5c7e5a563b0e2e77e3b4557068c945d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#TranscriptTools"
+        "go:github.com/MichaelKinsy/PiG/ai#TranscriptTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -42362,7 +42370,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -42373,7 +42381,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CalculateCost",
-        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost"
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CalculateCost"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -42418,22 +42427,24 @@
     {
       "id": "pkg:ai/.#clampThinkingLevel",
       "upstreamShapeHash": "sha256:668da1a0221482c4a319d42c30a34ff70256012cc445fc15442cd671d3f95e9b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ClampThinkingLevel"
+        "go:github.com/MichaelKinsy/PiG/ai#ClampThinkingLevel",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ClampThinkingLevel"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -42532,22 +42543,24 @@
     {
       "id": "pkg:ai/.#collapseSystemMessages",
       "upstreamShapeHash": "sha256:d5e2ba9f17bba923dc124497db0596641840be7741b2310fc40a9fb3aacbb00a",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#CollapseSystemMessages"
+        "go:github.com/MichaelKinsy/PiG/ai#CollapseSystemMessages",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CollapseSystemMessages"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -42592,7 +42605,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -42603,6 +42616,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ContentText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ContentText",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#contentText"
       ],
       "missingClosure": [
@@ -42819,22 +42833,24 @@
     {
       "id": "pkg:ai/.#createInitialSystemMessage",
       "upstreamShapeHash": "sha256:f57828fd707049872d95573d2790b798dd2831ee976cee8cf836ed98653e1a1e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#CreateInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#CreateInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateInitialSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43108,22 +43124,24 @@
     {
       "id": "pkg:ai/.#envApiKeyAuth",
       "upstreamShapeHash": "sha256:0f27000e216071917f96e99889a5c01275b96829cc374dce817ed324b1c45a0f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#EnvAPIKeyAuth"
+        "go:github.com/MichaelKinsy/PiG/ai#EnvAPIKeyAuth",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#EnvAPIKeyAuth"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43562,22 +43580,24 @@
     {
       "id": "pkg:ai/.#getCurrentSystemMessage",
       "upstreamShapeHash": "sha256:a72c429eee708f4367abcfd6cde0c65add7a50ae0ba47efc1b1f54babc3dd45f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43619,22 +43639,24 @@
     {
       "id": "pkg:ai/.#getCurrentSystemPrompt",
       "upstreamShapeHash": "sha256:f9bf6f52c087215b4f1a9db0aca257e28a0d2a9a690c3d3f40d880305d0e078c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemPrompt"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemPrompt",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentSystemPrompt"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43676,22 +43698,24 @@
     {
       "id": "pkg:ai/.#getCurrentTools",
       "upstreamShapeHash": "sha256:186d57f0916729ed9821fcc9b2c60a09fc677e1dfd79354bc7c1bc3636df8ac7",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentTools"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43733,22 +43757,24 @@
     {
       "id": "pkg:ai/.#getDeclaredTools",
       "upstreamShapeHash": "sha256:186d57f0916729ed9821fcc9b2c60a09fc677e1dfd79354bc7c1bc3636df8ac7",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetDeclaredTools"
+        "go:github.com/MichaelKinsy/PiG/ai#GetDeclaredTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetDeclaredTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43790,22 +43816,24 @@
     {
       "id": "pkg:ai/.#getInitialSystemMessage",
       "upstreamShapeHash": "sha256:a72c429eee708f4367abcfd6cde0c65add7a50ae0ba47efc1b1f54babc3dd45f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#GetInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetInitialSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43847,22 +43875,24 @@
     {
       "id": "pkg:ai/.#getModelType",
       "upstreamShapeHash": "sha256:b8a72914e2957e151dc974c1908c3df3544541ae8813166c607e9f6c9bd6a1da",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#GetModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -43961,22 +43991,24 @@
     {
       "id": "pkg:ai/.#getSupportedThinkingLevels",
       "upstreamShapeHash": "sha256:227c9f20151be85b527471ff5592475cae09f71c0441a9022518370967d7067f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetSupportedThinkingLevels"
+        "go:github.com/MichaelKinsy/PiG/ai#GetSupportedThinkingLevels",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetSupportedThinkingLevels"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -44018,22 +44050,24 @@
     {
       "id": "pkg:ai/.#getSystemMessageText",
       "upstreamShapeHash": "sha256:764d82504570b986cbf839aa737d966c0166a748d95d6dcc3e91111d2e606b75",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetSystemMessageText"
+        "go:github.com/MichaelKinsy/PiG/ai#GetSystemMessageText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetSystemMessageText"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -44132,22 +44166,24 @@
     {
       "id": "pkg:ai/.#hasApi",
       "upstreamShapeHash": "sha256:a4527eebfb0a187c747f37d9c48e97786ca1322c3b36a5efb4f2dbae82ae4989",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#HasApi"
+        "go:github.com/MichaelKinsy/PiG/ai#HasApi",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#HasApi"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -44189,22 +44225,25 @@
     {
       "id": "pkg:ai/.#hasNonAdditiveToolChanges",
       "upstreamShapeHash": "sha256:c9e75378324834d5edcefd01edc9140c095aef79de1a88a17e571be2073d74d9",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges"
+        "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#HasNonAdditiveToolChanges",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#hasNonAdditiveToolChanges"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -44306,7 +44345,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -44317,6 +44356,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsContextOverflow",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsContextOverflow",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow"
       ],
       "missingClosure": [
@@ -44362,22 +44402,24 @@
     {
       "id": "pkg:ai/.#isModelType",
       "upstreamShapeHash": "sha256:17199dda31b324fa66b945767b864f278105b9dc60f1989ad9acfd62956180b2",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#IsModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#IsModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -44422,7 +44464,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -44433,6 +44475,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsRecoverableLength",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsRecoverableLength",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsRecoverableLength"
       ],
       "missingClosure": [
@@ -44478,22 +44521,24 @@
     {
       "id": "pkg:ai/.#isRetryableAssistantError",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#IsRetryableAssistantError"
+        "go:github.com/MichaelKinsy/PiG/ai#IsRetryableAssistantError",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsRetryableAssistantError"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -44713,7 +44758,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -44725,6 +44770,7 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ModelsAreEqual",
         "go:github.com/MichaelKinsy/PiG/coding/cli#modelsAreEqual",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelsAreEqual",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelsAreEqual"
       ],
       "missingClosure": [
@@ -44770,22 +44816,24 @@
     {
       "id": "pkg:ai/.#normalizeContext",
       "upstreamShapeHash": "sha256:390ad482e7ffbf9881304fade802825bd250610afd7b6ffdf9c3b4ad8e2b201e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#NormalizeContext"
+        "go:github.com/MichaelKinsy/PiG/ai#NormalizeContext",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#NormalizeContext"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -45057,22 +45105,24 @@
     {
       "id": "pkg:ai/.#renderSystemMessageUpdate",
       "upstreamShapeHash": "sha256:6c06c40f0081735efa34468e746d9b6dc24db0425122f73075a6baf01653f55f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RenderSystemMessageUpdate"
+        "go:github.com/MichaelKinsy/PiG/ai#RenderSystemMessageUpdate",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RenderSystemMessageUpdate"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -45171,22 +45221,24 @@
     {
       "id": "pkg:ai/.#resolveTranscript",
       "upstreamShapeHash": "sha256:f73e78e73a932546cba34a8d39c35fdfb83642a7d160fe1b8829d32a5105daf1",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscript"
+        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscript",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResolveTranscript"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -45228,22 +45280,24 @@
     {
       "id": "pkg:ai/.#resolveTranscriptTools",
       "upstreamShapeHash": "sha256:2ea16412b22a8a360eb39f96e29b8a8dc2fbb4ca2bd4314467d9534914f2fc99",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscriptTools"
+        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscriptTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResolveTranscriptTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -45342,22 +45396,24 @@
     {
       "id": "pkg:ai/.#retryDelayMs",
       "upstreamShapeHash": "sha256:98ab27057dec2b29a461996be63c45bcb869955cfd53f91b750134b41ba1bcfa",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RetryDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#RetryDelayMs",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryDelayMs"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -45630,7 +45686,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -45641,7 +45697,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#WithoutInitialSystemMessage",
-        "go:github.com/MichaelKinsy/PiG/ai#withoutInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#withoutInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#WithoutInitialSystemMessage"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -72320,22 +72377,24 @@
     {
       "id": "pkg:ai/compat#DEFAULT_MAX_AGENT_RETRY_DELAY_MS",
       "upstreamShapeHash": "sha256:b2593fc41f23f56f0c76a7cd3126f7b6bb1de54bb71ff817406c1234acab396d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#DefaultMaxAgentRetryDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#DefaultMaxAgentRetryDelayMs",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#DefaultMaxAgentRetryDelayMs"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -92957,22 +93016,24 @@
     {
       "id": "pkg:ai/compat#RetryPolicy",
       "upstreamShapeHash": "sha256:41dd149d6e3e14dd97dd3a92e28dcf43fd5118bfab81d4de3ec5136b5199b149",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy"
+        "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -94655,22 +94716,24 @@
     {
       "id": "pkg:ai/compat#StringEnum",
       "upstreamShapeHash": "sha256:3ce6981b851898e3a0c88ccc0c97064ab8f5f9c7e22633b22870dd4ebd16d81f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#StringEnum"
+        "go:github.com/MichaelKinsy/PiG/ai#StringEnum",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#StringEnum"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -96185,22 +96248,24 @@
     {
       "id": "pkg:ai/compat#TranscriptTools",
       "upstreamShapeHash": "sha256:cd84208607f88934a3c95e8e2d9a9e01d5c7e5a563b0e2e77e3b4557068c945d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#TranscriptTools"
+        "go:github.com/MichaelKinsy/PiG/ai#TranscriptTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -97027,7 +97092,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -97038,7 +97103,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CalculateCost",
-        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost"
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CalculateCost"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -97083,22 +97149,24 @@
     {
       "id": "pkg:ai/compat#clampThinkingLevel",
       "upstreamShapeHash": "sha256:668da1a0221482c4a319d42c30a34ff70256012cc445fc15442cd671d3f95e9b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ClampThinkingLevel"
+        "go:github.com/MichaelKinsy/PiG/ai#ClampThinkingLevel",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ClampThinkingLevel"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -97197,22 +97265,24 @@
     {
       "id": "pkg:ai/compat#collapseSystemMessages",
       "upstreamShapeHash": "sha256:d5e2ba9f17bba923dc124497db0596641840be7741b2310fc40a9fb3aacbb00a",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#CollapseSystemMessages"
+        "go:github.com/MichaelKinsy/PiG/ai#CollapseSystemMessages",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CollapseSystemMessages"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -97386,7 +97456,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -97397,6 +97467,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ContentText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ContentText",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#contentText"
       ],
       "missingClosure": [
@@ -97613,22 +97684,24 @@
     {
       "id": "pkg:ai/compat#createInitialSystemMessage",
       "upstreamShapeHash": "sha256:f57828fd707049872d95573d2790b798dd2831ee976cee8cf836ed98653e1a1e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#CreateInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#CreateInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateInitialSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -97902,22 +97975,24 @@
     {
       "id": "pkg:ai/compat#envApiKeyAuth",
       "upstreamShapeHash": "sha256:0f27000e216071917f96e99889a5c01275b96829cc374dce817ed324b1c45a0f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#EnvAPIKeyAuth"
+        "go:github.com/MichaelKinsy/PiG/ai#EnvAPIKeyAuth",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#EnvAPIKeyAuth"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -98677,22 +98752,24 @@
     {
       "id": "pkg:ai/compat#getCurrentSystemMessage",
       "upstreamShapeHash": "sha256:a72c429eee708f4367abcfd6cde0c65add7a50ae0ba47efc1b1f54babc3dd45f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -98734,22 +98811,24 @@
     {
       "id": "pkg:ai/compat#getCurrentSystemPrompt",
       "upstreamShapeHash": "sha256:f9bf6f52c087215b4f1a9db0aca257e28a0d2a9a690c3d3f40d880305d0e078c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemPrompt"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemPrompt",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentSystemPrompt"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -98791,22 +98870,24 @@
     {
       "id": "pkg:ai/compat#getCurrentTools",
       "upstreamShapeHash": "sha256:186d57f0916729ed9821fcc9b2c60a09fc677e1dfd79354bc7c1bc3636df8ac7",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentTools"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -98848,22 +98929,24 @@
     {
       "id": "pkg:ai/compat#getDeclaredTools",
       "upstreamShapeHash": "sha256:186d57f0916729ed9821fcc9b2c60a09fc677e1dfd79354bc7c1bc3636df8ac7",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetDeclaredTools"
+        "go:github.com/MichaelKinsy/PiG/ai#GetDeclaredTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetDeclaredTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -99218,22 +99301,24 @@
     {
       "id": "pkg:ai/compat#getInitialSystemMessage",
       "upstreamShapeHash": "sha256:a72c429eee708f4367abcfd6cde0c65add7a50ae0ba47efc1b1f54babc3dd45f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#GetInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetInitialSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -99339,22 +99424,24 @@
     {
       "id": "pkg:ai/compat#getModelType",
       "upstreamShapeHash": "sha256:b8a72914e2957e151dc974c1908c3df3544541ae8813166c607e9f6c9bd6a1da",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#GetModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -99580,22 +99667,24 @@
     {
       "id": "pkg:ai/compat#getSupportedThinkingLevels",
       "upstreamShapeHash": "sha256:227c9f20151be85b527471ff5592475cae09f71c0441a9022518370967d7067f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetSupportedThinkingLevels"
+        "go:github.com/MichaelKinsy/PiG/ai#GetSupportedThinkingLevels",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetSupportedThinkingLevels"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -99637,22 +99726,24 @@
     {
       "id": "pkg:ai/compat#getSystemMessageText",
       "upstreamShapeHash": "sha256:764d82504570b986cbf839aa737d966c0166a748d95d6dcc3e91111d2e606b75",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetSystemMessageText"
+        "go:github.com/MichaelKinsy/PiG/ai#GetSystemMessageText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetSystemMessageText"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -99865,22 +99956,24 @@
     {
       "id": "pkg:ai/compat#hasApi",
       "upstreamShapeHash": "sha256:a4527eebfb0a187c747f37d9c48e97786ca1322c3b36a5efb4f2dbae82ae4989",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#HasApi"
+        "go:github.com/MichaelKinsy/PiG/ai#HasApi",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#HasApi"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -99922,22 +100015,25 @@
     {
       "id": "pkg:ai/compat#hasNonAdditiveToolChanges",
       "upstreamShapeHash": "sha256:c9e75378324834d5edcefd01edc9140c095aef79de1a88a17e571be2073d74d9",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges"
+        "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#HasNonAdditiveToolChanges",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#hasNonAdditiveToolChanges"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -100039,7 +100135,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -100050,6 +100146,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsContextOverflow",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsContextOverflow",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow"
       ],
       "missingClosure": [
@@ -100095,22 +100192,24 @@
     {
       "id": "pkg:ai/compat#isModelType",
       "upstreamShapeHash": "sha256:17199dda31b324fa66b945767b864f278105b9dc60f1989ad9acfd62956180b2",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#IsModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#IsModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -100155,7 +100254,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -100166,6 +100265,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsRecoverableLength",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsRecoverableLength",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsRecoverableLength"
       ],
       "missingClosure": [
@@ -100211,22 +100311,24 @@
     {
       "id": "pkg:ai/compat#isRetryableAssistantError",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#IsRetryableAssistantError"
+        "go:github.com/MichaelKinsy/PiG/ai#IsRetryableAssistantError",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsRetryableAssistantError"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -100503,7 +100605,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -100515,6 +100617,7 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ModelsAreEqual",
         "go:github.com/MichaelKinsy/PiG/coding/cli#modelsAreEqual",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelsAreEqual",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelsAreEqual"
       ],
       "missingClosure": [
@@ -100560,22 +100663,24 @@
     {
       "id": "pkg:ai/compat#normalizeContext",
       "upstreamShapeHash": "sha256:390ad482e7ffbf9881304fade802825bd250610afd7b6ffdf9c3b4ad8e2b201e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#NormalizeContext"
+        "go:github.com/MichaelKinsy/PiG/ai#NormalizeContext",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#NormalizeContext"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -101362,22 +101467,24 @@
     {
       "id": "pkg:ai/compat#renderSystemMessageUpdate",
       "upstreamShapeHash": "sha256:6c06c40f0081735efa34468e746d9b6dc24db0425122f73075a6baf01653f55f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RenderSystemMessageUpdate"
+        "go:github.com/MichaelKinsy/PiG/ai#RenderSystemMessageUpdate",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RenderSystemMessageUpdate"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -101533,22 +101640,24 @@
     {
       "id": "pkg:ai/compat#resolveTranscript",
       "upstreamShapeHash": "sha256:f73e78e73a932546cba34a8d39c35fdfb83642a7d160fe1b8829d32a5105daf1",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscript"
+        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscript",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResolveTranscript"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -101590,22 +101699,24 @@
     {
       "id": "pkg:ai/compat#resolveTranscriptTools",
       "upstreamShapeHash": "sha256:2ea16412b22a8a360eb39f96e29b8a8dc2fbb4ca2bd4314467d9534914f2fc99",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscriptTools"
+        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscriptTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResolveTranscriptTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -101704,22 +101815,24 @@
     {
       "id": "pkg:ai/compat#retryDelayMs",
       "upstreamShapeHash": "sha256:98ab27057dec2b29a461996be63c45bcb869955cfd53f91b750134b41ba1bcfa",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RetryDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#RetryDelayMs",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryDelayMs"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -103163,7 +103276,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -103174,7 +103287,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#WithoutInitialSystemMessage",
-        "go:github.com/MichaelKinsy/PiG/ai#withoutInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#withoutInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#WithoutInitialSystemMessage"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -108261,7 +108375,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -108272,7 +108386,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#CalculateCost",
-        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost"
+        "go:github.com/MichaelKinsy/PiG/ai#assistantStreamBuilder.calculateCost",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CalculateCost"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -108317,22 +108432,24 @@
     {
       "id": "pkg:ai/models#clampThinkingLevel",
       "upstreamShapeHash": "sha256:23e4fc829f6137a21784973d5e6d72a183ddf726df25ebc5fe9f65bd1eddde0a",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ClampThinkingLevel"
+        "go:github.com/MichaelKinsy/PiG/ai#ClampThinkingLevel",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ClampThinkingLevel"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -108492,22 +108609,24 @@
     {
       "id": "pkg:ai/models#getModelType",
       "upstreamShapeHash": "sha256:b8a72914e2957e151dc974c1908c3df3544541ae8813166c607e9f6c9bd6a1da",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#GetModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -108549,22 +108668,24 @@
     {
       "id": "pkg:ai/models#getSupportedThinkingLevels",
       "upstreamShapeHash": "sha256:ec997618326a274fe3508a7134a35ab0596ebd043d8a06f05e786cb3fba4a730",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetSupportedThinkingLevels"
+        "go:github.com/MichaelKinsy/PiG/ai#GetSupportedThinkingLevels",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetSupportedThinkingLevels"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -108606,22 +108727,24 @@
     {
       "id": "pkg:ai/models#hasApi",
       "upstreamShapeHash": "sha256:a4527eebfb0a187c747f37d9c48e97786ca1322c3b36a5efb4f2dbae82ae4989",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#HasApi"
+        "go:github.com/MichaelKinsy/PiG/ai#HasApi",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#HasApi"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -108663,22 +108786,24 @@
     {
       "id": "pkg:ai/models#isModelType",
       "upstreamShapeHash": "sha256:17199dda31b324fa66b945767b864f278105b9dc60f1989ad9acfd62956180b2",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#IsModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#IsModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -108723,7 +108848,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -108735,6 +108860,7 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ModelsAreEqual",
         "go:github.com/MichaelKinsy/PiG/coding/cli#modelsAreEqual",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelsAreEqual",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelsAreEqual"
       ],
       "missingClosure": [
@@ -126375,22 +126501,24 @@
     {
       "id": "pkg:ai/utils/model-operations#getModelType",
       "upstreamShapeHash": "sha256:4c16d96cecc8d816283903d97876b2e9ee1ae1e2b6b72655b1c55eb02fd6d05a",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#GetModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -126492,22 +126620,24 @@
     {
       "id": "pkg:ai/utils/model-operations#isModelType",
       "upstreamShapeHash": "sha256:e14a58cfcddf4f1c64070a659628708aab9d5490214fb22a5bad690d806ec3a4",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#IsModelType"
+        "go:github.com/MichaelKinsy/PiG/ai#IsModelType",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsModelType"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -127035,7 +127165,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -127046,6 +127176,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsContextOverflow",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsContextOverflow",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsContextOverflow"
       ],
       "missingClosure": [
@@ -127094,7 +127225,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -127105,6 +127236,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#IsRecoverableLength",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsRecoverableLength",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#IsRecoverableLength"
       ],
       "missingClosure": [
@@ -127319,22 +127451,24 @@
     {
       "id": "pkg:ai/utils/retry#DEFAULT_MAX_AGENT_RETRY_DELAY_MS",
       "upstreamShapeHash": "sha256:b2593fc41f23f56f0c76a7cd3126f7b6bb1de54bb71ff817406c1234acab396d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#DefaultMaxAgentRetryDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#DefaultMaxAgentRetryDelayMs",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#DefaultMaxAgentRetryDelayMs"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -127461,22 +127595,24 @@
     {
       "id": "pkg:ai/utils/retry#RetryPolicy",
       "upstreamShapeHash": "sha256:41dd149d6e3e14dd97dd3a92e28dcf43fd5118bfab81d4de3ec5136b5199b149",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy"
+        "go:github.com/MichaelKinsy/PiG/ai#RetryPolicy",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryPolicy"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -127602,22 +127738,24 @@
     {
       "id": "pkg:ai/utils/retry#isRetryableAssistantError",
       "upstreamShapeHash": "sha256:4fd95494c8a542e45f870d725311639518d70767b79822b7a2d517b210b5422c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#IsRetryableAssistantError"
+        "go:github.com/MichaelKinsy/PiG/ai#IsRetryableAssistantError",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#IsRetryableAssistantError"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -127716,22 +127854,24 @@
     {
       "id": "pkg:ai/utils/retry#retryDelayMs",
       "upstreamShapeHash": "sha256:98ab27057dec2b29a461996be63c45bcb869955cfd53f91b750134b41ba1bcfa",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RetryDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#RetryDelayMs",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RetryDelayMs"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -127893,7 +128033,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -127904,6 +128044,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#ContentText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ContentText",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#contentText"
       ],
       "missingClosure": [
@@ -127949,22 +128090,24 @@
     {
       "id": "pkg:ai/utils/text#getSystemMessageText",
       "upstreamShapeHash": "sha256:e50e3367728e1f3b083c86ff9bcb1f27360b3aa73a70f55eb8db02c6a4de5c98",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetSystemMessageText"
+        "go:github.com/MichaelKinsy/PiG/ai#GetSystemMessageText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetSystemMessageText"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128006,22 +128149,24 @@
     {
       "id": "pkg:ai/utils/text#renderSystemMessageUpdate",
       "upstreamShapeHash": "sha256:e50e3367728e1f3b083c86ff9bcb1f27360b3aa73a70f55eb8db02c6a4de5c98",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#RenderSystemMessageUpdate"
+        "go:github.com/MichaelKinsy/PiG/ai#RenderSystemMessageUpdate",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#RenderSystemMessageUpdate"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128206,22 +128351,24 @@
     {
       "id": "pkg:ai/utils/transcript#TranscriptTools",
       "upstreamShapeHash": "sha256:cd84208607f88934a3c95e8e2d9a9e01d5c7e5a563b0e2e77e3b4557068c945d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#TranscriptTools"
+        "go:github.com/MichaelKinsy/PiG/ai#TranscriptTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#TranscriptTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128291,22 +128438,24 @@
     {
       "id": "pkg:ai/utils/transcript#collapseSystemMessages",
       "upstreamShapeHash": "sha256:d5e2ba9f17bba923dc124497db0596641840be7741b2310fc40a9fb3aacbb00a",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#CollapseSystemMessages"
+        "go:github.com/MichaelKinsy/PiG/ai#CollapseSystemMessages",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CollapseSystemMessages"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128348,22 +128497,24 @@
     {
       "id": "pkg:ai/utils/transcript#createInitialSystemMessage",
       "upstreamShapeHash": "sha256:f57828fd707049872d95573d2790b798dd2831ee976cee8cf836ed98653e1a1e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#CreateInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#CreateInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CreateInitialSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128462,22 +128613,24 @@
     {
       "id": "pkg:ai/utils/transcript#getCurrentSystemMessage",
       "upstreamShapeHash": "sha256:a72c429eee708f4367abcfd6cde0c65add7a50ae0ba47efc1b1f54babc3dd45f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128519,22 +128672,24 @@
     {
       "id": "pkg:ai/utils/transcript#getCurrentSystemPrompt",
       "upstreamShapeHash": "sha256:f9bf6f52c087215b4f1a9db0aca257e28a0d2a9a690c3d3f40d880305d0e078c",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemPrompt"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentSystemPrompt",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentSystemPrompt"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128576,22 +128731,24 @@
     {
       "id": "pkg:ai/utils/transcript#getCurrentTools",
       "upstreamShapeHash": "sha256:186d57f0916729ed9821fcc9b2c60a09fc677e1dfd79354bc7c1bc3636df8ac7",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentTools"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCurrentTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetCurrentTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128633,22 +128790,24 @@
     {
       "id": "pkg:ai/utils/transcript#getDeclaredTools",
       "upstreamShapeHash": "sha256:186d57f0916729ed9821fcc9b2c60a09fc677e1dfd79354bc7c1bc3636df8ac7",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetDeclaredTools"
+        "go:github.com/MichaelKinsy/PiG/ai#GetDeclaredTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetDeclaredTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128690,22 +128849,24 @@
     {
       "id": "pkg:ai/utils/transcript#getInitialSystemMessage",
       "upstreamShapeHash": "sha256:a72c429eee708f4367abcfd6cde0c65add7a50ae0ba47efc1b1f54babc3dd45f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#GetInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#GetInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetInitialSystemMessage"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128804,22 +128965,25 @@
     {
       "id": "pkg:ai/utils/transcript#hasNonAdditiveToolChanges",
       "upstreamShapeHash": "sha256:c9e75378324834d5edcefd01edc9140c095aef79de1a88a17e571be2073d74d9",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges"
+        "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#HasNonAdditiveToolChanges",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#hasNonAdditiveToolChanges"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128918,22 +129082,24 @@
     {
       "id": "pkg:ai/utils/transcript#normalizeContext",
       "upstreamShapeHash": "sha256:390ad482e7ffbf9881304fade802825bd250610afd7b6ffdf9c3b4ad8e2b201e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#NormalizeContext"
+        "go:github.com/MichaelKinsy/PiG/ai#NormalizeContext",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#NormalizeContext"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -128975,22 +129141,24 @@
     {
       "id": "pkg:ai/utils/transcript#resolveTranscript",
       "upstreamShapeHash": "sha256:f73e78e73a932546cba34a8d39c35fdfb83642a7d160fe1b8829d32a5105daf1",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscript"
+        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscript",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResolveTranscript"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -129032,22 +129200,24 @@
     {
       "id": "pkg:ai/utils/transcript#resolveTranscriptTools",
       "upstreamShapeHash": "sha256:2ea16412b22a8a360eb39f96e29b8a8dc2fbb4ca2bd4314467d9534914f2fc99",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscriptTools"
+        "go:github.com/MichaelKinsy/PiG/ai#ResolveTranscriptTools",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResolveTranscriptTools"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -129149,7 +129319,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -129160,7 +129330,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai#WithoutInitialSystemMessage",
-        "go:github.com/MichaelKinsy/PiG/ai#withoutInitialSystemMessage"
+        "go:github.com/MichaelKinsy/PiG/ai#withoutInitialSystemMessage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#WithoutInitialSystemMessage"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -129205,22 +129376,24 @@
     {
       "id": "pkg:ai/utils/typebox-helpers#StringEnum",
       "upstreamShapeHash": "sha256:3ce6981b851898e3a0c88ccc0c97064ab8f5f9c7e22633b22870dd4ebd16d81f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/ai#StringEnum"
+        "go:github.com/MichaelKinsy/PiG/ai#StringEnum",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#StringEnum"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -259486,22 +259659,27 @@
     {
       "id": "pkg:coding-agent/.#convertToPng",
       "upstreamShapeHash": "sha256:58b52a49b24ba65871efb90da7f624e9228ecd16607739da67f0724194e1714f",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "5 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ConvertToPng",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.ConvertToPng",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ConvertToPng",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.ConvertToPng",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#ConvertToPng"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -259546,7 +259724,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -259556,6 +259734,10 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CopyToClipboard",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.CopyToClipboard",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CopyToClipboard",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.CopyToClipboard",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CopyToClipboard",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#copyToClipboard"
       ],
@@ -261950,7 +262132,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -261960,6 +262142,10 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#GenerateDiffString",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.GenerateDiffString",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GenerateDiffString",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.GenerateDiffString",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GenerateDiffString",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#generateDiffString"
       ],
@@ -262123,7 +262309,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -262133,6 +262319,10 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#GenerateUnifiedPatch",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.GenerateUnifiedPatch",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GenerateUnifiedPatch",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.GenerateUnifiedPatch",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GenerateUnifiedPatch",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#generateUnifiedPatch"
       ],
@@ -262866,22 +263056,24 @@
     {
       "id": "pkg:coding-agent/.#getShellConfig",
       "upstreamShapeHash": "sha256:aa8c9d4dc4bd378ff8bcd9a432eb78b034b5e1ede755e122c22d10c136a90bcb",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#GetShellConfig",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#GetShellConfig"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -264617,7 +264809,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -264629,6 +264821,7 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.readStoredCredential",
         "go:github.com/MichaelKinsy/PiG/coding#ReadStoredCredential",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReadStoredCredential",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.readStoredCredential"
       ],
       "missingClosure": [
@@ -264734,7 +264927,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -264743,9 +264936,15 @@
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ResizeImage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.ResizeImage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.ResizeImage",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ResizeImage"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "candidate-disambiguation",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -265083,7 +265282,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -265093,6 +265292,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#SessionEntryToContextMessages",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#sessionEntryToContextMessages",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionEntryToContextMessages",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionEntryToContextMessages"

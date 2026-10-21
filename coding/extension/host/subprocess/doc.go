@@ -9,8 +9,8 @@
 //
 // The host starts every extension process with its own environment plus the entries below and runtime-specific ones (harness, Node runtime, Python path).
 // An isolated process gets PIG_EXT_SOCKET, the address above, and PIG_EXT_NAME, the extension's name; a packed cell process gets one
-// PIG_EXT_SOCKET_<NAME> per member instead (runtimecell.SocketEnvName). PIG_EXT_HOST_INFO (set by [Host.SetHostInfo]; absent when the host has none) is a JSON object {"agentDir", "configDirName", "version"}: Pi's
-// getAgentDir(), CONFIG_DIR_NAME and VERSION as the host resolved them, which an SDK returns from before its factory runs because the ready message comes
+// PIG_EXT_SOCKET_<NAME> per member instead (runtimecell.SocketEnvName). PIG_EXT_HOST_INFO (set by [Host.SetHostInfo]; absent when the host has none) is a JSON object {"agentDir", "configDirName", "version", "packageDir", "shell"}: Pi's
+// getAgentDir(), CONFIG_DIR_NAME, VERSION, getPackageDir() and the default getShellConfig() as the host resolved them, which an SDK returns from before its factory runs because the ready message comes
 // later. A Node extension answers getAgentDir() and CONFIG_DIR_NAME from its environment (shims/pig-config.mjs) and VERSION from the bundled Pi package
 // (shims/pi-dist/pi-coding-agent/config.js).
 //

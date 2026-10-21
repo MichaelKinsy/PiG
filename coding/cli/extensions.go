@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/shellconfig"
 	"github.com/MichaelKinsy/PiG/tui"
 
 	"golang.org/x/term"
@@ -140,6 +143,7 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 	installStartupTrace(&trace, host.SetStartupTrace)
 	host.SetMode(string(mode))
 	host.SetHostInfo(extensionHostInfo())
+	subprocess.SetClipboardCopier(codingagent.CopyToClipboard)
 	// Refuse to compile an extension against a staged SDK that does not match
 	// this binary. Without it a stale stage silently reintroduces bugs the
 	// running pig already fixed.
@@ -296,9 +300,31 @@ func flushExtensionHostVirtualModels(host *subprocess.Host, registry *coding.Mod
 	return diagnostics
 }
 
-// extensionHostInfo is Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION as this process resolves them, which every extension process starts with. An
-// unresolvable home directory leaves the agent directory empty and the SDKs report it as unavailable.
+// extensionHostInfo is Pi's getAgentDir(), CONFIG_DIR_NAME, VERSION, getPackageDir() and default getShellConfig() as this process resolves them, which every extension
+// process starts with. An unresolvable home directory leaves the agent directory empty and the SDKs report it as unavailable.
 func extensionHostInfo() subprocess.HostInfo {
 	agentDir, _ := codingagent.ResolveAgentDir()
-	return subprocess.HostInfo{AgentDir: agentDir, ConfigDirName: codingagent.ConfigDirName(), Version: coding.UpstreamPackageVersion}
+	return subprocess.HostInfo{AgentDir: agentDir, ConfigDirName: codingagent.ConfigDirName(), Version: coding.UpstreamPackageVersion, PackageDir: extensionPackageDir(), Shell: sync.OnceValue(extensionShellInfo)}
+}
+
+// extensionPackageDir is Pi's getPackageDir() (config.ts) for a compiled binary: PI_PACKAGE_DIR when set (a leading ~ expanded, as Pi's normalizePath does), else the
+// directory of the running executable. It is empty when neither is known.
+func extensionPackageDir() string {
+	if dir := os.Getenv("PI_PACKAGE_DIR"); dir != "" {
+		return codingagent.ExpandTildePath(dir)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return filepath.Dir(executable)
+}
+
+// extensionShellInfo is Pi's getShellConfig() with no custom shell path, or the error it throws.
+func extensionShellInfo() *subprocess.ShellInfo {
+	config, err := shellconfig.Default()
+	if err != nil {
+		return &subprocess.ShellInfo{Error: err.Error()}
+	}
+	return &subprocess.ShellInfo{Shell: config.Path, Args: config.Args, CommandTransport: config.CommandTransport}
 }

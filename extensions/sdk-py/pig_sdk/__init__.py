@@ -36,7 +36,7 @@ from . import editor_component as _editor_component
 from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
 from .session_manager import SessionManager, SetupSessionManager
-from .host_info import HostInfoUnavailable as HostInfoUnavailable, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_version as get_version
+from .host_info import HostInfoUnavailable as HostInfoUnavailable, ShellConfig as ShellConfig, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_package_dir as get_package_dir, get_shell_config as get_shell_config, get_version as get_version
 from .file_mutation_queue import with_file_mutation_queue as with_file_mutation_queue
 from .language import get_language_from_path as get_language_from_path
 from .compaction_cutpoint import CutPointResult as CutPointResult, find_cut_point as find_cut_point, find_turn_start_index as find_turn_start_index
@@ -51,7 +51,40 @@ from .branch_summary import (
 from .image_dimension_note import ResizedImage as ResizedImage, format_dimension_note as format_dimension_note
 from .llm_convert import convert_to_llm as convert_to_llm
 from .serialize_conversation import serialize_conversation as serialize_conversation
-from .host_helpers import ParsedFrontmatter as ParsedFrontmatter, parse_date as parse_date, parse_frontmatter as parse_frontmatter, set_host_helpers as set_host_helpers, strip_frontmatter as strip_frontmatter
+from .session_entry_messages import session_entry_to_context_messages as session_entry_to_context_messages
+from .stored_credential import read_stored_credential as read_stored_credential
+from .pi_ai_helpers import (
+    DEFAULT_MAX_AGENT_RETRY_DELAY_MS as DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
+    calculate_cost as calculate_cost,
+    clamp_thinking_level as clamp_thinking_level,
+    collapse_system_messages as collapse_system_messages,
+    content_text as content_text,
+    create_initial_system_message as create_initial_system_message,
+    env_api_key_auth as env_api_key_auth,
+    get_model_type as get_model_type,
+    has_api as has_api,
+    is_model_type as is_model_type,
+    models_are_equal as models_are_equal,
+    get_current_system_message as get_current_system_message,
+    get_current_system_prompt as get_current_system_prompt,
+    get_current_tools as get_current_tools,
+    get_declared_tools as get_declared_tools,
+    get_initial_system_message as get_initial_system_message,
+    get_supported_thinking_levels as get_supported_thinking_levels,
+    get_system_message_text as get_system_message_text,
+    has_non_additive_tool_changes as has_non_additive_tool_changes,
+    is_context_overflow as is_context_overflow,
+    is_recoverable_length as is_recoverable_length,
+    is_retryable_assistant_error as is_retryable_assistant_error,
+    normalize_context as normalize_context,
+    render_system_message_update as render_system_message_update,
+    resolve_transcript as resolve_transcript,
+    resolve_transcript_tools as resolve_transcript_tools,
+    retry_delay_ms as retry_delay_ms,
+    string_enum as string_enum,
+    without_initial_system_message as without_initial_system_message,
+)
+from .host_helpers import ConvertedImage as ConvertedImage, DiffString as DiffString, ImageResizeOptions as ImageResizeOptions, ParsedFrontmatter as ParsedFrontmatter, convert_to_png as convert_to_png, copy_to_clipboard as copy_to_clipboard, generate_diff_string as generate_diff_string, generate_unified_patch as generate_unified_patch, resize_image as resize_image, parse_date as parse_date, parse_frontmatter as parse_frontmatter, set_host_helpers as set_host_helpers, strip_frontmatter as strip_frontmatter
 from .compaction_usage import DEFAULT_COMPACTION_SETTINGS as DEFAULT_COMPACTION_SETTINGS, CompactionSettings as CompactionSettings, calculate_context_tokens as calculate_context_tokens, get_last_assistant_usage as get_last_assistant_usage, should_compact as should_compact
 from .session_skill_helpers import CURRENT_SESSION_VERSION as CURRENT_SESSION_VERSION, VIRTUAL_MODEL_STATE_ENTRY as VIRTUAL_MODEL_STATE_ENTRY, ParsedSkillBlock as ParsedSkillBlock, format_skills_for_prompt as format_skills_for_prompt, get_latest_compaction_entry as get_latest_compaction_entry, parse_skill_block as parse_skill_block
 from .truncate import DEFAULT_MAX_BYTES as DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES as DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH as GREP_MAX_LINE_LENGTH, TruncationResult as TruncationResult, format_size as format_size, truncate_head as truncate_head, truncate_line as truncate_line, truncate_tail as truncate_tail
@@ -1387,6 +1420,22 @@ class ModelEventStream:
         self._result: dict[str, Any] | None = None
         self._started = threading.Event()
         self._start_error = None
+        # A stream made by create_assistant_message_event_stream times its response as pi-ai's AssistantMessageEventStream does (see _time_message); one the SDK makes for a
+        # host operation does not, because the host already timed that response.
+        self._timed = False
+        self._started_at = 0
+        self._started_monotonic = 0.0
+
+    def _time_message(self, message: Any) -> None:
+        """AssistantMessageEventStream's #time (packages/ai/src/utils/event-stream.ts): the final message gets durationMs, the milliseconds since the stream was created on a
+        monotonic clock, unless the message already has one or its timestamp predates the stream (a response that started elsewhere, such as a deferred result fetched later,
+        stays untimed). The caller holds the condition."""
+        if not self._timed or self._terminal or not isinstance(message, dict) or "durationMs" in message:
+            return
+        timestamp = message.get("timestamp")
+        if isinstance(timestamp, (int, float)) and not isinstance(timestamp, bool) and timestamp < self._started_at:
+            return
+        message["durationMs"] = max(0, math.floor((time.monotonic() - self._started_monotonic) * 1000 + 0.5))
 
     def mark_started(self, error=None):
         with self._condition:
@@ -1400,6 +1449,7 @@ class ModelEventStream:
                 return
             self._events.append(event)
             if event.get("type") in {"done", "error"}:
+                self._time_message(event.get("message") if event.get("type") == "done" else event.get("error"))
                 self._terminal = True
                 self._result = event.get("message") if event.get("type") == "done" else event.get("error")
             self._condition.notify_all()
@@ -1408,6 +1458,7 @@ class ModelEventStream:
         with self._condition:
             if self._terminal:
                 return
+            self._time_message(result)
             self._terminal = True
             self._result = result
             self._condition.notify_all()
@@ -1449,6 +1500,16 @@ class ModelEventStream:
             while not self._terminal:
                 self._condition.wait()
             return self._result
+
+
+def create_assistant_message_event_stream() -> ModelEventStream:
+    """pi-ai's createAssistantMessageEventStream: a provider-owned event stream of one assistant response. It times the response as Pi's does: the final message (the done event's
+    message, the error event's error, or the result passed to ``end``) gets durationMs, measured from this call, unless it already has one or its timestamp predates the stream."""
+    stream = ModelEventStream()
+    stream._timed = True
+    stream._started_at = int(time.time() * 1000)
+    stream._started_monotonic = time.monotonic()
+    return stream
 
 
 def _model_stream_error_event(error: Exception, model: dict[str, Any]) -> dict[str, Any]:
@@ -2661,6 +2722,34 @@ class Context:
         from . import host_helpers
 
         return host_helpers._decode_date(self._call("date.parse", {"text": text}).get("result") or {})
+
+    def generate_diff_string(self, old_content: str, new_content: str, context_lines: "int | None" = None) -> "DiffString":
+        """Pi's generateDiffString over this handler's own connection; see :func:`pig_sdk.generate_diff_string`."""
+        from . import host_helpers
+
+        return host_helpers._decode_diff_string(self._call("diff.string", host_helpers._diff_args(old_content, new_content, context_lines)).get("result") or {})
+
+    def generate_unified_patch(self, path: str, old_content: str, new_content: str, context_lines: "int | None" = None) -> str:
+        """Pi's generateUnifiedPatch over this handler's own connection; see :func:`pig_sdk.generate_unified_patch`."""
+        from . import host_helpers
+
+        return (self._call("diff.patch", host_helpers._patch_args(path, old_content, new_content, context_lines)).get("result") or {}).get("patch", "")
+
+    def copy_to_clipboard(self, text: str) -> None:
+        """Pi's copyToClipboard over this handler's own connection; see :func:`pig_sdk.copy_to_clipboard`."""
+        self._call("clipboard.copy", {"text": text})
+
+    def convert_to_png(self, base64_data: str, mime_type: str) -> "ConvertedImage | None":
+        """Pi's convertToPng over this handler's own connection; see :func:`pig_sdk.convert_to_png`."""
+        from . import host_helpers
+
+        return host_helpers._decode_converted(self._call("image.convertToPng", {"data": base64_data, "mimeType": mime_type}).get("result") or {})
+
+    def resize_image(self, input_bytes: bytes, mime_type: str, options: "ImageResizeOptions | None" = None) -> "ResizedImage | None":
+        """Pi's resizeImage over this handler's own connection; see :func:`pig_sdk.resize_image`."""
+        from . import host_helpers
+
+        return host_helpers._decode_resized(self._call("image.resize", host_helpers._resize_args(input_bytes, mime_type, options)).get("result") or {})
 
     def strip_frontmatter(self, content: str) -> str:
         """Pi's stripFrontmatter over this handler's own connection."""
