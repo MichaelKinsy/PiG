@@ -10,10 +10,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 795 | 784 | 785 |
-| `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
-| `pi-ai` | 87 | 190 | 87 | 57 | 57 | 57 |
-| `pi-ai/compat` | 146 | 197 | 146 | 113 | 113 | 113 |
+| `pi-coding-agent` | 920 | 305 | 910 | 804 | 793 | 794 |
+| `pi-tui` | 364 | 85 | 363 | 264 | 279 | 279 |
+| `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
+| `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
 | `pi-agent-core` | 43 | 34 | 43 | 43 | 43 | 43 |
 
 ## Lanes that own gaps
@@ -22,15 +22,14 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 |---|---|---|---|---|
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 432 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
 | SdkBuiltinToolDelegate | SdkBuiltinToolDelegate lane (built-in tool delegation, E7) | 0.5.2 | 60 | TestConformance_BuiltinToolDelegationAcrossSDKs |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1092 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
-| SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
-| SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 150 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
-| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 1023 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
-| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1065 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1128 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
+| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 1041 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
+| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 1068 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
 
-61 exports imported by 5 or more scanned packages have a gap.
+88 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -43,6 +42,8 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: SessionManager` | 37 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getMarkdownTheme` | 30 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: Input` | 30 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-ai: StringEnum` | 28 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: StringEnum` | 28 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createAgentSession` | 20 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: Editor` | 20 | Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: buildSessionContext` | 19 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
@@ -50,7 +51,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: ModelRuntime` | 18 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: getSettingsListTheme` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: isKeyRelease` | 16 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-ai/compat: clampThinkingLevel` | 16 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: createAssistantMessageEventStream` | 16 | Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai: createAssistantMessageEventStream` | 14 | Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: Type` | 14 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createWriteToolDefinition` | 13 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: keyHint` | 13 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
@@ -64,18 +68,29 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: createReadToolDefinition` | 12 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: highlightCode` | 12 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: stripTerminalSequences` | 12 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-ai: clampThinkingLevel` | 12 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: getSupportedThinkingLevels` | 12 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createFindToolDefinition` | 10 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createLsToolDefinition` | 10 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
+| `pi-coding-agent: readStoredCredential` | 10 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai: getSupportedThinkingLevels` | 10 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createAgentSessionServices` | 9 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
+| `pi-coding-agent: copyToClipboard` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: createAgentSessionFromServices` | 8 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-coding-agent: createCodemodeExtension` | 8 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: ScrollView` | 8 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: sliceByColumn` | 8 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-ai: calculateCost` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai: getCurrentTools` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: calculateCost` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: getCurrentTools` | 8 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: UserMessageComponent` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: createToolSearchExtension` | 7 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-coding-agent: getSelectListTheme` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: getCapabilities` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: parseKey` | 7 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-ai: contentText` | 7 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: contentText` | 7 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: AssistantMessageComponent` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: BorderedLoader` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: ProjectTrustStore` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
@@ -83,47 +98,33 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-coding-agent: createExtensionRuntime` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: createLocalBashOperations` | 6 | Go SdkBuiltinToolDelegate; Rust SdkBuiltinToolDelegate; Python SdkBuiltinToolDelegate |
 | `pi-coding-agent: createMcpExtension` | 6 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
+| `pi-coding-agent: generateUnifiedPatch` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: initTheme` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-coding-agent: resizeImage` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-tui: MouseRegion` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: TUI_KEYBINDINGS` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: TuiAltScreen` | 6 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: createProvider` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
+| `pi-ai: getCurrentSystemMessage` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai: normalizeContext` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: createProvider` | 6 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
+| `pi-ai/compat: getCurrentSystemMessage` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: isRetryableAssistantError` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: normalizeContext` | 6 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-coding-agent: ExtensionRunner` | 5 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: ModelRegistry` | 5 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: ToolExecutionComponent` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-coding-agent: generateDiffString` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-tui: KeybindingsManager` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: decodeKittyPrintable` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-tui: isKeyRepeat` | 5 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
+| `pi-ai: getCurrentSystemPrompt` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai: isRetryableAssistantError` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
+| `pi-ai/compat: getCurrentSystemPrompt` | 5 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 
 ## Realized cells no fixture reaches
 
-| Export | Runtimes | Lane | Closing row |
-|---|---|---|---|
-| `pi-coding-agent: CustomEditor.addToHistory` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls EditorComponent.AddToHistory |
-| `pi-coding-agent: CustomEditor.getCursor` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetCursor |
-| `pi-coding-agent: CustomEditor.getExpandedText` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText |
-| `pi-coding-agent: CustomEditor.insertTextAtCursor` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls EditorComponent.InsertTextAtCursor |
-| `pi-coding-agent: CustomEditor.isShowingAutocomplete` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete |
-| `pi-coding-agent: CustomEditor.setAutocompleteMaxVisible` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible |
-| `pi-coding-agent: CustomEditor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
-| `pi-coding-agent: DEFAULT_MAX_BYTES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxBytes |
-| `pi-coding-agent: DEFAULT_MAX_LINES` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls DefaultMaxLines |
-| `pi-coding-agent: SessionManager.buildSessionContext` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.BuildSessionContext |
-| `pi-coding-agent: SessionManager.getChildren` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.GetChildren |
-| `pi-coding-agent: SessionManager.isPersisted` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.IsPersisted |
-| `pi-coding-agent: SessionManager.usesDefaultSessionDir` | go, python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls SessionManager.UsesDefaultSessionDir |
-| `pi-coding-agent: serializeConversation` | rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls serialize_conversation |
-| `pi-coding-agent: stripFrontmatter` | python | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls strip_frontmatter |
-| `pi-tui: Editor.addToHistory` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.AddToHistory |
-| `pi-tui: Editor.getCursor` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetCursor |
-| `pi-tui: Editor.getExpandedText` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.GetExpandedText |
-| `pi-tui: Editor.insertTextAtCursor` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.InsertTextAtCursor |
-| `pi-tui: Editor.isShowingAutocomplete` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.IsShowingAutocomplete |
-| `pi-tui: Editor.setAutocompleteMaxVisible` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetAutocompleteMaxVisible |
-| `pi-tui: Editor.setPaddingX` | go | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls Editor.SetPaddingX |
-| `pi-tui: parseColor` | python | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls parse_color |
-| `pi-tui: styleTextWithAnsi` | python, rust | SdkLedgerHygiene | a conformance fixture under test/extension-conformance (or a Pi-vector test) that calls style_text_with_ansi |
+None.
 
 ## pi-coding-agent
 
@@ -946,8 +947,8 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `collectEntriesForBranchSummary` | 0 | served | native:CollectEntriesForBranchSummary | native:collect_entries_for_branch_summary | native:collect_entries_for_branch_summary |
 | `compact` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `convertToLlm` | 17 | served | native:ConvertToLlm | native:convert_to_llm | native:convert_to_llm |
-| `convertToPng` | 2 | served | native:ConvertToPng | native:convert_to_png | native:convert_to_png |
-| `copyToClipboard` | 8 | served | native:CopyToClipboard | native:copy_to_clipboard | native:copy_to_clipboard |
+| `convertToPng` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `copyToClipboard` | 8 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createAgentSession` | 20 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `createAgentSessionFromServices` | 8 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `createAgentSessionRuntime` | 6 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -989,10 +990,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `formatSize` | 16 | served | native:FormatSize | native:format_size | native:format_size |
 | `formatSkillsForPrompt` | 5 | served | native:FormatSkillsForPrompt | native:format_skills_for_prompt | native:format_skills_for_prompt |
 | `generateBranchSummary` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `generateDiffString` | 5 | served | native:GenerateDiffString | native:generate_diff_string | native:generate_diff_string |
+| `generateDiffString` | 5 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `generateSummary` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `generateSummaryWithUsage` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `generateUnifiedPatch` | 6 | served | native:GenerateUnifiedPatch | native:generate_unified_patch | native:generate_unified_patch |
+| `generateUnifiedPatch` | 6 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getAgentDir` | 85 | served | native:AgentDir | native:get_agent_dir | native:get_agent_dir |
 | `getDocsPath` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getExamplesPath` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
@@ -1000,12 +1001,12 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `getLastAssistantUsage` | 1 | served | native:GetLastAssistantUsage | native:get_last_assistant_usage | native:get_last_assistant_usage |
 | `getLatestCompactionEntry` | 0 | served | native:GetLatestCompactionEntry | native:get_latest_compaction_entry | native:get_latest_compaction_entry |
 | `getMarkdownTheme` | 30 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `getPackageDir` | 4 | served | native:PackageDir | native:get_package_dir | native:get_package_dir |
+| `getPackageDir` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getPowerShellConfig` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getReadmePath` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getSelectListTheme` | 7 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `getSettingsListTheme` | 16 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `getShellConfig` | 4 | served | native:GetShellConfig | native:get_shell_config | native:get_shell_config |
+| `getShellConfig` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `hasTrustRequiringProjectResources` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `highlightCode` | 12 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `initTheme` | 6 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
@@ -1031,15 +1032,15 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `parseSkillBlock` | 1 | served | native:ParseSkillBlock | native:parse_skill_block | native:parse_skill_block |
 | `prepareBranchEntries` | 1 | served | native:PrepareBranchEntries | native:prepare_branch_entries | native:prepare_branch_entries |
 | `rawKeyHint` | 2 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `readStoredCredential` | 10 | served | native:ReadStoredCredential | native:read_stored_credential | native:read_stored_credential |
+| `readStoredCredential` | 10 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `renderDiff` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `resizeImage` | 6 | served | native:ResizeImage | native:resize_image | native:resize_image |
+| `resizeImage` | 6 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `resolveCliModel` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `resolveModelScopeWithDiagnostics` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `runPrintMode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `runRpcMode` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `serializeConversation` | 3 | served | native:SerializeConversation | native:serialize_conversation | native:serialize_conversation |
-| `sessionEntryToContextMessages` | 4 | served | native:SessionEntryToContextMessages | native:session_entry_to_context_messages | native:session_entry_to_context_messages |
+| `sessionEntryToContextMessages` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `shouldCompact` | 0 | served | native:ShouldCompact | native:should_compact | native:should_compact |
 | `stripFrontmatter` | 3 | served | native:StripFrontmatter | native:strip_frontmatter | native:strip_frontmatter |
 | `truncateHead` | 16 | served | native:TruncateHead | native:truncate_head | native:truncate_head |
@@ -1397,7 +1398,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `okhslColor` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `oklabToOkhslLightness` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `oklchColor` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `parseColor` | 2 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | native:parse_color |
+| `parseColor` | 2 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `parseKey` | 7 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `parseTerminalColorSchemeReport` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `renderFakeCursor` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1414,7 +1415,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `sliceByColumn` | 8 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `stripTerminalSequences` | 12 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `styleText` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `styleTextWithAnsi` | 1 | served | gap:SdkTuiHelpers | native:style_text_with_ansi | native:style_text_with_ansi |
+| `styleTextWithAnsi` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `truncateToWidth` | 91 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `visibleWidth` | 75 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
 | `wrapTextWithAnsi` | 45 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
@@ -1428,7 +1429,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS |
+| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `EventStream.end` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1449,23 +1450,23 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum |
+| `StringEnum` | 28 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `Type` | 14 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `calculateCost` | 8 | served | native:CalculateCost | native:calculate_cost | native:calculate_cost |
-| `clampThinkingLevel` | 12 | served | native:ClampThinkingLevel | native:clamp_thinking_level | native:clamp_thinking_level |
+| `calculateCost` | 8 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `clampThinkingLevel` | 12 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `cleanupSessionResources` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `collapseSystemMessages` | 2 | served | native:CollapseSystemMessages | native:collapse_system_messages | native:collapse_system_messages |
-| `contentText` | 7 | served | native:ContentText | native:content_text | native:content_text |
+| `collapseSystemMessages` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `contentText` | 7 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createAssistantMessageEventStream` | 14 | served | native:CreateAssistantMessageEventStream | native:create_assistant_message_event_stream | native:create_assistant_message_event_stream |
+| `createAssistantMessageEventStream` | 14 | served | native:CreateAssistantMessageEventStream | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createFauxCore` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createInitialSystemMessage` | 0 | served | native:CreateInitialSystemMessage | native:create_initial_system_message | native:create_initial_system_message |
+| `createInitialSystemMessage` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createModels` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `createProvider` | 6 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth |
+| `envApiKeyAuth` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxAssistantMessage` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1473,43 +1474,43 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `fauxThinking` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxToolCall` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message |
-| `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt |
-| `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools |
-| `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools |
-| `getInitialSystemMessage` | 1 | served | native:GetInitialSystemMessage | native:get_initial_system_message | native:get_initial_system_message |
-| `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type |
+| `getCurrentSystemMessage` | 6 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getCurrentSystemPrompt` | 5 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getCurrentTools` | 8 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getDeclaredTools` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getInitialSystemMessage` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getModelType` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getSupportedThinkingLevels` | 10 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels |
-| `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text |
+| `getSupportedThinkingLevels` | 10 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getSystemMessageText` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api |
-| `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes |
+| `hasApi` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `hasNonAdditiveToolChanges` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `isContextOverflow` | 3 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow |
-| `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type |
-| `isRecoverableLength` | 0 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length |
-| `isRetryableAssistantError` | 5 | served | native:IsRetryableAssistantError | native:is_retryable_assistant_error | native:is_retryable_assistant_error |
+| `isContextOverflow` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `isModelType` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `isRecoverableLength` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `isRetryableAssistantError` | 5 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `modelsAreEqual` | 2 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal |
-| `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context |
+| `modelsAreEqual` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `normalizeContext` | 6 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `parseJsonWithRepair` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `parseStreamingJson` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `parseToolCallArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `registerSessionResourceCleanup` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `renderSystemMessageUpdate` | 1 | served | native:RenderSystemMessageUpdate | native:render_system_message_update | native:render_system_message_update |
+| `renderSystemMessageUpdate` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `repairJson` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `resolveTranscript` | 1 | served | native:ResolveTranscript | native:resolve_transcript | native:resolve_transcript |
-| `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools |
+| `resolveTranscript` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `resolveTranscriptTools` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms |
+| `retryDelayMs` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `toToolDeclaration` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message |
+| `withoutInitialSystemMessage` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 
 ## pi-ai/compat
 
@@ -1528,7 +1529,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS |
+| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `EventStream.end` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1549,28 +1550,28 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum |
+| `StringEnum` | 28 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `Type` | 14 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `anthropicMessagesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `azureOpenAIResponsesApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `bedrockConverseStreamApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `calculateCost` | 8 | served | native:CalculateCost | native:calculate_cost | native:calculate_cost |
-| `clampThinkingLevel` | 16 | served | native:ClampThinkingLevel | native:clamp_thinking_level | native:clamp_thinking_level |
+| `calculateCost` | 8 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `clampThinkingLevel` | 16 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `cleanupSessionResources` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `collapseSystemMessages` | 2 | served | native:CollapseSystemMessages | native:collapse_system_messages | native:collapse_system_messages |
+| `collapseSystemMessages` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `complete` | 2 | served | host:Context.Complete | host:Context::complete | host:Context.complete |
 | `completeSimple` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `contentText` | 7 | served | native:ContentText | native:content_text | native:content_text |
+| `contentText` | 7 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createAssistantMessageEventStream` | 16 | served | native:CreateAssistantMessageEventStream | native:create_assistant_message_event_stream | native:create_assistant_message_event_stream |
+| `createAssistantMessageEventStream` | 16 | served | native:CreateAssistantMessageEventStream | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createFauxCore` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createInitialSystemMessage` | 0 | served | native:CreateInitialSystemMessage | native:create_initial_system_message | native:create_initial_system_message |
+| `createInitialSystemMessage` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `createModels` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `createProvider` | 6 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth |
+| `envApiKeyAuth` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxAssistantMessage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1583,39 +1584,39 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `generateImagesOpenRouter` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getApiProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message |
-| `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt |
-| `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools |
-| `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools |
+| `getCurrentSystemMessage` | 6 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getCurrentSystemPrompt` | 5 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getCurrentTools` | 8 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getDeclaredTools` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getEnvApiKey` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getImageModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getImageModels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getImageProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getImagesApiProvider` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getInitialSystemMessage` | 1 | served | native:GetInitialSystemMessage | native:get_initial_system_message | native:get_initial_system_message |
+| `getInitialSystemMessage` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getModel` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type |
+| `getModelType` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `getModels` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getProviders` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getSupportedThinkingLevels` | 12 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels |
-| `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text |
+| `getSupportedThinkingLevels` | 12 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getSystemMessageText` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `googleGenerativeAIApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `googleVertexApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api |
-| `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes |
+| `hasApi` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `hasNonAdditiveToolChanges` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `isContextOverflow` | 4 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow |
-| `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type |
-| `isRecoverableLength` | 1 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length |
-| `isRetryableAssistantError` | 6 | served | native:IsRetryableAssistantError | native:is_retryable_assistant_error | native:is_retryable_assistant_error |
+| `isContextOverflow` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `isModelType` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `isRecoverableLength` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `isRetryableAssistantError` | 6 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `mistralConversationsApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `modelsAreEqual` | 3 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal |
-| `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context |
+| `modelsAreEqual` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `normalizeContext` | 6 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `openAICodexResponsesApi` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `openAICompletionsApi` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `openAIResponsesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1629,13 +1630,13 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `registerFauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `registerImagesApiProvider` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `registerSessionResourceCleanup` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `renderSystemMessageUpdate` | 1 | served | native:RenderSystemMessageUpdate | native:render_system_message_update | native:render_system_message_update |
+| `renderSystemMessageUpdate` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `repairJson` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `resetApiProviders` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `resolveTranscript` | 1 | served | native:ResolveTranscript | native:resolve_transcript | native:resolve_transcript |
-| `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools |
+| `resolveTranscript` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `resolveTranscriptTools` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms |
+| `retryDelayMs` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `setBedrockProviderModule` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `stream` | 2 | served | host:ModelRegistry.Stream | host:ModelRegistry::stream | host:ModelRegistry.stream |
 | `streamAnthropic` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1660,7 +1661,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message |
+| `withoutInitialSystemMessage` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 
 ## pi-agent-core
 

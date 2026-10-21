@@ -258,6 +258,13 @@ def new_extension() -> pig_sdk.Extension:
         def set_text(self, text):
             super().set_text(text if text.startswith("raw:") else text.upper())
 
+        # insert_text_at_cursor wraps the host's text in angle brackets and add_to_history prefixes it, unless it starts with "raw:" (TestEditorComponentOverridesReachSuper).
+        def insert_text_at_cursor(self, text):
+            super().insert_text_at_cursor(text if text.startswith("raw:") else "<" + text + ">")
+
+        def add_to_history(self, text):
+            super().add_to_history(text if text.startswith("raw:") else "history:" + text)
+
         def render(self, width):
             return ["[custom editor]"] + super().render(width)
 
@@ -298,6 +305,8 @@ def new_extension() -> pig_sdk.Extension:
         elif fn == "line":
             text, was = pig_sdk.truncate_line(case["content"], case.get("maxChars", pig_sdk.GREP_MAX_LINE_LENGTH))
             result = {"text": text, "wasTruncated": was}
+        elif fn == "limits":
+            result = {"maxLines": pig_sdk.DEFAULT_MAX_LINES, "maxBytes": pig_sdk.DEFAULT_MAX_BYTES}
         else:
             result = {"text": pig_sdk.format_size(case["bytes"])}
         ctx.notify("truncate:" + json.dumps(result) + ":end", "info")
@@ -540,6 +549,7 @@ def new_extension() -> pig_sdk.Extension:
             "entry": s.get_entry("one"), "missing": s.get_entry("missing"), "label": s.get_label("one"),
             "entries": s.get_entries(), "branch": s.get_branch("one"), "tree": s.get_tree(),
             "contextEntries": s.build_context_entries(), "projection": s.build_session_projection(),
+            "persisted": s.is_persisted(), "usesDefaultDir": s.uses_default_session_dir(), "children": s.get_children("one"), "sessionContext": s.build_session_context(),
             "models": r.get_all(), "available": r.get_available(), "status": r.get_provider_auth_status("registry-probe"),
             "display": r.get_provider_display_name("registry-probe"), "error": r.get_error(),
             "config": r.get_registered_provider_config("registry-probe"), "ids": r.get_registered_provider_ids(),
@@ -592,18 +602,18 @@ def new_extension() -> pig_sdk.Extension:
                 ms = (call or pig_sdk.parse_date)(text)
                 return {"ms": ms}
             if fn == "strip":
-                return {"body": (call or pig_sdk.parse_frontmatter)(text).body}
+                return {"body": (call or pig_sdk.strip_frontmatter)(text)}
             parsed = (call or pig_sdk.parse_frontmatter)(text)
             return {"frontmatter": parsed.frontmatter, "body": parsed.body, "keys": key_lists(parsed.frontmatter)}
         except Exception:
             return {"error": True}
 
     # The helpers run here, while the factory runs, before the connection to the host is ready.
-    factory_helpers = {"frontmatter": helper_report("frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"), "error": helper_report("frontmatter", "---\na: [\n---\nx"), "date": helper_report("date", "2020-01-02T03:04:05.678Z")}
+    factory_helpers = {"frontmatter": helper_report("frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"), "error": helper_report("frontmatter", "---\na: [\n---\nx"), "date": helper_report("date", "2020-01-02T03:04:05.678Z"), "strip": helper_report("strip", "---\nz: 1\n---\nbody text\n")}
 
     def helper_probe(ctx, args):
         c = json.loads(args)
-        call = ctx.parse_date if c["fn"] == "date" else ctx.parse_frontmatter
+        call = {"date": ctx.parse_date, "strip": ctx.strip_frontmatter}.get(c["fn"], ctx.parse_frontmatter)
         ctx.notify("helper:%s:end" % json.dumps(helper_report(c["fn"], c["input"], call), separators=(",", ":")), "info")
 
     ext.command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", helper_probe)
