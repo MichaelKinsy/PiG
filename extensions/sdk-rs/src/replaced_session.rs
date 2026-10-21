@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 /// Pi's `ReplacedSessionContext` (types.ts:442-452): the command context of the replacement Session that
 /// `new_session_with`, `fork_with` and `switch_session_with` pass to their callback. Its host calls act on the
 /// replacement Session, and `send_message` and `send_user_message` return after the Session operation, including the
-/// turn they trigger. `cwd`, `mode`, `has_ui` and `model` answer for the replacement Session.
+/// turn they trigger. `cwd`, `mode`, `has_ui`, `model` and `session_name` answer for the replacement Session.
 pub struct ReplacedSessionContext(Context);
 
 impl Deref for ReplacedSessionContext {
@@ -134,13 +134,11 @@ pub(crate) fn dispatch(
     if let Some(mode) = ready["mode"].as_str().filter(|mode| !mode.is_empty()) {
         replaced.mode = mode.to_string();
     }
-    let model = &state["model"];
-    let model_id = model["id"]
-        .as_str()
-        .filter(|id| !id.is_empty())
-        .or_else(|| model["name"].as_str())
-        .unwrap_or_default();
-    replaced.shared_model = Arc::new(Mutex::new(model_id.to_string()));
+    let mut identity = crate::context::SessionIdentity::default();
+    if let Some(state) = state.as_object() {
+        identity.apply_state(state);
+    }
+    replaced.shared_identity = Arc::new(Mutex::new(identity));
     let mut ui = replaced.shared_ui.lock().unwrap().clone();
     ui.has_ui = state["hasUI"].as_bool().unwrap_or(false);
     replaced.shared_ui = Arc::new(Mutex::new(ui));

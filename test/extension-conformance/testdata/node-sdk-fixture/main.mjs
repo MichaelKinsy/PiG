@@ -43,6 +43,21 @@ export default function (pi) {
     const ok = await pi.setModel({ provider: "probe", id: "model" });
     ctx.ui.notify(JSON.stringify([pi.getThinkingLevel(), ok]), "info");
   }});
+  pi.registerCommand("replicated-accessors", { description: "Read the replicated accessors after each write", handler: async (_args, ctx) => {
+    const lastType = () => { const entries = ctx.sessionManager.getEntries(); return entries[entries.length - 1]?.type ?? ""; };
+    const out = { name0: ctx.sessionManager.getSessionName() ?? "", model0: ctx.model?.id ?? "", provider0: ctx.model?.provider ?? "" };
+    pi.setSessionName("renamed");
+    out.name1 = ctx.sessionManager.getSessionName() ?? "";
+    pi.setLabel("one", "lab");
+    out.entryAfterLabel = lastType();
+    pi.sendMessage({ customType: "probe", content: "hi", display: true });
+    out.entryAfterMessage = lastType();
+    await pi.setModel({ provider: "prov-after", id: "id-after" });
+    out.model1 = ctx.model?.id ?? "";
+    out.provider1 = ctx.model?.provider ?? "";
+    out.qualified1 = `${out.provider1}/${out.model1}`;
+    ctx.ui.notify(JSON.stringify(out), "info");
+  }});
   pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
   pi.registerCommand("session_actions_unbound", { description: "Report what unbound session actions answer", handler: async (_args, ctx) => {
     const parts = [];

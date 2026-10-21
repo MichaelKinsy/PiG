@@ -456,17 +456,15 @@ type EntryRendererDecl struct {
 
 // ── Ready (host→ext) ─────────────────────────────────────────────────────────
 
-// ReadyPayload is sent after successful registration.
+// ReadyPayload is sent after successful registration. The session name and the active model travel in State (State.Session.SessionName, State.Model), the one snapshot every state_update repeats.
 type ReadyPayload struct {
-	SessionName string            `json:"session_name,omitempty"` // Current session name
-	Cwd         string            `json:"cwd"`                    // Working directory
-	Mode        string            `json:"mode,omitempty"`         // Run mode: tui|rpc|json|print (ctx.mode)
-	Width       int               `json:"width"`                  // Terminal width
-	Height      int               `json:"height,omitempty"`       // Terminal height (0 if unavailable)
-	Model       string            `json:"model,omitempty"`        // Active model name
-	Models      []json.RawMessage `json:"models,omitempty"`       //portlint:allow emptydrop PiG-only ready member (the complete registry snapshot for a runtime that declared WantsModelRegistry); absent and [] both give the Node runtime an empty catalog (runtime.mjs replaceModels → catalogOf)
-	Theme       json.RawMessage   `json:"theme,omitempty"`        // Current theme data
-	State       *StatePayload     `json:"state,omitempty"`        // Initial extension-host state snapshot
+	Cwd    string            `json:"cwd"`              // Working directory
+	Mode   string            `json:"mode,omitempty"`   // Run mode: tui|rpc|json|print (ctx.mode)
+	Width  int               `json:"width"`            // Terminal width
+	Height int               `json:"height,omitempty"` // Terminal height (0 if unavailable)
+	Models []json.RawMessage `json:"models,omitempty"` //portlint:allow emptydrop PiG-only ready member (the complete registry snapshot for a runtime that declared WantsModelRegistry); absent and [] both give the Node runtime an empty catalog (runtime.mjs replaceModels → catalogOf)
+	Theme  json.RawMessage   `json:"theme,omitempty"`  // Current theme data
+	State  *StatePayload     `json:"state,omitempty"`  // Initial extension-host state snapshot
 }
 
 // StatePayload is the host's view of state visible to extensions through

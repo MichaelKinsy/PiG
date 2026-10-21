@@ -395,9 +395,21 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	h.replyToCall(me, conn, callID, call, callCtx, result, err)
 }
 
+// publishesStateBeforeResult reports whether the host sends the caller its state before the result of method. Pi's Session writes are
+// synchronous, so the caller's replicated read after the call must see them: a model change, an appended entry, a label, a session name and a
+// custom message (agent-session.ts setModel, sessionManager.appendLabelChange, setSessionName, sendCustomMessage). A dialog that takes the
+// focus exposes its state the same way. The Go SDK's statePublishingCalls lists the Session writes (extensions/sdk/context.go).
+func publishesStateBeforeResult(method string) bool {
+	switch method {
+	case "setModel", "appendEntry", "setLabel", "setSessionName", "sendMessage":
+		return true
+	}
+	return takesInteractiveFocus(method)
+}
+
 // replyToCall sends the result of a call its handler returned.
 func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *CallPayload, callCtx context.Context, result *CallResultPayload, err error) {
-	if (call.Method == "setModel" || call.Method == "appendEntry" || takesInteractiveFocus(call.Method)) && err == nil {
+	if publishesStateBeforeResult(call.Method) && err == nil {
 		// Pi's model changes and dialogs expose current state before their Promise settles, including cancellation and dialog errors returned in the payload.
 		// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns, so the caller's subscribed session mirror receives it before the call result.
 		err = h.pushStateTo(callCtx, me, conn)

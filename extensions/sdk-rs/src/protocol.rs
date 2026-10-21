@@ -305,8 +305,6 @@ pub struct RendererDef {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReadyMsg {
     #[serde(default)]
-    pub session_name: String,
-    #[serde(default)]
     pub cwd: String,
     #[serde(default)]
     pub mode: String,
@@ -314,8 +312,6 @@ pub struct ReadyMsg {
     pub width: u32,
     #[serde(default)]
     pub height: u32,
-    #[serde(default)]
-    pub model: String,
     /// Initial state snapshot, including session entries.
     #[serde(default, deserialize_with = "deserialize_state_replica")]
     pub state: Option<serde_json::Value>,
