@@ -56,6 +56,8 @@ type lifetimeRig struct {
 	fail atomic.Bool
 	// seen is the objects the factory was given for the last session.
 	seen ChildSessionRequest
+	// session is the last session the factory built.
+	session *lifetimeSession
 }
 
 func newLifetimeRig(t *testing.T) *lifetimeRig {
@@ -76,7 +78,8 @@ func newLifetimeRig(t *testing.T) *lifetimeRig {
 		if r.fail.Load() {
 			return nil, errors.New("refused")
 		}
-		return &lifetimeSession{}, nil
+		r.session = &lifetimeSession{}
+		return r.session, nil
 	}))
 	return r
 }
@@ -207,5 +210,26 @@ func TestSessionGraphObjectIsNotHeldByARefusedChildCreation(t *testing.T) {
 	r.release(handle)
 	if got := object.released.Load(); got != 1 {
 		t.Fatalf("released %d times, want 1", got)
+	}
+}
+
+// A host that shuts down with a live child session closes it, and releases the objects it was created over, before Shutdown returns. The session outlives the extension's dispose of it, and the object outlives the extension's handle: nothing else ends the process either one started. The connection stays open here, so only Shutdown can end them.
+func TestShutdownClosesLiveChildSessionsAndReleasesTheirObjects(t *testing.T) {
+	r := newLifetimeRig(t)
+	runtime := &lifetimeObject{}
+	handle := r.build(runtime)
+	if err := r.createChild("child", ChildSessionCreate{ModelRuntime: handle}); err != nil {
+		t.Fatal(err)
+	}
+	session := r.session
+	r.host.Shutdown("test shutdown")
+	session.mu.Lock()
+	closed := session.closed
+	session.mu.Unlock()
+	if closed != 1 {
+		t.Fatalf("the live child session was closed %d times by Shutdown, want 1", closed)
+	}
+	if got := runtime.released.Load(); got != 1 {
+		t.Fatalf("the object the child was created over was released %d times by Shutdown, want 1", got)
 	}
 }
