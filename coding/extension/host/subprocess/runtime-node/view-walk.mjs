@@ -127,7 +127,13 @@ function loadCodingAgent(table) {
 }
 
 // What the widget walkers read from this module.
-const widgetHelpers = { isInt: (value) => Number.isInteger(value), conversationId: (c, kind) => conversationId(c, kind), maxListItems: MAX_LIST_ITEMS };
+const widgetHelpers = {
+  isInt: (value) => Number.isInteger(value),
+  conversationId: (c, kind) => conversationId(c, kind),
+  maxListItems: MAX_LIST_ITEMS,
+  walkLoader: (walk, c) => walkLoader(walk, c),
+  get tui() { return runtimeRequire("./shims/pi-dist/pi-tui/sdk-bundle/index.js"); },
+};
 
 function handlerFor(component) {
   const table = handlerTable();

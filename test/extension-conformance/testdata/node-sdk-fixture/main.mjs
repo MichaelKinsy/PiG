@@ -972,7 +972,7 @@ export default function (pi) {
       return { handled: true };
     }
   }
-  // kit-widget "<case key> [<callbacks>]": a widget kind's Pi vector case
+  // kit-widget "<case key>[|<callbacks>]": a widget kind's Pi vector case
   // (D107, docs/plan/extension-component-kit.md §10), built from Pi's own
   // components; the runtime derives its view while a frontend draws. As
   // ui.custom's component it logs the keys and mouse events the components
@@ -1062,11 +1062,53 @@ export default function (pi) {
     kitWidgetCases[`${prefix}empty text`] = custom("", false);
     kitWidgetCases[`${prefix}no id`] = () => ({ root: new piCodingAgent.CustomMessageComponent({ customType: "note", content: "plain" }, undefined, undefined, 1) });
   }
+  {
+    const cancellable = (message, { spinner, messageColor, indicator, frame } = {}) => ({ theme, note }) => {
+      const style = (token) => (token ? (text) => theme.fg(token, text) : (text) => text);
+      const loader = new piTui.CancellableLoader({ requestRender() {} }, style(spinner), style(messageColor), message, indicator);
+      loader.stop();
+      if (frame !== undefined) { loader.currentFrame = frame % loader.frames.length; loader.updateDisplay(); }
+      loader.onAbort = () => note("abort:");
+      const root = new Container();
+      root.addChild(loader);
+      return { root, focus: loader };
+    };
+    const bordered = (message, options) => ({ theme, note }) => {
+      const loader = new piCodingAgent.BorderedLoader({ requestRender() {} }, theme, message, options);
+      loader.loader.stop();
+      loader.onAbort = () => note("abort:");
+      const root = new Container();
+      root.addChild(loader);
+      return { root, focus: loader };
+    };
+    const framed = (build, frame) => (ctx) => {
+      const result = build(ctx);
+      const inner = result.focus.loader;
+      inner.currentFrame = frame % inner.frames.length;
+      inner.updateDisplay();
+      return result;
+    };
+    const wide = "A very long message that wraps around the narrow widths of the table";
+    const c = "pi-tui/CancellableLoader/";
+    for (const name of ["default", "escape aborts", "escape twice aborts twice", "other keys are ignored"]) kitWidgetCases[c + name] = cancellable("Working");
+    kitWidgetCases[`${c}default message`] = cancellable("Loading...");
+    kitWidgetCases[`${c}colors`] = cancellable("Working", { spinner: "accent", messageColor: "muted" });
+    kitWidgetCases[`${c}frame 3`] = cancellable("Working", { frame: 3 });
+    kitWidgetCases[`${c}indicator frames`] = cancellable("Working", { indicator: { frames: ["*", "+", "x"], intervalMs: 50 }, frame: 1 });
+    kitWidgetCases[`${c}hidden indicator`] = cancellable("Working", { indicator: { frames: [] } });
+    kitWidgetCases[`${c}wide message`] = cancellable(wide, { spinner: "accent" });
+    const b = "pi-coding-agent/BorderedLoader/";
+    for (const name of ["cancellable", "escape aborts", "escape twice aborts twice", "other keys are ignored"]) kitWidgetCases[b + name] = bordered("Fetching models");
+    for (const name of ["not cancellable", "escape ignored when not cancellable"]) kitWidgetCases[b + name] = bordered("Fetching models", { cancellable: false });
+    kitWidgetCases[`${b}default message`] = bordered("Loading...");
+    kitWidgetCases[`${b}frame 4`] = framed(bordered("Fetching models"), 4);
+    kitWidgetCases[`${b}wide message`] = bordered("Fetching the models of every configured provider, one after another");
+  }
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
     description: "Show a widget kind's Pi vector case (D107)",
     handler: async (args, ctx) => {
-      const space = args.indexOf(" ");
+      const space = args.indexOf("|");
       const key = space < 0 ? args : args.slice(0, space);
       const want = space < 0 ? 0 : Number(args.slice(space + 1)) || 0;
       const build = kitWidgetCases[key];
@@ -1084,7 +1126,7 @@ export default function (pi) {
         if (focus) root.handleInput = (data) => focus.handleInput(data);
         else if (!root.handleInput) root.handleInput = (data) => { log.push(`input:${data}`); };
         return root;
-      }, { overlay: true });
+      }, { overlayOptions: { title: "Kit" } });
       ctx.ui.notify(`kit-widget=${result ?? ""}`, "info");
     },
   });

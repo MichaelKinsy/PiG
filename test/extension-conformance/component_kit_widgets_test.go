@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -27,6 +28,8 @@ var kitWidgetExports = []struct{ dir, export string }{
 	{"pi-coding-agent", "CompactionSummaryMessageComponent"},
 	{"pi-coding-agent", "SkillInvocationMessageComponent"},
 	{"pi-coding-agent", "CustomMessageComponent"},
+	{"pi-tui", "CancellableLoader"},
+	{"pi-coding-agent", "BorderedLoader"},
 }
 
 type kitWidgetCase struct {
@@ -97,7 +100,7 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 	done := make(chan error, 1)
 	args := key
 	if len(events) > 0 {
-		args = fmt.Sprintf("%s %d", key, len(events))
+		args = fmt.Sprintf("%s|%d", key, len(events))
 	}
 	go func() { done <- command.Handler(kitCommandContext(t, h), args) }()
 	var session *kitSession
@@ -167,6 +170,9 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 }
 
 func TestConformance_ComponentKitWidgetsMatchPi(t *testing.T) {
+	// Pi's rows are a loader's frames at the instant the vector was taken; the host's own animation is frozen.
+	subprocess.SetViewLoaderAnimation(false)
+	t.Cleanup(func() { subprocess.SetViewLoaderAnimation(true) })
 	t.Parallel()
 	for _, tc := range componentKitSDKCells() {
 		t.Run(tc.name, func(t *testing.T) {

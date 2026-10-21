@@ -1414,3 +1414,58 @@ class CustomMessage(_Node):
 
 
 __all__ += ["CustomMessage"]
+
+
+class CancellableLoader(_Node):
+    """Pi-tui's ``CancellableLoader(ui, spinnerColorFn, messageColorFn,
+    message, indicator)``: a :class:`Loader` that the focused
+    ``tui.select.cancel`` key aborts. ``id`` is required and unique within the
+    view; the host owns the abort state and the animation, and the abort
+    reaches the extension as an :data:`ABORT` event of the node, which the
+    view's ``focus`` must name to receive the key. Any other key goes to the
+    extension, as the loader ignores it."""
+
+    kind = "cancellable-loader"
+
+    def __init__(
+        self,
+        id: str,  # noqa: A002 - upstream's field name
+        message: str = "Loading...",
+        *,
+        spinner_color: str | None = None,
+        message_color: str | None = None,
+        indicator: LoaderIndicator | None = None,
+        frame: int | None = None,
+    ) -> None:
+        self.id = str(id)
+        self.loader = Loader(message, spinner_color=spinner_color, message_color=message_color, indicator=indicator, frame=frame)
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        return {"id": self.id, **self.loader._fields(enc, depth)}
+
+
+class BorderedLoader(_Node):
+    """Coding-agent's ``BorderedLoader(tui, theme, message, {cancellable})``: a
+    loader between two borders with, when cancellable (the default), a cancel
+    key hint that the focused ``tui.select.cancel`` key aborts (an
+    :data:`ABORT` event). It draws with the view's theme, the one Pi hands the
+    factory that builds it. ``id`` is required and unique within the view; the
+    host owns the abort state and the animation."""
+
+    kind = "bordered-loader"
+
+    def __init__(self, id: str, message: str = "Loading...", *, cancellable: bool = True, frame: int | None = None) -> None:  # noqa: A002 - upstream's field name
+        self.id = str(id)
+        self.message = str(message)
+        self.cancellable = bool(cancellable)
+        self.frame = frame
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {"id": self.id, "message": self.message}
+        if not self.cancellable:
+            out["cancellable"] = False
+        _put(out, "frame", self.frame)
+        return out
+
+
+__all__ += ["BorderedLoader", "CancellableLoader"]

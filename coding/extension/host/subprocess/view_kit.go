@@ -1131,7 +1131,7 @@ func (b *viewBuilder) loader(n *ViewNode, out *frontend.ViewNode) tui.Component 
 // owned timer per loader, stopped by the next frame or close.
 func (s *viewSurface) startLoadersLocked() {
 	s.loaderGen++
-	if s.frame == nil || s.frame.lines != nil {
+	if s.frame == nil || s.frame.lines != nil || !viewLoaderAnimation.Load() {
 		return
 	}
 	gen := s.loaderGen
