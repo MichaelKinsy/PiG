@@ -31801,6 +31801,29 @@
         "extensions/sdk/tool_dialog_order_test.go::TestToolResponsesFollowTheOrderTheAnswersWereRead",
         "extensions/sdk/tool_dialog_order_test.go::TestToolRetainedContextDialogAfterTheRequestEndedLeavesNoSlot"
       ]
+    },
+    {
+      "id": "BF-f6e6b97",
+      "title": "Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was…",
+      "symptom": "Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.",
+      "rootCause": "Stdin end while a signal-triggered dispose is still running exits 0 at once in Pi (rpc-mode.ts:728-731). Pig's exit stops the extension processes before os.Exit, which completes the pending dispose, and the signal path's own exit (128+SIGTERM) then raced the first one's os.Exit: macOS cli-2 TestRPCInputEndDuringSignalShutdownExitsZero got 143. flushAndExit now lets only the first exit that starts run, as the first process.exit does. TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus forces the interleaving.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f6e6b97f00",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
+        "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
+      ]
     }
   ],
   "divergences": [

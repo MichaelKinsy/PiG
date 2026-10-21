@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-941 bugs. 891 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+942 bugs. 892 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -960,6 +960,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-aca002e](#bf-aca002e) | CI: `make interface-gaps` passes on main again | PiG's own defect | All platforms | Unreleased |
 | [BF-626f830](#bf-626f830) | `pig extension upgrade`: the command a startup notice or the upgrade offer prints now quotes a POSIX path… | PiG's own defect | Windows | Unreleased |
 | [BF-df5e91e](#bf-df5e91e) | A Go, Python or Rust extension tool that awaits a host call such as `exec` before its first dialog no longer… | PiG's own defect | All platforms | Unreleased |
+| [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14077,6 +14078,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `df5e91e373` (2026-10-20)
 - **Tests:** `extensions/sdk/tool_dialog_order_test.go::TestToolBatchOrdersAreIndependentAcrossBatches`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogOrderPassesAnEndedRequest`, `extensions/sdk/tool_dialog_order_test.go::TestToolDialogsOpenInCallOrder`, `extensions/sdk/tool_dialog_order_test.go::TestToolFirstHostCallOfAnyKindPassesTheDialogPlace`, `extensions/sdk/tool_dialog_order_test.go::TestToolResponsesFollowTheOrderTheAnswersWereRead`, `extensions/sdk/tool_dialog_order_test.go::TestToolRetainedContextDialogAfterTheRequestEndedLeavesNoSlot`
 - **Release note:** A Go, Python or Rust extension tool that awaits a host call such as `exec` before its first dialog no longer holds the first dialogs of the later calls of its parallel batch: the SDK passes the call's dialog place at its first host call of any kind, so the later calls' dialogs open while the `exec` runs and the call's own dialog opens after it, as Pi's single thread does (D187). A handler that blocks on something other than a host call before its first host call still holds them.
+
+### BF-f6e6b97
+
+**Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+- **Root cause:** Stdin end while a signal-triggered dispose is still running exits 0 at once in Pi (rpc-mode.ts:728-731). Pig's exit stops the extension processes before os.Exit, which completes the pending dispose, and the signal path's own exit (128+SIGTERM) then raced the first one's os.Exit: macOS cli-2 TestRPCInputEndDuringSignalShutdownExitsZero got 143. flushAndExit now lets only the first exit that starts run, as the first process.exit does. TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus forces the interleaving.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f6e6b97f00` (2026-10-21)
+- **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
+- **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
 
 ## Divergences from Pi added in this release
 
