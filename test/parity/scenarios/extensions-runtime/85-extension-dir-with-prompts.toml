@@ -77,6 +77,8 @@ pattern = '/[^" ]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
 with = '<agent>'
 reason = "Isolated agent roots differ; preserve each resource path and its metadata."
 
+# normalize-rationale: D2 PiG's built-in pig-login extension adds /sprite, which Pi lacks.
+# Only that one command entry is removed; every other command and its order remain compared.
 [[assert.normalize_replace]]
 pattern = '\{"(?:name":"sprite","description":"Select the PiG login sprite\.","source":"extension","sourceInfo":\{"path":"builtin:pig-login","source":"builtin","scope":"temporary","origin":"top-level"\}|description":"Select the PiG login sprite\.","name":"sprite","source":"extension","sourceInfo":\{"origin":"top-level","path":"builtin:pig-login","scope":"temporary","source":"builtin"\})\},?'
 with = ""
