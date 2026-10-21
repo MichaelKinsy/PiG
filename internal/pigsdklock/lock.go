@@ -182,7 +182,7 @@ func acquire(ctx context.Context, configRoot string, shared bool) (func() error,
 		locked, err = tryContext(lockCtx, pollingInterval)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("wait for SDK transaction lock %s: %w", lockPath, err)
+		return nil, fmt.Errorf("wait for SDK transaction lock %s: %w", lockPath, filelock.Explain(lockDir, err))
 	}
 	if !locked {
 		return nil, fmt.Errorf("timed out waiting for SDK transaction lock %s", lockPath)

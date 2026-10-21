@@ -293,7 +293,7 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 			}
 		}
 		if err != nil {
-			return PublishedEntry{}, fmt.Errorf("wait for cell build lock: %w", err)
+			return PublishedEntry{}, fmt.Errorf("wait for cell build lock: %w", filelock.Explain(parent, err))
 		}
 		return PublishedEntry{}, fmt.Errorf("timed out waiting for another process to build cell %s", filepath.Base(finalDir))
 	}

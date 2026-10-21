@@ -159,7 +159,7 @@ func lockUsageShared(entryDir string) (filelock.Lock, error) {
 		return nil, err
 	}
 	if err := lock.RLock(); err != nil {
-		return nil, err
+		return nil, filelock.Explain(filepath.Dir(entryDir), err)
 	}
 	return lock, nil
 }
@@ -273,7 +273,7 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 		}
 		gcLock = filelock.New(filepath.Join(options.CacheRoot, ".gc.lock"))
 		if _, err := gcLock.TryLockContext(ctx, gcLockRetry); err != nil {
-			return report, fmt.Errorf("lock extension cache GC: %w", err)
+			return report, fmt.Errorf("lock extension cache GC: %w", filelock.Explain(options.CacheRoot, err))
 		}
 		defer func() { _ = gcLock.Unlock() }()
 	}
