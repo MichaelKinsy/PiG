@@ -3,6 +3,7 @@ package inproc_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -59,7 +60,7 @@ func TestUIPrompt_InProcessExtensionsGetRawDialogValues(t *testing.T) {
 			check := func(method string, got json.RawMessage, err error) {
 				t.Helper()
 				if test.want == "" {
-					if err != context.Canceled {
+					if !errors.Is(err, context.Canceled) {
 						t.Errorf("%s: err = %v, want context.Canceled", method, err)
 					}
 					return
