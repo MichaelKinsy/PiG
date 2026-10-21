@@ -5,7 +5,6 @@ package cli
 import (
 	"context"
 	"errors"
-	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -158,34 +157,6 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 		bridge.SetUIContext(h.ui)
 		bridge.SetWidgetRequestFunc(func(_ string, key string, lines []string, opts *extension.ExtensionWidgetOptions) {
 			h.ui.SetWidget(key, lines, opts)
-		})
-		var widgetMu sync.Mutex
-		previousWidgets := make(map[string][]string)
-		bridge.SetWidgetSyncFunc(func(widgets map[string]*subprocess.PushProxy) {
-			widgetMu.Lock()
-			defer widgetMu.Unlock()
-			keys := make([]string, 0, len(widgets))
-			for key := range widgets {
-				keys = append(keys, key)
-			}
-			slices.Sort(keys)
-			// The bridge keys widgets by the widget key alone, one namespace for every extension, as Pi's setExtensionWidget does.
-			for _, key := range keys {
-				lines := widgets[key].Lines()
-				previous, exists := previousWidgets[key]
-				if exists && slices.Equal(previous, lines) {
-					continue
-				}
-				h.ui.SetWidget(key, lines, nil)
-				previousWidgets[key] = append([]string(nil), lines...)
-			}
-			for key := range previousWidgets {
-				if _, exists := widgets[key]; exists {
-					continue
-				}
-				h.ui.SetWidget(key, nil, nil)
-				delete(previousWidgets, key)
-			}
 		})
 	}
 

@@ -2445,8 +2445,14 @@ impl Context {
     /// host applies in arrival order and never answers: Pi's `setWidget`
     /// returns nothing, so it may be called from an
     /// [`Self::on_width_change`] handler, and the error reports only a failure
-    /// to send. [`Self::set_widget_value`] waits for the host.
+    /// to send. In RPC mode, where the width never changes and Pi writes one
+    /// request per call, in call order and before the handler's response, the
+    /// list waits for the host like [`Self::set_widget_value`]: an unanswered
+    /// frame has no place in that order.
     pub fn set_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
+        if self.mode == "rpc" {
+            return self.set_widget_value(key, serde_json::json!(lines), None);
+        }
         self.conn.views.widgets.lock().unwrap().remove(key);
         self.conn.push_widget(key, lines)
     }

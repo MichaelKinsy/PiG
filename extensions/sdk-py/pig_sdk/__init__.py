@@ -2803,7 +2803,10 @@ class Context:
         A string list with no options goes out as a ``widget_push`` frame
         without a width, which the host applies in arrival order and never
         answers: Pi's setWidget returns nothing, so it may be called from an
-        :meth:`on_width_change` handler. Every other shape waits for the host.
+        :meth:`on_width_change` handler. In RPC mode, where the width never
+        changes and Pi writes one request per call, in call order and before
+        the handler's response, the list waits for the host like every other
+        shape. Every other shape waits for the host.
 
         A :class:`kit.View` (D107) is rendered by the host at the widget's
         width, the subprocess form of Pi's ``setWidget(key, factory)`` for a
@@ -2816,7 +2819,7 @@ class Context:
             return
         with self.extension._views.widgets_lock:
             self.extension._views.widgets.pop(key, None)
-        if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None:
+        if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None and not self._rpc_mode():
             self.extension._push_widget(key, content)
             return
         self._call("ui.setWidget", {"key": key, "content": content, "options": options or {}})
