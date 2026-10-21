@@ -1,4 +1,4 @@
-//go:build linux || darwin
+//go:build (linux || darwin) && !race
 
 package codemode
 
@@ -22,6 +22,7 @@ import (
 // with extension tools exposed to the script. Each scenario runs in a child (this test binary re-executed) so that
 // ru_maxrss belongs to that scenario alone. The worker limit allows two VMs per process, so two is the concurrent case.
 
+// The bounds are for the shipped binary: a -race build raises the no-op scenario's peak to 143 MiB against the 128 MiB bound, so the nightly -race run excludes this file.
 const rssChildEnv = "PIG_CODEMODE_RSS_SCENARIO"
 
 func rssTools(n int) []extension.AgentTool {
