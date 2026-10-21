@@ -86,6 +86,9 @@ type ExtConfig struct {
 
 	selectedPath string
 	resolveErr   error
+	// sourceCheck is set when this package derived ContentHash from the source files: it reports an error once they no longer hash
+	// to it. A cell build runs it before it publishes (see fillContentHash).
+	sourceCheck func() error
 	// identity is the extension identity when Name is a host key made unique
 	// for a second copy of the same extension from another path.
 	identity string
@@ -1449,14 +1452,7 @@ func (h *Host) startPlannedCells(ctx context.Context, cellConfigs []ExtConfig) (
 			continue
 		}
 		h.markExtension(cellConfigs[i].Name, "discover-start")
-		if cellConfigs[i].Source != "" && cellConfigs[i].ContentHash == "" {
-			bt, err := detectBuildType(cellConfigs[i].Source)
-			if err == nil {
-				if hash, err := hashSourceDir(cellConfigs[i].Source, bt); err == nil {
-					cellConfigs[i].ContentHash = hash
-				}
-			}
-		}
+		fillContentHash(&cellConfigs[i])
 		h.markExtension(cellConfigs[i].Name, "discover-done")
 	}
 	var errs []error
@@ -2747,14 +2743,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 
 	// Populate ContentHash for source-based extensions (see LoadAll).
 	for i := range cfgs {
-		if cfgs[i].Source != "" && cfgs[i].ContentHash == "" {
-			bt, err := detectBuildType(cfgs[i].Source)
-			if err == nil {
-				if hash, err := hashSourceDir(cfgs[i].Source, bt); err == nil {
-					cfgs[i].ContentHash = hash
-				}
-			}
-		}
+		fillContentHash(&cfgs[i])
 	}
 
 	loadOrder := append(slices.Clone(cfgs[:loaderConfigs]), embeddedLoadOrder(allEmbedded, cfgs[loaderConfigs:])...)
