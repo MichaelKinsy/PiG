@@ -352,6 +352,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleParseFrontmatter(call)
 	case call.Method == CallParseDate:
 		result, err = h.handleParseDate(call)
+	case call.Method == CallHighlightCode:
+		result, err = h.handleHighlightCode(call)
+	case call.Method == CallLoadTheme:
+		result, err = h.handleLoadTheme(call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:

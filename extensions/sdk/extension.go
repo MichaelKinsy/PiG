@@ -1765,7 +1765,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		}
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
 			e.uiTheme = theme
-			setHostTheme(theme)
+			setHostTheme(theme, payload.State.Theme)
 		}
 		applyHostTuiState(payload.State.Keybindings, payload.State.TerminalCapabilities)
 		e.applyReplicatedState(payload.State.Settings, payload.State.McpServers, 2*seq)
@@ -1809,7 +1809,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		}
 		e.mu.Lock()
 		e.uiTheme = theme
-		setHostTheme(theme)
+		setHostTheme(theme, args)
 		e.mu.Unlock()
 	case "width_change":
 		var payload struct {

@@ -8,6 +8,9 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/tui"
 )
 
+// keyHintGOOS is the platform key hints are written for (Pi reads process.platform); a test sets it to run another platform's cases.
+var keyHintGOOS = runtime.GOOS
+
 // KeyTextFormatOptions is pi-coding-agent's KeyTextFormatOptions.
 type KeyTextFormatOptions struct {
 	// Capitalize upper-cases the first letter of each part ("Ctrl+Enter").
@@ -23,6 +26,10 @@ func formatKeyPart(goos, part string, capitalize bool) string {
 		return display
 	}
 	first, size := utf8.DecodeRuneInString(display)
+	if first > 0xFFFF {
+		// charAt(0).toUpperCase() upper-cases one UTF-16 unit: a character beyond the Basic Multilingual Plane is half a surrogate pair and stays as it is.
+		return display
+	}
 	if full, ok := fullUppercase[first]; ok {
 		return full + display[size:]
 	}
@@ -53,7 +60,7 @@ func formatKeyText(goos, key string, capitalize bool) string {
 
 // FormatKeyText is pi-coding-agent's formatKeyText: a key identifier as the interface shows it, "alt" as "option" on macOS.
 func FormatKeyText(key string, options ...KeyTextFormatOptions) string {
-	return formatKeyText(runtime.GOOS, key, len(options) > 0 && options[0].Capitalize)
+	return formatKeyText(keyHintGOOS, key, len(options) > 0 && options[0].Capitalize)
 }
 
 func formatKeys(goos string, keys []string, capitalize bool) string {
@@ -66,12 +73,12 @@ func formatKeys(goos string, keys []string, capitalize bool) string {
 // KeyText is pi-coding-agent's keyText: the keys of a keybinding as the interface shows them, from the global keybindings the host
 // published (every tui.* and app.* definition with the user's overrides).
 func KeyText(keybinding string) string {
-	return formatKeys(runtime.GOOS, tui.GetKeybindings().GetKeys(keybinding), false)
+	return formatKeys(keyHintGOOS, tui.GetKeybindings().GetKeys(keybinding), false)
 }
 
 // KeyDisplayText is pi-coding-agent's keyDisplayText: [KeyText] with each part capitalized.
 func KeyDisplayText(keybinding string) string {
-	return formatKeys(runtime.GOOS, tui.GetKeybindings().GetKeys(keybinding), true)
+	return formatKeys(keyHintGOOS, tui.GetKeybindings().GetKeys(keybinding), true)
 }
 
 // KeyHint is pi-coding-agent's keyHint: the keys of a keybinding in the dim color and description in the muted color of the host's

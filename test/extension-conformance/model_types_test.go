@@ -471,6 +471,47 @@ def theme_fg(theme, token):
         return "throw:" + str(error)
 
 
+def tui_theme_probe(ctx, args):
+    # pi-coding-agent's theme helpers and key hints over the host's theme and keybindings: the styles of each on the samples the test passes, and the lines
+    # highlight_code gets from the host.
+    samples = args.get("samples", [])
+
+    def apply(style):
+        return [style(sample) for sample in samples]
+
+    op = args.get("op")
+    if op == "markdown":
+        theme = pig_sdk.get_markdown_theme()
+        styles = {
+            "heading": apply(theme.heading), "link": apply(theme.link), "linkUrl": apply(theme.link_url), "code": apply(theme.code), "codeBlock": apply(theme.code_block),
+            "codeBlockBorder": apply(theme.code_block_border), "quote": apply(theme.quote), "quoteBorder": apply(theme.quote_border), "hr": apply(theme.hr),
+            "listBullet": apply(theme.list_bullet), "bold": apply(theme.bold), "italic": apply(theme.italic), "underline": apply(theme.underline),
+            "strikethrough": apply(theme.strikethrough),
+        }
+        return json.dumps({"styles": styles, "highlight": [theme.highlight_code(code, lang) for code, lang in args.get("highlight", [])]})
+    if op == "select":
+        theme = pig_sdk.get_select_list_theme()
+        return json.dumps({"styles": {"selectedPrefix": apply(theme.selected_prefix), "selectedText": apply(theme.selected_text), "description": apply(theme.description),
+                                      "scrollInfo": apply(theme.scroll_info), "noMatch": apply(theme.no_match)}})
+    if op == "settings":
+        theme = pig_sdk.get_settings_list_theme()
+        return json.dumps({"styles": {"label": [[theme.label(s, False), theme.label(s, True)] for s in samples], "value": [[theme.value(s, False), theme.value(s, True)] for s in samples],
+                                      "description": apply(theme.description), "cursor": theme.cursor, "hint": apply(theme.hint)}})
+    if op == "highlight":
+        if args.get("theme"):
+            pig_sdk.init_theme(args["theme"])
+        return json.dumps({"lines": pig_sdk.highlight_code(args.get("code", ""), args.get("lang"))})
+    if op == "init_theme":
+        pig_sdk.init_theme(args.get("theme"))
+        theme = pig_sdk.get_markdown_theme()
+        return json.dumps({"bold": apply(theme.bold), "heading": apply(theme.heading)})
+    if op == "key_hint":
+        return json.dumps({"keyHint": pig_sdk.key_hint(args["id"], args["description"]), "keyText": pig_sdk.key_text(args["id"])})
+    if op == "raw_key_hint":
+        return json.dumps({"rawKeyHint": pig_sdk.raw_key_hint(args["key"], args["description"])})
+    raise RuntimeError("unknown op " + str(op))
+
+
 def image_impl(model, request, options):
     prompt = request["input"][0]["text"]
     if prompt == "fail":
@@ -658,7 +699,7 @@ def new_extension():
         report["swapped"] = swapped
         return json.dumps(report)
 
-    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
+    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("tui_theme_probe", tui_theme_probe), ("tui_probe", tui_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
     return ext
 `

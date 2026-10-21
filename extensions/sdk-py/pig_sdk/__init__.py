@@ -54,6 +54,9 @@ from .serialize_conversation import serialize_conversation as serialize_conversa
 from .host_helpers import ParsedFrontmatter as ParsedFrontmatter, parse_date as parse_date, parse_frontmatter as parse_frontmatter, set_host_helpers as set_host_helpers, strip_frontmatter as strip_frontmatter
 from .compaction_usage import DEFAULT_COMPACTION_SETTINGS as DEFAULT_COMPACTION_SETTINGS, CompactionSettings as CompactionSettings, calculate_context_tokens as calculate_context_tokens, get_last_assistant_usage as get_last_assistant_usage, should_compact as should_compact
 from .session_skill_helpers import CURRENT_SESSION_VERSION as CURRENT_SESSION_VERSION, VIRTUAL_MODEL_STATE_ENTRY as VIRTUAL_MODEL_STATE_ENTRY, ParsedSkillBlock as ParsedSkillBlock, format_skills_for_prompt as format_skills_for_prompt, get_latest_compaction_entry as get_latest_compaction_entry, parse_skill_block as parse_skill_block
+from .theme_helpers import EditorTheme as EditorTheme, MarkdownTheme as MarkdownTheme, SelectListTheme as SelectListTheme, SettingsListTheme as SettingsListTheme, get_editor_theme as get_editor_theme, get_markdown_theme as get_markdown_theme, get_select_list_theme as get_select_list_theme, get_settings_list_theme as get_settings_list_theme, highlight_code as highlight_code, init_theme as init_theme
+from .visual_truncate import VisualTruncateResult as VisualTruncateResult, truncate_to_visual_lines as truncate_to_visual_lines
+from .keybinding_hints import format_key_text as format_key_text, key_display_text as key_display_text, key_hint as key_hint, key_text as key_text, raw_key_hint as raw_key_hint
 from .truncate import DEFAULT_MAX_BYTES as DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES as DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH as GREP_MAX_LINE_LENGTH, TruncationResult as TruncationResult, format_size as format_size, truncate_head as truncate_head, truncate_line as truncate_line, truncate_tail as truncate_tail
 from ._color import color_ansi, parse_color, style_text_with_ansi
 from . import kit as kit
@@ -1734,10 +1737,12 @@ class Theme:
 
     name: str | None
     source_path: str | None
+    source_info: dict[str, Any] | None
 
     def __init__(self) -> None:
         self.name = None
         self.source_path = None
+        self.source_info = None
         self._foregrounds: dict[str, str] = {}
         self._backgrounds: dict[str, str] = {}
         self._modifiers = True
@@ -1756,6 +1761,8 @@ class Theme:
         self.name = name if isinstance(name, str) else None
         source_path = palette.get("sourcePath")
         self.source_path = source_path if isinstance(source_path, str) and source_path != "" else None
+        source_info = palette.get("sourceInfo")
+        self.source_info = dict(source_info) if isinstance(source_info, dict) else None
         self._mode = "256color" if palette.get("mode") == "256color" else "truecolor"
         appearance = palette.get("appearance")
         self._appearance = appearance if appearance in ("light", "dark") else None
@@ -4541,6 +4548,7 @@ class Extension:
                     except ValueError:
                         palette = {}
                 self._theme._set_palette(palette or {})
+                _tui_state.set_host_theme(palette)
             elif method == "width_change":
                 w = args.get("width", 0)
                 if w > 0:

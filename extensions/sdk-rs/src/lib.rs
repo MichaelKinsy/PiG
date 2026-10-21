@@ -62,6 +62,8 @@ mod context;
 #[cfg(test)]
 mod model_info_tests;
 #[cfg(test)]
+mod theme_helper_tests;
+#[cfg(test)]
 mod branch_entry_tests;
 #[cfg(test)]
 mod session_mirror_append_tests;
@@ -120,6 +122,12 @@ mod login;
 mod oauth;
 mod protocol;
 mod theme;
+mod visual_truncate;
+pub use visual_truncate::{VisualKeep, VisualTruncateResult, truncate_to_visual_lines};
+mod keybinding_hints;
+pub use keybinding_hints::{KeyTextFormatOptions, format_key_text, key_display_text, key_hint, key_text, raw_key_hint};
+mod theme_helpers;
+pub use theme_helpers::{EditorTheme, HighlightFn, MarkdownTheme, SelectListTheme, SelectedStyleFn, SettingsListTheme, StyleFn, get_editor_theme, get_markdown_theme, get_select_list_theme, get_settings_list_theme, highlight_code, init_theme};
 mod tool_render;
 mod tool_start_order;
 mod transport;

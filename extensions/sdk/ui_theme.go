@@ -28,6 +28,9 @@ type UITheme struct {
 	// SourcePath is upstream Theme.sourcePath: the file a custom theme was
 	// loaded from, empty for a built-in theme.
 	SourcePath string
+	// SourceInfo is upstream Theme.sourceInfo: where the resource loader found
+	// the theme, nil for a theme it did not load.
+	SourceInfo *SourceInfo
 
 	foregrounds map[string]string
 	backgrounds map[string]string
@@ -49,6 +52,7 @@ type themePalette struct {
 	Mode        any            `json:"mode"`
 	Appearance  any            `json:"appearance"`
 	Colors      map[string]any `json:"colors"`
+	SourceInfo  *SourceInfo    `json:"sourceInfo"`
 }
 
 // decodeUITheme builds a UITheme from a host palette, as ThemeShim.setPalette
@@ -79,6 +83,7 @@ func decodeUITheme(raw json.RawMessage) (UITheme, bool) {
 	if path, ok := palette.SourcePath.(string); ok {
 		theme.SourcePath = path
 	}
+	theme.SourceInfo = palette.SourceInfo
 	if mode, ok := palette.Mode.(string); ok && mode == "256color" {
 		theme.mode = mode
 	}

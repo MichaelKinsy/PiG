@@ -3,6 +3,7 @@ import {
   Key, KeybindingsManager, TUI_KEYBINDINGS, detectCapabilities, getCapabilities, getKeybindings, getTerminalColorMode, isKittyProtocolActive,
   resetCapabilitiesCache, setCapabilities, setCapabilityOverrides, setKeybindings, setKittyProtocolActive,
 } from "@earendil-works/pi-tui";
+import { getMarkdownTheme, getSelectListTheme, getSettingsListTheme, highlightCode, keyHint, keyText, rawKeyHint } from "@earendil-works/pi-coding-agent";
 
 const ZERO = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 const state = { cancelled: 0 };
@@ -176,6 +177,34 @@ export default function (pi) {
     return reply(report);
   });
   tool("ops_status", async () => reply({ cancelled: state.cancelled }));
+  // tui_theme_probe: pi-coding-agent's own theme helpers and key hints, which the Go, Rust and Python SDKs answer the same way.
+  tool("tui_theme_probe", async (_id, params) => {
+    const samples = params.samples ?? [];
+    const apply = (style) => samples.map((sample) => style(sample));
+    switch (params.op) {
+      case "markdown": {
+        const theme = getMarkdownTheme();
+        const styles = Object.fromEntries(Object.entries(theme).filter(([key]) => key !== "highlightCode").map(([key, style]) => [key, apply(style)]));
+        return reply({ styles, highlight: (params.highlight ?? []).map(([code, lang]) => theme.highlightCode(code, lang ?? undefined)) });
+      }
+      case "select": {
+        const theme = getSelectListTheme();
+        return reply({ styles: Object.fromEntries(Object.entries(theme).map(([key, style]) => [key, apply(style)])) });
+      }
+      case "settings": {
+        const theme = getSettingsListTheme();
+        const pair = (style) => samples.map((sample) => [style(sample, false), style(sample, true)]);
+        return reply({ styles: { label: pair(theme.label), value: pair(theme.value), description: apply(theme.description), cursor: theme.cursor, hint: apply(theme.hint) } });
+      }
+      case "highlight":
+        return reply({ lines: highlightCode(params.code ?? "", params.lang ?? undefined) });
+      case "key_hint":
+        return reply({ keyHint: keyHint(params.id, params.description), keyText: keyText(params.id) });
+      case "raw_key_hint":
+        return reply({ rawKeyHint: rawKeyHint(params.key, params.description) });
+    }
+    throw new Error("unknown op " + params.op);
+  });
   // theme_probe: the host's palette through ctx.ui.theme, for the colors and styles the test passes in params.
   tool("theme_probe", async (_id, params, _signal, _update, ctx) => {
     const theme = ctx.ui.theme;
