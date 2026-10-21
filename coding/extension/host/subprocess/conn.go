@@ -16,9 +16,9 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // ToolAbortGrace is how long an aborted extension tool call waits for the tool to settle after its AbortSignal fires.
@@ -177,7 +177,7 @@ type Conn struct {
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
-	dialogOrder agent.SettleGate
+	dialogOrder jsloop.SettleGate
 	// arrived runs on the read loop when the response of a request is read, before the response reaches its waiter.
 	arrived map[string]func()
 	// hostCalls counts, per request, the host calls the host applies for it.

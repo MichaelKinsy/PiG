@@ -30,7 +30,7 @@ import (
 // an SDK missing it. TestBundledFilesCoversModule fails when the list and the
 // source tree disagree, and its message names the command that regenerates it.
 //
-//go:generate go run ../../automation/gen/embed-bundle.go -pkg sdk -out bundle_embed.go -skip _test.go -skip bundle.go -skip bundle_embed.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/kitwire/*.go upgrade/*.go
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg sdk -out bundle_embed.go -skip _test.go -skip bundle.go -skip bundle_embed.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go upgrade/*.go
 
 // BundledFiles lists the embedded filenames in a stable order. It is the
 // canonical set a stager must write to produce a compilable SDK module.
