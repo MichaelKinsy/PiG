@@ -279,6 +279,40 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", lambda ctx, _args: ctx.set_editor_component(EmbeddingEditor))
     ext.command("editor-install", "Install a custom editor component", lambda ctx, _args: ctx.set_editor_component(ConformanceEditor))
 
+    # headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
+    def headless_ui_probe(ctx, path):
+        def mark(line):
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write(line + "\n")
+
+        def footer(_width):
+            mark("python:footer")
+            return ["python:footer"]
+
+        def header(_width):
+            mark("python:header")
+            return ["python:header"]
+
+        class HeadlessComponent:
+            def render(self, _width):
+                mark("python:custom")
+                return ["python:custom"]
+
+            def handle_input(self, _data):
+                return pig_sdk.RemoteComponentResult(done=True, value="closed")
+
+        ctx.set_footer_renderer(footer)
+        ctx.set_header_renderer(header)
+        ctx.custom(HeadlessComponent())
+        # Options only, no component: Pi's RPC and no-op UIs resolve undefined, the TUI SDK reports it unsupported.
+        try:
+            value = ctx.custom({})
+            mark("python:custom-opaque:" + ("undefined" if value is None else "value"))
+        except Exception:  # noqa: BLE001
+            mark("python:custom-opaque:error")
+
+    ext.command("headless-ui-probe", "Hand the SDK footer, header and custom component closures", headless_ui_probe)
+
     def editor_get_probe(ctx, _args):
         got = ctx.get_editor_component()
         state = "absent" if got is None else ("installed" if got is ConformanceEditor else "other")

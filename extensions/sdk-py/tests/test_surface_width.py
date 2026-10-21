@@ -26,7 +26,7 @@ from test_sdk import _read_frame, _start_fake_host, _write_frame
 class Host:
     """A fake host that answers every call and queues the UI calls in order."""
 
-    def __init__(self, register) -> None:
+    def __init__(self, register, mode: str = "tui", has_ui: bool = True) -> None:
         tmp = tempfile.mkdtemp()
         sock_path = os.path.join(tmp, "ext.sock")
         self.listener = _start_fake_host(sock_path)
@@ -42,7 +42,7 @@ class Host:
         self.outstanding = 0
         self.responded = threading.Condition()
         assert _read_frame(self.conn)["type"] == "register"
-        self.send({"type": "ready", "ready": {"cwd": tmp, "width": 80}})
+        self.send({"type": "ready", "ready": {"cwd": tmp, "width": 80, "mode": mode, "state": {"hasUI": has_ui}}})
         threading.Thread(target=self._pump, daemon=True).start()
 
     def send(self, env: dict) -> None:
@@ -104,8 +104,8 @@ class Host:
 def host_factory():
     hosts: list[Host] = []
 
-    def make(register) -> Host:
-        host = Host(register)
+    def make(register, mode: str = "tui", has_ui: bool = True) -> Host:
+        host = Host(register, mode, has_ui)
         hosts.append(host)
         return host
 
@@ -221,3 +221,54 @@ def test_renderer_returning_a_non_list_sends_empty_rows(host_factory):
     host = host_factory(lambda ext: ext.command("go", "install", lambda ctx, _a: ctx.set_footer_renderer(lambda width: None)))
     host.command("go")
     assert host.next("ui.setFooter") == {"lines": [], "width": 80}
+
+
+# Pi calls a footer or header factory only in the TUI: rpc-mode.ts setFooter/setHeader and runner.ts noOpUIContext ignore it, so the renderer is never
+# called, no frame is sent for it, and a resize does not render it.
+@pytest.mark.parametrize("mode,has_ui", [("rpc", True), ("print", False), ("json", False)])
+@pytest.mark.parametrize("surface,method", [("footer", "ui.setFooter"), ("header", "ui.setHeader")])
+def test_renderers_are_not_run_outside_the_tui(host_factory, mode, has_ui, surface, method):
+    rendered: list[int] = []
+
+    def render(width):
+        rendered.append(width)
+        return ["must-not-render"]
+
+    def register(ext):
+        ext.command("go", "install", lambda ctx, _a: getattr(ctx, f"set_{surface}_renderer")(render))
+
+    host = host_factory(register, mode, has_ui)
+    host.command("go")
+    host.width(60)
+    host.quiet(method)
+    host.command("go")
+    host.quiet(method)
+    assert rendered == []
+
+
+# rpc-mode.ts custom() resolves undefined without running the component; the host call keeps the dialog scope, as the Node runtime's does.
+def test_custom_resolves_none_in_rpc_without_running_the_component(host_factory):
+    ran: list[str] = []
+    results: queue.Queue[tuple] = queue.Queue()
+
+    class Component:
+        def render(self, _width):
+            ran.append("render")
+            return []
+
+        def handle_input(self, _data):
+            ran.append("input")
+            return pig_sdk.RemoteComponentResult()
+
+    def go(ctx, _args):
+        results.put(("component", ctx.custom(Component())))
+        results.put(("options", ctx.custom({"overlay": True})))
+
+    host = host_factory(lambda ext: ext.command("go", "custom", go), "rpc", True)
+    host.command("go")
+    assert results.get(timeout=5) == ("component", None)
+    assert results.get(timeout=5) == ("options", None)
+    for _ in range(2):
+        args = host.next("ui.custom")
+        assert list(args) == ["key"] and args["key"].startswith("custom-")
+    assert ran == []

@@ -684,6 +684,49 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         }
     });
+    // headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
+    ext.command("headless-ui-probe", "Hand the SDK footer, header and custom component closures", |ctx, path| {
+        fn mark(path: &str, line: &str) {
+            use std::io::Write;
+            if let Ok(mut file) = std::fs::OpenOptions::new().append(true).create(true).open(path) {
+                let _ = writeln!(file, "{line}");
+            }
+        }
+        struct HeadlessComponent(String);
+        impl RemoteComponent for HeadlessComponent {
+            fn render(&self, _width: u32) -> Vec<String> {
+                mark(&self.0, "rust:custom");
+                vec!["rust:custom".to_string()]
+            }
+            fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+                Ok(RemoteComponentResult::done(Some(json!("closed"))))
+            }
+        }
+        let footer_path = path.to_string();
+        if let Err(err) = ctx.set_footer_renderer(Some(move |_width: u32| {
+            mark(&footer_path, "rust:footer");
+            vec!["rust:footer".to_string()]
+        })) {
+            return CommandResult::Error(err.to_string());
+        }
+        let header_path = path.to_string();
+        if let Err(err) = ctx.set_header_renderer(Some(move |_width: u32| {
+            mark(&header_path, "rust:header");
+            vec!["rust:header".to_string()]
+        })) {
+            return CommandResult::Error(err.to_string());
+        }
+        if let Err(err) = ctx.custom_component(HeadlessComponent(path.to_string()), json!({})) {
+            return CommandResult::Error(err.to_string());
+        }
+        // Options only, no component: Pi's RPC and no-op UIs resolve undefined, the TUI SDK reports it unsupported.
+        match ctx.custom(json!({})) {
+            Ok(None) => mark(path, "rust:custom-opaque:undefined"),
+            Ok(Some(_)) => mark(path, "rust:custom-opaque:value"),
+            Err(_) => mark(path, "rust:custom-opaque:error"),
+        }
+        CommandResult::Ok
+    });
     ext.flag("flag-true", pig_sdk::FlagOptions::boolean("", true));
     ext.flag("flag-false", pig_sdk::FlagOptions::boolean("", false));
     ext.flag("flag-string", pig_sdk::FlagOptions::string("", "default"));

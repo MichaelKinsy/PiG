@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import zlib from "node:zlib";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
@@ -1028,6 +1029,37 @@ export default function (pi) {
         c.addChild(new piTui.Text(args, 0, 0));
         return c;
       });
+    },
+  });
+  // headless-ui-probe hands the runtime footer, header, custom, editor, terminal-input and theme calls; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
+  pi.registerCommand("headless-ui-probe", {
+    description: "Hand the runtime footer, header and custom component closures",
+    handler: async (path, ctx) => {
+      const mark = (line) => fs.appendFileSync(path, `${line}\n`);
+      ctx.ui.setFooter(() => {
+        mark("node:footer");
+        return { render: () => { mark("node:footer-render"); return ["node:footer"]; }, invalidate() {} };
+      });
+      ctx.ui.setHeader(() => {
+        mark("node:header");
+        return { render: () => { mark("node:header-render"); return ["node:header"]; }, invalidate() {} };
+      });
+      await ctx.ui.custom((_tui, _theme, _keybindings, done) => {
+        mark("node:custom");
+        return { render: () => { mark("node:custom-render"); return ["node:custom"]; }, handleInput: () => done("closed"), invalidate() {} };
+      });
+      ctx.ui.setEditorComponent(() => { mark("node:editor"); return { render: () => ["node:editor"], handleInput() {}, invalidate() {} }; });
+      mark(`node:getEditorComponent:${typeof ctx.ui.getEditorComponent()}`);
+      const unsubscribe = ctx.ui.onTerminalInput(() => { mark("node:terminal-input"); });
+      mark(`node:onTerminalInput:${typeof unsubscribe}`);
+      unsubscribe();
+      ctx.ui.setWorkingMessage("node:working");
+      ctx.ui.setWorkingIndicator({ frames: ["node:working"] });
+      try {
+        mark(`node:setTheme:${JSON.stringify(ctx.ui.setTheme(ctx.ui.theme))}`);
+      } catch (error) {
+        mark(`node:setTheme:threw:${error?.message}`);
+      }
     },
   });
   // kit-kinds sets the "kit-kinds" widget to the kinds kit-probe does not
