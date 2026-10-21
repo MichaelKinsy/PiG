@@ -17,13 +17,9 @@ var awaitingSlow = Remote("t.e8-slow", RemoteDef{
 	Variants: Fields[VariantDef]{{"main", VariantDef{State: Fields[Schema]{{"n", tNumber()}}}}},
 })
 
-// awaitingSetup is a server whose Slow object goes live when open is called, and a browser whose link counts frames.
-func awaitingSetup(t *testing.T, readyTimeout *time.Duration) (server, browser *HostImpl, link *countingLink, open func()) {
-	t.Helper()
-	gate := newRequestsLatch()
-	t.Cleanup(gate.open)
-	server = requestsHost(t, HostOptions{Name: "server"})
-	requestsServe(t, server.Serve, awaitingSlow, func(_ any, _ Principal, self Self) (Implementation, error) {
+// awaitingSlowFactory serves the Slow object: it goes live once gate opens, or ends when its object is disposed.
+func awaitingSlowFactory(gate *requestsLatch) Factory {
+	return func(_ any, _ Principal, self Self) (Implementation, error) {
 		if _, err := self.Resource("gate", ResourceDeclaration[any]{Version: 1, Open: func(options ResourceOpenOptions) (any, error) {
 			// Pi's open returns a promise nothing waits on once its object is disposed; a Go open that blocks must also
 			// end with its abort signal, or disposing the loading object would wait for it.
@@ -40,7 +36,16 @@ func awaitingSetup(t *testing.T, readyTimeout *time.Duration) (server, browser *
 			return nil, err
 		}
 		return chordjson.ObjectOf("variant", "main", "n", n), nil
-	}, ServeOptions{})
+	}
+}
+
+// awaitingSetup is a server whose Slow object goes live when open is called, and a browser whose link counts frames.
+func awaitingSetup(t *testing.T, readyTimeout *time.Duration) (server, browser *HostImpl, link *countingLink, open func()) {
+	t.Helper()
+	gate := newRequestsLatch()
+	t.Cleanup(gate.open)
+	server = requestsHost(t, HostOptions{Name: "server"})
+	requestsServe(t, server.Serve, awaitingSlow, awaitingSlowFactory(gate), ServeOptions{})
 	down, up := MemoryLinkPair()
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"user": "u"}}); err != nil {
 		t.Fatal(err)
