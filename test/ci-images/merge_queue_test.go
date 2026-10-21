@@ -5,6 +5,7 @@ package ciimages
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -465,9 +466,7 @@ var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "f
 func merge(sets ...map[string]string) map[string]string {
 	merged := map[string]string{}
 	for _, set := range sets {
-		for name, value := range set {
-			merged[name] = value
-		}
+		maps.Copy(merged, set)
 	}
 	return merged
 }
@@ -800,7 +799,7 @@ func TestAgentsDocRendersTheTierTable(t *testing.T) {
 		matched := false
 		for prefix, job := range prefixes {
 			if rest, ok := strings.CutPrefix(name, prefix); ok {
-				for _, shard := range strings.Split(rest, ", ") {
+				for shard := range strings.SplitSeq(rest, ", ") {
 					documented[[2]string{job, shard}] = tier
 				}
 				matched = true
