@@ -204,6 +204,19 @@ const ids = (entries) => entries.map((entry) => entry.id);
   assert.equal(sm.getEntry(first), undefined);
   assert.equal(sm.getEntry(second).parentId, "m1");
 }
+
+// The host's own records that adoptHostLeafEntry shows ahead of the log (a label, a session name) are confirmed by their copies, not kept beside them.
+{
+  const { runtime, sm } = newSession();
+  const label = { type: "label", id: "l1", parentId: "m1", timestamp: "2026-10-11T00:00:00.000Z", targetId: "m1", label: "mark" };
+  runtime.pendingEntries.push(label);
+  assert.deepEqual(ids(sm.getEntries()), ["m1", "l1"]);
+  assert.equal(sm.getLabel("m1"), "mark");
+  push(runtime, [{ ...label }], "l1");
+  assert.deepEqual(ids(sm.getEntries()), ["m1", "l1"]);
+  assert.equal(sm.getEntry("l1"), label);
+  assert.deepEqual(runtime.pendingEntries, []);
+}
 `, "__RUNTIME__", `"`+(&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String()+`"`, 1)
 	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("node runtime after a refused append: %v\n%s", err, output)

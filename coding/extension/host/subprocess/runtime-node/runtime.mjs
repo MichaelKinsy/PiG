@@ -298,8 +298,8 @@ class RuntimeSessionManager {
     for (const entry of pending) {
       const index = replicated.get(entry.id);
       const hosted = index === undefined ? undefined : entries[index];
-      // A record of another kind under the id is not this append: the host refuses an id its log holds, and the refusal retracts the append.
-      if (hosted === undefined || hosted.type !== "custom" || hosted.customType !== entry.customType) {
+      // A record of another kind under the id is not this entry: the host refuses an id its log holds, and the refusal retracts an append. The entries adoptHostLeafEntry adds (a label, a session name, a custom message) are the host's own records, so their copies match.
+      if (hosted === undefined || hosted.type !== entry.type || hosted.customType !== entry.customType) {
         unconfirmed.push(entry);
         continue;
       }
