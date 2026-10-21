@@ -137,6 +137,21 @@ impl RemoteComponent for TimerFocused {
     }
 }
 
+/// Subscribes `handler` to the event `name`. A before_agent_start handler registers with `on_before_agent_start` and receives the event as Pi's object (`BeforeAgentStartEvent::snapshot`).
+fn subscribe(
+    subscriber: &pig_sdk::EventSubscriber,
+    name: &str,
+    handler: impl Fn(&pig_sdk::Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync + 'static,
+) -> pig_sdk::EventSubscription {
+    if name == pig_sdk::EVENT_BEFORE_AGENT_START {
+        return subscriber.on_before_agent_start(move |ctx, event| {
+            let mut data = event.snapshot().map_err(|err| err.to_string())?;
+            handler(ctx, &mut data)
+        });
+    }
+    subscriber.on_event(name, handler)
+}
+
 fn conformance_login_definition() -> LoginDefinition {
     LoginDefinition {
         brand: vec!["A".repeat(41); 5],
@@ -1694,7 +1709,7 @@ fn main() {
             let mut words = args.split_whitespace();
             let (name, field) = (words.next().unwrap_or("").to_string(), words.next().unwrap_or("").to_string());
             let reported = name.clone();
-            let subscription = event_field_subscriber.on_event(&name, move |ctx, data| {
+            let subscription = subscribe(&event_field_subscriber, &name, move |ctx, data| {
                 let value = data.get(field.as_str()).map_or_else(|| "absent".to_string(), |value| value.to_string());
                 ctx.notify(&format!("event_field:{}.{}={}", reported, field, value), "info");
                 Ok(None)
@@ -1847,7 +1862,7 @@ fn main() {
             let name = args.trim().to_string();
             let reported = name.clone();
             let results = event_probe_results.clone();
-            let subscription = event_probe_on_subscriber.on_event(&name, move |ctx, data| {
+            let subscription = subscribe(&event_probe_on_subscriber, &name, move |ctx, data| {
                 ctx.notify(&format!("event_probe_on:{}", reported), "info");
                 // The event as the host sent it, for the tests that compare a payload field with the Go reference's.
                 ctx.notify(&format!("event_probe_data:{}:{}", reported, serde_json::to_string(&*data).unwrap()), "info");
@@ -1893,7 +1908,7 @@ fn main() {
                 Ok(value) => value,
                 Err(err) => return CommandResult::Error(err.to_string()),
             };
-            let subscription = event_probe_result_subscriber.on_event(name, move |_ctx, _data| Ok(Some(result.clone())));
+            let subscription = subscribe(&event_probe_result_subscriber, name, move |_ctx, _data| Ok(Some(result.clone())));
             event_probe_result_subscriptions.lock().unwrap().push(subscription);
             CommandResult::Ok
         },
@@ -1955,7 +1970,7 @@ fn main() {
         move |_ctx, args| {
             let name = args.trim().to_string();
             let reported = name.clone();
-            let subscription = event_payload_subscriber.on_event(&name, move |ctx, data| {
+            let subscription = subscribe(&event_payload_subscriber, &name, move |ctx, data| {
                 ctx.notify(&format!("event_payload:{}:{}", reported, serde_json::to_string(&*data).unwrap()), "info");
                 Ok(None)
             });

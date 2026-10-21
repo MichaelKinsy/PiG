@@ -408,9 +408,9 @@ func nestedEventsPythonBody(name string) string {
 
 func nestedEventsRustBody(name string) string {
 	return fmt.Sprintf(`    let mut ext = Extension::new(%q);
-    ext.on_event("before_agent_start", |ctx, _data| {
+    ext.on_before_agent_start(|ctx, _event| {
         ctx.set_status("nested", "busy");
-        None
+        Ok(None)
     });
     ext.on_event("session_info_changed", |ctx, data| {
         ctx.notify(&format!("name:{}", data["name"].as_str().unwrap_or("")), "info");
