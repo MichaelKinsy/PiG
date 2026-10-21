@@ -96,8 +96,10 @@ func (s *scopedModelsSelection) apply(m *InteractiveMode, enabled []string) {
 	m.scopedModelIDs = s.scopeIDs(enabled)
 	if m.opts.SessionHandle != nil {
 		scoped := []extension.ScopedModel{}
-		if len(m.scopedModelIDs) > 0 && m.opts.ModelRegistry != nil {
-			available := m.opts.ModelRegistry.GetAvailableModelData()
+		if len(m.scopedModelIDs) > 0 {
+			// Scope entries are the Session ModelRuntime's runtime-bound models; registry catalog descriptors carry no backend.
+			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:showModelsSelector updateSessionModels
+			available := m.opts.SessionHandle.AvailableModelSnapshot()
 			modelsByID := make(map[string]*ai.Model, len(available))
 			for _, model := range available {
 				modelsByID[scopedModelKey(model)] = model
