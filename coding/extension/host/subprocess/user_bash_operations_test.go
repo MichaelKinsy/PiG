@@ -137,3 +137,46 @@ func TestUserBashOperationsExecAbortsWithTheContext(t *testing.T) {
 		t.Fatalf("chunks after the abort = %q, want the exec's output until it settled", chunks)
 	}
 }
+
+// The extension's handle is released when the host drops the operations object, never while an exec through it is in flight: the request holds only the handle, so the exec itself keeps the object reachable. A release mid-exec deletes the extension's table entry under the running command.
+func TestUserBashOperationsAreNotReleasedWhileAnExecRuns(t *testing.T) {
+	conn, peer := userBashOperationsRig(t)
+	typed, ok := userBashOperationsResult(conn, json.RawMessage(`{"operations":{"handle":"bash-4"}}`))
+	if !ok {
+		t.Fatal("no operations result")
+	}
+	done := make(chan error, 1)
+	go func(operations extension.BashOperations) {
+		_, err := operations.Exec(t.Context(), "sleep", "/work", extension.BashOperationsExecOptions{})
+		done <- err
+	}(typed.Operations)
+	typed = nil
+	request, err := tryReadFramed(peer)
+	if err != nil || request.Request == nil || request.Request.Method != RequestUserBashExec {
+		t.Fatalf("request = %+v, %v, want user_bash_exec", request, err)
+	}
+	frames := make(chan Envelope, 1)
+	go func() {
+		env, err := tryReadFramed(peer)
+		if err == nil {
+			frames <- env
+		}
+	}()
+	deadline := time.After(200 * time.Millisecond)
+	for {
+		runtime.GC()
+		select {
+		case env := <-frames:
+			t.Fatalf("frame while the exec runs = %+v, want none (the handle was released under the running exec)", env)
+		case err := <-done:
+			t.Fatalf("Exec returned %v before the extension's exec settled", err)
+		case <-deadline:
+			writeFramed(t, peer, Envelope{Type: MsgResponse, ID: request.ID, Response: &ResponsePayload{}})
+			if err := <-done; err != nil {
+				t.Fatalf("Exec error = %v", err)
+			}
+			return
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+}

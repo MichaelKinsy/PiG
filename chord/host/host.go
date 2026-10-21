@@ -226,12 +226,14 @@ type HostImpl struct {
 	dev       bool
 	principal Principal
 	// selfKey is principalKey(self): an equal principal is the host's own, whatever object carries it.
-	selfKey      string
-	inFactory    int
-	failed       error
-	objects      *orderedMap[string, *ObjectImpl]
-	codeVersions *orderedMap[int, *CodeVersionState]
-	facets       *orderedMap[string, Facet]
+	selfKey   string
+	inFactory int
+	failed    error
+	objects   *orderedMap[string, *ObjectImpl]
+	// afterCloseDisposal is a test seam: Close calls it after it disposed the objects of its first snapshot and before it closes the links, the window in which a hold a link delivers creates an object nothing has disposed yet.
+	afterCloseDisposal func()
+	codeVersions       *orderedMap[int, *CodeVersionState]
+	facets             *orderedMap[string, Facet]
 	// hostObjects are the host's own references to its `lifetime: "host"` objects, by type name.
 	hostObjects *orderedMap[string, RefCore]
 	kind        string
@@ -1937,6 +1939,9 @@ func (host *HostImpl) Close() error {
 	})
 	reason := NewChordError(CodeGone, "host "+host.name+" closed", ChordErrorOptions{})
 	err := host.disposeHoldersFirst(objects, reason, "host close: disposal failed")
+	if host.afterCloseDisposal != nil {
+		host.afterCloseDisposal()
+	}
 	var closed []Link
 	host.run(func() {
 		for _, connection := range host.connections.Keys() {
