@@ -180,14 +180,14 @@ func TestWidgetVectorsRenderLikePi(t *testing.T) {
 }
 
 // viewCallbacks are the events the extension received for Pi's callbacks, as the vectors name them: "<type>:<value>",
-// and "mouse:<type>/<button>/<x>,<y>" for a mouse region; the change reports are the host's own.
+// and "mouse:<type>/<button>/<x>/<y>" for a mouse region; the change reports are the host's own.
 func viewCallbacks(events []ViewEventPayload) []string {
 	var out []string
 	for _, ev := range events {
 		switch {
 		case ev.Type == ViewEventChange:
 		case ev.Type == ViewEventMouse && ev.Mouse != nil:
-			out = append(out, fmt.Sprintf("mouse:%s/%s/%d,%d", ev.Mouse.Type, ev.Mouse.Button, ev.Mouse.X, ev.Mouse.Y))
+			out = append(out, fmt.Sprintf("mouse:%s/%s/%d/%d", ev.Mouse.Type, ev.Mouse.Button, ev.Mouse.X, ev.Mouse.Y))
 		default:
 			out = append(out, ev.Type+":"+ev.Value)
 		}

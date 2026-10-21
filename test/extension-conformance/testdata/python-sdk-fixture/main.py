@@ -355,7 +355,7 @@ class KitWidgetProbe:
     def handle_view_event(self, event: kit.Event) -> pig_sdk.RemoteComponentResult:
         if event.type == kit.MOUSE and event.mouse is not None:
             m = event.mouse
-            self.log.append(f"mouse:{m['type']}/{m['button']}/{m['x']},{m['y']}")
+            self.log.append(f"mouse:{m['type']}/{m['button']}/{m['x']}/{m['y']}")
         else:
             self.log.append(f"{event.type}:{event.value}")
         if event.type != kit.CHANGE:

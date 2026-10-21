@@ -50,7 +50,7 @@ func (p *kitWidgetProbe) HandleViewEvent(event kit.Event) (sdk.RemoteComponentRe
 	defer p.mu.Unlock()
 	entry := event.Type + ":" + event.Value
 	if event.Type == kit.EventMouse && event.Mouse != nil {
-		entry = fmt.Sprintf("mouse:%s/%s/%d,%d", event.Mouse.Type, event.Mouse.Button, event.Mouse.X, event.Mouse.Y)
+		entry = fmt.Sprintf("mouse:%s/%s/%d/%d", event.Mouse.Type, event.Mouse.Button, event.Mouse.X, event.Mouse.Y)
 	}
 	p.log = append(p.log, entry)
 	if event.Type != kit.EventChange {

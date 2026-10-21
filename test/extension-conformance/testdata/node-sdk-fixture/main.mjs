@@ -1247,7 +1247,7 @@ export default function (pi) {
     const region = (o, kind = "text", wrap) => ({ note }) => {
       const mouseRegion = new piTui.MouseRegion(kitScrollChild(kind), (event) => {
         if (o.types && !o.types.includes(event.type)) return undefined;
-        note(`mouse:${event.type}/${event.button}/${event.x},${event.y}`);
+        note(`mouse:${event.type}/${event.button}/${event.x}/${event.y}`);
         const result = { handled: o.handled ?? true };
         if (o.capture) result.capture = true;
         if (o.focus) result.focus = true;

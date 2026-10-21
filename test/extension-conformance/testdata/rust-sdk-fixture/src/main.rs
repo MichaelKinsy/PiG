@@ -588,7 +588,7 @@ impl ViewComponent for KitWidgetProbe {
     fn handle_view_event(&mut self, event: kit::Event) -> Result<RemoteComponentResult, String> {
         let entry = match event.kind {
             EventKind::Mouse => match &event.mouse {
-                Some(m) => format!("mouse:{}/{}/{},{}", m.kind, m.button, m.x, m.y),
+                Some(m) => format!("mouse:{}/{}/{}/{}", m.kind, m.button, m.x, m.y),
                 None => "mouse:".to_string(),
             },
             kind => format!("{}:{}", kit_event_name(kind), event.value),
