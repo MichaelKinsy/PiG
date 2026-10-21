@@ -236,7 +236,10 @@ func (r *modelTypesRig) toolWith(name string, args map[string]any) map[string]an
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	result, err := def.Definition.Execute(r.t.Context(), "call-"+name, encoded, nil)
+	// A row whose extension never answers (a mutated SDK that left a request unserved) fails here instead of holding the package to its test timeout.
+	ctx, cancel := context.WithTimeout(r.t.Context(), 45*time.Second)
+	defer cancel()
+	result, err := def.Definition.Execute(ctx, "call-"+name, encoded, nil)
 	if err != nil {
 		r.t.Fatalf("%s: %v", name, err)
 	}
