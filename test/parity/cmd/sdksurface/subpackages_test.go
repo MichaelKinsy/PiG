@@ -31,7 +31,7 @@ func TestSubpackageSymbolsAreQualified(t *testing.T) {
 		"extensions/sdk/frontend/f.go":              "package frontend\n\nfunc Draw() {}\n",
 		"extensions/sdk/testdata/t/ignored.txt":     "x",
 		"extensions/sdk-rs/src/tui/mod.rs":          "mod text;\nmod keys;\nmod secret;\n\npub use keys::*;\npub use text::{visible_width, Segments};\npub fn declared_in_mod() {}\npub(crate) use secret::internal_only;\n",
-		"extensions/sdk-rs/src/tui/text.rs": "pub fn visible_width(s: &str) -> usize { s.len() }\npub fn not_reexported() {}\npub(crate) fn crate_only() {}\npub struct Segments {\n    pub width: usize,\n}\nimpl Segments {\n    pub fn first(&self) {}\n    pub(crate) fn private(&self) {}\n}\n",
+		"extensions/sdk-rs/src/tui/text.rs":         "pub fn visible_width(s: &str) -> usize { s.len() }\npub fn not_reexported() {}\npub(crate) fn crate_only() {}\npub struct Segments {\n    pub width: usize,\n}\nimpl Segments {\n    pub fn first(&self) {}\n    pub(crate) fn private(&self) {}\n}\n",
 		"extensions/sdk-rs/src/tui/keys.rs":         "pub fn matches_key() {}\n",
 		"extensions/sdk-rs/src/tui/secret.rs":       "pub fn internal_only() {}\n",
 		"extensions/sdk-rs/src/tui/tests.rs":        "pub fn helper_in_tests() {}\n",
