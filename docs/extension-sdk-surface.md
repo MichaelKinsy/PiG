@@ -25,10 +25,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 476 | 31 | 11 |
-| Go | 481 | 26 | 11 |
-| Rust | 481 | 26 | 11 |
-| Python | 481 | 26 | 11 |
+| Node runtime | 477 | 30 | 11 |
+| Go | 482 | 26 | 10 |
+| Rust | 482 | 26 | 10 |
+| Python | 482 | 26 | 10 |
 
 31 PiG-only surfaces:
 
@@ -960,7 +960,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.model` | `ExtensionContext.model` | stand-in/partial `RuntimeContext.model`: the current model's metadata from the host's model registry | stand-in/partial `Context.GetModelInfo`: the current model's metadata from the host's model registry | stand-in/partial `Context::get_model_info`: the current model's metadata from the host's model registry | stand-in/partial `Context.get_model_info`: the current model's metadata from the host's model registry |
+| `ctx.model` | `ExtensionContext.model` | implemented `RuntimeContext.model` | stand-in/partial `Context.Model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo | stand-in/partial `Context::model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info | stand-in/partial `Context.model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info |
 | `ctx.scopedModels` | `ExtensionContext.scopedModels` | implemented `RuntimeContext.scopedModels` | implemented `Context.ScopedModels` | implemented `Context::scoped_models` | implemented `Context.scoped_models` |
 | `ctx.thinkingLevel` | `ExtensionContext.thinkingLevel` | implemented `RuntimeContext.thinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` |
 | `ctx.isIdle` | `ExtensionContext.isIdle` | implemented `RuntimeContext.isIdle` | implemented `Context.IsIdle` | implemented `Context::is_idle` | implemented `Context.is_idle` |
@@ -1194,7 +1194,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|
 | `ctx.ui.custom(options.overlay)` | `ExtensionUIContext.custom(options.overlay)` | implemented `RuntimeUI.custom` | implemented `RemoteOverlayOptions.Overlay` | implemented `Context::custom_component` | implemented `Context.custom` |
 | `ctx.ui.custom(options.overlayOptions)` | `ExtensionUIContext.custom(options.overlayOptions)` | stand-in/partial `RuntimeUI.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `RemoteOverlayOptions.OverlayOptions`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context::custom_component`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary |
-| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | implemented `RemoteOverlayOptions.OnHandle` | implemented `Context::custom_component_with_handle` | implemented `_RemoteOverlayState.on_handle` |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -3020,7 +3020,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
 | `user_bash return.operations` | Node runtime, Go, Rust, Python | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |
-| `ctx.ui.custom(options.onHandle)` | Go, Rust, Python | Native SDKs do not expose the mounted-overlay control handle. Node uses the host overlay control protocol and synchronous acknowledgement. |
 | `tool render context.lastComponent` | Go, Rust, Python | Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State. |
 | `provider.streamSimple` | Node runtime, Go, Rust, Python | The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction. |
 | `provider.refreshModels` | Node runtime, Go, Rust, Python | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |
