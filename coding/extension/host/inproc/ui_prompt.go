@@ -249,20 +249,35 @@ func (c *uiPromptContext) ConfirmValue(ctx context.Context, title, message strin
 	return json.RawMessage(strconv.FormatBool(confirmed)), nil
 }
 
-func (c *uiPromptContext) InputValue(ctx context.Context, title, placeholder string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+// A nil placeholder or prefill is Pi's undefined: a bound UI without a value-typed dialog opens it through its omitter, or with an empty member.
+func (c *uiPromptContext) InputValue(ctx context.Context, title string, placeholder *string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
 	defer c.runner.BeginUIPrompt(extension.UIPromptKindInput, title)()
 	if ui, ok := c.UIContext.(extension.DialogValueUIContext); ok {
 		return ui.InputValue(ctx, title, placeholder, opts)
 	}
-	return stringResult(c.UIContext.Input(ctx, title, placeholder, opts))
+	if omitter, ok := c.UIContext.(extension.PlaceholderOmitter); ok && placeholder == nil {
+		return stringResult(omitter.InputWithoutPlaceholder(ctx, title, opts))
+	}
+	text := ""
+	if placeholder != nil {
+		text = *placeholder
+	}
+	return stringResult(c.UIContext.Input(ctx, title, text, opts))
 }
 
-func (c *uiPromptContext) EditorValue(ctx context.Context, title, prefill string) (json.RawMessage, error) {
+func (c *uiPromptContext) EditorValue(ctx context.Context, title string, prefill *string) (json.RawMessage, error) {
 	defer c.runner.BeginUIPrompt(extension.UIPromptKindEditor, title)()
 	if ui, ok := c.UIContext.(extension.DialogValueUIContext); ok {
 		return ui.EditorValue(ctx, title, prefill)
 	}
-	return stringResult(c.UIContext.Editor(ctx, title, prefill))
+	if omitter, ok := c.UIContext.(extension.PrefillOmitter); ok && prefill == nil {
+		return stringResult(omitter.EditorWithoutPrefill(ctx, title))
+	}
+	text := ""
+	if prefill != nil {
+		text = *prefill
+	}
+	return stringResult(c.UIContext.Editor(ctx, title, text))
 }
 
 func stringResult(text string, err error) (json.RawMessage, error) {
@@ -297,4 +312,35 @@ func (c *uiPromptContext) ClearHiddenThinkingLabel() {
 		return
 	}
 	c.SetHiddenThinkingLabel("")
+}
+
+// ClearStatus is Pi's setStatus(key, undefined) through the bound UI's own [extension.StatusClearer], or the empty text for a bound UI without one.
+func (c *uiPromptContext) ClearStatus(key string) {
+	if clearer, ok := c.UIContext.(extension.StatusClearer); ok {
+		clearer.ClearStatus(key)
+		return
+	}
+	c.SetStatus(key, "")
+}
+
+// InputWithoutPlaceholder opens the input dialog without a placeholder through the bound UI's own [extension.PlaceholderOmitter], or with an empty
+// placeholder for a bound UI without one. Like Input it is a ui_prompt scope.
+func (c *uiPromptContext) InputWithoutPlaceholder(ctx context.Context, title string, opts extension.ExtensionUIDialogOptions) (string, error) {
+	omitter, ok := c.UIContext.(extension.PlaceholderOmitter)
+	if !ok {
+		return c.Input(ctx, title, "", opts)
+	}
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindInput, title)()
+	return omitter.InputWithoutPlaceholder(ctx, title, opts)
+}
+
+// EditorWithoutPrefill opens the editor dialog without a prefill through the bound UI's own [extension.PrefillOmitter], or with an empty prefill for a
+// bound UI without one. Like Editor it is a ui_prompt scope.
+func (c *uiPromptContext) EditorWithoutPrefill(ctx context.Context, title string) (string, error) {
+	omitter, ok := c.UIContext.(extension.PrefillOmitter)
+	if !ok {
+		return c.Editor(ctx, title, "")
+	}
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindEditor, title)()
+	return omitter.EditorWithoutPrefill(ctx, title)
 }

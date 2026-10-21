@@ -2447,7 +2447,12 @@ class Context:
         self._call("ui.notify", {"message": message, "level": level})
 
     def set_status(self, key: str, text: str) -> None:
+        """An empty text is a text, as in Pi (RPC mode writes it); :meth:`clear_status` removes the entry, as Pi's ``setStatus(key, undefined)`` does."""
         self._call("ui.setStatus", {"key": key, "text": text})
+
+    def clear_status(self, key: str) -> None:
+        """Remove the status entry for ``key``: Pi's ``setStatus(key, undefined)``."""
+        self._call("ui.setStatus", {"key": key})
 
     def set_working_message(self, message: str | None = None) -> None:
         """Set the working label. ``None`` (or no argument) restores the default label, as Pi's ``setWorkingMessage()`` does; an empty string is a
@@ -2504,14 +2509,21 @@ class Context:
         result = self._call("ui.confirm", args).get("result") or {}
         return result.get("confirmed", False)
 
-    def input(self, title: str, placeholder: str = "", *, timeout: float | None = None) -> tuple[Any, bool]:
+    def input(self, title: str, placeholder: str | None = None, *, timeout: float | None = None) -> tuple[Any, bool]:
+        """``placeholder=None`` is Pi's omitted placeholder (RPC mode writes no placeholder member); an empty string is a placeholder (``placeholder: ""``)."""
         self._block_for_user()
-        args = self._dialog_args({"title": title, "placeholder": placeholder}, timeout)
-        return self._dialog_value(self._call("ui.input", args).get("result") or {}, "text")
+        args: dict[str, Any] = {"title": title}
+        if placeholder is not None:
+            args["placeholder"] = placeholder
+        return self._dialog_value(self._call("ui.input", self._dialog_args(args, timeout)).get("result") or {}, "text")
 
-    def editor(self, title: str, prefill: str = "") -> tuple[Any, bool]:
+    def editor(self, title: str, prefill: str | None = None) -> tuple[Any, bool]:
+        """``prefill=None`` is Pi's omitted prefill (RPC mode writes no prefill member); an empty string is a prefill (``prefill: ""``)."""
         self._block_for_user()
-        return self._dialog_value(self._call("ui.editor", {"title": title, "prefill": prefill}).get("result") or {}, "text")
+        args: dict[str, Any] = {"title": title}
+        if prefill is not None:
+            args["prefill"] = prefill
+        return self._dialog_value(self._call("ui.editor", args).get("result") or {}, "text")
 
     # Message injection ------------------------------------------------------
 

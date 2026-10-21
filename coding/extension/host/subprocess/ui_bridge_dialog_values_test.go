@@ -21,10 +21,10 @@ func (u valueUI) SelectValue(context.Context, string, []string, extension.Extens
 func (u valueUI) ConfirmValue(context.Context, string, string, extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
 	return u.reply, u.err
 }
-func (u valueUI) InputValue(context.Context, string, string, extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+func (u valueUI) InputValue(context.Context, string, *string, extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
 	return u.reply, u.err
 }
-func (u valueUI) EditorValue(context.Context, string, string) (json.RawMessage, error) {
+func (u valueUI) EditorValue(context.Context, string, *string) (json.RawMessage, error) {
 	return u.reply, u.err
 }
 

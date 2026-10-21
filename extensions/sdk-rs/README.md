@@ -8,6 +8,8 @@ The crate documentation (`cargo doc`; `cargo test --doc` runs the truncation exa
 
 `Context::set_working_message("")` shows an empty working label, as Pi does, and `Context::clear_working_message()` restores the default label (Pi's `setWorkingMessage()` with no argument); `clear_hidden_thinking_label()` does the same for `set_hidden_thinking_label`.
 
+`Context::set_status(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context::clear_status(key)` is Pi's `setStatus(key, undefined)`. An empty placeholder or prefill of `input` and `editor` is the unset member (Pi's `placeholder?`, `prefill?`; a Rust `&str` cannot be undefined), so RPC mode writes no such member for it.
+
 ## Constrained sampling
 
 `ToolDefinition.constrained_sampling` is `Option<ToolConstrainedSampling>`. Use `None` for omission, `Some(ToolConstrainedSampling::Disabled)` for explicit false, or `Some(config.into())` for a `ConstrainedSampling` configuration. `tool_with_constrained_sampling` accepts either the configuration or the disabled variant. This retains Pi's false/config union; true is not a valid value.

@@ -40,10 +40,10 @@ func (u *dialogValuesUI) SelectValue(_ context.Context, title string, _ []string
 func (u *dialogValuesUI) ConfirmValue(_ context.Context, title, _ string, _ extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
 	return u.reply(title)
 }
-func (u *dialogValuesUI) InputValue(_ context.Context, title, _ string, _ extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+func (u *dialogValuesUI) InputValue(_ context.Context, title string, _ *string, _ extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
 	return u.reply(title)
 }
-func (u *dialogValuesUI) EditorValue(_ context.Context, title, _ string) (json.RawMessage, error) {
+func (u *dialogValuesUI) EditorValue(_ context.Context, title string, _ *string) (json.RawMessage, error) {
 	return u.reply(title)
 }
 

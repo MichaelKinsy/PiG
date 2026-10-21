@@ -7660,7 +7660,7 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/rpc/64-rpc-ui-response-typed-results.toml",
+      "scenario": "test/parity/scenarios/rpc/63-rpc-ui-wire-empty-members.toml",
       "transforms": [
         {
           "kind": "id",

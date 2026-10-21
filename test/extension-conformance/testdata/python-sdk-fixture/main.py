@@ -422,6 +422,24 @@ def new_extension() -> pig_sdk.Extension:
         ctx.set_tools_expanded(True)
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
+    # ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+    def ui_wire_empties_probe(ctx, _args):
+        ctx.set_status("k", "")
+        ctx.clear_status("k")
+        ctx.notify("", "")
+        ctx.notify("typed", "warning")
+        ctx.set_title("")
+        ctx.set_editor_text("")
+        ctx.select("T", [])
+        ctx.confirm("", "")
+        ctx.input("T1")
+        ctx.input("T2", "")
+        ctx.input("T3", "ph")
+        ctx.editor("E1")
+        ctx.editor("E2", "")
+        ctx.editor("E3", "pre")
+
+    ext.command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", ui_wire_empties_probe)
     # tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
     def tool_call_guard_probe(ctx, args):
         names = ["bash", "read", "probe", "other"]

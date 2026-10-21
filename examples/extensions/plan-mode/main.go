@@ -437,7 +437,7 @@ func (p *planMode) updateStatus(ctx sdk.Context) error {
 	case p.enabled:
 		ctx.SetStatus("plan-mode", "⏸ plan")
 	default:
-		ctx.SetStatus("plan-mode", "")
+		ctx.ClearStatus("plan-mode")
 	}
 
 	if p.executing && len(p.todos) > 0 {
