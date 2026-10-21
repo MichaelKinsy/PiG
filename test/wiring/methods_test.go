@@ -168,6 +168,8 @@ func init() {
 		// offering it from Node is an owner product item recorded in the release notes draft.
 		undeliveredHostFrames["request "+request+" by node"] = "sent only to an OAuth registration with has_credential_store, which the Node runtime never declares"
 	}
+	// child_session.go: only the Go, Python and Rust SDKs ask the host for a child session (childSession.*); Node runs Pi's own createAgentSession in the extension process (runtime-node/shims/independent-session.mjs) and its AgentSession emits to its listeners directly, so the host has nothing to forward (TestNodeCreateAgentSessionSentinelScenarioMatchesPi).
+	undeliveredHostFrames["notify childSession.event by node"] = "Node's createAgentSession runs in the extension process; its events never cross the wire"
 	// view_wire.go: a Node frame carries the lines Pi's components rendered, so the host routes every key to ui.custom.input.
 	undeliveredHostFrames["notify ui.view.event by node"] = "a Node view frame is rendered lines; keys go to ui.custom.input (TestEverySDKReceivesEveryHostNotifyCapability)"
 }
