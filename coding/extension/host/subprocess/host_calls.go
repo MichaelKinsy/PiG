@@ -246,6 +246,26 @@ func (h *Host) runSlotCall(slot string, through *slotCall) {
 	}
 }
 
+// outputOrderedCalls are the fire-and-forget calls whose effect an RPC client reads from the output stream, where its place among the command responses is part of the protocol.
+var outputOrderedCalls = map[string]bool{"ui.notify": true, "ui.setStatus": true, "ui.setWidget": true, "ui.setTitle": true, "ui.setEditorText": true}
+
+// awaitBackgroundGate holds a call that no request started while the embedder's gate is closed. The Node runtime sends such a call from a timer or I/O callback, which on Pi's one event loop cannot run in the middle of a chain of awaited handlers, only after the chain ends. The wait ends when the gate opens or the call's context ends.
+func (h *Host) awaitBackgroundGate(ctx context.Context, call *CallPayload) {
+	if call.ParentRequestID != "" || !outputOrderedCalls[call.Method] {
+		return
+	}
+	gate := h.backgroundGate.Load()
+	if gate == nil {
+		return
+	}
+	if open := (*gate)(); open != nil {
+		select {
+		case <-open:
+		case <-ctx.Done():
+		}
+	}
+}
+
 // runCall executes one extension→host call and sends its result on conn, the connection that delivered the call, even after an adoption replaces the
 // member's current connection. mark, when non-nil, is the call's initiation mark.
 func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayload, mark func()) {
@@ -259,6 +279,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		defer h.uiBridge.releaseAutocompleteCall(conn, call)
 	}
 	defer releaseCall()
+	h.awaitBackgroundGate(callCtx, call)
 	// A dropped or refused call delivers none of the cross-process references it carried.
 	refuseReferences := func() {
 		if call.Method == "registerProvider" || call.Method == callProviderConfigRef {

@@ -231,6 +231,8 @@ type CommandActions struct {
 	// WaitForIdle blocks until the agent finishes streaming.
 	WaitForIdle        func() error
 	WaitForIdleContext func(context.Context) error
+	// WaitForIdleBlocks reports whether WaitForIdle would wait now. A mode that settles an idle wait at once, as Pi's `if (this.isIdle) return`, binds it so the host does not count the calling command as suspended; nil means it waits.
+	WaitForIdleBlocks func() bool
 
 	// NewSession starts a new session.
 	NewSession        func(opts *NewSessionOptions) (CancelledResult, error)

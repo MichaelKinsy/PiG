@@ -96,6 +96,9 @@ type rpcHost struct {
 	// commandsInFlight counts the extension commands whose prompt response is not yet written; while one is, an extension's sendUserMessage or sendMessage run is staged on the executor (rpcAdmission.extensionRunStage).
 	commandsInFlight atomic.Int32
 
+	// background holds the extension UI calls no request started while a replacement an RPC command requested runs (rpcBackgroundGate).
+	background rpcBackgroundGate
+
 	// detached is set once shutdown stops publishing Session events (rpc-mode.ts shutdown unsubscribes first).
 	detached atomic.Bool
 	// forwarding counts running event forwarders; shutdown flushes only while one runs.
@@ -153,6 +156,14 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 	runner := session.ExtensionRunner()
 	extensionHost, bridge := rpcExtensionHost(session)
 	current := h.current
+
+	// The replacement's Session dispatches session_start below: its extensions' deferred UI calls follow the command's response.
+	if !acquireRPCReplacementHold(ctx) && h.commandsInFlight.Load() > 0 {
+		h.background.holdForCommand()
+	}
+	if extensionHost != nil {
+		extensionHost.SetBackgroundCallGate(h.background.wait)
+	}
 
 	if bridge != nil {
 		bridge.SetUIContext(h.ui)
@@ -258,9 +269,13 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 	h.mu.Unlock()
 
 	session.SetRetryContinuationScheduler(h.responses.after)
-	// The forwarder subscribes before session_start so no event of the Session is missed.
-	h.forward(session)
-	return h.announce(ctx, session, st, event)
+	// The forwarder subscribes before session_start, which keeps its order among the Session's listeners, but writes only after it: rpc-mode.ts rebindSession subscribes after `await session.bindExtensions()`, so an event a session_start listener emits, such as a message it sends, is not written.
+	writing := h.forward(session)
+	if err := h.announce(ctx, session, st, event); err != nil {
+		return err
+	}
+	writing.Store(true)
+	return nil
 }
 
 // announce drives the extension session lifecycle in RPC mode. Upstream fires session_start via session.bindExtensions (rpc-mode.ts:318) after wiring the mode's host-action bindings, then lets extensions add resources.
@@ -332,7 +347,7 @@ func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, c
 	registry := services.Registry()
 	return &rpcAdmission{
 		ctx: h.ctx, turn: h.responses, session: session, runner: runner, catalog: catalog,
-		write: h.responses.write, runs: h.promptWG, shared: h.tasks, commandDone: h.commandDone, commands: commands, commandsInFlight: &h.commandsInFlight,
+		write: h.responses.write, runs: h.promptWG, shared: h.tasks, commandDone: h.commandDone, commands: commands, commandsInFlight: &h.commandsInFlight, background: &h.background,
 		validateModel: func() error {
 			model := session.Model()
 			if model == nil {
@@ -350,15 +365,16 @@ func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, c
 	}
 }
 
-// forward writes the Session's events as upstream-compatible AgentSessionEvent JSON objects. Upstream pi RPC mode subscribes to session events and writes each event as a JSONL object after awaited extension handling and before Session persistence (rpc-mode.ts:346-363); rpcAgentEvent adapts pig's internal event structs to that wire shape. The Events consumer only drains and acknowledges delivery barriers.
-func (h *rpcHost) forward(session *coding.Session) {
+// forward writes the Session's events as upstream-compatible AgentSessionEvent JSON objects. Upstream pi RPC mode subscribes to session events and writes each event as a JSONL object after awaited extension handling and before Session persistence (rpc-mode.ts:346-363); rpcAgentEvent adapts pig's internal event structs to that wire shape. The Events consumer only drains and acknowledges delivery barriers. Nothing is written until the returned flag is set, which the caller does once session_start is dispatched (rpc-mode.ts:319-361).
+func (h *rpcHost) forward(session *coding.Session) *atomic.Bool {
+	writing := new(atomic.Bool)
 	// A replaced Session's unsettled tail is over: its run was joined before the replacement.
 	h.settle.reset()
 	// The gate sees an event ahead of its writer (agent_end) or after it (agent_settled), so a held command answers after the event that releases it.
 	gateBefore := session.Subscribe(h.settle.before)
 	// Upstream shutdown() unsubscribes the stdout forwarder, so nothing is written after detach.
 	unsubscribe := subscribeRPCEvents(session, func(v any) {
-		if !h.detached.Load() {
+		if writing.Load() && !h.detached.Load() {
 			h.writeRPC(v)
 		}
 	}, func(err error) {
@@ -384,6 +400,7 @@ func (h *rpcHost) forward(session *coding.Session) {
 			}
 		}
 	})
+	return writing
 }
 
 // closeHost releases the mode's per-Session subscriptions after the Runtime closed.
