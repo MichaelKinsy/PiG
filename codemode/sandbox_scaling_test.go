@@ -25,7 +25,7 @@ func TestSandboxConstructionKeepsOrderAndRejectsDuplicates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	if err := s.RegisterTool(codemode.Tool{Name: "tool_000002"}); err == nil || !strings.Contains(err.Error(), `Tool "tool_000002" is already registered`) {
 		t.Fatalf("duplicate RegisterTool error = %v", err)
 	}
@@ -62,7 +62,7 @@ func TestSandboxConstructionIsLinearInTheCatalogSize(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			s.Close()
+			_ = s.Close()
 			best = min(best, elapsed)
 		}
 		return best
@@ -83,7 +83,7 @@ func BenchmarkSandboxConstruction(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				s.Close()
+				_ = s.Close()
 			}
 		})
 	}
