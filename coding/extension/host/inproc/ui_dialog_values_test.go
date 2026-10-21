@@ -82,8 +82,12 @@ func TestUIPrompt_InProcessExtensionsGetRawDialogValues(t *testing.T) {
 				got, err = values.ConfirmValue(context.Background(), "T", "m", extension.ExtensionUIDialogOptions{})
 				check("ConfirmValue", got, err)
 			}
-			if events := rec.wait(t, 8); len(events) < 8 {
-				t.Errorf("prompt events = %v, want a start and an end for each of the 4 dialogs", events)
+			dialogs := 4
+			if test.err != nil {
+				dialogs = 3
+			}
+			if events := rec.wait(t, 2*dialogs); len(events) < 2*dialogs {
+				t.Errorf("prompt events = %v, want a start and an end for each of the %d dialogs", events, dialogs)
 			}
 		})
 	}
