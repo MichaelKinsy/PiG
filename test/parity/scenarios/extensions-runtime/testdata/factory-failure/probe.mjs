@@ -1,13 +1,12 @@
 // Pi loader.ts:238-243 guards every ExtensionAPI method before validation or effects.
-export async function probeFailedAPI(api, onLateEvent = () => {}) {
+// pigAdditive adds the calls Pi has no counterpart for (onLoaded): the parity scenario compares this probe with Pi and leaves it false.
+export async function probeFailedAPI(api, onLateEvent = () => {}, pigAdditive = false) {
   const calls = [
     ["on", () => api.on("factory-failure", () => {})],
     ["registerTool", () => api.registerTool({ name: "late-tool", parameters: {} })],
     ["registerCommand", () => api.registerCommand("late-command", { handler: async () => {} })],
     ["registerShortcut", () => api.registerShortcut("ctrl+shift+y", { handler: async () => {} })],
     ["registerFlag", () => api.registerFlag("late-flag", { type: "boolean", default: true })],
-    // pig additive: a captured onLoaded of a failed factory rejects like every other call.
-    ["onLoaded", () => api.onLoaded(() => {})],
     ["registerMessageRenderer", () => api.registerMessageRenderer("late-message", () => {})],
     ["registerMarkdownTransformer", () => api.registerMarkdownTransformer(text => text)],
     ["registerToolRenderer", () => api.registerToolRenderer(() => undefined)],
@@ -39,6 +38,8 @@ export async function probeFailedAPI(api, onLateEvent = () => {}) {
     ["events.emit", () => api.events.emit("factory-failure", undefined)],
     ["events.on", () => api.events.on("factory-failure", onLateEvent)],
   ];
+  // pig additive: a captured onLoaded of a failed factory rejects like every other call.
+  if (pigAdditive) calls.splice(5, 0, ["onLoaded", () => api.onLoaded(() => {})]);
   const results = [];
   for (const [method, call] of calls) {
     let asynchronous = false;
