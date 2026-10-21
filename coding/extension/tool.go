@@ -278,3 +278,16 @@ func CallOrderFromContext(ctx context.Context) (*CallOrder, bool) {
 	order, ok := ctx.Value(callOrderKey{}).(*CallOrder)
 	return order, ok && order != nil
 }
+
+type dispatchStartedKey struct{}
+
+// WithDispatchStarted returns ctx carrying started, which an event dispatch made with it calls once its first handler has started: an in-process handler when it returns, an extension process's handler when its request is written to the process. Pi starts the tool_result hooks of a parallel batch in the order their tools settled, each running to its first await before the next starts; the caller holds the hooks of later calls back until started runs. started must be idempotent.
+func WithDispatchStarted(ctx context.Context, started func()) context.Context {
+	return context.WithValue(ctx, dispatchStartedKey{}, started)
+}
+
+// DispatchStartedFromContext returns the function the dispatch calls when its first handler has started, or nil.
+func DispatchStartedFromContext(ctx context.Context) func() {
+	started, _ := ctx.Value(dispatchStartedKey{}).(func())
+	return started
+}

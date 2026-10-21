@@ -220,7 +220,7 @@ func (h *loopHost) runPreparedToolCall(ctx context.Context, prepared preparedToo
 		if err != nil {
 			return finalizedToolCall{}, err
 		}
-		finalized = h.finalizeExecutedToolCall(ctx, prepared, executed)
+		finalized = h.finalizeCalledTool(ctx, prepared, executed)
 	}
 	var err error
 	deliver := func() { err = h.deliver(toolExecutionEndEvent(finalized)) }
@@ -231,6 +231,21 @@ func (h *loopHost) runPreparedToolCall(ctx context.Context, prepared preparedToo
 		deliver()
 	}
 	return finalized, err
+}
+
+// finalizeCalledTool finalizes an executed call of a parallel batch. agent-loop.ts:619-647: each call continues from its own execute promise, so
+// the calls' after-tool-call hooks start in the order their tools settled, and a hook runs to its first await before the next one starts. The
+// call's hooks wait for the hooks of the calls that settled before it to start; the first extension handler a hook invokes reports its start
+// (ToolHookStartedFromContext), and the batch reports it once the hooks returned, so a call whose hooks started no handler cannot hold the later
+// calls back.
+func (h *loopHost) finalizeCalledTool(ctx context.Context, prepared preparedToolCall, executed finalizedToolCall) finalizedToolCall {
+	slot := ToolSettleFromContext(ctx, prepared.call.id)
+	if slot == nil {
+		return h.finalizeExecutedToolCall(ctx, prepared, executed)
+	}
+	began := slot.Begin()
+	defer began()
+	return h.finalizeExecutedToolCall(withToolHookStart(ctx, began), prepared, executed)
 }
 
 // failToolCallsFromTruncatedMessage fails every tool call of an assistant

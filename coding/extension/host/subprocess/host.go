@@ -4309,7 +4309,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			case toolUpdate != nil:
 				resp, err = conn.requestOrdered(parent, envelope, me.toolUpdates.order(conn, *toolUpdate, payload, args[0], boundaryWire))
 			default:
-				resp, err = conn.Request(parent, envelope)
+				requestCtx := parent
+				if started := extension.DispatchStartedFromContext(parent); started != nil {
+					// The request is the handler's start: the process runs requests in the order they arrive.
+					requestCtx = withRequestIssued(parent, started)
+				}
+				resp, err = conn.Request(requestCtx, envelope)
 			}
 			return nil
 		}

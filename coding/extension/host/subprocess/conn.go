@@ -118,6 +118,8 @@ func (e *TransportError) Unwrap() error { return e.Err }
 type Conn struct {
 	// toolOrder keeps the tool_call requests of one batch in source order on the wire.
 	toolOrder jsloop.Lane
+	// toolUpdates runs the onUpdate callbacks of every tool_call request of the connection on one lane, in the order the update frames were read: Pi's tools of a parallel batch call onUpdate on one thread, so the update called first reaches the listeners first.
+	toolUpdates *callLanes
 	// onDispatch records the owner before a request can run in a shared process.
 	onDispatch func()
 	// beforeCancel runs before the cancel frame of a cancelled request is queued. The Host uses it to send the run signal's abort first, so a handler the run's abort cancels finds ctx.signal aborted when it sees its own cancellation: upstream aborts one signal for both.
@@ -169,6 +171,8 @@ type Conn struct {
 	// abandonedClosed is set once the reader has exited: no late response can arrive.
 	abandonedClosed bool
 	updates         map[string]func(json.RawMessage)
+	// toolRequests holds the pending tool_call requests; guarded by pendingMu.
+	toolRequests map[string]struct{}
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
@@ -282,6 +286,8 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		pending:            make(map[string]chan *Envelope),
 		abandoned:          make(map[string]chan struct{}),
 		updates:            make(map[string]func(json.RawMessage)),
+		toolRequests:       make(map[string]struct{}),
+		toolUpdates:        newCallLanes(),
 		answered:           make(map[string]func()),
 		arrived:            make(map[string]func()),
 		hostCallCounts:     make(map[string]func(dialog bool, delta int)),
@@ -654,15 +660,38 @@ func (c *Conn) requestWithInactivity(ctx context.Context, env *Envelope, inactiv
 	return c.request(ctx, env, inactivity, operation)
 }
 
+// callLane returns the ordering lane of a host call whose parent is the request parentID. The calls of every pending tool_call request share one lane:
+// Pi runs the tools of a parallel batch on one thread, so the calls they make apply in the order the extension sent them, whichever tool made each.
+// A tool call is never the nested request of a host call that waits for it, so the calls of one tool cannot be held behind a call of another that
+// waits for the first. Every other request, which a host call may send the extension and wait for, keeps a lane of its own.
+func (c *Conn) callLane(parentID string) string {
+	c.pendingMu.Lock()
+	_, tool := c.toolRequests[parentID]
+	c.pendingMu.Unlock()
+	if tool {
+		return toolCallLane
+	}
+	return parentID
+}
+
+// toolCallLane is the lane of the calls made by tool_call requests. A request id never starts with a space.
+const toolCallLane = " tool"
+
 // requestWithUpdates is Request for a tool call whose extension streams
 // partial results. onUpdate runs for each NotifyToolUpdate the request
 // receives, in frame order, off the read loop, and every update that arrived
-// before the response has run when this returns.
+// before the response has run when this returns. The updates of the
+// connection's tool_call requests share one lane, so they also run in frame
+// order across tools; another request (a provider stream, a user bash
+// command) has a lane of its own, so a slow consumer holds back no tool.
 func (c *Conn) requestWithUpdates(ctx context.Context, env *Envelope, onUpdate func(json.RawMessage)) (*Envelope, error) {
 	if env.ID == "" {
 		env.ID = "r" + strconv.FormatUint(c.nextID.Add(1), 10)
 	}
-	updates := newCallLanes()
+	updates := c.toolUpdates
+	if env.Request == nil || env.Request.Method != MethodToolCall {
+		updates = newCallLanes()
+	}
 	var queued sync.WaitGroup
 	c.pendingMu.Lock()
 	c.updates[env.ID] = func(result json.RawMessage) {
@@ -709,6 +738,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	respCh := make(chan *Envelope, 1)
 	c.pendingMu.Lock()
 	c.pending[env.ID] = respCh
+	if env.Request != nil && env.Request.Method == MethodToolCall {
+		c.toolRequests[env.ID] = struct{}{}
+	}
 	if fn := requestAnswered(ctx); fn != nil {
 		c.answered[env.ID] = fn
 	}
@@ -735,6 +767,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	defer func() {
 		c.pendingMu.Lock()
 		delete(c.pending, env.ID)
+		delete(c.toolRequests, env.ID)
 		delete(c.answered, env.ID)
 		delete(c.arrived, env.ID)
 		delete(c.hostCallCounts, env.ID)

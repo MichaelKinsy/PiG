@@ -184,6 +184,29 @@ func TestParallelToolHooksStartInTheOrderTheToolsSettle(t *testing.T) {
 	}
 }
 
+// Pi starts the next call's hooks when the previous call's hooks reach their first await, not when they finish: a hook that reports it started
+// (ToolHookStartedFromContext, which the extension dispatch calls) and then waits must not hold the next call's hook back.
+func TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook(t *testing.T) {
+	ids := []string{"call-1", "call-2"}
+	secondStarted := make(chan struct{})
+	batch := &settledBatch{t: t, ids: ids, wake: ids, hook: func(ctx context.Context, id string) {
+		switch id {
+		case "call-1":
+			started := ToolHookStartedFromContext(ctx)
+			if started == nil {
+				t.Error("a call of a parallel batch has no hook start report")
+				return
+			}
+			started()
+			awaitSignal(t, secondStarted, "the second call's hook to start while the first waits")
+		case "call-2":
+			close(secondStarted)
+		}
+	}}
+	batch.run()
+	batch.events.stop()
+}
+
 // A call whose hooks invoke no extension handler never reports a start; it must not hold the later calls' hooks back once its hooks returned.
 func TestAToolHookThatReportsNoStartDoesNotHoldBackTheNextCallsHook(t *testing.T) {
 	ids := []string{"call-1", "call-2"}
