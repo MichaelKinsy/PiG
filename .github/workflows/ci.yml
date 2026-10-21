@@ -3,14 +3,21 @@
 name: CI
 
 # The full verification runs on the exact tree that lands on main, so a squash
-# merge lands what was tested and pushes to main do not run it again. That tree
-# is the pull request's until the merge queue is required; then the repository
-# variable PIG_PR_CI_LIGHT is set to "true", the pull request runs the light
-# subset, and the queue's merge_group run is the full verification.
+# merge lands what was tested and pushes to main do not run it again.
+# The repository variable PIG_PR_CI_LIGHT selects how a pull request gets there:
+#   unset  every pull request push runs the full set.
+#   label  no merge queue: a push runs the light subset, and CI result fails
+#          ("full run required") until the full set has run on the pull request's
+#          head, which the ci:full label, marking the pull request ready for
+#          review, or dispatching CI on the branch each start.
+#   queue  a merge queue is required: a push runs the light subset and CI result
+#          can pass, and the queue's merge_group run is the full verification.
 # automation/ci/ci-tiers.txt assigns every job to a tier and .github/AGENTS.md
 # renders the table. A weekly run keeps main's health and the CI badge current.
 on:
   pull_request:
+    # labeled starts the run that the ci:full label asks for; ready_for_review starts the one a draft's owner asks for.
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   merge_group:
   schedule:
     - cron: '41 6 * * 1'
@@ -40,6 +47,7 @@ jobs:
     outputs:
       product: ${{ steps.classify.outputs.product }}
       full: ${{ steps.plan.outputs.full }}
+      full-required: ${{ steps.plan.outputs.full-required }}
       linux: ${{ steps.plan.outputs.linux }}
       windows: ${{ steps.plan.outputs.windows }}
       macos: ${{ steps.plan.outputs.macos }}
@@ -68,13 +76,16 @@ jobs:
         id: plan
         env:
           EVENT: ${{ github.event_name }}
-          LIGHT: ${{ vars.PIG_PR_CI_LIGHT }}
+          MODE: ${{ vars.PIG_PR_CI_LIGHT }}
+          # The label is read from the event's payload, so it is the pull request's labels at the push, label or review
+          # event that started this run.
+          FULL_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') || github.event.action == 'ready_for_review' }}
         shell: bash
-        # Every event but a pull request with PIG_PR_CI_LIGHT set runs every
+        # Every event but a pull request in a PIG_PR_CI_LIGHT mode runs every
         # job in automation/ci/ci-tiers.txt; the light pull-request run is the
         # table's pr rows, so a queue-only job's check name appears only where
         # it runs.
-        run: automation/ci/ci-plan.sh "$EVENT" "$LIGHT" | tee -a "$GITHUB_OUTPUT"
+        run: automation/ci/ci-plan.sh "$EVENT" "$MODE" "$FULL_REQUESTED" | tee -a "$GITHUB_OUTPUT"
 
   docs:
     name: Project documents
@@ -948,11 +959,17 @@ jobs:
     # change skips the product jobs, and the light pull-request run skips the
     # jobs automation/ci/ci-tiers.txt leaves to the full run. Every event but a
     # pull request must have planned the full run, so the merge queue never
-    # reports success for a skipped job.
+    # reports success for a skipped job. Without a merge queue (PIG_PR_CI_LIGHT
+    # is label) a pull request's result fails unless this run is the full run
+    # on the pull request's current head, so a head that only the light run
+    # tested can never satisfy the required check.
     needs: [changes, docs, dco, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Require every job this change needs
         env:
@@ -960,6 +977,11 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PRODUCT: ${{ needs.changes.outputs.product }}
           FULL: ${{ needs.changes.outputs.full }}
+          FULL_REQUIRED: ${{ needs.changes.outputs.full-required }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
           RUN_NODE_RUNTIME: ${{ needs.changes.outputs.run-node-runtime }}
           RUN_NODE_LOADER: ${{ needs.changes.outputs.run-node-loader }}
           RUN_ANDROID: ${{ needs.changes.outputs.run-android }}
@@ -997,6 +1019,20 @@ jobs:
           if [ "$EVENT" != pull_request ] && [ "$FULL" != true ]; then
             echo "::error::$EVENT must run the full plan, got full=$FULL"
             status=1
+          fi
+          if [ "$FULL_REQUIRED" = true ]; then
+            # This run's plan was made for the head in its event payload. A newer push has its own run and check, but a
+            # re-run or a late event must not report success for a head that is no longer the pull request's.
+            live=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha) || live=
+            if [ -z "$live" ] || [ "$live" != "$PR_HEAD_SHA" ]; then
+              echo "::error::this run tested ${PR_HEAD_SHA:-no head}, the pull request head is ${live:-unknown}"
+              status=1
+            fi
+            # A docs-only change runs the same jobs in the light and the full run.
+            if [ "$FULL" != true ] && [ "$PRODUCT" != false ]; then
+              echo "::error::full run required: add the ci:full label to this pull request (or mark it ready for review, or dispatch CI on its branch); the light run does not test enough to merge"
+              status=1
+            fi
           fi
           expect "Changed paths" "$CHANGES" false
           expect "Project documents" "$DOCS" "$docs_skip"

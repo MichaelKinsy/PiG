@@ -19,10 +19,11 @@ import (
 
 // ciPlan is the output of automation/ci/ci-plan.sh for one event.
 type ciPlan struct {
-	Full   bool
-	Keys   []string
-	Matrix map[string][]planEntry
-	Run    map[string]bool
+	Full         bool
+	FullRequired bool
+	Keys         []string
+	Matrix       map[string][]planEntry
+	Run          map[string]bool
 }
 
 type planEntry struct {
@@ -46,12 +47,18 @@ func runPlan(t *testing.T, args ...string) (string, error) {
 	return string(output), err
 }
 
-// planFor runs the planner on the committed tier table, as the changes job does.
-func planFor(t *testing.T, event, light string) ciPlan {
+// planFor runs the planner on the committed tier table, as the changes job does, for a pull request that did not ask for the full run.
+func planFor(t *testing.T, event, mode string) ciPlan {
 	t.Helper()
-	output, err := runPlan(t, event, light)
+	return planWith(t, event, mode, "")
+}
+
+// planWith is planFor for a pull request whose label or review event asked (requested "true") for the full run.
+func planWith(t *testing.T, event, mode, requested string) ciPlan {
+	t.Helper()
+	output, err := runPlan(t, event, mode, requested)
 	if err != nil {
-		t.Fatalf("ci-plan.sh %s %q: %v\n%s", event, light, err, output)
+		t.Fatalf("ci-plan.sh %s %q %q: %v\n%s", event, mode, requested, err, output)
 	}
 	plan := ciPlan{Matrix: map[string][]planEntry{}, Run: map[string]bool{}}
 	for line := range strings.SplitSeq(strings.TrimSpace(output), "\n") {
@@ -63,6 +70,8 @@ func planFor(t *testing.T, event, light string) ciPlan {
 		switch {
 		case key == "full":
 			plan.Full = value == "true"
+		case key == "full-required":
+			plan.FullRequired = value == "true"
 		case strings.HasPrefix(key, "run-"):
 			plan.Run[strings.TrimPrefix(key, "run-")] = value == "true"
 		default:
@@ -251,18 +260,21 @@ func TestRequiredCheckWaitsForEveryJobOfItsWorkflow(t *testing.T) {
 
 func TestMergeGroupRunsTheFullPlan(t *testing.T) {
 	rows := tierRows(t)
-	for _, tc := range []struct{ event, light string }{
-		{"merge_group", "true"},
-		{"merge_group", ""},
-		{"push", "true"},
-		{"schedule", "true"},
-		{"workflow_dispatch", "true"},
-		// A pull request runs the full set until the repository variable switches it to the light subset.
-		{"pull_request", ""},
-		{"pull_request", "false"},
+	for _, tc := range []struct{ event, mode, requested string }{
+		{"merge_group", "queue", ""},
+		{"merge_group", "label", ""},
+		{"merge_group", "", ""},
+		{"push", "queue", ""},
+		{"schedule", "label", ""},
+		{"workflow_dispatch", "label", ""},
+		// A pull request runs the full set until the repository variable switches it to a light mode, and in either mode
+		// when the pull request asked for it.
+		{"pull_request", "", ""},
+		{"pull_request", "queue", "true"},
+		{"pull_request", "label", "true"},
 	} {
-		t.Run(tc.event+"/"+tc.light, func(t *testing.T) {
-			plan := planFor(t, tc.event, tc.light)
+		t.Run(tc.event+"/"+tc.mode+"/"+tc.requested, func(t *testing.T) {
+			plan := planWith(t, tc.event, tc.mode, tc.requested)
 			if !plan.Full {
 				t.Fatal("the plan is not the full run")
 			}
@@ -294,8 +306,8 @@ func TestMergeGroupRunsTheFullPlan(t *testing.T) {
 // The light run keeps the pr rows under the same check names as the full run and never invents a shard the full run lacks.
 func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 	rows := tierRows(t)
-	light := planFor(t, "pull_request", "true")
-	full := planFor(t, "merge_group", "true")
+	light := planFor(t, "pull_request", "queue")
+	full := planFor(t, "merge_group", "")
 	if light.Full {
 		t.Fatal("the light pull-request plan claims to be the full run")
 	}
@@ -391,7 +403,7 @@ func TestCIWorkflowFollowsThePlan(t *testing.T) {
 	if err := yaml.Unmarshal(data, &raw); err != nil {
 		t.Fatal(err)
 	}
-	plan := planFor(t, "pull_request", "true")
+	plan := planFor(t, "pull_request", "queue")
 	for _, key := range plan.Keys {
 		want := "${{ steps.plan.outputs." + key + " }}"
 		if got := raw.Jobs["changes"].Outputs[key]; got != want {
@@ -439,19 +451,34 @@ func TestPlannerRejectsAMalformedTable(t *testing.T) {
 			if err := os.WriteFile(path, []byte(table), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if output, err := runPlan(t, "pull_request", "true", path); err == nil {
+			if output, err := runPlan(t, "pull_request", "queue", "", path); err == nil {
 				t.Fatalf("ci-plan.sh accepted the table:\n%s", output)
 			}
 		})
 	}
 }
 
-// resultScript is the shell of the CI result job, run here with each job's result and the plan it was given.
-func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
-	jobs := verificationJobs(t)
+// lightPlanResults are the job results of a light run that planned only the pr rows and found them green.
+var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}
+
+// merge returns the union of the sets, later sets overriding earlier ones.
+func merge(sets ...map[string]string) map[string]string {
+	merged := map[string]string{}
+	for _, set := range sets {
+		for name, value := range set {
+			merged[name] = value
+		}
+	}
+	return merged
+}
+
+// ciResultRun runs the shell of the CI result job with each job's result and the plan it was given, as a merge group by
+// default. liveHead is what the job's GitHub lookup returns for the pull request's head ("fail" makes the lookup fail).
+func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, error) {
+	t.Helper()
 	script := ""
 	var declared map[string]string
-	for _, step := range jobs["result"].Steps {
+	for _, step := range verificationJobs(t)["result"].Steps {
 		if strings.Contains(step.Run, "expect()") {
 			script, declared = step.Run, step.Env
 		}
@@ -459,23 +486,47 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 	if script == "" {
 		t.Fatal("the CI result job has no aggregation step")
 	}
-	base := map[string]string{
-		"EVENT": "merge_group", "PR_AUTHOR": "", "PRODUCT": "true", "FULL": "true",
+	values := map[string]string{
+		"EVENT": "merge_group", "PR_AUTHOR": "", "PRODUCT": "true", "FULL": "true", "FULL_REQUIRED": "false",
+		"PR_NUMBER": "", "PR_HEAD_SHA": "", "REPO": "MichaelKinsy/PiG", "GH_TOKEN": "token",
 		"RUN_NODE_RUNTIME": "true", "RUN_NODE_LOADER": "true", "RUN_ANDROID": "true", "RUN_DURABLE_CF_HOST": "true",
 		"CHANGES": "success", "DOCS": "skipped", "DCO": "skipped", "VERIFY": "success", "NODE_RUNTIME": "success",
 		"WINDOWS": "success", "MACOS": "success", "ANDROID": "success", "NODE_LOADER": "success",
 		"DURABLE_CF_HOST": "success", "PREFLIGHT": "success",
 	}
 	for name := range declared {
-		if _, ok := base[name]; !ok {
+		if _, ok := values[name]; !ok {
 			t.Fatalf("the CI result step reads %s, which this test does not set", name)
 		}
 	}
-	for name := range base {
+	for name := range values {
 		if _, ok := declared[name]; !ok {
 			t.Fatalf("this test sets %s, which the CI result step no longer reads", name)
 		}
 	}
+	for name, value := range set {
+		if _, ok := values[name]; !ok {
+			t.Fatalf("the test case sets %s, which the CI result step does not read", name)
+		}
+		values[name] = value
+	}
+	bin := t.TempDir()
+	fakeGH := "#!/bin/sh\n[ \"$FAKE_LIVE_HEAD\" != fail ] || exit 1\nprintf '%s\\n' \"$FAKE_LIVE_HEAD\"\n"
+	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(fakeGH), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	env := append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "FAKE_LIVE_HEAD="+liveHead)
+	for name, value := range values {
+		env = append(env, name+"="+value)
+	}
+	cmd := exec.CommandContext(t.Context(), testenv.Bash(t), "-euo", "pipefail", "-c", script)
+	cmd.Env = env
+	output, err := cmd.CombinedOutput()
+	return string(output), err
+}
+
+func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
+	pullRequest := map[string]string{"EVENT": "pull_request", "DCO": "success"}
 	for _, tc := range []struct {
 		name string
 		set  map[string]string
@@ -485,36 +536,150 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"merge group skipped queue-only job", map[string]string{"NODE_RUNTIME": "skipped"}, false},
 		{"merge group skipped durable host", map[string]string{"DURABLE_CF_HOST": "skipped"}, false},
 		{"merge group failed Windows", map[string]string{"WINDOWS": "failure"}, false},
-		{"merge group that planned the light run", map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}, false},
+		{"merge group that planned the light run", lightPlanResults, false},
 		{"merge group without a plan", map[string]string{"FULL": "", "RUN_NODE_RUNTIME": ""}, false},
 		{"push skipped queue-only job", map[string]string{"EVENT": "push", "NODE_RUNTIME": "skipped"}, false},
 		{"push with every job", map[string]string{"EVENT": "push"}, true},
-		{"full pull request", map[string]string{"EVENT": "pull_request", "DCO": "success"}, true},
-		{"full pull request skipped queue-only job", map[string]string{"EVENT": "pull_request", "DCO": "success", "NODE_RUNTIME": "skipped"}, false},
-		{"light pull request", map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}, true},
-		{"light pull request skipped fast job", map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "ANDROID": "skipped"}, false},
-		{"light pull request without DCO", map[string]string{"EVENT": "pull_request", "DCO": "skipped", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}, false},
+		{"full pull request", pullRequest, true},
+		{"full pull request skipped queue-only job", merge(pullRequest, map[string]string{"NODE_RUNTIME": "skipped"}), false},
+		{"light pull request behind a merge queue", merge(pullRequest, lightPlanResults), true},
+		{"light pull request skipped fast job", merge(pullRequest, lightPlanResults, map[string]string{"ANDROID": "skipped"}), false},
+		{"light pull request without DCO", merge(pullRequest, lightPlanResults, map[string]string{"DCO": "skipped"}), false},
 		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			env := os.Environ()
-			values := map[string]string{}
-			for name, value := range base {
-				values[name] = value
-			}
-			for name, value := range tc.set {
-				values[name] = value
-			}
-			for name, value := range values {
-				env = append(env, name+"="+value)
-			}
-			cmd := exec.CommandContext(t.Context(), testenv.Bash(t), "-euo", "pipefail", "-c", script)
-			cmd.Env = env
-			output, err := cmd.CombinedOutput()
+			output, err := ciResultRun(t, tc.set, "")
 			if (err == nil) != tc.pass {
 				t.Fatalf("pass = %v, want %v\n%s", err == nil, tc.pass, output)
 			}
 		})
+	}
+}
+
+// Without a merge queue (PIG_PR_CI_LIGHT=label) a pull request is mergeable only on a head whose full run was green, so the
+// light run's CI result fails however green its own jobs are, and says what to do.
+func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
+	labelPR := map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "aaaa"}
+	output, err := ciResultRun(t, merge(labelPR, lightPlanResults), "aaaa")
+	if err == nil {
+		t.Fatalf("a light run with every job green satisfied CI result\n%s", output)
+	}
+	if !strings.Contains(output, "full run required: add the ci:full label") {
+		t.Errorf("the failure does not say how to get the full run:\n%s", output)
+	}
+	// Each way a light run's jobs can look green, including all of them skipped as for a change with no product files.
+	for name, set := range map[string]map[string]string{
+		"planned light, every light job green": lightPlanResults,
+		"no plan":                              {"FULL": "", "RUN_NODE_RUNTIME": "", "RUN_DURABLE_CF_HOST": ""},
+	} {
+		if output, err := ciResultRun(t, merge(labelPR, set), "aaaa"); err == nil {
+			t.Errorf("%s: satisfied CI result\n%s", name, output)
+		}
+	}
+	// The same pull request passes once the full run has run on this head, and a docs-only change, which the light and full
+	// run test identically, needs no label.
+	if output, err := ciResultRun(t, labelPR, "aaaa"); err != nil {
+		t.Errorf("the full run on the pull request's head failed CI result: %v\n%s", err, output)
+	}
+	docsOnly := merge(labelPR, lightPlanResults, map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "VERIFY": "success", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "RUN_ANDROID": "false", "RUN_NODE_LOADER": "false"})
+	if output, err := ciResultRun(t, docsOnly, "aaaa"); err != nil {
+		t.Errorf("a docs-only light run needed the full label: %v\n%s", err, output)
+	}
+	// A full run that has a red job is still red.
+	if output, err := ciResultRun(t, merge(labelPR, map[string]string{"WINDOWS": "failure"}), "aaaa"); err == nil {
+		t.Errorf("a full run with a failed job satisfied CI result\n%s", output)
+	}
+}
+
+// A full run counts only for the head it ran on: a result computed for an older head fails once the pull request has moved on,
+// and a run that cannot learn the head fails closed.
+func TestFullRunOnAnOlderHeadDoesNotCountForANewerHead(t *testing.T) {
+	fullOnOld := map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "oldhead"}
+	if output, err := ciResultRun(t, fullOnOld, "oldhead"); err != nil {
+		t.Fatalf("the full run on the current head failed CI result: %v\n%s", err, output)
+	}
+	output, err := ciResultRun(t, fullOnOld, "newhead")
+	if err == nil {
+		t.Fatalf("a full run on oldhead satisfied CI result after the pull request moved to newhead\n%s", output)
+	}
+	if !strings.Contains(output, "this run tested oldhead, the pull request head is newhead") {
+		t.Errorf("the failure does not name both heads:\n%s", output)
+	}
+	if output, err := ciResultRun(t, fullOnOld, "fail"); err == nil {
+		t.Errorf("a run that could not read the pull request's head satisfied CI result\n%s", output)
+	}
+	// The run for the newer head is its own run: without the full plan it fails, whatever ran on the older head.
+	lightOnNew := map[string]string{"EVENT": "pull_request", "DCO": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped"}
+	if output, err := ciResultRun(t, lightOnNew, "newhead"); err == nil {
+		t.Fatalf("a light run on newhead satisfied CI result\n%s", output)
+	}
+}
+
+// The ci:full label, marking a pull request ready for review and dispatching CI each start the full run; a push without them
+// runs the light subset in either light mode.
+func TestCIFullLabelStartsTheFullRun(t *testing.T) {
+	light := planWith(t, "pull_request", "label", "false")
+	if light.Full || !light.FullRequired {
+		t.Errorf("label mode without a request: full = %v, full-required = %v, want a light run whose result requires the full run", light.Full, light.FullRequired)
+	}
+	labeled := planWith(t, "pull_request", "label", "true")
+	if !labeled.Full || !labeled.FullRequired {
+		t.Errorf("label mode with ci:full: full = %v, full-required = %v, want the full run", labeled.Full, labeled.FullRequired)
+	}
+	if got, want := labeled.shards("windows"), planFor(t, "merge_group", "").shards("windows"); !slices.Equal(got, want) {
+		t.Errorf("the labeled run's Windows shards = %v, want every shard %v", got, want)
+	}
+	if queue := planWith(t, "pull_request", "queue", "false"); queue.Full || queue.FullRequired {
+		t.Errorf("queue mode: full = %v, full-required = %v, want a light run whose result may pass", queue.Full, queue.FullRequired)
+	}
+	for _, event := range []string{"workflow_dispatch", "merge_group", "schedule"} {
+		if plan := planFor(t, event, "label"); !plan.Full || plan.FullRequired {
+			t.Errorf("%s in label mode: full = %v, full-required = %v, want the full run", event, plan.Full, plan.FullRequired)
+		}
+	}
+	if output, err := runPlan(t, "pull_request", "true", ""); err == nil {
+		t.Errorf("an unknown PIG_PR_CI_LIGHT value was accepted:\n%s", output)
+	}
+
+	// The workflow starts a run on the label and on ready_for_review, and reads both into the plan.
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		On struct {
+			PullRequest struct{ Types []string } `yaml:"pull_request"`
+		}
+		Jobs map[string]struct {
+			Steps []struct {
+				ID  string
+				Env map[string]string
+			}
+		}
+	}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range []string{"opened", "synchronize", "reopened", "ready_for_review", "labeled"} {
+		if !slices.Contains(raw.On.PullRequest.Types, action) {
+			t.Errorf("ci.yml does not run on pull_request %s", action)
+		}
+	}
+	planned := false
+	for _, step := range raw.Jobs["changes"].Steps {
+		if step.ID != "plan" {
+			continue
+		}
+		planned = true
+		if requested := step.Env["FULL_REQUESTED"]; !strings.Contains(requested, "'ci:full'") || !strings.Contains(requested, "github.event.pull_request.labels.*.name") || !strings.Contains(requested, "ready_for_review") {
+			t.Errorf("FULL_REQUESTED = %q, want the ci:full label or ready_for_review", requested)
+		}
+		if step.Env["MODE"] != "${{ vars.PIG_PR_CI_LIGHT }}" {
+			t.Errorf("MODE = %q, want the PIG_PR_CI_LIGHT variable", step.Env["MODE"])
+		}
+	}
+	if !planned {
+		t.Error("the changes job has no plan step")
 	}
 }
 

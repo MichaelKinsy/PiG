@@ -105,7 +105,7 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 	jobs := verificationJobs(t)
 	linux := jobs["linux"]
 	// The full run is every event that can land a change; its matrix is the denominator of the partition below.
-	full := planFor(t, "merge_group", "true")
+	full := planFor(t, "merge_group", "")
 	if len(full.Matrix["linux"]) < 2 {
 		t.Fatal("Linux verification is not sharded")
 	}
@@ -203,7 +203,7 @@ func TestPortmapShardsAreWiredEndToEnd(t *testing.T) {
 		t.Fatalf("PORTMAP_SHARDS = %d, want the evidence run split", total)
 	}
 	var matrix []string
-	for _, shard := range planFor(t, "merge_group", "true").shards("linux") {
+	for _, shard := range planFor(t, "merge_group", "").shards("linux") {
 		if strings.HasPrefix(shard, "portmap") {
 			matrix = append(matrix, shard)
 		}

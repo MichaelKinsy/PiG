@@ -4,24 +4,43 @@
 # Prints the CI plan for one event as GITHUB_OUTPUT lines, from automation/ci/ci-tiers.txt:
 #
 #   full=true|false          the full run (every row), or the light pull-request run (the pr rows)
+#   full-required=true|false the run's CI result passes only when the full run ran (label mode, pull request)
 #   linux, windows, macos=   JSON matrix include lists of {"shard": ...} (linux rows add "target": the make target)
 #   run-<job>=true|false     whether each single (non-matrix) job runs
 #
-# The light run is a pull_request while LIGHT is "true"; every other event, and a pull_request without LIGHT, is the full run.
+# Every event but a pull request is the full run. A pull request is the full run when MODE is empty, and otherwise the light
+# run unless FULL_REQUESTED is "true" (the pull request carries the ci:full label, or it was just marked ready for review):
 #
-# Usage: ci-plan.sh <event> <light> [tiers-file]
+#   MODE empty   no light run: every pull request runs the full set.
+#   MODE queue   the merge queue runs the full set on merge_group, so the light run's CI result may pass.
+#   MODE label   there is no merge queue: a light run's CI result fails (full-required=true), so only a full run on the
+#                pull request's head can satisfy the required check.
+#
+# Usage: ci-plan.sh <event> <mode> <full-requested> [tiers-file]
 set -euo pipefail
 
 event=${1:?event}
-light=${2-}
-table=${3:-$(dirname "$0")/ci-tiers.txt}
+mode=${2-}
+requested=${3-}
+table=${4:-$(dirname "$0")/ci-tiers.txt}
+
+case "$mode" in
+  "" | queue | label) ;;
+  *)
+    echo "PIG_PR_CI_LIGHT is \"$mode\", want empty, queue or label" >&2
+    exit 1
+    ;;
+esac
 
 full=true
-if [ "$event" = pull_request ] && [ "$light" = true ]; then
-  full=false
+required=false
+if [ "$event" = pull_request ] && [ -n "$mode" ]; then
+  [ "$requested" = true ] || full=false
+  [ "$mode" = label ] && required=true
 fi
 
 echo "full=$full"
+echo "full-required=$required"
 awk -F'|' -v full="$full" '
   function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
   /^[ \t]*(#|$)/ { next }
