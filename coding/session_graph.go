@@ -30,6 +30,8 @@ func (*SessionGraph) New(_ context.Context, scope subprocess.SessionGraphScope, 
 		return icodingagent.NewGraphProjectTrustStore(op, args)
 	case subprocess.SessionGraphResourceLoader:
 		return newGraphResourceLoader(scope, op, args)
+	case subprocess.SessionGraphPackageManager:
+		return newGraphPackageManager(scope, op, args)
 	}
 	return nil, fmt.Errorf("the host does not construct %s", kind)
 }

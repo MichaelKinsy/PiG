@@ -91,6 +91,8 @@ mod session_manager_class;
 pub use session_manager_class::{NewSessionOptions, SessionInfo, SessionManager};
 mod settings_manager;
 pub use settings_manager::{SettingsError, SettingsManager, SettingsManagerCreateOptions};
+mod package_manager;
+pub use package_manager::{DefaultPackageManager, PackageManagerOptions};
 mod resource_loader;
 pub use resource_loader::{DefaultResourceLoader, DefaultResourceLoaderOptions, InlineExtensionFactory, LoaderOverride};
 mod project_trust;
