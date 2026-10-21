@@ -24,19 +24,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
 	root := flag.String("root", ".", "repository root")
 	check := flag.Bool("check", false, "fail if the checked-in matrix is stale or has unexcepted missing cells")
+	release := flag.Bool("release", false, "with -check, also apply the release gate: a gap on a high-use export fails")
 	flag.Parse()
-	if err := run(*root, *check); err != nil {
+	if *release && !*check {
+		fmt.Fprintln(os.Stderr, "sdksurface: -release needs -check")
+		os.Exit(2)
+	}
+	if err := run(*root, *check, *release); err != nil {
 		fmt.Fprintln(os.Stderr, "sdksurface:", err)
 		os.Exit(1)
 	}
 }
 
-func run(root string, check bool) error {
+func run(root string, check, release bool) error {
 	m, err := buildMatrix(root)
 	if err != nil {
 		return err
@@ -54,11 +60,22 @@ func run(root string, check bool) error {
 	rows := m.consistencyRows(corpora)
 	consistency := renderConsistency(rows, gaps)
 	consistencyFile := filepath.Join(root, consistencyPath)
+	in, err := loadLedgerInput(root, m, corpora, !check)
+	if err != nil {
+		return err
+	}
+	in.Release = release
+	typeOnly, err := typeOnlyCounts(root, in.Rows)
+	if err != nil {
+		return err
+	}
+	ledgerFileText := regenerateLedger(in)
+	exportsDoc := renderExportsDoc(in, typeOnly)
 	if check {
 		for _, f := range []struct {
 			path string
 			want []byte
-		}{{path, out}, {consistencyFile, consistency}} {
+		}{{path, out}, {consistencyFile, consistency}, {filepath.Join(root, ledgerPath), ledgerFileText}, {filepath.Join(root, exportsDocPath), exportsDoc}} {
 			current, err := os.ReadFile(f.path)
 			if err != nil {
 				return err
@@ -70,16 +87,31 @@ func run(root string, check bool) error {
 		if err := m.validate(); err != nil {
 			return err
 		}
-		return validateGaps(rows, gaps)
+		if err := validateGaps(rows, gaps); err != nil {
+			return err
+		}
+		return ledgerError(append(checkLedger(in), checkVectors(root, in.Rows, currentPin())...))
 	}
-	if err := os.WriteFile(path, out, 0o644); err != nil {
-		return err
-	}
-	if err := os.WriteFile(consistencyFile, consistency, 0o644); err != nil {
-		return err
+	for _, f := range []struct {
+		path string
+		data []byte
+	}{{path, out}, {consistencyFile, consistency}, {filepath.Join(root, ledgerPath), ledgerFileText}, {filepath.Join(root, exportsDocPath), exportsDoc}} {
+		if err := os.WriteFile(f.path, f.data, 0o644); err != nil {
+			return err
+		}
 	}
 	if err := m.validate(); err != nil {
 		return err
 	}
-	return validateGaps(rows, gaps)
+	if err := validateGaps(rows, gaps); err != nil {
+		return err
+	}
+	return ledgerError(append(checkLedger(in), checkVectors(root, in.Rows, currentPin())...))
+}
+
+func ledgerError(problems []string) error {
+	if len(problems) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%d export ledger problem(s):\n  %s", len(problems), strings.Join(problems, "\n  "))
 }

@@ -70,6 +70,22 @@ func registrySessionProbe(ctx sdk.Context, _ string) error {
 	if err = add("projection", projection, err); err != nil {
 		return err
 	}
+	persisted, err := s.IsPersisted()
+	if err = add("persisted", persisted, err); err != nil {
+		return err
+	}
+	usesDefaultDir, err := s.UsesDefaultSessionDir()
+	if err = add("usesDefaultDir", usesDefaultDir, err); err != nil {
+		return err
+	}
+	children, err := s.GetChildren(new("one"))
+	if err = add("children", children, err); err != nil {
+		return err
+	}
+	sessionContext, err := s.BuildSessionContext()
+	if err = add("sessionContext", sessionContext, err); err != nil {
+		return err
+	}
 	models, err := r.GetAll()
 	if err = add("models", models, err); err != nil {
 		return err

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -339,6 +340,15 @@ func scanCode(src string, lang string) string {
 			i = j
 			lastSig = '/'
 			continue
+		case lang == "rust" && c == 'r' && (i == 0 || !isIdentByte(b[i-1])) && rawStringEnd(b, i) > 0:
+			// A raw string has no escapes: r"\?\" ends at its second quote.
+			end := rawStringEnd(b, i)
+			for k := i; k < end; k++ {
+				blank(k)
+			}
+			i = end - 1
+			lastSig = '"'
+			continue
 		case c == '"' || (c == '\'' && lang == "js") || (c == '`' && lang == "js"):
 			quote := c
 			j := i + 1
@@ -663,4 +673,28 @@ func parseNodeReads(files []string) (symbolSet, error) {
 		}
 	}
 	return syms, nil
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+}
+
+// rawStringEnd returns the index just past the Rust raw string literal that
+// starts at b[i] (`r"..."`, `r#"..."#`, any number of hashes), or 0 when b[i]
+// does not start one.
+func rawStringEnd(b []byte, i int) int {
+	j := i + 1
+	hashes := 0
+	for j < len(b) && b[j] == '#' {
+		hashes++
+		j++
+	}
+	if j >= len(b) || b[j] != '"' {
+		return 0
+	}
+	closing := append([]byte{'"'}, bytes.Repeat([]byte{'#'}, hashes)...)
+	if k := bytes.Index(b[j+1:], closing); k >= 0 {
+		return j + 1 + k + len(closing)
+	}
+	return len(b)
 }
