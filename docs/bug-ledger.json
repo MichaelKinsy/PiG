@@ -31901,6 +31901,29 @@
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
       ]
+    },
+    {
+      "id": "BF-dad1c42",
+      "title": "A user_bash `operations` object from an extension is no longer released while a command is running through it",
+      "symptom": "A user_bash `operations` object from an extension is no longer released while a command is running through it.",
+      "rootCause": "The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dad1c42d7e",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
+        "coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsExecAbortsWithTheContext"
+      ]
     }
   ],
   "divergences": [

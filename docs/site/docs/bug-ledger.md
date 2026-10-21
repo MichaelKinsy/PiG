@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-945 bugs. 895 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+946 bugs. 896 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -964,6 +964,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
 | [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
+| [BF-dad1c42](#bf-dad1c42) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14137,6 +14138,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f6e6b97f00` (2026-10-21)
 - **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
 - **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+
+### BF-dad1c42
+
+**A user_bash `operations` object from an extension is no longer released while a command is running through it**
+
+- **Source:** PiG's own defect
+- **Symptom:** A user_bash `operations` object from an extension is no longer released while a command is running through it.
+- **Root cause:** The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dad1c42d7e` (2026-10-21)
+- **Tests:** `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns`, `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsExecAbortsWithTheContext`
+- **Release note:** A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
 
 ## Divergences from Pi added in this release
 
