@@ -4,7 +4,7 @@
 //! Each request runs on a thread of its own. The test makes the first request's thread late without a hook in the dispatch path: that request is
 //! an event whose handler lookup waits for the registry's lock, which the test holds, so its thread cannot begin until the test lets it. The
 //! later requests' threads run meanwhile. With the arrival-order places each of them parks in `RequestStart::begin` (the parked recorder of
-//! `request_start_order` says so), and no handler starts before the first request's. Without a place for the request's kind, the handler starts
+//! `request_start_order` says so), and no handler starts while the first request's thread has not begun. Without a place for the request's kind, the handler starts
 //! at once and the test fails on the spot.
 use super::handler_dispatch_tests::Host;
 use super::{CommandResult, Extension};
@@ -97,8 +97,12 @@ fn a_late_request_thread_does_not_let_a_later_handler_start_first() {
             let response = host.read_until("response").response.unwrap();
             assert!(response.error.is_none(), "round {round}: {:?}", response.error);
         }
-        let want = ["event", kinds[0], kinds[1]];
-        assert_eq!(*locked(&started), want, "round {round}: handlers started in the order the requests arrived");
+        // The handlers all ran. Their order after the first request began is not asserted: a thread is handed on by begin() and runs its handler a moment later, and a thread
+        // the operating system preempts in between can be overtaken (D187), which no test can pin. What the places guarantee, and the assertions above pin, is that no
+        // handler started while the first request's thread had not begun.
+        let mut ran = locked(&started).clone();
+        ran.sort_unstable();
+        assert_eq!(ran, ["command", "event", "tool_call"], "round {round}: every handler ran");
         host.stop();
     }
 }
