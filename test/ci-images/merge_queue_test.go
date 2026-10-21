@@ -3,7 +3,6 @@
 package ciimages
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -82,15 +81,13 @@ type tierRow struct{ job, shard, tier, lightTarget string }
 
 func tierRows(t *testing.T) []tierRow {
 	t.Helper()
-	file, err := os.Open(filepath.Join(repoRoot(t), "automation", "ci", "ci-tiers.txt"))
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "ci-tiers.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
 	var rows []tierRow
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for line := range strings.SplitSeq(string(data), "\n") {
+		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -102,9 +99,6 @@ func tierRows(t *testing.T) []tierRow {
 			fields = append(fields, "")
 		}
 		rows = append(rows, tierRow{fields[0], fields[1], fields[2], fields[3]})
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatal(err)
 	}
 	return rows
 }
