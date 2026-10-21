@@ -14,10 +14,16 @@
 // test/parity/sdk-vectors/<module-dir>/<export>.json. The result of Pi's code is the expected value:
 // nothing here is hand-written. <module-dir> is the module with "/" as "-": pi-coding-agent, pi-tui,
 // pi-ai, pi-ai-compat, pi-agent-core. See test/parity/sdk-vectors/README.md.
+//
+// A `call` that is a `function` (not an arrow) runs with `this` bound to { load(moduleDir) }, the namespace of any served module, for the
+// state a global helper reads (pi-tui's keybindings, the coding-agent theme): `const tui = await this.load("pi-tui")`.
+// chalk, which draws the theme's bold and italic, decides its level when it is first imported, so the level is fixed here, not by the terminal
+// the generator runs in.
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+process.env.FORCE_COLOR = "3";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const vectors = join(root, "test/parity/sdk-vectors");
 const oracle = join(root, "extensions/sdk-ts/node_modules");
@@ -47,6 +53,7 @@ async function load(moduleDir) {
   let target = pkg.exports?.[entry];
   if (target && typeof target === "object") target = target.import?.default ?? target.import ?? target.default;
   if (typeof target === "object") target = target?.default;
+  if (target === undefined && entry === ".") target = pkg.module ?? pkg.main;
   if (typeof target !== "string") throw new Error(`${name} exports no ${entry}`);
   return { ns: await import(pathToFileURL(join(dir, target)).href), version: pkg.version };
 }
@@ -81,6 +88,10 @@ const check = args.includes("--check");
 const only = args.filter((a) => !a.startsWith("--"));
 const cache = new Map();
 let stale = 0;
+const env = { load: async (moduleDir) => {
+  if (!cache.has(moduleDir)) cache.set(moduleDir, await load(moduleDir));
+  return cache.get(moduleDir).ns;
+} };
 if (!existsSync(join(vectors, "cases"))) process.exit(0);
 for (const [moduleDir, name] of caseSources()) {
   if (only.length && !only.includes(`${moduleDir}/${name}`)) continue;
@@ -95,7 +106,7 @@ for (const [moduleDir, name] of caseSources()) {
   for (const c of source.cases) {
     const entry = { name: c.name, args: encode(c.args) };
     try {
-      entry.result = encode(await call(fn, ...c.args));
+      entry.result = encode(await call.call(env, fn, ...c.args));
     } catch (err) {
       entry.throws = String(err?.message ?? err);
     }

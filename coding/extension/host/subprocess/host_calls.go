@@ -370,6 +370,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleBuiltinToolExecute(callCtx, conn, call)
 	case call.Method == CallBuiltinToolLocalExec:
 		result, err = h.handleBuiltinToolLocalExec(callCtx, conn, call)
+	case call.Method == CallHighlightCode:
+		result, err = h.handleHighlightCode(call)
+	case call.Method == CallLoadTheme:
+		result, err = h.handleLoadTheme(call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:

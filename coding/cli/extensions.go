@@ -117,6 +117,7 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 		return subprocess.TerminalCapabilitiesPayload{Images: string(caps.Images), TrueColor: caps.TrueColor, Hyperlinks: caps.Hyperlinks}
 	})
 	bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
+	subprocess.SetThemeLoader(codingagent.LoadExtensionTheme)
 	host.SetUIBridge(bridge)
 	host.SetSessionGraph(coding.NewSessionGraph())
 	codingagent.WireEarlyModelStream(bridge, "")

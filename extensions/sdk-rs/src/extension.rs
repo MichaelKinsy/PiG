@@ -1766,7 +1766,7 @@ impl Extension {
                                 };
                                 crate::editor_component::editor_notify(&base_ctx.editor_slot, &notify.method, &args.key, Some(args.data), None);
                             }
-                            "ui.editor.mouse" | "ui.editor.configure" | "ui.editor.closed" => {
+                            "ui.editor.mouse" | "ui.editor.configure" | "ui.editor.invalidate" | "ui.editor.closed" => {
                                 let key = notify.args.as_ref().and_then(|a| a.get("key")).and_then(|k| k.as_str()).unwrap_or_default().to_string();
                                 crate::editor_component::editor_notify(&base_ctx.editor_slot, &notify.method, &key, None, notify.args.as_ref());
                             }

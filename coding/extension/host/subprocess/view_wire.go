@@ -30,6 +30,7 @@ func newConnViewSurface(conn *Conn, key string) *viewSurface {
 		return s
 	}
 	s.report = conn.reportView
+	s.terminalRows = conn.terminalRows
 	s.sendEvicted = func(refs []string) {
 		args, _ := json.Marshal(ViewEvictedPayload{Refs: refs})
 		_ = conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyUIViewEvicted, Args: args}})

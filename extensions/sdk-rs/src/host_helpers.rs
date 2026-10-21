@@ -19,6 +19,10 @@ const CALL_GENERATE_UNIFIED_PATCH: &str = "diff.patch";
 const CALL_COPY_TO_CLIPBOARD: &str = "clipboard.copy";
 const CALL_CONVERT_TO_PNG: &str = "image.convertToPng";
 const CALL_RESIZE_IMAGE: &str = "image.resize";
+/// `highlightCode` and the theme `initTheme` installs: the host's highlight.js port and its theme registry. Like the two above they read no session state, so
+/// the host serves them before an extension registers.
+const CALL_HIGHLIGHT_CODE: &str = "highlight.code";
+const CALL_LOAD_THEME: &str = "theme.load";
 
 /// Pi's `{ frontmatter, body }`. `frontmatter` is `parse(yaml) ?? {}`: an object for the usual mapping header, whose keys follow the order a JavaScript object
 /// enumerates them (array-index keys first, ascending, then insertion order), and the array, string, number or boolean of any other YAML document.
@@ -59,6 +63,32 @@ pub fn parse_date(text: &str) -> io::Result<Option<f64>> {
 pub(crate) fn running_connection() -> io::Result<Arc<Connection>> {
     running_for(&locked(&RUNNING), socket_path().as_deref())
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "the extension is not running: a built-in tool without a context can execute only after run has started"))
+}
+
+/// The lines the host's highlight.js port makes of `code` in `lang`, drawn with `theme` (the palette of the theme `init_theme` installed) or, when `None`, with the host's
+/// active theme.
+pub(crate) fn highlight_code_lines(code: &str, lang: &str, markdown: bool, theme: Option<Value>) -> io::Result<Vec<String>> {
+    let mut args = json!({"code": code, "lang": lang});
+    if markdown {
+        args["markdown"] = Value::Bool(true);
+    }
+    if let Some(theme) = theme {
+        args["theme"] = theme;
+    }
+    let result = helper_call(CALL_HIGHLIGHT_CODE, args)?.unwrap_or(Value::Null);
+    match result.get("lines").and_then(Value::as_array) {
+        Some(lines) => Ok(lines.iter().filter_map(|line| line.as_str().map(str::to_string)).collect()),
+        None => Err(io::Error::new(io::ErrorKind::InvalidData, "decode highlightCode: the host answered no lines")),
+    }
+}
+
+/// The palette of the theme `initTheme(name)` installs.
+pub(crate) fn load_theme(name: Option<&str>) -> io::Result<Value> {
+    let result = helper_call(CALL_LOAD_THEME, json!({"name": name}))?.unwrap_or(Value::Null);
+    match result.get("theme") {
+        Some(theme) if theme.is_object() => Ok(theme.clone()),
+        _ => Err(io::Error::new(io::ErrorKind::InvalidData, "initTheme: the host answered a theme that is not a palette")),
+    }
 }
 
 pub(crate) fn frontmatter_args(content: &str) -> (&'static str, Value) {

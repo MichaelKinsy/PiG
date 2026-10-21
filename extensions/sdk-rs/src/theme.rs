@@ -5,7 +5,7 @@
 //! `theme_change` notifies). The methods below apply that palette exactly as
 //! the Node runtime's `ThemeShim` does, so every SDK colors text alike.
 
-use crate::theme_color::{color_ansi, style_text_with_ansi};
+use crate::tui::{TerminalColorMode, background_ansi, foreground_ansi, style_text_with_ansi};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -17,6 +17,8 @@ pub struct Theme {
     pub name: String,
     /// The file the theme was loaded from, `None` for a built-in theme.
     pub source_path: Option<String>,
+    /// Upstream `Theme.sourceInfo`: where the resource loader found the theme, `None` for a theme it did not load.
+    pub source_info: Option<crate::context::SourceInfo>,
     foregrounds: HashMap<String, String>,
     backgrounds: HashMap<String, String>,
     modifiers: bool,
@@ -35,24 +37,8 @@ pub enum ThemeAppearance {
     Dark,
 }
 
-/// A concrete color (upstream pi-tui `Color`): an ANSI palette index, an sRGB color with channels 0-255, or an OKLCH color.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Color {
-    Indexed { index: u8 },
-    Rgb { r: f64, g: f64, b: f64 },
-    Oklch { l: f64, c: f64, h: f64 },
-}
-
-/// The text attributes `Theme::style` applies (upstream pi-tui `TextAttributes`).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct TextAttributes {
-    pub bold: bool,
-    pub dim: bool,
-    pub italic: bool,
-    pub underline: bool,
-    pub inverse: bool,
-    pub strikethrough: bool,
-}
+/// pi-tui's `Color` and `TextAttributes`, as the `tui` helpers define them (`Color::Indexed(5)`): one implementation of the conversions serves the helpers and the theme.
+pub use crate::tui::{Color, TextAttributes};
 
 /// One slot of a `ThemeStyle`: a theme token or a concrete color (upstream's `fg?: ThemeColor | Color`).
 #[derive(Debug, Clone, PartialEq)]
@@ -80,6 +66,7 @@ impl Default for Theme {
         Self {
             name: String::new(),
             source_path: None,
+            source_info: None,
             foregrounds: HashMap::new(),
             backgrounds: HashMap::new(),
             modifiers: true,
@@ -102,7 +89,7 @@ fn color_from_value(value: &Value) -> Option<Color> {
         "indexed" => {
             let index = number("index")?;
             (index.fract() == 0.0 && (0.0..=255.0).contains(&index))
-                .then_some(Color::Indexed { index: index as u8 })
+                .then_some(Color::Indexed(index as u8))
         }
         "rgb" => Some(Color::Rgb {
             r: number("r")?,
@@ -145,6 +132,7 @@ impl Theme {
                 .and_then(Value::as_str)
                 .filter(|path| !path.is_empty())
                 .map(str::to_string),
+            source_info: palette.get("sourceInfo").and_then(|info| serde_json::from_value(info.clone()).ok()),
             foregrounds: string_map(palette.get("foregrounds")),
             backgrounds: string_map(palette.get("backgrounds")),
             modifiers: palette.get("modifiers") != Some(&Value::Bool(false)),
@@ -294,7 +282,7 @@ impl Theme {
                     None => fg_ansi = ansi.clone(),
                 }
             }
-            Some(ThemeSlot::Color(color)) => fg_ansi = color_ansi(*color, &self.mode, false),
+            Some(ThemeSlot::Color(color)) => fg_ansi = foreground_ansi(*color, self.color_mode()),
             None => {}
         }
         let bg_ansi = match &style.bg {
@@ -304,15 +292,19 @@ impl Theme {
                 .filter(|ansi| !ansi.is_empty())
                 .ok_or_else(|| format!("Unknown theme color: {token}"))?
                 .clone(),
-            Some(ThemeSlot::Color(color)) => color_ansi(*color, &self.mode, true),
+            Some(ThemeSlot::Color(color)) => background_ansi(*color, self.color_mode()),
             None => String::new(),
         };
-        Ok(style_text_with_ansi(text, &fg_ansi, &bg_ansi, attributes))
+        Ok(style_text_with_ansi(text, Some(&fg_ansi), Some(&bg_ansi), attributes))
     }
 
     /// `"truecolor"` or `"256color"`.
     pub fn get_color_mode(&self) -> String {
         self.mode.clone()
+    }
+
+    fn color_mode(&self) -> TerminalColorMode {
+        if self.mode == "truecolor" { TerminalColorMode::TrueColor } else { TerminalColorMode::Color256 }
     }
 
     /// The border color for a thinking level (`off`, `minimal`, `low`,
@@ -365,6 +357,7 @@ impl UiState {
         if let Some(theme) = state.get("theme").filter(|theme| theme.is_object()) {
             self.theme = Theme::from_palette(theme);
         }
+        crate::tui::apply_host_state(state);
     }
 
     /// Applies a `theme_change` notify's palette. A palette sent as a JSON
@@ -381,6 +374,7 @@ impl UiState {
             None => &Value::Null,
         };
         self.theme = Theme::from_palette(palette);
+        crate::tui::set_host_theme(palette);
     }
 }
 
@@ -474,7 +468,7 @@ mod tests {
                 h: 200.0,
             },
         );
-        want.insert("toolSuccessBg".to_string(), Color::Indexed { index: 5 });
+        want.insert("toolSuccessBg".to_string(), Color::Indexed(5));
         assert_eq!(theme.colors(), want);
         assert_eq!(Theme::default().appearance(), None);
         assert!(Theme::default().colors().is_empty());
@@ -517,7 +511,7 @@ mod tests {
             ("fractional rgb rounds half up", ThemeStyle { fg: color(Color::Rgb { r: 10.5, g: 20.4, b: 29.6 }), ..Default::default() }, "\x1b[38;2;11;20;30mx\x1b[39m".into()),
             ("oklch is mapped into sRGB", ThemeStyle { fg: color(Color::Oklch { l: 0.62, c: 0.1, h: 200.0 }), ..Default::default() }, "\x1b[38;2;28;152;158mx\x1b[39m".into()),
             ("an out-of-gamut oklch keeps its hue by losing chroma", ThemeStyle { bg: color(Color::Oklch { l: 1.0, c: 0.3, h: 150.0 }), ..Default::default() }, "\x1b[48;2;255;255;255mx\x1b[49m".into()),
-            ("indexed", ThemeStyle { fg: color(Color::Indexed { index: 5 }), ..Default::default() }, "\x1b[38;5;5mx\x1b[39m".into()),
+            ("indexed", ThemeStyle { fg: color(Color::Indexed(5)), ..Default::default() }, "\x1b[38;5;5mx\x1b[39m".into()),
         ];
         for (name, style, want) in cases {
             assert_eq!(theme.style("x", &style), Ok(want), "{name}");
@@ -557,7 +551,7 @@ mod tests {
                 },
                 "\x1b[38;5;31mx\x1b[39m",
             ),
-            (Color::Indexed { index: 5 }, "\x1b[38;5;5mx\x1b[39m"),
+            (Color::Indexed(5), "\x1b[38;5;5mx\x1b[39m"),
         ] {
             assert_eq!(
                 palette.style(

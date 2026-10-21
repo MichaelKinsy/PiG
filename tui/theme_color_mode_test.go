@@ -44,6 +44,43 @@ func TestSetThemeFollowsTrueColorCapability(t *testing.T) {
 	}
 }
 
+// theme.ts setThemeInstance stores the instance it is given (setGlobalTheme(themeInstance)): only a theme loaded or selected by name is created for the terminal's
+// color depth. An instance keeps the mode it was created in, so a caller that puts back the theme it found, as the tests of this repository do, leaves the process
+// exactly as it was: a truecolor built-in theme put back on a terminal that reports 256 colors stayed truecolor in Pi, and became a 256-color copy here.
+func TestSetThemeInstanceKeepsTheInstance(t *testing.T) {
+	withTrueColor(t, true)
+	SetTheme("dark")
+	truecolor := ActiveTheme()
+	if truecolor.GetColorMode() != TerminalColorModeTrueColor {
+		t.Fatalf("test needs a truecolor theme: %s", truecolor.GetColorMode())
+	}
+
+	SetCapabilities(TerminalCapabilities{TrueColor: false})
+	SetThemeInstance(builtinLightTheme())
+	SetThemeInstance(truecolor)
+	if ActiveTheme() != truecolor || ActiveTheme().GetColorMode() != TerminalColorModeTrueColor || ActiveTheme().Accent != "\x1b[38;2;167;152;215m" {
+		t.Fatalf("a truecolor instance set on a 256-color terminal became %q (%s), want the instance", ActiveTheme().Accent, ActiveTheme().GetColorMode())
+	}
+
+	SetCapabilities(TerminalCapabilities{TrueColor: true})
+	indexed := builtinDarkTheme().WithColorMode(TerminalColorMode256)
+	SetThemeInstance(indexed)
+	if ActiveTheme() != indexed || ActiveTheme().GetColorMode() != TerminalColorMode256 || ActiveTheme().Accent != "\x1b[38;5;140m" {
+		t.Fatalf("a 256-color instance set on a truecolor terminal became %q (%s), want the instance", ActiveTheme().Accent, ActiveTheme().GetColorMode())
+	}
+
+	// Selecting by name still creates the theme for the terminal.
+	SetTheme("dark")
+	if ActiveTheme().GetColorMode() != TerminalColorModeTrueColor {
+		t.Fatalf("SetTheme(dark) on a truecolor terminal = %s", ActiveTheme().GetColorMode())
+	}
+	SetCapabilities(TerminalCapabilities{TrueColor: false})
+	SetTheme("dark")
+	if ActiveTheme().GetColorMode() != TerminalColorMode256 {
+		t.Fatalf("SetTheme(dark) on a 256-color terminal = %s", ActiveTheme().GetColorMode())
+	}
+}
+
 // Components that paint fixed theme colors must follow the active theme's
 // color mode rather than always emitting 24-bit escapes.
 func TestFixedComponentColorsFollowColorMode(t *testing.T) {

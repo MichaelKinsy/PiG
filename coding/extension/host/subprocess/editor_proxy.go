@@ -36,6 +36,7 @@ const (
 	NotifyEditorInsertText   = "ui.editor.insertText"
 	NotifyEditorAddToHistory = "ui.editor.addToHistory"
 	NotifyEditorConfigure    = "ui.editor.configure"
+	NotifyEditorInvalidate   = "ui.editor.invalidate"
 	NotifyEditorSubmitted    = "ui.editor.submitted"
 	NotifyEditorClosed       = "ui.editor.closed"
 )
@@ -82,8 +83,9 @@ type editorProxy struct {
 }
 
 var (
-	_ extension.RemoteEditor          = (*editorProxy)(nil)
-	_ extension.DelegatedRemoteEditor = (*editorProxy)(nil)
+	_ extension.RemoteEditor            = (*editorProxy)(nil)
+	_ extension.DelegatedRemoteEditor   = (*editorProxy)(nil)
+	_ extension.RemoteEditorInvalidator = (*editorProxy)(nil)
 )
 
 func (p *editorProxy) EmbedWorkingStatus() bool {
@@ -155,6 +157,13 @@ func (p *editorProxy) Configure(config extension.RemoteEditorConfig) {
 		Key string `json:"key"`
 		extension.RemoteEditorConfig
 	}{p.key, config})
+}
+
+// Invalidate tells the component that the theme changed, as Pi's TUI calls invalidate() on every component it holds.
+func (p *editorProxy) Invalidate() {
+	if p.live() {
+		p.send(NotifyEditorInvalidate, map[string]any{"key": p.key})
+	}
 }
 
 // Bind attaches host and replays the events that arrived before it.

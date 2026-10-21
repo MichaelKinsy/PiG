@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import zlib
+from typing import Any
 
 # kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
 KIT_KINDS_PNG = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082"
@@ -84,6 +85,278 @@ class MouseProbe:
         )
         if event.type == "click":
             return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+        return pig_sdk.RemoteComponentResult()
+
+
+KIT_WIDGET_CASES: dict[str, Any] = {}
+"""The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
+§10), built with the SDK's own constructors; the key is
+"<module>/<export>/<case name>" and the case's wire node is its vector's
+``root``."""
+
+KIT_BRANCH_SUMMARY = "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`."
+
+
+def _kit_branch_view(expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.BranchSummary(KIT_BRANCH_SUMMARY, output_pad=output_pad, id="b")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+def _kit_branch_empty() -> kit.View:
+    node = kit.BranchSummary("")
+    node.set_expanded(True)
+    return kit.View(node)
+
+
+_BRANCH = "pi-coding-agent/BranchSummaryMessageComponent/"
+KIT_WIDGET_CASES[_BRANCH + "collapsed"] = lambda: _kit_branch_view()
+KIT_WIDGET_CASES[_BRANCH + "click toggles"] = lambda: _kit_branch_view()
+KIT_WIDGET_CASES[_BRANCH + "right click ignored"] = lambda: _kit_branch_view()
+KIT_WIDGET_CASES[_BRANCH + "expanded"] = lambda: _kit_branch_view(expanded=True)
+KIT_WIDGET_CASES[_BRANCH + "outputPad 0 collapsed"] = lambda: _kit_branch_view(output_pad=0)
+KIT_WIDGET_CASES[_BRANCH + "outputPad 0 expanded"] = lambda: _kit_branch_view(expanded=True, output_pad=0)
+KIT_WIDGET_CASES[_BRANCH + "empty summary expanded"] = _kit_branch_empty
+
+KIT_COMPACTION_SUMMARY = "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending."
+
+
+def _kit_compaction_view(tokens: int = 123456, expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.CompactionSummary(KIT_COMPACTION_SUMMARY, tokens, output_pad=output_pad, id="c")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+def _kit_compaction_empty() -> kit.View:
+    node = kit.CompactionSummary("", 0)
+    node.set_expanded(True)
+    return kit.View(node)
+
+
+_COMPACTION = "pi-coding-agent/CompactionSummaryMessageComponent/"
+KIT_WIDGET_CASES[_COMPACTION + "collapsed"] = lambda: _kit_compaction_view()
+KIT_WIDGET_CASES[_COMPACTION + "click toggles"] = lambda: _kit_compaction_view()
+KIT_WIDGET_CASES[_COMPACTION + "right click ignored"] = lambda: _kit_compaction_view()
+KIT_WIDGET_CASES[_COMPACTION + "expanded"] = lambda: _kit_compaction_view(expanded=True)
+KIT_WIDGET_CASES[_COMPACTION + "outputPad 0 collapsed"] = lambda: _kit_compaction_view(output_pad=0)
+KIT_WIDGET_CASES[_COMPACTION + "outputPad 0 expanded"] = lambda: _kit_compaction_view(expanded=True, output_pad=0)
+KIT_WIDGET_CASES[_COMPACTION + "tokens 999"] = lambda: _kit_compaction_view(tokens=999)
+KIT_WIDGET_CASES[_COMPACTION + "tokens 1234567 expanded"] = lambda: _kit_compaction_view(tokens=1234567, expanded=True)
+KIT_WIDGET_CASES[_COMPACTION + "empty summary tokens 0 expanded"] = _kit_compaction_empty
+
+KIT_SKILL_CONTENT = "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list."
+
+
+def _kit_skill_view(expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.SkillInvocation("code-review", KIT_SKILL_CONTENT, output_pad=output_pad, id="s")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+def _kit_skill_empty() -> kit.View:
+    node = kit.SkillInvocation("", "")
+    node.set_expanded(True)
+    return kit.View(node)
+
+
+_SKILL = "pi-coding-agent/SkillInvocationMessageComponent/"
+KIT_WIDGET_CASES[_SKILL + "collapsed"] = lambda: _kit_skill_view()
+KIT_WIDGET_CASES[_SKILL + "click toggles"] = lambda: _kit_skill_view()
+KIT_WIDGET_CASES[_SKILL + "right click ignored"] = lambda: _kit_skill_view()
+KIT_WIDGET_CASES[_SKILL + "expanded"] = lambda: _kit_skill_view(expanded=True)
+KIT_WIDGET_CASES[_SKILL + "outputPad 0 collapsed"] = lambda: _kit_skill_view(output_pad=0)
+KIT_WIDGET_CASES[_SKILL + "outputPad 0 expanded"] = lambda: _kit_skill_view(expanded=True, output_pad=0)
+KIT_WIDGET_CASES[_SKILL + "empty skill expanded"] = _kit_skill_empty
+
+KIT_CUSTOM_TEXT = "Build **passed** in 12s\n\n- 214 tests\n- 0 failures"
+
+
+def _kit_custom_view(text: str = KIT_CUSTOM_TEXT, expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.CustomMessage("ci-status", text, output_pad=output_pad, id="m")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+_CUSTOM = "pi-coding-agent/CustomMessageComponent/"
+KIT_WIDGET_CASES[_CUSTOM + "default"] = lambda: _kit_custom_view()
+KIT_WIDGET_CASES[_CUSTOM + "outputPad 0"] = lambda: _kit_custom_view(output_pad=0)
+KIT_WIDGET_CASES[_CUSTOM + "expanded changes nothing"] = lambda: _kit_custom_view(expanded=True)
+KIT_WIDGET_CASES[_CUSTOM + "empty text"] = lambda: _kit_custom_view(text="")
+KIT_WIDGET_CASES[_CUSTOM + "no id"] = lambda: kit.View(kit.CustomMessage("note", "plain"))
+
+KIT_WIDE_MESSAGE = "A very long message that wraps around the narrow widths of the table"
+
+
+def _kit_cancellable(message: str = "Working", **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.CancellableLoader("c", message, **options)]), focus="c")
+
+
+def _kit_bordered(message: str = "Fetching models", **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.BorderedLoader("b", message, **options)]), focus="b")
+
+
+_CANCELLABLE = "pi-tui/CancellableLoader/"
+for _name in ("default", "escape aborts", "escape twice aborts twice", "other keys are ignored"):
+    KIT_WIDGET_CASES[_CANCELLABLE + _name] = lambda: _kit_cancellable()
+KIT_WIDGET_CASES[_CANCELLABLE + "default message"] = lambda: _kit_cancellable("Loading...")
+KIT_WIDGET_CASES[_CANCELLABLE + "colors"] = lambda: _kit_cancellable(spinner_color="accent", message_color="muted")
+KIT_WIDGET_CASES[_CANCELLABLE + "frame 3"] = lambda: _kit_cancellable(frame=3)
+KIT_WIDGET_CASES[_CANCELLABLE + "indicator frames"] = lambda: _kit_cancellable(indicator=kit.LoaderIndicator(frames=["*", "+", "x"], interval_ms=50), frame=1)
+KIT_WIDGET_CASES[_CANCELLABLE + "hidden indicator"] = lambda: _kit_cancellable(indicator=kit.LoaderIndicator(frames=[]))
+KIT_WIDGET_CASES[_CANCELLABLE + "wide message"] = lambda: _kit_cancellable(KIT_WIDE_MESSAGE, spinner_color="accent")
+_BORDERED = "pi-coding-agent/BorderedLoader/"
+for _name in ("cancellable", "escape aborts", "escape twice aborts twice", "other keys are ignored"):
+    KIT_WIDGET_CASES[_BORDERED + _name] = lambda: _kit_bordered()
+for _name in ("not cancellable", "escape ignored when not cancellable"):
+    KIT_WIDGET_CASES[_BORDERED + _name] = lambda: _kit_bordered(cancellable=False)
+KIT_WIDGET_CASES[_BORDERED + "default message"] = lambda: _kit_bordered("Loading...")
+KIT_WIDGET_CASES[_BORDERED + "frame 4"] = lambda: _kit_bordered(frame=4)
+KIT_WIDGET_CASES[_BORDERED + "wide message"] = lambda: _kit_bordered("Fetching the models of every configured provider, one after another")
+
+def _kit_input(focus: bool = True, **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.Input("i", **options)]), focus="i" if focus else None)
+
+
+_INPUT = "pi-tui/Input/"
+KIT_WIDGET_CASES[_INPUT + "empty"] = lambda: _kit_input(False)
+for _name in ("empty focused", "typing", "left then insert", "backspace and delete", "home and end", "kill word and yank", "kill to end", "paste scrolls", "submit"):
+    KIT_WIDGET_CASES[_INPUT + _name] = lambda: _kit_input()
+KIT_WIDGET_CASES[_INPUT + "placeholder"] = lambda: _kit_input(False, placeholder="type here")
+KIT_WIDGET_CASES[_INPUT + "placeholder focused colored"] = lambda: _kit_input(placeholder="type here", placeholder_color="dim")
+KIT_WIDGET_CASES[_INPUT + "custom prompt"] = lambda: _kit_input(prompt="$ ", value="ls -la")
+KIT_WIDGET_CASES[_INPUT + "value"] = lambda: _kit_input(False, value="hello world")
+for _name in ("value focused", "click moves the cursor", "right click ignored"):
+    KIT_WIDGET_CASES[_INPUT + _name] = lambda: _kit_input(value="hello world")
+KIT_WIDGET_CASES[_INPUT + "wide characters"] = lambda: _kit_input(value="漢字 and 😀 text")
+KIT_WIDGET_CASES[_INPUT + "submit newline key"] = lambda: _kit_input(value="preset")
+KIT_WIDGET_CASES[_INPUT + "escape"] = lambda: _kit_input(value="keep")
+
+_EDITOR_COMMANDS = kit.Autocomplete([
+    kit.SlashCommand("help", "Show help"),
+    kit.SlashCommand("model", "Switch the model", argument_hint="<name>"),
+    kit.SlashCommand("quit", "Exit"),
+    kit.SlashCommand("session", "Session info"),
+    kit.SlashCommand("settings", "Open settings"),
+    kit.SlashCommand("share"),
+    kit.SlashCommand("skills", "List skills"),
+    kit.SlashCommand("compact", "Compact the context"),
+])
+
+
+def _kit_editor(focus: bool = True, **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.Editor("e", **options)]), focus="e" if focus else None)
+
+
+_EDITOR = "pi-tui/Editor/"
+KIT_WIDGET_CASES[_EDITOR + "empty"] = lambda: _kit_editor(False)
+KIT_WIDGET_CASES[_EDITOR + "empty focused"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "value"] = lambda: _kit_editor(False, value="hello world")
+KIT_WIDGET_CASES[_EDITOR + "multiline value focused"] = lambda: _kit_editor(value="one\ntwo\nthree")
+KIT_WIDGET_CASES[_EDITOR + "wrapped line"] = lambda: _kit_editor(value="The quick brown fox jumps over the lazy dog and keeps running through the field")
+KIT_WIDGET_CASES[_EDITOR + "wide characters"] = lambda: _kit_editor(value="漢字 and 😀 text")
+KIT_WIDGET_CASES[_EDITOR + "typing"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "newline"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "backspace and delete"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "kill word and yank"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "undo"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "submit"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "paste"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "paste large"] = lambda: _kit_editor()
+KIT_WIDGET_CASES[_EDITOR + "cursor movement"] = lambda: _kit_editor(value="one\ntwo\nthree")
+KIT_WIDGET_CASES[_EDITOR + "submit multiline"] = lambda: _kit_editor(value="one\ntwo")
+KIT_WIDGET_CASES[_EDITOR + "submit disabled"] = lambda: _kit_editor(value="keep", disable_submit=True)
+KIT_WIDGET_CASES[_EDITOR + "padding"] = lambda: _kit_editor(value="padded text", padding_x=2)
+KIT_WIDGET_CASES[_EDITOR + "padding wrapped"] = lambda: _kit_editor(value="The quick brown fox jumps over the lazy dog and keeps running", padding_x=3)
+KIT_WIDGET_CASES[_EDITOR + "border color"] = lambda: _kit_editor(value="colored", border_color="accent")
+KIT_WIDGET_CASES[_EDITOR + "history"] = lambda: _kit_editor(history=["first", "second", "third"])
+KIT_WIDGET_CASES[_EDITOR + "history then edit"] = lambda: _kit_editor(history=["first", "second"])
+KIT_WIDGET_CASES[_EDITOR + "scrolls past the visible lines"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "scroll indicator below"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "more rows show more lines"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "few rows show five lines"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")
+KIT_WIDGET_CASES[_EDITOR + "page up and down"] = lambda: _kit_editor(value="line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30")
+KIT_WIDGET_CASES[_EDITOR + "click moves the cursor"] = lambda: _kit_editor(value="hello\nworld")
+KIT_WIDGET_CASES[_EDITOR + "click on the border"] = lambda: _kit_editor(value="hello\nworld")
+KIT_WIDGET_CASES[_EDITOR + "right click ignored"] = lambda: _kit_editor(value="hello")
+KIT_WIDGET_CASES[_EDITOR + "slash opens the menu"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash narrows"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash no match"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash tab accepts"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash arrow then tab"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash enter accepts"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash escape closes"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash click selects"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "text after the slash opens nothing"] = lambda: _kit_editor(autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash max visible 3"] = lambda: _kit_editor(autocomplete_max_visible=3, autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "slash with padding"] = lambda: _kit_editor(padding_x=2, autocomplete=_EDITOR_COMMANDS)
+KIT_WIDGET_CASES[_EDITOR + "autocomplete menu does not follow disabled submit"] = lambda: _kit_editor(disable_submit=True, autocomplete=_EDITOR_COMMANDS)
+
+def _kit_scroll_child(kind: str) -> kit.Node:
+    if kind == "md":
+        return kit.Markdown("# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`", 1, 0)
+    if kind == "region":
+        return kit.Text("Region content\nsecond row", 1, 0)
+    if kind == "empty":
+        return kit.Container([])
+    if kind == "branch":
+        return kit.BranchSummary("The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.", id="b")
+    return kit.Text("Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta", 1, 0)
+
+
+_SCROLL = "pi-tui/ScrollView/"
+_MOUSE_REGION = "pi-tui/MouseRegion/"
+KIT_WIDGET_CASES[_SCROLL + "default"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"))]))
+KIT_WIDGET_CASES[_SCROLL + "scrollbar always"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="always")]))
+KIT_WIDGET_CASES[_SCROLL + "scrollbar auto"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="auto")]))
+KIT_WIDGET_CASES[_SCROLL + "scrollbar colors"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="always", scrollbar_track_color="dim", scrollbar_thumb_color="accent")]))
+KIT_WIDGET_CASES[_SCROLL + "follow end"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), follow="end")]))
+KIT_WIDGET_CASES[_SCROLL + "primary and contain"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), primary=True, overscroll="contain")]))
+KIT_WIDGET_CASES[_SCROLL + "hide delay"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="auto", scrollbar_hide_delay_ms=50)]))
+KIT_WIDGET_CASES[_SCROLL + "scroll top clamps"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text"), scroll_top=3)]))
+KIT_WIDGET_CASES[_SCROLL + "markdown child"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("md"), scrollbar="always")]))
+KIT_WIDGET_CASES[_SCROLL + "after other rows"] = lambda: kit.View(kit.Container([kit.Text("Header", 1, 0), kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="always"), kit.Text("Footer", 1, 0)]))
+KIT_WIDGET_CASES[_SCROLL + "empty child"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("empty"), scrollbar="always")]))
+KIT_WIDGET_CASES[_SCROLL + "wheel and click pass"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text")), kit.Text("after", 1, 0)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "renders its child"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "every type by default"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "types filter"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), types=["click"])]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "not handled"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), handled=False)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "capture"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), capture=True)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "focus and render"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), focus=True, render=False)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "local coordinates"] = lambda: kit.View(kit.Container([kit.Text("Above the region", 1, 0), kit.MouseRegion("m", _kit_scroll_child("region")), kit.Text("Below", 1, 0)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "the child takes the event first"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("branch"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "right button"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"))]))
+
+# kit-widget-cases
+
+
+class KitWidgetProbe:
+    """kit-widget's component: takes the keys and mouse events the view leaves
+    to the extension, and notifies each callback its nodes fire as
+    ``kit-widget-event=<type>:<value>`` (a change report is not one). It never
+    closes itself: the harness delivers the case's steps and then reads the
+    callbacks, and a probe that closed after the callbacks Pi fired would drop
+    the steps still to come."""
+
+    def __init__(self, ctx: pig_sdk.Context, view: kit.View) -> None:
+        self.ctx = ctx
+        self.view_ = view
+
+    def view(self, _width: int) -> kit.View:
+        return self.view_
+
+    def handle_input(self, _data: str) -> pig_sdk.RemoteComponentResult:
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_mouse(self, _event: pig_sdk.MouseEvent) -> pig_sdk.RemoteComponentResult:
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_view_event(self, event: kit.Event) -> pig_sdk.RemoteComponentResult:
+        if event.type == kit.MOUSE and event.mouse is not None:
+            m = event.mouse
+            self.ctx.notify(f"kit-widget-event=mouse:{m['type']}/{m['button']}/{m['x']}/{m['y']}", "info")
+        elif event.type != kit.CHANGE:
+            self.ctx.notify(f"kit-widget-event={event.type}:{event.value}", "info")
         return pig_sdk.RemoteComponentResult()
 
 
@@ -271,11 +544,68 @@ def new_extension() -> pig_sdk.Extension:
     class EmbeddingEditor(ConformanceEditor):
         embed_working_status = True
 
+    class HooksEditor(ConformanceEditor):
+        """A CustomEditor subclass that sets the handlers Pi's CustomEditor keeps as public fields (on_escape, on_ctrl_d,
+        on_paste_image, action_handlers through on_action, on_extension_shortcut), reads and sets the members it inherits
+        from Pi's Editor on its base ("M"), and hears the host's working status and invalidate. Each handler writes what ran
+        into the host's text (TestEditorComponentAppHandlersRunInTheExtension, TestEditorComponentInheritedMembersReachTheHost,
+        TestEditorComponentHearsTheWorkingStatusAndInvalidate)."""
+
+        def __init__(self, base):
+            super().__init__(base)
+
+            def say(what):
+                return lambda: base.set_text("raw:hook=" + what)
+
+            base.on_escape = say("escape")
+            base.on_ctrl_d = say("ctrl-d")
+            base.on_paste_image = say("paste-image")
+            base.on_action("app.clear", say("clear"))
+            # action_handlers is the live dict: an entry deleted from it is no longer the component's.
+            base.on_action("app.unused", say("unused"))
+            del base.action_handlers["app.unused"]
+
+            def shortcut(data):
+                if data != "S":
+                    return False
+                base.set_text("raw:hook=shortcut")
+                return True
+
+            base.on_extension_shortcut = shortcut
+
+        def handle_input(self, data):
+            if data != "M":
+                return super().handle_input(data)
+            base = self.base
+            padding = base.get_padding_x()
+            visible = base.get_autocomplete_max_visible()
+            border = base.border_color("x")
+            base.disable_submit = True
+            disabled = base.disable_submit
+            base.focused = True
+            focused = base.focused
+            base.set_autocomplete_provider(kit.Autocomplete([kit.SlashCommand("help", "Show help")], "/work"))
+            base.on_submit("sub")
+            base.on_change("chg")
+            base.set_text("raw:members=padding=%d,max=%d,border=%s,disable=%s,focused=%s" % (padding, visible, border, str(disabled).lower(), str(focused).lower()))
+
+        def set_working_status_indicator(self, status):
+            self.base.set_text("raw:status=none" if status is None else "raw:status=%s/%s/%d" % (status.kind, status.message, status.frame))
+
+        def invalidate(self):
+            self.base.set_text("raw:invalidated")
+
+    ext.command("editor-install-hooks", "Install a custom editor that sets CustomEditor's handlers", lambda ctx, _args: ctx.set_editor_component(HooksEditor))
+
     def eager_editor(ctx, _args):
-        def factory(base):
+        def factory(base: pig_sdk.EditorBase):
             try:
                 base.set_text("eager")
                 ctx.notify("eager:" + base.get_text(), "info")
+                # The stock editor's other queries and setters, at the values it already holds.
+                base.get_cursor(), base.get_expanded_text(), base.is_showing_autocomplete()
+                base.set_padding_x(0)
+                base.set_autocomplete_max_visible(5)
             except Exception as exc:  # noqa: BLE001
                 ctx.notify("eager-error:" + str(exc), "info")
             return ConformanceEditor(base)
@@ -1735,6 +2065,14 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"kit={'' if result is None else result}", "info")
 
     ext.command("kit-probe", "Exercise the component kit (D107)", kit_probe)
+
+    def kit_widget(ctx: pig_sdk.Context, key: str) -> None:
+        build = KIT_WIDGET_CASES.get(key)
+        if build is None:
+            raise RuntimeError(f"kit-widget: unknown case {key!r}")
+        ctx.custom(KitWidgetProbe(ctx, build()), {"title": "Kit"})
+
+    ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", kit_widget)
 
     # mouse-probe opens the mouse row's component: the host hands it
     # fullscreen mouse events, and it closes on a click with what it got.

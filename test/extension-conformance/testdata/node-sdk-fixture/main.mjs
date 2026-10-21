@@ -1114,6 +1114,323 @@ export default function (pi) {
       return { handled: true };
     }
   }
+  // kit-widget "<case key>": a widget kind's Pi vector case
+  // (D107, docs/plan/extension-component-kit.md §10), built from Pi's own
+  // components; the runtime derives its view while a frontend draws. As
+  // ui.custom's component it takes the keys and mouse events the components
+  // leave to the extension and notifies each callback they fire as
+  // "kit-widget-event=<type>:<value>". It never closes itself: the harness
+  // delivers the case's steps and then reads the callbacks, and a component
+  // that closed after the callbacks Pi fired would drop the steps still to
+  // come. The key is "<module>/<export>/<case name>" and the case's wire
+  // node is its vector's `root`.
+  const kitWidgetCases = {};
+  {
+    const branch = (expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.BranchSummaryMessageComponent({ summary: "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`." }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/BranchSummaryMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = branch(false);
+    kitWidgetCases[`${prefix}click toggles`] = branch(false);
+    kitWidgetCases[`${prefix}right click ignored`] = branch(false);
+    kitWidgetCases[`${prefix}expanded`] = branch(true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = branch(false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = branch(true, 0);
+    kitWidgetCases[`${prefix}empty summary expanded`] = () => {
+      const node = new piCodingAgent.BranchSummaryMessageComponent({ summary: "" }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
+  {
+    const compaction = (tokens, expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.CompactionSummaryMessageComponent({ summary: "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending.", tokensBefore: tokens }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/CompactionSummaryMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}click toggles`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}right click ignored`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}expanded`] = compaction(123456, true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = compaction(123456, false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = compaction(123456, true, 0);
+    kitWidgetCases[`${prefix}tokens 999`] = compaction(999, false);
+    kitWidgetCases[`${prefix}tokens 1234567 expanded`] = compaction(1234567, true);
+    kitWidgetCases[`${prefix}empty summary tokens 0 expanded`] = () => {
+      const node = new piCodingAgent.CompactionSummaryMessageComponent({ summary: "", tokensBefore: 0 }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
+  {
+    const skill = (expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.SkillInvocationMessageComponent({ name: "code-review", content: "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list." }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/SkillInvocationMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = skill(false);
+    kitWidgetCases[`${prefix}click toggles`] = skill(false);
+    kitWidgetCases[`${prefix}right click ignored`] = skill(false);
+    kitWidgetCases[`${prefix}expanded`] = skill(true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = skill(false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = skill(true, 0);
+    kitWidgetCases[`${prefix}empty skill expanded`] = () => {
+      const node = new piCodingAgent.SkillInvocationMessageComponent({ name: "", content: "" }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
+  {
+    const custom = (text, expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.CustomMessageComponent({ customType: "ci-status", content: text }, undefined, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const body = "Build **passed** in 12s\n\n- 214 tests\n- 0 failures";
+    const prefix = "pi-coding-agent/CustomMessageComponent/";
+    kitWidgetCases[`${prefix}default`] = custom(body, false);
+    kitWidgetCases[`${prefix}outputPad 0`] = custom(body, false, 0);
+    kitWidgetCases[`${prefix}expanded changes nothing`] = custom(body, true);
+    kitWidgetCases[`${prefix}empty text`] = custom("", false);
+    kitWidgetCases[`${prefix}no id`] = () => ({ root: new piCodingAgent.CustomMessageComponent({ customType: "note", content: "plain" }, undefined, undefined, 1) });
+  }
+  {
+    const cancellable = (message, { spinner, messageColor, indicator, frame } = {}) => ({ theme, note }) => {
+      const style = (token) => (token ? (text) => theme.fg(token, text) : (text) => text);
+      const loader = new piTui.CancellableLoader({ requestRender() {} }, style(spinner), style(messageColor), message, indicator);
+      loader.stop();
+      if (frame !== undefined) { loader.currentFrame = frame % loader.frames.length; loader.updateDisplay(); }
+      loader.onAbort = () => note("abort:");
+      const root = new Container();
+      root.addChild(loader);
+      return { root, focus: loader };
+    };
+    const bordered = (message, options) => ({ theme, note }) => {
+      const loader = new piCodingAgent.BorderedLoader({ requestRender() {} }, theme, message, options);
+      loader.loader.stop();
+      loader.onAbort = () => note("abort:");
+      const root = new Container();
+      root.addChild(loader);
+      return { root, focus: loader };
+    };
+    const framed = (build, frame) => (ctx) => {
+      const result = build(ctx);
+      const inner = result.focus.loader;
+      inner.currentFrame = frame % inner.frames.length;
+      inner.updateDisplay();
+      return result;
+    };
+    const wide = "A very long message that wraps around the narrow widths of the table";
+    const c = "pi-tui/CancellableLoader/";
+    for (const name of ["default", "escape aborts", "escape twice aborts twice", "other keys are ignored"]) kitWidgetCases[c + name] = cancellable("Working");
+    kitWidgetCases[`${c}default message`] = cancellable("Loading...");
+    kitWidgetCases[`${c}colors`] = cancellable("Working", { spinner: "accent", messageColor: "muted" });
+    kitWidgetCases[`${c}frame 3`] = cancellable("Working", { frame: 3 });
+    kitWidgetCases[`${c}indicator frames`] = cancellable("Working", { indicator: { frames: ["*", "+", "x"], intervalMs: 50 }, frame: 1 });
+    kitWidgetCases[`${c}hidden indicator`] = cancellable("Working", { indicator: { frames: [] } });
+    kitWidgetCases[`${c}wide message`] = cancellable(wide, { spinner: "accent" });
+    const b = "pi-coding-agent/BorderedLoader/";
+    for (const name of ["cancellable", "escape aborts", "escape twice aborts twice", "other keys are ignored"]) kitWidgetCases[b + name] = bordered("Fetching models");
+    for (const name of ["not cancellable", "escape ignored when not cancellable"]) kitWidgetCases[b + name] = bordered("Fetching models", { cancellable: false });
+    kitWidgetCases[`${b}default message`] = bordered("Loading...");
+    kitWidgetCases[`${b}frame 4`] = framed(bordered("Fetching models"), 4);
+    kitWidgetCases[`${b}wide message`] = bordered("Fetching the models of every configured provider, one after another");
+  }
+  {
+    const input = ({ value, focused = true, options = {}, token } = {}) => ({ theme, note }) => {
+      const component = new piTui.Input(token ? { ...options, placeholderStyle: (text) => theme.fg(token, text) } : options);
+      if (value) component.setValue(value);
+      component.focused = focused;
+      component.onSubmit = (text) => note(`submit:${text}`);
+      component.onEscape = () => note(`escape:${component.getValue()}`);
+      const root = new Container();
+      root.addChild(component);
+      return { root, focus: component };
+    };
+    const i = "pi-tui/Input/";
+    kitWidgetCases[`${i}empty`] = input({ focused: false });
+    for (const name of ["empty focused", "typing", "left then insert", "backspace and delete", "home and end", "kill word and yank", "kill to end", "paste scrolls", "submit"]) kitWidgetCases[i + name] = input();
+    kitWidgetCases[`${i}placeholder`] = input({ focused: false, options: { placeholder: "type here" } });
+    kitWidgetCases[`${i}placeholder focused colored`] = input({ options: { placeholder: "type here" }, token: "dim" });
+    kitWidgetCases[`${i}custom prompt`] = input({ options: { prompt: "$ " }, value: "ls -la" });
+    kitWidgetCases[`${i}value`] = input({ focused: false, value: "hello world" });
+    for (const name of ["value focused", "click moves the cursor", "right click ignored"]) kitWidgetCases[i + name] = input({ value: "hello world" });
+    kitWidgetCases[`${i}wide characters`] = input({ value: "漢字 and 😀 text" });
+    kitWidgetCases[`${i}submit newline key`] = input({ value: "preset" });
+    kitWidgetCases[`${i}escape`] = input({ value: "keep" });
+  }
+  {
+    const commands = [
+      { name: "help", description: "Show help" },
+      { name: "model", description: "Switch the model", argumentHint: "<name>" },
+      { name: "quit", description: "Exit" },
+      { name: "session", description: "Session info" },
+      { name: "settings", description: "Open settings" },
+      { name: "share" },
+      { name: "skills", description: "List skills" },
+      { name: "compact", description: "Compact the context" },
+    ];
+    const editor = ({ value, padding, acmax, border, disable, history = [], auto = false, focused = true } = {}) => ({ tui, theme, note }) => {
+      const options = {};
+      if (padding !== undefined) options.paddingX = padding;
+      if (acmax !== undefined) options.autocompleteMaxVisible = acmax;
+      const component = new piTui.Editor(tui, { borderColor: (text) => theme.fg("borderMuted", text), selectList: piCodingAgent.getSelectListTheme() }, options);
+      if (border) component.borderColor = (text) => theme.fg(border, text);
+      if (disable) component.disableSubmit = true;
+      for (const entry of history) component.addToHistory(entry);
+      if (auto) component.setAutocompleteProvider(new piTui.CombinedAutocompleteProvider(commands, process.cwd()));
+      if (value) component.setText(value);
+      component.focused = focused;
+      component.onSubmit = (text) => note(`submit:${text}`);
+      const root = new Container();
+      root.addChild(component);
+      return { root, focus: component };
+    };
+    const e = "pi-tui/Editor/";
+    kitWidgetCases[e + "empty"] = editor({ focused: false });
+    kitWidgetCases[e + "empty focused"] = editor();
+    kitWidgetCases[e + "value"] = editor({ value: "hello world", focused: false });
+    kitWidgetCases[e + "multiline value focused"] = editor({ value: "one\ntwo\nthree" });
+    kitWidgetCases[e + "wrapped line"] = editor({ value: "The quick brown fox jumps over the lazy dog and keeps running through the field" });
+    kitWidgetCases[e + "wide characters"] = editor({ value: "漢字 and 😀 text" });
+    kitWidgetCases[e + "typing"] = editor();
+    kitWidgetCases[e + "newline"] = editor();
+    kitWidgetCases[e + "backspace and delete"] = editor();
+    kitWidgetCases[e + "kill word and yank"] = editor();
+    kitWidgetCases[e + "undo"] = editor();
+    kitWidgetCases[e + "submit"] = editor();
+    kitWidgetCases[e + "paste"] = editor();
+    kitWidgetCases[e + "paste large"] = editor();
+    kitWidgetCases[e + "cursor movement"] = editor({ value: "one\ntwo\nthree" });
+    kitWidgetCases[e + "submit multiline"] = editor({ value: "one\ntwo" });
+    kitWidgetCases[e + "submit disabled"] = editor({ value: "keep", disable: true });
+    kitWidgetCases[e + "padding"] = editor({ value: "padded text", padding: 2 });
+    kitWidgetCases[e + "padding wrapped"] = editor({ value: "The quick brown fox jumps over the lazy dog and keeps running", padding: 3 });
+    kitWidgetCases[e + "border color"] = editor({ value: "colored", border: "accent" });
+    kitWidgetCases[e + "history"] = editor({ history: ["first", "second", "third"] });
+    kitWidgetCases[e + "history then edit"] = editor({ history: ["first", "second"] });
+    kitWidgetCases[e + "scrolls past the visible lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "scroll indicator below"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "more rows show more lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "few rows show five lines"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12" });
+    kitWidgetCases[e + "page up and down"] = editor({ value: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30" });
+    kitWidgetCases[e + "click moves the cursor"] = editor({ value: "hello\nworld" });
+    kitWidgetCases[e + "click on the border"] = editor({ value: "hello\nworld" });
+    kitWidgetCases[e + "right click ignored"] = editor({ value: "hello" });
+    kitWidgetCases[e + "slash opens the menu"] = editor({ auto: true });
+    kitWidgetCases[e + "slash narrows"] = editor({ auto: true });
+    kitWidgetCases[e + "slash no match"] = editor({ auto: true });
+    kitWidgetCases[e + "slash tab accepts"] = editor({ auto: true });
+    kitWidgetCases[e + "slash arrow then tab"] = editor({ auto: true });
+    kitWidgetCases[e + "slash enter accepts"] = editor({ auto: true });
+    kitWidgetCases[e + "slash escape closes"] = editor({ auto: true });
+    kitWidgetCases[e + "slash click selects"] = editor({ auto: true });
+    kitWidgetCases[e + "text after the slash opens nothing"] = editor({ auto: true });
+    kitWidgetCases[e + "slash max visible 3"] = editor({ acmax: 3, auto: true });
+    kitWidgetCases[e + "slash with padding"] = editor({ padding: 2, auto: true });
+    kitWidgetCases[e + "autocomplete menu does not follow disabled submit"] = editor({ disable: true, auto: true });
+  }
+  // The child the scroll-view and mouse-region cases wrap: a text of wrapping rows, a markdown, an empty container, or a
+  // branch summary (which a click toggles).
+  const kitScrollLines = "Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta";
+  const kitScrollMarkdown = "# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`";
+  const kitScrollChild = (kind) => {
+    if (kind === "md") return new piTui.Markdown(kitScrollMarkdown, 1, 0, piCodingAgent.getMarkdownTheme());
+    if (kind === "region") return new piTui.Text("Region content\nsecond row", 1, 0);
+    if (kind === "empty") return new Container();
+    if (kind === "branch") return new piCodingAgent.BranchSummaryMessageComponent({ summary: "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`." }, undefined, 1);
+    return new piTui.Text(kitScrollLines, 1, 0);
+  };
+  {
+    const styled = (theme, token) => (token ? (text) => theme.fg(token, text) : undefined);
+    const scroll = (o, kind = "text", wrap) => ({ theme }) => {
+      const options = {};
+      if (o.follow) options.follow = o.follow;
+      if (o.primary) options.primary = true;
+      if (o.overscroll) options.overscroll = o.overscroll;
+      if (o.scrollbar) options.scrollbar = o.scrollbar;
+      if (o.track) options.scrollbarTrackStyle = styled(theme, o.track);
+      if (o.thumb) options.scrollbarThumbStyle = styled(theme, o.thumb);
+      if (o.delay !== undefined) options.scrollbarHideDelayMs = o.delay;
+      const view = new piTui.ScrollView(kitScrollChild(kind), options);
+      if (o.scrollTop !== undefined) view.scrollTo(o.scrollTop);
+      const root = new Container();
+      if (wrap === "hf") root.addChild(new piTui.Text("Header", 1, 0));
+      root.addChild(view);
+      if (wrap === "hf") root.addChild(new piTui.Text("Footer", 1, 0));
+      if (wrap === "after") root.addChild(new piTui.Text("after", 1, 0));
+      return { root };
+    };
+    const s = "pi-tui/ScrollView/";
+    kitWidgetCases[s + "default"] = scroll({}, "text", undefined);
+    kitWidgetCases[s + "scrollbar always"] = scroll({"scrollbar": "always"}, "text", undefined);
+    kitWidgetCases[s + "scrollbar auto"] = scroll({"scrollbar": "auto"}, "text", undefined);
+    kitWidgetCases[s + "scrollbar colors"] = scroll({"scrollbar": "always", "track": "dim", "thumb": "accent"}, "text", undefined);
+    kitWidgetCases[s + "follow end"] = scroll({"follow": "end"}, "text", undefined);
+    kitWidgetCases[s + "primary and contain"] = scroll({"overscroll": "contain", "primary": true}, "text", undefined);
+    kitWidgetCases[s + "hide delay"] = scroll({"scrollbar": "auto", "delay": 50}, "text", undefined);
+    kitWidgetCases[s + "scroll top clamps"] = scroll({"scrollTop": 3}, "text", undefined);
+    kitWidgetCases[s + "markdown child"] = scroll({"scrollbar": "always"}, "md", undefined);
+    kitWidgetCases[s + "after other rows"] = scroll({"scrollbar": "always"}, "text", "hf");
+    kitWidgetCases[s + "empty child"] = scroll({"scrollbar": "always"}, "empty", undefined);
+    kitWidgetCases[s + "wheel and click pass"] = scroll({}, "text", "after");
+  }
+  {
+    const region = (o, kind = "text", wrap) => ({ note }) => {
+      const mouseRegion = new piTui.MouseRegion(kitScrollChild(kind), (event) => {
+        if (o.types && !o.types.includes(event.type)) return undefined;
+        note(`mouse:${event.type}/${event.button}/${event.x}/${event.y}`);
+        const result = { handled: o.handled ?? true };
+        if (o.capture) result.capture = true;
+        if (o.focus) result.focus = true;
+        if (o.render !== undefined) result.render = o.render;
+        return result;
+      });
+      const root = new Container();
+      if (wrap === "ab") root.addChild(new piTui.Text("Above the region", 1, 0));
+      root.addChild(mouseRegion);
+      if (wrap === "ab") root.addChild(new piTui.Text("Below", 1, 0));
+      return { root };
+    };
+    const m = "pi-tui/MouseRegion/";
+    kitWidgetCases[m + "renders its child"] = region({}, "region", undefined);
+    kitWidgetCases[m + "every type by default"] = region({}, "region", undefined);
+    kitWidgetCases[m + "types filter"] = region({"types": ["click"]}, "region", undefined);
+    kitWidgetCases[m + "not handled"] = region({"handled": false}, "region", undefined);
+    kitWidgetCases[m + "capture"] = region({"capture": true}, "region", undefined);
+    kitWidgetCases[m + "focus and render"] = region({"focus": true, "render": false}, "region", undefined);
+    kitWidgetCases[m + "local coordinates"] = region({}, "region", "ab");
+    kitWidgetCases[m + "the child takes the event first"] = region({}, "branch", undefined);
+    kitWidgetCases[m + "right button"] = region({}, "region", undefined);
+  }
+  // kit-widget-cases
+  pi.registerCommand("kit-widget", {
+    description: "Show a widget kind's Pi vector case (D107)",
+    handler: async (key, ctx) => {
+      const build = kitWidgetCases[key];
+      if (!build) throw new Error(`kit-widget: unknown case ${JSON.stringify(key)}`);
+      await ctx.ui.custom((tui, theme, keys) => {
+        const note = (entry) => ctx.ui.notify(`kit-widget-event=${entry}`, "info");
+        // build returns the root component and, when a node of it holds the focus, that node.
+        const { root, focus } = build({ tui, theme, keys, note });
+        if (focus) root.handleInput = (data) => focus.handleInput(data);
+        else if (!root.handleInput) root.handleInput = () => {};
+        return root;
+      }, { overlayOptions: { title: "Kit" } });
+    },
+  });
   pi.registerCommand("mouse-probe", {
     description: "Exercise extension mouse input",
     handler: async (_args, ctx) => {

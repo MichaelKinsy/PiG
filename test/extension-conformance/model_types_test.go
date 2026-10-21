@@ -65,6 +65,8 @@ type modelTypesRig struct {
 	virtual       []string
 	available     []string
 	theme         any
+	keybindings   any
+	capabilities  subprocess.TerminalCapabilitiesPayload
 }
 
 // setTheme is the palette the host publishes with its state before each call.
@@ -72,6 +74,24 @@ func (r *modelTypesRig) setTheme(palette any) {
 	r.mu.Lock()
 	r.theme = palette
 	r.mu.Unlock()
+}
+
+// setTuiState is the keybinding table and terminal capabilities the host publishes with its state; the next state push carries them to the extension's pi-tui.
+func (r *modelTypesRig) setTuiState(keybindings any, capabilities subprocess.TerminalCapabilitiesPayload) {
+	r.mu.Lock()
+	r.keybindings, r.capabilities = keybindings, capabilities
+	r.mu.Unlock()
+	r.bridge.SetKeybindingsFunc(func() any {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return r.keybindings
+	})
+	r.bridge.SetTerminalCapabilitiesFunc(func() subprocess.TerminalCapabilitiesPayload {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		return r.capabilities
+	})
+	r.host.BroadcastStateUpdate()
 }
 
 func newModelTypesRig(t *testing.T) *modelTypesRig {
@@ -440,6 +460,7 @@ def theme_queries(theme, args):
         "thinking": {level: theme_attempt(lambda level=level: theme.get_thinking_border_color(level)("x")) for level in args.get("levels", [])},
         "bash": theme_attempt(lambda: theme.get_bash_mode_border_color()("x")),
         "sourcePath": theme.source_path,
+        "sourceInfo": theme.source_info,
     }
 
 
@@ -449,6 +470,47 @@ def theme_fg(theme, token):
         return theme.fg(token, "x")
     except Exception as error:
         return "throw:" + str(error)
+
+
+def tui_theme_probe(ctx, args):
+    # pi-coding-agent's theme helpers and key hints over the host's theme and keybindings: the styles of each on the samples the test passes, and the lines
+    # highlight_code gets from the host.
+    samples = args.get("samples", [])
+
+    def apply(style):
+        return [style(sample) for sample in samples]
+
+    op = args.get("op")
+    if op == "markdown":
+        theme = pig_sdk.get_markdown_theme()
+        styles = {
+            "heading": apply(theme.heading), "link": apply(theme.link), "linkUrl": apply(theme.link_url), "code": apply(theme.code), "codeBlock": apply(theme.code_block),
+            "codeBlockBorder": apply(theme.code_block_border), "quote": apply(theme.quote), "quoteBorder": apply(theme.quote_border), "hr": apply(theme.hr),
+            "listBullet": apply(theme.list_bullet), "bold": apply(theme.bold), "italic": apply(theme.italic), "underline": apply(theme.underline),
+            "strikethrough": apply(theme.strikethrough),
+        }
+        return json.dumps({"styles": styles, "highlight": [theme.highlight_code(code, lang) for code, lang in args.get("highlight", [])]})
+    if op == "select":
+        theme = pig_sdk.get_select_list_theme()
+        return json.dumps({"styles": {"selectedPrefix": apply(theme.selected_prefix), "selectedText": apply(theme.selected_text), "description": apply(theme.description),
+                                      "scrollInfo": apply(theme.scroll_info), "noMatch": apply(theme.no_match)}})
+    if op == "settings":
+        theme = pig_sdk.get_settings_list_theme()
+        return json.dumps({"styles": {"label": [[theme.label(s, False), theme.label(s, True)] for s in samples], "value": [[theme.value(s, False), theme.value(s, True)] for s in samples],
+                                      "description": apply(theme.description), "cursor": theme.cursor, "hint": apply(theme.hint)}})
+    if op == "highlight":
+        if args.get("theme"):
+            pig_sdk.init_theme(args["theme"])
+        return json.dumps({"lines": pig_sdk.highlight_code(args.get("code", ""), args.get("lang"))})
+    if op == "init_theme":
+        pig_sdk.init_theme(args.get("theme"))
+        theme = pig_sdk.get_markdown_theme()
+        return json.dumps({"bold": apply(theme.bold), "heading": apply(theme.heading)})
+    if op == "key_hint":
+        return json.dumps({"keyHint": pig_sdk.key_hint(args["id"], args["description"]), "keyText": pig_sdk.key_text(args["id"])})
+    if op == "raw_key_hint":
+        return json.dumps({"rawKeyHint": pig_sdk.raw_key_hint(args["key"], args["description"])})
+    raise RuntimeError("unknown op " + str(op))
 
 
 def image_impl(model, request, options):
@@ -583,7 +645,62 @@ def new_extension():
             registry.unregister_provider("late")
         return json.dumps({"mode": args.get("mode")})
 
-    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
+    def tui_probe(ctx, args):
+        from pig_sdk import tui
+
+        def as_list(keys):
+            if keys is None:
+                return []
+            return [keys] if isinstance(keys, str) else list(keys)
+
+        def caps_json(value):
+            return {"images": value.images, "trueColor": value.true_color, "hyperlinks": value.hyperlinks}
+
+        ids = args.get("ids", [])
+        keybindings = tui.get_keybindings()
+        original = tui.get_capabilities()
+        definitions = {}
+        for id in ids:
+            definition = keybindings.get_definition(id)
+            definitions[id] = definition.description if definition is not None else None
+        report = {
+            "keys": {id: keybindings.get_keys(id) for id in ids},
+            "matches": [keybindings.matches(item["data"], item["id"]) for item in args.get("inputs", [])],
+            "definitions": definitions,
+            "user": {id: as_list(keys) for id, keys in keybindings.get_user_bindings().items()},
+            "conflicts": [{"key": c.key, "keybindings": list(c.keybindings)} for c in keybindings.get_conflicts()],
+            "resolvedIds": sorted(keybindings.get_resolved_bindings()),
+            "defaults": {"count": len(tui.TUI_KEYBINDINGS), "tui.input.submit": as_list(tui.TUI_KEYBINDINGS["tui.input.submit"].default_keys), "tui.select.confirm": as_list(tui.TUI_KEYBINDINGS["tui.select.confirm"].default_keys)},
+            "key": {"ctrl": tui.Key.ctrl("x"), "alt": tui.Key.alt(tui.Key.enter), "shift": tui.Key.shift(tui.Key.tab), "escape": tui.Key.escape, "ctrlShift": tui.Key.ctrl_shift("p")},
+            "capabilities": caps_json(original), "colorMode": tui.get_terminal_color_mode(),
+        }
+        tui.set_keybindings(tui.KeybindingsManager({"x.probe": tui.KeybindingDefinition(default_keys=["ctrl+q"])}))
+        installed = {"keys": tui.get_keybindings().get_keys("x.probe"), "hostKeys": tui.get_keybindings().get_keys("tui.input.submit")}
+        tui.get_keybindings().set_user_bindings({"x.probe": ["ctrl+w"]})
+        installed["rebound"] = tui.get_keybindings().get_keys("x.probe")
+        tui.set_keybindings(keybindings)
+        installed["restored"] = tui.get_keybindings().get_keys("tui.input.submit")
+        report["installed"] = installed
+
+        tui.set_capabilities(tui.TerminalCapabilities("kitty", False, False))
+        swapped = {"capabilities": caps_json(tui.get_capabilities()), "colorMode": tui.get_terminal_color_mode()}
+        tui.set_capability_overrides(tui.CapabilityOverrides(hyperlinks=True))
+        swapped["overridden"] = tui.get_capabilities().hyperlinks
+        tui.set_capability_overrides(tui.CapabilityOverrides())
+        tui.reset_capabilities_cache()
+        tui.detect_capabilities(lambda: False)
+        swapped["detected"] = True
+        tui.set_capabilities(original)
+        swapped["restored"] = caps_json(tui.get_capabilities())
+        before = tui.is_kitty_protocol_active()
+        tui.set_kitty_protocol_active(True)
+        after = tui.is_kitty_protocol_active()
+        tui.set_kitty_protocol_active(before)
+        swapped["kitty"] = [before, after, tui.is_kitty_protocol_active()]
+        report["swapped"] = swapped
+        return json.dumps(report)
+
+    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
     return ext
 `

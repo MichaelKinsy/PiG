@@ -209,6 +209,7 @@ impl ViewComponent for KitProbe {
             EventKind::Cancel => "cancel",
             EventKind::SelectionChange => "selectionChange",
             EventKind::Change => "change",
+            other => kit_event_name(other),
         };
         let value = event.item.map(|item| item.value).unwrap_or_default();
         self.log.push(format!("{kind}:{}:{value}", event.index));
@@ -296,6 +297,319 @@ fn kit_image_png(n: u32) -> Vec<u8> {
 
 /// kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
 const KIT_KINDS_PNG: &str = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082";
+
+const KIT_BRANCH_SUMMARY: &str = "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.";
+
+fn kit_branch_view(set: impl FnOnce(&mut kit::BranchSummary)) -> kit::View {
+    let mut node = kit::BranchSummary::new(KIT_BRANCH_SUMMARY).id("b");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+const KIT_COMPACTION_SUMMARY: &str = "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending.";
+
+fn kit_compaction_view(tokens: u64, set: impl FnOnce(&mut kit::CompactionSummary)) -> kit::View {
+    let mut node = kit::CompactionSummary::new(KIT_COMPACTION_SUMMARY, tokens).id("c");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+const KIT_SKILL_CONTENT: &str = "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list.";
+
+fn kit_skill_view(set: impl FnOnce(&mut kit::SkillInvocation)) -> kit::View {
+    let mut node = kit::SkillInvocation::new("code-review", KIT_SKILL_CONTENT).id("s");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+fn kit_custom_message_view(text: &str, set: impl FnOnce(&mut kit::CustomMessage)) -> kit::View {
+    let mut node = kit::CustomMessage::new("ci-status", text).id("m");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+const KIT_WIDE_MESSAGE: &str = "A very long message that wraps around the narrow widths of the table";
+
+fn kit_cancellable_view(loader: kit::Loader) -> kit::View {
+    kit::View::new(Container::new().child(kit::CancellableLoader::new("c", loader))).focus("c")
+}
+
+fn kit_bordered_view(message: &str, set: impl FnOnce(kit::BorderedLoader) -> kit::BorderedLoader) -> kit::View {
+    kit::View::new(Container::new().child(set(kit::BorderedLoader::new("b", message)))).focus("b")
+}
+
+
+fn kit_input_view(focus: bool, set: impl FnOnce(kit::Input) -> kit::Input) -> kit::View {
+    let view = kit::View::new(Container::new().child(set(kit::Input::new("i"))));
+    if focus { view.focus("i") } else { view }
+}
+
+
+fn kit_editor_view(focus: bool, set: impl FnOnce(kit::Editor) -> kit::Editor) -> kit::View {
+    let view = kit::View::new(Container::new().child(set(kit::Editor::new("e"))));
+    if focus { view.focus("e") } else { view }
+}
+
+fn kit_editor_commands() -> kit::Autocomplete {
+    kit::Autocomplete::new(vec![
+        kit::SlashCommand::new("help").description("Show help"),
+        kit::SlashCommand::new("model").description("Switch the model").argument_hint("<name>"),
+        kit::SlashCommand::new("quit").description("Exit"),
+        kit::SlashCommand::new("session").description("Session info"),
+        kit::SlashCommand::new("settings").description("Open settings"),
+        kit::SlashCommand::new("share"),
+        kit::SlashCommand::new("skills").description("List skills"),
+        kit::SlashCommand::new("compact").description("Compact the context"),
+    ])
+}
+
+
+fn kit_scroll_child(kind: &str) -> kit::Node {
+    match kind {
+        "md" => Markdown::new("# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`", 1, 0).into(),
+        "region" => Text::new("Region content\nsecond row", 1, 0).into(),
+        "empty" => Container::new().into(),
+        "branch" => kit::BranchSummary::new("The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.").id("b").into(),
+        _ => Text::new("Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta", 1, 0).into(),
+    }
+}
+
+
+/// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
+/// §10), built with the SDK's own constructors; the key is
+/// "<module>/<export>/<case name>" and the case's wire node is its vector's
+/// `root`.
+fn kit_widget_case(key: &str) -> Option<kit::View> {
+    Some(match key {
+        "pi-coding-agent/BranchSummaryMessageComponent/collapsed"
+        | "pi-coding-agent/BranchSummaryMessageComponent/click toggles"
+        | "pi-coding-agent/BranchSummaryMessageComponent/right click ignored" => kit_branch_view(|_| {}),
+        "pi-coding-agent/BranchSummaryMessageComponent/expanded" => kit_branch_view(|n| n.set_expanded(true)),
+        "pi-coding-agent/BranchSummaryMessageComponent/outputPad 0 collapsed" => kit_branch_view(|n| n.set_output_pad(0)),
+        "pi-coding-agent/BranchSummaryMessageComponent/outputPad 0 expanded" => kit_branch_view(|n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/BranchSummaryMessageComponent/empty summary expanded" => {
+            let mut node = kit::BranchSummary::new("");
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/CompactionSummaryMessageComponent/collapsed"
+        | "pi-coding-agent/CompactionSummaryMessageComponent/click toggles"
+        | "pi-coding-agent/CompactionSummaryMessageComponent/right click ignored" => kit_compaction_view(123456, |_| {}),
+        "pi-coding-agent/CompactionSummaryMessageComponent/expanded" => kit_compaction_view(123456, |n| n.set_expanded(true)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/outputPad 0 collapsed" => kit_compaction_view(123456, |n| n.set_output_pad(0)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/outputPad 0 expanded" => kit_compaction_view(123456, |n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/CompactionSummaryMessageComponent/tokens 999" => kit_compaction_view(999, |_| {}),
+        "pi-coding-agent/CompactionSummaryMessageComponent/tokens 1234567 expanded" => kit_compaction_view(1234567, |n| n.set_expanded(true)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/empty summary tokens 0 expanded" => {
+            let mut node = kit::CompactionSummary::new("", 0);
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/SkillInvocationMessageComponent/collapsed"
+        | "pi-coding-agent/SkillInvocationMessageComponent/click toggles"
+        | "pi-coding-agent/SkillInvocationMessageComponent/right click ignored" => kit_skill_view(|_| {}),
+        "pi-coding-agent/SkillInvocationMessageComponent/expanded" => kit_skill_view(|n| n.set_expanded(true)),
+        "pi-coding-agent/SkillInvocationMessageComponent/outputPad 0 collapsed" => kit_skill_view(|n| n.set_output_pad(0)),
+        "pi-coding-agent/SkillInvocationMessageComponent/outputPad 0 expanded" => kit_skill_view(|n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/SkillInvocationMessageComponent/empty skill expanded" => {
+            let mut node = kit::SkillInvocation::new("", "");
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/CustomMessageComponent/default" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |_| {})
+        }
+        "pi-coding-agent/CustomMessageComponent/outputPad 0" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |n| n.set_output_pad(0))
+        }
+        "pi-coding-agent/CustomMessageComponent/expanded changes nothing" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |n| n.set_expanded(true))
+        }
+        "pi-coding-agent/CustomMessageComponent/empty text" => kit_custom_message_view("", |_| {}),
+        "pi-coding-agent/CustomMessageComponent/no id" => kit::View::new(kit::CustomMessage::new("note", "plain")),
+        "pi-tui/CancellableLoader/default"
+        | "pi-tui/CancellableLoader/escape aborts"
+        | "pi-tui/CancellableLoader/escape twice aborts twice"
+        | "pi-tui/CancellableLoader/other keys are ignored" => kit_cancellable_view(Loader::new("Working")),
+        "pi-tui/CancellableLoader/default message" => kit_cancellable_view(Loader::new("Loading...")),
+        "pi-tui/CancellableLoader/colors" => kit_cancellable_view(Loader::new("Working").spinner_color("accent").message_color("muted")),
+        "pi-tui/CancellableLoader/frame 3" => kit_cancellable_view(Loader::new("Working").frame(3)),
+        "pi-tui/CancellableLoader/indicator frames" => kit_cancellable_view(
+            Loader::new("Working")
+                .indicator(LoaderIndicator { frames: Some(vec!["*".into(), "+".into(), "x".into()]), interval_ms: Some(50) })
+                .frame(1),
+        ),
+        "pi-tui/CancellableLoader/hidden indicator" => {
+            kit_cancellable_view(Loader::new("Working").indicator(LoaderIndicator { frames: Some(vec![]), interval_ms: None }))
+        }
+        "pi-tui/CancellableLoader/wide message" => kit_cancellable_view(Loader::new(KIT_WIDE_MESSAGE).spinner_color("accent")),
+        "pi-coding-agent/BorderedLoader/cancellable"
+        | "pi-coding-agent/BorderedLoader/escape aborts"
+        | "pi-coding-agent/BorderedLoader/escape twice aborts twice"
+        | "pi-coding-agent/BorderedLoader/other keys are ignored" => kit_bordered_view("Fetching models", |l| l),
+        "pi-coding-agent/BorderedLoader/not cancellable" | "pi-coding-agent/BorderedLoader/escape ignored when not cancellable" => {
+            kit_bordered_view("Fetching models", |l| l.cancellable(false))
+        }
+        "pi-coding-agent/BorderedLoader/default message" => kit_bordered_view("Loading...", |l| l),
+        "pi-coding-agent/BorderedLoader/frame 4" => kit_bordered_view("Fetching models", |l| l.frame(4)),
+        "pi-coding-agent/BorderedLoader/wide message" => {
+            kit_bordered_view("Fetching the models of every configured provider, one after another", |l| l)
+        }
+        "pi-tui/Input/empty" => kit_input_view(false, |n| n),
+        "pi-tui/Input/empty focused"
+        | "pi-tui/Input/typing"
+        | "pi-tui/Input/left then insert"
+        | "pi-tui/Input/backspace and delete"
+        | "pi-tui/Input/home and end"
+        | "pi-tui/Input/kill word and yank"
+        | "pi-tui/Input/kill to end"
+        | "pi-tui/Input/paste scrolls"
+        | "pi-tui/Input/submit" => kit_input_view(true, |n| n),
+        "pi-tui/Input/placeholder" => kit_input_view(false, |n| n.placeholder("type here")),
+        "pi-tui/Input/placeholder focused colored" => kit_input_view(true, |n| n.placeholder("type here").placeholder_color("dim")),
+        "pi-tui/Input/custom prompt" => kit_input_view(true, |n| n.prompt("$ ").value("ls -la")),
+        "pi-tui/Input/value" => kit_input_view(false, |n| n.value("hello world")),
+        "pi-tui/Input/value focused" | "pi-tui/Input/click moves the cursor" | "pi-tui/Input/right click ignored" => {
+            kit_input_view(true, |n| n.value("hello world"))
+        }
+        "pi-tui/Input/wide characters" => kit_input_view(true, |n| n.value("漢字 and 😀 text")),
+        "pi-tui/Input/submit newline key" => kit_input_view(true, |n| n.value("preset")),
+        "pi-tui/Input/escape" => kit_input_view(true, |n| n.value("keep")),
+        "pi-tui/Editor/empty" => kit_editor_view(false, |n| n),
+        "pi-tui/Editor/empty focused" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/value" => kit_editor_view(false, |n| n.value("hello world")),
+        "pi-tui/Editor/multiline value focused" => kit_editor_view(true, |n| n.value("one\ntwo\nthree")),
+        "pi-tui/Editor/wrapped line" => kit_editor_view(true, |n| n.value("The quick brown fox jumps over the lazy dog and keeps running through the field")),
+        "pi-tui/Editor/wide characters" => kit_editor_view(true, |n| n.value("漢字 and 😀 text")),
+        "pi-tui/Editor/typing" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/newline" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/backspace and delete" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/kill word and yank" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/undo" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/submit" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/paste" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/paste large" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/cursor movement" => kit_editor_view(true, |n| n.value("one\ntwo\nthree")),
+        "pi-tui/Editor/submit multiline" => kit_editor_view(true, |n| n.value("one\ntwo")),
+        "pi-tui/Editor/submit disabled" => kit_editor_view(true, |n| n.value("keep").disable_submit(true)),
+        "pi-tui/Editor/padding" => kit_editor_view(true, |n| n.value("padded text").padding_x(2)),
+        "pi-tui/Editor/padding wrapped" => kit_editor_view(true, |n| n.value("The quick brown fox jumps over the lazy dog and keeps running").padding_x(3)),
+        "pi-tui/Editor/border color" => kit_editor_view(true, |n| n.value("colored").border_color("accent")),
+        "pi-tui/Editor/history" => kit_editor_view(true, |n| n.history(["first", "second", "third"])),
+        "pi-tui/Editor/history then edit" => kit_editor_view(true, |n| n.history(["first", "second"])),
+        "pi-tui/Editor/scrolls past the visible lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/scroll indicator below" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/more rows show more lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/few rows show five lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/page up and down" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30")),
+        "pi-tui/Editor/click moves the cursor" => kit_editor_view(true, |n| n.value("hello\nworld")),
+        "pi-tui/Editor/click on the border" => kit_editor_view(true, |n| n.value("hello\nworld")),
+        "pi-tui/Editor/right click ignored" => kit_editor_view(true, |n| n.value("hello")),
+        "pi-tui/Editor/slash opens the menu" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash narrows" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash no match" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash tab accepts" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash arrow then tab" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash enter accepts" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash escape closes" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash click selects" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/text after the slash opens nothing" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash max visible 3" => kit_editor_view(true, |n| n.autocomplete_max_visible(3).autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash with padding" => kit_editor_view(true, |n| n.padding_x(2).autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/autocomplete menu does not follow disabled submit" => kit_editor_view(true, |n| n.disable_submit(true).autocomplete(kit_editor_commands())),
+        "pi-tui/ScrollView/default" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")))),
+        "pi-tui/ScrollView/scrollbar always" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always"))),
+        "pi-tui/ScrollView/scrollbar auto" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("auto"))),
+        "pi-tui/ScrollView/scrollbar colors" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always").scrollbar_track_color("dim").scrollbar_thumb_color("accent"))),
+        "pi-tui/ScrollView/follow end" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).follow("end"))),
+        "pi-tui/ScrollView/primary and contain" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).primary(true).overscroll("contain"))),
+        "pi-tui/ScrollView/hide delay" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("auto").scrollbar_hide_delay_ms(50))),
+        "pi-tui/ScrollView/scroll top clamps" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scroll_top(3))),
+        "pi-tui/ScrollView/markdown child" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("md")).scrollbar("always"))),
+        "pi-tui/ScrollView/after other rows" => kit::View::new(Container::new().child(Text::new("Header", 1, 0)).child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always")).child(Text::new("Footer", 1, 0))),
+        "pi-tui/ScrollView/empty child" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("empty")).scrollbar("always"))),
+        "pi-tui/ScrollView/wheel and click pass" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text"))).child(Text::new("after", 1, 0))),
+        "pi-tui/MouseRegion/renders its child" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        "pi-tui/MouseRegion/every type by default" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        "pi-tui/MouseRegion/types filter" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).types(["click"]))),
+        "pi-tui/MouseRegion/not handled" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).handled(false))),
+        "pi-tui/MouseRegion/capture" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).capture(true))),
+        "pi-tui/MouseRegion/focus and render" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).focus(true).render(false))),
+        "pi-tui/MouseRegion/local coordinates" => kit::View::new(Container::new().child(Text::new("Above the region", 1, 0)).child(kit::MouseRegion::new("m", kit_scroll_child("region"))).child(Text::new("Below", 1, 0))),
+        "pi-tui/MouseRegion/the child takes the event first" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("branch")))),
+        "pi-tui/MouseRegion/right button" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        // kit-widget-cases
+        _ => return None,
+    })
+}
+
+/// kit-widget's component: it takes the keys and mouse events the view leaves
+/// to the extension, and notifies each callback its nodes fire as
+/// "kit-widget-event=<type>:<value>" (a change report is not one). It never
+/// closes itself: the harness delivers the case's steps and then reads the
+/// callbacks, and a probe that closed after the callbacks Pi fired would drop
+/// the steps still to come.
+struct KitWidgetProbe {
+    ctx: pig_sdk::Context,
+    view: kit::View,
+}
+
+impl ViewComponent for KitWidgetProbe {
+    fn view(&self, _width: u32) -> kit::View {
+        self.view.clone()
+    }
+
+    fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handles_mouse(&self) -> bool {
+        true
+    }
+
+    fn handle_mouse(&mut self, _event: &MouseEvent) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handle_view_event(&mut self, event: kit::Event) -> Result<RemoteComponentResult, String> {
+        let entry = match event.kind {
+            EventKind::Change => return Ok(RemoteComponentResult::pending()),
+            EventKind::Mouse => match &event.mouse {
+                Some(m) => format!("mouse:{}/{}/{}/{}", m.kind, m.button, m.x, m.y),
+                None => "mouse:".to_string(),
+            },
+            kind => format!("{}:{}", kit_event_name(kind), event.value),
+        };
+        self.ctx.notify(&format!("kit-widget-event={entry}"), "info");
+        Ok(RemoteComponentResult::pending())
+    }
+}
+
+fn kit_event_name(kind: EventKind) -> &'static str {
+    match kind {
+        EventKind::Select => "select",
+        EventKind::Cancel => "cancel",
+        EventKind::SelectionChange => "selectionChange",
+        EventKind::Change => "change",
+        EventKind::Submit => "submit",
+        EventKind::Escape => "escape",
+        EventKind::Abort => "abort",
+        EventKind::Mouse => "mouse",
+    }
+}
 
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
@@ -738,6 +1052,9 @@ fn main() {
         let notify = ctx.clone();
         match ctx.set_editor_component(move |base| {
             let text = base.set_text(&JsString::from("eager")).and_then(|()| base.get_text());
+            // The stock editor's other queries and setters, at the values it already holds.
+            let _ = (base.get_cursor(), base.get_expanded_text(), base.is_showing_autocomplete());
+            let _ = (base.set_padding_x(0), base.set_autocomplete_max_visible(5));
             match text {
                 Ok(text) => notify.notify(&format!("eager:{}", text.to_string_lossy()), "info"),
                 Err(err) => notify.notify(&format!("eager-error:{err}"), "info"),
@@ -750,6 +1067,12 @@ fn main() {
     });
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", |ctx, _args| {
         match ctx.set_editor_component(|base| Box::new(EmbeddingEditor(ConformanceEditor { base }))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    ext.command("editor-install-hooks", "Install a custom editor that sets CustomEditor's handlers", |ctx, _args| {
+        match ctx.set_editor_component(|base| Box::new(HooksEditor::new(base))) {
             Ok(()) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
         }
@@ -2232,6 +2555,17 @@ fn main() {
             }
         },
     );
+    // kit-widget "<case key>" opens a widget kind's Pi vector case in an
+    // overlay; the probe notifies its callbacks as they fire.
+    ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", |ctx, key| {
+        let Some(view) = kit_widget_case(key) else {
+            return CommandResult::Error(format!("kit-widget: unknown case {key:?}"));
+        };
+        match ctx.custom_view(KitWidgetProbe { ctx: ctx.clone(), view }, json!({"title": "Kit"})) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
     ext.command("kit-probe", "Exercise the component kit (D107)", |ctx, _args| {
         match ctx.custom_view(KitProbe { log: Vec::new() }, json!({"title": "Kit"})) {
             Ok(result) => {
@@ -3064,6 +3398,83 @@ impl EditorComponent for EmbeddingEditor {
     }
     fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
         self.0.render(width)
+    }
+}
+
+/// A CustomEditor subclass that sets the handlers Pi's CustomEditor keeps as public fields (on_escape, on_ctrl_d, on_paste_image,
+/// action_handlers through on_action, on_extension_shortcut), reads and sets the members it inherits from Pi's Editor on its base ("M"),
+/// and hears the host's working status and invalidate. Each handler writes what ran into the host's text
+/// (TestEditorComponentAppHandlersRunInTheExtension, TestEditorComponentInheritedMembersReachTheHost,
+/// TestEditorComponentHearsTheWorkingStatusAndInvalidate).
+struct HooksEditor(ConformanceEditor);
+
+fn io_message(err: std::io::Error) -> String {
+    err.to_string()
+}
+
+impl HooksEditor {
+    fn new(base: EditorBase) -> Self {
+        let say = |what: &'static str| -> pig_sdk::EditorHook {
+            let base = base.clone();
+            Arc::new(move || base.set_text(&JsString::from(format!("raw:hook={what}"))).map_err(io_message))
+        };
+        base.set_on_escape(Some(say("escape")));
+        base.set_on_ctrl_d(Some(say("ctrl-d")));
+        base.set_on_paste_image(Some(say("paste-image")));
+        base.on_action("app.clear", say("clear"));
+        // action_handlers is the live map: an entry removed from it is no longer the component's.
+        base.on_action("app.unused", say("unused"));
+        let _ = base.action_handlers().remove("app.unused");
+        let shortcut_base = base.clone();
+        base.set_on_extension_shortcut(Some(Arc::new(move |data: &JsString| {
+            if data != "S" {
+                return Ok(false);
+            }
+            shortcut_base.set_text(&JsString::from("raw:hook=shortcut")).map_err(io_message)?;
+            Ok(true)
+        })));
+        HooksEditor(ConformanceEditor { base })
+    }
+}
+
+impl EditorComponent for HooksEditor {
+    fn base(&self) -> &EditorBase {
+        self.0.base()
+    }
+    fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        if data != "M" {
+            return self.0.handle_input(data);
+        }
+        let base = &self.0.base;
+        let padding = base.get_padding_x().map_err(io_message)?;
+        let visible = base.get_autocomplete_max_visible().map_err(io_message)?;
+        let border = base.border_color(&JsString::from("x")).map_err(io_message)?;
+        base.set_disable_submit(true).map_err(io_message)?;
+        let disabled = base.disable_submit().map_err(io_message)?;
+        base.set_focused(true).map_err(io_message)?;
+        let focused = base.focused().map_err(io_message)?;
+        let provider = pig_sdk::kit::Autocomplete::new([pig_sdk::kit::SlashCommand::new("help").description("Show help")]).base_path("/work");
+        base.set_autocomplete_provider(Some(&provider)).map_err(io_message)?;
+        base.on_submit(&JsString::from("sub")).map_err(io_message)?;
+        base.on_change(&JsString::from("chg")).map_err(io_message)?;
+        let text = format!("raw:members=padding={padding},max={visible},border={},disable={disabled},focused={focused}", border.to_string_lossy());
+        base.set_text(&JsString::from(text)).map_err(io_message)
+    }
+    fn set_text(&mut self, text: &JsString) -> Result<(), String> {
+        self.0.set_text(text)
+    }
+    fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
+        self.0.render(width)
+    }
+    fn set_working_status_indicator(&mut self, status: Option<&pig_sdk::EditorStatus>) -> Result<(), String> {
+        let text = match status {
+            None => "raw:status=none".to_string(),
+            Some(status) => format!("raw:status={}/{}/{}", status.kind, status.message, status.frame),
+        };
+        self.0.base.set_text(&JsString::from(text)).map_err(io_message)
+    }
+    fn invalidate(&mut self) -> Result<(), String> {
+        self.0.base.set_text(&JsString::from("raw:invalidated")).map_err(io_message)
     }
 }
 

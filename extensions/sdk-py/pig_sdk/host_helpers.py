@@ -20,6 +20,10 @@ _CALL_GENERATE_UNIFIED_PATCH = "diff.patch"
 _CALL_COPY_TO_CLIPBOARD = "clipboard.copy"
 _CALL_CONVERT_TO_PNG = "image.convertToPng"
 _CALL_RESIZE_IMAGE = "image.resize"
+# highlightCode and the theme initTheme installs: the host's highlight.js port and its theme registry. Like the two above they read no session state, so the host
+# serves them before an extension registers.
+_CALL_HIGHLIGHT_CODE = "highlight.code"
+_CALL_LOAD_THEME = "theme.load"
 
 
 @dataclass(frozen=True)
@@ -163,6 +167,26 @@ def resize_image(input_bytes: bytes, mime_type: str, options: Optional[ImageResi
     ``options`` say otherwise), as the host's image code does it. None, as Pi's null, when the image cannot be made to fit. An image already within every limit comes back
     as it was. It may be called before ``run``."""
     return _decode_resized(_helper_call(_CALL_RESIZE_IMAGE, _resize_args(input_bytes, mime_type, options)))
+def highlight_code_lines(code: str, lang: str, markdown: bool, theme: Optional[dict]) -> list:
+    """The lines the host's highlight.js port makes of ``code`` in ``lang``, drawn with ``theme`` (the palette of the theme ``init_theme`` installed) or, when
+    None, with the host's active theme."""
+    args: dict = {"code": code, "lang": lang}
+    if markdown:
+        args["markdown"] = True
+    if theme is not None:
+        args["theme"] = theme
+    lines = _helper_call(_CALL_HIGHLIGHT_CODE, args).get("lines")
+    if not isinstance(lines, list):
+        raise ValueError("decode highlightCode: the host answered no lines")
+    return [line for line in lines if isinstance(line, str)]
+
+
+def load_theme(name: Optional[str]) -> dict:
+    """The palette of the theme ``initTheme(name)`` installs."""
+    theme = _helper_call(_CALL_LOAD_THEME, {"name": name}).get("theme")
+    if not isinstance(theme, dict):
+        raise ValueError("initTheme: the host answered a theme that is not a palette")
+    return theme
 
 
 def _decode_frontmatter(result: Any) -> ParsedFrontmatter:

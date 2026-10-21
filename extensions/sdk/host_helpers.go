@@ -25,6 +25,10 @@ const (
 	callCopyToClipboard      = "clipboard.copy"
 	callConvertToPng         = "image.convertToPng"
 	callResizeImage          = "image.resize"
+	// callHighlightCode is highlightCode, and callLoadTheme the theme initTheme installs: the host's highlight.js port and its theme registry. Like the two above they read no
+	// session state, so the host serves them before an extension registers.
+	callHighlightCode = "highlight.code"
+	callLoadTheme     = "theme.load"
 )
 
 // ParsedFrontmatter is the result of ParseFrontmatter: Pi's `{ frontmatter, body }`. Frontmatter is the JSON of `parse(yaml) ?? {}`, with each object's keys
@@ -52,6 +56,11 @@ type HostHelpers struct {
 	ResizeImage func(input []byte, mimeType string, options *ImageResizeOptions) (ResizedImage, bool, error)
 	// BuiltinToolDefinition answers builtinTool.definition: the JSON of its arguments in, the JSON of its reply out.
 	BuiltinToolDefinition func(args []byte) ([]byte, error)
+	// HighlightCode is highlightCode (markdown false) or getMarkdownTheme().highlightCode (markdown true), drawn with the palette of the theme initTheme installed, or with the
+	// host's active theme when palette is empty.
+	HighlightCode func(code, lang string, markdown bool, palette []byte) ([]string, error)
+	// LoadTheme is the palette of the theme initTheme(name) installs; a nil name is initTheme(undefined).
+	LoadTheme func(name *string) ([]byte, error)
 }
 
 var helpers struct {
@@ -431,4 +440,56 @@ func decodeResized(result *callResultMsg, err error) (*ResizedImage, error) {
 		return *value
 	}
 	return &ResizedImage{Data: image.Data, MimeType: image.MimeType, OriginalWidth: number(image.OriginalWidth), OriginalHeight: number(image.OriginalHeight), Width: number(image.Width), Height: number(image.Height), WasResized: image.WasResized}, nil
+}
+
+// highlightCodeLines asks the host for highlight.js's lines of code in lang, drawn with the installed theme (see [InitTheme]) or the host's active one.
+func highlightCodeLines(code, lang string, markdown bool) ([]string, error) {
+	palette := installedThemePalette()
+	if hook := installedHelpers(); hook != nil && hook.HighlightCode != nil {
+		return hook.HighlightCode(code, lang, markdown, palette)
+	}
+	c, err := helperConnection()
+	if err != nil {
+		return nil, err
+	}
+	args := map[string]any{"code": code, "lang": lang}
+	if markdown {
+		args["markdown"] = true
+	}
+	if len(palette) > 0 {
+		args["theme"] = palette
+	}
+	result, err := c.call(callHighlightCode, args)
+	if err := callResultError(result, err); err != nil {
+		return nil, err
+	}
+	var reply struct {
+		Lines []string `json:"lines"`
+	}
+	if err := json.Unmarshal(result.Result, &reply); err != nil {
+		return nil, fmt.Errorf("decode highlightCode: %w", err)
+	}
+	return reply.Lines, nil
+}
+
+// loadTheme asks the host for the palette of the theme initTheme(name) installs.
+func loadTheme(name *string) (json.RawMessage, error) {
+	if hook := installedHelpers(); hook != nil && hook.LoadTheme != nil {
+		return hook.LoadTheme(name)
+	}
+	c, err := helperConnection()
+	if err != nil {
+		return nil, err
+	}
+	result, err := c.call(callLoadTheme, map[string]any{"name": name})
+	if err := callResultError(result, err); err != nil {
+		return nil, err
+	}
+	var reply struct {
+		Theme json.RawMessage `json:"theme"`
+	}
+	if err := json.Unmarshal(result.Result, &reply); err != nil {
+		return nil, fmt.Errorf("decode initTheme: %w", err)
+	}
+	return reply.Theme, nil
 }

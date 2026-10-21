@@ -222,5 +222,7 @@ func Extension() *sdk.Extension {
 	})
 	registerLateProbe(e)
 	registerThemeProbe(e)
+	registerTuiThemeProbe(e)
+	registerTuiProbe(e)
 	return e
 }

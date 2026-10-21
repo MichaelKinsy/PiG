@@ -1745,13 +1745,17 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				HasUI *bool `json:"hasUI"`
 				// Frontend is omitted by the host while false, and every
 				// state is a full snapshot, so an absent value clears it.
-				Frontend   bool            `json:"frontend"`
-				Model      map[string]any  `json:"model"`
-				Session    json.RawMessage `json:"session"`
-				Theme      json.RawMessage `json:"theme"`
-				Settings   json.RawMessage `json:"settings"`
-				McpServers json.RawMessage `json:"mcpServers"`
-				FooterData *footerDataWire `json:"footerData"`
+				Frontend bool            `json:"frontend"`
+				Model    map[string]any  `json:"model"`
+				Session  json.RawMessage `json:"session"`
+				Theme    json.RawMessage `json:"theme"`
+				// Keybindings is the host's effective keybinding table and TerminalCapabilities its resolved
+				// terminal capabilities; the SDK installs them as pi-tui's global state, as the Node runtime does.
+				Keybindings          json.RawMessage `json:"keybindings"`
+				TerminalCapabilities json.RawMessage `json:"terminalCapabilities"`
+				Settings             json.RawMessage `json:"settings"`
+				McpServers           json.RawMessage `json:"mcpServers"`
+				FooterData           *footerDataWire `json:"footerData"`
 			} `json:"state"`
 		}
 		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
@@ -1777,7 +1781,9 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		}
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
 			e.uiTheme = theme
+			setHostTheme(theme, payload.State.Theme)
 		}
+		applyHostTuiState(payload.State.Keybindings, payload.State.TerminalCapabilities)
 		e.applyReplicatedState(payload.State.Settings, payload.State.McpServers, 2*seq)
 		footerChanged, branchChanged := e.applyFooterData(payload.State.FooterData)
 		defer func() {
@@ -1819,6 +1825,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		}
 		e.mu.Lock()
 		e.uiTheme = theme
+		setHostTheme(theme, args)
 		e.mu.Unlock()
 	case "width_change":
 		var payload struct {
@@ -1854,7 +1861,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.height = payload.Height
 			e.mu.Unlock()
 		}
-	case "ui.editor.input", "ui.editor.mouse", "ui.editor.setText", "ui.editor.insertText", "ui.editor.addToHistory", "ui.editor.configure", "ui.editor.closed":
+	case "ui.editor.input", "ui.editor.mouse", "ui.editor.setText", "ui.editor.insertText", "ui.editor.addToHistory", "ui.editor.configure", "ui.editor.invalidate", "ui.editor.closed":
 		e.handleEditorNotify(env.Notify.Method, env.Notify.Args)
 	case "ui.custom.opened":
 		var payload struct {

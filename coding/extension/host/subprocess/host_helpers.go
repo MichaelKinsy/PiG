@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
 	"github.com/MichaelKinsy/PiG/internal/yaml12"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // ParseFrontmatterJSON is Pi's parseFrontmatter over the host's parser: the JSON of the parsed header (see ParseFrontmatterResult) and the body. A
@@ -55,6 +56,92 @@ func (h *Host) handleParseFrontmatter(call *CallPayload) (*CallResultPayload, er
 	data = append(data, `,"body":`...)
 	data = append(data, quoteJS(body)...)
 	data = append(data, '}')
+	return &CallResultPayload{Result: data}, nil
+}
+
+// HighlightCodeLines is pi-coding-agent's highlightCode over the host's highlight.js port, or getMarkdownTheme().highlightCode when markdown is set. palette is the
+// theme to draw with (see HighlightCodeArgs.Theme); empty draws with the host's active theme. The CallHighlightCode handler and the fused extensions' SDK hook share it.
+func HighlightCodeLines(code, lang string, markdown bool, palette []byte) (lines []string, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			lines, err = nil, fmt.Errorf("highlight code: %v", recovered)
+		}
+	}()
+	// The languages are the ones the host has registered now, as Pi's highlightCode answers for the languages its process has loaded (the interactive mode loads the
+	// rest in the background).
+	theme := tui.ActiveTheme()
+	if len(palette) > 0 {
+		var wire struct {
+			Name        string            `json:"name"`
+			Foregrounds map[string]string `json:"foregrounds"`
+			Backgrounds map[string]string `json:"backgrounds"`
+			Mode        string            `json:"mode"`
+		}
+		if err := json.Unmarshal(palette, &wire); err != nil {
+			return nil, fmt.Errorf("decode theme palette: %w", err)
+		}
+		mode := tui.TerminalColorModeTrueColor
+		if wire.Mode == string(tui.TerminalColorMode256) {
+			mode = tui.TerminalColorMode256
+		}
+		if theme, err = tui.NewThemeFromANSIPalette(wire.Name, wire.Foregrounds, wire.Backgrounds, mode); err != nil {
+			return nil, err
+		}
+	}
+	return tui.HighlightCodeFor(theme, code, lang, markdown), nil
+}
+
+// handleHighlightCode serves CallHighlightCode.
+func (h *Host) handleHighlightCode(call *CallPayload) (*CallResultPayload, error) {
+	var args HighlightCodeArgs
+	if err := json.Unmarshal(call.Args, &args); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", call.Method, err)
+	}
+	lines, err := HighlightCodeLines(args.Code, args.Lang, args.Markdown, args.Theme)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(HighlightCodeResult{Lines: lines})
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: data}, nil
+}
+
+// themeLoader is the host's source of the palette CallLoadTheme answers: the theme initTheme(name) installs, which the system theme replaces for an absent or unknown name.
+// The application installs it with SetThemeLoader; the theme registry is its state, not the Host's.
+var themeLoader atomic.Pointer[func(name *string) any]
+
+// SetThemeLoader installs the source of CallLoadTheme's palette.
+func SetThemeLoader(load func(name *string) any) { themeLoader.Store(&load) }
+
+// LoadThemeJSON is the palette of the theme initTheme(name) installs, encoded. The CallLoadTheme handler and the fused extensions' SDK hook share it.
+func LoadThemeJSON(name *string) ([]byte, error) {
+	load := themeLoader.Load()
+	if load == nil || *load == nil {
+		return nil, errors.New("the host has no theme to load")
+	}
+	palette, err := json.Marshal((*load)(name))
+	if err != nil {
+		return nil, fmt.Errorf("serialize theme: %w", err)
+	}
+	return palette, nil
+}
+
+// handleLoadTheme serves CallLoadTheme.
+func (h *Host) handleLoadTheme(call *CallPayload) (*CallResultPayload, error) {
+	var args LoadThemeArgs
+	if err := json.Unmarshal(call.Args, &args); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", call.Method, err)
+	}
+	palette, err := LoadThemeJSON(args.Name)
+	if err != nil {
+		return nil, err
+	}
+	data, err := json.Marshal(LoadThemeResult{Theme: palette})
+	if err != nil {
+		return nil, err
+	}
 	return &CallResultPayload{Result: data}, nil
 }
 

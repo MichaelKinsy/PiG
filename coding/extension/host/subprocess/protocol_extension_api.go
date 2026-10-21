@@ -312,3 +312,36 @@ type ParseDateArgs struct {
 type ParseDateResult struct {
 	Ms *float64 `json:"ms"`
 }
+
+// CallHighlightCode (ext→host) is pi-coding-agent's highlightCode (theme.ts), or getMarkdownTheme().highlightCode when Markdown is set: the lines of code highlighted
+// for lang by the host's highlight.js port and drawn with a theme. The args are a HighlightCodeArgs and the result a HighlightCodeResult. It reads no session or extension
+// state, so it may arrive before the register frame.
+const CallHighlightCode = "highlight.code"
+
+// CallLoadTheme (ext→host) is the theme initTheme(name) installs as pi-coding-agent's process-global theme: the registered theme of that name, or the system theme
+// for an absent name or one no theme has, as initTheme falls back. The args are a LoadThemeArgs and the result a LoadThemeResult. It may arrive before the register frame.
+const CallLoadTheme = "theme.load"
+
+// HighlightCodeArgs is the argument of CallHighlightCode. Theme is the palette (the shape of ready.state.theme) of the theme to draw with: the one the extension
+// installed with initTheme. An absent Theme draws with the host's active theme, which the extension's own global theme replicates.
+type HighlightCodeArgs struct {
+	Code     string          `json:"code"`
+	Lang     string          `json:"lang,omitempty"`
+	Markdown bool            `json:"markdown,omitempty"`
+	Theme    json.RawMessage `json:"theme,omitempty"`
+}
+
+// HighlightCodeResult is the result of CallHighlightCode: Pi's array of highlighted lines.
+type HighlightCodeResult struct {
+	Lines []string `json:"lines"`
+}
+
+// LoadThemeArgs is the argument of CallLoadTheme. A null Name is initTheme(undefined).
+type LoadThemeArgs struct {
+	Name *string `json:"name"`
+}
+
+// LoadThemeResult is the result of CallLoadTheme: the theme's palette, in the shape of ready.state.theme.
+type LoadThemeResult struct {
+	Theme json.RawMessage `json:"theme"`
+}

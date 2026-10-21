@@ -14,6 +14,7 @@
 // fails when the pinned pi-tui renames one (VIEW_WALK_FIELDS).
 import { createHash } from "node:crypto";
 import { runtimeRequire } from "./runtime-modules.mjs";
+import { WIDGET_CODING_AGENT_CLASSES, widgetClassHandlers, widgetRenderHandlers } from "./view-walk-widgets.mjs";
 import { getMarkdownTheme, getSelectListTheme, getSettingsListTheme } from "./shims/pi-dist/pi-coding-agent/modes/interactive/theme/theme.js";
 
 
@@ -57,7 +58,10 @@ export const VIEW_WALK_FIELDS = Object.freeze({
   DynamicBorder: ["color"],
   SelectList: ["items", "filteredItems", "selectedIndex", "maxVisible", "theme", "layout"],
   SettingsList: ["items", "filteredItems", "theme", "selectedIndex", "maxVisible", "searchEnabled", "searchInput", "submenuComponent"],
-  Input: ["value", "cursor", "focused", "prompt", "placeholder"],
+  Input: ["value", "cursor", "focused", "prompt", "placeholder", "placeholderStyle"],
+  ScrollView: ["child", "followEnd", "primary", "overscroll", "scrollbarTrackStyle", "scrollbarThumbStyle", "currentScrollbar", "scrollbarHideDelayMs", "currentScrollTop"],
+  MouseRegion: ["child", "onMouse"],
+  Editor: ["state", "focused", "paddingX", "theme", "borderColor", "autocompleteProvider", "autocompleteMaxVisible", "autocompleteState", "pastes", "history", "historyIndex", "jumpMode", "isInPaste", "disableSubmit"],
   Image: ["base64Data", "mimeType", "theme", "options", "dimensions", "imageId"],
   Loader: ["text", "paddingX", "paddingY", "customBgFn", "frames", "intervalMs", "currentFrame", "renderIndicatorVerbatim", "spinnerColorFn", "messageColorFn", "message"],
   HStack: ["entries", "gap", "align"],
@@ -85,7 +89,7 @@ let classHandlers;
 const builtinDefinitions = new Map();
 // The coding-agent classes the walk maps. The bundle is large: it is loaded
 // only once a component claims to be one of them.
-const CODING_AGENT_CLASSES = new Set(["DynamicBorder", "UserMessageComponent", "AssistantMessageComponent", "ToolExecutionComponent", "BashExecutionComponent"]);
+const CODING_AGENT_CLASSES = new Set(["DynamicBorder", "UserMessageComponent", "AssistantMessageComponent", "ToolExecutionComponent", "BashExecutionComponent", ...WIDGET_CODING_AGENT_CLASSES]);
 
 // The pinned classes by render function. Loaded on the first walk, which
 // happens only while a frontend draws.
@@ -106,6 +110,7 @@ function handlerTable() {
     [tui.Loader.prototype.render, walkLoader],
     [tui.HStack.prototype.render, walkHStack],
     [tui.VStack.prototype.render, walkVStack],
+    ...widgetRenderHandlers(tui, widgetHelpers),
   ]);
   return handlers;
 }
@@ -120,8 +125,19 @@ function loadCodingAgent(table) {
     [codingAgent.AssistantMessageComponent.prototype, walkAssistantMessage],
     [codingAgent.ToolExecutionComponent.prototype, walkToolExecution],
     [codingAgent.BashExecutionComponent.prototype, walkBashExecution],
+    ...widgetClassHandlers(codingAgent, widgetHelpers),
   ]);
 }
+
+// What the widget walkers read from this module.
+const widgetHelpers = {
+  isInt: (value) => Number.isInteger(value),
+  conversationId: (c, kind) => conversationId(c, kind),
+  maxListItems: MAX_LIST_ITEMS,
+  walkLoader: (walk, c) => walkLoader(walk, c),
+  FAIL,
+  get tui() { return runtimeRequire("./shims/pi-dist/pi-tui/sdk-bundle/index.js"); },
+};
 
 function handlerFor(component) {
   const table = handlerTable();
