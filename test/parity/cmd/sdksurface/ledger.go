@@ -281,7 +281,7 @@ func memberClass(symbol string) string {
 		return ""
 	}
 	class := parts[len(parts)-2]
-	if class == "" || !(class[0] >= 'A' && class[0] <= 'Z') {
+	if class == "" || class[0] < 'A' || class[0] > 'Z' {
 		return ""
 	}
 	return class
