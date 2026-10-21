@@ -5,3 +5,11 @@
 ### Changed
 
 - Upgrading: the SDK type of `ctx.sessionManager` is now Pi's `ReadonlySessionManager`: Go `sdk.ReadonlySessionManager` (was `sdk.SessionManager`), Rust `ReadonlySessionManager<'a>` (was `SessionManager<'a>`), Python `ReadonlySessionManager` (was `SessionManager`). `SessionManager` is now Pi's class, which an extension constructs. Rename the type where you name it; calls through `ctx.SessionManager()` are unchanged. <!-- fix: 3d07afe9db -->
+- The Go, Python and Rust extension SDKs can construct Pi's `ModelRuntime` (`ModelRuntime.create`, catalog and auth reads, runtime keys, `registerProvider` without functions, virtual models, `refresh`, availability, `stream`/`complete`, `classify`, `generateImages`, `login`, `logout`) and `SettingsManager.fromStorage` (a storage object of the extension, called back on every read and write). Provider objects (`getProviders`, `getProvider`, `registerNativeProvider`) and the deferred calls stay out of the runtime until the owner decides (D78). <!-- fix: aa9ff5b76e -->
+- Upgrading: `SessionManager.list` and `listAll` take an `onProgress` argument in the Go (`SessionManagerList(c, cwd, dir, onProgress)`, `SessionManagerListAll(c, dir, onProgress)`; pass nil), Rust (`list(ctx, cwd, dir, on_progress)`, `list_all(ctx, dir, on_progress)`; pass `None`) and Python (`on_progress=None`, optional) SDKs.
+
+### Fixed
+
+- Removing a local package reports `start` and `complete` `remove` progress events, as Pi's `remove` does for every source kind. <!-- fix: aa9ff5b76e -->
+- `registerProvider` of a model without an `api` fails with Pi's `Set it at model level or provider level.` wording. <!-- fix: aa9ff5b76e -->
+- An extension's `SessionManager.appendContextEdit(id, null)` clears the content instead of failing, and `appendCompaction` without `fromHook` writes no `fromHook` member. <!-- fix: aa9ff5b76e -->
