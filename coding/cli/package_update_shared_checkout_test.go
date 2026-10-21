@@ -31,6 +31,10 @@ func TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newPackageResourceFixture(t)
+			// A managed checkout sits at <agent>/git/<host>/<origin path>, and on Windows git cannot create the sample hooks of a clone whose path passes 260 characters, so the agent directory is short instead of named for this test.
+			f.agent = testenv.ShortTempDir(t, "a")
+			t.Setenv("PIG_CODING_AGENT_DIR", f.agent)
+			f.settings = codingagent.NewSettingsManager(f.cwd, f.agent)
 			testenv.IsolateGit(t)
 			shared := testenv.NewSubdirectoryOrigin(t, "shared")
 			other := testenv.NewSubdirectoryOrigin(t, "other")
