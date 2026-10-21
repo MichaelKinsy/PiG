@@ -133,7 +133,7 @@ func (l *DefaultResourceLoader) findSourceInfo(resourcePath string, extra extens
 func (l *DefaultResourceLoader) GetExtensions() LoadExtensionsResult {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	return LoadExtensionsResult{Extensions: cloneCollection(l.extensions.Extensions), Errors: cloneCollection(l.extensions.Errors), Warnings: cloneCollection(l.extensions.Warnings), Runtime: l.extensions.Runtime}
+	return LoadExtensionsResult{Extensions: cloneCollection(l.extensions.Extensions), Errors: cloneCollection(l.extensions.Errors), Warnings: cloneCollection(l.extensions.Warnings), Runtime: l.extensions.Runtime, bridge: l.extensions.bridge}
 }
 
 // GetThemes returns the themes found by the last Reload and ExtendResources (resource-loader.ts getThemes).
