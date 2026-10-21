@@ -56,12 +56,6 @@ type CreateAgentSessionOptions struct {
 	ScopedModels []ScopedModel
 }
 
-// ScopedModel is one entry of Pi's scopedModels option.
-type ScopedModel struct {
-	Model         map[string]any `json:"model"`
-	ThinkingLevel string         `json:"thinkingLevel,omitempty"`
-}
-
 // ResourceOptions are the DefaultResourceLoader options of Pi (resource-loader.ts) that select resources.
 type ResourceOptions struct {
 	NoExtensions      bool
