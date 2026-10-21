@@ -2580,8 +2580,18 @@ impl Context {
         if !self.has_ui() {
             return Ok(None);
         }
+        if self.mode() == "rpc" {
+            return self.custom_ignored_in_rpc();
+        }
         self.block_for_user();
         self.call_host("ui.custom", Some(options))
+    }
+
+    /// rpc-mode.ts custom() resolves undefined and never runs the component. The host call keeps the dialog scope, as the Node runtime's does.
+    fn custom_ignored_in_rpc(&self) -> io::Result<Option<serde_json::Value>> {
+        let key = format!("custom-{}", self.overlay_seq.fetch_add(1, Ordering::Relaxed) + 1);
+        self.call_host("ui.custom", Some(serde_json::json!({ "key": key })))?;
+        Ok(None)
     }
 
     /// Open a focused subprocess component. Input reaches the component only
@@ -2635,6 +2645,9 @@ impl Context {
     ) -> io::Result<Option<serde_json::Value>> {
         if !self.has_ui() {
             return Ok(None);
+        }
+        if self.mode() == "rpc" {
+            return self.custom_ignored_in_rpc();
         }
         self.block_for_user();
         let mut args = options.as_object().cloned().ok_or_else(|| {
@@ -4435,6 +4448,10 @@ impl Context {
         let Some(render) = render else {
             return self.set_surface(method, None);
         };
+        // upstream: rpc-mode.ts setFooter/setHeader ignore the factory and runner.ts noOpUIContext does too: Pi calls a footer or header factory only in the TUI.
+        if !self.has_ui() || self.mode() == "rpc" {
+            return Ok(());
+        }
         let renderer = Arc::new(SurfaceRenderer {
             method,
             render: Box::new(render),

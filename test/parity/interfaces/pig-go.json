@@ -101383,6 +101383,17 @@
       "shapeHash": "sha256:6cbe78145329d2e112d1118ea50ae7024e2e935ccbaa37574d27e7cc2f897af5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#SetNoopUITheme",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "SetNoopUITheme",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(provider func() Theme)"
+      },
+      "shapeHash": "sha256:f8b5918350e25fec906cf922121185d336ea39e0c1aa89dc6e1f1cc5d4ac17c4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#SetThemeResult",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "SetThemeResult",
@@ -104023,6 +104034,61 @@
       "shapeHash": "sha256:d814cb790baabcd988067c98883102d3bf88443db13caf8f2a98034808df6617"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noopThemeProvider",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "noopThemeProvider",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[func() Theme]"
+      },
+      "shapeHash": "sha256:4f781e63687c48ca73f6867c16f9009713f7f50adf72c67ca7d8e459a5caddb2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noopThemeProvider.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "noopThemeProvider.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *func() Theme, new *func() Theme) (swapped bool)"
+      },
+      "shapeHash": "sha256:5894c65bf3ad39d381c17a56b3137fbfcca0c5163200a544688bee0a5db429fc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noopThemeProvider.Load",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "noopThemeProvider.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *func() Theme"
+      },
+      "shapeHash": "sha256:d73d1702ed0a3d1e88790f8cc9c3ac5cae84f5428b6a46da5272b255ddbf9f8b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noopThemeProvider.Store",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "noopThemeProvider.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *func() Theme)"
+      },
+      "shapeHash": "sha256:14bd9a230bef9bfbbd3c6e7abd07e2a970119191e43fe296879c88d929bfc0db"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noopThemeProvider.Swap",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "noopThemeProvider.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *func() Theme) (old *func() Theme)"
+      },
+      "shapeHash": "sha256:24c8e8dced4d11c449cdbfbf0160534631949ce07e6900ec1bf7da28837559e5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noopUIContext",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "noopUIContext",
@@ -104380,6 +104446,17 @@
       "name": "noopUIContext.Theme",
       "kind": "function",
       "exported": true,
+      "shape": {
+        "type": "func() Theme"
+      },
+      "shapeHash": "sha256:c8a716e8613bdcec2e5c00aa88044e87ecbd34af977e62a56e8233ede353e370"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#noopUITheme",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "noopUITheme",
+      "kind": "function",
+      "exported": false,
       "shape": {
         "type": "func() Theme"
       },
