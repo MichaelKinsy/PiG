@@ -460,12 +460,13 @@ func setBuiltinTheme(name string, enableWatcher bool) {
 // InMemoryThemeName is the name of a theme set directly from an instance (theme.ts setThemeInstance's currentThemeName).
 const InMemoryThemeName = "<in-memory>"
 
-// SetThemeInstance makes theme the active theme (theme.ts:795 setThemeInstance). An instance has no file to watch, so the owned watcher selects
-// nothing for it.
+// SetThemeInstance makes theme the active theme as it is (theme.ts:795 setThemeInstance stores the instance it is given). Only a theme loaded or selected by name is created
+// for the terminal's color depth (theme.ts createTheme); an instance keeps the mode it was created in, so putting back the theme that was active leaves it as it was.
+// An instance has no file to watch, so the owned watcher selects nothing for it.
 func SetThemeInstance(theme *Theme) {
 	themeMutationMu.Lock()
 	defer themeMutationMu.Unlock()
-	storeActiveTheme(theme)
+	activeTheme.Store(theme)
 	noteSelectedTheme(InMemoryThemeName, false)
 }
 
