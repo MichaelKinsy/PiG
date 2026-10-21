@@ -486,6 +486,30 @@ Prefer the context branch (what the model will see, trimmed at the last compacti
 
 Compute incrementally: keep running totals and update them from each new entry instead of rescanning the branch. Stream or peek (read only the fields you need, skip entries you do not care about) rather than materializing every entry. Before shipping, measure the handler on a large synthetic session (hundreds of MB, tens of thousands of entries, many compactions) and check both latency and peak memory.
 
+## Child agent sessions (`createAgentSession`)
+
+Pi's `createAgentSession` builds an independent `AgentSession` an extension can prompt, observe and abort without touching the session that runs it. Node extensions call Pi's own implementation. Go, Python and Rust extensions call `ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{...})`, `ctx.create_agent_session(CreateAgentSessionOptions(...))` and `ctx.create_agent_session(CreateAgentSessionOptions { .. })`; the host builds the child `coding.Session` over the parent's model runtime, so every provider the extensions registered is available to it (`modelRuntime: ctx.modelRegistry.runtime` in Pi).
+
+```go
+session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
+	Model:       "provider/id",
+	Tools:       []string{"my_tool"},
+	InMemory:    true,
+	Settings:    map[string]any{"compaction": map[string]any{"enabled": false}},
+	CustomTools: []sdk.ToolDefinition{myTool}, // execute runs in this extension
+})
+if err != nil { return nil, err }
+defer session.Dispose()
+session.Subscribe(func(event map[string]any) { /* Pi's AgentSessionEvent JSON */ })
+err = session.Prompt(context.Background(), "text") // returns when the run settled and every listener saw its last event
+```
+
+The Promise contract is kept as blocking calls: creation returns once resources are loaded and the model resolved, and fails with Pi's message; `Prompt` returns when the run settled, after the listeners ran through the run's last event, and raises what Pi's rejects (for example `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`, or `No API key found for <provider>.` for a model without credentials); `Abort` returns once the session is idle and the pending `Prompt` then returns normally; `Dispose` is synchronous and idempotent. Listeners run in event order on one goroutine, thread or task of the session, never on the connection's reader, so a listener may call the session. A cancelled context passed to `Prompt` aborts the run in Go; Python and Rust call `abort()`.
+
+The session belongs to the extension's connection: closing the connection aborts the run, cancels the tools' contexts and disposes the session, as Node's `independent-session-owner.mjs` does. `message_update` events travel as a keyframe followed by operations (`child_session_delta.go`) and the listener receives the full event Pi's `subscribe` delivers (`message` and `assistantMessageEvent.partial`), so a long output costs wire bytes linear in its length.
+
+Differences from Pi, each tested: the `model` option also takes `provider/id` or a fuzzy pattern; a native-SDK session raises `Unknown or disposed child session` once disposed, where Pi's disposed `AgentSession` still prompts; Pi's `sessionManager`, `settingsManager`, `resourceLoader` and `modelRuntime` objects are in-process handles and do not cross the wire (`settings` and `resources` select what they would). The expected observations (event order, the leading system message, error messages) come from running Pi's own `createAgentSession` (`test/extension-conformance/testdata/child-session-want.json`).
+
 ## Adding a new extension API surface
 
 1. Read upstream Pi behavior in Pi's `packages/coding-agent/docs/extensions.md` and the upstream source under `.upstream/current/`.
