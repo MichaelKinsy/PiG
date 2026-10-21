@@ -1,0 +1,52 @@
+# Pi 1.3.0 sendCustomMessage awaits _startRun({ messageType: "custom", message }); _prepareRun builds the run's system patch with _preparePromptAndToolLoadout for a custom starting message as for a prompt (agent-session.ts:1885-1941, 2344-2350), so the run starts with the system message before the custom message.
+# PiG's Session.preparePrompt recorded the system sections only when the starting messages held a user message, so a session's first run started by a custom message reached the provider with no system prompt.
+name = "63-rpc-command-send-message-first-run-system"
+description = "An extension command's triggerTurn sendMessage starts the session's first run with the system prompt"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"cmd","type":"prompt","message":"/kick"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/command-send-message-first-run.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/command-send-message-first-run.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 5
+both_contain = ['"id":"cmd","type":"response","command":"prompt","success":true', '"customType":"kick"', '"sections"', '"type":"agent_settled"']
+both_not_contain = ['"success":false', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id", "/**/sessionId"]
+kind = "id"
+group = "runtime"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."

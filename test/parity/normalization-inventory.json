@@ -7625,6 +7625,20 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/61-rpc-set-widget-factory.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/rpc/62-rpc-parallel-tool-dialog-order.toml",
       "transforms": [
         {
@@ -7656,6 +7670,42 @@
             "/**/sections/cwd"
           ],
           "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/63-rpc-command-send-message-first-run-system.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/durationMs"
+          ],
+          "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
         }
       ]
     },
