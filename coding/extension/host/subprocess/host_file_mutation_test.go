@@ -287,7 +287,7 @@ func TestFileMutationEnterCancelledWhileWaitingTakesNoTurn(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("the cancelled call's place was never passed on")
 	}
-	if conn.fileMutations.held != nil && len(conn.fileMutations.held) != 0 {
+	if len(conn.fileMutations.held) != 0 {
 		t.Fatalf("a cancelled call left a ticket: %v", conn.fileMutations.held)
 	}
 }

@@ -49,8 +49,11 @@ func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, err
 	var entered struct {
 		Ticket string `json:"ticket"`
 	}
-	if err := json.Unmarshal(reply.Result, &entered); err != nil || entered.Ticket == "" {
-		return result, fmt.Errorf("decode %s: %v", callFileMutationEnter, err)
+	if err := json.Unmarshal(reply.Result, &entered); err != nil {
+		return result, fmt.Errorf("decode %s: %w", callFileMutationEnter, err)
+	}
+	if entered.Ticket == "" {
+		return result, fmt.Errorf("%s returned no ticket", callFileMutationEnter)
 	}
 	defer func() {
 		// The host also releases the turn when the connection closes, so a failed exit leaves nothing held.
