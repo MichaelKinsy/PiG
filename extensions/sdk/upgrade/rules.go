@@ -62,6 +62,7 @@ const (
 	RuleTransformHeaders    = "provider-stream-transform-headers-removed"
 	RuleProviderCredential  = "provider-credential-ordered"
 	RuleSystemPromptGetter  = "before-agent-start-system-prompt-getter"
+	RuleReadonlySession     = "context-session-manager-readonly"
 )
 
 // getter is one Context method that gained an error result. Params is the
@@ -224,6 +225,15 @@ func Rules() []Rule {
 			Remedy:   "Read the prompt with `data[\"systemPrompt\"].(*sdk.SystemPrompt).Get()`, which returns `(string, error)`, and return the error from the handler.",
 			Changes: []Change{
 				{Symbol: systemPromptSymbol, Old: "string", New: "*SystemPrompt", Since: systemPromptSince},
+			},
+		},
+		{
+			ID:      RuleReadonlySession,
+			Summary: "ctx.SessionManager is Pi's ReadonlySessionManager; SessionManager is the class an extension constructs",
+			Remedy:  "Name the type sdk.ReadonlySessionManager where you named sdk.SessionManager for the value of ctx.SessionManager(); the calls through ctx.SessionManager() do not change. To own a session log, construct sdk.SessionManager with SessionManagerCreate, SessionManagerOpen or SessionManagerInMemory.",
+			Changes: []Change{
+				{Symbol: "SessionManager", Old: "the read-only view of the host's session log (the type of ctx.SessionManager())", New: "Pi's SessionManager class, which an extension constructs", Since: "0.5.2"},
+				{Symbol: "SetupSessionManager.SessionManager", Old: "field of SetupSessionManager", New: "removed", Since: "0.5.2"},
 			},
 		},
 	}

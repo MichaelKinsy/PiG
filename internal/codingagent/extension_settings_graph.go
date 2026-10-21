@@ -62,7 +62,7 @@ func NewGraphSettingsManager(scope subprocess.SessionGraphScope, op string, raw 
 		if err != nil {
 			return nil, err
 		}
-		return &GraphSettingsManager{NewSettingsManagerWithOptions(resolvedCwd, dir, SettingsManagerCreateOptions{ProjectTrusted: options.ProjectTrusted})}, nil
+		return &GraphSettingsManager{NewSettingsManagerWithOptions(resolvedCwd, dir, SettingsManagerCreateOptions(options))}, nil
 	case "fromStorage":
 		// fromStorage(storage, options = {}): storage is { withLock } and the extension names it by the callback that runs it.
 		var storage struct {
@@ -78,7 +78,7 @@ func NewGraphSettingsManager(scope subprocess.SessionGraphScope, op string, raw 
 		if err := args.Decode(1, &options); err != nil {
 			return nil, err
 		}
-		return &GraphSettingsManager{NewSettingsManagerFromStorage(&graphSettingsStorage{scope: scope, callback: storage.WithLock}, SettingsManagerCreateOptions{ProjectTrusted: options.ProjectTrusted})}, nil
+		return &GraphSettingsManager{NewSettingsManagerFromStorage(&graphSettingsStorage{scope: scope, callback: storage.WithLock}, SettingsManagerCreateOptions(options))}, nil
 	case "inMemory":
 		// inMemory(settings = {}, options = {})
 		var settings Settings
