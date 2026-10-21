@@ -40,9 +40,12 @@ func TestExplainNamesTheDirectoryAndTheRemedyOnlyForUnsupportedLocks(t *testing.
 			t.Errorf("explained error %q does not contain %q", explained, want)
 		}
 	}
-	for _, other := range []error{syscall.EWOULDBLOCK, context.DeadlineExceeded, nil} {
-		if got := Explain("/mnt", other); got != other {
+	for _, other := range []error{syscall.EWOULDBLOCK, context.DeadlineExceeded} {
+		if got := Explain("/mnt", other); !errors.Is(got, other) || got.Error() != other.Error() {
 			t.Errorf("Explain(%v) = %v, want the error unchanged", other, got)
 		}
+	}
+	if got := Explain("/mnt", nil); got != nil {
+		t.Errorf("Explain(nil) = %v, want nil", got)
 	}
 }
