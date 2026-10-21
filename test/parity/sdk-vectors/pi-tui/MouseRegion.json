@@ -273,9 +273,9 @@
        ]
       ],
       "events": [
-       "mouse:press/left/2,0",
-       "mouse:click/left/2,0",
-       "mouse:wheel/none/2,1"
+       "mouse:press/left/2/0",
+       "mouse:click/left/2/0",
+       "mouse:wheel/none/2/1"
       ],
       "changes": [],
       "results": [
@@ -305,9 +305,9 @@
        ]
       ],
       "events": [
-       "mouse:press/left/2,0",
-       "mouse:click/left/2,0",
-       "mouse:wheel/none/2,1"
+       "mouse:press/left/2/0",
+       "mouse:click/left/2/0",
+       "mouse:wheel/none/2/1"
       ],
       "changes": [],
       "results": [
@@ -337,9 +337,9 @@
        ]
       ],
       "events": [
-       "mouse:press/left/2,0",
-       "mouse:click/left/2,0",
-       "mouse:wheel/none/2,1"
+       "mouse:press/left/2/0",
+       "mouse:click/left/2/0",
+       "mouse:wheel/none/2/1"
       ],
       "changes": [],
       "results": [
@@ -493,7 +493,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/3,1"
+       "mouse:click/left/3/1"
       ],
       "changes": [],
       "results": [
@@ -523,7 +523,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/3,1"
+       "mouse:click/left/3/1"
       ],
       "changes": [],
       "results": [
@@ -553,7 +553,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/3,1"
+       "mouse:click/left/3/1"
       ],
       "changes": [],
       "results": [
@@ -681,7 +681,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0"
+       "mouse:click/left/2/0"
       ],
       "changes": [],
       "results": [
@@ -701,7 +701,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0"
+       "mouse:click/left/2/0"
       ],
       "changes": [],
       "results": [
@@ -721,7 +721,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0"
+       "mouse:click/left/2/0"
       ],
       "changes": [],
       "results": [
@@ -871,9 +871,9 @@
        ]
       ],
       "events": [
-       "mouse:press/left/2,0",
-       "mouse:drag/left/4,1",
-       "mouse:release/left/4,1"
+       "mouse:press/left/2/0",
+       "mouse:drag/left/4/1",
+       "mouse:release/left/4/1"
       ],
       "changes": [],
       "results": [
@@ -903,9 +903,9 @@
        ]
       ],
       "events": [
-       "mouse:press/left/2,0",
-       "mouse:drag/left/4,1",
-       "mouse:release/left/4,1"
+       "mouse:press/left/2/0",
+       "mouse:drag/left/4/1",
+       "mouse:release/left/4/1"
       ],
       "changes": [],
       "results": [
@@ -935,9 +935,9 @@
        ]
       ],
       "events": [
-       "mouse:press/left/2,0",
-       "mouse:drag/left/4,1",
-       "mouse:release/left/4,1"
+       "mouse:press/left/2/0",
+       "mouse:drag/left/4/1",
+       "mouse:release/left/4/1"
       ],
       "changes": [],
       "results": [
@@ -1066,7 +1066,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0"
+       "mouse:click/left/2/0"
       ],
       "changes": [],
       "results": [
@@ -1086,7 +1086,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0"
+       "mouse:click/left/2/0"
       ],
       "changes": [],
       "results": [
@@ -1106,7 +1106,7 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0"
+       "mouse:click/left/2/0"
       ],
       "changes": [],
       "results": [
@@ -1274,8 +1274,8 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0",
-       "mouse:click/left/2,1"
+       "mouse:click/left/2/0",
+       "mouse:click/left/2/1"
       ],
       "changes": [],
       "results": [
@@ -1313,8 +1313,8 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0",
-       "mouse:click/left/2,1"
+       "mouse:click/left/2/0",
+       "mouse:click/left/2/1"
       ],
       "changes": [],
       "results": [
@@ -1352,8 +1352,8 @@
        ]
       ],
       "events": [
-       "mouse:click/left/2,0",
-       "mouse:click/left/2,1"
+       "mouse:click/left/2/0",
+       "mouse:click/left/2/1"
       ],
       "changes": [],
       "results": [
@@ -1525,7 +1525,7 @@
        ]
       ],
       "events": [
-       "mouse:press/left/3,2"
+       "mouse:press/left/3/2"
       ],
       "changes": [],
       "results": [
@@ -1574,7 +1574,7 @@
        ]
       ],
       "events": [
-       "mouse:press/left/3,2"
+       "mouse:press/left/3/2"
       ],
       "changes": [],
       "results": [
@@ -1623,7 +1623,7 @@
        ]
       ],
       "events": [
-       "mouse:press/left/3,2"
+       "mouse:press/left/3/2"
       ],
       "changes": [],
       "results": [
@@ -1749,7 +1749,7 @@
        ]
       ],
       "events": [
-       "mouse:click/right/2,0"
+       "mouse:click/right/2/0"
       ],
       "changes": [],
       "results": [
@@ -1769,7 +1769,7 @@
        ]
       ],
       "events": [
-       "mouse:click/right/2,0"
+       "mouse:click/right/2/0"
       ],
       "changes": [],
       "results": [
@@ -1789,7 +1789,7 @@
        ]
       ],
       "events": [
-       "mouse:click/right/2,0"
+       "mouse:click/right/2/0"
       ],
       "changes": [],
       "results": [

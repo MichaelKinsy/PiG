@@ -1,7 +1,7 @@
 import { builders, renderCase } from "../../../../../automation/gen/sdk-vector-lib/kit-build.mjs";
 
 // The wire node an SDK sends for a mouse region: its one child and the region's handler as a description (types, handled,
-// capture, focus, render). A case's `events` are "mouse:<type>/<button>/<x>,<y>" for each event the handler ran for,
+// capture, focus, render). A case's `events` are "mouse:<type>/<button>/<x>/<y>" for each event the handler ran for,
 // the coordinates local to the region; `results` are what the renderer is answered per mouse step ("h" handled, "c" capture,
 // "f" focus, "-" none).
 const text = (t) => ({ kind: "text", text: t, paddingX: 1, paddingY: 0 });
@@ -27,7 +27,7 @@ const registry = {
     const r = n.region ?? {};
     return new lib.tui.MouseRegion(build(n.children[0]), (event) => {
       if (r.types?.length && !r.types.includes(event.type)) return undefined;
-      lib.events.push(`mouse:${event.type}/${event.button}/${event.x},${event.y}`);
+      lib.events.push(`mouse:${event.type}/${event.button}/${event.x}/${event.y}`);
       const result = { handled: r.handled ?? true };
       if (r.capture) result.capture = true;
       if (r.focus) result.focus = true;
