@@ -82254,6 +82254,17 @@
       "shapeHash": "sha256:f509340daa9592adc0034f69d023568ff2539f754de2ada2dc3ca89f61789c9f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandWordFor",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "commandWordFor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(goos string, word string) string"
+      },
+      "shapeHash": "sha256:90391571266cf56304194c8a2ec5f9b98edb5544ee4636cb41cb7652b8ec9d12"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#compactStrings",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "compactStrings",
@@ -86104,9 +86115,20 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#plainShellWord",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#plainPOSIXWord",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "plainShellWord",
+      "name": "plainPOSIXWord",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
+      },
+      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#plainWindowsWord",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "plainWindowsWord",
       "kind": "variable",
       "exported": false,
       "shape": {
