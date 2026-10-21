@@ -23,7 +23,7 @@ import (
 // fusedDispatchHistory is the session history of the fused dispatch gate, in entries (each one user message).
 const fusedDispatchHistory = 40
 
-// fusedDispatchRig is K fused Go extensions, each with a before_agent_start and a turn_end handler that read their event, as pi-arena's rpc-ext10 extensions do, and the boundary preview of a session of fusedDispatchHistory entries.
+// fusedDispatchRig is K fused Go extensions, each with a before_agent_start and a turn_end handler that read their event, as Buffon's rpc-ext10 extensions do, and the boundary preview of a session of fusedDispatchHistory entries.
 type fusedDispatchRig struct {
 	runner    *inproc.Runner
 	entries   []extension.ProjectedSessionEntry
