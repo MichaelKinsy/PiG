@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// The global theme and keybindings are process state: one test at a time installs them.
-static STATE: Mutex<()> = Mutex::new(());
+pub(crate) static STATE: Mutex<()> = Mutex::new(());
 
 fn pi_cases(export: &str) -> Vec<Value> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test/parity/sdk-vectors/pi-coding-agent").join(format!("{export}.json"));

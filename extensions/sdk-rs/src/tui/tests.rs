@@ -338,6 +338,9 @@ fn keybindings_vectors_match_pi() {
     let v = load("tui-keybindings.json");
     let want = definitions(&v["tuiKeybindings"]);
     assert_eq!(tui_keybindings(), want);
+    // The helper tests install their own manager as the process's and keep it; the default is what no one installed.
+    let _state = crate::theme_helper_tests::STATE.lock().unwrap_or_else(|e| e.into_inner());
+    super::keybindings::reset_keybindings();
     let resolved = |m: &KeybindingsManager| -> std::collections::BTreeMap<String, Vec<String>> { m.get_resolved_bindings().into_iter().collect() };
     let resolved_of = |v: &Value| -> std::collections::BTreeMap<String, Vec<String>> { v.as_object().unwrap().iter().map(|(k, x)| (k.clone(), key_list(x))).collect() };
     assert_eq!(resolved(&get_keybindings()), resolved_of(&v["defaultResolved"]));
