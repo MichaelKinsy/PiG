@@ -2,6 +2,8 @@ package inproc
 
 import (
 	"context"
+	"encoding/json"
+	"strconv"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -223,6 +225,52 @@ func (c *uiPromptContext) Input(ctx context.Context, title, placeholder string, 
 func (c *uiPromptContext) Editor(ctx context.Context, title, prefill string) (string, error) {
 	defer c.runner.BeginUIPrompt(extension.UIPromptKindEditor, title)()
 	return c.UIContext.Editor(ctx, title, prefill)
+}
+
+// SelectValue, ConfirmValue, InputValue and EditorValue are [extension.DialogValueUIContext]: they report the prompt as the string-typed dialogs do and
+// pass the bound UI's JSON result through. A bound UI without them resolves through its string-typed method, and the result is that string as JSON (confirm: the bool).
+func (c *uiPromptContext) SelectValue(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindSelect, title)()
+	if ui, ok := c.UIContext.(extension.DialogValueUIContext); ok {
+		return ui.SelectValue(ctx, title, options, opts)
+	}
+	return stringResult(c.UIContext.Select(ctx, title, options, opts))
+}
+
+func (c *uiPromptContext) ConfirmValue(ctx context.Context, title, message string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindConfirm, title)()
+	if ui, ok := c.UIContext.(extension.DialogValueUIContext); ok {
+		return ui.ConfirmValue(ctx, title, message, opts)
+	}
+	confirmed, err := c.UIContext.Confirm(ctx, title, message, opts)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(strconv.FormatBool(confirmed)), nil
+}
+
+func (c *uiPromptContext) InputValue(ctx context.Context, title, placeholder string, opts extension.ExtensionUIDialogOptions) (json.RawMessage, error) {
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindInput, title)()
+	if ui, ok := c.UIContext.(extension.DialogValueUIContext); ok {
+		return ui.InputValue(ctx, title, placeholder, opts)
+	}
+	return stringResult(c.UIContext.Input(ctx, title, placeholder, opts))
+}
+
+func (c *uiPromptContext) EditorValue(ctx context.Context, title, prefill string) (json.RawMessage, error) {
+	defer c.runner.BeginUIPrompt(extension.UIPromptKindEditor, title)()
+	if ui, ok := c.UIContext.(extension.DialogValueUIContext); ok {
+		return ui.EditorValue(ctx, title, prefill)
+	}
+	return stringResult(c.UIContext.Editor(ctx, title, prefill))
+}
+
+func stringResult(text string, err error) (json.RawMessage, error) {
+	if err != nil {
+		return nil, err
+	}
+	encoded, _ := json.Marshal(text)
+	return encoded, nil
 }
 
 func (c *uiPromptContext) Custom(ctx context.Context, factory extension.CustomFactory, opts *extension.CustomOptions) (any, error) {

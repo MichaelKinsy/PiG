@@ -428,8 +428,12 @@ func (c Context) SetTitle(title string) {
 // ── User Interaction (blocking) ──────────────────────────────────────────────
 
 // Select shows a selector and returns the user's choice.
-// Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
-func (c Context) Select(title string, options []string) (string, bool, error) {
+// Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails.
+//
+// The result is the JSON value the user's client answered with, as Pi's select() resolves it: a string for every client that follows Pi's protocol, and in RPC mode
+// whatever JSON the client sent (a number, `null`, a boolean, an object or an array). It is decoded as [encoding/json] decodes into an any: string, float64, bool, nil,
+// map[string]any or []any. ok is false when Pi's result is undefined: cancelled, timed out, or an answer without a value; a `null` value is (nil, true).
+func (c Context) Select(title string, options []string) (any, bool, error) {
 	return c.selectDialog(map[string]any{"title": title, "options": options})
 }
 
@@ -446,89 +450,79 @@ type DialogOptions struct {
 }
 
 // SelectWithOptions is [Context.Select] with upstream's dialog options.
-func (c Context) SelectWithOptions(title string, options []string, opts DialogOptions) (string, bool, error) {
+func (c Context) SelectWithOptions(title string, options []string, opts DialogOptions) (any, bool, error) {
 	return c.selectDialog(map[string]any{"title": title, "options": options, "opts": opts})
 }
 
 // ConfirmWithOptions is [Context.Confirm] with upstream's dialog options.
-func (c Context) ConfirmWithOptions(title, message string, opts DialogOptions) (bool, error) {
+func (c Context) ConfirmWithOptions(title, message string, opts DialogOptions) (any, error) {
 	return c.confirmDialog(map[string]any{"title": title, "message": message, "opts": opts})
 }
 
 // InputWithOptions is [Context.Input] with upstream's dialog options.
-func (c Context) InputWithOptions(title, placeholder string, opts DialogOptions) (string, bool, error) {
+func (c Context) InputWithOptions(title, placeholder string, opts DialogOptions) (any, bool, error) {
 	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder, "opts": opts})
 }
 
-func (c Context) selectDialog(args map[string]any) (string, bool, error) {
+func (c Context) selectDialog(args map[string]any) (any, bool, error) {
+	return c.valueDialog("ui.select", "selected", args)
+}
+
+// valueDialog calls a select, input or editor dialog and returns the member the host replies with as decoded JSON; ok is false for Pi's undefined result.
+func (c Context) valueDialog(method, member string, args map[string]any) (any, bool, error) {
 	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.select", args)
+	result, err := c.callHost(method, args)
 	if err := callResultError(result, err); err != nil {
-		return "", false, err
+		return nil, false, err
 	}
-	var resp struct {
-		Selected string `json:"selected"`
-		Ok       bool   `json:"ok"`
-	}
+	var resp map[string]json.RawMessage
 	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Selected, resp.Ok, nil
+	if string(resp["ok"]) != "true" {
+		return nil, false, nil
+	}
+	var value any
+	_ = json.Unmarshal(resp[member], &value)
+	return value, true, nil
 }
 
 // Confirm shows a yes/no confirmation dialog and surfaces host UI failures.
-func (c Context) Confirm(title, message string) (bool, error) {
+// The result is the JSON value the client answered with, as Pi's confirm() resolves it: a bool for every client that follows Pi's protocol, false when cancelled or
+// unanswered, and in RPC mode whatever JSON the client sent in `confirmed` (`null` and non-booleans included), decoded as for [Context.Select].
+func (c Context) Confirm(title, message string) (any, error) {
 	return c.confirmDialog(map[string]any{"title": title, "message": message})
 }
 
-func (c Context) confirmDialog(args map[string]any) (bool, error) {
+func (c Context) confirmDialog(args map[string]any) (any, error) {
 	c.reportRequestState("blocked", "user")
 	result, err := c.callHost("ui.confirm", args)
 	if err := callResultError(result, err); err != nil {
 		return false, err
 	}
 	var resp struct {
-		Confirmed bool `json:"confirmed"`
+		Confirmed any `json:"confirmed"`
 	}
+	resp.Confirmed = false
 	_ = json.Unmarshal(result.Result, &resp)
 	return resp.Confirmed, nil
 }
 
 // Input shows a text input dialog.
-// Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
-func (c Context) Input(title, placeholder string) (string, bool, error) {
+// Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails. The result is typed as for [Context.Select].
+func (c Context) Input(title, placeholder string) (any, bool, error) {
 	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder})
 }
 
-func (c Context) inputDialog(args map[string]any) (string, bool, error) {
-	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.input", args)
-	if err := callResultError(result, err); err != nil {
-		return "", false, err
-	}
-	var resp struct {
-		Text string `json:"text"`
-		Ok   bool   `json:"ok"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Text, resp.Ok, nil
+func (c Context) inputDialog(args map[string]any) (any, bool, error) {
+	return c.valueDialog("ui.input", "text", args)
 }
 
 // Editor opens a multi-line editor.
-// Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
-func (c Context) Editor(title, prefill string) (string, bool, error) {
-	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.editor", map[string]any{
+// Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails. The result is typed as for [Context.Select].
+func (c Context) Editor(title, prefill string) (any, bool, error) {
+	return c.valueDialog("ui.editor", "text", map[string]any{
 		"title":   title,
 		"prefill": prefill,
 	})
-	if err := callResultError(result, err); err != nil {
-		return "", false, err
-	}
-	var resp struct {
-		Text string `json:"text"`
-		Ok   bool   `json:"ok"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Text, resp.Ok, nil
 }
 
 // ── Message Injection ────────────────────────────────────────────────────────

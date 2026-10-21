@@ -2147,67 +2147,56 @@ impl Context {
 
     // ─── User Interaction ────────────────────────────────────────────────
 
-    /// Show a selection list. Returns the chosen option and whether the
-    /// user confirmed (false = cancelled).
-    pub fn select(&self, title: &str, options: &[&str]) -> io::Result<(String, bool)> {
+    /// Show a selection list. Returns Pi's result and whether it was defined.
+    ///
+    /// The value is the JSON the user's client answered with, as Pi's `select()`
+    /// resolves it: a string for every client that follows Pi's protocol, and in
+    /// RPC mode whatever JSON the client sent (a number, `null`, a boolean, an
+    /// object or an array). The flag is false when Pi's result is `undefined`
+    /// (cancelled, timed out, an answer without a value), with `Value::Null` as
+    /// the value; a `null` answer is `(Value::Null, true)`.
+    pub fn select(&self, title: &str, options: &[&str]) -> io::Result<(serde_json::Value, bool)> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.select",
             Some(serde_json::json!({"title": title, "options": options})),
         )?)?;
-        let selected = v
-            .get("selected")
-            .and_then(|s| s.as_str())
-            .unwrap_or("")
-            .to_string();
-        let ok = v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false);
-        Ok((selected, ok))
+        Ok(dialog_value(&v, "selected"))
     }
 
-    /// Show a yes/no confirmation dialog.
-    pub fn confirm(&self, title: &str, message: &str) -> io::Result<bool> {
+    /// Show a yes/no confirmation dialog. Returns the JSON the client answered
+    /// with in `confirmed`, as Pi's `confirm()` resolves it: a boolean for every
+    /// client that follows Pi's protocol, `false` when cancelled or unanswered,
+    /// and in RPC mode whatever JSON the client sent.
+    pub fn confirm(&self, title: &str, message: &str) -> io::Result<serde_json::Value> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.confirm",
             Some(serde_json::json!({"title": title, "message": message})),
         )?)?;
         Ok(v.get("confirmed")
-            .and_then(|c| c.as_bool())
-            .unwrap_or(false))
+            .cloned()
+            .unwrap_or(serde_json::Value::Bool(false)))
     }
 
-    /// Show a text input prompt. Returns the entered text and whether the
-    /// user confirmed.
-    pub fn input(&self, title: &str, placeholder: &str) -> io::Result<(String, bool)> {
+    /// Show a text input prompt. The result is typed as for [`Context::select`].
+    pub fn input(&self, title: &str, placeholder: &str) -> io::Result<(serde_json::Value, bool)> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.input",
             Some(serde_json::json!({"title": title, "placeholder": placeholder})),
         )?)?;
-        let text = v
-            .get("text")
-            .and_then(|s| s.as_str())
-            .unwrap_or("")
-            .to_string();
-        let ok = v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false);
-        Ok((text, ok))
+        Ok(dialog_value(&v, "text"))
     }
 
-    /// Show a multi-line editor. Returns the edited text and whether the
-    /// user confirmed.
-    pub fn editor(&self, title: &str, prefill: &str) -> io::Result<(String, bool)> {
+    /// Show a multi-line editor. The result is typed as for [`Context::select`].
+    pub fn editor(&self, title: &str, prefill: &str) -> io::Result<(serde_json::Value, bool)> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.editor",
             Some(serde_json::json!({"title": title, "prefill": prefill})),
         )?)?;
-        let text = v
-            .get("text")
-            .and_then(|s| s.as_str())
-            .unwrap_or("")
-            .to_string();
-        let ok = v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false);
-        Ok((text, ok))
+        Ok(dialog_value(&v, "text"))
     }
 
     // ─── Message injection ───────────────────────────────────────────────
@@ -5599,5 +5588,32 @@ mod tool_result_guard_tests {
                 assert!(!guard(&payload), "guard {other} accepted {payload}");
             }
         }
+    }
+}
+
+/// The member of a select, input or editor reply as Pi's result: the JSON value and whether it was defined.
+fn dialog_value(reply: &serde_json::Value, member: &str) -> (serde_json::Value, bool) {
+    if reply.get("ok").and_then(|b| b.as_bool()) != Some(true) {
+        return (serde_json::Value::Null, false);
+    }
+    (
+        reply.get(member).cloned().unwrap_or(serde_json::Value::Null),
+        true,
+    )
+}
+
+#[cfg(test)]
+mod dialog_value_tests {
+    use super::dialog_value;
+    use serde_json::{Value, json};
+
+    /// Pi's RPC mode resolves a dialog with whatever JSON the client sent: the member is returned unchanged, and undefined (ok false) stays apart from `null`.
+    #[test]
+    fn dialog_value_keeps_the_clients_json_and_tells_undefined_from_null() {
+        assert_eq!(dialog_value(&json!({"selected": 5, "ok": true}), "selected"), (json!(5), true));
+        assert_eq!(dialog_value(&json!({"selected": null, "ok": true}), "selected"), (Value::Null, true));
+        assert_eq!(dialog_value(&json!({"text": {"a": [1, "x"]}, "ok": true}), "text"), (json!({"a": [1, "x"]}), true));
+        assert_eq!(dialog_value(&json!({"selected": "", "ok": false}), "selected"), (Value::Null, false));
+        assert_eq!(dialog_value(&json!({}), "text"), (Value::Null, false));
     }
 }

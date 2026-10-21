@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -2612,16 +2613,14 @@ func (b *UIBridge) handleSelect(ctx context.Context, ui extension.UIContext, arg
 		result, _ := json.Marshal(map[string]any{"selected": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	selected, err := ui.Select(ctx, p.Title, p.Options, p.Opts)
-	if err != nil {
-		if !errors.Is(err, context.Canceled) {
-			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
-		}
-		result, _ := json.Marshal(map[string]any{"selected": "", "ok": false})
-		return &CallResultPayload{Result: result}, nil
+	var selected json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		selected, err = values.SelectValue(ctx, p.Title, p.Options, p.Opts)
+	} else {
+		selected, err = stringDialogValue(ui.Select(ctx, p.Title, p.Options, p.Opts))
 	}
-	result, _ := json.Marshal(map[string]any{"selected": selected, "ok": true})
-	return &CallResultPayload{Result: result}, nil
+	return dialogValueResult("selected", selected, err)
 }
 
 func (b *UIBridge) handleConfirm(ctx context.Context, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
@@ -2637,15 +2636,22 @@ func (b *UIBridge) handleConfirm(ctx context.Context, ui extension.UIContext, ar
 		result, _ := json.Marshal(map[string]any{"confirmed": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	confirmed, err := ui.Confirm(ctx, p.Title, p.Message, p.Opts)
+	var confirmed json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		confirmed, err = values.ConfirmValue(ctx, p.Title, p.Message, p.Opts)
+	} else {
+		var answer bool
+		answer, err = ui.Confirm(ctx, p.Title, p.Message, p.Opts)
+		confirmed = json.RawMessage(strconv.FormatBool(answer))
+	}
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
 		}
-		result, _ := json.Marshal(map[string]any{"confirmed": false})
-		return &CallResultPayload{Result: result}, nil
+		confirmed = json.RawMessage("false")
 	}
-	result, _ := json.Marshal(map[string]any{"confirmed": confirmed})
+	result, _ := json.Marshal(map[string]json.RawMessage{"confirmed": confirmed})
 	return &CallResultPayload{Result: result}, nil
 }
 
@@ -2662,16 +2668,14 @@ func (b *UIBridge) handleInput(ctx context.Context, ui extension.UIContext, args
 		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	text, err := ui.Input(ctx, p.Title, p.Placeholder, p.Opts)
-	if err != nil {
-		if !errors.Is(err, context.Canceled) {
-			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
-		}
-		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
-		return &CallResultPayload{Result: result}, nil
+	var text json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		text, err = values.InputValue(ctx, p.Title, p.Placeholder, p.Opts)
+	} else {
+		text, err = stringDialogValue(ui.Input(ctx, p.Title, p.Placeholder, p.Opts))
 	}
-	result, _ := json.Marshal(map[string]any{"text": text, "ok": true})
-	return &CallResultPayload{Result: result}, nil
+	return dialogValueResult("text", text, err)
 }
 
 func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
@@ -2976,15 +2980,36 @@ func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, arg
 		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	text, err := ui.Editor(ctx, p.Title, p.Prefill)
+	var text json.RawMessage
+	var err error
+	if values, ok := ui.(extension.DialogValueUIContext); ok {
+		text, err = values.EditorValue(ctx, p.Title, p.Prefill)
+	} else {
+		text, err = stringDialogValue(ui.Editor(ctx, p.Title, p.Prefill))
+	}
+	return dialogValueResult("text", text, err)
+}
+
+// stringDialogValue is the JSON of a string-typed dialog result, for a bound UI that does not implement [extension.DialogValueUIContext].
+func stringDialogValue(text string, err error) (json.RawMessage, error) {
+	if err != nil {
+		return nil, err
+	}
+	encoded, _ := json.Marshal(text)
+	return encoded, nil
+}
+
+// dialogValueResult is the ui.select, ui.input and ui.editor reply: member carries the dialog's JSON result as the user's client sent it (rpc-mode.ts resolves
+// `"value" in r ? r.value : undefined`), so it can be any JSON value, `null` included. An undefined result (context.Canceled) is {member: "", ok: false}.
+func dialogValueResult(member string, value json.RawMessage, err error) (*CallResultPayload, error) {
 	if err != nil {
 		if !errors.Is(err, context.Canceled) {
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: err.Error()}}, nil
 		}
-		result, _ := json.Marshal(map[string]any{"text": "", "ok": false})
+		result, _ := json.Marshal(map[string]any{member: "", "ok": false})
 		return &CallResultPayload{Result: result}, nil
 	}
-	result, _ := json.Marshal(map[string]any{"text": text, "ok": true})
+	result, _ := json.Marshal(map[string]any{member: value, "ok": true})
 	return &CallResultPayload{Result: result}, nil
 }
 

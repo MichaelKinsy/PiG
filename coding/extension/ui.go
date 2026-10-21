@@ -2,6 +2,7 @@ package extension
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 )
 
@@ -21,6 +22,18 @@ type WorkingMessageClearer interface {
 // label and falls back to SetHiddenThinkingLabel("") for a UIContext that does not implement it.
 type HiddenThinkingLabelClearer interface {
 	ClearHiddenThinkingLabel()
+}
+
+// DialogValueUIContext is implemented by a [UIContext] whose dialogs resolve with the JSON value the user's client sent, as Pi's RPC mode does: rpc-mode.ts:137-150 and 254-266 resolve
+// `"value" in r ? r.value : undefined` and `"confirmed" in r ? r.confirmed : false` without checking the type, so an extension can observe a number, `null`, an object or an array.
+// The extension host answers an SDK's ui.select, ui.confirm, ui.input and ui.editor calls through these methods when the bound UI has them, and falls back to the string and bool
+// methods of [UIContext] otherwise. Each returns the member's raw JSON; an undefined result (cancelled, timed out, aborted, or a response without a value) is [context.Canceled] for select, input and
+// editor, and `false` for confirm.
+type DialogValueUIContext interface {
+	SelectValue(ctx context.Context, title string, options []string, opts ExtensionUIDialogOptions) (json.RawMessage, error)
+	ConfirmValue(ctx context.Context, title, message string, opts ExtensionUIDialogOptions) (json.RawMessage, error)
+	InputValue(ctx context.Context, title, placeholder string, opts ExtensionUIDialogOptions) (json.RawMessage, error)
+	EditorValue(ctx context.Context, title, prefill string) (json.RawMessage, error)
 }
 
 // UIContext is the per-mode UI surface for extensions.
