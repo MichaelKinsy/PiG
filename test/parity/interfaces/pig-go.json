@@ -136792,6 +136792,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen#unreadAtRuntime",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen",
+      "name": "unreadAtRuntime",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(relative string) bool"
+      },
+      "shapeHash": "sha256:fcbcf6caa4b24771a31f56ff89bed04c2f0d92d7e8c85fdb1fe109b2b18e9952"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen#writeGenerated",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimegen",
       "name": "writeGenerated",
