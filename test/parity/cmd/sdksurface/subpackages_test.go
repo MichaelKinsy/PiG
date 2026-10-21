@@ -26,6 +26,8 @@ func TestSubpackageSymbolsAreQualified(t *testing.T) {
 	root := t.TempDir()
 	writeTree(t, root, map[string]string{
 		"extensions/sdk/tui/text.go":                "package tui\n\nfunc VisibleWidth(s string) int { return len(s) }\nfunc hidden() {}\n\ntype Key struct{}\n\nfunc (Key) Matches() bool { return true }\n",
+		"extensions/sdk/tui/alias.go":               "package tui\n\nimport \"github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/e\"\n\ntype KeybindingsManager = e.Manager\n",
+		"extensions/sdk/tui/internal/e/mgr.go":      "package e\n\ntype Manager struct{ Name string }\n\nfunc (Manager) GetKeys() []string { return nil }\nfunc (Manager) hidden() {}\n",
 		"extensions/sdk/tui/internal/e/e.go":        "package e\n\nfunc Engine() {}\n",
 		"extensions/sdk/upgrade/u.go":               "package upgrade\n\nfunc Rewrite() {}\n",
 		"extensions/sdk/frontend/f.go":              "package frontend\n\nfunc Draw() {}\n",
@@ -49,7 +51,7 @@ func TestSubpackageSymbolsAreQualified(t *testing.T) {
 		name string
 		want bool
 	}{
-		{goSyms, "tui.VisibleWidth", true}, {goSyms, "tui.Key", true}, {goSyms, "tui.Key.Matches", true}, {goSyms, "frontend.Draw", true},
+		{goSyms, "tui.VisibleWidth", true}, {goSyms, "tui.Key", true}, {goSyms, "tui.Key.Matches", true}, {goSyms, "frontend.Draw", true}, {goSyms, "tui.KeybindingsManager.GetKeys", true}, {goSyms, "tui.KeybindingsManager.Name", true}, {goSyms, "tui.KeybindingsManager.hidden", false}, {goSyms, "tui.Manager.GetKeys", false},
 		{goSyms, "VisibleWidth", false}, {goSyms, "tui.hidden", false}, {goSyms, "tui.Engine", false}, {goSyms, "upgrade.Rewrite", false},
 		{rs, "tui::visible_width", true}, {rs, "tui::Segments", true}, {rs, "tui::Segments::first", true}, {rs, "tui::Segments.width", true},
 		{rs, "tui::matches_key", true}, {rs, "tui::declared_in_mod", true},

@@ -17,6 +17,9 @@ import (
 // Go and Python: every exported symbol of the package. Rust: only what the module re-exports with `pub use`
 // (or declares `pub` itself in mod.rs), and only items with plain `pub`: a pub(crate) item is not API.
 
+// sdkModulePath is the module whose internal packages a subpackage alias may point into.
+const sdkModulePath = "github.com/MichaelKinsy/PiG"
+
 // goSubpackageSkip are directories of extensions/sdk that are not importable SDK API.
 var goSubpackageSkip = map[string]bool{"internal": true, "testdata": true, "upgrade": true, "kit": true}
 
@@ -63,6 +66,23 @@ func addSubpackageSymbols(root string, goSyms, rs, py symbolSet) error {
 			continue // a directory with no Go files is not a package
 		}
 		qualify(goSyms, pkg.symbols, name+".")
+		// A type alias of a type another package of this module declares (type X = internal.Y) has that type's methods and
+		// fields: they are the subpackage's API under the alias's name.
+		for _, a := range pkg.aliases {
+			rel, ok := strings.CutPrefix(a.importPath, sdkModulePath+"/")
+			if !ok {
+				continue
+			}
+			target, err := parseGoPackage(filepath.Join(root, rel))
+			if err != nil {
+				return fmt.Errorf("go %s: alias %s: %w", name, a.name, err)
+			}
+			for sym := range target.symbols {
+				if rest, ok := strings.CutPrefix(sym, a.target+"."); ok {
+					goSyms[name+"."+a.name+"."+rest] = true
+				}
+			}
+		}
 	}
 
 	rsRoot := filepath.Join(root, "extensions/sdk-rs/src")
