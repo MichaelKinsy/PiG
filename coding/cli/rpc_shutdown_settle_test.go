@@ -6,6 +6,9 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Pi starts shutdown() for stdin's end in an event-loop iteration after the line, so the microtasks of earlier commands and of a published agent_end finish first (rpc-mode.ts:355-360,726-742,802-805). Stdin end therefore settles before it removes the signal handlers, and a settle that reports the mode ended abandons the shutdown.
@@ -85,5 +88,35 @@ func TestRPCShutdownSignalDuringTheFlushEndsByTheSignal(t *testing.T) {
 	defer mu.Unlock()
 	if len(exits) != 0 || !slices.Equal(died, []os.Signal{syscall.SIGTERM}) {
 		t.Fatalf("exits = %v, died = %v after a signal during the flush; want no exit and [SIGTERM]", exits, died)
+	}
+}
+
+// Stdin end while a signal-triggered dispose is still running exits 0 at once (rpc-mode.ts:728-731). Pig's exit stops the extension processes before it ends the process, which completes the pending dispose, and the signal's own exit (128+SIGTERM) then runs beside the first one. The first exit decides the status (macOS cli-2 TestRPCInputEndDuringSignalShutdownExitsZero: wait status 143, want exit 0). The fake exit forces that interleaving: it completes the dispose and waits for the signal's shutdown to finish before it records its own status.
+func TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus(t *testing.T) {
+	var mu sync.Mutex
+	var exits []int
+	release := make(chan struct{})
+	disposing := make(chan struct{})
+	signalDone := make(chan struct{})
+	s := newRPCShutdown(func() {}, func() {}, func() { close(disposing); <-release }, func() {}, func(code int) {
+		if code == 0 {
+			close(release)
+			select {
+			case <-signalDone:
+			case <-time.After(testbudget.Wait(t)):
+				t.Error("the signal's shutdown did not finish after its dispose completed")
+			}
+		}
+		mu.Lock()
+		exits = append(exits, code)
+		mu.Unlock()
+	}, func(os.Signal) {})
+	go func() { s.signal(syscall.SIGTERM); close(signalDone) }()
+	<-disposing
+	s.inputEnd()
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.Equal(exits, []int{0}) {
+		t.Fatalf("exits = %v, want only the stdin end's [0]", exits)
 	}
 }

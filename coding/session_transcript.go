@@ -35,16 +35,15 @@ func withInstructionBaseline(current, messages []agent.AgentMessage) []agent.Age
 	return messages
 }
 
-// preparePrompt validates the Session's native model and applies its instruction
-// baseline when the first user prompt runs. The agent adds active tool declarations.
+// preparePrompt validates the Session's native model and records the run's prompt
+// sections ahead of its starting messages, whether a user prompt or a custom message
+// starts the run (agent-session.ts _prepareRun, _preparePromptAndToolLoadout). The
+// agent adds active tool declarations.
 func (s *Session) preparePrompt(_ context.Context, messages []agent.AgentMessage) ([]agent.AgentMessage, error) {
 	if err := s.validatePromptModel(); err != nil {
 		return nil, err
 	}
 	messages = append(messages, s.takeAgentStartMessages()...)
-	if !slices.ContainsFunc(messages, func(message agent.AgentMessage) bool { return message.User != nil }) {
-		return messages, nil
-	}
 	update, err := s.promptSectionUpdate(append(s.agent.Messages(), messages...))
 	if err != nil {
 		return nil, err

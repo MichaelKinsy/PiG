@@ -1,3 +1,3 @@
 ### Fixed
 
-- Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`, `cli-v0.84.0.json`, `behavior-inputs-v0.84.0.json`, `behavior-input-mapping-v0.84.0.json`) are back, since `interface-delta` reads them as the base of the current delta; the stale testprune ledger entries and bug ledger entries orphaned by the 0.5.0 squash merge are gone. <!-- fix: 0e3411c597 -->
+- `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again. The 0.5.0 Go module was larger than the Go module size limit because it carried parity ledgers for every earlier Pi pin; only the current pin's ledgers ship now, and v0.5.0 is retracted. <!-- fix: b341a82e9d -->

@@ -1736,6 +1736,44 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	}
 }
 
+// Pi's RPC mode ignores a component factory without calling it (rpc-mode.ts setWidget): the Node runtime must not run it outside the TUI.
+func TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI(t *testing.T) {
+	skipWithoutNodeExtensions(t)
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	shortSockDir(t)
+	h := newTestHost(t)
+	h.SetMode("rpc")
+	bridge := NewUIBridge(func() {})
+	h.SetUIBridge(bridge)
+	var mu sync.Mutex
+	var requests []string
+	bridge.SetWidgetRequestFunc(func(_ string, key string, lines []string, _ *extension.ExtensionWidgetOptions) {
+		mu.Lock()
+		defer mu.Unlock()
+		requests = append(requests, key+":"+strings.Join(lines, ","))
+	})
+	defer h.Shutdown("test done")
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	ext, err := h.Load(ctx, ExtConfig{Name: "widget-factory", Source: filepath.Join("testdata", "widget-factory.mjs"), Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge.SetUIContext(extension.NoopUIContext)
+	h.NotifyWidth(80)
+	if err := ext.Commands["widget_factory"].Handler(context.Background(), ""); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(requests) != 0 {
+		t.Fatalf("RPC mode forwarded %q for a component factory, want nothing", requests)
+	}
+}
+
 func TestHost_Integration_TSWidgetFactoryRendersInvalidatesResizesAndClears(t *testing.T) {
 	skipWithoutNodeExtensions(t)
 	if testing.Short() {
@@ -1743,6 +1781,7 @@ func TestHost_Integration_TSWidgetFactoryRendersInvalidatesResizesAndClears(t *t
 	}
 	shortSockDir(t)
 	h := newTestHost(t)
+	h.SetMode("tui") // a component factory runs only where the TUI renders it
 	bridge := NewUIBridge(func() {})
 	h.SetUIBridge(bridge)
 	defer h.Shutdown("test done")

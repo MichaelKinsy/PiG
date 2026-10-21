@@ -228,6 +228,13 @@ func (p *PushProxy) Clear() {
 }
 
 // Lines returns the current cached lines (for testing/inspection).
+// IsFrame reports whether the proxy holds a frame a component rendered at a width, as opposed to a string list the host lays out.
+func (p *PushProxy) IsFrame() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.text == nil && (p.linesWidth != 0 || p.view != nil)
+}
+
 func (p *PushProxy) Lines() []string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
