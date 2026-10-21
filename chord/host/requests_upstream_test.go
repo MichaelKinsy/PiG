@@ -515,9 +515,12 @@ func TestRequests5RootsOfAChildThatConnectedBehindTheServerAreAdmittedInTheServe
 		err   error
 	}
 	result := make(chan outcome, 1)
-	// A worker root of code version 1 (an eager object's listener, say) calls the server after connecting.
+	// A worker root of code version 1 (an eager object's listener, say) calls the server after connecting. In Pi the root
+	// has started when worker.root returns; here it has once fn runs, so the worker connects only after that.
+	entered := make(chan struct{})
 	go func() {
 		value, err := worker.Root(func(ctx Ctx) (any, error) {
+			close(entered)
 			gate.wait()
 			ref, err := ctx.Get(echo, requestsEmpty(), nil)
 			if err != nil {
@@ -527,6 +530,11 @@ func TestRequests5RootsOfAChildThatConnectedBehindTheServerAreAdmittedInTheServe
 		}, RootOptions{})
 		result <- outcome{value, err}
 	}()
+	select {
+	case <-entered:
+	case got := <-result:
+		t.Fatalf("the worker's root ended before it started: %v, %v", got.value, got.err)
+	}
 	down, up := MemoryLinkPair()
 	name := "session:S1"
 	if err := server.Accept(down, AcceptOptions{Principal: map[string]any{"worker": "S1"}, Kind: KindHost, Name: &name}); err != nil {

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -261,6 +262,75 @@ func TestHostManagerStopsAnIdleChildWhenKeepAliveSaysSo(t *testing.T) {
 	defer mu.Unlock()
 	if len(exits) != 1 {
 		t.Fatalf("exits = %+v", exits)
+	}
+}
+
+// manager.ts `current.exited.then` sets the status to stopped and calls onExit in one callback: onExit sees the manager
+// stopped, and no other code sees it stopped before onExit has returned. Here the other goroutines wait for the report.
+func TestHostManagerReadsStoppedInsideOnExitAndNowhereElseBeforeItReturns(t *testing.T) {
+	driver := newFakeDriver()
+	var manager *HostManager
+	type inside struct {
+		status   string
+		instance Instance
+	}
+	inExit, release := make(chan inside), make(chan struct{})
+	var returned atomic.Bool
+	manager = CreateHostManager(HostManagerOptions{Driver: driver, OnExit: func(Exit) {
+		inExit <- inside{manager.Status(), manager.Instance()}
+		<-release
+		returned.Store(true)
+	}})
+	startReady(t, manager, driver)
+	driver.instances[0].end(Exit{Code: new(0)})
+	if got := <-inExit; got.status != HostManagerStopped || got.instance != nil {
+		t.Fatalf("inside onExit: status %s, instance %v; want stopped and none", got.status, got.instance)
+	}
+	// onExit has not returned. Another goroutine's reads wait for it: none may come back before it did.
+	readers := make(chan string, 3)
+	go func() { readers <- manager.Status() }()
+	go func() { readers <- fmt.Sprint(manager.Instance()) }()
+	go func() { readers <- fmt.Sprint(manager.Liveness()) }()
+	select {
+	case got := <-readers:
+		t.Fatalf("a goroutine read %q while onExit was still running", got)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	for range 3 {
+		<-readers
+	}
+	if !returned.Load() {
+		t.Fatal("a read came back before onExit returned")
+	}
+	if status := manager.Status(); status != HostManagerStopped {
+		t.Fatalf("status after the report = %s, want stopped", status)
+	}
+}
+
+// upstream's onExit may start the child again (manager.start() from the callback sees it stopped); the gate that keeps
+// other goroutines out until onExit returns must not keep out the callback itself.
+func TestHostManagerOnExitMayStartTheChildAgain(t *testing.T) {
+	driver := newFakeDriver()
+	var manager *HostManager
+	restarted := make(chan error, 1)
+	var once sync.Once
+	manager = CreateHostManager(HostManagerOptions{Driver: driver, OnExit: func(Exit) {
+		once.Do(func() {
+			_, err := manager.Start()
+			restarted <- err
+		})
+	}})
+	startReady(t, manager, driver)
+	driver.instances[0].end(Exit{Code: new(1)})
+	second := <-driver.spawned
+	second.waitListening(t)
+	second.emit(ControlMessage{Type: ControlReady})
+	if err := <-restarted; err != nil {
+		t.Fatalf("start from onExit: %v", err)
+	}
+	if status := manager.Status(); status != HostManagerRunning {
+		t.Fatalf("status after the restart = %s, want running", status)
 	}
 }
 
