@@ -1052,6 +1052,21 @@ fn main() {
         },
     );
     ext.tool(
+        "dialog_order",
+        "Open a select dialog titled by the call and report the answer",
+        json!({"type": "object", "properties": {"title": {"type": "string"}, "exec": {"type": "boolean"}}}),
+        |ctx, params: Value| {
+            let title = params["title"].as_str().unwrap_or("").to_string();
+            if params["exec"].as_bool() == Some(true) {
+                let _ = ctx.exec("dialog-order-exec", &[]);
+            }
+            match ctx.select(&title, &["a", "b"]) {
+                Ok((selected, _)) => ToolResult::text(format!("dialog:{title}={selected}")),
+                Err(error) => ToolResult::Error(error.to_string()),
+            }
+        },
+    );
+    ext.tool(
         "throw_probe",
         "Throw a value of the requested kind",
         json!({"type": "object", "properties": {"kind": {"type": "string"}}}),
@@ -1803,6 +1818,17 @@ fn main() {
         |ctx, _args| match ctx.append_entry("conformance-entry", json!("hello-entry")) {
             Ok(_) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    ext.command(
+        "append-entries-probe",
+        "Append a custom entry for each comma-separated type",
+        |ctx, args| {
+            for custom_type in args.split(',') {
+                // Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
+                let _ = ctx.append_entry(custom_type, json!(format!("data-of-{custom_type}")));
+            }
+            CommandResult::Ok
         },
     );
     ext.command(

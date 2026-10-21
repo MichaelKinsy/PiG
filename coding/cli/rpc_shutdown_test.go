@@ -623,7 +623,8 @@ func TestRPCShutdownTriggers(t *testing.T) {
 		expect(t, h, "exit 000")
 		close(h.release)
 		<-done
-		expect(t, h, "exit 143")
+		// The process ended at the first exit; the dispose finishing afterwards does not exit 143.
+		expect(t, h)
 	})
 	t.Run("a shutdown request during a stdin-end dispose exits 0 at once", func(t *testing.T) {
 		h := newHarness(true)
@@ -632,7 +633,8 @@ func TestRPCShutdownTriggers(t *testing.T) {
 		expect(t, h, "exit 000")
 		close(h.release)
 		<-done
-		expect(t, h, "flush", "exit 000")
+		// The process ended at the first exit; the dispose finishing afterwards neither flushes nor exits again.
+		expect(t, h)
 	})
 	t.Run("stdin end after a finished dispose does nothing", func(t *testing.T) {
 		h := newHarness(false)

@@ -780,6 +780,17 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": f"start#{number} n={params.get('n')}"}
 
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
+
+    def dialog_order(ctx, params):
+        if params.get("exec"):
+            try:
+                ctx.exec("dialog-order-exec", [])
+            except RuntimeError:
+                pass
+        selected, _ = ctx.select(str(params.get("title")), ["a", "b"])
+        return {"content": f"dialog:{params.get('title')}={selected}"}
+
+    ext.tool("dialog_order", "Open a select dialog titled by the call and report the answer", {"type": "object", "properties": {"title": {"type": "string"}, "exec": {"type": "boolean"}}}, dialog_order)
     ext.tool("tool_error", "Return a thrown tool error", {"type": "object"}, tool_error)
     ext.tool("tool_is_error", "Return a structured tool error result", {"type": "object"}, tool_is_error)
     ext.tool(
@@ -1109,6 +1120,16 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("set_model", "Switch to the model in the arguments", set_model)
     ext.command("append_entry", "Append a custom entry", lambda ctx, args: ctx.append_entry("conformance-entry", "hello-entry"))
+
+    def append_entries_probe(ctx: pig_sdk.Context, args: str) -> None:
+        # Pi's appendEntry returns nothing and never fails, so a refusal the SDK reports is dropped here; the row reads the session afterwards.
+        for custom_type in args.split(","):
+            try:
+                ctx.append_entry(custom_type, f"data-of-{custom_type}")
+            except pig_sdk.HostCallError:
+                pass
+
+    ext.command("append-entries-probe", "Append a custom entry for each comma-separated type", append_entries_probe)
 
     def event_field_probe(ctx, args):
         name, field = args.split()

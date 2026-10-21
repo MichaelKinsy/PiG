@@ -1,0 +1,30 @@
+# Pi 1.3.0 model-registry.ts:48-52 keeps the ModelRuntime in the ModelRegistry's `runtime` field; sdk.ts accepts it as createAgentSession's `modelRuntime`, and agent-session.ts:1651-1655 asks it hasConfiguredAuth(provider) before every prompt. An extension that passes ctx.modelRegistry.runtime to a nested Session (the completion auditor of pi-goal-x does) shares the parent's providers and credentials, so the nested request carries the parent's API key.
+# PiG's Node runtime handed the nested Session its own extension-host object as the ModelRuntime, so the prompt failed with `this._modelRuntime.hasConfiguredAuth is not a function`.
+name = "53-node-shared-model-runtime-session"
+description = "A Node extension's nested Session shares ctx.modelRegistry's model runtime and the parent's credentials"
+covers = ["packages/coding-agent/src/core/model-registry.ts", "packages/coding-agent/src/core/sdk.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+model = "test-faux/faux-1"
+
+[rpc]
+cwd = "."
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/shared/result.json"
+
+[[rpc.steps]]
+line = '{"id":"child","type":"prompt","message":"/child-shared {{TEMP}}/shared/result.json"}'
+wait_contains = ["shared-artifact-written"]
+wait_timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/ext/child-shared-runtime.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/child-shared-runtime.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+both_contain = ['"id":"child","type":"response","command":"prompt","success":true']
+artifact_normalized_equal = true
+artifact_both_contain = ['"answer": "shared answer"', '"sharedRuntime": true', '"configured": true', '"unconfigured": false', '"oauth": false', '"authorization": "Bearer shared-key"']

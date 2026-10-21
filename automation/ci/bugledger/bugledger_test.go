@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -310,6 +311,89 @@ func TestExplicitFixMarkerNamesTheFixCommit(t *testing.T) {
 	r.write("changelog.d/b.md", "### Fixed\n\n- Bad marker. <!-- fix: deadbeef00 -->\n")
 	if _, err := build(r.root, "0.4.1"); err == nil || !strings.Contains(err.Error(), "not a commit") {
 		t.Fatalf("a marker that names no commit must fail, got %v", err)
+	}
+}
+
+// writeFiles adds n small data files, the bulk of a squash.
+func (r testRepo) writeFiles(n int) {
+	r.t.Helper()
+	for i := range n {
+		r.write(fmt.Sprintf("bulk/f%04d.txt", i), "x\n")
+	}
+}
+
+// A commit that touches more than maxCommitFiles files is a squash or a merge. The 0.5.0 squash (13,725 files) was credited as the fix of every release note with no fix marker, and its ~11,000 tests grew the ledger from 2.1 MB to 9.8 MB. The ledger now refuses, naming the entry.
+func TestTheLedgerRefusesToAttributeTheTestsOfASquash(t *testing.T) {
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	r.writeFiles(maxCommitFiles)
+	r.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes.\n")
+	squashed := r.commit("PiG 0.5.0 (#213)", ".")
+
+	// No marker: the note is located at the squash, which wrote it.
+	_, err := build(r.root, "0.4.1")
+	if err == nil {
+		t.Fatal("a release note whose only commit is a squash must fail the build")
+	}
+	for _, want := range []string{"Empty input no longer crashes", "commit " + squashed[:10], fmt.Sprint(maxCommitFiles + 3), "squash", "<!-- fix: <commit> -->"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q lacks %q", err, want)
+		}
+	}
+
+	// A marker that names the squash is refused the same way.
+	r.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+squashed[:10]+" -->\n")
+	r.commit("Name the squash", "changelog.d/a.md")
+	if _, err := build(r.root, "0.4.1"); err == nil || !strings.Contains(err.Error(), "squash") {
+		t.Fatalf("a marker naming a squash must fail the build, got %v", err)
+	}
+
+	// A marker that names a small fix commit attributes that commit's tests only.
+	r.write("b.go", "package x\n")
+	r.write("b_test.go", "package x\n\nfunc TestBFixed(t *testing.T) {}\n")
+	fix := r.commit("b: handle empty input", "b.go", "b_test.go")
+	r.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+fix[:10]+" -->\n")
+	r.commit("Name the fix", "changelog.d/a.md")
+	l, err := build(r.root, "0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Entries) != 1 || !slices.Equal(l.Entries[0].Tests, []string{"b_test.go::TestBFixed"}) {
+		t.Fatalf("entries = %+v", l.Entries)
+	}
+}
+
+// The threshold is the number of files a commit touches: a commit at it still counts, one file above it does not.
+func TestTheSquashThresholdIsTheCountOfTouchedFiles(t *testing.T) {
+	for _, c := range []struct {
+		extra   int
+		refused bool
+	}{{0, false}, {1, true}} {
+		r := newFixture(t)
+		r.write("a.go", "package x\n")
+		r.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+		r.writeFiles(maxCommitFiles - 2 + c.extra)
+		fix := r.commit("a: handle empty input", ".")
+		r.write("changelog.d/a.md", "### Fixed\n\n- Empty input no longer crashes. <!-- fix: "+fix[:10]+" -->\n")
+		r.commit("Note the fix", "changelog.d/a.md")
+		_, err := build(r.root, "0.4.1")
+		if refused := err != nil; refused != c.refused {
+			t.Errorf("%d files: refused = %v (%v), want %v", maxCommitFiles+c.extra, refused, err, c.refused)
+		}
+	}
+}
+
+// A fix-titled commit with no release note becomes an entry of its own; a squash cannot be one.
+func TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed(t *testing.T) {
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestAFixed(t *testing.T) {}\n")
+	r.writeFiles(maxCommitFiles)
+	r.commit("Fix everything (#9)", ".")
+	_, err := build(r.root, "0.4.1")
+	if err == nil || !strings.Contains(err.Error(), "Fix everything") || !strings.Contains(err.Error(), "Bug-Ledger: exempt") {
+		t.Fatalf("a fix-titled squash must be refused with the way out, got %v", err)
 	}
 }
 

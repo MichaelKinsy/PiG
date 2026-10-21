@@ -602,3 +602,21 @@ func TestExtensionUpgradeAllDiscoversAgentExtensions(t *testing.T) {
 		t.Fatal("the extension was not upgraded")
 	}
 }
+
+// A POSIX shell reads a backslash as an escape, so a path holding one prints quoted; Windows paths use it as the separator and stay plain (and a "~" in one, as in the 8.3 name RUNNER~1, is quoted on both).
+func TestCommandWordQuotesForTheShellOfThePlatform(t *testing.T) {
+	for _, tc := range []struct{ goos, word, want string }{
+		{"linux", `/tmp/a\b`, `'/tmp/a\b'`},
+		{"darwin", `/tmp/a\b`, `'/tmp/a\b'`},
+		{"linux", "/tmp/my ext", "'/tmp/my ext'"},
+		{"linux", "/tmp/it's", `'/tmp/it'\''s'`},
+		{"linux", "/tmp/ext-1_a.b", "/tmp/ext-1_a.b"},
+		{"windows", `C:\Users\me\ext`, `C:\Users\me\ext`},
+		{"windows", `C:\Users\RUNNER~1\ext`, `"C:\Users\RUNNER~1\ext"`},
+		{"windows", `C:\Users\my name\ext`, `"C:\Users\my name\ext"`},
+	} {
+		if got := commandWordFor(tc.goos, tc.word); got != tc.want {
+			t.Errorf("commandWordFor(%s, %s) = %s, want %s", tc.goos, tc.word, got, tc.want)
+		}
+	}
+}

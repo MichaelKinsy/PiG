@@ -75,6 +75,13 @@ export function isHostCancellation(error) {
   return hostCancellations.has(error);
 }
 
+// A host call the host answered with an error: it ran the call and refused it, so the call took no effect. A caller that showed the effect ahead of the answer (RuntimeSessionManager.appendCustomEntry) takes it back. A cancelled call (isHostCancellation) has no answer, and whether it took effect is unknown.
+const hostRejections = new WeakSet();
+
+export function isHostRejection(error) {
+  return hostRejections.has(error);
+}
+
 process.on("unhandledRejection", (reason) => {
   if (hostCancellations.has(reason)) return;
   // Node raises only when no listener handles the event; this listener is registered before any extension loads.
@@ -270,7 +277,9 @@ class RuntimeSessionManager {
 
   // _entries is the replicated log followed by the entries appendCustomEntry
   // appended that the host has not yet sent back, so a read sees an append at
-  // once, as upstream's in-process log does.
+  // once, as upstream's in-process log does. The host's log is the truth: an
+  // appended entry stays only until the host sends it back (it then takes the
+  // host's record) or refuses it (retractPending).
   _entries() {
     this.runtime.ensureSessionLog();
     const entries = this.runtime.state.session?.entries || [];
@@ -286,14 +295,22 @@ class RuntimeSessionManager {
     const replicated = new Map();
     entries.forEach((entry, index) => replicated.set(entry?.id, index));
     const unconfirmed = [];
+    let collided = false;
     for (const entry of pending) {
       const index = replicated.get(entry.id);
-      if (index === undefined) {
+      const hosted = index === undefined ? undefined : entries[index];
+      if (hosted === undefined) {
         unconfirmed.push(entry);
         continue;
       }
-      // The host's copy holds the same values; keep the object the caller
-      // holds, as upstream's log holds the entry it returned.
+      // A record of another kind under the id is not this entry: the host refuses an id its log holds, and the refusal retracts an append. The entries adoptHostLeafEntry adds (a label, a session name, a custom message) are the host's own records, so their copies match.
+      if (hosted.type !== entry.type || hosted.customType !== entry.customType) {
+        collided = true;
+        unconfirmed.push(entry);
+        continue;
+      }
+      // The host's copy holds the same values, except that it links the entry to its own leaf when it appends it, not to the entry this process showed last (an append the host refused, a message it appended meanwhile). Keep the object the caller holds, as upstream's log holds the entry it returned, with the host's parent.
+      entry.parentId = hosted.parentId;
       entries[index] = entry;
     }
     if (unconfirmed.length !== pending.length) {
@@ -305,7 +322,7 @@ class RuntimeSessionManager {
       return entries;
     }
     const combined = entries.concat(unconfirmed);
-    this._view = { base: entries, baseLength: entries.length, pending: this.runtime.pendingEntries, pendingLength: unconfirmed.length, entries: combined };
+    this._view = { base: entries, baseLength: entries.length, pending: this.runtime.pendingEntries, pendingLength: unconfirmed.length, entries: combined, collided };
     return combined;
   }
 
@@ -424,6 +441,7 @@ class RuntimeSessionManager {
   // extension (upstream pi.appendEntry calls it). The id is generated here,
   // against the replicated log, so it returns synchronously as upstream's does.
   // event marks pi.appendEntry, after which the host emits entry_appended as upstream's runtime action does (agent-session.ts:3406-3411); a direct ctx.sessionManager.appendCustomEntry only writes the log.
+  // Upstream's append cannot fail. Here the entry is shown before the host has appended it, so a host that answers with an error takes it back out.
   appendCustomEntry(customType, data, event = false) {
     const entry = {
       type: "custom",
@@ -436,8 +454,36 @@ class RuntimeSessionManager {
     this.runtime.pendingEntries.push(entry);
     const direct = { id: entry.id, timestamp: entry.timestamp };
     if (event) direct.event = true;
-    this.runtime.fireAndForget("appendEntry", { customType, data, direct });
+    this.runtime.fireAndForget("appendEntry", { customType, data, direct }, () => this.retractPending(entry.id));
     return entry.id;
+  }
+
+  // retractPending removes the entry appendCustomEntry showed when the host refused to append it, and only that entry: the others in flight stay. The entries appended after it were linked to it here, so they take its parent, where the host links them when it appends them; the host's copy corrects any other parent when it arrives. An entry the replicated log already holds is the host's and stays.
+  retractPending(id) {
+    // Confirm what the replicated log holds first, so the refusal drops only what the host does not have.
+    this._entries();
+    const pending = this.runtime.pendingEntries;
+    const at = pending.findIndex((entry) => entry.id === id);
+    if (at < 0) return;
+    const dropped = pending[at];
+    for (let i = at + 1; i < pending.length; i++) {
+      if (pending[i].parentId === dropped.id) pending[i].parentId = dropped.parentId;
+    }
+    pending.splice(at, 1);
+    // The view and the id index follow the removal, so a refusal costs the entries in flight and not the log. A view that does not match, or one that sits beside a host record of the same id, is rebuilt by the next read.
+    const view = this._view;
+    const position = view === undefined ? -1 : view.baseLength + at;
+    if (view === undefined || view.collided || view.pending !== pending || view.pendingLength !== pending.length + 1 || view.entries[position] !== dropped) {
+      this._view = undefined;
+      return;
+    }
+    view.entries.splice(position, 1);
+    view.pendingLength = pending.length;
+    const index = this._cachedIndex;
+    if (index !== undefined && index.entries === view.entries && index.count > position) {
+      index.count--;
+      if (index.byId.get(dropped.id) === dropped) index.byId.delete(dropped.id);
+    }
   }
 }
 
@@ -482,41 +528,47 @@ class SetupSessionManager extends ReplacedSessionManager {
 // getProviderAuth and request auth ask the host; registrations go to the host,
 // which shares them with every extension as upstream's one runtime does.
 class RuntimeModelRegistry {
-  constructor(runtime) { this.runtime = runtime; }
+  constructor(host) { this.host = host; }
 
-  _providerState(provider) { return this.runtime.registryState.providers?.[provider]; }
+  // model-registry.ts:48-52 keeps the ModelRuntime in a private field that createAgentSession's `modelRuntime` option takes: an extension that starts a nested Session shares the parent's auth and providers by passing `ctx.modelRegistry.runtime`.
+  get runtime() {
+    this.modelRuntime ??= new RuntimeModelRuntime(this);
+    return this.modelRuntime;
+  }
+
+  _providerState(provider) { return this.host.registryState.providers?.[provider]; }
 
   async refresh(options = {}) {
-    const result = await this.runtime.call("refreshModelRegistry", {
+    const result = await this.host.call("refreshModelRegistry", {
       allowNetwork: options?.allowNetwork,
       providers: options?.providers,
       force: options?.force,
     });
-    if (result?.state) this.runtime.applyModelRegistryState(result.state);
+    if (result?.state) this.host.applyModelRegistryState(result.state);
     const errors = new Map();
     for (const [provider, message] of Object.entries(result?.errors ?? {})) errors.set(provider, new Error(message));
     return { aborted: result?.aborted === true || options?.signal?.aborted === true, errors };
   }
-  getError() { return this.runtime.registryState.error || undefined; }
-  getAll() { return [...this.runtime.allModels().values()]; }
+  getError() { return this.host.registryState.error || undefined; }
+  getAll() { return [...this.host.allModels().values()]; }
   getAvailable() { return this.getAll().filter((model) => {const state=this._providerState(model.provider);return state?.configured===true&&(!state.availableModelIds||state.availableModelIds.includes(model.id))}); }
   find(provider, modelId) {
-    return this.runtime.getModel(provider, modelId);
+    return this.host.getModel(provider, modelId);
   }
   // model-registry.ts:71-79,135-177. Chat models come from the registry snapshot's models and the others from its typedModels, in the host's order (model-registry.ts:145-161); getAvailableOfType and classify ask the host.
   findOfType(type, provider, modelId) { return this.getModelOfType(type, provider, modelId); }
   getModelsOfType(type, provider) {
-    const typed = this.runtime.registryState.typedModels ?? [];
+    const typed = this.host.registryState.typedModels ?? [];
     return [...this.getAll(), ...typed].filter((model) => (model.type ?? "chat") === type && (provider === undefined || model.provider === provider));
   }
   async getAvailableOfType(type, provider, options) {
-    return (await this.runtime.call("getAvailableOfType", { type, provider })) ?? [];
+    return (await this.host.call("getAvailableOfType", { type, provider })) ?? [];
   }
   getModelOfType(type, provider, modelId) { return this.getModelsOfType(type, provider).find((model) => model.id === modelId); }
   // Never rejects: a failure, and an aborted request, are a result that names the model (model-registry.ts:168-177, model-runtime.ts:800-815). The result is aborted when the caller's signal aborted or, as in the Go, Rust and Python SDKs, when the calling request was cancelled.
   async classify(model, context, options) {
     const signal = options?.signal;
-    const owner = this.runtime.requestContext.getStore();
+    const owner = this.host.requestContext.getStore();
     let onAbort;
     try {
       // The signal and any callback of the options cannot cross the process boundary.
@@ -528,7 +580,7 @@ class RuntimeModelRegistry {
         else if (signal) { onAbort = reason; signal.addEventListener("abort", onAbort, { once: true }); }
       });
       aborted.catch(() => {});
-      const request = this.runtime.call("classify", { model, context, options: sent });
+      const request = this.host.call("classify", { model, context, options: sent });
       return await (signal ? Promise.race([request, aborted]) : request);
     } catch (error) {
       return classifierErrorResult(model, error, signal?.aborted === true || owner?.controller?.signal.aborted === true);
@@ -539,7 +591,7 @@ class RuntimeModelRegistry {
   // Never rejects: a failure, and an aborted request, are a result that names the model (model-registry.ts:181-188, model-runtime.ts:783-798). Like classify, the result is aborted when the caller's signal aborted or the calling request was cancelled.
   async generateImages(model, context, options) {
     const signal = options?.signal;
-    const owner = this.runtime.requestContext.getStore();
+    const owner = this.host.requestContext.getStore();
     let onAbort;
     try {
       // The signal and any callback of the options cannot cross the process boundary.
@@ -551,7 +603,7 @@ class RuntimeModelRegistry {
         else if (signal) { onAbort = reason; signal.addEventListener("abort", onAbort, { once: true }); }
       });
       aborted.catch(() => {});
-      const request = this.runtime.call("generateImages", { model, context, options: sent });
+      const request = this.host.call("generateImages", { model, context, options: sent });
       return await (signal ? Promise.race([request, aborted]) : request);
     } catch (error) {
       return imageErrorResult(model, error, signal?.aborted === true || owner?.controller?.signal.aborted === true);
@@ -560,29 +612,29 @@ class RuntimeModelRegistry {
     }
   }
   // model-registry.ts:211-213 and model-runtime.ts:955-963: the facade's registrations are the runtime's, and its route gets the request alone. pi.registerVirtualModel's route also gets a context (loader.ts:493-501).
-  registerVirtualModel(definition) { this.runtime.registerVirtualModel(Object.assign(Object.create(definition), { route: (request) => definition.route(request) })); }
-  unregisterVirtualModel(provider, id) { this.runtime.unregisterVirtualModel(provider, id); }
+  registerVirtualModel(definition) { this.host.registerVirtualModel(Object.assign(Object.create(definition), { route: (request) => definition.route(request) })); }
+  unregisterVirtualModel(provider, id) { this.host.unregisterVirtualModel(provider, id); }
   hasConfiguredAuth(model) { return this._providerState(model?.provider)?.configured === true; }
   async getApiKeyAndHeaders(model) {
-    return this.runtime.call("getModelAuth", { provider: providerIDFromModel(model), modelId: modelIDFromModel(model) });
+    return this.host.call("getModelAuth", { provider: providerIDFromModel(model), modelId: modelIDFromModel(model) });
   }
   getProviderAuthStatus(provider) {
     const status = this._providerState(provider)?.authStatus;
     return status ? { ...status } : { configured: false };
   }
-  getProvider(provider) { return this.runtime.getRegistryProvider(provider); }
+  getProvider(provider) { return this.host.getRegistryProvider(provider); }
   stream(model, context, options = {}) {
-    return this.runtime.startModelStream(model, context, options);
+    return this.host.startModelStream(model, context, options);
   }
   streamSimple(model, context, options = {}) {
-    return this.runtime.startModelStream(model, context, options,true);
+    return this.host.startModelStream(model, context, options,true);
   }
   complete(model, context, options = {}) {
     return this.stream(model, context, options).result();
   }
   getProviderDisplayName(provider) { return this._providerState(provider)?.name ?? this.getProvider(provider)?.name ?? provider; }
   async getProviderAuth(provider) {
-    return (await this.runtime.call("getProviderAuth", { provider })) ?? undefined;
+    return (await this.host.call("getProviderAuth", { provider })) ?? undefined;
   }
   async getApiKeyForProvider(provider) {
     try {
@@ -595,35 +647,110 @@ class RuntimeModelRegistry {
   registerProvider(providerOrName, config) {
     if (typeof providerOrName === "string") {
       if (!config) throw new Error("Provider config is required when registering by name");
-      this.runtime.registerProvider(providerOrName, config);
+      this.host.registerProvider(providerOrName, config);
       return;
     }
-    this.runtime.registerNativeProvider(providerOrName);
+    this.host.registerNativeProvider(providerOrName);
   }
-  unregisterProvider(providerName) { this.runtime.unregisterProvider(providerName); }
+  unregisterProvider(providerName) { this.host.unregisterProvider(providerName); }
   getRegisteredProviderConfig(providerName) {
-    const local = this.runtime.registeredProviderConfig(providerName);
+    const local = this.host.registeredProviderConfig(providerName);
     if (local) return local;
-    const entry = this.runtime.registryState.registered?.find((candidate) => candidate.name === providerName);
+    const entry = this.host.registryState.registered?.find((candidate) => candidate.name === providerName);
     if (!entry?.config) return undefined;
-    const foreign = this.runtime.foreignProviderConfig(providerName);
+    const foreign = this.host.foreignProviderConfig(providerName);
     if (foreign) return foreign;
     // pig divergence (D78): a registration from a native SDK author is snapshot data, not the author's live configuration object.
     return entry.config;
   }
   // Native Providers remain local when their owner shares the cell; other owners expose connection-bound method handles.
   getRegisteredNativeProvider(providerName) {
-    const native = this.runtime.nativeProviderObjects.get(providerName)?.provider;
+    const native = this.host.nativeProviderObjects.get(providerName)?.provider;
     if (native) return native;
-    const declaration = this.runtime.registryState.registered?.find(entry => entry.name === providerName)?.native;
-    return declaration ? remoteProvider(this.runtime, declaration, ModelEventStream) : undefined;
+    const declaration = this.host.registryState.registered?.find(entry => entry.name === providerName)?.native;
+    return declaration ? remoteProvider(this.host, declaration, ModelEventStream) : undefined;
   }
   getRegisteredProviderIds() {
     return [...new Set([
-      ...(this.runtime.registryState.registered ?? []).map((entry) => entry.name),
-      ...(this.runtime.loadState === "active" ? this.runtime.providerConfigObjects.keys() : this.runtime.registeredProviderConfigs.keys()),
-      ...this.runtime.nativeProviders.keys(),
+      ...(this.host.registryState.registered ?? []).map((entry) => entry.name),
+      ...(this.host.loadState === "active" ? this.host.providerConfigObjects.keys() : this.host.registeredProviderConfigs.keys()),
+      ...this.host.nativeProviders.keys(),
     ])];
+  }
+}
+
+// The ModelRuntime behind ctx.modelRegistry (model-runtime.ts), as far as an AgentSession built from it reads it (agent-session.ts, sdk.ts, model-resolver.ts). Like the registry facade it answers from the host's registry snapshot and asks the host for auth, availability, refresh and streaming, so a nested Session shares the parent's credentials and providers.
+class RuntimeModelRuntime {
+  constructor(registry) { this.registry = registry; }
+
+  getModels(providerId) { return this.registry.getAll().filter((model) => providerId === undefined || model.provider === providerId); }
+  getModel(providerId, modelId) { return this.registry.find(providerId, modelId); }
+  // model-runtime.ts:759-762: a catalog chat model that is not virtual.
+  getPhysicalModel(providerId, modelId) {
+    const model = this.registry.find(providerId, modelId);
+    // virtual-models.ts: a virtual catalog entry has API id "pi-virtual".
+    return model && model.api !== "pi-virtual" ? model : undefined;
+  }
+  getAvailableSnapshot() { return this.registry.getAvailable(); }
+  // model-runtime.ts:489-505: a provider's availability is checked live.
+  async getAvailable(providerId) {
+    if (providerId === undefined) return this.registry.getAvailable();
+    return (await this.registry.getAvailableOfType("chat", providerId)).filter((model) => model.provider === providerId);
+  }
+  getError() { return this.registry.getError(); }
+  refresh(options) { return this.registry.refresh(options); }
+  getProvider(providerId) { return this.registry.getProvider(providerId); }
+  getProviderAuthStatus(providerId) { return this.registry.getProviderAuthStatus(providerId); }
+  getRegisteredProviderIds() { return this.registry.getRegisteredProviderIds(); }
+  // model-runtime.ts:543-553: the configured and OAuth state are the snapshot's.
+  isUsingOAuth(providerId) { return this.registry._providerState(providerId)?.usingOAuth === true; }
+  hasConfiguredAuth(providerId) { return this.registry._providerState(providerId)?.configured === true; }
+  // model-runtime.ts:310-312: the provider's credentials, or undefined when it has none.
+  async checkAuth(providerId) { return this.registry.getProviderAuth(providerId); }
+  // model-runtime.ts:369-385 getAuth(providerId | model): the model overload goes through the registry's request auth, whose "No API key" result is the absence of a resolution.
+  async getAuth(providerOrModel) {
+    if (typeof providerOrModel === "string") return this.registry.getProviderAuth(providerOrModel);
+    const resolved = await this.registry.getApiKeyAndHeaders(providerOrModel);
+    if (!resolved.ok) {
+      if (resolved.error === `No API key found for "${providerOrModel.provider}"`) return undefined;
+      throw new Error(resolved.error);
+    }
+    if (resolved.apiKey === undefined && resolved.headers === undefined) return undefined;
+    return { auth: { apiKey: resolved.apiKey, headers: resolved.headers, ...(resolved.baseUrl ? { baseUrl: resolved.baseUrl } : {}) }, env: resolved.env };
+  }
+  stream(model, context, options) { return this.registry.stream(model, context, options); }
+  streamSimple(model, context, options) { return this.registry.streamSimple(model, context, options); }
+  complete(model, context, options) { return this.registry.complete(model, context, options); }
+  completeSimple(model, context, options) { return this.registry.streamSimple(model, context, options).result(); }
+  registerProvider(providerId, config) { this.registry.registerProvider(providerId, config); }
+  registerNativeProvider(provider) { this.registry.registerProvider(provider); }
+  unregisterProvider(providerId) { this.registry.unregisterProvider(providerId); }
+  registerVirtualModel(definition) { this.registry.registerVirtualModel(definition); }
+  unregisterVirtualModel(providerId, id) { this.registry.unregisterVirtualModel(providerId, id); }
+  // model-runtime.ts:733-757: routes through the virtual models this Node process registered.
+  async resolveModel(model, messages, options) {
+    const name = `Virtual model ${model.provider}/${model.id}`;
+    const virtual = this.registry.host.virtualModels.get(JSON.stringify([model.provider, model.id]));
+    if (!virtual) throw new Error(`${name} is not registered by this extension; its route runs in the extension that registered it.`);
+    const { failed, ...request } = options;
+    // The Pi modules load on the first routing, not at startup.
+    const { findLatestResponse } = await import("./shims/pi-dist/pi-coding-agent/core/virtual-models.js");
+    const { clampThinkingLevel } = await import("./shims/pi-dist/pi-ai/sdk-bundle/index.js");
+    const latest = findLatestResponse(messages);
+    const previousModel = latest && this.getPhysicalModel(latest.provider, latest.model);
+    const failedModel = failed && this.getPhysicalModel(failed.provider, failed.model);
+    const route = await virtual.route({
+      ...request,
+      model,
+      previous: previousModel && { model: previousModel, thinkingLevel: latest?.thinkingLevel },
+      failed: failedModel && failed && { model: failedModel, thinkingLevel: failed.thinkingLevel, message: failed },
+      messages,
+    });
+    const target = this.getPhysicalModel(route.model.provider, route.model.id);
+    const routed = `${name} routed to ${route.model.provider}/${route.model.id}`;
+    if (!target) throw new Error(`${routed}, which is not a physical model.`);
+    if (!this.hasConfiguredAuth(target.provider)) throw new Error(`${routed}, which has no credentials.`);
+    return { model: target, thinkingLevel: clampThinkingLevel(target, route.thinkingLevel), state: route.state };
   }
 }
 
@@ -1172,6 +1299,7 @@ export class Connection {
       const info = env.call_result.error;
       const error = new Error(info.code ? `${info.code}: ${info.message}` : info.message);
       error.code = info.code || "";
+      hostRejections.add(error);
       pending.reject(error);
     } else pending.resolve(env.call_result?.result ?? null);
   }
@@ -1553,6 +1681,8 @@ class RuntimeUI {
       return;
     }
     if (typeof content === "function") {
+      // Pi's RPC mode ignores a component factory without calling it (rpc-mode.ts setWidget); print and JSON have no UI.
+      if (this.runtime.contextValues.mode !== "tui") return;
       this.runtime.setWidgetFactory(key, content, options);
       return;
     }
@@ -1900,8 +2030,8 @@ export class Runtime {
     this.nativeProviderObjects = nativeProviderObjects;
     // Pi keeps one effective registered configuration root per provider (model-runtime.ts:438-443,753-766). Members of one Node cell share that root and its original children, functions and descriptors.
     this.providerConfigObjects = providerConfigObjects;
-    // Entries ctx.sessionManager.appendCustomEntry appended that the host's
-    // replicated log does not hold yet.
+    // Entries ctx.sessionManager.appendCustomEntry showed that the host's
+    // replicated log does not hold yet and has not refused.
     this.pendingEntries = [];
     // After the register frame the host has this extension's providers, and
     // a registration applies immediately, as after upstream's bindCore.
@@ -4960,7 +5090,8 @@ export class Runtime {
     return entry;
   }
 
-  fireAndForget(method, args = {}) {
+  // onRejected runs when the host answers the call with an error, for a caller that showed the call's effect ahead of the answer.
+  fireAndForget(method, args = {}, onRejected = undefined) {
     if (!this.conn) return;
     // The caller does not await, but the dispatcher owns the operation through
     // its parent request. The response cannot report completed while this call
@@ -4975,6 +5106,7 @@ export class Runtime {
     if (parentRequestId && !synchronousRPC && !conn.closed) conn.requestState(parentRequestId, "blocked", "host_call");
     let operation;
     operation = conn.call(method, args, parentRequestId).catch((err) => {
+      if (onRejected !== undefined && isHostRejection(err)) onRejected();
       // A host cancellation (the connection closed or the parent request was cancelled) and a call made after the close are not failures: Pi's calls are in-process and never fail at shutdown or with their caller, so they have nothing to report.
       if (isHostCancellation(err) || conn.closed) return;
       const reason = err && err.message ? err.message : String(err);

@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"strconv"
 	"sync"
+	"sync/atomic"
 )
 
 // SettleGate orders actions that several goroutines run after waiting on an
@@ -117,11 +119,26 @@ type toolSettleKey struct{}
 type toolSettle struct {
 	slot       *SettleSlot
 	toolCallID string
+	batch      uint64
 }
 
-// withToolSettle carries the slot of one call of a parallel batch to its tool.
-func withToolSettle(ctx context.Context, slot *SettleSlot, toolCallID string) context.Context {
-	return context.WithValue(ctx, toolSettleKey{}, toolSettle{slot: slot, toolCallID: toolCallID})
+// toolBatches numbers the parallel batches of the process.
+var toolBatches atomic.Uint64
+
+// withToolSettle carries the slot of one call of a parallel batch, and the batch's number, to its tool.
+func withToolSettle(ctx context.Context, slot *SettleSlot, toolCallID string, batch uint64) context.Context {
+	return context.WithValue(ctx, toolSettleKey{}, toolSettle{slot: slot, toolCallID: toolCallID, batch: batch})
+}
+
+// ToolBatchFromContext returns the identifier of the parallel batch the call toolCallID belongs to, "" for a call outside one (a sequential batch, or a call
+// another tool makes inside its own). It is the same for every call of a batch and differs between batches. A runtime that executes the batch's calls on
+// threads of its own uses it to order only the calls of one batch, as Pi's single thread orders them.
+func ToolBatchFromContext(ctx context.Context, toolCallID string) string {
+	settle, ok := ctx.Value(toolSettleKey{}).(toolSettle)
+	if !ok || settle.toolCallID != toolCallID {
+		return ""
+	}
+	return strconv.FormatUint(settle.batch, 10)
 }
 
 // ToolSettleFromContext returns the slot of the call toolCallID of a parallel

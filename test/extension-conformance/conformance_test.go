@@ -1108,6 +1108,17 @@ func makeInprocGoHarness(t *testing.T) *harness {
 // context-probe (#40).
 const conformanceMode = "tui"
 
+// rpcRowMode, when set, is the mode every harness host runs in. TestConformance_RPCModeDropsFrameWidgetsInEverySDK sets it for its run; that test
+// is not parallel, so it owns the value while it runs. Empty keeps conformanceMode.
+var rpcRowMode string
+
+func harnessHostMode() string {
+	if rpcRowMode != "" {
+		return rpcRowMode
+	}
+	return conformanceMode
+}
+
 // conformanceProjectTrusted is the fixed ctx.isProjectTrusted() every
 // transport reports for the context-probe.
 //
@@ -1450,6 +1461,23 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							return extension.AgentToolResult{}, err
 						}
 						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("start#%d n=%s", inprocStartedCalls.Add(1), input.N)}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"dialog_order": {
+				Definition: extension.ToolDefinition{
+					Name:        "dialog_order",
+					Description: "Open a select dialog titled by the call and report the answer",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"title":{"type":"string"}}}`),
+					Execute: func(_ context.Context, _ string, raw json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						var input struct {
+							Title string `json:"title"`
+						}
+						if err := json.Unmarshal(raw, &input); err != nil {
+							return extension.AgentToolResult{}, err
+						}
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "dialog:" + input.Title + "=a"}}}, nil
 					},
 				},
 				Source: inprocFixtureName,
@@ -2767,7 +2795,7 @@ func makeSubprocessGoHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -2806,7 +2834,7 @@ func makeFusedGoHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	host := subprocess.NewHost(t.TempDir())
-	host.SetMode(conformanceMode)
+	host.SetMode(harnessHostMode())
 	host.SetHostInfo(conformanceHostInfo)
 	host.SetUIBridge(bridge)
 	wire := observeWire(t, host)
@@ -2941,7 +2969,7 @@ func makeSubprocessNodeHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -2991,7 +3019,7 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -3024,7 +3052,7 @@ func makeSubprocessPythonHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
@@ -3059,7 +3087,7 @@ func makeSubprocessRustHarness(t *testing.T) *harness {
 	bridge.SetActions(conformanceActions(actions))
 
 	h := subprocess.NewHost(t.TempDir())
-	h.SetMode(conformanceMode)
+	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)

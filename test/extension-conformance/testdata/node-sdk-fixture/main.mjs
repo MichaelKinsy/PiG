@@ -260,6 +260,16 @@ export default function (pi) {
     async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
   });
   pi.registerTool({
+    name: "dialog_order",
+    description: "Open a select dialog titled by the call and report the answer",
+    parameters: { type: "object", properties: { title: { type: "string" }, exec: { type: "boolean" } } },
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      if (params.exec === true) await pi.exec("dialog-order-exec", []).catch(() => {});
+      const selected = await ctx.ui.select(params.title, ["a", "b"]);
+      return { content: [{ type: "text", text: `dialog:${params.title}=${selected ?? ""}` }] };
+    },
+  });
+  pi.registerTool({
     name: "throw_probe",
     description: "Throw a value of the requested kind",
     parameters: { type: "object", properties: { kind: { type: "string" } } },
@@ -727,6 +737,7 @@ export default function (pi) {
   pi.registerCommand("set_label", { description: "Set an entry label", handler: async () => pi.setLabel("label-entry", "conformance-label") });
   pi.registerShortcut("ctrl+alt+y", { description: "Conformance shortcut", handler: async () => {} });
   pi.registerCommand("append_entry", { description: "Append a custom entry", handler: async () => pi.appendEntry("conformance-entry", "hello-entry") });
+  pi.registerCommand("append-entries-probe", { description: "Append a custom entry for each comma-separated type", handler: async (args) => { for (const customType of String(args).split(",")) pi.appendEntry(customType, `data-of-${customType}`); } });
   pi.registerCommand("scoped-models-probe", { description: "Report the model scope", handler: async (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.scopedModels), "info") });
   pi.registerCommand("ui-availability", {
     description: "Probe bound UI and headless defaults",

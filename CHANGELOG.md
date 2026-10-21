@@ -8,6 +8,8 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-19
+
 ## [0.5.0] - 2026-10-14
 
 ### Upgrading from 0.4.x
