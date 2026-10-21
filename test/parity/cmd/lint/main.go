@@ -182,6 +182,9 @@ type envBlock struct {
 	PiExtensions     []string `toml:"pi_extensions"`
 	PigBin           string   `toml:"pig_bin"`
 	PigGoTests       []string `toml:"pig_go_tests"`
+	PiGoTests        []string `toml:"pi_go_tests"`
+	PigGoPrograms    []string `toml:"pig_go_programs"`
+	PiGoPrograms     []string `toml:"pi_go_programs"`
 	PiBin            string   `toml:"pi_bin"`
 	OverrideBaseArgs bool     `toml:"override_base_args"`
 }
