@@ -2,6 +2,7 @@ package extension
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync/atomic"
 )
@@ -45,6 +46,18 @@ type PlaceholderOmitter interface {
 // extension host falls back to Editor with an empty prefill for a UIContext that does not implement it.
 type PrefillOmitter interface {
 	EditorWithoutPrefill(ctx context.Context, title string) (string, error)
+}
+
+// DialogValueUIContext is implemented by a [UIContext] whose dialogs resolve with the JSON value the user's client sent, as Pi's RPC mode does: rpc-mode.ts:137-150 and 254-266 resolve
+// `"value" in r ? r.value : undefined` and `"confirmed" in r ? r.confirmed : false` without checking the type, so an extension can observe a number, `null`, an object or an array.
+// The extension host answers an SDK's ui.select, ui.confirm, ui.input and ui.editor calls through these methods when the bound UI has them, and falls back to the string and bool
+// methods of [UIContext] otherwise. Each returns the member's raw JSON; an undefined result (cancelled, timed out, aborted, or a response without a value) is [context.Canceled] for select, input and
+// editor, and `false` for confirm. A nil placeholder or prefill is Pi's undefined: the dialog opens without that member, as [PlaceholderOmitter] and [PrefillOmitter] do for the string-typed forms.
+type DialogValueUIContext interface {
+	SelectValue(ctx context.Context, title string, options []string, opts ExtensionUIDialogOptions) (json.RawMessage, error)
+	ConfirmValue(ctx context.Context, title, message string, opts ExtensionUIDialogOptions) (json.RawMessage, error)
+	InputValue(ctx context.Context, title string, placeholder *string, opts ExtensionUIDialogOptions) (json.RawMessage, error)
+	EditorValue(ctx context.Context, title string, prefill *string) (json.RawMessage, error)
 }
 
 // UIContext is the per-mode UI surface for extensions.

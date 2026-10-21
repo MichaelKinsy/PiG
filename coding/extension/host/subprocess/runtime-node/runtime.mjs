@@ -1603,7 +1603,8 @@ class RuntimeUI {
     if (opts?.signal?.aborted) return false;
     this.runtime.blockForUser();
     const result = await this.runtime.dialogCall("ui.confirm", { title, message, opts });
-    return Boolean(result?.confirmed);
+    // Pi's RPC confirm resolves `"confirmed" in r ? r.confirmed : false`: whatever JSON the client sent, `null` and non-booleans included.
+    return result && "confirmed" in result ? result.confirmed : false;
   }
   // An omitted placeholder stays omitted, and an empty one is sent: RPC writes the member for the second only (rpc-mode.ts input).
   async input(title, placeholder, opts = {}) {

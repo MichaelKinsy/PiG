@@ -17,17 +17,16 @@ import (
 func TestRpcExtensionUIResponseDecodesEachUnionMemberUpstream(t *testing.T) {
 	for _, test := range []struct {
 		name, wire    string
-		hasValue      bool
-		value         string
-		confirmed     bool
-		cancelled     bool
+		value         string // raw JSON of `value`; empty when the member is absent
+		confirmed     string // raw JSON of `confirmed`
+		cancelled     string // raw JSON of `cancelled`
 		wantDialogErr error
 	}{
-		{name: "value", wire: `{"type":"extension_ui_response","id":"1","value":"b"}`, hasValue: true, value: "b"},
-		{name: "empty value is an answer", wire: `{"type":"extension_ui_response","id":"1","value":""}`, hasValue: true},
-		{name: "confirmed true", wire: `{"type":"extension_ui_response","id":"1","confirmed":true}`, confirmed: true, wantDialogErr: context.Canceled},
-		{name: "confirmed false", wire: `{"type":"extension_ui_response","id":"1","confirmed":false}`, wantDialogErr: context.Canceled},
-		{name: "cancelled", wire: `{"type":"extension_ui_response","id":"1","cancelled":true}`, cancelled: true, wantDialogErr: context.Canceled},
+		{name: "value", wire: `{"type":"extension_ui_response","id":"1","value":"b"}`, value: `"b"`},
+		{name: "empty value is an answer", wire: `{"type":"extension_ui_response","id":"1","value":""}`, value: `""`},
+		{name: "confirmed true", wire: `{"type":"extension_ui_response","id":"1","confirmed":true}`, confirmed: "true", wantDialogErr: context.Canceled},
+		{name: "confirmed false", wire: `{"type":"extension_ui_response","id":"1","confirmed":false}`, confirmed: "false", wantDialogErr: context.Canceled},
+		{name: "cancelled", wire: `{"type":"extension_ui_response","id":"1","cancelled":true}`, cancelled: "true", wantDialogErr: context.Canceled},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var response rpcUIResponse
@@ -37,14 +36,11 @@ func TestRpcExtensionUIResponseDecodesEachUnionMemberUpstream(t *testing.T) {
 			if response.Type != "extension_ui_response" || response.ID != "1" {
 				t.Errorf("type/id = %q/%q", response.Type, response.ID)
 			}
-			if (response.Value != nil) != test.hasValue || (response.Value != nil && *response.Value != test.value) {
-				t.Errorf("value = %v, want present=%v %q", response.Value, test.hasValue, test.value)
-			}
-			if response.Confirmed != test.confirmed || response.Cancelled != test.cancelled {
-				t.Errorf("confirmed/cancelled = %v/%v, want %v/%v", response.Confirmed, response.Cancelled, test.confirmed, test.cancelled)
+			if string(response.Value) != test.value || string(response.Confirmed) != test.confirmed || string(response.Cancelled) != test.cancelled {
+				t.Errorf("value/confirmed/cancelled = %q/%q/%q, want %q/%q/%q", response.Value, response.Confirmed, response.Cancelled, test.value, test.confirmed, test.cancelled)
 			}
 			got, err := response.dialogValue()
-			if !errors.Is(err, test.wantDialogErr) || got != test.value {
+			if !errors.Is(err, test.wantDialogErr) || string(got) != test.value {
 				t.Errorf("dialogValue = %q, %v, want %q, %v", got, err, test.value, test.wantDialogErr)
 			}
 		})
