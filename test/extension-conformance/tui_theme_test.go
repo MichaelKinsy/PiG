@@ -44,9 +44,9 @@ func loadTuiVectors(t *testing.T, export string) []tuiVector {
 // tuiSamples are the texts the vectors' styles list a result for, in the order of automation/gen/sdk-vector-lib/theme-state.mjs.
 var tuiSamples = []string{"", "x", "to do it", "a\nb", "漢字", "\x1b[1m", "  ", "line\x1b[22m with close", "\x1b[3mi\x1b[23m", "multi\nline\x1b[1m\nbold", "a\r\nb", "\n"}
 
-// installPiTheme makes the palette Pi ran with the host's theme, as the extension sees it (the state the host publishes) and as the host draws with it (the active
-// theme its highlighter reads), and restores the active theme when the test ends.
-func (r *modelTypesRig) installPiTheme(t *testing.T, raw json.RawMessage) {
+// installActiveTheme makes the palette Pi ran with the active theme the host draws with (the theme its highlighter and widgets read), and puts back the theme that was
+// active when the test ends. The active theme is the process's: a fused Go extension and every other test of this package share it.
+func installActiveTheme(t *testing.T, raw json.RawMessage) {
 	t.Helper()
 	var palette struct {
 		Name        string
@@ -64,11 +64,49 @@ func (r *modelTypesRig) installPiTheme(t *testing.T, raw json.RawMessage) {
 	previous := tui.ActiveTheme()
 	t.Cleanup(func() { tui.SetThemeInstance(previous) })
 	tui.SetThemeInstance(theme)
+}
+
+// installPiTheme makes the palette Pi ran with the host's theme, as the extension sees it (the state the host publishes) and as the host draws with it (the active
+// theme its highlighter reads), and restores the active theme when the test ends.
+func (r *modelTypesRig) installPiTheme(t *testing.T, raw json.RawMessage) {
+	t.Helper()
+	installActiveTheme(t, raw)
 	var published map[string]any
 	if err := json.Unmarshal(raw, &published); err != nil {
 		t.Fatal(err)
 	}
 	r.setTheme(published)
+}
+
+// A test that installs a theme for the host puts the active theme back as it found it, on a terminal without truecolor too. The host's theme is the process's, which
+// the widget goldens (drawn by Pi in the dark truecolor theme) read: SetThemeInstance once made a 256-color copy of the theme it was given back, so in a container
+// without COLORTERM the first of these tests left the dark theme in 256 colors and every cell of TestConformance_ComponentKitWidgetsMatchPi failed on its first row.
+func TestInstalledThemeIsPutBackAsFound(t *testing.T) {
+	var want struct{ Palette json.RawMessage }
+	if err := json.Unmarshal(loadTuiVectors(t, "getMarkdownTheme")[0].Result, &want); err != nil {
+		t.Fatal(err)
+	}
+	previousCapabilities, previousTheme := tui.GetCapabilities(), tui.ActiveTheme()
+	t.Cleanup(func() {
+		tui.SetCapabilities(previousCapabilities)
+		tui.SetThemeInstance(previousTheme)
+	})
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
+	tui.SetTheme("dark")
+	found := tui.ActiveTheme()
+	if found.GetColorMode() != tui.TerminalColorModeTrueColor {
+		t.Fatalf("the theme the test starts from is %s, want truecolor", found.GetColorMode())
+	}
+	tui.SetCapabilities(tui.TerminalCapabilities{})
+	t.Run("install", func(t *testing.T) {
+		installActiveTheme(t, want.Palette)
+		if tui.ActiveTheme() == found {
+			t.Fatal("the palette was not installed")
+		}
+	})
+	if got := tui.ActiveTheme(); got != found {
+		t.Fatalf("the active theme after the test is %q in %s, want the %q theme in %s it found", got.Name, got.GetColorMode(), found.Name, found.GetColorMode())
+	}
 }
 
 // resetTheme ends what an SDK installed with initTheme: the Go SDK of a fused extension shares this process, and its global theme outlives the rig that installed
