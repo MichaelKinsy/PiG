@@ -181,3 +181,18 @@ func extractBlock(block string, visit func(name string, data []byte) error) erro
 func uvarint(s string) (uint64, int) {
 	return binary.Uvarint([]byte(s[:min(len(s), binary.MaxVarintLen64)]))
 }
+
+// UnreadAtRuntime reports whether nothing reads a file of the runtime tree while the runtime runs, so the embedded archive and the extracted runtime omit it (the generator skips it, and the tests that compare the archive with the source tree skip it too). The files stay in the source tree: the vendoring scripts and the provenance tests check them there.
+//
+//   - Source maps (*.map): Node reads one only under --enable-source-maps, which the host never passes; without the file the option is a no-op.
+//   - Declaration files (*.d.ts): they are type information for a TypeScript compiler. Extensions load through jiti, which strips types and checks none, and the host runs no tsc.
+//   - shims/vendor-manifest.json: the provenance record the vendoring tests compare with the source tree; no runtime code opens it.
+//   - shims/pi-dist/pi-coding-agent/docs/images/: the screenshots the package docs embed. The documentation Pi's system prompt advertises is its Markdown (docs/*.md, README.md and examples/), which stays; PiG's own documentation bundle (internal/pigdocs) carries no images either.
+//   - shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png: the announcement image of Pi's Node InteractiveMode, which PiG never runs (its own copy is embedded by internal/codingagent); the loader reads it in a try/catch and shows the announcement without the picture when it is missing.
+func UnreadAtRuntime(relative string) bool {
+	return strings.HasSuffix(relative, ".map") ||
+		strings.HasSuffix(relative, ".d.ts") ||
+		relative == "shims/vendor-manifest.json" ||
+		strings.HasPrefix(relative, "shims/pi-dist/pi-coding-agent/docs/images/") ||
+		relative == "shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png"
+}
