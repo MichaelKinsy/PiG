@@ -168,6 +168,7 @@ type forcedTermination struct {
 func watchForcedTermination(die func(os.Signal)) *forcedTermination {
 	w := &forcedTermination{received: make(chan os.Signal, 1), stop: make(chan struct{}), done: make(chan struct{})}
 	signal.Notify(w.received, terminationSignals()...)
+	//portlint:allow boundarygoroutine lifecycle: ends the process on a termination signal
 	go func() {
 		defer close(w.done)
 		select {

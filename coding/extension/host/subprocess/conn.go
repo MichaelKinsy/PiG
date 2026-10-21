@@ -313,15 +313,18 @@ func (c *Conn) Start(ctx context.Context) {
 	c.lifetime = ctx
 	var wg sync.WaitGroup
 	wg.Add(3)
+	//portlint:allow boundarygoroutine executor: the connection's reader, which alone reads the socket and runs the inbound observers in wire order
 	go func() {
 		defer wg.Done()
 		c.readLoop(ctx)
 	}()
+	//portlint:allow boundarygoroutine executor: the connection's writer, which alone writes queued frames
 	go func() {
 		defer wg.Done()
 		c.writeLoop(ctx)
 	}()
 	c.writerStarted.Store(true)
+	//portlint:allow boundarygoroutine lifecycle: the connection's heartbeat; no callback order is observable
 	go func() {
 		defer wg.Done()
 		c.heartbeatLoop(ctx)
@@ -463,6 +466,7 @@ func (c *Conn) sendAndWait(ctx context.Context, env *Envelope) error {
 	if err != nil {
 		return err
 	}
+	//portlint:allow rpcwriteroutsidesink executor: the connection's inline writer, which writes only when no frame is queued ahead of it
 	if written, err := c.writeInline(frame); written {
 		return err
 	}
@@ -934,6 +938,7 @@ func (c *Conn) Close(reason string) error {
 		failureCode = "extension_transport"
 	}
 	c.pendingMu.Lock()
+	//portlint:allow unorderedfanin lifecycle: fails every pending request when the connection closes; each waiter receives its own error
 	for id, ch := range c.pending {
 		select {
 		case ch <- &Envelope{
@@ -1859,6 +1864,7 @@ func (c *Conn) fail(err error) {
 			code = "extension_unresponsive"
 		}
 		c.pendingMu.Lock()
+		//portlint:allow unorderedfanin lifecycle: fails every pending request when the connection fails; each waiter receives its own error
 		for id, ch := range c.pending {
 			select {
 			case ch <- &Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}}:
@@ -1892,6 +1898,7 @@ func (c *Conn) writeFrame(data []byte, countProgress bool) error {
 		}
 		return err
 	}
+	//portlint:allow rpcwriteroutsidesink executor: the connection's frame writer owns the socket
 	if _, err := c.conn.Write(lenBuf[:]); err != nil {
 		return err
 	}
@@ -1959,6 +1966,7 @@ func (c *Conn) writeChunks(data []byte, countProgress bool) error {
 	// socket on failure, unblocking this write.
 	for len(data) > 0 {
 		chunk := data[:min(len(data), writeChunk)]
+		//portlint:allow rpcwriteroutsidesink executor: the connection's frame writer owns the socket
 		if _, err := c.conn.Write(chunk); err != nil {
 			return err
 		}

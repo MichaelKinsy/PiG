@@ -7434,3 +7434,279 @@ check = "hotpathjson"
 file = "coding/extension/host/subprocess/host.go"
 func = "managedExt.makeEventHandler"
 snippet = "if err := json.Unmarshal(resp.Response.Result, &boundary); err != nil {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "chord/host/manager.go"
+func = "HostManager.doStart"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "chord/host/manager.go"
+func = "HostManager.doStart"
+snippet = "go manager.keepAliveLoop(stop, durationOr(manager.options.CheckInterval, time.Second))"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "chord/host/manager_fork.go"
+func = "pumpOutputTaps"
+snippet = "go func() { //portlint:allow gorecover two readers (stdout, stderr), not a fan-out over input; a panicking onOutput listener ends the process as a throwing Node \"data\" listener does"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "chord/host/manager_ipc.go"
+func = "newNodeChannel"
+snippet = "go channel.read()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "chord/host/manager_ipc.go"
+func = "nodeChannel.Send"
+snippet = "go callback(ipcSendFailure{err})"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/cli/rpc_mode.go"
+func = "serveRPCMode"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/cli/rpc_mode.go"
+func = "serveRPCMode"
+snippet = "go func(id rpcRequestID, command string, excludeFromContext *bool) {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/inproc/mcp_servers.go"
+func = "Runner.onMcpServersChange"
+snippet = "go r.drainMcpServersChanges()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/inproc/ui_prompt.go"
+func = "Runner.enqueueUIPromptLocked"
+snippet = "go r.drainUIPromptEvents()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/inproc/ui_prompt.go"
+func = "Runner.drainUIPromptEvents"
+snippet = "go r.emitUIPromptEvent(dispatchCtx, event)"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.connectExt"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.adoptConn"
+snippet = "go h.handleIncoming(me, conn)"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.scheduleRestart"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/host_calls.go"
+func = "Host.queueCall"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/native_provider.go"
+func = "nativeProviderProxy.streamMethod"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/overlay_control.go"
+func = "UIBridge.handleCustomShowOverlay"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/packed_go.go"
+func = "Host.startGoPackedCellOnce"
+snippet = "go h.watchPackedProcess(processState)"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/packed_go.go"
+func = "Host.acceptPackedExt"
+snippet = "go h.handleIncoming(me, conn)"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/push_proxy.go"
+func = "PushProxy.Render"
+snippet = "go p.onWidthChange(width)"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/render_proxy.go"
+func = "renderProxyComponent.Render"
+snippet = "go c.requestLoop()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/render_proxy.go"
+func = "renderProxyComponent.Invalidate"
+snippet = "go c.requestLoop()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/render_proxy.go"
+func = "renderProxyComponent.SetExpanded"
+snippet = "go c.requestLoop()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/render_proxy.go"
+func = "renderProxyComponent.SetOutputPad"
+snippet = "go c.requestLoop()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/tool_render_proxy.go"
+func = "toolRenderProxy.update"
+snippet = "go p.requestLoop()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/extension/host/subprocess/tool_render_proxy.go"
+func = "toolRenderProxy.Render"
+snippet = "go p.requestLoop()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/mcpext/oauth.go"
+func = "authProvider.refresh"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/services.go"
+func = "ModelRuntime.Stream"
+snippet = "go runtime.start(ctx, model, transcript, options, outer, false)"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/services.go"
+func = "ModelRuntime.StreamSimple"
+snippet = "go runtime.start(ctx, model, transcript, selected, outer, true)"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/session.go"
+func = "NewSession"
+snippet = "go sess.forwardAgentEvents()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "coding/virtual_models.go"
+func = "ModelRuntime.streamVirtual"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "extensions/sdk/context.go"
+func = "Context.CompactWithOptions"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "extensions/sdk/extension.go"
+func = "remoteOverlay.start"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "extensions/sdk/surface.go"
+func = "surfaceRenderer.refresh"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "extensions/sdk/view.go"
+func = "Extension.viewImagesEvicted"
+snippet = "go func() { _ = surface.push(c) }()"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "internal/codingagent/ext_ui_context.go"
+func = "ExtUIContext.ShowRemoteOverlay"
+snippet = "go func() {"
+
+[[hit]]
+check = "boundarygoroutine"
+file = "internal/codingagent/extension_ui_phase.go"
+func = "InteractiveMode.awaitExtensionUI"
+snippet = "go func() {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "chord/host/connection.go"
+func = "Connection.closed"
+snippet = "for _, vote := range connection.votes {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "coding/extension/builtin/toolsearch/toolsearch.go"
+func = "mapsKeys"
+snippet = "for k := range m {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "coding/extension/host/subprocess/cell_plan.go"
+func = "PlanCells"
+snippet = "for _, node := range nodes {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "coding/extension/host/subprocess/host.go"
+func = "Host.notifyGeometry"
+snippet = "for _, me := range h.exts {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "coding/extension/host/subprocess/retention.go"
+func = "Host.Retain"
+snippet = "for _, me := range h.exts {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "coding/extension/host/subprocess/ui_bridge.go"
+func = "UIBridge.SetUIContext"
+snippet = "for key, text := range statuses {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "coding/extension/host/subprocess/xref.go"
+func = "scanXrefRefs"
+snippet = "for _, child := range v {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "coding/extension/tool_input_json.go"
+func = "mapKeys"
+snippet = "for key := range m {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "extensions/sdk/oauth_credentials.go"
+func = "OAuthCredentials.MarshalJSON"
+snippet = "for key, value := range map[string]string{\"projectId\": c.ProjectID, \"accountId\": c.AccountID, \"scope\": c.Scope} {"
+
+[[hit]]
+check = "unorderedfanin"
+file = "internal/codingagent/ext_ui_context.go"
+func = "extensionThemeColors"
+snippet = "for token, color := range values {"

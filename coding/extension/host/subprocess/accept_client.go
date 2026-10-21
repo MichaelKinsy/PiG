@@ -67,6 +67,7 @@ func (h *Host) awaitConnection(ctx context.Context, ln net.Listener, exited <-ch
 		accept = func() (net.Conn, error) { return h.acceptGate(ln.Accept, exited) }
 	}
 	stop, interrupted := make(chan struct{}), make(chan struct{})
+	//portlint:allow boundarygoroutine lifecycle: interrupts a blocked Accept when the process exits or the context ends
 	go func() {
 		defer close(interrupted)
 		select {

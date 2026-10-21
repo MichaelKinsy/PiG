@@ -218,6 +218,7 @@ func (u *rpcUIContext) Close() {
 	clear(u.published)
 	clear(u.settle)
 	u.mu.Unlock()
+	//portlint:allow unorderedfanin lifecycle: cancels every pending dialog when the UI context closes
 	for _, responses := range pending {
 		responses <- rpcUIResponse{Cancelled: true}
 	}

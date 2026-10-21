@@ -232,6 +232,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	stdoutClosed := atomic.Bool{}
 	// RPC owns raw stdout; incidental startup/extension output follows the process-wide guard to stderr. Records are serialized in the caller and written through output-guard's ordered raw-stdout tail, so no caller blocks on a stopped reader.
 	var stdoutFailed atomic.Bool
+	//portlint:allow rpcwriteroutsidesink executor: stdoutQueue is RPC mode's ordered raw stdout tail
 	rawStdout := newStdoutQueue(codingagent.RawStdoutWriter(), func(error) {
 		stdoutFailed.Store(true)
 		cancel()
@@ -253,6 +254,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 		if stdoutClosed.Load() {
 			return
 		}
+		//portlint:allow rpcwriteroutsidesink executor: writeImmediate is RPC mode's one stdout record writer
 		writeJSONLine(rawStdout, v)
 	}
 	responses := &rpcResponseTurn{write: writeImmediate}

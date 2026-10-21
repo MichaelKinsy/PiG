@@ -4846,6 +4846,7 @@ func resolveSocketDir() string {
 func (h *Host) nodeExtensionOutput(log io.Writer) (stdout, stderr io.Writer) {
 	terminal := os.Stderr
 	if h.mode == "tui" {
+		//portlint:allow rpcwriteroutsidesink lifecycle: extension console output in TUI mode goes to the terminal, not to an RPC stream
 		terminal = os.Stdout
 	}
 	stdout = extensionConsole{terminal: terminal}
