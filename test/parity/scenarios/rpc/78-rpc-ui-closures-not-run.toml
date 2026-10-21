@@ -1,6 +1,6 @@
 # Pi 1402973a rpc-mode.ts createExtensionUIContext:211-216,228-231,242-244,277-284,298-301: RPC mode ignores the setFooter/setHeader/setEditorComponent factories (never called), custom() resolves undefined without running its factory, onTerminalInput returns a no-op, getEditorComponent answers undefined, and setTheme answers { success: false, error: "Theme switching not supported in RPC mode" } for a Theme object without throwing.
 # PiG's Node runtime ran the footer and header factories and their render under RPC, answered getEditorComponent with the installed factory, and sent the Theme object to a host that decodes a string.
-name = "64-rpc-ui-closures-not-run"
+name = "78-rpc-ui-closures-not-run"
 description = "RPC mode never runs footer, header, editor or custom UI closures and answers the theme and editor getters as Pi does"
 covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/extensions/types.ts"]
 tags = ["hermetic", "fast"]

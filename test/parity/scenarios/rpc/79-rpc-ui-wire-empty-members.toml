@@ -5,7 +5,7 @@
 # `placeholder` and `prefill`, so a client could not tell `setStatus(k, "")` from `setStatus(k, undefined)`, or clear its editor with `set_editor_text ""`.
 # Dialogs with timeout 0 are not armed by Pi (`if (opts?.timeout)`), so the scenario answers them; the editor takes no options and is answered too.
 
-name = "63-rpc-ui-wire-empty-members"
+name = "79-rpc-ui-wire-empty-members"
 description = "RPC UI requests keep empty strings, empty lists and zero timeouts, and omit only what the extension left undefined."
 covers = [
   "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
