@@ -2773,7 +2773,62 @@ fn main() {
     register_conformance_oauth(&mut ext);
     register_conformance_oauth_object(&mut ext);
     register_conformance_oauth_large(&mut ext);
+    register_state_push_probe(&mut ext);
     ext.run().unwrap();
+}
+
+/// How long a state-push-probe reader waits for the value it armed on to change before it reports the value it still holds.
+const STATE_PUSH_WINDOW: Duration = Duration::from_secs(5);
+
+/// Registers the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name.
+/// The arguments are {"kind": "model" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+fn register_state_push_probe(ext: &mut Extension) {
+    ext.command("state-push-probe", "Read one replicated accessor from a thread between requests", |ctx, args| {
+        let request: Value = match serde_json::from_str(args) {
+            Ok(request) => request,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let kind = request["kind"].as_str().unwrap_or("").to_string();
+        let dir = std::path::PathBuf::from(request["dir"].as_str().unwrap_or(""));
+        let read = match state_push_reader(ctx, &kind) {
+            Ok(read) => read,
+            Err(err) => return CommandResult::Error(err),
+        };
+        let armed = read();
+        thread::spawn(move || {
+            let mut current = armed.clone();
+            let deadline = std::time::Instant::now() + STATE_PUSH_WINDOW;
+            while current == armed && std::time::Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(2));
+                current = read();
+            }
+            let name = format!("state-push-{}", kind.replace(':', "_"));
+            let temp = dir.join(format!("{name}.tmp"));
+            if std::fs::write(&temp, format!("{armed}=>{current}")).is_ok() {
+                let _ = std::fs::rename(&temp, dir.join(name));
+            }
+        });
+        CommandResult::Ok
+    });
+}
+
+/// The read of one replicated accessor as a string, or an error for a kind the Rust SDK does not replicate in a retained context: its session name is a copy made when the context was created, and its thinking level is a host call.
+fn state_push_reader(ctx: &pig_sdk::Context, kind: &str) -> Result<Box<dyn Fn() -> String + Send>, String> {
+    let ctx = ctx.clone();
+    if kind == "model" {
+        return Ok(Box::new(move || ctx.model()));
+    }
+    if let Some(key) = kind.strip_prefix("settings:") {
+        let key = key.to_string();
+        return Ok(Box::new(move || match ctx.get_settings() {
+            Ok(settings) => settings.get(&key).cloned().unwrap_or(Value::Null).to_string(),
+            Err(err) => format!("error:{err}"),
+        }));
+    }
+    if kind == "mcp" {
+        return Ok(Box::new(move || ctx.get_mcp_servers().iter().map(|server| server.name.clone()).collect::<Vec<_>>().join(",")));
+    }
+    Err(format!("state-push-probe: unsupported kind {kind:?}"))
 }
 
 /// Owns credential persistence for the conformance OAuth provider. Its returned

@@ -475,6 +475,8 @@ type Host struct {
 	drainTasksMu     sync.Mutex
 	drainTasks       sync.WaitGroup
 	drainTasksClosed bool
+	// hostStatePushQueued is set while a fan-out of a host state change waits to run (see hostStateChanged); the fan-out clears it before it reads the targets, so a change that arrives while it runs queues the next one.
+	hostStatePushQueued atomic.Bool
 	// retirements are the stops of replaced generations that a running command deferred (retireGeneration). retirementTasks joins the goroutines that run them; retirementsClosed stops new ones once Shutdown has run the pending stops. Guarded by retirementMu.
 	retirementMu      sync.Mutex
 	retirements       map[*generationRetirement]struct{}
@@ -650,6 +652,8 @@ type managedExt struct {
 	// skip identical writes and to omit catalog fields the recipient already
 	// holds byte-for-byte.
 	lastStatePush map[*Conn]*connStatePushCache
+	// statePushQueue coalesces the pushes of host state changes to this extension (see queueStatePush).
+	statePushQueue statePushQueue
 	// runtimeStateGen counts the moments a runtime changed its own copy of the
 	// state ahead of the host (thinking level, editor text), so
 	// a push the host would otherwise skip still corrects the runtime. A cache
@@ -891,6 +895,7 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.OnStateChanged = h.BroadcastStateUpdate
 		bridge.onRuntimeStateMutated = h.runtimeStateMutated
 		bridge.OnRunSignalChanged = h.runSignalChanged
+		bridge.OnHostStateChanged = h.hostStateChanged
 		bridge.resolveFlag = h.resolveFlagValue
 		bridge.withSession = h.withSessionCallback
 		bridge.setup = h.setupCallback

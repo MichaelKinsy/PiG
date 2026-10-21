@@ -1820,6 +1820,7 @@ def new_extension() -> pig_sdk.Extension:
     _register_conformance_oauth(ext)
     _register_conformance_oauth_object(ext)
     _register_conformance_oauth_large(ext)
+    _register_state_push_probe(ext)
     return ext
 
 
@@ -1909,6 +1910,58 @@ def _register_conformance_oauth(ext: pig_sdk.Extension) -> None:
             credential_store=_ConformanceStore(),
         ),
     )
+
+
+# STATE_PUSH_WINDOW is how long a state-push-probe reader waits for the value it armed on to change before it reports the value it still holds.
+STATE_PUSH_WINDOW = 5.0
+
+
+def _state_push_reader(ctx, kind):
+    """The read of one replicated accessor, as a string that fails soft: a read that raises reports its error."""
+    if kind == "model":
+        read = lambda: ctx.model
+    elif kind == "session-name":
+        read = lambda: ctx.session_name
+    elif kind.startswith("settings:"):
+        key = kind[len("settings:"):]
+        read = lambda: json.dumps(ctx.get_settings().get(key), separators=(",", ":"))
+    elif kind == "mcp":
+        read = lambda: ",".join(server["name"] for server in ctx.get_mcp_servers())
+    else:
+        raise ValueError("state-push-probe: unsupported kind %r" % kind)
+
+    def guarded():
+        try:
+            return read()
+        except Exception as error:  # noqa: BLE001 - the report carries the failure
+            return "error:%s" % error
+
+    return guarded
+
+
+def _register_state_push_probe(ext: pig_sdk.Extension) -> None:
+    """Register the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>"."""
+
+    def probe(ctx, args):
+        request = json.loads(args)
+        kind, directory = request["kind"], request["dir"]
+        read = _state_push_reader(ctx, kind)
+        armed = read()
+
+        def watch():
+            current = armed
+            deadline = time.monotonic() + STATE_PUSH_WINDOW
+            while current == armed and time.monotonic() < deadline:
+                time.sleep(0.002)
+                current = read()
+            report = pathlib.Path(directory) / ("state-push-" + kind.replace(":", "_"))
+            temp = report.with_name(report.name + ".tmp")
+            temp.write_text(armed + "=>" + current)
+            temp.replace(report)
+
+        threading.Thread(target=watch, daemon=True).start()
+
+    ext.command("state-push-probe", "Read one replicated accessor from a thread between requests", probe)
 
 
 if __name__ == "__main__":

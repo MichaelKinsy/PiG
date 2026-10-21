@@ -44,6 +44,14 @@ func watchSessionRunSignal(bridge *subprocess.UIBridge, session *coding.Session)
 	return session.Agent().ObserveRunSignal(bridge.RunSignalChanged)
 }
 
+// watchSessionState reports each change of the Session state the extension runtimes replicate (the model, the thinking level, the session name, the settings) to the extension host, and returns the function that stops. Pi's `ctx.model`, `pi.getSettings()` and `pi.getSessionName()` read the live Session (runner.ts:906, loader.ts:411-414), so a runtime that reads between two requests must learn of a change when it happens, not at its next request.
+func watchSessionState(bridge *subprocess.UIBridge, session *coding.Session) func() {
+	if bridge == nil || session == nil {
+		return func() {}
+	}
+	return session.ObserveReplicatedState(bridge.HostStateChanged)
+}
+
 // loadSubprocessExtensions starts the already-resolved canonical extension set.
 // Discovery, trust, Package, Piglet, settings, and CLI precedence are owned by
 // collectExtensionConfigs. Reload receives the same normalized resolver.

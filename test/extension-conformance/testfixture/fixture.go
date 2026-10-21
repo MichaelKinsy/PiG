@@ -2670,6 +2670,7 @@ func Extension() *sdk.Extension {
 		return nil, nil
 	})
 
+	registerStatePushProbe(ext)
 	return ext
 }
 

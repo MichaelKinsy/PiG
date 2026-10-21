@@ -442,8 +442,9 @@ func (h *rpcHost) bindExtensionActions(session *coding.Session, st *rpcModeSessi
 	}
 	var detach func()
 	if bridge != nil {
-		detachModelRegistry, stopRunSignal := wireSubprocessModelRegistry(bridge, session, services), watchSessionRunSignal(bridge, session)
+		detachModelRegistry, stopRunSignal, stopSessionState := wireSubprocessModelRegistry(bridge, session, services), watchSessionRunSignal(bridge, session), watchSessionState(bridge, session)
 		detach = func() {
+			stopSessionState()
 			stopRunSignal()
 			detachModelRegistry()
 		}

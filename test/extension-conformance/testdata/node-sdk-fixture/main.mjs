@@ -1,4 +1,6 @@
 import zlib from "node:zlib";
+import { renameSync, writeFileSync } from "node:fs";
+import { join as joinPath } from "node:path";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
 const { Container } = piTui;
@@ -1323,6 +1325,28 @@ export default function (pi) {
       ctx.ui.notify(`ui_prompt:${event.type}:${event.reason}:${event.kind}:${"title" in event ? event.title : "(none)"}`, "info");
     });
   }
+  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+  pi.registerCommand("state-push-probe", { description: "Read one replicated accessor from a timer between requests", handler: async (args, ctx) => {
+    const { kind, dir } = JSON.parse(args);
+    let read;
+    if (kind === "model") read = () => ctx.model?.id ?? "";
+    else if (kind === "session-name") read = () => pi.getSessionName() ?? "";
+    else if (kind === "thinking-level") read = () => pi.getThinkingLevel();
+    else if (kind.startsWith("settings:")) read = () => JSON.stringify(pi.getSettings()[kind.slice("settings:".length)] ?? null);
+    else if (kind === "mcp") read = () => pi.getMcpServers().map((server) => server.name).join(",");
+    else throw new Error(`state-push-probe: unsupported kind ${JSON.stringify(kind)}`);
+    const guarded = () => { try { return read(); } catch (error) { return `error:${error.message}`; } };
+    const armed = guarded();
+    const deadline = Date.now() + 5000;
+    const timer = setInterval(() => {
+      const current = guarded();
+      if (current === armed && Date.now() < deadline) return;
+      clearInterval(timer);
+      const report = joinPath(dir, `state-push-${kind.replaceAll(":", "_")}`);
+      writeFileSync(`${report}.tmp`, `${armed}=>${current}`);
+      renameSync(`${report}.tmp`, report);
+    }, 2);
+  } });
 }
 
 // The BashOperations every SDK fixture returns for the user_bash command "operations" (TestConformance_UserBashOperationsRunInTheExtension).
