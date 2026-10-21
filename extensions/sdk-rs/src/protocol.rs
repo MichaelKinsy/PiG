@@ -904,17 +904,19 @@ impl Connection {
         method: &str,
         args: Option<A>,
     ) -> io::Result<PendingCall> {
-        // A tool handler's host call is an await of Pi's handler: it orders the handler among the calls of its batch (`ToolStartOrder`).
-        // The wait for the dialog place comes before any lock below, so a waiting handler holds nothing the earlier ones need.
+        // A tool handler's host call, of any kind, is an await of Pi's handler: it orders the handler among the calls of its batch
+        // (`ToolStartOrder`). The wait for the dialog place comes before any lock below, so a waiting handler holds nothing the earlier
+        // ones need. Only a dialog call carries the response slot.
         let start = scope.and_then(RequestParent::tool_start);
-        let dialog = crate::tool_start_order::is_dialog_method(method);
         if let Some(start) = start {
-            start.before_call(dialog);
+            start.before_call();
         }
-        let slot = start.filter(|_| dialog).and_then(crate::tool_start_order::ToolStart::response_slot);
+        let slot = start
+            .filter(|_| crate::tool_start_order::is_dialog_method(method))
+            .and_then(crate::tool_start_order::ToolStart::response_slot);
         let pending = self.write_call(scope, parent_request_id, method, args, slot);
         if let Some(start) = start {
-            start.after_call(dialog);
+            start.after_call();
         }
         pending
     }

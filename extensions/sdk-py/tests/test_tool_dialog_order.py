@@ -58,12 +58,12 @@ def test_tool_dialogs_open_in_call_order():
 
     def open_dialogs(i):
         def run():
-            starts[i].before_call(True)
+            starts[i].before_call()
             steps.add("abc"[i])
-            starts[i].after_call(True)
+            starts[i].after_call()
             # A second dialog of the same request does not wait again.
-            starts[i].before_call(True)
-            starts[i].after_call(True)
+            starts[i].before_call()
+            starts[i].after_call()
             starts[i].end()
 
         threads.go(run)
@@ -87,9 +87,9 @@ def test_tool_dialog_order_passes_an_ended_request():
 
     def open_dialog(name, start):
         def run():
-            start.before_call(True)
+            start.before_call()
             steps.add(name)
-            start.after_call(True)
+            start.after_call()
 
         threads.go(run)
 
@@ -110,17 +110,17 @@ def test_ending_a_request_never_waits_for_the_earlier_ones():
     steps, threads = Steps(), Threads()
 
     def open_third():
-        third.before_call(True)
+        third.before_call()
         steps.add("third")
-        third.after_call(True)
+        third.after_call()
 
     threads.go(open_third)
     wait_parked()
     second.release()  # returns although first still holds its place
     second.release()  # idempotent
     assert steps.list() == [], "third opened before the first request passed its place"
-    first.before_call(True)
-    first.after_call(True)
+    first.before_call()
+    first.after_call()
     threads.wait()
     assert steps.list() == ["third"]
 
@@ -157,7 +157,7 @@ def test_a_handler_that_reached_its_next_host_call_lets_the_ones_behind_it_respo
     threads.go(lambda: b.respond(lambda: steps.add("b")))
     wait_parked()
     assert steps.list() == []
-    a.before_call(False)  # a's continuation reached its next await
+    a.before_call()  # a's continuation reached its next await
     threads.wait()
     assert steps.list() == ["b"]
     # The next answer settles a again, behind the ones that settled meanwhile.
@@ -222,9 +222,9 @@ def test_a_retained_context_after_the_request_ended_neither_waits_nor_gets_a_slo
     order, _ = parked_order()
     ended, held = order.reserve(), order.reserve()
     ended.release()
-    ended.before_call(True)  # returns at once: the place passed with the request
+    ended.before_call()  # returns at once: the place passed with the request
     assert ended.response_slot() is None
-    ended.after_call(True)
+    ended.after_call()
     held.response_slot().settle()
     steps = Steps()
     held.respond(lambda: steps.add("held"))
@@ -234,8 +234,8 @@ def test_a_retained_context_after_the_request_ended_neither_waits_nor_gets_a_slo
 def test_a_handler_that_opens_no_dialog_has_no_slot_and_responds_at_once():
     order, _ = parked_order()
     plain = order.reserve()
-    plain.before_call(False)
-    plain.after_call(False)
+    plain.before_call()
+    plain.after_call()
     assert plain._slot is None
     steps = Steps()
     plain.respond(lambda: steps.add("plain"))
@@ -276,8 +276,8 @@ def test_orders_are_per_batch_and_dropped_when_the_batch_ended():
     b1 = batches.reserve("B")
     assert a1._order is a2._order and a1._order is not b1._order
     # B's first dialog does not wait for A's requests, which still run.
-    b1.before_call(True)
-    b1.after_call(True)
+    b1.before_call()
+    b1.after_call()
     order = a1._order
     a1.end()
     assert batches._orders["A"] is order
@@ -319,3 +319,25 @@ def test_dispatch_batches_and_requests_without_a_batch_do_not_gate_each_other():
         finally:
             release_a.set()
         assert receive("response")["id"] == "a1"
+
+
+def test_the_first_host_call_of_any_kind_passes_the_dialog_place():
+    # Pi's handler that awaits an exec before its first dialog has yielded the thread, so the later calls' dialogs open while its exec runs: the first host call, whatever it is, passes the place on.
+    order, _ = parked_order()
+    first, second, third = order.reserve(), order.reserve(), order.reserve()
+    held = []
+
+    def parked():
+        held.append(None)
+        first.release()  # lets the held call return, so the test fails instead of hanging
+
+    order.parked = parked
+    first.before_call()
+    first.after_call()  # the exec is written; the handler goes on without ending
+    second.before_call()
+    second.after_call()
+    third.before_call()
+    third.after_call()
+    first.before_call()  # first's own dialog, after its exec, does not wait again
+    first.after_call()
+    assert held == [], "a later call waited for the dialog place of a request whose exec is in flight"

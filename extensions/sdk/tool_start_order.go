@@ -14,16 +14,19 @@ import (
 //   - Start: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without one. A handler is Go code on a
 //     preemptible thread, so a thread that the operating system preempts between its hand-off and its handler's first statement can still be overtaken, and no Go
 //     construct closes that window.
-//   - Dialog: the first dialog (select, confirm, input, editor, custom) a handler opens is written only after the first dialog of every earlier request was written or its
-//     request ended, so the dialogs of a batch open in the order the calls started. A handler that waits on something else before its dialog holds the later calls' first
-//     dialogs, which Pi's single thread lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
+//   - Dialog: a handler's first host call, of any kind, is written only after the first host call of every earlier request was written or its request ended, and a
+//     request passes its dialog place on once that first call is written, so the first dialogs of a batch open in the order the calls started, and a call that awaits an
+//     exec before its dialog is overtaken by the later calls' dialogs, as in Pi. A handler that waits on something the SDK does not see (its own fetch, timer or child
+//     process) before its first host call holds the later calls' first host calls, which Pi's single thread lets overtake it; that is the price of an order the handlers'
+//     own code cannot be asked for.
 //   - Continuation: when two dialogs are answered back to back, Pi runs the two handlers' continuations in the order of the answers, and each continuation runs to its
 //     next await or its return before the next one starts. The reader settles a handler's slot when it reads the answer to the handler's dialog, and the handler's
 //     response is written only after the response of every handler that settled before it, or after that handler's next host call (the await its continuation reached).
 type toolStartOrder struct {
 	mu   sync.Mutex
 	tail chan struct{}
-	// dialogQueue holds the requests whose dialog place has not passed, in arrival order. The first is the one whose first dialog may be written.
+	// dialogQueue holds the requests whose dialog place has not passed, in arrival order. The first is the one whose first host call may be written; a request passes its
+	// place once that call is written, whatever the call is.
 	dialogQueue []*toolStart
 	// settle orders the responses of the handlers whose dialogs were answered.
 	settle settleGate
@@ -85,7 +88,7 @@ type toolStart struct {
 	order   *toolStartOrder
 	owner   *toolBatchOrders
 	batchID string
-	// dialogWaiting is closed when the request waits for its first dialog and every earlier request passed its place; it is made only when the request has to wait,
+	// dialogWaiting is closed when the request waits for its first host call and every earlier request passed its place; it is made only when the request has to wait,
 	// and with dialogPassed guarded by order.mu.
 	dialogWaiting chan struct{}
 	dialogPassed  bool
@@ -157,20 +160,18 @@ func (s *toolStart) responseSlot() *settleSlot {
 	return slot
 }
 
-// beforeCall runs before the handler writes a host call. The call is an await of the handler's continuation: a handler the reader settled yields its place in
-// the response order. A handler's first dialog waits for the first dialogs of the earlier requests; onDialog reports whether the call is one.
-func (s *toolStart) beforeCall(dialog bool) {
+// beforeCall runs before the handler writes a host call, of any kind. The call is an await of the handler's continuation: a handler the reader settled yields its place in
+// the response order. A handler's first host call waits for the first host calls of the earlier requests, and afterCall then passes its dialog place on, as Pi's single thread
+// lets a later call run once an earlier call reached its first await.
+func (s *toolStart) beforeCall() {
 	if s == nil {
 		return
 	}
 	s.slot.Load().yield()
-	if !dialog {
-		return
-	}
 	if !s.dialogOpened.CompareAndSwap(false, true) {
 		return
 	}
-	// pig divergence (D187): the first dialog of a call waits for the first dialogs of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see; Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
+	// pig divergence (D187): the first host call of a call waits for the first host calls of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see (its own fetch, timer or child process); Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
 	o := s.order
 	o.mu.Lock()
 	if len(o.dialogQueue) == 0 || o.dialogQueue[0] == s || s.dialogPassed {
@@ -186,15 +187,16 @@ func (s *toolStart) beforeCall(dialog bool) {
 	<-waiting
 }
 
-// afterCall runs once the host call's frame is written, or failed to be.
-func (s *toolStart) afterCall(dialog bool) {
-	if s == nil || !dialog {
+// afterCall runs once the host call's frame is written, or failed to be. The first host call of any kind gives the dialog place up: Pi's handler that awaits an exec has
+// yielded the thread, so a later call's dialog may open before the handler's own.
+func (s *toolStart) afterCall() {
+	if s == nil {
 		return
 	}
 	s.passDialog()
 }
 
-// passDialog gives up the request's dialog place: the first request that still holds one may write its first dialog. It never waits, so a request that ends
+// passDialog gives up the request's dialog place: the first request that still holds one may write its first host call. It never waits, so a request that ends
 // while an earlier one still runs is not held by it. It is idempotent.
 func (s *toolStart) passDialog() {
 	o := s.order

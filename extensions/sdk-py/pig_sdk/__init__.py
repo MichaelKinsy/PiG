@@ -2097,7 +2097,7 @@ class _ToolStart:
         self._previous = previous
         self.done = threading.Event()
         self._order = order
-        # Set when the request waits for its first dialog and every earlier request passed its place; made only when the request has to wait. It, _dialog_passed, _dialog_opened, _ended and _slot are guarded by the order's lock.
+        # Set when the request waits for its first host call and every earlier request passed its place; made only when the request has to wait. It, _dialog_passed, _dialog_opened, _ended and _slot are guarded by the order's lock.
         self._dialog_waiting: threading.Event | None = None
         self._dialog_passed = False
         self._dialog_opened = False
@@ -2142,15 +2142,13 @@ class _ToolStart:
                 self._slot = order._settle.new_slot(order.parked)
             return self._slot
 
-    def before_call(self, dialog: bool) -> None:
-        """Run before the handler writes a host call. The call is an await of the handler's continuation: a handler the reader settled yields its place in the response order. A handler's first dialog waits for the first dialogs of the earlier requests; ``dialog`` says whether the call is one."""
+    def before_call(self) -> None:
+        """Run before the handler writes a host call, of any kind. The call is an await of the handler's continuation: a handler the reader settled yields its place in the response order. A handler's first host call waits for the first host calls of the earlier requests, and ``after_call`` then passes its dialog place on, as Pi's single thread lets a later call run once an earlier call reached its first await."""
         slot = self._slot
         if slot is not None:
             slot.yield_()
-        if not dialog:
-            return
         order = self._order
-        # pig divergence (D187): the first dialog of a call waits for the first dialogs of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see; Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
+        # pig divergence (D187): the first host call of a call waits for the first host calls of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see (its own fetch, timer or child process); Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
         with order._lock:
             if self._dialog_opened:
                 return
@@ -2164,13 +2162,12 @@ class _ToolStart:
             parked()
         waiting.wait()
 
-    def after_call(self, dialog: bool) -> None:
-        """Run once the host call's frame is written, or failed to be."""
-        if dialog:
-            self.pass_dialog()
+    def after_call(self) -> None:
+        """Run once the host call's frame is written, or failed to be. The first host call of any kind gives the dialog place up: Pi's handler that awaits an exec has yielded the thread, so a later call's dialog may open before the handler's own."""
+        self.pass_dialog()
 
     def pass_dialog(self) -> None:
-        """Give up the request's dialog place: the first request that still holds one may write its first dialog. It never waits, so a request that ends while an earlier one still runs is not held by it. Idempotent."""
+        """Give up the request's dialog place: the first request that still holds one may write its first host call. It never waits, so a request that ends while an earlier one still runs is not held by it. Idempotent."""
         order = self._order
         with order._lock:
             if self._dialog_passed:
@@ -2199,7 +2196,7 @@ class _ToolStartOrder:
     Pi starts every call of a parallel batch through ``Promise.all(calls.map(...))`` and each reaches tool.execute synchronously, so the handlers start in source order (agent-loop.ts:619-647, 820-837). The host writes a batch's tool_call requests in source order, but each request runs on its own thread, and the scheduler is free to run a later thread first. Three orders follow from Pi's one thread, and each is kept here, per batch (``_ToolBatches`` keeps one order per batch id the host names on the batch's tool_call requests; a request outside a batch takes part in none):
 
     - Start: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without one.
-    - Dialog: the first dialog (select, confirm, input, editor, custom) a handler opens is written only after the first dialog of every earlier request was written or its request ended, so the dialogs of a batch open in the order the calls started. A handler that waits on something other than a host call before its first dialog holds the later calls' first dialogs, which Pi's single thread lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
+    - Dialog: a handler's first host call, of any kind, is written only after the first host call of every earlier request was written or its request ended, and a request passes its dialog place on once that first call is written, so the first dialogs of a batch open in the order the calls started, and a call that awaits an exec before its dialog is overtaken by the later calls' dialogs, as in Pi. A handler that waits on something other than a host call before its first host call holds the later calls' first host calls, which Pi's single thread lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
     - Continuation: when two dialogs are answered back to back, Pi runs the two handlers' continuations in the order of the answers, and each continuation runs to its next await or its return before the next one starts. The reader settles a handler's slot when it reads the answer to the handler's dialog, and the handler's response is written only after the response of every handler that settled before it, or after that handler's next host call (the await its continuation reached).
 
     ``parked``, when set, runs each time a call starts to wait for an earlier one, so a test knows it is held without timing.
@@ -2208,7 +2205,7 @@ class _ToolStartOrder:
     def __init__(self, batches: "_ToolBatches | None" = None, batch: str = "") -> None:
         self._lock = threading.Lock()
         self._tail: threading.Event | None = None
-        # The requests whose dialog place has not passed, in arrival order. The first is the one whose first dialog may be written.
+        # The requests whose dialog place has not passed, in arrival order. The first is the one whose first host call may be written; a request passes its place once that call is written, whatever the call is.
         self._dialog_queue: list[_ToolStart] = []
         # Orders the responses of the handlers whose dialogs were answered.
         self._settle = _SettleGate()
@@ -5316,16 +5313,15 @@ class Extension:
         return self._wait_call(call_id, event, method)
 
     def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None, event: threading.Event | None = None, start: _ToolStart | None = None) -> tuple[str, threading.Event]:
-        # A tool handler's host call is an await of Pi's handler: it orders the handler among the calls of its batch (_ToolStartOrder).
-        dialog = method in _DIALOG_METHODS
+        # A tool handler's host call, of any kind, is an await of Pi's handler: it orders the handler among the calls of its batch (_ToolStartOrder).
         if start is not None:
-            start.before_call(dialog)
+            start.before_call()
         try:
             # The reader settles the handler's slot when it reads a dialog's answer, so only a dialog call carries the slot.
-            return self._write_call(method, args, parent_request_id, parent, event, start.response_slot() if start is not None and dialog else None)
+            return self._write_call(method, args, parent_request_id, parent, event, start.response_slot() if start is not None and method in _DIALOG_METHODS else None)
         finally:
             if start is not None:
-                start.after_call(dialog)
+                start.after_call()
 
     def _write_call(self, method: str, args: Any, parent_request_id: str, parent: _RequestParent | None, event: threading.Event | None, slot: _SettleSlot | None) -> tuple[str, threading.Event]:
         event = event if event is not None else threading.Event()

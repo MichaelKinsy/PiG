@@ -8,10 +8,12 @@
 //! - Start: a request's handler is invoked only after the handler of every earlier request of its batch was invoked or its request
 //!   ended without one. A handler is Rust code on a preemptible thread, so a thread that the operating system preempts between its
 //!   hand-off and its handler's first statement can still be overtaken, and no Rust construct closes that window.
-//! - Dialog: the first dialog (`ui.select`, `ui.confirm`, `ui.input`, `ui.editor`, `ui.custom`) a handler opens is written only after
-//!   the first dialog of every earlier request of its batch was written or its request ended, so the dialogs of a batch open in the
-//!   order the calls started. A handler that waits on something else before its dialog holds the later calls' first dialogs of its
-//!   batch, which Pi's single thread lets overtake it; that is the price of an order the handlers' own code cannot be asked for.
+//! - Dialog: a handler's first host call, of any kind, is written only after the first host call of every earlier request of its
+//!   batch was written or its request ended, and a request passes its dialog place on once that first call is written, so the first
+//!   dialogs of a batch open in the order the calls started, and a call that awaits an exec before its dialog is overtaken by the
+//!   later calls' dialogs, as in Pi. A handler that waits on something the SDK does not see (its own fetch, timer or child process)
+//!   before its first host call holds the later calls' first host calls of its batch, which Pi's single thread lets overtake it;
+//!   that is the price of an order the handlers' own code cannot be asked for.
 //! - Continuation: when two dialogs are answered back to back, Pi runs the two handlers' continuations in the order of the answers,
 //!   and each continuation runs to its next await or its return before the next one starts. The reader settles a handler's slot when
 //!   it reads the answer to the handler's dialog, and the handler's response is written only after the response of every handler of
@@ -45,7 +47,7 @@ impl Latch {
     }
 }
 
-/// A request's place in the dialog queue. `waiting` is made only when the request has to wait for its first dialog.
+/// A request's place in the dialog queue. `waiting` is made only when the request has to wait for its first host call.
 struct DialogPlace {
     id: u64,
     waiting: Option<Arc<Latch>>,
@@ -57,7 +59,8 @@ struct Places {
     /// The place the next request takes in the start order.
     tail: Option<Arc<Latch>>,
     next_id: u64,
-    /// The requests whose dialog place has not passed, in arrival order. The first is the one whose first dialog may be written.
+    /// The requests whose dialog place has not passed, in arrival order. The first is the one whose first host call may be written; a
+    /// request passes its place once that call is written, whatever the call is.
     dialogs: VecDeque<DialogPlace>,
 }
 
@@ -247,15 +250,16 @@ impl ToolStart {
         }
     }
 
-    /// Runs before the handler writes a host call. The call is an await of the handler's continuation, so a settled handler yields its
-    /// place in the response order. A handler's first dialog waits for the first dialogs of the earlier requests; `dialog` reports
-    /// whether the call is one.
-    pub(crate) fn before_call(&self, dialog: bool) {
+    /// Runs before the handler writes a host call, of any kind. The call is an await of the handler's continuation, so a settled
+    /// handler yields its place in the response order. A handler's first host call waits for the first host calls of the earlier
+    /// requests, and `after_call` then passes its dialog place on, as Pi's single thread lets a later call run once an earlier call
+    /// reached its first await.
+    pub(crate) fn before_call(&self) {
         self.yield_turn();
-        if !dialog || self.dialog_opened.swap(true, Ordering::AcqRel) {
+        if self.dialog_opened.swap(true, Ordering::AcqRel) {
             return;
         }
-        // pig divergence (D187): the first dialog of a call waits for the first dialogs of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see; Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
+        // pig divergence (D187): the first host call of a call waits for the first host calls of the earlier calls of its batch, also while an earlier call is blocked in work the SDK cannot see (its own fetch, timer or child process); Pi's single thread lets a later call's dialog overtake an earlier call that awaits real I/O.
         let waiting = {
             let mut places = self.order.places.lock().unwrap();
             // A request that is not queued passed its place already; the first one in the queue is the one whose turn it is.
@@ -269,14 +273,13 @@ impl ToolStart {
         waiting.wait();
     }
 
-    /// Runs once the host call's frame is written, or failed to be.
-    pub(crate) fn after_call(&self, dialog: bool) {
-        if dialog {
-            self.pass_dialog();
-        }
+    /// Runs once the host call's frame is written, or failed to be. The first host call of any kind gives the dialog place up: Pi's
+    /// handler that awaits an exec has yielded the thread, so a later call's dialog may open before the handler's own.
+    pub(crate) fn after_call(&self) {
+        self.pass_dialog();
     }
 
-    /// Gives up the request's dialog place: the first request that still holds one may write its first dialog. It never waits, so a
+    /// Gives up the request's dialog place: the first request that still holds one may write its first host call. It never waits, so a
     /// request that ends while an earlier one still runs is not held by it. It is idempotent.
     fn pass_dialog(&self) {
         let mut places = self.order.places.lock().unwrap();
@@ -502,12 +505,12 @@ mod tests {
         let mut open = |i: usize| {
             let (start, rec) = (starts[i].clone(), rec.clone());
             threads.push(thread::spawn(move || {
-                start.before_call(true);
+                start.before_call();
                 rec.add(&["a", "b", "c"][i]);
-                start.after_call(true);
+                start.after_call();
                 // A second dialog of the same request does not wait again.
-                start.before_call(true);
-                start.after_call(true);
+                start.before_call();
+                start.after_call();
                 start.end();
             }));
         };
@@ -532,9 +535,9 @@ mod tests {
         let dialog = |name: &'static str, start: &Arc<ToolStart>| {
             let (start, rec) = (start.clone(), rec.clone());
             thread::spawn(move || {
-                start.before_call(true);
+                start.before_call();
                 rec.add(name);
-                start.after_call(true);
+                start.after_call();
             })
         };
         let mut threads = vec![dialog("third", &third)];
@@ -545,6 +548,33 @@ mod tests {
         first.end();
         join(threads);
         assert_eq!(rec.list(), ["second", "third"]);
+    }
+
+    // Pi's handler that awaits an exec before its first dialog has yielded the thread, so the later calls' dialogs open while its exec runs: the first
+    // host call, whatever it is, passes the dialog place on.
+    #[test]
+    fn the_first_host_call_of_any_kind_passes_the_dialog_place() {
+        let (hook, parked) = parked_counter();
+        let order = ToolStartOrder::with_parked(hook);
+        let (first, second, third) = (order.reserve(), order.reserve(), order.reserve());
+        // `first` writes an exec and goes on without ending.
+        first.before_call();
+        first.after_call();
+        // The later calls' first host calls, dialogs, do not wait for it.
+        let (done_tx, done) = mpsc::channel();
+        let later = thread::spawn(move || {
+            second.before_call();
+            second.after_call();
+            third.before_call();
+            third.after_call();
+            done_tx.send(()).unwrap();
+        });
+        done.recv_timeout(Duration::from_secs(5)).expect("a later call waited for the dialog place of a request whose exec is in flight");
+        later.join().unwrap();
+        assert!(parked.try_recv().is_err(), "a later call parked behind a request whose exec is in flight");
+        // `first`'s own dialog, after its exec, does not wait again.
+        first.before_call();
+        first.after_call();
     }
 
     // The reader hands the places of a request whose thread never started on at once: it does not wait for the earlier requests, which still hold the
@@ -558,9 +588,9 @@ mod tests {
         let dialog = {
             let (last, rec) = (last.clone(), rec.clone());
             thread::spawn(move || {
-                last.before_call(true);
+                last.before_call();
                 rec.add("last");
-                last.after_call(true);
+                last.after_call();
             })
         };
         wait_parked(&parked);
@@ -616,7 +646,7 @@ mod tests {
         wait_parked(&parked);
         assert!(rec.list().is_empty());
         // Not a dialog: any host call is the await the continuation reached.
-        a.before_call(false);
+        a.before_call();
         responder.join().unwrap();
         assert_eq!(rec.list(), ["b"]);
         // The next answer settles `a` again, and it holds its place until its response is written.
@@ -684,8 +714,8 @@ mod tests {
         let (done, finished) = mpsc::channel();
         let retained = ended.clone();
         thread::spawn(move || {
-            retained.before_call(true);
-            retained.after_call(true);
+            retained.before_call();
+            retained.after_call();
             let _ = done.send(());
         });
         finished.recv_timeout(Duration::from_secs(5)).expect("the dialog of an ended request waited for a place it passed");
@@ -719,8 +749,8 @@ mod tests {
             returns(move || {
                 for start in [&b_first, &b_second] {
                     start.begin();
-                    start.before_call(true);
-                    start.after_call(true);
+                    start.before_call();
+                    start.after_call();
                 }
             }),
             "a request of batch B waited for a request of batch A"

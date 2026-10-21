@@ -46,12 +46,12 @@ func TestToolDialogsOpenInCallOrder(t *testing.T) {
 	var done sync.WaitGroup
 	open := func(i int) {
 		done.Go(func() {
-			starts[i].beforeCall(true)
+			starts[i].beforeCall()
 			rec.add(string(rune('a' + i)))
-			starts[i].afterCall(true)
+			starts[i].afterCall()
 			// A second dialog of the same request does not wait again.
-			starts[i].beforeCall(true)
-			starts[i].afterCall(true)
+			starts[i].beforeCall()
+			starts[i].afterCall()
 			starts[i].release()
 		})
 	}
@@ -79,15 +79,15 @@ func TestToolDialogOrderPassesAnEndedRequest(t *testing.T) {
 	var rec orderRecorder
 	var done sync.WaitGroup
 	done.Go(func() {
-		third.beforeCall(true)
+		third.beforeCall()
 		rec.add("third")
-		third.afterCall(true)
+		third.afterCall()
 	})
 	<-parked
 	done.Go(func() {
-		second.beforeCall(true)
+		second.beforeCall()
 		rec.add("second")
-		second.afterCall(true)
+		second.afterCall()
 	})
 	<-parked
 	// first ends with no handler and no dialog.
@@ -96,6 +96,29 @@ func TestToolDialogOrderPassesAnEndedRequest(t *testing.T) {
 	if want := []string{"second", "third"}; !reflect.DeepEqual(rec.list(), want) {
 		t.Fatalf("dialogs opened in order %v, want %v", rec.list(), want)
 	}
+}
+
+// Pi's handler that awaits an exec before its first dialog has yielded the thread, so the later calls' dialogs open while its exec runs. The first host call of any kind
+// passes the dialog place on; a request whose first call is not a dialog must not hold the first host calls of the requests behind it until the handler returns.
+func TestToolFirstHostCallOfAnyKindPassesTheDialogPlace(t *testing.T) {
+	var order toolStartOrder
+	first, second, third := order.reserve(), order.reserve(), order.reserve()
+	order.parked = func() {
+		t.Error("a later call waited for the dialog place of a request whose exec is in flight")
+		first.release() // lets the held call return, so the test ends instead of hanging
+	}
+	second.parked, third.parked = order.parked, order.parked
+	// first writes an exec, which is non-blocking for the later calls, and then its handler keeps running.
+	first.beforeCall()
+	first.afterCall()
+	// The later calls reach their first host call, a dialog, and open it while first's exec runs.
+	second.beforeCall()
+	second.afterCall()
+	third.beforeCall()
+	third.afterCall()
+	// first's own dialog, after its exec, does not wait again.
+	first.beforeCall()
+	first.afterCall()
 }
 
 // Dialogs answered back to back resume their handlers in the order of the answers: the response of a handler whose answer the reader read first
@@ -138,7 +161,7 @@ func TestToolResponsesFollowTheOrderTheAnswersWereRead(t *testing.T) {
 	var rec2 orderRecorder
 	done.Go(func() { b.respond(func() { rec2.add("b") }) })
 	<-parked2
-	a.beforeCall(false)
+	a.beforeCall()
 	done.Wait()
 	if want := []string{"b"}; !reflect.DeepEqual(rec2.list(), want) {
 		t.Fatalf("responses %v, want b to respond once a reached its next host call", rec2.list())
@@ -160,8 +183,8 @@ func TestToolRetainedContextDialogAfterTheRequestEndedLeavesNoSlot(t *testing.T)
 		t.Fatal("a request that ended made a response slot")
 	}
 	// Its first dialog does not wait for a place it passed, whatever the requests behind it do.
-	ended.beforeCall(true)
-	ended.afterCall(true)
+	ended.beforeCall()
+	ended.afterCall()
 	later.responseSlot().settle()
 	done := make(chan struct{})
 	go func() {
@@ -175,15 +198,15 @@ func TestToolRetainedContextDialogAfterTheRequestEndedLeavesNoSlot(t *testing.T)
 // (a subagent's tool calls reach the same connection while the tool that runs the subagent has not returned).
 func TestToolBatchOrdersAreIndependentAcrossBatches(t *testing.T) {
 	var orders toolBatchOrders
-	long := orders.reserve("batch-a")  // never opens a dialog and does not end
+	long := orders.reserve("batch-a")  // never makes a host call and does not end
 	other := orders.reserve("batch-b") // arrived after it, and is in another batch
 	bare := orders.reserve("")
 	if bare != nil {
 		t.Fatal("a request that names no batch took a place")
 	}
-	other.beforeCall(true) // would block forever behind long if the batches shared an order
-	other.afterCall(true)
-	bare.beforeCall(true)
+	other.beforeCall() // would block forever behind long if the batches shared an order
+	other.afterCall()
+	bare.beforeCall()
 	bare.respond(func() {})
 
 	// Within a batch the later request waits.
@@ -195,7 +218,7 @@ func TestToolBatchOrdersAreIndependentAcrossBatches(t *testing.T) {
 	second.parked = hook
 	opened := make(chan struct{})
 	go func() {
-		second.beforeCall(true)
+		second.beforeCall()
 		close(opened)
 	}()
 	<-parked
