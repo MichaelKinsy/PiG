@@ -43,6 +43,7 @@
     "github.com/MichaelKinsy/PiG/coding/source",
     "github.com/MichaelKinsy/PiG/extensions/sdk",
     "github.com/MichaelKinsy/PiG/extensions/sdk/frontend",
+    "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
     "github.com/MichaelKinsy/PiG/extensions/sdk/internal/kitwire",
     "github.com/MichaelKinsy/PiG/extensions/sdk/json",
     "github.com/MichaelKinsy/PiG/extensions/sdk/kit",
@@ -3604,83 +3605,6 @@
       "shapeHash": "sha256:9ccff5ff258659aeaa5c0dfcd740c679bc52bcaa17d2660789a3da8cdaca32cf"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#SettleGate",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "SettleGate",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "SettleGate"
-      },
-      "shapeHash": "sha256:1b962f6cb7224804cc974372a18bd52068c1825bdd47c804c33db3a95feb4b70"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#SettleGate.NewSlot",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "SettleGate.NewSlot",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() *SettleSlot"
-      },
-      "shapeHash": "sha256:218279523ad9e08e22646d6d4e44d14b975363ccc6a96c227d40bde23556d429"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#SettleGate.SetParkedHook",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "SettleGate.SetParkedHook",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(fn func())"
-      },
-      "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#SettleSlot",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "SettleSlot",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "SettleSlot"
-      },
-      "shapeHash": "sha256:501a06593980f4ef638c424ce4c2d33bb198a2bfc5cfaa2468ccca92783fd05a"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#SettleSlot.Close",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "SettleSlot.Close",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#SettleSlot.Run",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "SettleSlot.Run",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(action func())"
-      },
-      "shapeHash": "sha256:67e134fec33a1905b09e05846e6e086c550beaae39b54fbc6795c64e8947832c"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#SettleSlot.Settle",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "SettleSlot.Settle",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#StreamFn",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "StreamFn",
@@ -4094,9 +4018,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(ctx context.Context, toolCallID string) *SettleSlot"
+        "type": "func(ctx context.Context, toolCallID string) *github.com/MichaelKinsy/PiG/internal/jsloop.SettleSlot"
       },
-      "shapeHash": "sha256:b56f38520a5218d8251a4e849b36a4838d3727c78f3dd3b6fd439016a59b0eb7"
+      "shapeHash": "sha256:81217374e1ca277b345c7957688d5ce6ab51d44fac03fcea160f7f264963a0c9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/agent#ToolUpdateCallback",
@@ -6530,50 +6454,6 @@
       "shapeHash": "sha256:95d7a9a99900e064de0c81011e8d7e644f6818aea3d3c3acfd44514aa09517d4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#slotFinished",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "slotFinished",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "slotState"
-      },
-      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#slotSettled",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "slotSettled",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "slotState"
-      },
-      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#slotState",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "slotState",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "slotState"
-      },
-      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#slotWaiting",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "slotWaiting",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "slotState"
-      },
-      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#standaloneRunError",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "standaloneRunError",
@@ -7064,9 +6944,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, slot *SettleSlot, toolCallID string) context.Context"
+        "type": "func(ctx context.Context, slot *github.com/MichaelKinsy/PiG/internal/jsloop.SettleSlot, toolCallID string) context.Context"
       },
-      "shapeHash": "sha256:c2fbc9811ea489541f8c8882d274bcf55902e299820bbafd054f67c83ed6ce2a"
+      "shapeHash": "sha256:3251af8c108e8c2055ed2a09b38412a8bf9800da52a6e92a5b08ff231f2f1edf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#AIBinding",
@@ -180570,6 +180450,138 @@
         "type": "WorkingKind"
       },
       "shapeHash": "sha256:0ec6e3ab001bda0f58f5f0a15d5f0aa81486fa64205425c05fa997b0cd1c3c72"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleGate",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleGate",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SettleGate"
+      },
+      "shapeHash": "sha256:1b962f6cb7224804cc974372a18bd52068c1825bdd47c804c33db3a95feb4b70"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleGate.NewSlot",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleGate.NewSlot",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *SettleSlot"
+      },
+      "shapeHash": "sha256:218279523ad9e08e22646d6d4e44d14b975363ccc6a96c227d40bde23556d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleGate.SetParkedHook",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleGate.SetParkedHook",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func())"
+      },
+      "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleSlot",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleSlot",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SettleSlot"
+      },
+      "shapeHash": "sha256:501a06593980f4ef638c424ce4c2d33bb198a2bfc5cfaa2468ccca92783fd05a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleSlot.Close",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleSlot.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleSlot.Gate",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleSlot.Gate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *SettleGate"
+      },
+      "shapeHash": "sha256:732d7a43c1f5ef6bde959b10f1e8cff6474be7ffc49720743d7d0101fc777f64"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleSlot.Run",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleSlot.Run",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(action func())"
+      },
+      "shapeHash": "sha256:67e134fec33a1905b09e05846e6e086c550beaae39b54fbc6795c64e8947832c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#SettleSlot.Settle",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "SettleSlot.Settle",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#slotFinished",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "slotFinished",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "slotState"
+      },
+      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#slotSettled",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "slotSettled",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "slotState"
+      },
+      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#slotState",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "slotState",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "slotState"
+      },
+      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#slotWaiting",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "slotWaiting",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "slotState"
+      },
+      "shapeHash": "sha256:9b1f06336f849f5de706a85fcd6ac84daeb057ce3dca7c33991a8256618dd561"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/kitwire#Encode",

@@ -13839,7 +13839,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `e6d1b69dbc` (2026-10-20)
-- **Tests:** `agent/settle_order_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `agent/settle_order_test.go::TestSettleGateRunsActionsInSettleOrder`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived`
+- **Tests:** `agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle`, `coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder`, `coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived`, `internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors`
 - **Release note:** Two calls of an extension tool in one assistant message now end in the order their tools answer, as Pi ends them. In Pi, two tools that each wait on a dialog (or on timers of equal length) continue in the order their answers arrive, so `tool_execution_end` for the call whose dialog was answered first comes first. PiG woke the goroutines that waited for the two answers in no order, and on most runs the second call ended first, although its dialog was answered second. The host now records the order where the answers are read (a `tool_call` response from the extension's process, an RPC `extension_ui_response` line) and keeps it where the calls continue: the batch's `tool_execution_end` events, and the replies sent to the extension for its dialog calls. Tool-result messages still follow call order.
 
 ### BF-bfd090d

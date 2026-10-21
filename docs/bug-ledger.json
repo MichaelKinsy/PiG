@@ -31337,10 +31337,10 @@
         }
       ],
       "tests": [
-        "agent/settle_order_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
-        "agent/settle_order_test.go::TestSettleGateRunsActionsInSettleOrder",
+        "agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
         "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
-        "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived"
+        "coding/extension/host/subprocess/dialog_reply_order_test.go::TestDialogRepliesFollowTheOrderTheirAnswersArrived",
+        "internal/jsloop/settle_gate_table_test.go::TestSettleGateBehaviors"
       ]
     },
     {
