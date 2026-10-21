@@ -2335,6 +2335,17 @@ export class Runtime {
     return this.earlyConn.callAppliedOnReceipt("exec.loading", args);
   }
 
+  // pig additive (D19): a file mutation queue call (shims/file-mutation-queue-bridge.mjs). Pi's queue is a module-level map every extension shares, so a factory may use it while it loads: like exec, the call opens the loading connection and is applied when its reply arrives. The call is detached from the request that makes it: an aborted request does not end the wait for the file or the release of its turn, as Pi's queue does not.
+  fileMutation(method, args) {
+    if (this.conn) return this.call(method, args, { detached: true });
+    if (this.loadState === "loading") {
+      this.ensureConnectionSync();
+      return this.earlyConn.callAppliedOnReceipt(method, args);
+    }
+    if (this.connecting) return this.connecting.then(() => this.call(method, args, { detached: true }));
+    return this.call(method, args, { detached: true });
+  }
+
   // loader.ts:456-468. The Host validates the config with Pi's own rules and refuses a name another extension owns, and Pi does both when the call is made: the throw reaches the factory, which may catch it. A registration the factory makes is queued once it passed, and reaches the Host in the register frame, as Pi commits it when the factory returns; later ones apply at once.
   registerMcpServer(name, config) {
     const declaration = { name, config: structuredClone(config) };

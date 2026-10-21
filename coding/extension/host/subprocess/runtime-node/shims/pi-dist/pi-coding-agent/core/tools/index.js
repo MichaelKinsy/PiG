@@ -1,6 +1,6 @@
 export { createBashTool, createBashToolDefinition, createLocalBashOperations, } from "./bash.js";
 export { createEditTool, createEditToolDefinition, } from "./edit.js";
-export { withFileMutationQueue } from "./file-mutation-queue.js";
+export { withFileMutationQueue } from "../../../../file-mutation-queue-bridge.mjs";
 export { createFindTool, createFindToolDefinition, } from "./find.js";
 export { createGrepTool, createGrepToolDefinition, } from "./grep.js";
 export { createLsTool, createLsToolDefinition, } from "./ls.js";
