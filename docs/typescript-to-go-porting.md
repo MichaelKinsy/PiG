@@ -30,6 +30,26 @@ JavaScript object-property and `Map` insertion order frequently reaches model li
 
 TypeScript structural compatibility also does not require a corresponding Go interface. A published TypeScript `interface` may become a Go struct, tagged union, callback type, concrete host object, or wire schema. The semantic inventory records the consumer-visible shape; it does not prescribe the Go mechanism.
 
+## JavaScript event loop to Go
+
+Pi runs every callback on one thread. That order is a language fact, so Pi's code never states it. Pig runs the same code on goroutines, threads, and processes and must state it. Map each construct to one primitive in `internal/jsloop`. Do not write a new goroutine, mutex, or channel pattern for it.
+
+| JavaScript | What Pi guarantees | Go primitive |
+|---|---|---|
+| Synchronous prefix of an `async` function, `Promise.all(xs.map(f))` | Each `f` runs to its first `await` in source order. | `jsloop.Lane`: `Reserve` in source order before you start the goroutines; `Release` when the request is issued, `Pass` when the call may end without issuing it. |
+| `await` of work that settles without the loop turning | The continuation runs before any timer or I/O callback. | `jsloop.Loop.Microtask`, or `Hops(n, fn)` when upstream counts the awaits. A plain blocking call when order is unobservable. |
+| `await` of I/O, a timer, a child process | The continuation runs as a later task, after queued microtasks. | `jsloop.Loop.Macrotask`, called by the goroutine that finished the work. |
+| `setTimeout(fn, 0)`, `setImmediate` | After every microtask of the current turn. | `Macrotask`. Never `go func()` and never `time.AfterFunc(0, ...)`. |
+| Several promises settle back to back | Continuations run in settle order and none overtakes an earlier one. | `jsloop.SettleGate`: the reader calls `SettleSlot.Settle` before it wakes the waiter; the waiter acts through `Run`. |
+| An event emitter's first listener | Messages arrive after the owner registered, in the same tick. | Start the reader after the consumer registers. |
+| `Map` and object iteration | Insertion order (array-index keys first for objects). | An ordered slice with a lookup index. Never `range` over a Go map to emit output. |
+| `process.stdout.write`, `console.log` | One ordered stream. | One writer: RPC mode's `writeRPC` for stdout, `Conn`'s writer for an extension socket. |
+| An unawaited call | Runs, errors go to the unhandled-rejection path. | An owned background task (see async parity), still ordered by its cause. |
+
+Three limits the primitives cannot remove. A native handler is blocking code on its own thread, so Pig cannot run "to the first await" and then hand off. A runtime in another process cannot report whether a call came from a timer or from a continuation unless it says so. Go, Rust, and Python preempt: a hand-off closes the window it can see, not the window inside the handler.
+
+`boundarygoroutine`, `unorderedfanin`, and `rpcwriteroutsidesink` in `make port-lint` flag a goroutine that runs a callback, a map range that feeds output, and a second stdout or socket writer in the extension-boundary packages.
+
 ## Interface policy
 
 Interfaces are not banned. They are a dispatch and design mechanism, not a performance defect by themselves.

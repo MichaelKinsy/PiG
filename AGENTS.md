@@ -186,6 +186,23 @@ Treat every upstream `async`, `Promise`, `.then`, `Promise.all`, `Promise.race`,
 
 Probe upstream call sites, not only the declared return type: an `async` function with no `await` may still create a microtask boundary, while a Promise-returning callback may be awaited by its host. Regression evidence must prove completion ordering, cancellation, and error propagation; output-only happy-path tests do not prove async parity. When adding or changing an extension API, record the async contract in `docs/extension-api-parity.md` and exercise isolated and packed subprocess modes where applicable.
 
+## Extension boundary ordering
+
+Pi runs extension handlers, RPC writes, and callbacks on one event loop. Pig runs them on goroutines, threads, and processes. Treat order at that boundary as observable behavior.
+
+- Name the cause of every boundary effect before you write it: a continuation of the running callback (microtask), or a timer, I/O completion, new input line, or background goroutine (macrotask).
+- Do not write RPC stdout, an extension socket, or an event listener from a goroutine that holds no place in the order. RPC mode writes stdout through `writeRPC` in `coding/cli/rpc_mode.go`, which sends responses through `jsloop.Loop` and every other record straight to the stdout queue; `Conn`'s writer owns an extension socket.
+- Run order-observable continuations on `jsloop.Loop`: `Microtask` or `Hops` for the continuation of an await that settles without the loop turning, `Macrotask` for a timer, I/O completion, or new input line. Do not start a `go` statement to reproduce `setTimeout(0)`, `queueMicrotask`, or an unawaited call.
+- Reserve a `jsloop.Lane` place with `Reserve` in source order before you start the goroutines of a `Promise.all(map)` batch, and `Release` it however the call ends (`Pass` when the call may end without issuing its request).
+- Order waiters that several goroutines wake from one reader with `jsloop.SettleGate`. The reader calls `SettleSlot.Settle` before it wakes the waiter, and the waiter acts through `SettleSlot.Run`.
+- Never drop a message that arrives before its listener registers. Start the reader after the consumer registers.
+- Never iterate a Go map to produce ordered output. Carry insertion order in a slice.
+- Run every load, reload, restart, and update of one extension or checkout under one lock.
+- Prove an ordering fix with a test that fails without it, uses barriers and parked hooks instead of sleeps, runs isolated, packed, and fused, and passes `-race -count=24` under CPU load.
+- Record an intentional exception as `//portlint:allow <check> <class>: <reason>` with the class `executor`, `joined`, `lifecycle`, `upstream: <file>:<symbol>`, or `pig divergence (D<N>)`. A marker without a class is itself a finding.
+
+`make port-lint` enforces part of this. `boundarygoroutine` flags a `go` statement that runs a callback or an extension interface method, and any `go` statement in a `new*` or `New*` function. `unorderedfanin` flags a `range` over a map whose body sends, runs a callback, or calls an emit, notify, or write function. `rpcwriteroutsidesink` flags `os.Stdout`, `codingagent.RawStdoutWriter`, `writeJSONLine`, a `net.Conn` write, and `(*Conn).writeInline` in `coding/cli/rpc*.go` and `coding/extension/host/subprocess`. Each runs on the extension-boundary packages the check lists in `automation/ci/portlint/README.md`. No check verifies the cause of a boundary effect, the use of `Lane` or `SettleGate`, the lock rule, or the test rule; review and the conformance rows in `test/extension-conformance` cover those.
+
 ## Reward function
 
 Highest-value work, in order:

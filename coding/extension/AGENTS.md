@@ -24,6 +24,8 @@ Every SDK exposes one extension contract. Isolated, packed, and fused extension 
 | A large extension set stalls startup | Load representative mixed extensions | Keep startup and registration bounded |
 | Frames exhaust memory | Send oversized, malformed, partial, and stalled frames | Enforce bounds and cancel accurately |
 | Shutdown leaks a process or socket | Cancel during host calls and streaming | Drain and close owned resources |
+| Two answers or callbacks settle back to back | Release them back to back under CPU load, in every realization | Continue and write in Pi's settle order |
+| Extension output races a response | Send a requestless host call and a command response in one turn | Write the response first, then the output |
 
 ## Evidence
 
