@@ -1454,6 +1454,28 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"order_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "order_probe",
+					Description: "Make a host call and an update in the first tick",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"n":{"type":"number"}}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "order-done"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"mutation_order_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "mutation_order_probe",
+					Description: "Take the file mutation queue in the first statement and append a tag to the file",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"file":{"type":"string"},"tag":{"type":"string"}}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "mutation-done"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"timer_defer": {
 				Definition: extension.ToolDefinition{
 					Name:        "timer_defer",
