@@ -86462,9 +86462,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(registry *github.com/MichaelKinsy/PiG/internal/codingagent.ModelRegistry, agentDir string, search string)"
+        "type": "func(registry *github.com/MichaelKinsy/PiG/internal/codingagent.ModelRegistry, search string)"
       },
-      "shapeHash": "sha256:a51b23136bc33770fa6c735603597b9826781b1654d142f1f247abcf2d7a5890"
+      "shapeHash": "sha256:8af7234cb0f6f789acb101b3466f88f4f6b323e2092d2a5fe03fc7c8b0a26e48"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#printPackageCommandHelp",

@@ -31929,6 +31929,29 @@
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
       ]
+    },
+    {
+      "id": "BF-0b8370a",
+      "title": "`pig --list-models` now prints only the models the model runtime reports as available, as Pi does",
+      "symptom": "It used to append every bundled model of each provider that had a login or API key, so after `pig update --models` it still listed OpenRouter models that the saved personalized catalog had dropped, such as `openrouter/auto` and the `:batch` variants.",
+      "rootCause": "pig appended every bundled model of an authenticated provider after the registry's list, so models Pi's OpenRouter personalized catalog dropped came back in 'pig --list-models' after 'pig update --models'. Pi's listModels prints modelRuntime.getAvailable() and nothing else. Add a regression test and the paired 27-list-models-personalized-openrouter-catalog scenario.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig --list-models` now prints only the models the model runtime reports as available, as Pi does. It used to append every bundled model of each provider that had a login or API key, so after `pig update --models` it still listed OpenRouter models that the saved personalized catalog had dropped, such as `openrouter/auto` and the `:batch` variants.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0b8370a677",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_list_personalized_catalog_test.go::TestPrintModelList_PersonalizedOpenRouterCatalogReplacesBundledModels",
+        "test/parity/scenarios/model-resolver-selector/27-list-models-personalized-openrouter-catalog.toml"
+      ]
     }
   ],
   "divergences": [

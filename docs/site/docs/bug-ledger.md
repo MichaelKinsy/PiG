@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-946 bugs. 896 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+947 bugs. 897 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -965,6 +965,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
 | [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
+| [BF-0b8370a](#bf-0b8370a) | `pig --list-models` now prints only the models the model runtime reports as available, as Pi does | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14152,6 +14153,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f6e6b97f00` (2026-10-21)
 - **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
 - **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+
+### BF-0b8370a
+
+**`pig --list-models` now prints only the models the model runtime reports as available, as Pi does**
+
+- **Source:** PiG's own defect
+- **Symptom:** It used to append every bundled model of each provider that had a login or API key, so after `pig update --models` it still listed OpenRouter models that the saved personalized catalog had dropped, such as `openrouter/auto` and the `:batch` variants.
+- **Root cause:** pig appended every bundled model of an authenticated provider after the registry's list, so models Pi's OpenRouter personalized catalog dropped came back in 'pig --list-models' after 'pig update --models'. Pi's listModels prints modelRuntime.getAvailable() and nothing else. Add a regression test and the paired 27-list-models-personalized-openrouter-catalog scenario.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0b8370a677` (2026-10-21)
+- **Tests:** `coding/cli/model_list_personalized_catalog_test.go::TestPrintModelList_PersonalizedOpenRouterCatalogReplacesBundledModels`, `test/parity/scenarios/model-resolver-selector/27-list-models-personalized-openrouter-catalog.toml`
+- **Release note:** `pig --list-models` now prints only the models the model runtime reports as available, as Pi does. It used to append every bundled model of each provider that had a login or API key, so after `pig update --models` it still listed OpenRouter models that the saved personalized catalog had dropped, such as `openrouter/auto` and the `:batch` variants.
 
 ## Divergences from Pi added in this release
 
