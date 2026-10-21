@@ -56,7 +56,7 @@ func TestCompactionFailureWaitsForEndListeners(t *testing.T) {
 						_, _ = sess.checkCompaction(context.Background(), &agent.AssistantMessage{
 							Role: "assistant", StopReason: "error", ErrorMessage: "context window exceeded",
 							Provider: "fake", ModelID: "fake-1",
-						}, true, nil)
+						}, true)
 					default:
 						if _, err := sess.runAutoCompaction(context.Background(), "overflow", true); err != nil {
 							t.Error(err)

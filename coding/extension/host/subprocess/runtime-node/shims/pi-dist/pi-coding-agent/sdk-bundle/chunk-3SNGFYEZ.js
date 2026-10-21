@@ -4,7 +4,7 @@ import {
   fetchWithRetry,
   getPiUserAgent,
   processImage
-} from "./chunk-5EKWCXVB.js";
+} from "./chunk-RKAYAUZW.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -8957,7 +8957,6 @@ var AgentSession = class {
   _entryIdsByMessage = /* @__PURE__ */ new WeakMap();
   _boundaryDispatchedMessages = /* @__PURE__ */ new WeakSet();
   _lastAssistantMessage;
-  _lastAssistantToolResults = [];
   _lastActivityOutcome = "completed";
   _isBeforeSettle = false;
   _abortDuringBeforeSettle = false;
@@ -9569,7 +9568,6 @@ var AgentSession = class {
       }
     }
     if (event.type === "turn_end") {
-      this._lastAssistantToolResults = event.toolResults;
       this._flushPendingCustomMessages();
     }
   }, "_handleAgentEvent");
@@ -9612,10 +9610,26 @@ var AgentSession = class {
     }
     return void 0;
   }
-  _omitRecoveryAttempt(message, toolResults = []) {
+  /**
+   * Persistently omit a failed attempt and its tool results from model context. Results are
+   * found in the projected context, so the pair stays together whether the attempt comes from
+   * the current run or a resumed session. An unpaired result fails the next request (#11227).
+   */
+  _omitRecoveryAttempt(message) {
+    const toolCallIds = new Set(message.content.flatMap((block) => block.type === "toolCall" ? [block.id] : []));
+    const entryId = this._findPersistedMessageEntryId(message);
+    const messages = this.agent.state.messages;
+    const index = messages.findIndex((m) => m === message || entryId !== void 0 && this._entryIdsByMessage.get(m) === entryId);
+    const toolResults = [];
+    for (const m of index < 0 ? [] : messages.slice(index + 1)) {
+      if (m.role === "assistant")
+        break;
+      if (m.role === "toolResult" && toolCallIds.has(m.toolCallId))
+        toolResults.push(m);
+    }
     const targets = [message, ...toolResults];
     const targetIds = targets.map((target) => this._findPersistedMessageEntryId(target));
-    const unresolvedProjectedTarget = targets.some((target, index) => targetIds[index] === void 0 && this.agent.state.messages.includes(target));
+    const unresolvedProjectedTarget = targets.some((target, index2) => targetIds[index2] === void 0 && this.agent.state.messages.includes(target));
     if (unresolvedProjectedTarget) {
       throw new Error("Cannot persist recovery omission because a projected message has no source entry");
     }
@@ -10227,9 +10241,7 @@ ${normalized.hints.join("\n")}` : trigger.prompt;
   }
   async _handlePostAgentRun() {
     const message = this._lastAssistantMessage;
-    const toolResults = this._lastAssistantToolResults;
     this._lastAssistantMessage = void 0;
-    this._lastAssistantToolResults = [];
     if (this._agentRunAbortRequested) {
       this._finishCancelledRetry();
       return false;
@@ -10255,7 +10267,7 @@ ${normalized.hints.join("\n")}` : trigger.prompt;
       });
       this._retryAttempt = 0;
     }
-    if (await this._checkCompaction(message, true, toolResults)) {
+    if (await this._checkCompaction(message)) {
       return !this._agentRunAbortRequested;
     }
     return !this._agentRunAbortRequested && this.agent.hasQueuedMessages();
@@ -11038,7 +11050,7 @@ ${args}` : skillBlock;
    * @param skipAbortedCheck If false, include aborted messages (for pre-prompt check). Default: true
    * @returns Whether the post-run loop should call `agent.continue()` for overflow recovery or queued messages
    */
-  async _checkCompaction(assistantMessage, skipAbortedCheck = true, toolResults = []) {
+  async _checkCompaction(assistantMessage, skipAbortedCheck = true) {
     const settings = this.settingsManager.getCompactionSettings(this.model);
     if (!settings.enabled)
       return false;
@@ -11090,7 +11102,7 @@ ${args}` : skillBlock;
         return false;
       }
       this._overflowRecoveryAttempted = true;
-      this._omitRecoveryAttempt(assistantMessage, toolResults);
+      this._omitRecoveryAttempt(assistantMessage);
       const retry = await this._runAutoCompaction("overflow", willRetry);
       if (retry)
         this._failedResponse = assistantMessage;

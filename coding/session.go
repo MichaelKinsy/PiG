@@ -117,7 +117,6 @@ type Session struct {
 	boundaryDispatchedMessage *agent.AssistantMessage
 	lastActivityOutcome       extension.AgentActivityOutcome
 	lastAssistantMessage      *agent.AssistantMessage
-	lastAssistantToolResults  []agent.AgentMessage
 	// boundaryEncodings keeps the encodings of the latest boundary preview's messages for the next dispatch.
 	boundaryEncodings boundarywire.Encodings
 
@@ -1014,7 +1013,7 @@ func (s *Session) promptCompactionDueLocked(ctx context.Context) (func(context.C
 			}
 			return false, nil
 		}
-		if _, err := s.checkCompactionDecision(ctx, la, false, nil, deferCompaction); err != nil {
+		if _, err := s.checkCompactionDecision(ctx, la, false, deferCompaction); err != nil {
 			return nil, err
 		}
 	}
@@ -3225,12 +3224,12 @@ func (s *Session) summarizationRetryOptions(source, reason string) (*ai.RetryPol
 //
 // Usage measured before a later context edit or compaction does not count.
 // The caller serializes with the agent loop.
-func (s *Session) checkCompaction(ctx context.Context, assistantMsg *agent.AssistantMessage, skipAbortedCheck bool, toolResults []agent.AgentMessage) (bool, error) {
-	return s.checkCompactionDecision(ctx, assistantMsg, skipAbortedCheck, toolResults, s.autoCompactAndDecide)
+func (s *Session) checkCompaction(ctx context.Context, assistantMsg *agent.AssistantMessage, skipAbortedCheck bool) (bool, error) {
+	return s.checkCompactionDecision(ctx, assistantMsg, skipAbortedCheck, s.autoCompactAndDecide)
 }
 
 // checkCompactionDecision resolves recovery and threshold policy before delegating the admitted operation.
-func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *agent.AssistantMessage, skipAbortedCheck bool, toolResults []agent.AgentMessage, compact func(context.Context, string, bool) (bool, error)) (bool, error) {
+func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *agent.AssistantMessage, skipAbortedCheck bool, compact func(context.Context, string, bool) (bool, error)) (bool, error) {
 	model := s.Model()
 	settings, err := s.compactionSettings()
 	if err != nil {
@@ -3284,7 +3283,7 @@ func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *age
 			return false, nil
 		}
 		s.overflowRecoveryAttempted.Store(true)
-		if err := s.omitRecoveryAttempt(assistantMsg, toolResults); err != nil {
+		if err := s.omitRecoveryAttempt(assistantMsg); err != nil {
 			return false, err
 		}
 		retry, err := compact(ctx, "overflow", willRetry)
