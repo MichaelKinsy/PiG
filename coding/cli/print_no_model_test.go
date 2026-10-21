@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -85,6 +87,27 @@ func TestPrintModeRejectsAProviderWithoutAuthBeforeTheTurn(t *testing.T) {
 			}
 			if strings.Contains(result.stdout, "agent_start") || strings.Contains(result.stdout, "must not run") {
 				t.Fatalf("the turn ran: %s", result.stdout)
+			}
+		})
+	}
+}
+
+// AgentSession.prompt (agent-session.ts:2095-2100, then 2118-2136) expands skill commands and prompt templates before it validates the selected model's auth, so a /skill: whose file cannot be read reports its skill_expansion error before the missing-auth error.
+func TestPrintModeExpandsSkillCommandsBeforeTheAuthCheck(t *testing.T) {
+	for _, mode := range []string{"text", "json"} {
+		t.Run(mode, func(t *testing.T) {
+			host := printModeTestHost(t, ai.NewFauxProvider(ai.FauxConfig{}))
+			host.Session.Model.ProviderMeta.ProviderID = "keyless"
+			skillFile := filepath.Join(host.Services.AgentDir(), "skills", "boom", "SKILL.md")
+			writeResourceLoaderFixture(t, skillFile, "---\nname: boom\ndescription: Unreadable once the prompt starts.\n---\nbody\n")
+			host.Session.ResourceLoader.(*cliResourceLoader).set(nil, []*codingagent.SkillDef{{Name: "boom", Description: "Unreadable once the prompt starts.", FilePath: skillFile, BaseDir: filepath.Dir(skillFile)}}, nil)
+			host.Extensions = []extension.Extension{{Path: "remove-skill", Handlers: map[string][]extension.HandlerFn{
+				"input": {func(...any) (any, error) { return nil, os.Remove(skillFile) }},
+			}}}
+			result := runPrintModeForTest(t, host, printModeOptions{Mode: mode, InitialMessage: "/skill:boom now"})
+			want := "Extension error (" + skillFile + "): ENOENT: no such file or directory, open '" + skillFile + "'\n" + codingagent.FormatNoAPIKeyFoundMessage("keyless") + "\n"
+			if !errors.Is(result.err, errPrintModeHandled) || result.stderr != want {
+				t.Fatalf("err=%v stderr=%q, want %q", result.err, result.stderr, want)
 			}
 		})
 	}

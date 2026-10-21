@@ -910,6 +910,63 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// rw_prompt_state registers two tools and activates one, reading the system prompt state after each write. Pi's getters read the Session, so every read answers the writes before it.
+	ext.Command("rw_prompt_state", "Read the system prompt state after registering and activating tools", func(ctx sdk.Context, _ string) error {
+		tool := func(name string) sdk.ToolDefinition {
+			return sdk.ToolDefinition{Name: name, Label: name, Description: name, PromptSnippet: name + "-snippet", Parameters: sdk.Schema{"type": "object"}, Execute: func(sdk.Context, map[string]any) (any, error) { return "ok", nil }}
+		}
+		ctx.RegisterTool(tool("rw-alpha"))
+		ctx.RegisterTool(tool("rw-beta"))
+		registered, err := ctx.GetSystemPromptOptions()
+		if err != nil {
+			return err
+		}
+		ctx.SetActiveTools([]string{"rw-beta"})
+		options, err := ctx.GetSystemPromptOptions()
+		if err != nil {
+			return err
+		}
+		prompt, err := ctx.GetSystemPrompt()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_prompt_state=registered:%s;selected:%s;beta:%t;alpha:%t", registered.ToolSnippets["rw-alpha"], strings.Join(options.SelectedTools, ","), strings.Contains(prompt, "rw-beta-snippet"), strings.Contains(prompt, "rw-alpha-snippet")), "info")
+		return nil
+	})
+
+	// rw_idle_after_trigger sends a message that starts a run and reads isIdle at once; rw_idle_in_settled does the same, once, from an agent_settled handler, where the Session holds the message back until the handlers return.
+	ext.Command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		idle, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_after_trigger=%t", idle), "info")
+		return nil
+	})
+	settledOnce := &atomic.Bool{}
+	ext.Command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", func(sdk.Context, string) error {
+		ext.OnEvent("agent_settled", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			if !settledOnce.CompareAndSwap(false, true) {
+				return nil, nil
+			}
+			trigger := true
+			if err := hctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+				return nil, err
+			}
+			idle, err := hctx.IsIdle()
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify(fmt.Sprintf("rw_idle_in_settled=%t", idle), "info")
+			return nil, nil
+		})
+		return nil
+	})
+
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
 		ok, err := ctx.SetModel(args)
 		if err != nil {
