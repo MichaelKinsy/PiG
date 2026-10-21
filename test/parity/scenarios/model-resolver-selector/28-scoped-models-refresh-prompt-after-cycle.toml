@@ -1,0 +1,72 @@
+# Behavior family: model-resolver-selector
+# Surface: /scoped-models refresh re-applies the scope with the Session ModelRuntime's models, so a model cycled to afterwards still runs prompts.
+#
+# Upstream evidence: Pi 1.3.0+1402973a source (interactive-mode.ts showModelsSelector): the refresh result republishes the scope through
+# updateSessionModels over this.session.modelRuntime.getAvailableSnapshot(), whose entries are runtime-bound models. The sequence below
+# is the one reported in PiG issue #259: /scoped-models, wait for "Model catalogs refreshed.", Escape without changing the selection,
+# then Ctrl+P and submit a prompt twice. Pi answers each prompt with the connection error of the unreachable fixture endpoint; PiG answered
+# "No model selected." and dropped the user message.
+
+name = "28-scoped-models-refresh-prompt-after-cycle"
+description = "Prompts submitted after a /scoped-models refresh and Ctrl+P reach the model's backend instead of failing with No model selected."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "first prompt"
+
+[[tmux.steps]]
+keys = ["/scoped-models", "Enter"]
+wait_visible_contains = ["Model catalogs refreshed."]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_visible_contains = ["(auto)"]
+wait_not_contains = ["Model Configuration"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["Switched to Model B"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["first prompt", "Enter"]
+wait_visible_contains = ["Connection error."]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["hex:10"]
+wait_visible_contains = ["Switched to Model A"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["second prompt", "Enter"]
+wait_visible_contains = ["second prompt"]
+wait_timeout_seconds = 15
+settle_seconds = 3
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/scoped-refresh-prompt"]
+pi = ["PI_CODING_AGENT_DIR=testdata/scoped-refresh-prompt", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--no-session"]
+pi_args = ["--no-extensions", "--offline", "--no-session"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["first prompt", "second prompt", "Connection error."]
+both_not_contain = ["No model selected", "panic:", "goroutine "]
+output_equal = true
+escaped_output_equal = true
+runs = 3

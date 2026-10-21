@@ -70958,6 +70958,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.AvailableModelSnapshot",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.AvailableModelSnapshot",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []*github.com/MichaelKinsy/PiG/ai.Model"
+      },
+      "shapeHash": "sha256:a95c9ef5a386eb34889a84008da3e8d3eeba642418182d5c523794885294cb79"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.AvailableThinkingLevels",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.AvailableThinkingLevels",

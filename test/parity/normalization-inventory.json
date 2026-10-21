@@ -5151,6 +5151,23 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/model-resolver-selector/28-scoped-models-refresh-prompt-after-cycle.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "first prompt"
+          },
+          "reason": "Owned visible surface: Prompts submitted after a /scoped-models refresh and Ctrl+P reach the model's backend instead of failing with No model selected.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/model-runtime-store-catalog/10-model-picker-refresh-status.toml",
       "transforms": [
         {
