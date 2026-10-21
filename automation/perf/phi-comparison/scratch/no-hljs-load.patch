@@ -1,0 +1,22 @@
+diff --git i/tui/highlight.go w/tui/highlight.go
+index d4c11d65..2ed58e4e 100644
+--- i/tui/highlight.go
++++ w/tui/highlight.go
+@@ -4,6 +4,7 @@ package tui
+ 
+ import (
+ 	"math"
++	"os"
+ 	"slices"
+ 	"strings"
+ 	"sync"
+@@ -32,6 +33,9 @@ var loadAllHighlightLanguagesOnce sync.Once
+ 
+ // LoadAllHighlightLanguages registers every highlight.js language, as loadAllHighlightLanguages does, and returns when they are available. It runs once; later calls wait for that load. Highlighted code cached before the load is discarded, because more languages now highlight.
+ func LoadAllHighlightLanguages() {
++	if os.Getenv("HARNESS_NO_HLJS_LOAD") != "" {
++		return
++	}
+ 	// pig additive (D92): a Piglet that strips syntax-highlight loads no grammar.
+ 	if highlightStripped() {
+ 		return

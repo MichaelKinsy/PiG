@@ -1,0 +1,53 @@
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"os/signal"
+	"runtime"
+	"runtime/debug"
+	"runtime/metrics"
+	"strings"
+	"syscall"
+	"time"
+)
+
+// Scratch-build only (never part of a release binary): on SIGUSR2, append one JSON line with the Go runtime's memory classes and heap goal to $HARNESS_MEMCLASSES; on SIGUSR1, run debug.FreeOSMemory (a forced collection that returns free spans to the OS), to bound what returning start-up garbage could save.
+func init() {
+	path := os.Getenv("HARNESS_MEMCLASSES")
+	if path == "" {
+		return
+	}
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGUSR2)
+	free := make(chan os.Signal, 1)
+	signal.Notify(free, syscall.SIGUSR1)
+	go func() {
+		for range free {
+			debug.FreeOSMemory()
+		}
+	}()
+	go func() {
+		for range signals {
+			descriptions := metrics.All()
+			samples := make([]metrics.Sample, 0, len(descriptions))
+			for _, description := range descriptions {
+				if strings.HasPrefix(description.Name, "/memory/classes/") || description.Name == "/gc/heap/live:bytes" || description.Name == "/gc/heap/goal:bytes" || description.Name == "/gc/gogc:percent" || description.Name == "/gc/cycles/total:gc-cycles" || description.Name == "/gc/heap/allocs:bytes" || description.Name == "/gc/heap/allocs:objects" {
+					samples = append(samples, metrics.Sample{Name: description.Name})
+				}
+			}
+			metrics.Read(samples)
+			record := map[string]any{"time": time.Now().UnixNano(), "goroutines": runtime.NumGoroutine(), "gomaxprocs": runtime.GOMAXPROCS(0)}
+			for _, sample := range samples {
+				if sample.Value.Kind() == metrics.KindUint64 {
+					record[sample.Name] = sample.Value.Uint64()
+				}
+			}
+			line, _ := json.Marshal(record)
+			if file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
+				_, _ = file.Write(append(line, '\n'))
+				_ = file.Close()
+			}
+		}
+	}()
+}

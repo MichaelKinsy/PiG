@@ -1,0 +1,180 @@
+package anthropic
+
+// Benchmark authored for the PiG-vs-phi comparison (not phi code). Copy to
+// internal/llm/anthropic/phi_stream_frames_bench_test.go in a scratch copy of phi.
+//
+// The SSE body is byte-identical to PiG's BenchmarkProviderStreamFrames/anthropic-text
+// body (ai/stream_frames_bench_test.go): message_start, content_block_start, 5,000
+// content_block_delta text_delta records, content_block_stop, message_delta, message_stop.
+//
+//   decode/count  processStream over bytes.Reader, consumer counts events (decode-only lower bound)
+//   decode/agent  same, consumer does what internal/agent.streamTurn does per delta event
+//   e2e/count     real Stream() over httptest + real http client, consumer counts events (like-for-like with PiG)
+//   e2e/agent     same, consumer is the agent-loop consumer
+//
+// Metrics are per op (one 5,000-frame stream); the runner divides by 5000.
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/pulseaiclub/phi/internal/llm"
+	"github.com/pulseaiclub/phi/internal/session"
+)
+
+const frameBenchFrames = 5000
+
+func frameBenchBody(frames int) string {
+	var body strings.Builder
+	rec := func(records ...string) {
+		for _, r := range records {
+			body.WriteString(r)
+			body.WriteString("\n\n")
+		}
+	}
+	rec(
+		"event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-bench\",\"content\":[],\"usage\":{\"input_tokens\":5,\"output_tokens\":1}}}",
+		"event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}",
+	)
+	for i := range frames {
+		fmt.Fprintf(&body, "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"t%d \"}}\n\n", i)
+	}
+	rec(
+		"event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}",
+		"event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":7}}",
+		"event: message_stop\ndata: {\"type\":\"message_stop\"}",
+	)
+	return body.String()
+}
+
+var frameSinkEvent session.Event
+var frameSinkInt int
+
+// frameBuildContent and frameEmit mirror internal/agent (buildContent, emitMessage), which are unexported.
+func frameBuildContent(thinking, text string) []session.ContentBlock {
+	var out []session.ContentBlock
+	if thinking != "" {
+		out = append(out, session.ContentBlock{Type: session.BlockThinking, Text: thinking})
+	}
+	if text != "" {
+		out = append(out, session.ContentBlock{Type: session.BlockText, Text: text})
+	}
+	return out
+}
+
+func frameEmit(id string, thinking, text string) session.Event {
+	return session.AssistantMessageUpdate{Message: session.Message{
+		ID:         id,
+		State:      session.StateStreaming,
+		StopReason: session.StopNone,
+		Content:    frameBuildContent(thinking, text),
+		Text:       text,
+		Usage:      session.TokenUsageFrom(llm.Usage{}),
+	}}
+}
+
+// consumer returns the per-event function and a finish func that returns the event count.
+type frameConsumer func(b *testing.B) (func(ev llm.StreamEvent, err error) bool, func() int)
+
+func countConsumer(b *testing.B) (func(llm.StreamEvent, error) bool, func() int) {
+	n := 0
+	return func(ev llm.StreamEvent, err error) bool {
+		if err != nil {
+			b.Fatal(err)
+		}
+		if ev.Type == llm.StreamEventTypeDelta {
+			n++
+		}
+		return true
+	}, func() int { return n }
+}
+
+// agentConsumer is internal/agent/engine.go streamTurn's delta handling: text += delta,
+// then one session.AssistantMessageUpdate per delta (yield to the UI is a no-op here).
+func agentConsumer(b *testing.B) (func(llm.StreamEvent, error) bool, func() int) {
+	n := 0
+	var thinking, text string
+	return func(ev llm.StreamEvent, err error) bool {
+		if err != nil {
+			b.Fatal(err)
+		}
+		switch ev.Type {
+		case llm.StreamEventTypeDelta:
+			if ev.Delta.ReasoningContent != "" {
+				thinking += ev.Delta.ReasoningContent
+			}
+			if ev.Delta.Content != "" {
+				text += ev.Delta.Content
+			}
+			frameSinkEvent = frameEmit("assistant-1", thinking, text)
+			n++
+		case llm.StreamEventTypeDone:
+			if ev.Final == nil {
+				b.Fatal("no final")
+			}
+		}
+		return true
+	}, func() int { return n }
+}
+
+func BenchmarkFrameDecode(b *testing.B) {
+	body := []byte(frameBenchBody(frameBenchFrames))
+	for _, c := range []struct {
+		name string
+		mk   frameConsumer
+	}{{"count", countConsumer}, {"agent", agentConsumer}} {
+		b.Run(c.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				fn, done := c.mk(b)
+				processStream(bytes.NewReader(body), fn)
+				if got := done(); got < frameBenchFrames {
+					b.Fatalf("%d events", got)
+				}
+				frameSinkInt += done()
+			}
+			b.ReportMetric(frameBenchFrames, "frames/op")
+		})
+	}
+}
+
+func BenchmarkFrameE2E(b *testing.B) {
+	payload := frameBenchBody(frameBenchFrames)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, payload)
+	}))
+	defer srv.Close()
+	cfg := llm.ModelConfig{Name: "claude-bench", APIKey: "k", BaseURL: srv.URL}
+	msgs := []llm.Message{{Role: llm.RoleUser, Content: "hello"}}
+	for _, c := range []struct {
+		name string
+		mk   frameConsumer
+	}{{"count", countConsumer}, {"agent", agentConsumer}} {
+		b.Run(c.name, func(b *testing.B) {
+			run := func() {
+				req := BuildRequest(cfg, "", msgs, nil)
+				fn, done := c.mk(b)
+				for ev, err := range Stream(b.Context(), srv.Client(), cfg, &req) {
+					fn(ev, err)
+				}
+				if got := done(); got < frameBenchFrames {
+					b.Fatalf("%d events", got)
+				}
+				frameSinkInt += done()
+			}
+			run()
+			b.ReportAllocs()
+			for b.Loop() {
+				run()
+			}
+			b.ReportMetric(frameBenchFrames, "frames/op")
+		})
+	}
+}
