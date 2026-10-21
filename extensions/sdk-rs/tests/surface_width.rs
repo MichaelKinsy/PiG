@@ -49,6 +49,11 @@ fn write_frame(stream: &Mutex<UnixStream>, frame: &Value) {
 impl Host {
     /// Runs `ext` against a host that answers every call and records the calls in order.
     fn start(ext: Extension) -> Self {
+        Self::start_in_mode(ext, "")
+    }
+
+    /// `start` with the host running in `mode`.
+    fn start_in_mode(ext: Extension, mode: &str) -> Self {
         let dir = std::env::temp_dir().join(format!("pig-surface-width-{}-{:?}", std::process::id(), thread::current().id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir(&dir).unwrap();
@@ -58,7 +63,7 @@ impl Host {
         let (mut stream, _) = listener.accept().unwrap();
         let write = Arc::new(Mutex::new(stream.try_clone().unwrap()));
         assert_eq!(read_frame(&mut stream).unwrap()["type"], "register");
-        write_frame(&write, &json!({"type": "ready", "ready": {"cwd": "/tmp", "width": 80}}));
+        write_frame(&write, &json!({"type": "ready", "ready": {"cwd": "/tmp", "width": 80, "mode": mode}}));
         let (tx, calls) = channel();
         let reply = write.clone();
         thread::spawn(move || {
@@ -213,6 +218,21 @@ fn set_widget_string_list_is_content_without_width() {
     host.command("go");
     // No width: the host treats a width-less widget_push as string list content.
     assert_eq!(host.next("widget_push"), json!({"key": "status", "lines": ["● 3 agents running"]}));
+}
+
+// Pi's RPC mode writes one request per setWidget call, in call order and before the handler's response (rpc-mode.ts), so in RPC mode a string
+// list is a ui.setWidget host call like every other shape: an unanswered widget_push frame has no place in that order.
+#[test]
+fn set_widget_string_list_in_rpc_mode_is_a_host_call() {
+    let mut ext = Extension::new("rs-surface");
+    ext.command("go", "set widget", |ctx, _| {
+        ctx.set_widget("status", vec!["w-one".to_string()]).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+    });
+    let host = Host::start_in_mode(ext, "rpc");
+    host.command("go");
+    let call = host.next("ui.setWidget");
+    assert_eq!(call["key"], "status");
+    assert_eq!(call["content"], json!(["w-one"]));
 }
 
 // Pi's ctx.ui.setWidget returns without a host round trip
