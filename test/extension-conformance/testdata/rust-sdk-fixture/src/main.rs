@@ -371,6 +371,7 @@ fn kit_editor_commands() -> kit::Autocomplete {
 fn kit_scroll_child(kind: &str) -> kit::Node {
     match kind {
         "md" => Markdown::new("# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`", 1, 0).into(),
+        "region" => Text::new("Region content\nsecond row", 1, 0).into(),
         "empty" => Container::new().into(),
         "branch" => kit::BranchSummary::new("The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.").id("b").into(),
         _ => Text::new("Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta", 1, 0).into(),
@@ -541,15 +542,15 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
         "pi-tui/ScrollView/after other rows" => kit::View::new(Container::new().child(Text::new("Header", 1, 0)).child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always")).child(Text::new("Footer", 1, 0))),
         "pi-tui/ScrollView/empty child" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("empty")).scrollbar("always"))),
         "pi-tui/ScrollView/wheel and click pass" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text"))).child(Text::new("after", 1, 0))),
-        "pi-tui/MouseRegion/renders its child" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")))),
-        "pi-tui/MouseRegion/every type by default" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")))),
-        "pi-tui/MouseRegion/types filter" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).types(["click"]))),
-        "pi-tui/MouseRegion/not handled" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).handled(false))),
-        "pi-tui/MouseRegion/capture" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).capture(true))),
-        "pi-tui/MouseRegion/focus and render" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")).focus(true).render(false))),
-        "pi-tui/MouseRegion/local coordinates" => kit::View::new(Container::new().child(Text::new("Above the region", 1, 0)).child(kit::MouseRegion::new("m", kit_scroll_child("text"))).child(Text::new("Below", 1, 0))),
+        "pi-tui/MouseRegion/renders its child" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        "pi-tui/MouseRegion/every type by default" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        "pi-tui/MouseRegion/types filter" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).types(["click"]))),
+        "pi-tui/MouseRegion/not handled" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).handled(false))),
+        "pi-tui/MouseRegion/capture" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).capture(true))),
+        "pi-tui/MouseRegion/focus and render" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).focus(true).render(false))),
+        "pi-tui/MouseRegion/local coordinates" => kit::View::new(Container::new().child(Text::new("Above the region", 1, 0)).child(kit::MouseRegion::new("m", kit_scroll_child("region"))).child(Text::new("Below", 1, 0))),
         "pi-tui/MouseRegion/the child takes the event first" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("branch")))),
-        "pi-tui/MouseRegion/right button" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("text")))),
+        "pi-tui/MouseRegion/right button" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
         // kit-widget-cases
         _ => return None,
     })

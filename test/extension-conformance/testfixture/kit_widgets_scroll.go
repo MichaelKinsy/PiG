@@ -13,6 +13,8 @@ func kitScrollChild(kind string) kit.Node {
 	const summary = "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`."
 	const markdown = "# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`"
 	switch kind {
+	case "region":
+		return kit.NewText("Region content\nsecond row", 1, 0)
 	case "md":
 		return kit.NewMarkdown(markdown, 1, 0)
 	case "empty":

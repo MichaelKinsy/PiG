@@ -294,6 +294,8 @@ KIT_WIDGET_CASES[_EDITOR + "autocomplete menu does not follow disabled submit"] 
 def _kit_scroll_child(kind: str) -> kit.Node:
     if kind == "md":
         return kit.Markdown("# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`", 1, 0)
+    if kind == "region":
+        return kit.Text("Region content\nsecond row", 1, 0)
     if kind == "empty":
         return kit.Container([])
     if kind == "branch":
@@ -315,15 +317,15 @@ KIT_WIDGET_CASES[_SCROLL + "markdown child"] = lambda: kit.View(kit.Container([k
 KIT_WIDGET_CASES[_SCROLL + "after other rows"] = lambda: kit.View(kit.Container([kit.Text("Header", 1, 0), kit.ScrollView("s", _kit_scroll_child("text"), scrollbar="always"), kit.Text("Footer", 1, 0)]))
 KIT_WIDGET_CASES[_SCROLL + "empty child"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("empty"), scrollbar="always")]))
 KIT_WIDGET_CASES[_SCROLL + "wheel and click pass"] = lambda: kit.View(kit.Container([kit.ScrollView("s", _kit_scroll_child("text")), kit.Text("after", 1, 0)]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "renders its child"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"))]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "every type by default"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"))]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "types filter"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), types=["click"])]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "not handled"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), handled=False)]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "capture"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), capture=True)]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "focus and render"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"), focus=True, render=False)]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "local coordinates"] = lambda: kit.View(kit.Container([kit.Text("Above the region", 1, 0), kit.MouseRegion("m", _kit_scroll_child("text")), kit.Text("Below", 1, 0)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "renders its child"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "every type by default"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "types filter"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), types=["click"])]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "not handled"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), handled=False)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "capture"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), capture=True)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "focus and render"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"), focus=True, render=False)]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "local coordinates"] = lambda: kit.View(kit.Container([kit.Text("Above the region", 1, 0), kit.MouseRegion("m", _kit_scroll_child("region")), kit.Text("Below", 1, 0)]))
 KIT_WIDGET_CASES[_MOUSE_REGION + "the child takes the event first"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("branch"))]))
-KIT_WIDGET_CASES[_MOUSE_REGION + "right button"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("text"))]))
+KIT_WIDGET_CASES[_MOUSE_REGION + "right button"] = lambda: kit.View(kit.Container([kit.MouseRegion("m", _kit_scroll_child("region"))]))
 
 # kit-widget-cases
 
