@@ -47,6 +47,7 @@ async function load(moduleDir) {
   let target = pkg.exports?.[entry];
   if (target && typeof target === "object") target = target.import?.default ?? target.import ?? target.default;
   if (typeof target === "object") target = target?.default;
+  if (target === undefined && entry === ".") target = pkg.module ?? pkg.main;
   if (typeof target !== "string") throw new Error(`${name} exports no ${entry}`);
   return { ns: await import(pathToFileURL(join(dir, target)).href), version: pkg.version };
 }

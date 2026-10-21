@@ -1,0 +1,68 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "rgbColor",
+ "cases": [
+  {
+   "name": "case 0000",
+   "args": [
+    0,
+    0,
+    0
+   ],
+   "result": {
+    "kind": "rgb",
+    "r": 0,
+    "g": 0,
+    "b": 0
+   }
+  },
+  {
+   "name": "case 0001",
+   "args": [
+    255,
+    255,
+    255
+   ],
+   "result": {
+    "kind": "rgb",
+    "r": 255,
+    "g": 255,
+    "b": 255
+   }
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    1.5,
+    2,
+    3
+   ],
+   "result": {
+    "kind": "rgb",
+    "r": 1.5,
+    "g": 2,
+    "b": 3
+   }
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    -1,
+    0,
+    0
+   ],
+   "throws": "r must be between 0 and 255: -1"
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    256,
+    0,
+    0
+   ],
+   "throws": "r must be between 0 and 255: 256"
+  }
+ ]
+}

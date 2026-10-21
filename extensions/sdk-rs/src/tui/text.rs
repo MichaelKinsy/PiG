@@ -1,7 +1,7 @@
 //! pi-tui's `utils.ts`: terminal width, grapheme, ANSI, wrap, truncate and slice helpers.
 //!
 //! A port of the pinned Pi release's `utils.ts`. The Unicode data comes from `tables` (generated from the sources Pi's runtime reads:
-//! get-east-asian-width, ICU property escapes, `Intl.Segmenter` grapheme rules). `test/parity/sdk-vectors` holds the results of Pi's own
+//! get-east-asian-width, ICU property escapes, `Intl.Segmenter` grapheme rules). `test/parity/sdk-bulk` holds the results of Pi's own
 //! functions, and `tests/tui_vectors.rs` holds this module to them.
 
 use super::tables::{PROP_RANGES, RGI_SEQUENCES};
