@@ -41,7 +41,7 @@ func startsAsync(method string) bool {
 		return true
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
 		"setModel", "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
-		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool,
+		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
 		return true
 	default:
@@ -352,6 +352,12 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleParseFrontmatter(call)
 	case call.Method == CallParseDate:
 		result, err = h.handleParseDate(call)
+	case call.Method == CallBuiltinToolDefinition:
+		result, err = h.handleBuiltinToolDefinition(call)
+	case call.Method == CallBuiltinToolExecute:
+		result, err = h.handleBuiltinToolExecute(callCtx, conn, call)
+	case call.Method == CallBuiltinToolLocalExec:
+		result, err = h.handleBuiltinToolLocalExec(callCtx, conn, call)
 	case call.Method == CallLoadingExec:
 		result, err = h.handleLoadingExec(callCtx, call)
 	case call.Method == CallRegisterMcpServer || call.Method == CallUnregisterMcpServer:

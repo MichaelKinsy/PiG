@@ -216,6 +216,35 @@ type AgentToolResult struct {
 	Terminate         bool                `json:"terminate,omitempty"`
 }
 
+// MarshalJSON writes the result as a tool hands it to the host: `content` as the block array (a text block always carries its text, empty or not),
+// `structured_content` and `is_error` under the wire's names, and Pi's own members only when set. A result a built-in tool delegation returned
+// ([BuiltinToolDefinition]) can therefore be returned from a [ToolFunc], or passed to [Context.OnUpdate], as it is.
+func (r AgentToolResult) MarshalJSON() ([]byte, error) {
+	type block struct {
+		Type     string  `json:"type"`
+		Text     *string `json:"text,omitempty"`
+		Data     string  `json:"data,omitempty"`
+		MimeType string  `json:"mimeType,omitempty"`
+	}
+	blocks := make([]block, 0, len(r.Content))
+	for _, content := range r.Content {
+		entry := block{Type: content.Type, Data: content.Data, MimeType: content.MimeType}
+		if content.Type != "image" {
+			text := content.Text
+			entry.Text = &text
+		}
+		blocks = append(blocks, entry)
+	}
+	return json.MarshalJS(struct {
+		Content           []block        `json:"content"`
+		Details           any            `json:"details,omitempty"`
+		StructuredContent any            `json:"structured_content,omitempty"`
+		Usage             map[string]any `json:"usage,omitempty"`
+		IsError           bool           `json:"is_error,omitempty"`
+		Terminate         bool           `json:"terminate,omitempty"`
+	}{blocks, r.Details, r.StructuredContent, r.Usage, r.IsError, r.Terminate})
+}
+
 // Text joins the text blocks of the result.
 func (r AgentToolResult) Text() string {
 	var text []string

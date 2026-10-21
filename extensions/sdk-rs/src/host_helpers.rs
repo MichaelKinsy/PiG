@@ -49,6 +49,12 @@ pub fn parse_date(text: &str) -> io::Result<Option<f64>> {
     decode_date(helper_call(CALL_PARSE_DATE, json!({"text": text}))?)
 }
 
+/// The connection of the running extension a call made outside a handler goes through.
+pub(crate) fn running_connection() -> io::Result<Arc<Connection>> {
+    running_for(&locked(&RUNNING), socket_path().as_deref())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "the extension is not running: a built-in tool without a context can execute only after run has started"))
+}
+
 pub(crate) fn frontmatter_args(content: &str) -> (&'static str, Value) {
     (CALL_PARSE_FRONTMATTER, json!({"content": content}))
 }
@@ -67,7 +73,7 @@ pub(crate) fn decode_date(result: Option<Value>) -> io::Result<Option<f64>> {
 }
 
 /// The result of a host call made outside a handler: over the running extension's connection, or over the one this call dials, which `run` reuses.
-fn helper_call(method: &str, args: Value) -> io::Result<Option<Value>> {
+pub(crate) fn helper_call(method: &str, args: Value) -> io::Result<Option<Value>> {
     let running = running_for(&locked(&RUNNING), socket_path().as_deref());
     if let Some(conn) = running {
         let pending = conn.begin_call_for(None, method, Some(args))?;

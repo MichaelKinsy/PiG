@@ -2020,6 +2020,27 @@ impl Extension {
                 let(value,error)=match result{Ok(value)=>(Some(value),None),Err(message)=>(None,Some(ErrorInfo{code:None,message}))};
                 let _=conn.respond(id,value,error);
             }
+            "builtin_tool_callback" => {
+                let outcome = crate::builtin_tool::dispatch_callback(req.args.as_ref().unwrap_or(&Value::Null));
+                match outcome {
+                    Ok(value) => {
+                        let _ = conn.respond(id, Some(value), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
+                }
+            }
+            "builtin_tool_exec_data" => {
+                match crate::builtin_tool::dispatch_exec_data(req.args.as_ref().unwrap_or(&Value::Null)) {
+                    Ok(()) => {
+                        let _ = conn.respond(id, None, None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
+                }
+            }
             "user_bash_exec" => {
                 // The host waits for the output chunks, in order, before this answer; the request's cancellation is the exec's signal.
                 let updates = conn.clone();

@@ -683,7 +683,7 @@ fn call_result_to_io(result: CallResultMsg) -> io::Result<()> {
 }
 
 /// The message a panic carries, as upstream's `error.message` of a throw.
-fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+pub(crate) fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
     if let Some(message) = payload.downcast_ref::<&str>() {
         (*message).to_string()
     } else if let Some(message) = payload.downcast_ref::<String>() {
