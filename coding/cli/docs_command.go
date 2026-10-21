@@ -53,7 +53,7 @@ func prepareDocsBundle() {
 	}
 }
 
-// docsLeases are the releases of the leases this process holds on its documentation bundle. A session holds them until it exits; tests release them.
+// docsLeases are the releases of the leases this process holds on its documentation bundle. A session holds them until it exits: the exit path releases them just before it writes its profiles, so the descriptor count the exit record reports is the process's own, and the operating system would release them with the process anyway. Tests release them too.
 var docsLeases struct {
 	sync.Mutex
 	releases []func()
@@ -65,6 +65,18 @@ func holdDocsBundle() {
 	docsLeases.Lock()
 	docsLeases.releases = append(docsLeases.releases, release)
 	docsLeases.Unlock()
+}
+
+// releaseDocsLeases gives back the leases this process took on its documentation bundle. The exit paths call it just before the profiles are written, and a
+// test calls it so the test's temporary directory can be removed where an open lease file blocks that (Windows). It is idempotent.
+func releaseDocsLeases() {
+	docsLeases.Lock()
+	releases := docsLeases.releases
+	docsLeases.releases = nil
+	docsLeases.Unlock()
+	for _, release := range releases {
+		release()
+	}
 }
 
 // writeDocsBundle writes the bundle prepareDocsBundle deferred, before a reader other than PiG can follow the paths the system prompt names: a

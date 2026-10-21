@@ -326,8 +326,8 @@ func current(dir, digest string) bool {
 }
 
 // HoldBundle leases this build's bundle in configRoot for as long as the process lives, so another build's eviction does not remove the pages a running
-// session's prompt names. It does nothing when the bundle is not complete on disk, and nothing is written. The returned release is for tests; a session never
-// calls it. The bundle is read again once leased, so an eviction between the check and the lease is not mistaken for a held bundle.
+// session's prompt names. It does nothing when the bundle is not complete on disk, and nothing is written. A session does not call the returned release until it
+// exits (the exit path calls it just before the exit record counts descriptors) and tests call it. The bundle is read again once leased, so an eviction between the check and the lease is not mistaken for a held bundle.
 // pig additive (D22): Pi's package docs stay where they are for as long as Pi runs; PiG's bundle lives in a directory that other builds evict.
 func HoldBundle(configRoot string) (release func()) {
 	digest, err := contentDigest()
