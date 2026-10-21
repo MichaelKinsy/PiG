@@ -11,10 +11,10 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // Upstream extensions call the host in process, so every synchronous host API
@@ -322,7 +322,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	// upstream: a dialog's promise resolves on the line that answers it, so dialogs answered back to back continue, and the extension
 	// receives their results, in the order of the answers. A UI mode that reads the answers records that order through the settle
 	// function (extension.WithDialogSettle); the replies of the connection's dialogs are sent in it.
-	var dialogSlot *agent.SettleSlot
+	var dialogSlot *jsloop.SettleSlot
 	if callID != "" && takesInteractiveFocus(call.Method) {
 		dialogSlot = conn.dialogOrder.NewSlot()
 		defer dialogSlot.Close()
