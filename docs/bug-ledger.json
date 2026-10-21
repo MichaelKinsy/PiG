@@ -31929,6 +31929,30 @@
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
       ]
+    },
+    {
+      "id": "BF-39e04d0",
+      "title": "`/reload` no longer reports `Extension \"builtin:codemode\" error: This extension ctx is stale after session…",
+      "symptom": "`/reload` no longer reports `Extension \"builtin:codemode\" error: This extension ctx is stale after session replacement or reload.` A tool registered while an in-process extension factory runs refreshed the live Session, which ran the `prepareLoadout` hook of the previous load's tool through the API the reload had just retired.",
+      "rootCause": "Pi's loading runtime stubs refreshTools as a no-op until the runner binds. On /reload PiG ran the builtin factories on the runtime the Session was already bound to, so each registerTool refreshed the live Session, which ran the previous load's builtin:codemode prepareLoadout hook through the API the reload had just retired and reported a stale-ctx extension error. Skip the refresh while the factory runs; the reload's own rebuild declares the tools.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/reload` no longer reports `Extension \"builtin:codemode\" error: This extension ctx is stale after session replacement or reload.` A tool registered while an in-process extension factory runs refreshed the live Session, which ran the `prepareLoadout` hook of the previous load's tool through the API the reload had just retired. Like Pi's loading runtime, whose `refreshTools` is a no-op until the runner binds, a registration during factory load now leaves the Session alone and the reload's own rebuild declares the tools once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "39e04d0839",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "coding/extension/factoryload/refresh_during_load_test.go::TestRegisterToolAfterLoadRefreshesTheSession",
+        "coding/extension/factoryload/refresh_during_load_test.go::TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession",
+        "test/parity/scenarios/extensions-runtime/86-reload-builtin-tool-registration.toml"
+      ]
     }
   ],
   "divergences": [

@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-946 bugs. 896 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+947 bugs. 897 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -965,6 +965,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-18022b2](#bf-18022b2) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | Unreleased |
 | [BF-d084d86](#bf-d084d86) | Fixed the chord host's `Close` waiting forever when a hold that a link was still delivering created an object… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6e6b97](#bf-f6e6b97) | Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was… | PiG's own defect | All platforms | Unreleased |
+| [BF-39e04d0](#bf-39e04d0) | `/reload` no longer reports `Extension "builtin:codemode" error: This extension ctx is stale after session… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14152,6 +14153,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `f6e6b97f00` (2026-10-21)
 - **Tests:** `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus`, `coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero`
 - **Release note:** Fixed `pig --mode rpc` exiting 143 instead of 0 when stdin ended while a termination signal's shutdown was still running: the first exit of the shutdown now decides the exit status, as Pi's first `process.exit` does.
+
+### BF-39e04d0
+
+**`/reload` no longer reports `Extension "builtin:codemode" error: This extension ctx is stale after session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/reload` no longer reports `Extension "builtin:codemode" error: This extension ctx is stale after session replacement or reload.` A tool registered while an in-process extension factory runs refreshed the live Session, which ran the `prepareLoadout` hook of the previous load's tool through the API the reload had just retired.
+- **Root cause:** Pi's loading runtime stubs refreshTools as a no-op until the runner binds. On /reload PiG ran the builtin factories on the runtime the Session was already bound to, so each registerTool refreshed the live Session, which ran the previous load's builtin:codemode prepareLoadout hook through the API the reload had just retired and reported a stale-ctx extension error. Skip the refresh while the factory runs; the reload's own rebuild declares the tools.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `39e04d0839` (2026-10-21)
+- **Tests:** `coding/extension/factoryload/refresh_during_load_test.go::TestRegisterToolAfterLoadRefreshesTheSession`, `coding/extension/factoryload/refresh_during_load_test.go::TestRegisterToolDuringLoadDoesNotRefreshTheBoundSession`, `test/parity/scenarios/extensions-runtime/86-reload-builtin-tool-registration.toml`
+- **Release note:** `/reload` no longer reports `Extension "builtin:codemode" error: This extension ctx is stale after session replacement or reload.` A tool registered while an in-process extension factory runs refreshed the live Session, which ran the `prepareLoadout` hook of the previous load's tool through the API the reload had just retired. Like Pi's loading runtime, whose `refreshTools` is a no-op until the runner binds, a registration during factory load now leaves the Session alone and the reload's own rebuild declares the tools once.
 
 ## Divergences from Pi added in this release
 
