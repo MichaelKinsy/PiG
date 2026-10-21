@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // ControlMessageType is the discriminator of a ControlMessage: manager.ts ControlMessage's type literals.
@@ -200,6 +201,10 @@ type HostManager struct {
 	idleSince *time.Time
 	booting   bool
 	timer     chan struct{}
+	// reporting is closed when the exit report in progress (onExit running after the manager read stopped) ends;
+	// reporter is the goroutine that runs it.
+	reporting chan struct{}
+	reporter  uint64
 }
 
 func durationOr(value *time.Duration, fallback time.Duration) time.Duration {
@@ -218,21 +223,34 @@ func CreateHostManager(options HostManagerOptions) *HostManager {
 
 // Status is the manager's status: HostManagerStopped, HostManagerStarting, HostManagerRunning or HostManagerStopping.
 func (manager *HostManager) Status() string {
-	manager.mu.Lock()
+	manager.lockSettled()
 	defer manager.mu.Unlock()
 	return manager.status
 }
 
+// lockSettled locks manager.mu once no exit report is running on another goroutine: while onExit runs, the manager reads
+// as upstream's does inside the callback (stopped), to the goroutine that runs it, and to nobody else. The report's own
+// goroutine, and anything onExit calls on it, passes: a callback that restarts the child is upstream's usual one.
+func (manager *HostManager) lockSettled() {
+	manager.mu.Lock()
+	for manager.reporting != nil && manager.reporter != goroutineid.Current() {
+		reported := manager.reporting
+		manager.mu.Unlock()
+		<-reported
+		manager.mu.Lock()
+	}
+}
+
 // Instance is the running child (nil = undefined).
 func (manager *HostManager) Instance() Instance {
-	manager.mu.Lock()
+	manager.lockSettled()
 	defer manager.mu.Unlock()
 	return manager.instance
 }
 
 // Liveness is the child's last reported liveness.
 func (manager *HostManager) Liveness() Liveness {
-	manager.mu.Lock()
+	manager.lockSettled()
 	defer manager.mu.Unlock()
 	return manager.livenessLocked()
 }
@@ -292,7 +310,7 @@ func (manager *HostManager) stopTimerLocked() {
 }
 
 func (manager *HostManager) doStop() error {
-	manager.mu.Lock()
+	manager.lockSettled()
 	current := manager.instance
 	if current == nil {
 		manager.status = HostManagerStopped
@@ -329,7 +347,7 @@ func (manager *HostManager) doStop() error {
 }
 
 func (manager *HostManager) doStart() (Instance, error) {
-	manager.mu.Lock()
+	manager.lockSettled()
 	if manager.instance != nil && manager.status == HostManagerRunning {
 		instance := manager.instance
 		manager.mu.Unlock()
@@ -355,15 +373,32 @@ func (manager *HostManager) doStart() (Instance, error) {
 	go func() {
 		<-current.Exited()
 		manager.mu.Lock()
+		var reported chan struct{}
 		if manager.instance == current {
 			manager.instance = nil
 			manager.status = HostManagerStopped
 			manager.stopTimerLocked()
+			if manager.options.OnExit != nil {
+				// manager.ts sets the status and calls onExit in one callback, so nothing else sees the manager stopped
+				// before onExit has run: other goroutines wait for it (lockSettled), onExit itself sees the manager stopped.
+				reported = make(chan struct{})
+				manager.reporting, manager.reporter = reported, goroutineid.Current()
+			}
 		}
 		delete(manager.handled, current)
 		manager.mu.Unlock()
 		if manager.options.OnExit != nil {
-			manager.options.OnExit(current.Exit())
+			func() {
+				defer func() {
+					if reported != nil {
+						manager.mu.Lock()
+						manager.reporting = nil
+						manager.mu.Unlock()
+						close(reported)
+					}
+				}()
+				manager.options.OnExit(current.Exit())
+			}()
 		}
 		close(handled)
 	}()

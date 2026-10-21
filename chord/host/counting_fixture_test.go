@@ -11,7 +11,9 @@ import (
 
 type countingLink struct {
 	inner Link
-	mu    sync.Mutex
+	// sendMu keeps frames in the order they were decided: Send and release hold it through the inner link's Send.
+	sendMu sync.Mutex
+	mu     sync.Mutex
 	// sent are the frames this side sent, in order; received those it received.
 	sent, received           []Frame
 	sentBytes, receivedBytes int
@@ -25,6 +27,8 @@ func newCountingLink(inner Link) *countingLink { return &countingLink{inner: inn
 func (link *countingLink) Closed() bool { return link.inner.Closed() }
 
 func (link *countingLink) Send(frame Frame) (int, error) {
+	link.sendMu.Lock()
+	defer link.sendMu.Unlock()
 	link.mu.Lock()
 	if _, isAck := frame.(AckFrame); isAck && link.paused {
 		link.held = frame
@@ -37,8 +41,12 @@ func (link *countingLink) Send(frame Frame) (int, error) {
 	return link.inner.Send(frame)
 }
 
-// release lets the held acknowledgement through and stops holding them.
+// release lets the held acknowledgement through and stops holding them. The held acknowledgement is older than any frame
+// sent after the release, and a peer takes acknowledgements as cumulative counts (a smaller one after a larger one is a
+// protocol violation that closes the link), so it goes out before them: Send and release do not interleave.
 func (link *countingLink) release() {
+	link.sendMu.Lock()
+	defer link.sendMu.Unlock()
 	link.mu.Lock()
 	link.paused = false
 	held := link.held

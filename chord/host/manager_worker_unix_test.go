@@ -23,7 +23,9 @@ func alive(pid int) bool { return syscall.Kill(pid, 0) == nil }
 // so only this test reaches it there): a socket path that fits in sun_path stays in the temporary directory; a longer
 // one moves to /tmp/chord2-<uid>, a directory only its owner can access, where a socket can listen.
 func TestLockSocketPathKeepsTheSocketPathWithinSunPath(t *testing.T) {
-	const file = "chord2-0123456789abcdef0123456789abcdef.sock"
+	// The deep path falls back to /tmp/chord2-<uid>, which every process of the user shares: the name carries the pid, so
+	// processes that run this test at once (parallel test binaries, a stress harness) do not bind the same socket.
+	file := "chord2-" + strconv.Itoa(os.Getpid()) + "-0123456789abcdef.sock"
 	short, err := os.MkdirTemp("/tmp", "lk") //portlint:allow hardtmp the test needs a short real path under sun_path, as Pi's /tmp/chord2-<uid> lock dir
 	if err != nil {
 		t.Fatal(err)

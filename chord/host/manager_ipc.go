@@ -136,7 +136,9 @@ func (failure ipcSendFailure) Code() string {
 // On adds a "message" or "disconnect" listener.
 //
 // The first "message" listener is given the messages received before it, in order, ahead of any that arrive while it is
-// being caught up: the replay runs here, off the lock, and the reader queues behind it.
+// being caught up: the replay runs here, off the lock, and the reader queues behind it. A listener added after the first
+// hears only the messages that arrive after it: Node emits every message in a later tick, to every listener registered by
+// then, but here the first listener is what ends the wait, so the channel's owner (ChildControl) has to register first.
 func (channel *nodeChannel) On(event string, listener *IpcListener) {
 	channel.mu.Lock()
 	first := event == "message" && len(channel.listeners[event]) == 0
