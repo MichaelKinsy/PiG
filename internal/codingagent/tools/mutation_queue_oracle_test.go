@@ -89,26 +89,7 @@ func TestWithFileMutationQueueMatchesPi(t *testing.T) {
 		scenario.Releases = rng.Perm(len(scenario.Calls))
 		scenarios = append(scenarios, scenario)
 	}
-	input, err := json.Marshal(scenarios)
-	if err != nil {
-		t.Fatal(err)
-	}
-	script, err := filepath.Abs("testdata/mutation_queue.mjs")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.CommandContext(t.Context(), "node", script, pigversion.UpstreamPackageVersion)
-	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
-	}
-	var want []mutationQueueOutcome
-	if err := json.Unmarshal(output, &want); err != nil {
-		t.Fatal(err)
-	}
+	want := piMutationQueueOutcomes(t, scenarios)
 	mismatches, queued, failed := 0, 0, 0
 	for i, scenario := range scenarios {
 		t.Chdir(scenario.Dir)
@@ -144,6 +125,32 @@ func TestWithFileMutationQueueMatchesPi(t *testing.T) {
 	if failed < 30 || queued < 600 {
 		t.Errorf("thin coverage: %d unresolvable paths, %d events", failed, queued)
 	}
+}
+
+// piMutationQueueOutcomes runs scenarios through the pinned Pi's withFileMutationQueue (testdata/mutation_queue.mjs) and returns what it did.
+func piMutationQueueOutcomes(t *testing.T, scenarios []mutationQueueScenario) []mutationQueueOutcome {
+	t.Helper()
+	input, err := json.Marshal(scenarios)
+	if err != nil {
+		t.Fatal(err)
+	}
+	script, err := filepath.Abs("testdata/mutation_queue.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "node", script, pigversion.UpstreamPackageVersion)
+	cmd.Stdin = bytes.NewReader(input)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
+	}
+	var want []mutationQueueOutcome
+	if err := json.Unmarshal(output, &want); err != nil {
+		t.Fatal(err)
+	}
+	return want
 }
 
 // runMutationQueueScenario issues the calls in order, each only after the previous one has taken its place in the queue, opens the gates in the scripted order, and waits after each release for the event count Pi reached.

@@ -162,3 +162,56 @@ func mutationAlias(t *testing.T, target, kind string) string {
 	}
 	return alias
 }
+
+// D190's parity allowance. Pinned Pi keys its queue by realpath, so two calls through hard links of one file run at once (both callbacks start while the first is held); PiG starts the second only after the first ends.
+func TestHardLinkAliasesDifferFromPi(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	mutationAlias(t, filepath.Join(dir, "a"), "hardlink")
+	scenario := mutationQueueScenario{
+		Dir:      dir,
+		Calls:    []mutationQueueCall{{Path: "a", Name: "c0"}, {Path: "alias.txt", Name: "c1"}},
+		Releases: []int{0, 1},
+	}
+	if got := piMutationQueueOutcomes(t, []mutationQueueScenario{scenario})[0].Counts; !slices.Equal(got, []int{2, 3, 4}) {
+		t.Fatalf("Pi event counts = %v, want [2 3 4]: both hard-link callbacks start at once", got)
+	}
+	synctest.Test(t, func(t *testing.T) {
+		q := NewFileMutationQueue()
+		var mu sync.Mutex
+		var log []string
+		record := func(event string) {
+			mu.Lock()
+			defer mu.Unlock()
+			log = append(log, event)
+		}
+		gates := []chan struct{}{make(chan struct{}), make(chan struct{})}
+		var wg sync.WaitGroup
+		for i, call := range scenario.Calls {
+			ticket, err := q.Reserve(filepath.Join(dir, call.Path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			wg.Go(func() {
+				ticket.Wait()
+				defer ticket.Release()
+				record("start " + call.Name)
+				<-gates[i]
+				record("end " + call.Name)
+			})
+		}
+		synctest.Wait()
+		if !slices.Equal(log, []string{"start c0"}) {
+			t.Fatalf("log with the first call held = %v, want only its start", log)
+		}
+		close(gates[0])
+		synctest.Wait()
+		if !slices.Equal(log, []string{"start c0", "end c0", "start c1"}) {
+			t.Fatalf("log after the first call ended = %v", log)
+		}
+		close(gates[1])
+		wg.Wait()
+	})
+}

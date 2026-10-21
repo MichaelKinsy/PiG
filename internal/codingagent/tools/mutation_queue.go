@@ -12,7 +12,12 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
-// FileMutationQueue serialises mutations of the same canonical path or existing file identity in admission order. Different files proceed in parallel. It coordinates only mutations registered in this process.
+// FileMutationQueue serialises concurrent mutations of one file, in the order
+// callers entered With: mutations whose canonical paths are equal, and
+// mutations of an existing file reached by different canonical paths (hard
+// links, and case aliases that Go's symlink resolution leaves apart). That
+// second rule goes beyond Pi (D190). Operations on different files proceed in
+// parallel. It coordinates only mutations registered in this process.
 //
 // Mirrors upstream core/tools/file-mutation-queue.ts::withFileMutationQueue,
 // which chains a per-file Promise so mutations for one file apply in the
@@ -41,7 +46,13 @@ func NewFileMutationQueue() *FileMutationQueue {
 	return &FileMutationQueue{chains: make(map[string]chan struct{}), files: make(map[string]os.FileInfo)}
 }
 
-// With runs fn after earlier mutations of the same path or file identity complete and returns fn's error. Symlinks, hard links and case aliases of an existing file are serialised together. A nil queue runs fn without serialisation.
+// With runs fn once every mutation registered earlier for the same canonical
+// path, or for the same existing file under another canonical path, has
+// completed, then hands the path to the next queued caller and returns fn's
+// error. filePath is resolved to its canonical form before keying (matching
+// upstream realpath behaviour: symlinks to the same file share one queue
+// slot). If q is nil (e.g. in tests that construct tools directly), fn is
+// called without serialisation: safe for single-threaded test contexts.
 func (q *FileMutationQueue) With(filePath string, fn func() error) error {
 	if q == nil {
 		return fn()
@@ -55,7 +66,7 @@ func (q *FileMutationQueue) With(filePath string, fn func() error) error {
 	return fn()
 }
 
-// WithFileMutationQueue runs fn after earlier mutations of the same path or file identity complete, through the process-wide queue shared by the Create edit and write functions, and returns fn's result. Different files run in parallel. A path resolution error returns without running fn.
+// WithFileMutationQueue is upstream's withFileMutationQueue (file-mutation-queue.ts:32): it runs fn once every mutation registered earlier for the same file has completed (the same canonical path, or the same existing file under another path, D190), through the process-wide queue that every edit and write tool made by the Create functions shares, and returns fn's result. Mutations of different files run in parallel. An error from resolving the path's canonical form is returned without running fn, as upstream's rejection is.
 func WithFileMutationQueue[T any](filePath string, fn func() (T, error)) (T, error) {
 	var result T
 	err := processFileMutationQueue.With(filePath, func() error {
@@ -102,7 +113,7 @@ func (q *FileMutationQueue) Reserve(filePath string) (*MutationTicket, error) {
 			// A queued write may have created a file that was missing at registration.
 			observed, _ = os.Stat(path)
 		}
-		// pig divergence (D186): hard-link aliases share ordering even though Pi keys only by realpath.
+		// pig divergence (D190): a mutation also waits for earlier mutations of the same existing file reached by another canonical path (a hard link, or a case alias on a case-insensitive filesystem); Pi keys only by realpath, so it runs them at once and one overwrites the other.
 		if path == key || (info != nil && observed != nil && os.SameFile(info, observed)) {
 			prev = append(prev, pending)
 		}
