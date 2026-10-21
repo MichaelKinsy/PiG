@@ -184,6 +184,7 @@ func TestClassifierAnswersMatchPi(t *testing.T) {
 			asked = numericQuestions
 		}
 		result := ClassifyTypesafeSystemOne(t.Context(), model, ClassifierContext{State: JsonObject{"a": 1, "nested": []any{1, JsonObject{"b": nil}}}, Questions: asked}, ClassifierOptions{APIKey: "k"})
+		closeClassifierIdleConnections(t)
 		server.Close()
 		if !sameRequest(sent, want[i].Request) {
 			if failures++; failures <= 12 {

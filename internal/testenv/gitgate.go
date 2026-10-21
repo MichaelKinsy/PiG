@@ -189,10 +189,10 @@ type SubdirectoryOrigin struct {
 	Commits [3]string
 }
 
-// NewSubdirectoryOrigin creates the repository under a new directory named name.
+// NewSubdirectoryOrigin creates the repository under a new directory named name. The directory is short: a managed checkout's path repeats the origin's path below the agent directory (git/localhost/<path>), and a test directory named for a long test twice in one path passes the 260 characters Windows allows a process's working directory.
 func NewSubdirectoryOrigin(t testing.TB, name string) SubdirectoryOrigin {
 	t.Helper()
-	root := PhysicalPath(t.TempDir())
+	root := PhysicalPath(ShortTempDir(t, "o"))
 	work, bare := filepath.Join(root, name+"-work"), filepath.Join(root, name+".git")
 	if err := os.MkdirAll(work, 0o755); err != nil {
 		t.Fatal(err)
