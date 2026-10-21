@@ -122738,7 +122738,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_session_factory.go#cliSessionFactory.StateFor"
+        "call:coding/cli/child_sessions.go#childSession.Abort"
       ],
       "evidence": [
         "test:coding/bash_execution_llm_text_upstream_test.go#TestRecordedBashResultReachesModelContextUpstream",
@@ -125333,8 +125333,9 @@
         "call:coding/session.go#Session.SettingsManager"
       ],
       "evidence": [
-        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough",
-        "test:coding/session_settings_manager_test.go#TestSessionSettingsManagerIsTheServicesSettings"
+        "test:coding/session_replicated_state_test.go#TestSessionReplicatedStateObserversStopAndCostNothingWhenIdle",
+        "test:coding/session_replicated_state_test.go#TestSessionReportsEveryChangeOfTheStateExtensionsReplicate",
+        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough"
       ]
     },
     {
@@ -125662,7 +125663,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -125706,7 +125707,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestNewSessionRejectsInvalidToolModifierOptions",
@@ -125771,7 +125772,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_tool_registry.go#createSessionToolRegistry"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_tool_prompt_metadata_test.go#TestSessionToolPromptUsesJavaScriptWhitespace",
@@ -125815,7 +125816,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestNewSessionRejectsInvalidToolModifierOptions",
@@ -125837,7 +125838,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_initial_active_tool_names_test.go#TestNewSessionInitialActiveToolNamesHonourTheExclusionList",
@@ -125868,7 +125869,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestReloadAppliesDefaultToolModifiersToTheReloadedSetting",
@@ -125912,7 +125913,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
@@ -125934,7 +125935,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/model_resolver_scope_upstream_test.go#TestModelResolverPersistedScopeUpstream",
@@ -125956,7 +125957,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/runtime.go#Runtime.startSessionWithFactory"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerDerivesCWD",
@@ -126645,7 +126646,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#BindChildSessions"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -128203,7 +128204,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/armin_render_test.go#TestArminRenderClipsRowsToTheWidthPadsThemAndCachesUntilInvalidated",
-        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi"
+        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi",
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -128224,7 +128226,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/armin_render_test.go#TestArminRenderClipsRowsToTheWidthPadsThemAndCachesUntilInvalidated",
-        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi"
+        "test:internal/codingagent/armin_test.go#TestArminFramesMatchPinnedPi",
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -128485,8 +128488,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -128507,8 +128510,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -129130,9 +129133,9 @@
         "call:tui/bash_execution.go#BashExecutionComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -129152,9 +129155,9 @@
         "call:tui/bash_execution.go#BashExecutionComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -129414,7 +129417,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/bash_executor.go#ExecuteBashWithOperations"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#Host.handleBuiltinToolLocalExec"
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
@@ -129437,7 +129440,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tools/bash_executor.go#ExecuteBashWithOperations"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#Host.handleBuiltinToolLocalExec"
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
@@ -129544,11 +129547,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/shell_tool.go#BashSpawnHook"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#builtinCallbacks.spawnHook"
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_spawn_hook_test.go#TestBashSpawnHookAdjustsCommandCwdAndEnv",
@@ -129566,11 +129569,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/tools/shell_tool.go#BashSpawnHook"
+        "call:coding/extension/host/subprocess/host_builtin_tool.go#builtinCallbacks.spawnHook"
       ],
       "evidence": [
         "test:internal/codingagent/tools/bash_spawn_hook_test.go#TestBashSpawnHookAdjustsCommandCwdAndEnv",
@@ -131720,8 +131723,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -131742,8 +131745,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -133493,7 +133496,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.AppendCompaction"
+        "call:internal/codingagent/session.go#Session.appendCompaction"
       ],
       "evidence": [
         "test:internal/sessionentry/entry_test.go#TestAsCompactionAndAsBranchSummaryKeepDetailsOrder",
@@ -133536,7 +133539,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.AppendCompaction"
+        "call:internal/codingagent/session.go#Session.appendCompaction"
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
@@ -133624,7 +133627,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session.go#Session.AppendCompaction"
+        "call:internal/codingagent/session.go#Session.appendCompaction"
       ],
       "evidence": [
         "test:coding/session_compaction_e2e_upstream_test.go#TestAgentSessionCompactionE2EUpstream"
@@ -134379,9 +134382,9 @@
         "call:tui/compaction_summary.go#CompactionSummaryMessageComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -134401,9 +134404,9 @@
         "call:tui/compaction_summary.go#CompactionSummaryMessageComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -134702,7 +134705,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_DefaultsMatchUpstream",
@@ -134745,7 +134748,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_DefaultsMatchUpstream",
@@ -135160,7 +135163,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/session_extension_host.go#ExtensionHostSessionActions"
       ],
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
@@ -135181,7 +135184,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/session_extension_host.go#ExtensionHostSessionActions"
       ],
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
@@ -135202,7 +135205,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/session_extension_host.go#ExtensionHostSessionActions"
       ],
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
@@ -135223,7 +135226,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+        "call:coding/session_extension_host.go#ExtensionHostSessionActions"
       ],
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
@@ -135445,8 +135448,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionForwardsTheSessionOptions"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -135468,8 +135471,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionForwardsTheSessionOptions"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -135483,11 +135486,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServices"
+        "call:coding/create_agent_session.go#CreateAgentSessionFromServices"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -135506,11 +135509,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServices"
+        "call:coding/create_agent_session.go#CreateAgentSessionFromServices"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -135529,11 +135532,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -135551,14 +135554,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.CustomTools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesAppliesToolModifiers"
       ]
     },
     {
@@ -135571,14 +135575,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.ExcludeTools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesToolOptionPrecedence"
       ]
     },
     {
@@ -135591,14 +135596,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.Model"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
       ]
     },
     {
@@ -135611,14 +135618,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.NoTools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesAppliesToolModifiers",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesToolOptionPrecedence"
       ]
     },
     {
@@ -135631,11 +135640,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.ScopedModels"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
@@ -135651,14 +135660,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.Services"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
       ]
     },
     {
@@ -135671,14 +135682,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.SessionManager"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault"
       ]
     },
     {
@@ -135691,11 +135704,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.SessionStartEvent"
+        "call:coding/create_agent_session.go#createAgentSessionOver"
       ],
       "evidence": [
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
@@ -135711,11 +135724,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.ThinkingLevel"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
@@ -135731,14 +135744,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionFromServicesOptions.Tools"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesAppliesToolModifiers",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesRejectsInvalidToolOptions"
       ]
     },
     {
@@ -135759,8 +135774,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionForwardsTheSessionOptions"
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ]
     },
     {
@@ -136053,11 +136068,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
@@ -136075,14 +136090,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult.ExtensionsResult"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionReturnsTheLoadersExtensionsResult"
       ]
     },
     {
@@ -136095,14 +136111,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult.ModelFallbackMessage"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault",
+        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone"
       ]
     },
     {
@@ -136115,14 +136133,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/create_agent_session.go#CreateAgentSessionResult.Session"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
-        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi"
+        "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
       ]
     },
     {
@@ -136401,7 +136421,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -136424,7 +136444,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -136446,7 +136466,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -136490,7 +136510,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/services.go#CreateAgentSessionServices"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:coding/services_options_test.go#TestServicesShareAnInjectedModelRuntimeAndDoNotCloseIt"
@@ -136510,7 +136530,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -136533,7 +136553,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/services.go#CreateAgentSessionServices"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
@@ -136576,7 +136596,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/services.go#CreateAgentSessionServices"
+        "call:coding/cli/child_sessions.go#newChildSession"
       ],
       "evidence": [
         "test:coding/services_accessors_test.go#TestServicesReturnTheCallerSuppliedSettingsManager",
@@ -138352,9 +138372,9 @@
         "call:tui/editor.go#Editor.HandleInput"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_parity_test.go#TestEditor_DisableSubmitBlocksEnter",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity"
       ]
     },
     {
@@ -138396,9 +138416,9 @@
         "call:tui/editor.go#Editor.SetFocused"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
         "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryBuildsTheComponentThatTakesTheEditorsPlace",
-        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor"
+        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth"
       ]
     },
     {
@@ -138957,8 +138977,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/ext_ui_editor_snapshot_test.go#TestExtensionEditorSnapshotPreservesObserverAndReplacement",
-        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears",
-        "test:tui/editor_parity_test.go#TestEditor_SetTextCallsOnChange"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears"
       ]
     },
     {
@@ -139130,9 +139150,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -139152,9 +139172,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -139219,8 +139239,8 @@
       ],
       "evidence": [
         "test:tui/editor_wrapping_upstream_test.go#TestUpstreamEditorGraphemeWrapping",
-        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth",
-        "test:tui/editor_overlay_cursor_test.go#TestOverlayOverEditorRowKeepsOneCursorCell"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth"
       ]
     },
     {
@@ -139241,8 +139261,8 @@
       ],
       "evidence": [
         "test:tui/editor_wrapping_upstream_test.go#TestUpstreamEditorGraphemeWrapping",
-        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth",
-        "test:tui/editor_overlay_cursor_test.go#TestOverlayOverEditorRowKeepsOneCursorCell"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_overlay_cursor_test.go#TestEditorCursorAfterLineFillingLayoutWidth"
       ]
     },
     {
@@ -139263,8 +139283,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/clipboard_paste_file_paths_upstream_test.go#TestClipboardPasteFilePaths",
-        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller",
-        "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorAdvertisedTriggerCharactersRequestAfterCJKBoundary"
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
+        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller"
       ]
     },
     {
@@ -139285,8 +139305,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/clipboard_paste_file_paths_upstream_test.go#TestClipboardPasteFilePaths",
-        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller",
-        "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorAdvertisedTriggerCharactersRequestAfterCJKBoundary"
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
+        "test:tui/autocomplete_upstream_test.go#TestEditorDirectPathCompletionCaller"
       ]
     },
     {
@@ -143071,7 +143091,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
@@ -143092,7 +143112,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
@@ -143113,7 +143133,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
@@ -143134,7 +143154,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
@@ -143155,7 +143175,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
@@ -143221,7 +143241,7 @@
         "behavior": "complete"
       },
       "production": [
-        "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+        "call:coding/session_extension_host.go#BindSessionExtensionActions"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/tool_context_test.go#TestRunnerBindCoreKeepsTheSessionBindingAModeOmits",
@@ -143812,7 +143832,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -143834,7 +143854,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -148784,9 +148804,9 @@
         "call:coding/extension/context.go#Context.Abort"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/extension/host/inproc/abort_binding_test.go#TestBindAbortPreservesOtherContextActions"
+        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
       ]
     },
     {
@@ -148806,9 +148826,9 @@
         "call:coding/extension/context.go#Context.Abort"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
-        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/extension/host/inproc/abort_binding_test.go#TestBindAbortPreservesOtherContextActions"
+        "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors"
       ]
     },
     {
@@ -149047,6 +149067,7 @@
         "call:coding/extension/context.go#Context.Signal"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalFollowsTheRunBetweenRequestsInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalIsTheActiveRunsSignalInEverySDK"
       ],
@@ -149069,6 +149090,7 @@
         "call:coding/extension/context.go#Context.Signal"
       ],
       "evidence": [
+        "test:test/extension-conformance/context_abort_signal_test.go#TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalFollowsTheRunBetweenRequestsInEverySDK",
         "test:test/extension-conformance/context_signal_test.go#TestContextSignalIsTheActiveRunsSignalInEverySDK"
       ],
@@ -152854,7 +152876,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -152876,7 +152898,7 @@
       ],
       "evidence": [
         "test:coding/cli/session_extension_actions_direct_test.go#TestSessionExtensionActionsActOnTheLiveSession",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:coding/extension/builtin/codemode/create_extension_test.go#TestCreateCodemodeExtensionFactoryReadsTheHostSettingsOnEveryUse"
       ]
     },
@@ -161174,12 +161196,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_resource_loader.go#cliResourceLoader.GetExtensions"
+        "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload"
       ]
     },
     {
@@ -161196,7 +161218,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/discover_extensions.go#loadExtensionPathsIn"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
@@ -161218,7 +161240,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_resource_loader.go#cliRuntimeBuilder.buildResourceLoader"
+        "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
@@ -165414,7 +165436,9 @@
         "call:coding/virtual_models.go#ModelRegistry.UnregisterVirtualModel"
       ],
       "evidence": [
-        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel"
+        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeGetCommandsListsACommandRegisteredAfterLoad"
       ]
     },
     {
@@ -165434,7 +165458,9 @@
         "call:coding/virtual_models.go#ModelRegistry.UnregisterVirtualModel"
       ],
       "evidence": [
-        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel"
+        "test:coding/virtual_models_physical_registry_test.go#TestPhysicalModelLookupAndRegistryUnregisterVirtualModel",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeContextAbortAbortsTheRunSignalInTheSameTick",
+        "test:test/extension-conformance/node_sync_visibility_test.go#TestNodeGetCommandsListsACommandRegisteredAfterLoad"
       ]
     },
     {
@@ -165537,7 +165563,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_summarization_auth.go#Session.prepareSummarizationRequest"
+        "call:coding/session_graph_model_runtime.go#GraphModelRuntime.resolveModel"
       ],
       "evidence": [
         "test:coding/virtual_models_suite_upstream_test.go#TestVirtualSuiteCompactsBetweenTurnsOfARunWhenTheNextRequestIsRoutedToASmallerWindow",
@@ -165759,7 +165785,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_runtime_build.go#cliRuntimeBuilder.buildResources"
+        "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
         "test:ai/abort_upstream_test.go#TestAbortMatrixUpstream",
@@ -168550,7 +168576,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
+        "call:internal/codingagent/extension_session_graph.go#GraphSessionManager.Call"
       ],
       "evidence": [
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
@@ -168570,7 +168596,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
+        "call:internal/codingagent/extension_session_graph.go#GraphSessionManager.Call"
       ],
       "evidence": [
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
@@ -169591,7 +169617,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings.go#Settings.UnmarshalJSON"
+        "call:internal/codingagent/extension_settings_graph.go#setPackages"
       ],
       "evidence": [
         "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream",
@@ -171050,7 +171076,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/project_trust_warning.go#InteractiveMode.maybeSaveImplicitProjectTrustAfterReload"
+        "call:internal/codingagent/extension_trust_graph.go#GraphProjectTrustStore.Call"
       ],
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
@@ -171385,7 +171411,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_prompt.go#Session.Prompt"
+        "call:coding/cli/child_sessions.go#childSession.Prompt"
       ],
       "evidence": [
         "test:coding/session_prompt_characterization_upstream_test.go#TestUpstreamSessionPromptCharacterization",
@@ -171407,10 +171433,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_prompt.go#Session.SendExtensionUserMessageStaged"
+        "call:coding/cli/child_sessions.go#childSession.Prompt"
       ],
       "evidence": [
-        "reach:coding/session_prompt.go#Session.SendExtensionUserMessageStaged"
+        "reach:coding/cli/child_sessions.go#childSession.Prompt"
       ]
     },
     {
@@ -173039,14 +173065,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/imageprocessing/images.go#ResizedImage.Data"
+        "call:internal/imageprocessing/images.go#ResizeImage"
       ],
       "evidence": [
-        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn"
+        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn",
+        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageUpstream",
+        "test:internal/imageprocessing/resize_zero_side_test.go#TestResizeImageReturnsNoImageWhenAScaledSideRoundsToZero"
       ]
     },
     {
@@ -173191,11 +173219,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/imageprocessing/images.go#ResizeImage"
+        "call:internal/imageprocessing/images.go#ResizeImage"
       ],
       "evidence": [
         "test:internal/imageprocessing/resize_strategy_oracle_test.go#TestResizeImageDimensionStrategyMatchesPi",
@@ -173214,11 +173242,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/imageprocessing/images.go#ResizeImage"
+        "call:internal/imageprocessing/images.go#ResizeImage"
       ],
       "evidence": [
         "test:internal/imageprocessing/resize_strategy_oracle_test.go#TestResizeImageDimensionStrategyMatchesPi",
@@ -178820,7 +178848,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -178842,7 +178870,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -178864,7 +178892,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.nativeDetail"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -178886,7 +178914,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.NativeNode"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -178908,7 +178936,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_activity_upstream_test.go#TestSessionActivityOrderingDoesNotChangeContinueMtimeSelection",
@@ -178930,7 +178958,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.nativeDetail"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -178952,7 +178980,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.nativeDetail"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_activity_upstream_test.go#TestSessionActivityTimestampFallbacks",
@@ -178974,7 +179002,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.NativeNode"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -178996,7 +179024,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/session_resume.go#summaryPartial.finish"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_list_oracle_test.go#TestListSessionsMatchesPi",
@@ -179018,7 +179046,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/native_selectors.go#SessionSelectorComponent.NativeNode"
+        "call:internal/codingagent/extension_session_graph.go#graphSessionInfos"
       ],
       "evidence": [
         "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream",
@@ -179234,7 +179262,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/interactive_build.go#cliRuntimeBuilder.interactiveReplacement"
+        "call:coding/cli/child_sessions.go#childSession.State"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -184759,14 +184787,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/settings.go#SettingsManager.Flush"
+        "call:internal/codingagent/settings.go#SettingsManager.Flush"
       ],
       "evidence": [
-        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream"
+        "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
+        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream",
+        "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -184780,14 +184810,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "test-exercised",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "tested:internal/codingagent/settings.go#SettingsManager.Flush"
+        "call:internal/codingagent/settings.go#SettingsManager.Flush"
       ],
       "evidence": [
-        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream"
+        "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
+        "test:internal/codingagent/settings_compaction_upstream_test.go#TestSettingsManagerCompactionUpstream",
+        "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -188251,7 +188283,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:internal/codingagent/interactive_settings_json_test.go#TestInteractiveBindsSettingsEncodingOncePerGeneration"
       ]
     },
@@ -188273,7 +188305,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/settings_write_oracle_test.go#TestSettingsWriteMatchesPi",
-        "test:coding/cli/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
+        "test:coding/session_settings_json_test.go#TestSessionSettingsJSONIsTheEncodingOfGetSettings",
         "test:internal/codingagent/interactive_settings_json_test.go#TestInteractiveBindsSettingsEncodingOncePerGeneration"
       ]
     },
@@ -188512,7 +188544,7 @@
       "evidence": [
         "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+        "test:coding/cli/session_state_watch_test.go#TestPrintModeReportsSessionStateChangesToTheExtensionHost"
       ]
     },
     {
@@ -188534,7 +188566,7 @@
       "evidence": [
         "test:internal/codingagent/settings_file_bytes_oracle_test.go#TestSettingsFileBytesMatchPi",
         "test:internal/codingagent/settings_write_values_oracle_test.go#TestSettingsValueWritesMatchPi",
-        "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
+        "test:coding/cli/session_state_watch_test.go#TestPrintModeReportsSessionStateChangesToTheExtensionHost"
       ]
     },
     {
@@ -190455,7 +190487,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings.go#NewSettingsManager"
+        "call:internal/codingagent/extension_settings_graph.go#NewGraphSettingsManager"
       ],
       "evidence": [
         "test:internal/codingagent/settings_create_options_test.go#TestSettingsManagerCreateOptionsProjectTrust",
@@ -190477,7 +190509,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings.go#NewSettingsManagerWithOptions"
+        "call:internal/codingagent/settings.go#NewSettingsManagerFromStorage"
       ],
       "evidence": [
         "test:internal/codingagent/settings_create_options_test.go#TestSettingsManagerCreateOptionsProjectTrust",
@@ -191704,8 +191736,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -191726,8 +191758,8 @@
       ],
       "evidence": [
         "test:tui/message_components_gaps_test.go#TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -192026,7 +192058,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -192048,7 +192080,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -192070,7 +192102,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -192092,7 +192124,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/extension_host_info.go#SlashCommandCatalog.Commands"
+        "call:coding/session_extension_loader_host.go#Session.bindLoaderExtensionHost"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -192899,9 +192931,9 @@
         "call:tui/theme.go#NewTheme"
       ],
       "evidence": [
+        "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
         "test:coding/resource_loader_extend_gaps_test.go#TestThemesOverrideSourceInfoKeepsExistingAndStampsSyntheticPaths",
-        "test:coding/resource_loader_extend_test.go#TestDefaultResourceLoaderThemesPreferProjectOverUser",
-        "test:coding/resource_loader_extend_test.go#TestExtendResourcesKeepsPackageMetadata"
+        "test:coding/resource_loader_extend_test.go#TestDefaultResourceLoaderThemesPreferProjectOverUser"
       ]
     },
     {
@@ -194587,7 +194619,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/subagent_trust_upstream_test.go#TestSubagentProjectTrustUpstream",
         "test:coding/mcpext/resources_oracle_test.go#TestMcpResourceToolsMatchPi",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers"
+        "test:test/extension-conformance/cancel_reason_test.go#TestCancelReasonReachesEveryNativeSDK"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -194605,7 +194637,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
@@ -194698,7 +194730,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/subagent_trust_upstream_test.go#TestSubagentProjectTrustUpstream",
         "test:coding/mcpext/resources_oracle_test.go#TestMcpResourceToolsMatchPi",
-        "test:test/extension-conformance/conformance_test.go#TestToolDetailsKeepMemberOrderAcrossSDKs"
+        "test:test/extension-conformance/cancel_reason_test.go#TestCancelReasonReachesEveryNativeSDK"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -194721,7 +194753,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/subagent_trust_upstream_test.go#TestSubagentProjectTrustUpstream",
         "test:coding/mcpext/resources_oracle_test.go#TestMcpResourceToolsMatchPi",
-        "test:test/extension-conformance/conformance_test.go#TestToolDetailsKeepMemberOrderAcrossSDKs"
+        "test:test/extension-conformance/cancel_reason_test.go#TestCancelReasonReachesEveryNativeSDK"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -194739,7 +194771,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:coding/builtin_tool_definitions_oracle_test.go#TestSessionRegistersBuiltInToolDefinitionsAsPiDoes",
@@ -194827,7 +194859,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
@@ -194849,7 +194881,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
@@ -194893,7 +194925,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/host.go#Host.buildExtension"
+        "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
         "test:coding/extension/host/subprocess/tool_dispatch_wire_test.go#TestPrepareArgumentsRunsInTheExtension",
@@ -197492,9 +197524,9 @@
         "call:tui/tree_select.go#TreeSelectorComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -197514,9 +197546,9 @@
         "call:tui/tree_select.go#TreeSelectorComponent.Invalidate"
       ],
       "evidence": [
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
       ]
     },
     {
@@ -199058,7 +199090,7 @@
       "evidence": [
         "test:tui/user_message_upstream_test.go#TestUpstreamUserMessageInvalidation",
         "test:tui/tui_surface_test.go#TestTuiSurfaceSendsAUserMessagesImages",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -199080,7 +199112,7 @@
       "evidence": [
         "test:tui/user_message_upstream_test.go#TestUpstreamUserMessageInvalidation",
         "test:tui/tui_surface_test.go#TestTuiSurfaceSendsAUserMessagesImages",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -252109,14 +252141,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/cancellable_loader.go#CancellableLoader.Aborted"
+        "call:tui/cancellable_loader.go#CancellableLoader.Aborted"
       ],
       "evidence": [
-        "test:tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi"
+        "test:tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi",
+        "test:tui/bordered_loader_oracle_test.go#TestBorderedLoaderMatchesPi",
+        "test:tui/bordered_loader_test.go#TestBorderedLoader_HandleInput"
       ]
     },
     {
@@ -252231,8 +252265,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -252253,8 +252287,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -254117,9 +254151,9 @@
         "call:tui/editor.go#Editor.HandleInput"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_parity_test.go#TestEditor_DisableSubmitBlocksEnter",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity"
       ]
     },
     {
@@ -254139,9 +254173,9 @@
         "call:tui/editor.go#Editor.SetFocused"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_oracle_test.go#TestDelegatedEditorHooksMatchPi",
         "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryBuildsTheComponentThatTakesTheEditorsPlace",
-        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor"
+        "test:internal/codingagent/ext_editor_component_test.go#TestExtUIContextEditorFactoryComponentRendersOnEveryPassAtTheRowsWidth"
       ]
     },
     {
@@ -254650,8 +254684,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/ext_ui_editor_snapshot_test.go#TestExtensionEditorSnapshotPreservesObserverAndReplacement",
-        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears",
-        "test:tui/editor_parity_test.go#TestEditor_SetTextCallsOnChange"
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
+        "test:tui/editor_parity_test.go#TestEditor_EnterSubmitsAndClears"
       ]
     },
     {
@@ -254735,9 +254769,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -254757,9 +254791,9 @@
         "call:tui/editor.go#Editor.SetAutocompleteMaxVisible"
       ],
       "evidence": [
+        "test:internal/codingagent/remote_editor_hooks_test.go#TestDelegatedEditorBaseExposesTheEditorsSettings",
         "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderOnlyWhenPaddingOrLimitChanges",
-        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor",
-        "test:tui/settings_live_effects_test.go#TestEditorRuntimeSettingsApplyImmediately"
+        "test:tui/editor_remote_test.go#TestEditorRemoteStandsInForTheEditor"
       ]
     },
     {
@@ -259760,8 +259794,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -259782,8 +259816,8 @@
       ],
       "evidence": [
         "test:tui/loader_ui_test.go#TestLoaderRequestsARenderAfterEveryChangeToItsText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
-        "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate",
+        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
       ]
     },
     {
@@ -260255,7 +260289,7 @@
       "evidence": [
         "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain",
         "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownRendersOnlyChangedInlineText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -260277,7 +260311,7 @@
       "evidence": [
         "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain",
         "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownRendersOnlyChangedInlineText",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -261350,7 +261384,7 @@
       "evidence": [
         "test:tui/input_components_gaps_test.go#TestMouseRegionDelegatesRenderAndInvalidate",
         "test:tui/mouse_region_passthrough_test.go#TestMouseRegionRendersAndInvalidatesTheChildUnchanged",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -261372,7 +261406,7 @@
       "evidence": [
         "test:tui/input_components_gaps_test.go#TestMouseRegionDelegatesRenderAndInvalidate",
         "test:tui/mouse_region_passthrough_test.go#TestMouseRegionRendersAndInvalidatesTheChildUnchanged",
-        "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -264393,14 +264427,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/scroll_view.go#ScrollView.Clear"
+        "call:tui/scroll_view.go#ScrollView.Clear"
       ],
       "evidence": [
-        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild"
+        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild",
+        "test:tui/scroll_view_test.go#TestScrollViewMutatorsPanic"
       ]
     },
     {
@@ -264413,14 +264448,15 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/scroll_view.go#ScrollView.Clear"
+        "call:tui/scroll_view.go#ScrollView.Clear"
       ],
       "evidence": [
-        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild"
+        "test:tui/library_member_citations_test.go#TestScrollViewClearRejectsClearingTheChild",
+        "test:tui/scroll_view_test.go#TestScrollViewMutatorsPanic"
       ]
     },
     {
@@ -271129,7 +271165,7 @@
       "id": "pkg:tui/.#TUI::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: TUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -271139,17 +271175,17 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
       "id": "pkg:tui/.#TUI::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: TUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -271159,10 +271195,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
@@ -276331,7 +276367,7 @@
       "id": "pkg:tui/.#ViewportTUI::property:invalidate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f38d43ee1c28754c2994b446d97e5f18b8d8758b64efa6d0590499074df7305b",
-      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -276341,17 +276377,17 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {
       "id": "pkg:tui/.#ViewportTUI::property:invalidate::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
-      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ViewportTUI::property:invalidate::call:0 is Go tui/renderer.go#TUI.Invalidate (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/renderer.go#TUI.Invalidate"
       ],
@@ -276361,10 +276397,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "call:tui/editor_remote.go#Editor.renderRemote"
       ],
       "evidence": [
-        "reach:internal/codingagent/ext_ui_context.go#ownerInvalidatingRenderer.Invalidate"
+        "test:test/extension-conformance/editor_component_members_test.go#TestEditorComponentHearsTheWorkingStatusAndInvalidate"
       ]
     },
     {

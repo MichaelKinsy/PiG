@@ -81,7 +81,7 @@ func addGoFunctionCallers(ctx context.Context, root, repositoryPrefix, targetCom
 		{function: "mergeSettings", path: "internal/codingagent/settings.go", caller: "Load", callee: "mergeSettings"},
 		{function: "setProjectTrusted", path: "coding/cli/cli_runtime_build.go", caller: "buildResources", callee: "services.SettingsManager().SetProjectTrusted"},
 		{function: "reload", path: "internal/codingagent/interactive_commands.go", caller: "buildSlashContext", callee: "m.opts.SettingsManager.Reload"},
-		{function: "persistScopedSettings", path: "internal/codingagent/settings.go", caller: "updateGlobalReplacing", callee: "saveSettingsPatchReplacing"},
+		{function: "persistScopedSettings", path: "internal/codingagent/settings.go", caller: "saveScope", callee: "saveSettingsPatchReplacing"},
 		{function: "saveGlobal", path: "internal/codingagent/settings.go", caller: "SetBlockImages", callee: "sm.UpdateGlobal"},
 		{function: "saveProject", path: "internal/codingagent/settings.go", caller: "SetProjectPackages", callee: "sm.UpdateProject"},
 		{function: "settingsOrchestration", path: "internal/codingagent/slash_session_handlers.go", caller: "settingsHandler", callee: "settingsHandlerTUI"},

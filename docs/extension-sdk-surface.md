@@ -25,7 +25,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 477 | 30 | 11 |
+| Node runtime | 480 | 27 | 11 |
 | Go | 482 | 26 | 10 |
 | Rust | 482 | 26 | 10 |
 | Python | 482 | 26 | 10 |
@@ -43,7 +43,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 901 | 9 | 0 | 10 |
+| `pi-coding-agent` | 900 | 10 | 0 | 10 |
 | `pi-tui` | 362 | 1 | 0 | 1 |
 | `pi-ai` | 86 | 1 | 0 | 0 |
 | `pi-ai/compat` | 137 | 9 | 0 | 0 |
@@ -1105,7 +1105,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.ui.select(opts.signal)` | `ExtensionUIContext.select(opts.signal)` | stand-in/partial `RuntimeUI.select`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
+| `ctx.ui.select(opts.signal)` | `ExtensionUIContext.select(opts.signal)` | implemented `RuntimeUI.select` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
 | `ctx.ui.select(opts.timeout)` | `ExtensionUIContext.select(opts.timeout)` | stand-in/partial `RuntimeUI.select`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.select(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
@@ -1118,7 +1118,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.ui.confirm(opts.signal)` | `ExtensionUIContext.confirm(opts.signal)` | stand-in/partial `RuntimeUI.confirm`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
+| `ctx.ui.confirm(opts.signal)` | `ExtensionUIContext.confirm(opts.signal)` | implemented `RuntimeUI.confirm` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
 | `ctx.ui.confirm(opts.timeout)` | `ExtensionUIContext.confirm(opts.timeout)` | stand-in/partial `RuntimeUI.confirm`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.confirm(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
@@ -1131,7 +1131,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `ctx.ui.input(opts.signal)` | `ExtensionUIContext.input(opts.signal)` | stand-in/partial `RuntimeUI.input`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
+| `ctx.ui.input(opts.signal)` | `ExtensionUIContext.input(opts.signal)` | implemented `RuntimeUI.input` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
 | `ctx.ui.input(opts.timeout)` | `ExtensionUIContext.input(opts.timeout)` | stand-in/partial `RuntimeUI.input`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.input(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
@@ -2330,7 +2330,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: truncateLine` | `function truncateLine` | Pi's own code |
 | `pi-coding-agent: truncateTail` | `function truncateTail` | Pi's own code |
 | `pi-coding-agent: truncateToVisualLines` | `function truncateToVisualLines` | Pi's own code |
-| `pi-coding-agent: withFileMutationQueue` | `function withFileMutationQueue` | Pi's own code |
+| `pi-coding-agent: withFileMutationQueue` | `function withFileMutationQueue` | bridged |
 | `pi-coding-agent: wrapRegisteredTool` | `function wrapRegisteredTool` | Pi's own code |
 | `pi-coding-agent: wrapRegisteredTools` | `function wrapRegisteredTools` | Pi's own code |
 

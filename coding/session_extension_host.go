@@ -154,7 +154,7 @@ func sendSessionUserMessage(sess *Session, content any, options *extension.SendU
 // extensions (runner) and subprocess extensions (bridge host actions).
 // contextActions carries the mode's other context actions, including the extension flag values supplied before session_start.
 //
-// stage, when non-nil, places the runs that sendUserMessage and sendMessage start (sessionExtensionActions); in-process and subprocess extensions share it.
+// stage, when non-nil, places the runs that sendUserMessage and sendMessage start (ExtensionHostSessionActions); in-process and subprocess extensions share it.
 //
 // replacement optionally supplies the command actions of a Session, so a mode that owns a Runtime routes newSession, fork and switchSession through it. Without it the Session's own actions apply.
 func BindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBridge, current func() *Session, contextActions extension.ContextActions, stage func() *ExtensionRunStage, replacement ...func(*Session) extension.CommandActions) {
