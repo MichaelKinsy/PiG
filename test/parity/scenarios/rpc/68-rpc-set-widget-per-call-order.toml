@@ -8,9 +8,14 @@ tags = ["hermetic", "fast"]
 driver = "rpc-mode"
 
 [rpc]
-input_lines = ['{"id":"w","type":"prompt","message":"/widget-order"}']
-timeout_seconds = 15
-settle_seconds = 2
+timeout_seconds = 30
+settle_seconds = 1
+
+# Wait for the response before stdin closes, whatever the start-up time.
+[[rpc.steps]]
+line = '{"id":"w","type":"prompt","message":"/widget-order"}'
+wait_contains = ['"id":"w","type":"response"']
+wait_timeout_seconds = 20
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
