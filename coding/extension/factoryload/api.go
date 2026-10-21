@@ -182,8 +182,18 @@ func (a *api) toolSchemaError(tool extension.ToolDefinition) error {
 }
 
 // refreshTools refreshes the runner's tools after a registration. registerTool() is valid during extension load; refresh is only
-// needed after the runner binds.
+// needed after the runner binds. While the factory runs the runtime is the one upstream hands a loading extension, whose refreshTools is a
+// no-op, so the live Session's loadout (and every prepareLoadout hook a previous load registered) is not run mid-load; the binding that
+// follows the load declares the tools once. A reload runs the factory on the runtime the Session is already bound to, which is why the
+// load state, not the runtime's wiring, decides.
+// upstream: loader.ts:273-284 (registerTool calls runtime.refreshTools), loader.ts createExtensionRuntime (refreshTools: () => {})
 func (a *api) refreshTools() {
+	a.mu.Lock()
+	loading := a.state == stateLoading
+	a.mu.Unlock()
+	if loading {
+		return
+	}
 	if refresh := a.runtime.RefreshTools; refresh != nil {
 		if err := refresh(); err != nil {
 			panic(err)

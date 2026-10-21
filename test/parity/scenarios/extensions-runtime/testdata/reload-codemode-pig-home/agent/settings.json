@@ -1,0 +1,4 @@
+{
+  "lastChangelogVersion": "0.83.0",
+  "defaultTools": ["read", "bash", "edit", "write", "codemode"]
+}
