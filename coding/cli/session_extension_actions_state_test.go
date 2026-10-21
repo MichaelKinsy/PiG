@@ -30,7 +30,7 @@ func TestSessionExtensionActionsBindThinkingLevelAndPromptOptions(t *testing.T) 
 		}
 	}()
 	bridge := subprocess.NewUIBridge(func() {})
-	bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 	call := func(method string) json.RawMessage {
 		t.Helper()
 		result, err := bridge.HandleCall("probe", &subprocess.CallPayload{Method: method, Args: json.RawMessage(`{}`)})

@@ -24,7 +24,7 @@ func TestHeadlessNativeCommandContextReadsSessionPromptOptions(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = session.Close() })
 	runner := inproc.NewRunner(nil, cwd)
-	bindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 	got, err := runner.CreateCommandContext().GetSystemPromptOptions()
 	if err != nil {
 		t.Fatal(err)

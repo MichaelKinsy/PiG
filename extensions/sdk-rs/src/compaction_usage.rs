@@ -43,7 +43,7 @@ fn token_count(value: Option<&Value>) -> i32 {
     if number.is_finite() { number as i32 } else { 0 }
 }
 
-/// Pi's `getLastAssistantUsage` over the session entries Pi hands an extension (for example [`crate::SessionManager::get_entries`]): the usage of the last
+/// Pi's `getLastAssistantUsage` over the session entries Pi hands an extension (for example [`crate::ReadonlySessionManager::get_entries`]): the usage of the last
 /// assistant message that did not abort or fail and whose usage is not all zero. As in JavaScript's arithmetic, a null token count is 0 and a missing or
 /// non-numeric one is NaN, so it never makes a usage valid.
 pub fn get_last_assistant_usage<E: Borrow<Value>>(entries: &[E]) -> Option<UsageInfo> {

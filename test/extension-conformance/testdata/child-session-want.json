@@ -1,0 +1,9 @@
+{
+  "plain-events": ["agent_start", "turn_start", "message_start:system", "message_end:system", "message_start:user", "message_end:user", "message_start:assistant", "message_end:assistant", "turn_end", "agent_end", "agent_settled"],
+  "tool-events": ["agent_start", "turn_start", "message_start:system", "message_end:system", "message_start:user", "message_end:user", "message_start:assistant", "message_end:assistant", "tool_execution_start", "tool_execution_end", "message_start:toolResult", "message_end:toolResult", "turn_end", "turn_start", "message_start:assistant", "message_end:assistant", "turn_end", "agent_end", "agent_settled"],
+  "stream-updates": 42,
+  "system": {"keys": ["content", "role", "sections", "timestamp", "toolsAdded"], "role": "system", "content": "", "sections": ["addendum", "cwd", "docs", "preamble", "rules", "tools"], "toolsAdded": [{"name": "sentinel_tool", "description": "uppercases x", "parameters": {"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]}}]},
+  "tool-roles": ["system", "user", "assistant", "toolResult", "assistant"],
+  "model-errors": {"no-key":{"fallback":null,"model":"locked","promptError":{"first":"No API key found for nokey.","docs":["providers.md","models.md"]}},"no-model":{"fallback":{"first":"No models available. Use /login to log into a provider via OAuth or API key. See:","docs":["providers.md","models.md"]},"model":"unknown","promptError":{"first":"No API key found for the selected model.","docs":["providers.md","models.md"]}}},
+  "lifecycle": {"concurrentPrompt":"Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.","toolSawAbort":true,"idleAfterAbort":true,"tail":["message_end","turn_end","agent_end","agent_settled:aborted=true"],"lastRole":"assistant","afterDispose":"resolved"}
+}

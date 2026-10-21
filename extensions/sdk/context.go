@@ -1532,6 +1532,11 @@ func (r ModelRegistry) Stream(model, request, options map[string]any) *ModelEven
 }
 
 func (r ModelRegistry) stream(model, request, options map[string]any, simple bool) *ModelEventStream {
+	return r.streamOn("", model, request, options, simple)
+}
+
+// streamOn runs the stream on the session graph ModelRuntime runtime names; empty is the Session's runtime.
+func (r ModelRegistry) streamOn(runtime string, model, request, options map[string]any, simple bool) *ModelEventStream {
 	stream := newModelEventStream()
 	streamID := fmt.Sprintf("model-stream-%d", r.context.ext.modelStreamSeq.Add(1))
 	r.context.ext.modelStreamsMu.Lock()
@@ -1552,6 +1557,9 @@ func (r ModelRegistry) stream(model, request, options map[string]any, simple boo
 	}
 	go func() {
 		call := map[string]any{"streamId": streamID, "model": model, "request": merged, "simple": simple}
+		if runtime != "" {
+			call["runtime"] = runtime
+		}
 		if callbacks != nil {
 			callbacks.flags(call)
 		}

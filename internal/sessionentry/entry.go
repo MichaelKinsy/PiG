@@ -80,6 +80,8 @@ type CompactionEntry struct {
 	Details          any       `json:"details,omitempty"`
 	Usage            *ai.Usage `json:"usage,omitempty"`
 	FromHook         bool      `json:"fromHook"`
+	// FromHookAbsent leaves the fromHook member out when the entry is written: Pi's `fromHook?: boolean` left undefined by an extension's appendCompaction.
+	FromHookAbsent bool `json:"-"`
 	// SystemMessage is the complete prompt and tool state at this compaction
 	// boundary. It is absent when the projected context has no system state.
 	SystemMessage json.RawMessage `json:"systemMessage,omitempty"`

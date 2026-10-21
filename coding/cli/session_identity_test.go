@@ -27,7 +27,7 @@ func TestSessionReadBindingsKeepIdentityWithoutPersistence(t *testing.T) {
 			var current *coding.Session
 			dir := t.TempDir()
 			bridge := subprocess.NewUIBridge(func() {})
-			bindSessionReadActions(bridge, func() *coding.Session { return current }, services.CWD(), dir)
+			coding.BindSessionReadActions(bridge, func() *coding.Session { return current }, services.CWD(), dir)
 			var previous string
 			for range 2 {
 				current, err = coding.NewSession(services, coding.SessionOptions{NoSession: noSession, SessionDir: dir})

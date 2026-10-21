@@ -27,7 +27,7 @@ func TestHeadlessExtensionReplacementBindings(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = session.Close() })
 			bridge := subprocess.NewUIBridge(func() {})
-			bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{GetMode: func() extension.ExtensionMode { return mode }}, nil)
+			coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{GetMode: func() extension.ExtensionMode { return mode }}, nil)
 			call := func(method string, args any) {
 				t.Helper()
 				raw, err := json.Marshal(args)

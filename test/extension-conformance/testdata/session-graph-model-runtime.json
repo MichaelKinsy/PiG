@@ -1,0 +1,273 @@
+{
+	"auth": {
+		"byModel": {
+			"auth": {
+				"apiKey": "mr-key"
+			},
+			"source": "configured API key"
+		},
+		"byProvider": {
+			"auth": {
+				"apiKey": "mr-key"
+			},
+			"source": "configured API key"
+		},
+		"check": {
+			"source": "configured API key",
+			"type": "api_key"
+		},
+		"compat": {
+			"authHeader": false
+		},
+		"configured": true,
+		"oauth": false,
+		"overridden": {
+			"auth": {
+				"apiKey": "override"
+			},
+			"source": "stored credential"
+		},
+		"status": {
+			"configured": true,
+			"source": "models_json_key"
+		},
+		"storedStatus": {
+			"configured": true,
+			"source": "stored"
+		},
+		"subscription": false,
+		"uncheckedProvider": null,
+		"unconfigured": false,
+		"unconfiguredAuth": null,
+		"unknownStatus": {
+			"configured": false
+		}
+	},
+	"available": {
+		"all": [
+			"m1"
+		],
+		"allOfProvider": [
+			"m1"
+		],
+		"ofProvider": [
+			"m1"
+		],
+		"ofType": [
+			"m1"
+		],
+		"snapshot": [
+			"m1"
+		],
+		"unavailableProvider": 0
+	},
+	"catalog": {
+		"all": 1,
+		"builtinListed": true,
+		"error": null,
+		"imagesOfType": 0,
+		"missing": true,
+		"models": [
+			{
+				"api": "openai-completions",
+				"contextWindow": 8000,
+				"id": "m1",
+				"maxTokens": 1000,
+				"name": "M One",
+				"provider": "mr-local",
+				"reasoning": false
+			}
+		],
+		"ofType": [
+			"m1"
+		],
+		"one": {
+			"api": "openai-completions",
+			"contextWindow": 8000,
+			"id": "m1",
+			"maxTokens": 1000,
+			"name": "M One",
+			"provider": "mr-local",
+			"reasoning": false
+		},
+		"oneOfType": {
+			"api": "openai-completions",
+			"contextWindow": 8000,
+			"id": "m1",
+			"maxTokens": 1000,
+			"name": "M One",
+			"provider": "mr-local",
+			"reasoning": false
+		},
+		"physical": {
+			"api": "openai-completions",
+			"contextWindow": 8000,
+			"id": "m1",
+			"maxTokens": 1000,
+			"name": "M One",
+			"provider": "mr-local",
+			"reasoning": false
+		},
+		"physicalMissing": true
+	},
+	"credentials": [
+		{
+			"providerId": "stored-prov",
+			"type": "api_key"
+		}
+	],
+	"login": {
+		"afterLogout": [
+			"stored-prov"
+		],
+		"credential": {
+			"key": "sk-login",
+			"type": "api_key"
+		},
+		"events": [],
+		"listed": [
+			"openai",
+			"stored-prov"
+		],
+		"prompts": [
+			"secret"
+		],
+		"status": {
+			"configured": true,
+			"source": "stored"
+		}
+	},
+	"refresh": {
+		"aborted": false,
+		"errors": {}
+	},
+	"registered": {
+		"after": {
+			"config": true,
+			"ids": [],
+			"models": 0
+		},
+		"api": "openai-completions",
+		"apiKey": "regkey",
+		"baseUrl": "\u003cserver\u003e/v2",
+		"before": [],
+		"configured": true,
+		"headers": {
+			"x-reg": "1"
+		},
+		"ids": [
+			"reg-prov"
+		],
+		"modelIds": [
+			"r1"
+		],
+		"models": [
+			{
+				"api": "openai-completions",
+				"contextWindow": 4000,
+				"id": "r1",
+				"maxTokens": 500,
+				"name": "Reg One",
+				"provider": "reg-prov",
+				"reasoning": false
+			}
+		],
+		"rejected": "error: Provider bad-prov, model x: no \"api\" specified. Set it at model level or provider level.",
+		"unregisteredConfig": true
+	},
+	"runtimeKey": {
+		"configuredAfter": false,
+		"removed": {
+			"configured": false
+		},
+		"withKey": {
+			"auth": null,
+			"configured": false,
+			"status": {
+				"configured": true,
+				"source": "runtime"
+			}
+		}
+	},
+	"stored": {
+		"stored-prov": {
+			"key": "sk-stored",
+			"type": "api_key"
+		}
+	},
+	"stream": {
+		"api": "openai-completions",
+		"completed": "hello",
+		"events": [
+			"start",
+			"text_start",
+			"text_delta",
+			"text_delta",
+			"text_end",
+			"done"
+		],
+		"full": "stop",
+		"model": "m1",
+		"provider": "mr-local",
+		"stopReason": "stop",
+		"text": "hello",
+		"unknownProvider": "error"
+	},
+	"typed": {
+		"classifyError": "Model mr-local/m1 is not a classifier model",
+		"classifyStop": "error",
+		"imagesError": "Model mr-local/m1 is not an image model",
+		"imagesStop": "error"
+	},
+	"virtual": {
+		"after": true,
+		"model": {
+			"api": "pi-virtual",
+			"contextWindow": 1000,
+			"id": "v1",
+			"maxTokens": 100,
+			"name": "Virtual One",
+			"provider": "mr-virtual",
+			"reasoning": true
+		},
+		"physicalIsNull": true,
+		"requests": [
+			{
+				"messages": 1,
+				"model": "v1",
+				"reason": "user",
+				"state": null,
+				"thinkingLevel": "high"
+			},
+			{
+				"messages": 1,
+				"model": "v1",
+				"reason": "continuation",
+				"state": {
+					"n": 1
+				},
+				"thinkingLevel": "off"
+			}
+		],
+		"route": {
+			"model": {
+				"api": "openai-completions",
+				"contextWindow": 8000,
+				"id": "m1",
+				"maxTokens": 1000,
+				"name": "M One",
+				"provider": "mr-local",
+				"reasoning": false
+			},
+			"state": {
+				"n": 1
+			},
+			"thinkingLevel": "off"
+		},
+		"second": {
+			"n": 2
+		},
+		"thinkingLevels": null,
+		"unknown": "error: Virtual model mr-local/m1 is not registered."
+	}
+}

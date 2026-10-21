@@ -41,7 +41,8 @@ func startsAsync(method string) bool {
 		return true
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom,
 		"setModel", "registerProvider", "exec", CallLoadingExec, "complete", "modelStream", CallProviderObject, "getModelAuth", "getProviderAuth", "getAvailableOfType", "classify", "generateImages", "refreshModelRegistry", "compact",
-		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec,
+		"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload", CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec, CallSessionGraphAsync,
+		CallChildSessionCreate, CallChildSessionPrompt, CallChildSessionQueue, CallChildSessionAbort, CallChildSessionBindExtensions,
 		CallOAuthOnPrompt, CallOAuthOnSelect, CallOAuthOnManualCodeInput:
 		return true
 	default:
@@ -255,6 +256,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		return
 	}
 	callCtx, releaseCall := conn.hostCallContext(call.ParentRequestID, callID)
+	callCtx = withGraphResolver(callCtx, graphResolver{host: h, conn: conn})
 	if h.uiBridge != nil {
 		defer h.uiBridge.releaseAutocompleteCall(conn, call)
 	}
@@ -376,6 +378,10 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleVirtualModelCall(callCtx, me, call)
 	case call.Method == CallExecuteTool || call.Method == CallExecuteToolCancel:
 		result, err = h.handleExecuteToolCall(callCtx, conn, call)
+	case strings.HasPrefix(call.Method, "sessionGraph."):
+		result, err = h.handleSessionGraphCall(callCtx, conn, call)
+	case strings.HasPrefix(call.Method, "childSession."):
+		result, err = h.handleChildSessionCall(callCtx, conn, call)
 	case call.Method == "provider.retain" || call.Method == "provider.release":
 		result, err = h.handleProviderReference(conn, call)
 	case call.Method == CallProviderObject:
@@ -397,7 +403,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.uiBridge.handleCall(callCtx, me.config.Name, conn, call)
 	case h.onCall != nil:
 		result, err = h.onCall(me.config.Name, call)
-	case isEarlyModelStreamCall(call.Method) && earlyModelStream.Load() != nil:
+	case isEarlyModelStreamCall(call.Method) && (earlyModelStream.Load() != nil || h.sessionGraph() != nil):
 		// A Host with no UI bridge (an SDK session, the validate and login loaders) still runs the pi-ai calls a module makes while it loads.
 		result, err = h.earlyModelBridge().handleCall(callCtx, me.config.Name, conn, call)
 	default:

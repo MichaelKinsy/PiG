@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
-// Pi agent-session.ts:3361-3390 (_bindExtensionCore getCommands) lists the extension commands, then the prompt templates, then the skills, each with its own sourceInfo, and runner.ts:433 copies it into the shared runtime. The value comes from the real Session's resource loader and the real Runner's command registry, through bindSessionExtensionActions.
+// Pi agent-session.ts:3361-3390 (_bindExtensionCore getCommands) lists the extension commands, then the prompt templates, then the skills, each with its own sourceInfo, and runner.ts:433 copies it into the shared runtime. The value comes from the real Session's resource loader and the real Runner's command registry, through coding.BindSessionExtensionActions.
 func TestSessionBindsGetCommandsToItsRunnerRuntime(t *testing.T) {
 	cwd := t.TempDir()
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: t.TempDir()})
@@ -33,7 +33,7 @@ func TestSessionBindsGetCommandsToItsRunnerRuntime(t *testing.T) {
 		Name: "deploy", Path: "/ext/deploy.ts", SourceInfo: extInfo, CommandOrder: []string{"deploy"},
 		Commands: map[string]extension.RegisteredCommand{"deploy": {Name: "deploy", Description: "Ship it", Handler: func(context.Context, string) error { return nil }}},
 	}}, cwd)
-	bindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 
 	want := []extension.SlashCommandInfo{
 		{Name: "deploy", Description: "Ship it", Source: "extension", SourceInfo: extInfo},

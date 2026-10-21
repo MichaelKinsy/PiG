@@ -1477,6 +1477,8 @@ impl Extension {
             for cancel in active_requests.lock().unwrap().values() {
                 cancel.cancel(reason);
             }
+            // The sessions end with the connection, as the host disposes them: no listener runs after it.
+            conn.children.close_all();
             conn.cancel_pending_calls();
             let drained=request_threads.wait(Duration::from_secs(2));
             conn.registered_tools.lock().unwrap().clear();
@@ -1625,6 +1627,9 @@ impl Extension {
                             }
                             "autocomplete.release" => {
                                 if let Some(id) = notify.args.as_ref().and_then(|args| args["id"].as_str()) { conn.autocomplete.release(id); }
+                            }
+                            "childSession.event" => {
+                                if let Some(args) = notify.args.as_ref() { conn.children.deliver(args); }
                             }
                             "bash_operations_release" => {
                                 if let Some(handle) = notify.args.as_ref().and_then(|args| args["handle"].as_str()) { conn.bash_operations.release(handle); }
@@ -2146,9 +2151,14 @@ impl Extension {
             "tool_prepare_arguments" => {
                 // upstream: agent-loop.ts:707-716, prepareToolCall runs the hook on the model's arguments and validates what it returns.
                 let name = req.tool.as_deref().unwrap_or("");
-                let registered = conn.registered_tools.lock().unwrap().get(name).cloned();
+                let child = req.child_session.as_deref();
+                let registered = match child {
+                    Some(session) => conn.children.lookup(session).and_then(|session| session.tools.get(name).cloned()),
+                    None => conn.registered_tools.lock().unwrap().get(name).cloned(),
+                };
                 let hook = match &registered {
                     Some(tool) => tool.prepare_arguments.as_ref(),
+                    None if child.is_some() => None,
                     None => self.tool_prepare_fns.get(name),
                 };
                 let args = req.args.clone().unwrap_or(Value::Object(Default::default()));
@@ -2321,8 +2331,12 @@ impl Extension {
             }
             "tool_call" => {
                 let tool_name = req.tool.as_deref().unwrap_or("");
-                let registered = conn.registered_tools.lock().unwrap().get(tool_name).cloned();
-                let handler = registered.as_ref().map(|tool| &tool.execute).or_else(|| self.tool_fns.get(tool_name));
+                let child = req.child_session.as_deref();
+                let registered = match child {
+                    Some(session) => conn.children.lookup(session).and_then(|session| session.tools.get(tool_name).cloned()),
+                    None => conn.registered_tools.lock().unwrap().get(tool_name).cloned(),
+                };
+                let handler = registered.as_ref().map(|tool| &tool.execute).or_else(|| if child.is_some() { None } else { self.tool_fns.get(tool_name) });
                 if let Some(handler) = handler {
                     let ctx = base_ctx.clone_for_request(
                         cancel.clone(),
@@ -2370,6 +2384,13 @@ impl Extension {
                         }),
                     );
                 }
+            }
+            "sessionGraph.callback" => {
+                let (result, error) = match crate::graph::dispatch_callback(conn, req.args.as_ref()) {
+                    Ok(value) => (Some(value), None),
+                    Err(message) => (None, Some(ErrorInfo { code: None, message })),
+                };
+                let _ = conn.respond(id, result, error);
             }
             "setup" => {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
@@ -2987,7 +3008,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("r1".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "render_message".to_string(),
@@ -3070,7 +3091,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-1".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "command".to_string(),
@@ -3236,7 +3257,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("login-1".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "oauth_login".to_string(),
@@ -3302,7 +3323,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("key-1".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "oauth_get_api_key".to_string(),
@@ -3326,7 +3347,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("ref-1".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "oauth_refresh".to_string(),
@@ -3351,7 +3372,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("store-1".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "oauth_store_credentials".to_string(),
@@ -3373,7 +3394,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("status-1".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "oauth_credential_status".to_string(),
@@ -3466,7 +3487,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-state".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "command".to_string(),
@@ -3498,7 +3519,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-user".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "command".to_string(),
@@ -3566,7 +3587,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-title".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "command".to_string(),
@@ -3623,7 +3644,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-panic".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "command".to_string(),
@@ -3703,7 +3724,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-label".to_string()),
                 request: Some(RequestMsg {
-                    terminal_input: None,
+                    child_session: None, terminal_input: None,
                     stream: None,
                     stream_error: None,
                     method: "command".to_string(),
@@ -3765,7 +3786,7 @@ mod tests {
             msg_type: "request".to_string(),
             id: Some(id.to_string()),
             request: Some(RequestMsg {
-                terminal_input: None,
+                child_session: None, terminal_input: None,
                 stream: None,
                 stream_error: None,
                 method: method.to_string(),

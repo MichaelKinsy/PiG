@@ -338,6 +338,9 @@ pub struct RequestMsg {
     pub batch: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<Value>,
+    /// The child agent session whose customTools define `tool` (`tool_call`, `tool_prepare_arguments`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub child_session: Option<String>,
     pub terminal_input: Option<TerminalInputArgs>,
     /// Numbers one connection's payloads of an event name and key (`EventStream` in the host's protocol.go).
     pub stream: Option<EventStream>,
@@ -389,6 +392,8 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     args: Option<Box<serde_json::value::RawValue>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    child_session: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     stream: Option<EventStream>,
 }
 
@@ -402,7 +407,7 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
         } else {
             raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?
         };
-        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, terminal_input, stream: raw.stream, stream_error: None })
+        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, child_session: raw.child_session, terminal_input, stream: raw.stream, stream_error: None })
     }
 }
 
@@ -412,7 +417,7 @@ impl From<RequestMsg> for RawRequestMsg {
             Some(args) => Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON")),
             None => req.args.map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
         };
-        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, args, stream: req.stream }
+        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, args, child_session: req.child_session, stream: req.stream }
     }
 }
 
@@ -601,6 +606,8 @@ impl RequestParent {
 
 /// A thread-safe connection to the host over a Unix socket.
 pub struct Connection {
+    /// The child agent sessions this connection created and has not disposed (`child_session.rs`).
+    pub(crate) children: crate::child_session::ChildSessions,
     pub(crate) registered_tools: Mutex<HashMap<String, Arc<crate::extension::ToolDefinition>>>,
     pub(crate) tool_registration_lock: Mutex<()>,
     /// Commands, shortcuts and renderers registered after loading.
@@ -631,6 +638,8 @@ pub struct Connection {
     pub(crate) views: crate::kit::ViewLedger,
     /// The setup callbacks of this connection's newSession calls in flight.
     pub(crate) setups: crate::setup_session::SetupRegistry,
+    /// The functions passed in options of session graph objects (DefaultResourceLoader's overrides), by the name the host runs them under.
+    pub(crate) graph_callbacks: crate::graph::GraphCallbacks,
     reader: Mutex<UnixStream>,
     writer: Mutex<UnixStream>,
     // control ends the socket for every clone without waiting on a reader or writer lock.
@@ -717,6 +726,8 @@ impl Connection {
             with_sessions: Default::default(),
             views: Default::default(),
             setups: Default::default(),
+            graph_callbacks: Default::default(),
+            children: Default::default(),
             registered_tools: Mutex::new(HashMap::new()),
             tool_registration_lock: Mutex::new(()),
             late_declarations: Default::default(),

@@ -87,7 +87,20 @@ mod setup_session;
 pub use setup_session::{SetupFn, SetupSessionManager};
 pub use replaced_session::{ReplacedSessionContext, WithSessionFn};
 mod session_manager;
-pub use session_manager::SessionManager;
+pub use session_manager::ReadonlySessionManager;
+mod graph;
+mod session_manager_class;
+pub use session_manager_class::{ListProgress, NewSessionOptions, SessionInfo, SessionManager};
+mod settings_manager;
+pub use settings_manager::{SettingsError, SettingsManager, SettingsManagerCreateOptions, SettingsStorage};
+mod model_runtime;
+pub use model_runtime::{ModelRuntime, ModelRuntimeCreateOptions};
+mod package_manager;
+pub use package_manager::{DefaultPackageManager, PackageManagerOptions};
+mod resource_loader;
+pub use resource_loader::{DefaultResourceLoader, DefaultResourceLoaderOptions, InlineExtensionFactory, LoaderOverride};
+mod project_trust;
+pub use project_trust::{has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 mod host_info;
 pub use host_info::{ShellConfig, get_agent_dir, get_config_dir_name, get_package_dir, get_shell_config, get_version};
 mod file_mutation_queue;
@@ -160,6 +173,8 @@ pub use context::{
     message_text, is_tool_call_event_type, is_bash_tool_result, is_powershell_tool_result, is_read_tool_result, is_edit_tool_result, is_write_tool_result, is_grep_tool_result, is_find_tool_result, is_ls_tool_result,
 };
 pub use events::*;
+mod child_session;
+pub use child_session::{AgentSession, CreateAgentSessionOptions, PromptOptions, ResourceOptions, SessionSubscription};
 #[doc(hidden)]
 pub use extension::report_load_failure;
 pub use extension::{

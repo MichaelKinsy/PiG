@@ -13,7 +13,7 @@ import (
 
 // Pi packages/coding-agent/src/core/agent-session.ts:3361-3390 (_bindExtensionCore getCommands) binds pi.getCommands() to the extension commands, then the prompt templates, then the
 // skills of the Session, each with its own sourceInfo. An extension's own API reads it: the factory's api, loaded on the runtime that the production
-// binding (bindSessionExtensionActions) fills from a real Session and Runner.
+// binding (coding.BindSessionExtensionActions) fills from a real Session and Runner.
 func TestExtensionAPIGetCommandsReadsTheBoundSession(t *testing.T) {
 	cwd := t.TempDir()
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: t.TempDir()})
@@ -44,7 +44,7 @@ func TestExtensionAPIGetCommandsReadsTheBoundSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	runner := inproc.NewRunner([]extension.Extension{ext}, cwd, runtime)
-	bindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 
 	want := []extension.SlashCommandInfo{
 		{Name: "deploy", Description: "Ship it", Source: "extension", SourceInfo: extInfo},

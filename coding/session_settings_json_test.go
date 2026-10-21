@@ -1,4 +1,4 @@
-package cli
+package coding
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
@@ -14,12 +13,12 @@ import (
 // The getSettingsJSON host action gives the getSettings() object as JSON, before a Session exists and before and after a settings write, and
 // the state push carries those bytes.
 func TestSessionSettingsJSONIsTheEncodingOfGetSettings(t *testing.T) {
-	var live *coding.Session
-	current := func() *coding.Session { return live }
-	actions, _ := sessionExtensionActions(current, nil)
+	var live *Session
+	current := func() *Session { return live }
+	actions, _ := ExtensionHostSessionActions(current, nil)
 	settingsJSON := sessionSettingsJSON(current)
 	bridge := subprocess.NewUIBridge(nil)
-	bindSessionExtensionActions(nil, bridge, current, extension.ContextActions{}, nil)
+	BindSessionExtensionActions(nil, bridge, current, extension.ContextActions{}, nil)
 	check := func(step string) {
 		t.Helper()
 		encoded, err := json.Marshal(actions.GetSettings())
@@ -43,11 +42,11 @@ func TestSessionSettingsJSONIsTheEncodingOfGetSettings(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	t.Setenv("PIG_CODING_AGENT_DIR", t.TempDir())
 	t.Setenv("PI_CODING_AGENT_DIR", t.TempDir())
-	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir()})
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	live, err = coding.NewSession(services, coding.SessionOptions{})
+	live, err = NewSession(services, SessionOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

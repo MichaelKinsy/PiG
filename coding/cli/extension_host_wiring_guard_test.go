@@ -95,6 +95,8 @@ func TestPrintModesBindEveryHostCallback(t *testing.T) {
 			host := printModeTestHost(t, ai.NewFauxProvider(ai.FauxConfig{}))
 			bridge := subprocess.NewUIBridge(func() {})
 			host.Bridge = bridge
+			// The build binds the child session factory in every mode before the mode binds its own (cli_runtime_build.go); TestExtensionChildSessionsAcrossModes drives that path through the binary.
+			BindChildSessions(bridge, host.Services)
 			result := runPrintModeForTest(t, host, printModeOptions{Mode: mode})
 			if result.err != nil {
 				t.Fatalf("print mode: %v\n%s", result.err, result.stderr)
@@ -115,6 +117,8 @@ func TestRPCModeBindsEveryHostCallback(t *testing.T) {
 	defer services.Close()
 	// RPC mode reads the bridge from the Session's extension host.
 	bridge := subprocess.NewUIBridge(func() {})
+	// The build binds the child session factory in every mode before the mode binds its own (cli_runtime_build.go); TestExtensionChildSessionsAcrossModes drives that path through the binary.
+	BindChildSessions(bridge, services)
 	runtime, err := coding.NewRuntime(coding.RuntimeOptions{Services: services, ExtensionHost: &cliExtensionHost[struct{}]{bridge: bridge}})
 	if err != nil {
 		t.Fatal(err)

@@ -281,8 +281,14 @@ type Host struct {
 	eventBus           hostEventBus
 	// loopTurns holds each forwarded loop turn until every recipient took it (forwardLoopTurned).
 	loopTurns loopTurns
+	// childSessions holds the child agent sessions each connection created (child_session.go).
+	childSessions childSessionTable
 	// nested tracks executeTool calls in flight (host_extension_api.go).
 	nested nestedCalls
+	// sessionGraphObjects holds the session graph objects each connection built; sessionGraphBackend serves them (session_graph.go).
+	sessionGraphObjects sessionGraphTable
+	sessionGraphMu      sync.Mutex
+	sessionGraphBackend SessionGraphBackend
 	// runSignals numbers the active run's signal and watches it for its abort (run_signal.go).
 	runSignals runSignals
 	// messageUpdateShare is the message_update payload every extension of the host shares while the partial has not published (message_update_delta.go).
@@ -3860,14 +3866,28 @@ func (h *Host) makeMessageRenderer(me *managedExt, customType string) extension.
 // discarding the answer the user was still typing. The caller-owned ctx
 // remains authoritative for cancellation.
 func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.ToolExecuteFunc {
+	return h.toolExecuteFunc(toolName, toolTarget{
+		connection: func() *Conn { return me.current().connection() },
+		syncState:  func(ctx context.Context, conn *Conn) error { return h.pushStateTo(ctx, me.current(), conn) },
+	})
+}
+
+// toolTarget is where a tool's execute runs: the connection that serves it, the state the extension holds before it runs, and the child agent session whose customTools define it ("" for a registered tool).
+type toolTarget struct {
+	connection   func() *Conn
+	syncState    func(context.Context, *Conn) error
+	childSession string
+}
+
+// toolExecuteFunc returns the ToolExecuteFunc that dispatches tool calls over target's connection; see makeToolExecuteFunc.
+func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.ToolExecuteFunc {
 	return func(
 		ctx context.Context,
 		toolCallID string,
 		params json.RawMessage,
 		onUpdate extension.AgentToolUpdateCallback,
 	) (extension.AgentToolResult, error) {
-		me := me.current()
-		conn := me.connection()
+		conn := target.connection()
 		if conn == nil {
 			return extension.AgentToolResult{}, errors.New("extension not connected")
 		}
@@ -3886,8 +3906,10 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		if slot := agent.ToolSettleFromContext(ctx, toolCallID); slot != nil {
 			reqCtx = withRequestArrived(reqCtx, slot.Settle)
 		}
-		if err := h.pushStateTo(reqCtx, me, conn); err != nil {
-			return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
+		if target.syncState != nil {
+			if err := target.syncState(reqCtx, conn); err != nil {
+				return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
+			}
 		}
 		// A nested call made by an extension on this same connection carries its executeTool id: executeIds are per connection, so no other caller's id may reach this runtime.
 		executeID := ""
@@ -3898,13 +3920,14 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		resp, err := conn.requestWithUpdates(reqCtx, &Envelope{
 			Type: MsgRequest,
 			Request: &RequestPayload{
-				Method:     MethodToolCall,
-				Tool:       toolName,
-				ToolCallID: toolCallID,
-				Batch:      agent.ToolBatchFromContext(ctx, toolCallID),
-				Args:       params,
-				OwnSignal:  extension.OwnsSignal(ctx),
-				ExecuteID:  executeID,
+				Method:       MethodToolCall,
+				Tool:         toolName,
+				ToolCallID:   toolCallID,
+				Batch:        agent.ToolBatchFromContext(ctx, toolCallID),
+				Args:         params,
+				OwnSignal:    extension.OwnsSignal(ctx),
+				ExecuteID:    executeID,
+				ChildSession: target.childSession,
 			},
 		}, toolUpdateSink(onUpdate))
 		if errors.Is(err, ErrToolAborted) {

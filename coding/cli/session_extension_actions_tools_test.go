@@ -13,7 +13,7 @@ import (
 
 // Upstream _bindExtensionCore binds getActiveTools and setActiveTools to the
 // session in every mode. Print and JSON mode bind subprocess extensions
-// through bindSessionExtensionActions, so an extension there sees the
+// through coding.BindSessionExtensionActions, so an extension there sees the
 // session's active tools and can change them, as under Pi.
 func TestSessionExtensionActionsBindActiveTools(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
@@ -31,7 +31,7 @@ func TestSessionExtensionActionsBindActiveTools(t *testing.T) {
 		}
 	}()
 	bridge := subprocess.NewUIBridge(func() {})
-	bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 
 	call := func(method string, args any) json.RawMessage {
 		t.Helper()
@@ -64,7 +64,7 @@ func TestSessionExtensionActionsBindActiveTools(t *testing.T) {
 }
 
 // Print and JSON mode bind in-process extensions only through
-// bindSessionExtensionActions. Like upstream _bindExtensionCore, it must give
+// coding.BindSessionExtensionActions. Like upstream _bindExtensionCore, it must give
 // their context the session's tools, so a Piglet's tool scoping (tools: [])
 // sees the registered tools and can narrow them.
 func TestSessionExtensionActionsBindInProcessToolActions(t *testing.T) {
@@ -84,7 +84,7 @@ func TestSessionExtensionActionsBindInProcessToolActions(t *testing.T) {
 		}
 	}()
 	runner := inproc.NewRunner(nil, cwd)
-	bindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(runner, nil, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 	ctx := runner.CreateCommandContext()
 
 	all := ctx.GetAllTools()

@@ -322,6 +322,8 @@ type ModelStreamCall struct {
 	TransformHeaders bool            `json:"transformHeaders,omitempty"`
 	Model            map[string]any  `json:"model"`
 	Request          json.RawMessage `json:"request"`
+	// Runtime names the session graph ModelRuntime the stream runs on (CallSessionGraphNew, kind ModelRuntime); empty is the Session's.
+	Runtime string `json:"runtime,omitempty"`
 }
 
 const MethodModelStreamCallback = "model_stream_callback"
@@ -591,6 +593,8 @@ type RequestPayload struct {
 	Args       json.RawMessage `json:"args,omitempty"`         // Tool args or event payload
 	// Batch, on tool_call, names the parallel batch the call belongs to: the same value for every call of one assistant message's batch, absent for a call of a sequential batch or one a tool makes inside its own. A runtime that runs each request on a thread of its own orders only the calls of one batch (Pi's single thread orders a batch's calls, not the calls of other sessions).
 	Batch string `json:"batch,omitempty"`
+	// ChildSession, on tool_call and tool_prepare_arguments, names the child agent session (CallChildSessionCreate) whose customTools define Tool: the tool is the one that session was created with, not one the extension registered. Absent, Tool is a registered tool.
+	ChildSession string `json:"child_session,omitempty"`
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.

@@ -90,3 +90,7 @@ The SDK carries the extension API additions of upstream 0.99.1. Every one is add
 A registration made before `Run` is applied when the extension loads, and the host validates it: a rejected MCP server or virtual model fails the load with the host's message, as an upstream factory that throws does. A registration made after load returns the host's refusal as its error. `ExecuteTool` never fails for a tool failure: it returns an outcome with `IsError` set. `ExecuteToolOptions.OnUpdate` runs on its own goroutine, in order, and finishes before `ExecuteTool` returns.
 
 An extension cannot set upstream's `Extension.replaceable`: the CLI sets it on its built-in extensions.
+
+## Child agent sessions
+
+`ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{...})` is Pi's `createAgentSession`: a child agent session over the host's model runtime that your extension prompts (`Prompt`, `Steer`, `FollowUp`), observes (`Subscribe`), aborts (`Abort`) and disposes (`Dispose`), with `CustomTools` served by this extension. Calls block as Pi's Promises resolve; the session ends with the connection. See [Child agent sessions](../../docs/extension-authoring.md#child-agent-sessions-createagentsession).

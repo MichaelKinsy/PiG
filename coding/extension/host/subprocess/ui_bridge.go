@@ -392,6 +392,9 @@ type HostCallbacks struct {
 	// means every provider. upstream: model-registry.ts refresh(options)
 	RefreshModelRegistry func(ctx context.Context, allowNetwork *bool, providers []string, force *bool) (map[string]any, error)
 
+	// CreateChildSession builds a child agent session for an extension: Pi's createAgentSession (core/sdk.ts). The session shares the model runtime of the Session the host serves, so providers the extensions registered are available to it. Nil refuses the call.
+	CreateChildSession ChildSessionFactory
+
 	// SessionRead answers a ReadonlySessionManager read computed from the
 	// host's session: the header facts (method "info"), and for the Go, Rust
 	// and Python SDKs the reads their session mirror cannot answer.
@@ -1243,6 +1246,8 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GenerateImages = fn.(func(context.Context, map[string]any, json.RawMessage, map[string]any) (json.RawMessage, error))
 	case "refreshModelRegistry":
 		b.actions.RefreshModelRegistry = fn.(func(context.Context, *bool, []string, *bool) (map[string]any, error))
+	case "createChildSession":
+		b.actions.CreateChildSession = fn.(ChildSessionFactory)
 	case "sessionRead":
 		b.actions.SessionRead = fn.(func(string, json.RawMessage) (any, error))
 	case "setSessionName":
@@ -4209,8 +4214,18 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	if owner == nil {
 		return nil, errors.New("modelStream requires a live extension connection")
 	}
-	if actions == nil || actions.StreamModel == nil {
+	var streamModel func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error)
+	switch {
+	case request.Runtime != "":
+		streamer, err := graphStreamerOf(ctx, request.Runtime)
+		if err != nil {
+			return nil, err
+		}
+		streamModel = streamer.StreamModel
+	case actions == nil || actions.StreamModel == nil:
 		return nil, errors.New("model streaming is not available")
+	default:
+		streamModel = actions.StreamModel
 	}
 	decodedRequest, err := decodeModelStreamRequest(request.Request)
 	if err != nil {
@@ -4230,7 +4245,7 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	stream, err := actions.StreamModel(providerCtx, request.Model, decodedRequest)
+	stream, err := streamModel(providerCtx, request.Model, decodedRequest)
 	if err != nil {
 		return nil, err
 	}

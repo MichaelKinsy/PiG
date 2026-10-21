@@ -45,6 +45,8 @@ type Session struct {
 	sessionStartEvent extension.SessionStartEvent
 	// ownedServices are the Services CreateAgentSession built for this Session; Close releases them. Nil for a Session over caller-owned Services.
 	ownedServices *AgentSessionServices
+	// detachExtensionHost unbinds the Session from the Extension Host of its resource loader (bindLoaderExtensionHost); nil when the Session did not bind one.
+	detachExtensionHost func()
 	// closeSupersededErr is a test seam: an extra error closeSuperseded reports, because Close itself cannot fail today.
 	closeSupersededErr       func() error
 	rebindSession            func(context.Context, extension.SessionStartEvent) error
@@ -1548,6 +1550,9 @@ func (s *Session) Close() error {
 		close(s.closeDone)
 	})
 	s.endEvents()
+	if s.detachExtensionHost != nil {
+		s.detachExtensionHost()
+	}
 	// Upstream dispose aborts the active run and drains work the Session owns.
 	s.RequestAbort()
 	// upstream: packages/coding-agent/src/core/agent-session.ts:dispose invalidates the runner the session built; a borrowed Runtime or Clone-source runner stays live for its owner.

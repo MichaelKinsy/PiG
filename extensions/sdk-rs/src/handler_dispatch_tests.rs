@@ -90,7 +90,7 @@ impl Host {
             msg_type: "request".into(),
             id: Some(id.into()),
             request: Some(RequestMsg {
-                terminal_input: None,
+                child_session: None, terminal_input: None,
                 stream: None,
                 stream_error: None,
                 method: method.into(),

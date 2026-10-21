@@ -675,6 +675,38 @@ pub(crate) fn host_error_message(error: crate::protocol::ErrorInfo) -> String {
     }
 }
 
+/// The wire declaration of a tool definition (`ToolDecl` in the host's protocol.go), after the check of Pi's registerTool: the schema is an object.
+pub(crate) fn tool_declaration(definition: &crate::ToolDefinition) -> io::Result<serde_json::Value> {
+    if !definition.parameters.is_object() {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "tool parameters must be an object"));
+    }
+    let mut declaration = serde_json::json!({
+        "name": definition.name, "label": definition.label, "description": definition.description,
+        "parameters": definition.parameters, "prompt_snippet": definition.prompt_snippet,
+        "prompt_guidelines": definition.prompt_guidelines, "constrained_sampling": definition.constrained_sampling,
+        "execution_mode": definition.execution_mode,
+        "render_shell": if definition.render_shell == crate::ToolRenderShell::SelfShell { "self" } else { "default" },
+        "renders_call": definition.render_call.is_some() || definition.render_call_view.is_some(),
+        "renders_result": definition.render_result.is_some() || definition.render_result_view.is_some(),
+    });
+    let optional = [
+        ("output_schema", definition.output_schema.clone()),
+        ("exposure", definition.exposure.map(|exposure| serde_json::Value::from(exposure.as_str()))),
+        ("namespace", definition.namespace.as_ref().and_then(|namespace| serde_json::to_value(namespace).ok())),
+        ("annotations", definition.annotations.as_ref().and_then(|annotations| serde_json::to_value(annotations).ok())),
+        ("default_active", definition.default_active.map(serde_json::Value::from)),
+        ("prepares_loadout", definition.prepare_loadout.is_some().then_some(serde_json::Value::Bool(true))),
+        ("reaches_tools", definition.reaches_tools.is_some().then_some(serde_json::Value::Bool(true))),
+        ("prepares_arguments", definition.prepare_arguments.is_some().then_some(serde_json::Value::Bool(true))),
+    ];
+    for (key, value) in optional {
+        if let Some(value) = value {
+            declaration[key] = value;
+        }
+    }
+    Ok(declaration)
+}
+
 fn call_result_to_io(result: CallResultMsg) -> io::Result<()> {
     if let Some(err) = result.error {
         return Err(io::Error::new(io::ErrorKind::Other, host_error_message(err)));
@@ -1347,7 +1379,7 @@ impl ModelRegistry {
         request: serde_json::Value,
         options: serde_json::Value,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model,request,options,false,ModelStreamCallbacks::default())
+        self.stream_with_method(model,request,options,false,ModelStreamCallbacks::default(),None)
     }
     /// `stream` with Pi's provider request callbacks (`onPayload`, `onResponse`, `transformHeaders`).
     pub fn stream_with_callbacks(
@@ -1357,7 +1389,7 @@ impl ModelRegistry {
         options: serde_json::Value,
         callbacks: ModelStreamCallbacks,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model,request,options,false,callbacks)
+        self.stream_with_method(model,request,options,false,callbacks,None)
     }
     /// `stream_simple` with Pi's provider request callbacks.
     pub fn stream_simple_with_callbacks(
@@ -1367,9 +1399,13 @@ impl ModelRegistry {
         options: serde_json::Value,
         callbacks: ModelStreamCallbacks,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model,request,options,true,callbacks)
+        self.stream_with_method(model,request,options,true,callbacks,None)
     }
-    fn stream_with_method(&self,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool,callbacks:ModelStreamCallbacks)->Arc<ModelEventStream> {
+    /// A stream on the session graph `ModelRuntime` the handle names.
+    pub(crate) fn stream_on_runtime(&self,runtime:&str,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool)->Arc<ModelEventStream> {
+        self.stream_with_method(model,request,options,simple,ModelStreamCallbacks::default(),Some(runtime.to_string()))
+    }
+    fn stream_with_method(&self,model:serde_json::Value,request:serde_json::Value,options:serde_json::Value,simple:bool,callbacks:ModelStreamCallbacks,runtime:Option<String>)->Arc<ModelEventStream> {
         let id = format!(
             "model-stream-{}",
             self.sequence.fetch_add(1, Ordering::Relaxed) + 1
@@ -1402,6 +1438,9 @@ impl ModelRegistry {
                 "modelStream",
                 {
                     let mut call = serde_json::json!({"streamId": id, "model": model, "request": merged, "simple":simple});
+                    if let Some(runtime) = &runtime {
+                        call["runtime"] = serde_json::Value::String(runtime.clone());
+                    }
                     for (set, name) in [(flags.0, "onPayload"), (flags.1, "onResponse"), (flags.2, "transformHeaders"), (flags.3, "fetch")] {
                         if set {
                             call[name] = serde_json::Value::Bool(true);
@@ -1431,7 +1470,7 @@ impl ModelRegistry {
         request: serde_json::Value,
         options: serde_json::Value,
     ) -> Arc<ModelEventStream> {
-        self.stream_with_method(model, request, options,true,ModelStreamCallbacks::default())
+        self.stream_with_method(model, request, options,true,ModelStreamCallbacks::default(),None)
     }
     pub fn complete(
         &self,
@@ -1942,37 +1981,18 @@ impl Context {
 
     /// Register or replace a tool in the running Session. Validation precedes replacement; the host refresh completes before returning.
     pub fn register_tool(&self, definition: crate::ToolDefinition) -> io::Result<()> {
-        if !definition.parameters.is_object() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "tool parameters must be an object"));
-        }
-        let mut declaration = serde_json::json!({
-            "name": definition.name, "label": definition.label, "description": definition.description,
-            "parameters": definition.parameters, "prompt_snippet": definition.prompt_snippet,
-            "prompt_guidelines": definition.prompt_guidelines, "constrained_sampling": definition.constrained_sampling,
-            "execution_mode": definition.execution_mode,
-            "render_shell": if definition.render_shell == crate::ToolRenderShell::SelfShell { "self" } else { "default" },
-            "renders_call": definition.render_call.is_some() || definition.render_call_view.is_some(),
-            "renders_result": definition.render_result.is_some() || definition.render_result_view.is_some(),
-        });
-        let optional = [
-            ("output_schema", definition.output_schema.clone()),
-            ("exposure", definition.exposure.map(|exposure| serde_json::Value::from(exposure.as_str()))),
-            ("namespace", definition.namespace.as_ref().and_then(|namespace| serde_json::to_value(namespace).ok())),
-            ("annotations", definition.annotations.as_ref().and_then(|annotations| serde_json::to_value(annotations).ok())),
-            ("default_active", definition.default_active.map(serde_json::Value::from)),
-            ("prepares_loadout", definition.prepare_loadout.is_some().then_some(serde_json::Value::Bool(true))),
-            ("reaches_tools", definition.reaches_tools.is_some().then_some(serde_json::Value::Bool(true))),
-            ("prepares_arguments", definition.prepare_arguments.is_some().then_some(serde_json::Value::Bool(true))),
-        ];
-        for (key, value) in optional {
-            if let Some(value) = value {
-                declaration[key] = value;
-            }
-        }
+        let declaration = tool_declaration(&definition)?;
         let _registration = self.conn.tool_registration_lock.lock().unwrap();
         self.conn.registered_tools.lock().unwrap().insert(definition.name.clone(), Arc::new(definition));
         self.call_host("registerTool", Some(declaration))?;
         Ok(())
+    }
+
+    /// Pi's `createAgentSession`: create a child agent session in the host and return once it is ready.
+    ///
+    /// The session belongs to this extension's connection and is disposed with it; see the `child_session` module for the async contract.
+    pub fn create_agent_session(&self, options: crate::CreateAgentSessionOptions) -> io::Result<crate::AgentSession> {
+        crate::child_session::create(&self.conn, |method, args| self.call_host(method, args), options)
     }
 
     /// Register a slash command after load, as `pi.registerCommand` does when a handler calls it: it replaces a command with the same name and is visible to the host before this returns.

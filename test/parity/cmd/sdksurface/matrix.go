@@ -517,7 +517,7 @@ func defaultSymbols(r surfaceRow, sdk string) []string {
 		if sdk == "node" {
 			return []string{"RuntimeSessionManager." + n}
 		}
-		return qualify([]string{"SessionManager", "Context"}, []string{"SessionManager", "Context"}, []string{"SessionManager", "Context"})
+		return qualify([]string{"ReadonlySessionManager", "Context"}, []string{"ReadonlySessionManager", "Context"}, []string{"ReadonlySessionManager", "Context"})
 	case "modelRegistry":
 		if sdk == "node" {
 			return []string{"RuntimeModelRegistry." + n}

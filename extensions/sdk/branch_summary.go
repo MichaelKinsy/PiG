@@ -33,13 +33,13 @@ type CollectEntriesResult struct {
 	CommonAncestorID *string
 }
 
-// SessionReader is the part of Pi's ReadonlySessionManager that CollectEntriesForBranchSummary reads. [SessionManager] is one.
+// SessionReader is the part of Pi's ReadonlySessionManager that CollectEntriesForBranchSummary reads. [ReadonlySessionManager] is one.
 type SessionReader interface {
 	GetEntry(id string) (map[string]any, error)
 	GetBranch(fromID *string) ([]map[string]any, error)
 }
 
-var _ SessionReader = SessionManager{}
+var _ SessionReader = ReadonlySessionManager{}
 
 // CollectEntriesForBranchSummary is Pi's collectEntriesForBranchSummary (core/compaction/branch-summarization.ts): the entries from oldLeafID back to its
 // common ancestor with targetID, oldest first. A compaction on the way is included, not a boundary. With no old position there is nothing to summarize.

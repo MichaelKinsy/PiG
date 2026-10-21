@@ -56,3 +56,6 @@ Serialize `JsString` directly with `serde_json::to_string` or `serde_json::to_ve
 
 A `RemoteComponent` or `ViewComponent` that returns `true` from `handles_mouse` receives Pi's fullscreen mouse events in `handle_mouse(&MouseEvent)` (snake_case fields such as `screen_x`, `wheel_delta`, `click_count`; `x`/`y` local to the component), on the same serial queue as `handle_input` and with the same result meaning. Regular `tuiMode` delivers none, as in Pi. See "Mouse in custom components" in `docs/extension-authoring.md`.
 
+## Child agent sessions
+
+`Context::create_agent_session(CreateAgentSessionOptions { .. })` is Pi's `createAgentSession`: a child agent session over the host's model runtime that the extension prompts (`prompt`, `steer`, `follow_up`), observes (`subscribe`), aborts (`abort`) and disposes (`dispose`), with `custom_tools` served by this extension. Calls block as Pi's Promises resolve; the session ends with the connection. See [Child agent sessions](../../docs/extension-authoring.md#child-agent-sessions-createagentsession).

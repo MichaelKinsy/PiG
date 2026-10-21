@@ -37,7 +37,7 @@ func TestModeGetCommandsIsTheSessionsCommandList(t *testing.T) {
 	)
 	runtime := extension.CreateExtensionRuntime()
 	runner := inproc.NewRunner(nil, cwd, runtime)
-	bindSessionExtensionActions(runner, nil, func() *coding.Session { return live }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(runner, nil, func() *coding.Session { return live }, extension.ContextActions{}, nil)
 
 	got, want := runtime.GetCommands(), live.SlashCommands()
 	if !slices.Equal(got, want) {

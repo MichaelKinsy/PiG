@@ -14,7 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/fusepack"
@@ -26,26 +25,6 @@ import (
 
 	"golang.org/x/term"
 )
-
-func wireSubprocessModelRegistry(bridge *subprocess.UIBridge, session *coding.Session, services *coding.AgentSessionServices) func() {
-	if bridge == nil || session == nil || services == nil {
-		return func() {}
-	}
-	runtime := session.ModelRuntime()
-	return codingagent.WireModelOperations(bridge, codingagent.ModelOperationBindings{
-		CurrentModel: session.Model, ModelLookup: runtime.GetModel, ModelCatalog: runtime.GetModels, Classify: runtime.Classify, GenerateImages: runtime.GenerateImages,
-		Registry: services.Registry().ModelRegistry, ModelBuilder: func(spec string) (*ai.Model, error) { return coding.BuildModel(spec, services) },
-		SessionHandle: session,
-	})
-}
-
-// watchSessionRunSignal reports each run the Session's agent begins or ends to the extension host, and returns the function that stops. Pi's ctx.signal is `() => this.agent.signal` (agent-session.ts:3368), read live by the extension that holds ctx, so every runtime must learn of a run change when it happens, not at its next request.
-func watchSessionRunSignal(bridge *subprocess.UIBridge, session *coding.Session) func() {
-	if bridge == nil || session == nil {
-		return func() {}
-	}
-	return session.Agent().ObserveRunSignal(bridge.RunSignalChanged)
-}
 
 // loadSubprocessExtensions starts the already-resolved canonical extension set.
 // Discovery, trust, Package, Piglet, settings, and CLI precedence are owned by
@@ -139,6 +118,7 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 	})
 	bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
 	host.SetUIBridge(bridge)
+	host.SetSessionGraph(coding.NewSessionGraph())
 	codingagent.WireEarlyModelStream(bridge, "")
 	installStartupTrace(&trace, host.SetStartupTrace)
 	host.SetMode(string(mode))

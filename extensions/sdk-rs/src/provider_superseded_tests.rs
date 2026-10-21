@@ -18,7 +18,7 @@ fn provider_superseded_keeps_the_stream_the_host_still_calls() {
         msg_type: "request".into(),
         id: Some("stream".into()),
         request: Some(RequestMsg {
-            terminal_input: None,
+            child_session: None, terminal_input: None,
             stream: None,
             stream_error: None,
             method: "provider_stream_simple".into(),
