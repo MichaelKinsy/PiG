@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -26,7 +27,7 @@ func TestPiResolvePathSitesNormalizeTheirInput(t *testing.T) {
 	}
 	sm := NewSessionManagerWithDir("/project", filepath.Join(home, "sessions"))
 
-	for _, input := range []string{"~" + string(filepath.Separator) + "source.jsonl", fileURL} {
+	for i, input := range []string{"~" + string(filepath.Separator) + "source.jsonl", fileURL} {
 		opened, err := sm.Open(input)
 		if err != nil || opened.Path() != source {
 			t.Errorf("Open(%q) = %v, %v; want the session at %q", input, opened, err, source)
@@ -35,7 +36,8 @@ func TestPiResolvePathSitesNormalizeTheirInput(t *testing.T) {
 		if err != nil || loaded.Path() != source {
 			t.Errorf("Load(%q) = %v, %v; want the session at %q", input, loaded, err, source)
 		}
-		fork, err := sm.ForkFromFile(input, "fork-id")
+		// A distinct id per fork: the file name is the millisecond timestamp plus the id, so a fixed id collides (EEXIST) when both forks land in one millisecond.
+		fork, err := sm.ForkFromFile(input, "fork-id-"+strconv.Itoa(i))
 		if err != nil || fork.ParentSession() != source {
 			t.Errorf("ForkFromFile(%q) = %v, %v; want parentSession %q", input, fork, err, source)
 		}
