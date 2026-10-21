@@ -666,6 +666,8 @@ func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 			m.tuiInst.Invalidate()
 			m.tuiInst.RequestRender()
 		})
+		// After the repaint is queued, so the collection never delays it.
+		releaseStartupHeap()
 	})
 }
 
