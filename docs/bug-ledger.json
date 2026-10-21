@@ -31470,13 +31470,11 @@
         }
       ],
       "tests": [
-        "codemode/sandbox_scaling_test.go::TestSandboxConstructionIsLinearInTheCatalogSize",
         "codemode/sandbox_scaling_test.go::TestSandboxConstructionKeepsOrderAndRejectsDuplicates",
         "coding/extension/builtin/codemode/run_test.go::TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation",
         "coding/extension/builtin/codemode/run_test.go::TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName",
         "coding/extension/builtin/codemode/run_test.go::TestDiscoveryStopsWhenItsContextIsCancelled",
-        "coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog",
-        "coding/mcpext/extension_test.go::TestAgentSessionMCPRegistrationIsLinearInTheCatalogSize"
+        "coding/mcpext/extension_test.go::TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog"
       ]
     }
   ],

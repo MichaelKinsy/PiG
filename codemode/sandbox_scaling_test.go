@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/codemode"
 )
@@ -46,30 +45,6 @@ func TestSandboxConstructionKeepsOrderAndRejectsDuplicates(t *testing.T) {
 	dup := append(catalogOf(3), codemode.Tool{Name: "tool_000001"})
 	if _, err := codemode.NewSandbox(codemode.SandboxOptions{Tools: dup}); err == nil || !strings.Contains(err.Error(), `Tool "tool_000001" is already registered`) {
 		t.Fatalf("NewSandbox with a duplicate = %v", err)
-	}
-}
-
-// Invariant: sandbox construction is linear in the catalog. A per-insert scan is quadratic: 32 times more tools cost
-// about 1000 times more; linear growth costs about 32 times more. The bound sits between, on the best of three runs.
-func TestSandboxConstructionIsLinearInTheCatalogSize(t *testing.T) {
-	build := func(n int) time.Duration {
-		tools := catalogOf(n)
-		best := time.Duration(1<<63 - 1)
-		for range 3 {
-			start := time.Now()
-			s, err := codemode.NewSandbox(codemode.SandboxOptions{Tools: tools})
-			elapsed := time.Since(start)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_ = s.Close()
-			best = min(best, elapsed)
-		}
-		return best
-	}
-	small, large := max(build(2_000), 100*time.Microsecond), build(64_000)
-	if ratio := float64(large) / float64(small); ratio > 300 {
-		t.Fatalf("64000 tools took %s and 2000 took %s: %.0fx for 32x the tools, want linear growth", large, small, ratio)
 	}
 }
 

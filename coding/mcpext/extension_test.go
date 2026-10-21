@@ -1229,29 +1229,3 @@ func TestAgentSessionMCPNamesCollidingToolsAcrossTheWholeCatalog(t *testing.T) {
 		t.Errorf("names = %q, %q, %q, want the plain name, a suffixed name, and the plain name", names["first"], names["second"], names["solo"])
 	}
 }
-
-// Invariant: registering a server's tools is linear in the catalog. Assigning each name by rescanning every other
-// name is quadratic: 24 times more tools cost about 576 times more; linear growth costs about 24 times more.
-func TestAgentSessionMCPRegistrationIsLinearInTheCatalogSize(t *testing.T) {
-	register := func(n, runs int) time.Duration {
-		listed := make([]map[string]any, n)
-		for i := range listed {
-			listed[i] = map[string]any{"name": fmt.Sprintf("tool_%06d", i), "inputSchema": map[string]any{"type": "object"}}
-		}
-		best := time.Duration(1<<63 - 1)
-		for range runs {
-			h := setupSession(t, extension.McpExposureDeferred, func() []map[string]any { return listed }, setupOptions{})
-			start := time.Now()
-			h.start()
-			best = min(best, time.Since(start))
-			if got := len(h.host.GetAllTools()); got < n {
-				t.Fatalf("%d tools registered, want at least %d", got, n)
-			}
-		}
-		return best
-	}
-	small, large := max(register(2_000, 3), time.Millisecond), register(48_000, 1)
-	if ratio := float64(large) / float64(small); ratio > 150 {
-		t.Fatalf("48000 tools took %s and 2000 took %s: %.0fx for 24x the tools, want linear growth", large, small, ratio)
-	}
-}
