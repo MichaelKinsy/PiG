@@ -46,7 +46,7 @@ func TestPushStateToResendsAfterAReplyTheRuntimeAppliesToItsState(t *testing.T) 
 			rig.expectNoFrame(t, "an identical push before the reply")
 			tc.reply(t, rig)
 			rig.push(t)
-			state := rig.nextState(t)
+			state := rig.settledState(t)
 			if len(state["commands"]) == 0 {
 				t.Fatalf("the push after %s must be a full snapshot, got keys %v", tc.name, keysOf(state))
 			}
