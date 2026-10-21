@@ -13922,7 +13922,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fixed in:** Unreleased
 - **Fix commits:** `7827d96bf8` (2026-10-20)
 - **Tests:** `coding/cli/print_mode_test.go::TestPrintAndJSONModeDoNotDispatchCommandsOnTransformedText`, `coding/session_prompt_command_order_test.go::TestSendContentWithPreflightDoesNotDispatchCommands`, `test/parity/scenarios/json/13-json-input-transform-slash-text.toml`, `test/parity/scenarios/print/10-print-input-transform-slash-text.toml`
-- **Release note:** Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a prompt template produced. A handler that rewrote the prompt to `/deploy now`, or a template whose body is `/deploy $ARGUMENTS`, ran the command and sent nothing to the model. Pi checks for a command on the raw text only and sends the produced text to the model.
+- **Release note:** Print mode and `--mode json` no longer run an extension command a second time on text an input handler or a prompt template produced. A handler that rewrote the prompt into an extension command's invocation, or a template whose body is that invocation, ran the command and sent nothing to the model. Pi checks for a command on the raw text only and sends the produced text to the model.
 
 ### BF-b8c4b2c
 
