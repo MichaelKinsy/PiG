@@ -24,6 +24,8 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
+# The base --no-extensions flag would also stop the builtin extensions the reload re-runs.
+override_base_args = true
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/reload-codemode-pig-home"]
 pi = ["PI_CODING_AGENT_DIR=testdata/reload-codemode-pi-agent"]
 pig_extensions = ["testdata/ext/parity-echo.mjs"]
