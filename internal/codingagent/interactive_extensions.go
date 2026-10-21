@@ -10,7 +10,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -220,17 +219,11 @@ func (m *InteractiveMode) wireInprocContextActions() {
 			return nil
 		},
 		// upstream: runner.ts:906-909 `get model()` returns getModel(), which is the Session's own Model object (agent-session.ts:3437 `getModel: () => this.model`).
-		GetModel:         m.sessionModel,
-		IsIdle:           m.extensionIsIdle,
-		GetSignal:        m.extensionSignal,
-		IsProjectTrusted: func() bool { return m.projectTrusted() },
-		HasPendingMessages: func() bool {
-			if m.agent == nil {
-				return false
-			}
-			steering, followUps := m.agent.PendingMessages()
-			return len(steering)+len(followUps) > 0
-		},
+		GetModel:           m.sessionModel,
+		IsIdle:             m.extensionIsIdle,
+		GetSignal:          m.extensionSignal,
+		IsProjectTrusted:   func() bool { return m.projectTrusted() },
+		HasPendingMessages: m.extensionHasPendingMessages,
 		Abort: func() {
 			if m.agent != nil {
 				m.abortFn()
@@ -726,118 +719,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		return nil
 	})
 	b.SetHostAction("sendMessage", func(msg extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
-		if m.currentSession() == nil {
-			return fmt.Errorf("session not available")
-		}
-		if strings.TrimSpace(msg.CustomType) == "" {
-			return fmt.Errorf("customType is required")
-		}
-		display := msg.Display
-		// Mirrors upstream sendCustomMessage (agent-session.ts:1453-1469), which
-		// branches on whether a turn is in flight, not on whether an agent
-		// exists:
-		//
-		//	deliverAs "nextTurn" → defer to the next turn
-		//	else if streaming    → followUp / steer on the running turn
-		//	else if triggerTurn  → start a turn from this message
-		//	else                 → persist and render, start nothing
-		//
-		// Conflating "an agent exists" with "a turn is running" stranded a
-		// triggerTurn message whenever the agent was idle: it went to a queue
-		// that only drains inside a running turn, and the persistence branch was
-		// skipped because it counted as queued, so the message was invisible in
-		// the UI and absent from the session until some later turn happened to
-		// drain it.
-		//
-		// The entry is written here only on the paths that do not hand the
-		// message to the agent. When the agent takes it, the agent persists it
-		// via OnMessagePersist at the point of delivery, so it cannot land
-		// between an assistant's tool_use and its tool_result and invalidate
-		// session replay.
-		route := routeCustomMessage(m.agent != nil, m.agent != nil && m.runStreaming(), opts.TriggerTurn != nil && *opts.TriggerTurn, opts.DeliverAs)
-		startTurn := route == customMessageStartTurn
-		queued := route == customMessageQueue
-		entry, err := m.currentSession().customMessageEntry(msg.CustomType, msg.Content, display, msg.Details, !queued && !startTurn)
-		if err != nil {
-			return err
-		}
-		// The agent renders a message it takes at its message_start (interactive_events.go); only a message that is persisted here without a run is rendered now.
-		if display && !queued && !startTurn {
-			m.runOnMain(m.runCtx, func() {
-				m.appendCustomMessage(entry)
-				m.tuiInst.Render()
-			})
-		}
-		if !queued && !startTurn {
-			return nil
-		}
-		agentMsg := agent.AgentMessage{Custom: map[string]any{
-			"role":       agent.RoleCustom,
-			"customType": msg.CustomType,
-			"content":    msg.Content,
-			"display":    display,
-			"timestamp":  time.Now().UnixMilli(),
-		}}
-		if msg.Details != nil {
-			agentMsg.Custom["details"] = msg.Details
-		}
-		deliverAs := opts.DeliverAs
-		if deliverAs == "" {
-			deliverAs = "followUp"
-		}
-		switch deliverAs {
-		case "followUp", "nextTurn", "steer":
-		default:
-			return fmt.Errorf("unsupported deliverAs %q", opts.DeliverAs)
-		}
-		startCustomTurn := func() error {
-			// Starting another run from agent_settled waits until every settled
-			// handler returns, matching upstream's deferred settled actions.
-			start := func() {
-				// Starting a turn mutates TUI and session state, so it runs on
-				// the owner loop. It re-checks there: a turn may have begun
-				// since.
-				_ = m.postToMain(m.runCtx, func() {
-					if m.agent == nil {
-						return
-					}
-					if m.enqueueIfTurnActive(func() { m.agent.FollowUp(agentMsg) }) {
-						m.updatePendingMessagesDisplay()
-						return
-					}
-					m.runCustomMessageTurn(m.runCtx, agentMsg)
-				})
-			}
-			if !m.deferSettledAction(start) {
-				start()
-			}
-			return nil
-		}
-		if startTurn {
-			return startCustomTurn()
-		}
-		if deliverAs == "nextTurn" {
-			m.agent.QueueNextTurn(agentMsg)
-			return nil
-		}
-		if !m.enqueueIfTurnActive(func() {
-			if deliverAs == "steer" {
-				m.agent.Steer(agentMsg)
-			} else {
-				m.agent.FollowUp(agentMsg)
-			}
-		}) {
-			// The run settled after routing: take the idle branch instead of
-			// queueing into a run that will never drain it.
-			if opts.TriggerTurn != nil && *opts.TriggerTurn {
-				return startCustomTurn()
-			}
-			if err := m.currentSession().AppendEntry(entry); err != nil {
-				return err
-			}
-			return nil
-		}
-		return m.postToMain(m.runCtx, m.updatePendingMessagesDisplay)
+		return m.sendExtensionMessage(msg, extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)})
 	})
 	b.SetHostAction("sendUserMessage", func(content any, opts subprocess.SendUserMessageOptions) error {
 		deliver := func() { _ = m.deliverUserMessage(content, extension.DeliverAs(opts.DeliverAs)) }
@@ -1861,4 +1743,19 @@ func (m *InteractiveMode) refreshSessionTools(wait bool) error {
 		return nil
 	}
 	return m.postToMain(m.runCtx, m.rebuildToolSystemPrompt)
+}
+
+// extensionHasPendingMessages answers the extension-facing hasPendingMessages(): whether user messages wait in the steering or follow-up queue.
+// upstream: agent-session.ts:2443-2445 counts only those; extension custom messages queued with sendMessage are not pending messages.
+func (m *InteractiveMode) extensionHasPendingMessages() bool {
+	if m.agent == nil {
+		return false
+	}
+	steering, followUps := m.agent.PendingMessages()
+	for _, message := range slices.Concat(steering, followUps) {
+		if message.User != nil {
+			return true
+		}
+	}
+	return false
 }
