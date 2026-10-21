@@ -18,31 +18,36 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
-// The immutable index is generated from ICU release-78.3 cjdict.txt. Lookup borrows its embedded bytes; it does not build a dictionary map on the input loop.
+// The immutable index is generated from ICU release-78.3 cjdict.txt and embedded gzip-compressed; the first CJK segmentation inflates it (see lazyDictionary). Lookup then borrows the inflated bytes; it does not build a dictionary map on the input loop.
 //
-//go:embed cjk_dictionary.bin
-var cjkDictionary string
+//go:embed cjk_dictionary.bin.gz
+var cjkDictionaryGzip []byte
 
-func dictionaryUint32(offset int) int {
-	return int(binary.LittleEndian.Uint32([]byte(cjkDictionary[offset : offset+4])))
+var cjkDictionary = lazyDictionary(cjkDictionaryGzip)
+
+// cjkIndex is the inflated CJK index.
+type cjkIndex string
+
+func (d cjkIndex) uint32At(offset int) int {
+	return int(binary.LittleEndian.Uint32([]byte(d[offset : offset+4])))
 }
-func dictionaryWord(index int) string {
-	count := dictionaryUint32(0)
+func (d cjkIndex) word(index int) string {
+	count := d.uint32At(0)
 	start := 4 + (count+1)*4 + count
-	return cjkDictionary[start+dictionaryUint32(4+index*4) : start+dictionaryUint32(8+index*4)]
+	return string(d[start+d.uint32At(4+index*4) : start+d.uint32At(8+index*4)])
 }
-func dictionaryMatches(text string, offsets []int, start int, visit func(length int, cost uint32)) {
-	count := dictionaryUint32(0)
+func (d cjkIndex) matches(text string, offsets []int, start int, visit func(length int, cost uint32)) {
+	count := d.uint32At(0)
 	low, high := 0, count
 	for length := 1; length <= 20 && start+length < len(offsets); length++ {
 		prefix := text[offsets[start]:offsets[start+length]]
-		low += sort.Search(high-low, func(i int) bool { return dictionaryWord(low+i) >= prefix })
-		high = low + sort.Search(high-low, func(i int) bool { return !strings.HasPrefix(dictionaryWord(low+i), prefix) })
+		low += sort.Search(high-low, func(i int) bool { return d.word(low+i) >= prefix })
+		high = low + sort.Search(high-low, func(i int) bool { return !strings.HasPrefix(d.word(low+i), prefix) })
 		if low == high {
 			return
 		}
-		if dictionaryWord(low) == prefix {
-			visit(length, uint32(cjkDictionary[4+(count+1)*4+low]))
+		if d.word(low) == prefix {
+			visit(length, uint32(d[4+(count+1)*4+low]))
 		}
 	}
 }
@@ -57,6 +62,7 @@ func cjkBoundaries(text string) []int {
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.WordDictionaries) {
 		return nil
 	}
+	dictionary := cjkIndex(cjkDictionary())
 	normalized := text
 	var inputMap []int
 	if !norm.NFKC.IsNormalString(text) {
@@ -107,7 +113,7 @@ func cjkBoundaries(text string) []int {
 				previous[next] = i
 			}
 		}
-		dictionaryMatches(normalized, offsets, i, consider)
+		dictionary.matches(normalized, offsets, i, consider)
 		if !single && (r < 0xac00 || r > 0xd7a3) {
 			consider(1, 255)
 		}

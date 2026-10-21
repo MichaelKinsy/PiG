@@ -15,17 +15,25 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
-//go:embed thai_dictionary.bin
-var thaiDictionary string
+//go:embed thai_dictionary.bin.gz
+var thaiDictionaryGzip []byte
 
-//go:embed lao_dictionary.bin
-var laoDictionary string
+var thaiDictionary = lazyDictionary(thaiDictionaryGzip)
 
-//go:embed khmer_dictionary.bin
-var khmerDictionary string
+//go:embed lao_dictionary.bin.gz
+var laoDictionaryGzip []byte
 
-//go:embed burmese_dictionary.bin
-var burmeseDictionary string
+var laoDictionary = lazyDictionary(laoDictionaryGzip)
+
+//go:embed khmer_dictionary.bin.gz
+var khmerDictionaryGzip []byte
+
+var khmerDictionary = lazyDictionary(khmerDictionaryGzip)
+
+//go:embed burmese_dictionary.bin.gz
+var burmeseDictionaryGzip []byte
+
+var burmeseDictionary = lazyDictionary(burmeseDictionaryGzip)
 
 // byteDictionary borrows ICU's offset-transformed word bytes in a sorted index. Lookup narrows the prefix range without allocating a runtime trie.
 type byteDictionary string
@@ -171,9 +179,9 @@ func seaDivide(text string, script rune, visit func(int)) {
 	if len(chars) < 4 || script == 1 && len(chars) == 4 {
 		return
 	}
-	dictionaries := [...]string{"", thaiDictionary, laoDictionary, khmerDictionary, burmeseDictionary}
+	dictionaries := [...]func() string{nil, thaiDictionary, laoDictionary, khmerDictionary, burmeseDictionary}
 	bases := [...]rune{0, 0xe00, 0xe80, 0x1780, 0x1000}
-	dictionary, base := byteDictionary(dictionaries[script]), bases[script]
+	dictionary, base := byteDictionary(dictionaries[script]()), bases[script]
 	words := [3]possibleWord{{offset: -1}, {offset: -1}, {offset: -1}}
 	found, pos := 0, 0
 	for pos < len(chars) {

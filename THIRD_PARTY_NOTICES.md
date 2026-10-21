@@ -12,7 +12,7 @@ The canonical license texts for the components below are in `LICENSES/`.
 
 Source: <https://github.com/unicode-org/icu/tree/release-78.3/icu4c/source>
 
-Distributed files: `internal/wordsegmenter/cjk.go` and `internal/wordsegmenter/cjk_dictionary.bin`.
+Distributed files: `internal/wordsegmenter/cjk.go` and `internal/wordsegmenter/cjk_dictionary.bin.gz`.
 
 - Copyright © 2016 and later Unicode, Inc. and others.
 - Copyright 2006–2016 International Business Machines Corporation and others.
@@ -26,7 +26,7 @@ PiG translates ICU's weighted CJK word-boundary algorithm to Go. The embedded in
 
 Source: <https://github.com/unicode-org/icu/tree/release-78.3/icu4c/source>
 
-Distributed files: `internal/wordsegmenter/sea.go`, `internal/wordsegmenter/segments.go`, `internal/wordsegmenter/word_rules.go`, `internal/wordsegmenter/rule_data.go`, the Thai/Lao/Khmer/Burmese `*_dictionary.bin` indexes, and the dictionary-derived differential corpus in `internal/wordsegmenter/testdata/sea-icu78.json`.
+Distributed files: `internal/wordsegmenter/sea.go`, `internal/wordsegmenter/segments.go`, `internal/wordsegmenter/word_rules.go`, `internal/wordsegmenter/rule_data.go`, the Thai/Lao/Khmer/Burmese `*_dictionary.bin.gz` indexes, and the dictionary-derived differential corpus in `internal/wordsegmenter/testdata/sea-icu78.json`.
 
 - Copyright © 2016 and later Unicode, Inc. and others.
 - Copyright 1999–2016 International Business Machines Corporation and others.
