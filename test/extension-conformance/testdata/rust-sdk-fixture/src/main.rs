@@ -1635,6 +1635,80 @@ fn main() {
         },
     );
     ext.command(
+        "rw_prompt_state",
+        "Read the system prompt state after registering and activating tools",
+        |ctx, _args| {
+            let tool = |name: &str| {
+                let mut tool = ToolDefinition::new(name, name, name, json!({"type":"object"}), |_, _| ToolResult::text("ok"));
+                tool.prompt_snippet = Some(format!("{name}-snippet"));
+                tool
+            };
+            if let Err(err) = ctx.register_tool(tool("rw-alpha")).and_then(|_| ctx.register_tool(tool("rw-beta"))) {
+                return CommandResult::Error(err.to_string());
+            }
+            let registered = match ctx.get_system_prompt_options() {
+                Ok(options) => options,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            ctx.set_active_tools(&["rw-beta"]);
+            let options = match ctx.get_system_prompt_options() {
+                Ok(options) => options,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let prompt = match ctx.get_system_prompt() {
+                Ok(prompt) => prompt,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let selected: Vec<&str> = options["selectedTools"].as_array().map(|tools| tools.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+            ctx.notify(
+                &format!(
+                    "rw_prompt_state=registered:{};selected:{};beta:{};alpha:{}",
+                    registered["toolSnippets"]["rw-alpha"].as_str().unwrap_or(""),
+                    selected.join(","),
+                    prompt.contains("rw-beta-snippet"),
+                    prompt.contains("rw-alpha-snippet"),
+                ),
+                "info",
+            );
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "rw_idle_after_trigger",
+        "Read isIdle after a message that starts a run",
+        |ctx, _args| {
+            if let Err(err) = ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None) {
+                return CommandResult::Error(err.to_string());
+            }
+            match ctx.is_idle() {
+                Ok(idle) => ctx.notify(&format!("rw_idle_after_trigger={idle}"), "info"),
+                Err(err) => return CommandResult::Error(err.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    let rw_settled_subscriber = ext.event_subscriber();
+    let rw_settled_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> = Arc::new(Mutex::new(Vec::new()));
+    let rw_settled_once = Arc::new(AtomicBool::new(false));
+    ext.command(
+        "rw_idle_in_settled",
+        "Read isIdle after a message that starts a run, sent from an agent_settled handler",
+        move |_ctx, _args| {
+            let once = rw_settled_once.clone();
+            let subscription = rw_settled_subscriber.on_event("agent_settled", move |ctx, _data| {
+                if once.swap(true, Ordering::SeqCst) {
+                    return Ok(None);
+                }
+                ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None).map_err(|err| err.to_string())?;
+                let idle = ctx.is_idle().map_err(|err| err.to_string())?;
+                ctx.notify(&format!("rw_idle_in_settled={idle}"), "info");
+                Ok(None)
+            });
+            rw_settled_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "set_model",
         "Switch to the model in the arguments",
         |ctx, args| {
