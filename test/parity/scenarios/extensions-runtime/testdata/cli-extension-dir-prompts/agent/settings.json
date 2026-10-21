@@ -1,0 +1,5 @@
+{
+  "extensions": ["./settings-ext"],
+  "packages": ["./package-ext"],
+  "defaultProjectTrust": "always"
+}
