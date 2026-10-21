@@ -304,9 +304,10 @@ func (sm *SessionManager) ForkFromFile(sourcePath string, idOption ...string) (*
 	header := created.GetHeader()
 	newPath := filepath.Join(sm.sessionDir, fileTimestamp(header.Timestamp)+"_"+header.ID+".jsonl")
 
-	f, err := os.Create(newPath)
+	// Pi writes the header with writeFileSync(newSessionFile, ..., { flag: "wx" }) (session-manager.ts forkFrom), so a file that already holds this timestamp and id is an EEXIST error and is left as it is.
+	f, err := os.OpenFile(newPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
 	if err != nil {
-		return nil, fmt.Errorf("sessionmanager: fork create: %w", err)
+		return nil, sessionPersistenceError(err, "open", newPath)
 	}
 	defer func() { _ = f.Close() }()
 	// pig additive (D112): Pi writes the header, then appends each entry with its own write (session-manager.ts forkFrom); the buffer is flushed before the file is read back, so the file holds the same bytes.
