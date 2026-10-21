@@ -866,17 +866,16 @@ func (host *HostImpl) touch(rootID string, object *ObjectImpl) {
 // ─── roots ───
 
 // Root runs fn in a new root of this host, in options.CodeVersion (default: the current code version at call time).
+// The root's id, its code version and its entry are one section of the loop, as upstream's root is synchronous up to
+// its first await: a retirement cannot fall between choosing the current code version and entering it.
 func (host *HostImpl) Root(fn func(ctx Ctx) (any, error), options RootOptions) (any, error) {
-	var rootID string
-	var codeVersion int
-	host.run(func() {
-		rootID = host.newRootID()
-		codeVersion = host.current.id
+	return host.runRoot(func() (string, int) {
+		codeVersion := host.current.id
 		if options.CodeVersion != nil {
 			codeVersion = *options.CodeVersion
 		}
-	})
-	return host.joinRoot(rootID, codeVersion, fn, joinOptions{principal: options.Principal, signal: options.Signal})
+		return host.newRootID(), codeVersion
+	}, fn, joinOptions{principal: options.Principal, signal: options.Signal})
 }
 
 // newRootID makes the id of a new root started here, on the loop.
@@ -900,9 +899,18 @@ type joinOptions struct {
 // every link it came over announced its end (root_end) or closed, so its re-entry stays grandfathered. fn runs on the
 // caller's goroutine, off the loop.
 func (host *HostImpl) joinRoot(rootID string, codeVersionID int, fn func(ctx Ctx) (any, error), options joinOptions) (value any, err error) {
+	return host.runRoot(func() (string, int) { return rootID, codeVersionID }, fn, options)
+}
+
+// runRoot is joinRoot with the root's id and code version chosen by start, which runs in the same section of the loop as
+// the entry (enterRoot): what start reads of the host is still true when the root is counted in it.
+func (host *HostImpl) runRoot(start func() (rootID string, codeVersionID int), fn func(ctx Ctx) (any, error), options joinOptions) (value any, err error) {
 	var codeVersion *CodeVersionState
 	var ctx *CtxImpl
-	host.run(func() { codeVersion, ctx, err = host.enterRoot(rootID, codeVersionID, options) })
+	host.run(func() {
+		rootID, codeVersionID := start()
+		codeVersion, ctx, err = host.enterRoot(rootID, codeVersionID, options)
+	})
 	if err != nil {
 		return nil, err
 	}
