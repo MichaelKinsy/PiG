@@ -32066,21 +32066,25 @@
       "tests": []
     },
     {
-      "id": "BF-c6cb4f6",
+      "id": "BF-91e8d60",
       "title": "Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it",
       "symptom": "Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it.",
-      "rootCause": "PiG's Durable writes schema version 2 (Pi main's sleeping task status), which pi-durable 1.3.0 refuses. Opening a version 1 store by file path upgraded it in place, so a user who tried PiG on their Pi data could not go back to the released Pi. driver.OpenHarness and node.OpenNodeSqliteStorage now copy such a store to \u003cpath\u003e.schema-v1.bak (VACUUM INTO) before the upgrade; an earlier copy is never replaced, and a failed copy fails the open. pi-durable 1.3.0 opens the copy.",
+      "rootCause": "PiG's Durable writes schema version 2, which pi-durable 1.3.0 refuses, and opening a version 1 store by file path upgraded it in place, so a user could not go back to the released Pi. The fix copies such a store to \u003cpath\u003e.schema-\u003cN\u003e.bak (VACUUM INTO) before the upgrade; an earlier copy is never replaced, and a failed copy fails the open.",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it. PiG's Durable writes schema version 2, which no Pi release reads yet, and it upgraded the store in place. `driver.OpenHarness` and `node.OpenNodeSqliteStorage` now copy a store at an older schema version to `\u003cpath\u003e.schema-1.bak` before upgrading it; pi-durable 1.3.0 opens that copy. An earlier copy is never replaced, and if the copy cannot be written the open fails and the store is left as it was (D188, #245; the commit that made the change calls it D186, its number before the renumber).",
+      "releaseNote": "Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it. PiG's Durable writes schema version 2, which no Pi release reads yet, and it upgraded the store in place. `driver.OpenHarness` and `node.OpenNodeSqliteStorage` now copy a store at an older schema version to `\u003cpath\u003e.schema-1.bak` before upgrading it; pi-durable 1.3.0 opens that copy. An earlier copy is never replaced, and if the copy cannot be written the open fails and the store is left as it was. The copy is one extra file the size of the store, written once per older store (D188, #245; the commit that made the change calls it D186, its number before the renumber).",
       "origin": "release note",
       "commits": [
         {
           "hash": "c6cb4f6c37",
           "date": "2026-10-20"
+        },
+        {
+          "hash": "91e8d60919",
+          "date": "2026-10-21"
         }
       ],
       "tests": [
