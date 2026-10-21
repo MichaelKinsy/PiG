@@ -29,7 +29,7 @@ func registerHeadlessUIProbe(ext *sdk.Extension) {
 			if err != nil {
 				return
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 			_, _ = file.WriteString(line + "\n")
 		}
 		if err := ctx.SetFooterRenderer(func(int) []string {

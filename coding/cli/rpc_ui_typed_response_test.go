@@ -21,10 +21,10 @@ func TestRPCUIResponsePassesTheClientsJSONThroughLikePi(t *testing.T) {
 		return ui.ConfirmValue(context.Background(), "T", "m", extension.ExtensionUIDialogOptions{})
 	}
 	inputCall := func(ui *rpcUIContext) (json.RawMessage, error) {
-		return ui.InputValue(context.Background(), "T", ptr("p"), extension.ExtensionUIDialogOptions{})
+		return ui.InputValue(context.Background(), "T", new("p"), extension.ExtensionUIDialogOptions{})
 	}
 	editorCall := func(ui *rpcUIContext) (json.RawMessage, error) {
-		return ui.EditorValue(context.Background(), "T", ptr("p"))
+		return ui.EditorValue(context.Background(), "T", new("p"))
 	}
 	for _, test := range []struct {
 		name, members string
@@ -109,5 +109,3 @@ func TestRPCUIStringMethodsResolveANonStringAnswerAsUndefined(t *testing.T) {
 		t.Fatalf("err = %v, want context.Canceled", err)
 	}
 }
-
-func ptr(s string) *string { return &s }
