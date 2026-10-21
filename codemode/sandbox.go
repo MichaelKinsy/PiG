@@ -33,6 +33,7 @@ type Sandbox struct {
 
 	mu      sync.Mutex
 	tools   []Tool
+	toolSet map[string]struct{}
 	globals []Tool
 	closed  bool
 	running map[*execution]struct{}
@@ -58,7 +59,7 @@ func NewSandbox(options SandboxOptions) (*Sandbox, error) {
 //
 // Ports packages/codemode/src/runtime/execution.ts (CodemodeSandboxBase).
 func newSandbox(options SandboxOptions, launcher func(*Sandbox) vmLauncher) (*Sandbox, error) {
-	s := &Sandbox{options: options, running: map[*execution]struct{}{}, prelude: PreludeSource, engines: &engineSource{wasm: options.Wasm, cacheDir: options.CacheDir}}
+	s := &Sandbox{options: options, running: map[*execution]struct{}{}, toolSet: make(map[string]struct{}, len(options.Tools)), prelude: PreludeSource, engines: &engineSource{wasm: options.Wasm, cacheDir: options.CacheDir}}
 	s.launcher = launcher(s)
 	if s.options.TimeoutMs == 0 {
 		s.options.TimeoutMs = defaultTimeoutMs
@@ -120,11 +121,10 @@ func containsString(list []string, s string) bool {
 func (s *Sandbox) RegisterTool(tool Tool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, existing := range s.tools {
-		if existing.Name == tool.Name {
-			return fmt.Errorf("Tool %q is already registered", tool.Name)
-		}
+	if _, exists := s.toolSet[tool.Name]; exists {
+		return fmt.Errorf("Tool %q is already registered", tool.Name)
 	}
+	s.toolSet[tool.Name] = struct{}{}
 	s.tools = append(s.tools, tool)
 	return nil
 }
@@ -135,6 +135,7 @@ func (s *Sandbox) UnregisterTool(name string) bool {
 	defer s.mu.Unlock()
 	for i, tool := range s.tools {
 		if tool.Name == name {
+			delete(s.toolSet, name)
 			s.tools = append(s.tools[:i:i], s.tools[i+1:]...)
 			return true
 		}

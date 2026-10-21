@@ -139,19 +139,31 @@ func discoveryGlobals(tools []extension.AgentTool, samples map[string]string, tc
 	entry := func(name string) searchEntry {
 		return searchEntry{Name: sandbox.ToCodemodeIdentifier(name), Description: samples[name]}
 	}
-	namespaceOf := func(name string) *extension.ToolNamespace {
+	// namespaces snapshots the catalog once per discovery call, so resolving each tool's namespace is a lookup. As in a
+	// first-match scan, the first entry of a name wins.
+	namespaces := func(ctx context.Context) (func(string) *extension.ToolNamespace, error) {
 		if tc == nil {
-			return nil
+			return func(string) *extension.ToolNamespace { return nil }, nil
 		}
-		for _, info := range tc.GetAllTools() {
-			if info.Name == name {
-				return info.Namespace
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		infos := tc.GetAllTools()
+		index := make(map[string]*extension.ToolNamespace, len(infos))
+		for i, info := range infos {
+			if i&0x3ff == 0 {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
+			}
+			if _, ok := index[info.Name]; !ok {
+				index[info.Name] = info.Namespace
 			}
 		}
-		return nil
+		return func(name string) *extension.ToolNamespace { return index[name] }, nil
 	}
 	return []sandbox.Tool{
-		{Name: "searchTools", Spread: true, Execute: func(_ context.Context, raw json.RawMessage) (json.RawMessage, error) {
+		{Name: "searchTools", Spread: true, Execute: func(ctx context.Context, raw json.RawMessage) (json.RawMessage, error) {
 			var args []json.RawMessage
 			if err := json.Unmarshal(raw, &args); err != nil {
 				return nil, err
@@ -176,8 +188,15 @@ func discoveryGlobals(tools []extension.AgentTool, samples map[string]string, tc
 					}
 				}
 			}
+			namespaceOf, err := namespaces(ctx)
+			if err != nil {
+				return nil, err
+			}
 			var documents []toolsearch.Document
 			for _, tool := range tools {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
 				toolNamespace := namespaceOf(tool.Name)
 				if namespace != "" && (toolNamespace == nil || !isNamespaceName(toolNamespace, namespace)) {
 					continue
@@ -204,15 +223,22 @@ func discoveryGlobals(tools []extension.AgentTool, samples map[string]string, tc
 			}
 			return json.Marshal(samples[tools[index].Name])
 		}},
-		{Name: "describeNamespace", Spread: true, Execute: func(_ context.Context, raw json.RawMessage) (json.RawMessage, error) {
+		{Name: "describeNamespace", Spread: true, Execute: func(ctx context.Context, raw json.RawMessage) (json.RawMessage, error) {
 			var args []json.RawMessage
 			var name string
 			if err := json.Unmarshal(raw, &args); err != nil || len(args) == 0 || json.Unmarshal(args[0], &name) != nil || string(args[0]) == "null" {
 				return nil, errors.New("describeNamespace() expects a namespace name")
 			}
+			namespaceOf, err := namespaces(ctx)
+			if err != nil {
+				return nil, err
+			}
 			var namespace *extension.ToolNamespace
 			names := []string{}
 			for _, tool := range tools {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
 				toolNamespace := namespaceOf(tool.Name)
 				if toolNamespace == nil || !isNamespaceName(toolNamespace, name) {
 					continue

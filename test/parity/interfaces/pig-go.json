@@ -142710,17 +142710,6 @@
       "shapeHash": "sha256:033fea4f2475b2af02b9f7c6eb8a95ecafba229c9d2f90903c094ee7b1924415"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#countOf",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "countOf",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(list []string, value string) int"
-      },
-      "shapeHash": "sha256:8c679f6bc4e8b96ac9b07429617a9ab34178d9e490c91ed5388030a5f019cfcc"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#createProvider",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "createProvider",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -197,4 +198,108 @@ func jsonEqualValue(t *testing.T, got json.RawMessage, want string) bool {
 		t.Fatal(err)
 	}
 	return reflect.DeepEqual(g, w)
+}
+
+// A catalog of n nested tools, each in the namespace mcp__bulk.
+func bulkCatalog(n int) ([]extension.AgentTool, []extension.ToolInfo) {
+	tools := make([]extension.AgentTool, n)
+	infos := make([]extension.ToolInfo, n)
+	for i := range tools {
+		name := fmt.Sprintf("mcp__bulk__tool_%06d", i)
+		tools[i] = extension.AgentTool{Name: name, Description: "synthetic operation"}
+		infos[i] = extension.ToolInfo{Name: name, Namespace: &extension.ToolNamespace{Name: "mcp__bulk", Aliases: []string{"bulk"}}}
+	}
+	return tools, infos
+}
+
+// Invariant: a discovery call reads the catalog once, however many tools it resolves; resolving each tool's namespace
+// by a fresh GetAllTools scan is quadratic. Pi's createDiscoveryGlobals resolves per tool with
+// pi.getAllTools().find(...) (extensions/codemode/index.ts), so the observable answer is the first entry of a name.
+func TestDiscoveryReadsTheCatalogOnceAndKeepsTheFirstEntryOfAName(t *testing.T) {
+	tools, infos := bulkCatalog(500)
+	first := &extension.ToolNamespace{Name: "mcp__first"}
+	infos = append([]extension.ToolInfo{{Name: tools[0].Name, Namespace: first}}, infos...)
+	var reads int
+	base := extension.NewContext("", nil, func() error { return nil }, extension.ContextActions{GetAllTools: func() []extension.ToolInfo { reads++; return infos }})
+	tc := extension.NewToolContext(base, "call", context.Background(), extension.ToolActions{})
+	globals := discoveryGlobals(tools, map[string]string{}, tc)
+	for _, global := range []struct{ name, args string }{{"searchTools", `["synthetic",{"namespace":"mcp__first"}]`}, {"describeNamespace", `["mcp__bulk"]`}} {
+		reads = 0
+		got, err := callGlobal(t, globals, global.name, global.args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reads != 1 {
+			t.Errorf("%s read the catalog %d times, want 1", global.name, reads)
+		}
+		switch global.name {
+		case "searchTools":
+			if !jsonEqualValue(t, got, `[{"name":"mcp__bulk__tool_000000","description":""}]`) {
+				t.Errorf("searchTools in the first entry's namespace = %s", got)
+			}
+		default:
+			var namespace struct{ Tools []string }
+			if err := json.Unmarshal(got, &namespace); err != nil || len(namespace.Tools) != 499 || namespace.Tools[0] != "mcp__bulk__tool_000001" {
+				t.Errorf("describeNamespace(mcp__bulk) = %.120s, %v: the first tool belongs to mcp__first", got, err)
+			}
+		}
+	}
+}
+
+// Invariant: discovery stops when its context is cancelled and reports the context's error, as the nested-call
+// callbacks do for theirs (the sandbox turns it into the script's rejection).
+func TestDiscoveryStopsWhenItsContextIsCancelled(t *testing.T) {
+	tools, infos := bulkCatalog(1000)
+	for _, name := range []string{"searchTools", "describeNamespace"} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var reads int
+			base := extension.NewContext("", nil, func() error { return nil }, extension.ContextActions{GetAllTools: func() []extension.ToolInfo {
+				reads++
+				cancel()
+				return infos
+			}})
+			tc := extension.NewToolContext(base, "call", ctx, extension.ToolActions{})
+			globals := discoveryGlobals(tools, map[string]string{}, tc)
+			args := `["synthetic"]`
+			if name == "describeNamespace" {
+				args = `["mcp__bulk"]`
+			}
+			for _, global := range globals {
+				if global.Name != name {
+					continue
+				}
+				got, err := global.Execute(ctx, json.RawMessage(args))
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("%s = %.80s, %v, want context.Canceled", name, got, err)
+				}
+			}
+			if reads > 1 {
+				t.Errorf("catalog reads = %d, want at most 1", reads)
+			}
+		})
+	}
+}
+
+// The issue's probe: cancelling on the second catalog read must stop the scan, not read the catalog per tool.
+func TestDiscoveryDoesNotKeepReadingTheCatalogAfterCancellation(t *testing.T) {
+	tools, infos := bulkCatalog(1000)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var reads int
+	base := extension.NewContext("", nil, func() error { return nil }, extension.ContextActions{GetAllTools: func() []extension.ToolInfo {
+		reads++
+		if reads == 2 {
+			cancel()
+		}
+		return infos
+	}})
+	tc := extension.NewToolContext(base, "call", ctx, extension.ToolActions{})
+	globals := discoveryGlobals(tools, map[string]string{}, tc)
+	_, _ = callGlobal(t, globals, "searchTools", `["synthetic",{"limit":1}]`)
+	_, _ = globals[0].Execute(ctx, json.RawMessage(`["synthetic",{"limit":1}]`))
+	if reads > 10 {
+		t.Fatalf("catalog reads = %d after cancellation, want at most 10", reads)
+	}
 }
