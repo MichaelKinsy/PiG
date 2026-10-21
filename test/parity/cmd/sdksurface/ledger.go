@@ -262,13 +262,42 @@ func reachPatterns(c ledgerCell) []*regexp.Regexp {
 	prefix := `\b`
 	if genericNames[name] {
 		prefix = receiver + `\s*(?:\.|::)\s*`
+		// A member of a named class is also reached through that class (`Store.set(...)`, `Store::set(...)`).
+		if class := memberClass(c.Value); class != "" {
+			return []*regexp.Regexp{
+				regexp.MustCompile(prefix + q + `\b`),
+				regexp.MustCompile(`\b` + regexp.QuoteMeta(class) + `\s*(?:\.|::)\s*` + q + `\b`),
+			}
+		}
 	}
 	return []*regexp.Regexp{regexp.MustCompile(prefix + q + `\b`)}
+}
+
+// memberClass is the type a qualified member symbol belongs to: "Store" for Store.set, Store::set and tui.Store.set;
+// "" for a free function or a package-qualified one (tui.visible_width has no class).
+func memberClass(symbol string) string {
+	parts := strings.FieldsFunc(symbol, func(r rune) bool { return r == '.' || r == ':' })
+	if len(parts) < 2 {
+		return ""
+	}
+	class := parts[len(parts)-2]
+	if class == "" || !(class[0] >= 'A' && class[0] <= 'Z') {
+		return ""
+	}
+	return class
 }
 
 func reached(c ledgerCell, corpus string) bool {
 	for _, re := range reachPatterns(c) {
 		if re.MatchString(corpus) {
+			return true
+		}
+	}
+	// A generic member name called on a variable (`store.set(...)`) counts when the corpus also names the member's class.
+	if name := lastIdent.FindString(c.Value); c.Kind != cellKit && genericNames[name] {
+		if class := memberClass(c.Value); class != "" &&
+			regexp.MustCompile(`\b`+regexp.QuoteMeta(class)+`\b`).MatchString(corpus) &&
+			regexp.MustCompile(`[\w)\]]\s*(?:\.|::)\s*`+regexp.QuoteMeta(name)+`\s*\(`).MatchString(corpus) {
 			return true
 		}
 	}
