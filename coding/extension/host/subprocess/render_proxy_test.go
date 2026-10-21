@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func newRenderProxyRig(t *testing.T) (*renderProxyComponent, net.Conn, context.CancelFunc, *atomic.Int32) {
@@ -45,16 +46,20 @@ func replyRender(t *testing.T, peer net.Conn, request Envelope, lines []string) 
 	writeFramed(t, peer, Envelope{Type: MsgResponse, ID: request.ID, Response: &ResponsePayload{Result: result}})
 }
 
+// waitForRenderProxy returns when condition holds, which the render proxy's background request makes true once the
+// extension has answered. The deadline only bounds a hang (testbudget): the answer crosses a process boundary, which a
+// loaded host delays by more than the one second this wait used to allow.
 func waitForRenderProxy(t *testing.T, condition func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
+	budget := testbudget.Wait(t)
+	deadline := time.Now().Add(budget)
 	for time.Now().Before(deadline) {
 		if condition() {
 			return
 		}
 		time.Sleep(time.Millisecond)
 	}
-	t.Fatal("render proxy condition was not met")
+	t.Fatalf("render proxy condition was not met within %s", budget)
 }
 
 func TestRenderProxyRenderNeverWaitsForIPC(t *testing.T) {
