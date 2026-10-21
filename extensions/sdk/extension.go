@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/internal/kitwire"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
@@ -142,11 +143,12 @@ type Extension struct {
 	toolMu             sync.RWMutex
 	toolConn           *conn
 	// footer is the host's footer data (guarded by mu) and footerSubs the onBranchChange callbacks.
-	footer             footerSnapshot
-	footerSubs         footerSubscribers
-	toolFuncs          map[string]ToolFunc
-	toolPrepareFuncs   map[string]ToolPrepareArgumentsFunc
-	toolStarts         toolStartOrder
+	footer           footerSnapshot
+	footerSubs       footerSubscribers
+	toolFuncs        map[string]ToolFunc
+	toolPrepareFuncs map[string]ToolPrepareArgumentsFunc
+	// toolStarts keeps the handlers of a parallel tool batch starting in the order their tool_call requests arrive (agent-loop.ts:619-647, 820-837). A handler is Go code on a preemptible thread, so the order is the order the handlers are invoked: a request's handler is invoked only after the handler of every earlier request was invoked or its request ended without one. A thread that the operating system preempts between its hand-off and its handler's first statement can still be overtaken, and no Go construct closes that window.
+	toolStarts         jsloop.Lane
 	commandFuncs       map[string]CommandFunc
 	eventFuncs         map[int]EventFunc
 	shortcutFuncs      map[string]ShortcutFunc
@@ -1187,11 +1189,11 @@ func (e *Extension) loop() error {
 			}
 			ctx, finish := e.armRequest(env.ID)
 			if env.Request != nil && env.Request.Method == "tool_call" {
-				ctx.start = e.toolStarts.reserve()
+				ctx.start = e.toolStarts.Reserve()
 			}
 			e.requestWG.Go(func() {
 				defer finish()
-				defer ctx.start.release()
+				defer ctx.start.Pass()
 				e.handleArmedRequest(env.ID, env.Request, ctx)
 			})
 		case msgCancel:
@@ -1361,7 +1363,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 		}
 		// agent-loop.ts:619-647: the handlers of a batch start in source order.
-		ctx.start.begin()
+		ctx.start.Pass()
 		result, err := handler(ctx, params)
 		_ = e.conn.respond(id, result, err)
 
