@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 )
 
 // decodePrintableKey (keys.ts decodeKittyPrintable and decodeModifyOtherKeysPrintable) runs against the vendored Pi module over CSI-u and modifyOtherKeys sequences with plain, shifted, locked and oversized numbers.
-// A modifier that does not fit 32 bits wraps through ToInt32 in the bit tests, a codepoint above 2^53 is a rounded double, and Shift with no shifted key leaves the base codepoint alone.
+// A modifier that does not fit 32 bits wraps through ToInt32 in the bit tests, a codepoint above 2^53 is a rounded double, and Shift with no shifted key leaves the base codepoint alone in Pi; PiG uppercases a base letter a-z there (D185), which pigUppercasesBaseOnlyShiftLetter allows and nothing else.
 func TestDecodePrintableKeyMatchesPi(t *testing.T) {
 	var corpus []string
 	add := func(format string, args ...any) { corpus = append(corpus, fmt.Sprintf(format, args...)) }
@@ -44,8 +45,7 @@ emit(input.map((data) => { const r = keys.decodePrintableKey(data); return { S: 
 	for i, data := range corpus {
 		s, ok := DecodePrintableKey(data)
 		got := result{unitEscape(s), ok}
-		// PiG uppercases Shift+letter that a terminal reports without a shifted key (key_csiu_text_test.go); Pi types the base letter. Left for owner sign-off (handoffs/owner-signoff.md).
-		if got.OK && want[i].OK && got.S != want[i].S && strings.EqualFold(got.S, want[i].S) && len(want[i].S) == 1 && want[i].S[0] >= 'a' && want[i].S[0] <= 'z' {
+		if pigUppercasesBaseOnlyShiftLetter(data, got.S, want[i].S) {
 			continue
 		}
 		if got != want[i] {
@@ -57,6 +57,20 @@ emit(input.map((data) => { const r = keys.decodePrintableKey(data); return { S: 
 	if bad > 12 {
 		t.Errorf("%d of %d differ", bad, len(corpus))
 	}
+}
+
+// pigUppercasesBaseOnlyShiftLetter reports the one sequence class D185 allows to differ from Pi: a Kitty CSI-u sequence with Shift, no Alt or Ctrl and no shifted key, whose base letter a-z Pi types as it is and PiG types as the capital.
+func pigUppercasesBaseOnlyShiftLetter(data, got, want string) bool {
+	m := kittyCSIURegex.FindStringSubmatch(data)
+	if m == nil || m[2] != "" || m[4] == "" || len(want) != 1 || want[0] < 'a' || want[0] > 'z' {
+		return false
+	}
+	mod, err := strconv.Atoi(m[4])
+	if err != nil {
+		return false
+	}
+	mod--
+	return mod&kittyModifierShift != 0 && mod&(kittyModifierAlt|kittyModifierCtrl) == 0 && got != want && strings.EqualFold(got, want)
 }
 
 func unitEscape(s string) string {

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -138,6 +139,17 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	var polled []string // request ids of poll_until steps
 	writeLine := func(line string) error {
 		expanded := tc.expand(line)
+		// {{RPC_REQUEST_ID:<title>}} names the latest request whose title is <title>, for a scenario with several dialogs open at once.
+		var titleErr error
+		expanded = rpcRequestIDByTitle.ReplaceAllStringFunc(expanded, func(placeholder string) string {
+			title := rpcRequestIDByTitle.FindStringSubmatch(placeholder)[1]
+			requestID, err := latestRPCRequestIDWithTitle(stdout.String(), title)
+			titleErr = errors.Join(titleErr, err)
+			return requestID
+		})
+		if titleErr != nil {
+			return titleErr
+		}
 		if strings.Contains(expanded, "{{RPC_REQUEST_ID}}") {
 			requestID, err := latestRPCRequestID(stdout.String())
 			if err != nil {
@@ -271,6 +283,24 @@ func canonicalJSONL(output string) (string, error) {
 		result += "\n"
 	}
 	return result, nil
+}
+
+var rpcRequestIDByTitle = regexp.MustCompile(`\{\{RPC_REQUEST_ID:([^}]+)\}\}`)
+
+// latestRPCRequestIDWithTitle is latestRPCRequestID for the latest request titled title.
+func latestRPCRequestIDWithTitle(output, title string) (string, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		var event struct {
+			Type  string `json:"type"`
+			ID    string `json:"id"`
+			Title string `json:"title"`
+		}
+		if json.Unmarshal([]byte(lines[i]), &event) == nil && event.Type == "extension_ui_request" && event.ID != "" && event.Title == title {
+			return event.ID, nil
+		}
+	}
+	return "", fmt.Errorf("rpc output has no extension_ui_request titled %q", title)
 }
 
 func latestRPCRequestID(output string) (string, error) {

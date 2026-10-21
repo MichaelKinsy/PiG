@@ -9,7 +9,7 @@ A container can limit filesystem, process, device, and network access. It does n
 PiG does not publish a container image. Build one from the source tree with a multi-stage Dockerfile:
 
 ```dockerfile
-FROM golang:1.27.2 AS build
+FROM golang:1.27.3 AS build
 WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -o /out/pig ./cmd/pig

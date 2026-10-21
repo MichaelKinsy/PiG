@@ -6,7 +6,7 @@
 # k8sbench's pins), and the Pi
 # reference checkout pinned in durable/contract/PIN. Build it with bench/k8s/image/build.sh, which passes the commit and prints the digest-pinned
 # reference the runner needs. Every download is pinned by version and sha256; the base images are pinned by digest.
-ARG GO_IMAGE=golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
+ARG GO_IMAGE=golang:1.27.3-bookworm@sha256:5c3e9b43cfd3bb95c7937462e29d87ada57b481a96fa23ad0eb61778d7a00110
 ARG RUNTIME_IMAGE=debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 
 FROM ${GO_IMAGE} AS build

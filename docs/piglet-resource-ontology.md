@@ -257,7 +257,7 @@ pig piglet build ...
 pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key>
 pig piglet publish <name|path> --to npm
 pig piglet keygen <key-path>
-pig piglet verify <binary> [--source <name|path>]
+pig piglet verify <binary> [--source <name|path>] [--workspace <dir>]
 pig piglet trust [list|add|revoke|require]
 ```
 

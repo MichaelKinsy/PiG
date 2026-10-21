@@ -1,7 +1,7 @@
 // Pi 1.1.0 Editor under rebound keybindings over the probes the Go test TestEditorRebindingProbesDump prints: one JSON line per probe, the editor's text, expanded text, cursor, lines, callbacks and rendering after every op.
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import { spawnSync } from 'node:child_process';
-const dump = spawnSync('go', ['test', './tui', '-run', '^TestEditorRebindingProbesDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+const dump = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./tui', '-run', '^TestEditorRebindingProbesDump$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 28 });
 const line = dump.stdout?.split('\n').find(l => l.startsWith('editor-probes:'));
 if (dump.status !== 0 || !line) {
  process.stderr.write(dump.stdout ?? '');

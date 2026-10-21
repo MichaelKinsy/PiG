@@ -2,6 +2,7 @@
 # Runs a parity probe's Go tests from the test binaries the runner built before the timed run.
 #
 #   prebuilt-go-test.sh ./PACKAGE... [-run REGEXP] [-count N] [-v]
+#   prebuilt-go-test.sh --binary ./PACKAGE
 #
 # Use it in place of `go test` in a cli-mode pig script and list every PACKAGE in the scenario's [env] pig_go_tests.
 # The runner builds those test binaries before the first timed run and names their directory in PIG_PARITY_GO_TESTS
@@ -17,8 +18,14 @@ die() {
 [[ -n ${PIG_PARITY_GO_TESTS:-} ]] || die "PIG_PARITY_GO_TESTS is not set: the parity runner sets it for a scenario that lists its packages in [env] pig_go_tests"
 flags=(-test.paniconexit0 -test.timeout=10m0s)
 packages=()
+print_binary=0
 while (($#)); do
 	case $1 in
+	--binary)
+		# Print the prebuilt test binary of the one PACKAGE, for a probe that must start it itself (a process group it signals).
+		print_binary=1
+		shift
+		;;
 	-run | -count)
 		(($# >= 2)) || die "$1 needs a value"
 		flags+=("-test.${1#-}=$2")
@@ -40,6 +47,18 @@ while (($#)); do
 	esac
 done
 ((${#packages[@]})) || die "no package to test"
+if ((print_binary)); then
+	((${#packages[@]} == 1)) || die "--binary takes one package"
+	rel=${packages[0]#./}
+	rel=${rel%/}
+	binary=$PIG_PARITY_GO_TESTS/$rel/${rel##*/}.test
+	if [[ ! -x $binary && -x $binary.exe ]]; then
+		binary=$binary.exe
+	fi
+	[[ -x $binary ]] || die "${packages[0]} has no prebuilt test binary: list it in the scenario's [env] pig_go_tests"
+	printf '%s\n' "$binary"
+	exit 0
+fi
 status=0
 for package in "${packages[@]}"; do
 	rel=${package#./}

@@ -37,20 +37,43 @@ func TestRunScenarioBuildsGoProbesBeforeTheTimedRun(t *testing.T) {
 	if err := os.WriteFile(script, []byte(probe), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	programScript := filepath.Join(t.TempDir(), "program.sh")
+	program := "set -euo pipefail\n./test/parity/testdata/prebuilt-go-run.sh " + fixtures + "program a b\n"
+	if err := os.WriteFile(programScript, []byte(program), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A Node script reaches the helpers as a program with its operands in a list.
+	nodeScript := filepath.Join(t.TempDir(), "probe.mjs")
+	node := "import { spawnSync } from 'node:child_process';\n" +
+		"const test = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['" + fixtures + "probe', '-run', '^TestProbe$', '-count=1', '-v'], { encoding: 'utf8' });\n" +
+		"const program = spawnSync('./test/parity/testdata/prebuilt-go-run.sh', ['" + fixtures + "program', 'a', 'b'], { encoding: 'utf8' });\n" +
+		"process.stdout.write(test.stdout.split('\\n').filter((line) => line.startsWith('PROBE ')).join('') + '\\n' + program.stdout);\n" +
+		"process.exit(test.status || program.status);\n"
+	if err := os.WriteFile(nodeScript, []byte(node), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
-		name, want       string
-		pigArgs, goTests []string
+		name, want                                             string
+		pigArgs, goTests, piArgs, piGoTests, pigProgs, piProgs []string
 	}{
 		{name: "go-run", want: "PROGRAM a b", pigArgs: []string{"go", "run", fixtures + "program", "a", "b"}},
 		{name: "go-test", want: "PROBE ok", pigArgs: []string{"bash", script}, goTests: []string{fixtures + "probe"}},
+		{name: "go-program-from-a-script", want: "PROGRAM a b", pigArgs: []string{"bash", programScript}, pigProgs: []string{fixtures + "program"}},
+		{name: "pi-side-node-script", want: "PROBE ok\nPROGRAM a b", pigArgs: []string{"echo", "PROBE ok\nPROGRAM a b"}, piArgs: []string{"node", nodeScript}, piGoTests: []string{fixtures + "probe"}, piProgs: []string{fixtures + "program"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			piArgs := tc.piArgs
+			if piArgs == nil {
+				piArgs = []string{"echo", tc.want}
+			}
 			scenario := &Scenario{
 				Name: "go-prebuild-" + tc.name, Driver: "cli-mode", SourcePath: filepath.Join(repoRoot, "test/parity/scenarios/go-prebuild.toml"),
 				Env: EnvOverrides{
 					OverrideBaseArgs: true, PigBin: posixEnvLauncher, PiBin: posixEnvLauncher,
-					PigArgs: tc.pigArgs, PiArgs: []string{"echo", tc.want}, PigGoTests: tc.goTests,
+					PigArgs: tc.pigArgs, PiArgs: piArgs, PigGoTests: tc.goTests, PiGoTests: tc.piGoTests,
+					PigGoPrograms: tc.pigProgs, PiGoPrograms: tc.piProgs,
 					Pig: []string{"PATH=" + failingGo + string(os.PathListSeparator) + os.Getenv("PATH")},
+					Pi:  []string{"PATH=" + failingGo + string(os.PathListSeparator) + os.Getenv("PATH")},
 				},
 				CLI:    CLIDriverConfig{CWD: repoRoot, TimeoutSeconds: 60},
 				Assert: AssertSpec{ExitCode: new(int), OutputEqual: true, Runs: 2},
@@ -70,15 +93,29 @@ func TestRunScenarioBuildsGoProbesBeforeTheTimedRun(t *testing.T) {
 // goToolchainCommand matches a shell line that starts the Go toolchain.
 var goToolchainCommand = regexp.MustCompile("(^|[\\s;&|(`$])go\\s+(build|install|run|test|tool|vet)\\b")
 
+// goToolchainSpawn matches the Go toolchain started as a program with its arguments in a list, as Node's child_process and Python's
+// subprocess do: ("go", ["test", ...]) or ["go", "test", ...].
+var goToolchainSpawn = regexp.MustCompile(`['"]go['"]\s*,\s*(?:\[\s*)?['"](build|install|run|test|tool|vet)['"]`)
+
 // quotedShellWord matches a quoted shell word, such as a -run pattern whose alternatives contain |.
 var quotedShellWord = regexp.MustCompile(`'[^']*'|"[^"]*"`)
 
 // prebuiltGoTestPackage matches a ./-relative package operand.
 var prebuiltGoTestPackage = regexp.MustCompile(`(?:^|\s)(\./[A-Za-z0-9_./-]*[A-Za-z0-9_])`)
 
-// Every cli-mode scenario keeps the Go toolchain out of its timed pig runs: its pig side may be `go run ./PACKAGE ARGS`,
-// which RunScenario builds first, and its scripts run Go tests only through prebuilt-go-test.sh, for exactly the
-// packages its pig_go_tests lists.
+// prebuiltHelperCall matches a script's call of a prebuilt helper as a program with its operands in a list, as Node's child_process and Python's
+// subprocess call it: ("./test/parity/testdata/prebuilt-go-test.sh", ["./PACKAGE", ...]). Group 1 names the helper, group 2 is the list.
+var prebuiltHelperCall = regexp.MustCompile(`prebuilt-go-(test|run)\.sh['"]\s*,\s*\[([^\]]*)\]`)
+
+// prebuiltHelperList matches the same call written as one list, as Python's subprocess takes it: ["./test/parity/testdata/prebuilt-go-test.sh", "--binary", "./PACKAGE"].
+var prebuiltHelperList = regexp.MustCompile(`\[\s*['"][^'"]*prebuilt-go-(test|run)\.sh['"]\s*,([^\]]*)\]`)
+
+// quotedPackage matches a ./-relative package in a quoted string of a list.
+var quotedPackage = regexp.MustCompile(`['"](\./[A-Za-z0-9_./-]*[A-Za-z0-9_])['"]`)
+
+// Every cli-mode scenario keeps the Go toolchain out of its timed runs, on both sides: a pig side may be `go run ./PACKAGE ARGS`, which
+// RunScenario builds first; a script of either side, in any language, runs Go tests only through prebuilt-go-test.sh and Go programs only
+// through prebuilt-go-run.sh, for exactly the packages its side lists in pig_go_tests, pi_go_tests, pig_go_programs or pi_go_programs.
 func TestParityGoProbesAreBuiltBeforeTheTimedRun(t *testing.T) {
 	repoRoot, err := findRepoRoot()
 	if err != nil {
@@ -93,69 +130,119 @@ func TestParityGoProbesAreBuiltBeforeTheTimedRun(t *testing.T) {
 		if sc.Driver != "cli-mode" {
 			continue
 		}
-		cliArgs := sc.CLI.Args
-		if sc.CLI.PigArgs != nil {
-			cliArgs = sc.CLI.PigArgs
-		}
-		argv := slices.Concat(sc.Env.PigArgs, cliArgs)
-		runArgs, run := goRunArgs(sc)
-		if runArgs == &sc.CLI.PigArgs {
-			run += len(sc.Env.PigArgs)
-		}
-		if filepath.Base(sc.Env.PigBin) == "go" || (slices.Contains(argv, "go") && slices.Index(argv, "go") != run) {
-			t.Errorf("%s: pig_bin %q with args %q starts the Go toolchain inside the timed run", sc.SourcePath, sc.Env.PigBin, argv)
-		}
-		if run >= 0 && (run+2 >= len(argv) || !isLocalGoPackage(argv[run+2])) {
-			t.Errorf("%s: pig args %q: write `go run ./PACKAGE ARGS`, which the runner builds before the timed runs", sc.SourcePath, argv)
-		}
 		cwd := resolveScenarioCWD(sc.SourcePath, sc.CLI.CWD)
-		tested := map[string]bool{}
-		for _, arg := range append([]string{sc.Env.PigBin}, argv...) {
-			script := pigScript(sc, cwd, arg)
-			if script == "" {
-				continue
+		pigCLI, piCLI := sc.CLI.Args, sc.CLI.Args
+		if sc.CLI.PigArgs != nil {
+			pigCLI = sc.CLI.PigArgs
+		}
+		if sc.CLI.PiArgs != nil {
+			piCLI = sc.CLI.PiArgs
+		}
+		for _, side := range []struct {
+			label, bin       string
+			argv             []string
+			goTests, goProgs []string
+		}{
+			{"pig", sc.Env.PigBin, slices.Concat(sc.Env.PigArgs, pigCLI), sc.Env.PigGoTests, sc.Env.PigGoPrograms},
+			{"pi", sc.Env.PiBin, slices.Concat(sc.Env.PiArgs, piCLI), sc.Env.PiGoTests, sc.Env.PiGoPrograms},
+		} {
+			argv := side.argv
+			run := -1
+			if side.label == "pig" {
+				runArgs, index := goRunArgs(sc)
+				run = index
+				if runArgs == &sc.CLI.PigArgs {
+					run += len(sc.Env.PigArgs)
+				}
 			}
-			checked++
-			data, err := os.ReadFile(script)
-			if err != nil {
-				t.Fatal(err)
+			if filepath.Base(side.bin) == "go" || (slices.Contains(argv, "go") && slices.Index(argv, "go") != run) {
+				t.Errorf("%s: %s_bin %q with args %q starts the Go toolchain inside the timed run", sc.SourcePath, side.label, side.bin, argv)
 			}
-			for i, line := range strings.Split(string(data), "\n") {
-				if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			if run >= 0 && (run+2 >= len(argv) || !isLocalGoPackage(argv[run+2])) {
+				t.Errorf("%s: pig args %q: write `go run ./PACKAGE ARGS`, which the runner builds before the timed runs", sc.SourcePath, argv)
+			}
+			tested, programs := map[string]bool{}, map[string]bool{}
+			// A side may run a helper directly: pi_args = ["./test/parity/testdata/prebuilt-go-run.sh", "./PACKAGE", ARGS...].
+			for i, arg := range argv {
+				helper := filepath.Base(arg)
+				if (helper == "prebuilt-go-test.sh" || helper == "prebuilt-go-run.sh") && i+1 < len(argv) {
+					if helper == "prebuilt-go-run.sh" {
+						programs[argv[i+1]] = true
+					} else {
+						tested[argv[i+1]] = true
+					}
+				}
+			}
+			for _, arg := range append([]string{side.bin}, argv...) {
+				script := probeScript(sc, cwd, arg)
+				if script == "" {
 					continue
 				}
-				if goToolchainCommand.MatchString(line) {
-					t.Errorf("%s:%d: starts the Go toolchain inside the timed run; run Go tests through prebuilt-go-test.sh", script, i+1)
+				checked++
+				data, err := os.ReadFile(script)
+				if err != nil {
+					t.Fatal(err)
 				}
-				_, operands, ok := strings.Cut(line, "prebuilt-go-test.sh")
-				if !ok {
-					continue
+				comment := "#"
+				if strings.HasSuffix(script, ".mjs") || strings.HasSuffix(script, ".js") || strings.HasSuffix(script, ".ts") {
+					comment = "//"
 				}
-				operands, _, _ = strings.Cut(quotedShellWord.ReplaceAllString(operands, "''"), "|")
-				for _, match := range prebuiltGoTestPackage.FindAllStringSubmatch(operands, -1) {
-					tested[match[1]] = true
+				for i, line := range strings.Split(string(data), "\n") {
+					trimmed := strings.TrimSpace(line)
+					if strings.HasPrefix(trimmed, comment) || strings.HasPrefix(trimmed, "*") || strings.HasPrefix(trimmed, "/*") {
+						continue
+					}
+					if goToolchainCommand.MatchString(line) || goToolchainSpawn.MatchString(line) {
+						t.Errorf("%s:%d: starts the Go toolchain inside the timed run; run Go tests through prebuilt-go-test.sh and Go programs through prebuilt-go-run.sh", script, i+1)
+					}
+					for _, match := range append(prebuiltHelperCall.FindAllStringSubmatch(line, -1), prebuiltHelperList.FindAllStringSubmatch(line, -1)...) {
+						target := tested
+						if match[1] == "run" {
+							target = programs
+						}
+						for _, pkg := range quotedPackage.FindAllStringSubmatch(match[2], -1) {
+							target[pkg[1]] = true
+							if match[1] == "run" {
+								break // the operands after a program's package are its arguments
+							}
+						}
+					}
+					_, operands, ok := strings.Cut(line, "prebuilt-go-test.sh")
+					if !ok || prebuiltHelperCall.MatchString(line) || prebuiltHelperList.MatchString(line) {
+						continue
+					}
+					operands, _, _ = strings.Cut(quotedShellWord.ReplaceAllString(operands, "''"), "|")
+					for _, match := range prebuiltGoTestPackage.FindAllStringSubmatch(operands, -1) {
+						tested[match[1]] = true
+					}
 				}
 			}
-		}
-		for pkg := range tested {
-			if !slices.Contains(sc.Env.PigGoTests, pkg) {
-				t.Errorf("%s: a pig script tests %s: add it to [env] pig_go_tests", sc.SourcePath, pkg)
-			}
-		}
-		for _, pkg := range sc.Env.PigGoTests {
-			if !tested[pkg] {
-				t.Errorf("%s: [env] pig_go_tests lists %s, which no pig script tests", sc.SourcePath, pkg)
+			for _, kind := range []struct {
+				name   string
+				found  map[string]bool
+				listed []string
+			}{{side.label + "_go_tests", tested, side.goTests}, {side.label + "_go_programs", programs, side.goProgs}} {
+				for pkg := range kind.found {
+					if !slices.Contains(kind.listed, pkg) {
+						t.Errorf("%s: a %s script runs %s through its prebuilt helper: add it to [env] %s", sc.SourcePath, side.label, pkg, kind.name)
+					}
+				}
+				for _, pkg := range kind.listed {
+					if !kind.found[pkg] {
+						t.Errorf("%s: [env] %s lists %s, which no %s script runs", sc.SourcePath, kind.name, pkg, side.label)
+					}
+				}
 			}
 		}
 	}
 	if checked == 0 {
-		t.Fatal("no cli-mode pig script found; the guard no longer sees the scripts")
+		t.Fatal("no cli-mode script found; the guard no longer sees the scripts")
 	}
 }
 
-// pigScript returns the shell script arg names for sc's pig side, resolved as the scenario and its cwd resolve it,
-// or "" when arg names none.
-func pigScript(sc *Scenario, cwd, arg string) string {
+// probeScript returns the script file arg names for a side of sc (shell, Node, Python, or any file with a shebang), resolved as the scenario
+// and its cwd resolve it, or "" when arg names none.
+func probeScript(sc *Scenario, cwd, arg string) string {
 	if arg == "" || arg == posixEnvLauncher || strings.HasPrefix(arg, "-") || strings.Contains(arg, "{{") {
 		return ""
 	}
@@ -165,7 +252,14 @@ func pigScript(sc *Scenario, cwd, arg string) string {
 	}
 	for _, path := range candidates {
 		data, err := os.ReadFile(path)
-		if err == nil && (strings.HasSuffix(path, ".sh") || strings.HasPrefix(string(data), "#!")) {
+		if err != nil {
+			continue
+		}
+		switch filepath.Ext(path) {
+		case ".sh", ".mjs", ".js", ".py":
+			return path
+		}
+		if strings.HasPrefix(string(data), "#!") {
 			return path
 		}
 	}

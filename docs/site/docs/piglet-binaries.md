@@ -140,6 +140,20 @@ pig piglet verify ./pig-reviewer
 
 `pig verify` reports a valid Piglet signature as `ok` and an unsigned file as `n/a`; because it also verifies arbitrary archives and data files, it applies the required-signature policy only after a Piglet signature block identifies the target. `pig piglet verify` is Piglet-specific and succeeds only when the file carries a valid signature. Both commands reject a signed file whose key is revoked, and Piglet Binary startup enforces the required-signature policy for unsigned Binaries.
 
+Check that a Binary still matches its source:
+
+```bash
+pig piglet verify ./pig-reviewer --source reviewer
+```
+
+```text
+Piglet Binary: ./pig-reviewer
+Signature: signed by ed25519:<key-id> (not in your Piglet trust store: this proves it is unchanged since that key signed it, not who holds the key)
+Provenance: matches /home/you/.pig/piglets/reviewer.yaml
+```
+
+`--source` bakes the named Piglet as the build does and compares two digests with the ones the Binary signed: the source digest of the Piglet file and the Piglet digest of the definition baked into the Binary. A changed Piglet file fails the source digest. A change that alters the baked definition, such as an edited prompt file, skill, or base Piglet, also fails the Piglet digest. A Piglet built with `--workspace <dir>` is checked with the same `--workspace`. `pig piglet lineage ./pig-reviewer --source reviewer` reports the same check beside the `extends` chain.
+
 Trust and policy are explicit local actions:
 
 ```bash

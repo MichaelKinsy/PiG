@@ -234,7 +234,7 @@ func TestAddGoFunctionCallersRetainsAllReviewedCallSites(t *testing.T) {
 			// These are parser inputs for the reviewed caller paths, not runtime stubs.
 			for path, source := range map[string]string{
 				"coding/session_summarization_auth.go":           "package fixture\nfunc runDefaultCompaction() { compaction.Compact() }\n",
-				"internal/codingagent/compaction/compaction.go":  "package fixture\nfunc CompactUsing() { generateTurnPrefixSummary() }\n",
+				"internal/codingagent/compaction/compaction.go":  "package fixture\nfunc Compact() { generateTurnPrefixSummary() }\n",
 				"internal/codingagent/settings.go":               "package fixture\nfunc Load() {\n" + tc.body + "}\nfunc UpdateGlobal() { updateGlobalOrdered() }\nfunc updateGlobalOrdered() { updateGlobalReplacing() }\nfunc updateGlobalReplacing() { saveSettingsPatchReplacing() }\nfunc SetBlockImages() { sm.UpdateGlobal() }\nfunc SetProjectPackages() { sm.UpdateProject() }\n",
 				"coding/cli/cli_runtime_build.go":                "package fixture\ntype cliRuntimeBuilder struct{}\nfunc (b *cliRuntimeBuilder) buildResources() { services.SettingsManager().SetProjectTrusted(true) }\n",
 				"internal/codingagent/interactive_commands.go":   "package fixture\nfunc buildSlashContext() { m.opts.SettingsManager.Reload() }\n",

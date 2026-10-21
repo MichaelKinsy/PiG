@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -548,5 +549,290 @@ func TestAPortsClaimMakesAPrivateImplementationFileALegitimateCitation(t *testin
 		if got.Proven != tc.want {
 			t.Errorf("%s: proven=%v reasons=%v, want %v", tc.name, got.Proven, got.Reasons, tc.want)
 		}
+	}
+}
+
+// sharedFixture is one Go package, lib, that three marker rows cite: a's test asserts and its mutant is killed, b's test asserts nothing
+// so its mutant survives, c's test is red. The upstream inventory is empty, so every row is a member-less Pi file proven by its marker.
+func sharedFixture(t *testing.T) string {
+	t.Helper()
+	src := func(name string) string {
+		return "package lib\n\nfunc " + name + "() string { return \"" + name + "\" }\n"
+	}
+	asserts := func(name, pi string) string {
+		return "package lib\n\nimport \"testing\"\n\n// pi: " + pi + "\nfunc Test" + name + "(t *testing.T) {\n\tif " + name + "() != \"" + name + "\" {\n\t\tt.Fatal(\"" + name + "\")\n\t}\n}\n"
+	}
+	mutant := func(name string) string {
+		return `{"file":"lib/` + strings.ToLower(name) + `.go","old":"return \"` + name + `\"","new":"return \"mutant\""}`
+	}
+	root := t.TempDir()
+	files := map[string]string{
+		"go.mod":        "module fixture\n\ngo 1.26\n",
+		"lib/a.go":      src("A"),
+		"lib/b.go":      src("B"),
+		"lib/c.go":      src("C"),
+		"lib/a_test.go": asserts("A", "packages/fx/src/a.ts"),
+		"lib/b_test.go": "package lib\n\nimport \"testing\"\n\n// pi: packages/fx/src/b.ts\nfunc TestB(t *testing.T) { _ = B() }\n",
+		"lib/c_test.go": "package lib\n\nimport \"testing\"\n\n// pi: packages/fx/src/c.ts\nfunc TestC(t *testing.T) { _ = C(); t.Fatal(\"red\") }\n",
+		"test/parity/interfaces/upstream-v1.0.0.json": `{"packages":[],"interfaces":[]}`,
+		"test/parity/interfaces/mapping-v1.0.0.json":  `{"mappings":[]}`,
+		mutantsFile: `{"packages/fx/src/a.ts":[` + mutant("A") + `],"packages/fx/src/b.ts":[` + mutant("B") + `],"packages/fx/src/c.ts":[` + mutant("C") + `]}`,
+		"docs/parity/PORT_MAP.md": "| upstream | pig | status |\n|---|---|---|\n" +
+			"| `packages/fx/src/a.ts` | `lib/a.go, lib/a_test.go` | ✅ |\n" +
+			"| `packages/fx/src/b.ts` | `lib/b.go, lib/b_test.go` | ✅ |\n" +
+			"| `packages/fx/src/c.ts` | `lib/c.go, lib/c_test.go` | ✅ |\n",
+	}
+	for name, body := range files {
+		p := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+// verdicts maps each row of res to "proven" or its reasons, in a form a test can compare.
+func verdicts(res []result) map[string]string {
+	out := map[string]string{}
+	for _, r := range res {
+		switch {
+		case r.Skipped:
+			out[r.Row.Pi] = "skipped"
+		case r.Proven:
+			out[r.Row.Pi] = "proven"
+		default:
+			out[r.Row.Pi] = strings.Join(r.Reasons, ";")
+		}
+	}
+	return out
+}
+
+// TestRowsSharingAPackageKeepTheirOwnVerdicts: the rows of one package share a test binary, but each row is still proven only by its own
+// tests and mutant. A passing row beside a red row, and a killed mutant beside a surviving one, do not leak into each other.
+func TestRowsSharingAPackageKeepTheirOwnVerdicts(t *testing.T) {
+	root := sharedFixture(t)
+	before := evidenceBuilds.Load()
+	res, err := checkWith(root, true)
+	if err != nil || len(res) != 3 {
+		t.Fatalf("%v %d", err, len(res))
+	}
+	got := verdicts(res)
+	if got["packages/fx/src/a.ts"] != "proven" {
+		t.Errorf("a: %q", got["packages/fx/src/a.ts"])
+	}
+	if !strings.Contains(got["packages/fx/src/b.ts"], "no listed mutant makes the marker tests fail") {
+		t.Errorf("b survives its mutant, got %q", got["packages/fx/src/b.ts"])
+	}
+	if !strings.Contains(got["packages/fx/src/c.ts"], "evidence tests of lib fail") {
+		t.Errorf("c is red, got %q", got["packages/fx/src/c.ts"])
+	}
+	if n := evidenceBuilds.Load() - before; n != 1 {
+		t.Errorf("three rows of one package built %d test binaries, want 1", n)
+	}
+}
+
+// TestAKilledMutantIsCachedWithItsRecord: the verdict of a mutant replay is part of the row's cached record, keyed by the mutant's text,
+// so an unchanged marker row is not replayed, and a row whose mutant was edited is.
+func TestAKilledMutantIsCachedWithItsRecord(t *testing.T) {
+	root := sharedFixture(t)
+	if res, err := checkWith(root, true); err != nil || verdicts(res)["packages/fx/src/a.ts"] != "proven" {
+		t.Fatalf("first run: %v %v", err, verdicts(res))
+	}
+	builds, replays := evidenceBuilds.Load(), mutantReplays.Load()
+	res, err := checkWith(root, true)
+	if err != nil || verdicts(res)["packages/fx/src/a.ts"] != "proven" {
+		t.Fatalf("second run: %v %v", err, verdicts(res))
+	}
+	// b (mutant survives) and c (red) are never cached, so their mutants and tests run again; a's must not.
+	if got := mutantReplays.Load() - replays; got != 1 {
+		t.Errorf("second run replayed %d mutants, want only b's", got)
+	}
+	if got := evidenceBuilds.Load() - builds; got != 1 {
+		t.Errorf("second run built %d test binaries, want 1 (b and c rerun)", got)
+	}
+	// Editing a's mutant to one that survives must not reuse the record that its old mutant was killed.
+	surviving := `{"packages/fx/src/a.ts":[{"file":"lib/a.go","old":"return \"A\"","new":"return \"A\""}]}`
+	if err := os.WriteFile(filepath.Join(root, mutantsFile), []byte(surviving), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err = checkWith(root, true)
+	if err != nil || !strings.Contains(verdicts(res)["packages/fx/src/a.ts"], "no listed mutant makes the marker tests fail") {
+		t.Fatalf("a's mutant changed to one that survives: %v %v", err, verdicts(res)["packages/fx/src/a.ts"])
+	}
+}
+
+// TestShardsJudgeEveryRowOnce: with -shard N/M each row is judged by exactly one shard and skipped by the rest, with the verdict the
+// unsharded run gives.
+func TestShardsJudgeEveryRowOnce(t *testing.T) {
+	root := sharedFixture(t)
+	want, err := checkWith(root, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantVerdicts := verdicts(want)
+	judged := map[string]int{}
+	for i := range 2 {
+		res, err := checkShard(root, true, shardSpec{index: i, total: 2})
+		if err != nil || len(res) != 3 {
+			t.Fatalf("shard %d: %v %d", i+1, err, len(res))
+		}
+		for pi, v := range verdicts(res) {
+			if v == "skipped" {
+				continue
+			}
+			judged[pi]++
+			if v != wantVerdicts[pi] {
+				t.Errorf("shard %d judged %s as %q, the whole run says %q", i+1, pi, v, wantVerdicts[pi])
+			}
+		}
+	}
+	for pi := range wantVerdicts {
+		if judged[pi] != 1 {
+			t.Errorf("%s was judged by %d shards, want 1", pi, judged[pi])
+		}
+	}
+}
+
+// TestASkippedRowIsNotAProblem: a row another shard judges is neither a new unproven tick nor a stale baseline entry here.
+func TestASkippedRowIsNotAProblem(t *testing.T) {
+	root := sharedFixture(t)
+	res := []result{
+		{Row: row{Pi: "packages/fx/src/a.ts"}, Skipped: true},
+		{Row: row{Pi: "packages/fx/src/b.ts"}, Proven: true},
+	}
+	if err := os.MkdirAll(filepath.Join(root, "test/parity"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, baselineFile), []byte("packages/fx/src/a.ts\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	problems, err := compareBaseline(root, res)
+	if err != nil || len(problems) != 0 {
+		t.Fatalf("%v %v", err, problems)
+	}
+}
+
+func TestParseShard(t *testing.T) {
+	for in, want := range map[string]shardSpec{"": {}, "1/1": {0, 1}, "2/4": {1, 4}, "4/4": {3, 4}, "64/64": {63, 64}, "01/03": {0, 3}} {
+		if got, err := parseShard(in); err != nil || got != want {
+			t.Errorf("%q: %+v %v, want %+v", in, got, err, want)
+		}
+	}
+	for _, in := range []string{
+		"0/4", "5/4", "1", "a/b", "1/0", "-1/4", "0/0", "1/-3", "-2/-1", // index or count out of range
+		"1/65", "65/65", "1/100", "1/4294967296", "1/4294967297", // above the bound, and past what a uint32 holds
+		"1/9223372036854775807", "9223372036854775807/9223372036854775807", "1/9223372036854775808", "1/99999999999999999999999", // up to and past an int
+		"1/", "/4", "/", " 1/4", "1/4 ", "1/ 4", "+1/4", "1.5/4", "1/4.0", "0x1/0x4", "1e1/4", "1//4", "1/4/4", // not a plain N/M
+	} {
+		if got, err := parseShard(in); err == nil {
+			t.Errorf("%q must be rejected, got %+v", in, got)
+		}
+	}
+}
+
+// TestPartitionRefusesAnOutOfRangeShardCount: partition is only reached with a count parseShard accepted, and refuses any other.
+func TestPartitionRefusesAnOutOfRangeShardCount(t *testing.T) {
+	for _, total := range []int{0, -1, maxShards + 1, 1 << 40} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("partition accepted %d shards", total)
+				}
+			}()
+			partition([]result{{Row: row{Pi: "x"}}}, total)
+		}()
+	}
+}
+
+// TestPartitionAssignsEveryRowToOneBalancedShard: the plan is a pure function of the derived rows, keeps a package's rows together when
+// it fits a shard, spreads a package heavier than a shard's share, and gives each row without an evidence run to exactly one shard.
+func TestPartitionAssignsEveryRowToOneBalancedShard(t *testing.T) {
+	var res []result
+	add := func(pi string, proven bool, tests ...string) {
+		res = append(res, result{Row: row{Pi: pi}, Proven: proven, Tests: tests})
+	}
+	for i := range 40 { // one package far heavier than a shard's share
+		add("big"+strconv.Itoa(i), true, "big#T1", "big#T2", "big#T3", "big#T4", "big#T5", "big#T6", "big#T7", "big#T8", "big#T9", "big#T10")
+	}
+	for _, dir := range []string{"x", "y", "z", "w"} {
+		for i := range 5 {
+			add(dir+strconv.Itoa(i), true, dir+"#T1", dir+"#T2")
+		}
+	}
+	add("unproven", false)
+	add("untested", true)
+	for _, total := range []int{1, 2, 3, 4, 7} {
+		a, b := partition(res, total), partition(res, total)
+		if !slices.Equal(a, b) {
+			t.Fatalf("%d shards: the plan is not deterministic", total)
+		}
+		load := make([]int, total)
+		dirs := map[string]map[int]bool{}
+		for i, s := range a {
+			if s < 0 || s >= total {
+				t.Fatalf("%d shards: row %d in shard %d", total, i, s)
+			}
+			load[s] += rowWeight(res[i])
+			if res[i].Proven && len(res[i].Tests) > 0 {
+				d := primaryDir(res[i])
+				if dirs[d] == nil {
+					dirs[d] = map[int]bool{}
+				}
+				dirs[d][s] = true
+			}
+		}
+		for d, shards := range dirs {
+			if d != "big" && len(shards) != 1 {
+				t.Errorf("%d shards: package %s, which fits one shard, is split over %d", total, d, len(shards))
+			}
+		}
+		if total > 1 && len(dirs["big"]) < 2 {
+			t.Errorf("%d shards: the heavy package was not spread", total)
+		}
+		hi, lo := slices.Max(load), slices.Min(load)
+		if total > 1 && total <= 4 && hi > lo*3/2+20 {
+			t.Errorf("%d shards: loads %v are unbalanced", total, load)
+		}
+	}
+}
+
+// TestAChildOfTheEvidenceBinaryHasACoverageDirectory: a test that re-runs its own binary as a helper process (a stdio MCP server fixture
+// that exits at startup) must see what it sees under `go test -cover`, where the child inherits GOCOVERDIR. Without it the instrumented
+// child warns on stderr as it exits, which a test that asserts on the child's stderr reads as a failure.
+func TestAChildOfTheEvidenceBinaryHasACoverageDirectory(t *testing.T) {
+	const body = `package lib
+
+import (
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+)
+
+func TestMain(m *testing.M) {
+	if os.Getenv("WIDGET_CHILD") == "1" {
+		os.Exit(3)
+	}
+	os.Exit(m.Run())
+}
+
+func TestWidget(t *testing.T) {
+	child := exec.Command(os.Args[0], "-test.run=^$")
+	child.Env = append(os.Environ(), "WIDGET_CHILD=1")
+	out, _ := child.CombinedOutput()
+	if strings.Contains(string(out), "GOCOVERDIR") {
+		t.Fatalf("the child wrote %q", out)
+	}
+	if (Widget{Name: "a"}).Hello() != "hello a" {
+		t.Fatal("hello")
+	}
+}
+`
+	res, err := checkWith(coverageFixture(t, body), true)
+	if err != nil || len(res) != 1 || !res[0].Proven {
+		t.Fatalf("err=%v res=%+v", err, res)
 	}
 }

@@ -165,7 +165,7 @@ func TestCompactSplitTurnPreservesPreviousSummaryWithoutHistoryRequest(t *testin
 		FileOps:            NewFileOps(),
 		Settings:           CompactionSettings{Enabled: true, ReserveTokens: 2000, KeepRecentTokens: 20},
 	}
-	result, err := CompactUsing(t.Context(), prep, createSummaryModel(false, 8192, nil), "", nil, "", "", recorder, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(t.Context(), prep, createSummaryModel(false, 8192, nil), "", nil, "", "", CompleterStreamFn(recorder), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestCompactSummariesSetNoMaxTokens(t *testing.T) {
 		FileOps:             NewFileOps(),
 		Settings:            CompactionSettings{Enabled: true, ReserveTokens: 500000, KeepRecentTokens: 20000},
 	}
-	result, err := CompactUsing(t.Context(), prep, createSummaryModel(false, 128000, nil), "", nil, "", "", recorder, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(t.Context(), prep, createSummaryModel(false, 128000, nil), "", nil, "", "", CompleterStreamFn(recorder), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,5 +261,34 @@ func TestCompactSummariesSetNoMaxTokens(t *testing.T) {
 	// Pi 6fcb4867 (#9512): neither summary of a split turn sets maxTokens; both use the model's output limit.
 	if !reflect.DeepEqual(maxTokens, []int{0, 0}) {
 		t.Fatalf("maxTokens = %v, want none set on either summary", maxTokens)
+	}
+}
+
+// compaction.ts createSummarizationOptions builds only maxTokens, signal, apiKey, headers, env, sessionId and reasoning: a summary request through the caller's stream function carries none of the Agent's onPayload, onResponse or onProviderStreamEvent callbacks, and it is sent through that function rather than the model's provider.
+func TestProviderCompleterSendsSummaryThroughStreamFnWithoutAgentCallbacks(t *testing.T) {
+	var got ai.StreamOptions
+	streamed := false
+	completer := ProviderCompleter{StreamFn: func(_ context.Context, _ *ai.Model, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+		streamed, got = true, options
+		message := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "summary"}}, StopReason: ai.StopReasonStop}
+		stream := ai.NewAssistantMessageEventStream()
+		if err := stream.Push(ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}); err != nil {
+			t.Fatal(err)
+		}
+		return stream, nil
+	}}
+	model := &ai.Model{ID: "m"}
+	text, _, err := completeSummarization(t.Context(), model, completer, nil, nil, ai.RetryCallbacks{}, "system", nil, ai.StreamOptions{APIKey: "key"})
+	if err != nil || text != "summary" {
+		t.Fatalf("summary = %q, %v", text, err)
+	}
+	if !streamed {
+		t.Fatal("summary did not go through the stream function")
+	}
+	if got.OnPayload != nil || got.OnResponse != nil || got.OnProviderStreamEvent != nil || got.TransformHeaders != nil {
+		t.Fatalf("summary options carry agent callbacks: %+v", got)
+	}
+	if got.APIKey != "key" || got.CacheRetention != ai.CacheRetentionNone || got.SessionID == "" {
+		t.Fatalf("summary options = %+v, want the key, cacheRetention none and a routing session", got)
 	}
 }

@@ -14,8 +14,8 @@ kind = sys.argv[1]
 root = Path(__file__).resolve().parents[3]
 with tempfile.TemporaryDirectory(prefix="parity-suspend-order-") as temporary:
     if kind == "pig":
-        executable = str(Path(temporary) / "signal-order.test")
-        subprocess.run(["go", "test", "-c", "-o", executable, "./internal/codingagent"], cwd=root, check=True)
+        # The runner builds the package's test binary before the timed run (the scenario's pig_go_tests); the probe starts it itself to signal its process group.
+        executable = subprocess.run(["./test/parity/testdata/prebuilt-go-test.sh", "--binary", "./internal/codingagent"], cwd=root, check=True, capture_output=True, text=True).stdout.strip()
         command = [executable, "-test.run=^TestSuspendSignalOrderChild$"]
     else:
         command = ["node", str(root / "test/parity/testdata/suspend-signal-order-pi.mjs")]

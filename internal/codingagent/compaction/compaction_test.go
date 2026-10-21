@@ -100,10 +100,10 @@ func TestCapMaxTokens(t *testing.T) {
 }
 
 func TestCompactMissingFirstKeptEntryMatchesUpstreamError(t *testing.T) {
-	_, err := CompactUsing(t.Context(), CompactionPreparation{
+	_, err := Compact(t.Context(), CompactionPreparation{
 		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{Role: "user"}}},
 		Settings:            CompactionSettings{ReserveTokens: 100},
-	}, &ai.Model{}, "", nil, "", "", &fakeCompleter{response: "summary"}, nil, nil, nil, ai.RetryCallbacks{}, "")
+	}, &ai.Model{}, "", nil, "", "", CompleterStreamFn(&fakeCompleter{response: "summary"}), nil, nil, ai.RetryCallbacks{}, "")
 	if err == nil || err.Error() != "First kept entry has no UUID - session may need migration" {
 		t.Fatalf("Compact() error = %v", err)
 	}
@@ -371,7 +371,7 @@ func TestCompactCustomInstructionsReachSummaryPrompt(t *testing.T) {
 		}}},
 		Settings: CompactionSettings{ReserveTokens: 1000},
 	}
-	if _, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "Keep exact file names", "", completer, nil, nil, nil, ai.RetryCallbacks{}, ""); err != nil {
+	if _, err := Compact(context.Background(), prep, &ai.Model{}, "", nil, "Keep exact file names", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(prompt.String(), "Additional focus: Keep exact file names") {
@@ -404,7 +404,7 @@ func TestCompactSplitTurnAwaitsHistoryBeforePrefix(t *testing.T) {
 	}
 	done := make(chan error, 1)
 	go func() {
-		_, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, "")
+		_, err := Compact(context.Background(), prep, &ai.Model{}, "", nil, "", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
 		done <- err
 	}()
 
@@ -443,7 +443,7 @@ func TestCompactTurnPrefixCancellationSurfacesUpstreamError(t *testing.T) {
 		Settings:    CompactionSettings{ReserveTokens: 1000},
 	}
 	completer := &cancelledCompleter{}
-	_, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "", "", completer, nil, nil, nil, ai.RetryCallbacks{}, "")
+	_, err := Compact(context.Background(), prep, &ai.Model{}, "", nil, "", "", CompleterStreamFn(completer), nil, nil, ai.RetryCallbacks{}, "")
 	if err == nil {
 		t.Fatal("Compact error = nil")
 	}
@@ -479,7 +479,7 @@ func TestCompact_SetsNoMaxTokens(t *testing.T) {
 	fc := &fakeCompleter{response: "## Summary\nThis is the summary."}
 	model := &ai.Model{ID: "fake-model", Capabilities: ai.ModelCapabilities{MaxOutputTokens: 600}}
 
-	result, err := CompactUsing(context.Background(), prep, model, "", nil, "", "", fc, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(context.Background(), prep, model, "", nil, "", "", CompleterStreamFn(fc), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact returned error: %v", err)
 	}
@@ -511,7 +511,7 @@ func TestCompact_UsesStreamFnWhenProvided(t *testing.T) {
 		return "stream summary", nil, nil
 	}
 
-	result, err := CompactUsing(context.Background(), *prep, &ai.Model{}, "", nil, "", "", completer, streamFn, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(context.Background(), *prep, &ai.Model{}, "", nil, "", "", streamFn, nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact: %v", err)
 	}
@@ -547,7 +547,7 @@ func TestCompact_FakeCompleter(t *testing.T) {
 	fc := &fakeCompleter{response: "## Summary\nThis is the summary."}
 	model := &ai.Model{ID: "fake-model"}
 
-	result, err := CompactUsing(context.Background(), prep, model, "", nil, "", "", fc, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(context.Background(), prep, model, "", nil, "", "", CompleterStreamFn(fc), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact returned error: %v", err)
 	}
@@ -590,7 +590,7 @@ func TestCompactPropagatesUsage(t *testing.T) {
 		Settings: CompactionSettings{ReserveTokens: 1000},
 	}
 	fc := &fakeCompleter{response: "summary", usage: &ai.Usage{Input: 42, Output: 7}}
-	result, err := CompactUsing(context.Background(), prep, &ai.Model{}, "", nil, "", "", fc, nil, nil, nil, ai.RetryCallbacks{}, "")
+	result, err := Compact(context.Background(), prep, &ai.Model{}, "", nil, "", "", CompleterStreamFn(fc), nil, nil, ai.RetryCallbacks{}, "")
 	if err != nil {
 		t.Fatalf("Compact: %v", err)
 	}

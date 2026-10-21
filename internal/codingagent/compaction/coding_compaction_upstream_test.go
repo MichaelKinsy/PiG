@@ -403,7 +403,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		if prep == nil {
 			t.Fatal("missing preparation")
 		}
-		result, err := CompactUsing(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, "", nil, "", "", &fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}, nil, nil, nil, ai.RetryCallbacks{}, "")
+		result, err := Compact(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, "", nil, "", "", CompleterStreamFn(&fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}), nil, nil, ai.RetryCallbacks{}, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -419,7 +419,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		if prep == nil {
 			t.Fatal("missing preparation")
 		}
-		result, err := CompactUsing(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, "", nil, "", "", &fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}, nil, nil, nil, ai.RetryCallbacks{}, "")
+		result, err := Compact(t.Context(), *prep, &ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: 200000, MaxOutputTokens: 8192}}, "", nil, "", "", CompleterStreamFn(&fakeCompleter{response: strings.Repeat("Detailed fixture summary. ", 8)}), nil, nil, ai.RetryCallbacks{}, "")
 		if err != nil {
 			t.Fatal(err)
 		}

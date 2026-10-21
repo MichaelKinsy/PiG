@@ -101,7 +101,8 @@ func (r *loopRun) executeToolCallsSequential(ctx context.Context, calls []pendin
 
 // executeToolCallsParallel emits tool_execution_start and prepares every call
 // sequentially in source order, then executes the prepared calls
-// concurrently. tool_execution_end follows completion order; tool-result
+// concurrently. tool_execution_end follows completion order (the order the
+// calls' tools settled, when the tool reports it: ToolSettleFromContext); tool-result
 // messages follow source order once every call has finished (Promise.all).
 //
 // A tool implementing QueueOrderable has its shared-queue position reserved
@@ -152,14 +153,18 @@ func (r *loopRun) executeToolCallsParallel(ctx context.Context, calls []pendingT
 		var wg sync.WaitGroup
 		var failureMu sync.Mutex
 		var failure error
+		// The calls' tool_execution_end events follow the order their tools settle (SettleGate).
+		var settleGate SettleGate
 		for i, outcome := range outcomes {
 			if outcome.prepared == nil {
 				continue
 			}
-			callCtx := callCtxs[i]
+			slot := settleGate.NewSlot()
+			callCtx := withToolSettle(callCtxs[i], slot, outcome.prepared.call.id)
 			// Pi awaits Promise.all over every prepared call, so all calls run at
 			// once. A CPU-count cap would serialize I/O-bound tools on small machines.
 			wg.Go(func() {
+				defer slot.Close()
 				stackprime.Prime()
 				var err error
 				finalized[i], err = r.h.runPreparedToolCall(callCtx, *outcome.prepared)
@@ -216,7 +221,15 @@ func (h *loopHost) runPreparedToolCall(ctx context.Context, prepared preparedToo
 		}
 		finalized = h.finalizeExecutedToolCall(ctx, prepared, executed)
 	}
-	return finalized, h.deliver(toolExecutionEndEvent(finalized))
+	var err error
+	deliver := func() { err = h.deliver(toolExecutionEndEvent(finalized)) }
+	if slot := ToolSettleFromContext(ctx, prepared.call.id); slot != nil {
+		// A call ends after every call whose tool settled before its own (SettleGate).
+		slot.Run(deliver)
+	} else {
+		deliver()
+	}
+	return finalized, err
 }
 
 // failToolCallsFromTruncatedMessage fails every tool call of an assistant

@@ -14,7 +14,9 @@ override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
 pig_args = ["node", "./test/parity/testdata/render-tool-path-pig.mjs"]
+pig_go_tests = ["./tui"]
 pi_args = ["node", "./test/parity/testdata/render-tool-path-pi.mjs"]
+pi_go_tests = ["./tui"]
 
 [cli]
 cwd = "../../../.."

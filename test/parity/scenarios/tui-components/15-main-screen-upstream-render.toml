@@ -10,6 +10,8 @@ tags = ["fast", "hermetic", "tui"]
 driver = "cli-mode"
 
 [env]
+pig_go_tests = ["./internal/codingagent"]
+pig_go_programs = ["./test/parity/testdata/main-screen-render-pig"]
 override_base_args = true
 pig = ["PI_TUI_DEBUG_REDRAW="]
 pi = ["PI_TUI_DEBUG_REDRAW="]

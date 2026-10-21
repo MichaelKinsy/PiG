@@ -1,0 +1,94 @@
+# Behavior family: rpc
+# Surface: one assistant message with two calls of an extension tool that waits on a select dialog. Pi starts the two calls in
+# source order (agent-loop.ts executeToolCallsParallel: each call's execute runs up to its first await in order), so the
+# dialogs open as "First?" then "Second?". A dialog's promise resolves on the stdin line that answers it, and Pi reads two
+# lines of one chunk before any microtask runs, so the two tools continue in the order of the answers and their
+# tool_execution_end events follow that order (a call ends when its own execute settles); the tool-result messages keep source
+# order (Promise.all). The first prompt answers both dialogs in one write in source order, the second in the reverse order.
+#
+# PiG ran each dialog's waiter and each call's tool_call response on goroutines of their own, so the order of the answers was
+# lost twice and the order of the ends was unspecified: about half of the runs ended "Second?" first although "First?" was
+# answered first.
+
+name = "62-rpc-parallel-tool-dialog-order"
+description = "RPC: two parallel extension tool calls that wait on dialogs end in the order their dialogs are answered."
+covers = [
+  "packages/agent/src/agent-loop.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"in-order","type":"prompt","message":"Run: two dialog tools (answered in order)"}'
+# The second request follows the first on stdout; the tool_execution_start events carry the titles as arguments, so a bare title would match them.
+wait_contains = ['"method":"select","title":"Second?"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:First?}}","value":"a"}
+{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:Second?}}","value":"d"}'''
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"reversed","type":"prompt","message":"Run: two dialog tools (answered in reverse)"}'
+# The second request follows the first on stdout; the tool_execution_start events carry the titles as arguments, so a bare title would match them.
+wait_contains = ['"method":"select","title":"Second?"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '''{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:Second?}}","value":"b"}
+{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID:First?}}","value":"c"}'''
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/two-dialog-tools.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC parallel dialog probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/two-dialog-tools.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC parallel dialog probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"title":"First?"',
+  '"title":"Second?"',
+  '"text":"First?=a"',
+  '"text":"Second?=d"',
+  '"text":"First?=c"',
+  '"text":"Second?=b"',
+  'two-dialog-tools-done',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 10
+json_output_equal = true
+stderr_equal = true
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."

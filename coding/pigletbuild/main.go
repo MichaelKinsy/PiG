@@ -13,12 +13,9 @@ import (
 	"runtime"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
-
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
-	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/fspublish"
 )
 
@@ -498,115 +495,17 @@ func parseTargets(spec string, native Target) ([]Target, error) {
 	return targets, nil
 }
 
-// applyBakedPiglet computes the Piglet YAML embedded into the Piglet Binary. The
-// baked piglet carries the agent shape (extensions, skills, MCP, scoping,
-// discovery) so the Piglet Binary can assemble the intended agent. Prompt files and
-// skills are inlined; extension source origins are stripped because the runnable
-// binaries come from the embedded cell manifest.
+// applyBakedPiglet computes the Piglet definition embedded into the Piglet
+// Binary with piglet.Bake, the same function provenance checks recompute.
 func applyBakedPiglet(pigletName string, p *piglet.Piglet, opts *Options) error {
 	pigletDir := ""
 	if path, err := resolvePigletPath(pigletName); err == nil {
 		pigletDir = filepath.Dir(path)
 	}
-	baked, err := bakePiglet(p, pigletDir)
+	baked, err := piglet.Bake(p, pigletDir)
 	if err != nil {
 		return err
 	}
 	opts.BakedSettings = baked
 	return nil
-}
-
-func bakePiglet(p *piglet.Piglet, pigletDir string) ([]byte, error) {
-	baked := piglet.Clone(p)
-	baked.Build = nil
-	// The frontend member is fused into the Binary; its source path means
-	// nothing to the Binary's own Piglet.
-	baked.Slots = nil
-	baked.Release = nil
-	if baked.SystemPrompt != nil {
-		sp, err := bakePromptRef(*baked.SystemPrompt, pigletDir, "system prompt")
-		if err != nil {
-			return nil, err
-		}
-		baked.SystemPrompt = &sp
-	}
-	if err := bakeSkills(baked); err != nil {
-		return nil, err
-	}
-	baked.Packages = nil
-	for i := range baked.Extensions {
-		baked.Extensions[i].Origins = nil
-	}
-	data, err := yaml.Marshal(baked)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := piglet.ParseBytes(data); err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func bakePromptRef(ref piglet.PromptRef, pigletDir, label string) (piglet.PromptRef, error) {
-	if ref.File == "" {
-		return ref, nil
-	}
-	promptPath := ref.File
-	if !filepath.IsAbs(promptPath) {
-		promptPath = filepath.Join(pigletDir, promptPath)
-	}
-	data, err := os.ReadFile(promptPath)
-	if err != nil {
-		return piglet.PromptRef{}, fmt.Errorf("bake %s: %w", label, err)
-	}
-	return piglet.PromptRef{Text: string(data)}, nil
-}
-
-func bakeSkills(p *piglet.Piglet) error {
-	resolved, errs := piglet.ResolveSkills(p)
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	byName := map[string]string{}
-	for _, s := range resolved {
-		byName[s.Entry.Name] = s.Path
-	}
-	for i := range p.Skills {
-		if p.Skills[i].Content != "" {
-			p.Skills[i].Origins = nil
-			continue
-		}
-		path := byName[p.Skills[i].Name]
-		if path == "" {
-			return fmt.Errorf("bake skill %q: explicit origin required", p.Skills[i].Name)
-		}
-		defs, err := codingagent.LoadSkillsFromPath(path)
-		if err != nil {
-			return fmt.Errorf("bake skill %q: %w", p.Skills[i].Name, err)
-		}
-		def, err := chooseSkillDef(p.Skills[i].Name, defs)
-		if err != nil {
-			return err
-		}
-		p.Skills[i].Name = def.Name
-		p.Skills[i].Description = def.Description
-		p.Skills[i].Content = def.Body
-		p.Skills[i].Origins = nil
-	}
-	return nil
-}
-
-func chooseSkillDef(name string, defs []*codingagent.SkillDef) (*codingagent.SkillDef, error) {
-	if len(defs) == 0 {
-		return nil, fmt.Errorf("bake skill %q: no SKILL.md found", name)
-	}
-	if len(defs) == 1 {
-		return defs[0], nil
-	}
-	for _, def := range defs {
-		if def.Name == name {
-			return def, nil
-		}
-	}
-	return nil, fmt.Errorf("bake skill %q: origin resolved to %d skills", name, len(defs))
 }

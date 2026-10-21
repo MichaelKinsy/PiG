@@ -317,6 +317,16 @@ function classify(messages: any[]) {
   if (lastText.includes("Run: extension UI dialogs")) {
     return { kind: "tool", toolCalls: [{ toolName: "ui_dialog_probe", toolArgs: {} }] };
   }
+  // One assistant message with two calls of a tool that waits on a UI dialog.
+  if (lastText.includes("Run: two dialog tools")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "dialog_pick", toolArgs: { title: "First?" } },
+        { toolName: "dialog_pick", toolArgs: { title: "Second?" } },
+      ],
+    };
+  }
   // Failing bash parity: a non-zero exit is a RETURNED error result, which keeps `isError` inside tool_execution_end.result (bash.ts:403-409).
   if (lastText.includes("Run: bash failing exit")) {
     return { kind: "tool", toolCalls: [{ toolName: "bash", toolArgs: { command: "echo out; exit 3" } }] };
@@ -444,6 +454,7 @@ function classify(messages: any[]) {
       }
       return { kind: "error", text: "test-faux: extension UI result missing dialog marker" };
     }
+    if (currentUserText.includes("Run: two dialog tools")) return { kind: "text", text: "two-dialog-tools-done" };
     if (currentUserText.includes("Run: bash failing exit")) return { kind: "text", text: "failed-bash-done" };
     if (currentUserText.includes("Run: bash BLOCK_ME")) {
       if (historyText.includes("parity-blocked")) {

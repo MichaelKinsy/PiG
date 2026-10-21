@@ -77,7 +77,7 @@ func addGoFunctionCallers(ctx context.Context, root, repositoryPrefix, targetCom
 	specs := []goFunctionCallerSpec{
 		// upstream: agent-session.ts:2633-2661 (_runDefaultCompaction is the one caller of the lower-level compact(), for manual and automatic compaction).
 		{function: "compact", path: "coding/session_summarization_auth.go", caller: "runDefaultCompaction", callee: "compaction.Compact"},
-		{function: "generateTurnPrefixSummary", path: "internal/codingagent/compaction/compaction.go", caller: "CompactUsing", callee: "generateTurnPrefixSummary"},
+		{function: "generateTurnPrefixSummary", path: "internal/codingagent/compaction/compaction.go", caller: "Compact", callee: "generateTurnPrefixSummary"},
 		{function: "mergeSettings", path: "internal/codingagent/settings.go", caller: "Load", callee: "mergeSettings"},
 		{function: "setProjectTrusted", path: "coding/cli/cli_runtime_build.go", caller: "buildResources", callee: "services.SettingsManager().SetProjectTrusted"},
 		{function: "reload", path: "internal/codingagent/interactive_commands.go", caller: "buildSlashContext", callee: "m.opts.SettingsManager.Reload"},
@@ -154,7 +154,7 @@ func extractGoCompactionFunctions(ctx context.Context, root, repositoryPrefix, t
 	if err != nil {
 		return nil, err
 	}
-	wanted := map[string]string{"CompactUsing": "compact", "generateTurnPrefixSummary": "generateTurnPrefixSummary"}
+	wanted := map[string]string{"Compact": "compact", "generateTurnPrefixSummary": "generateTurnPrefixSummary"}
 	functions := make([]Function, 0, len(wanted))
 	for _, declaration := range file.Decls {
 		function, ok := declaration.(*ast.FuncDecl)

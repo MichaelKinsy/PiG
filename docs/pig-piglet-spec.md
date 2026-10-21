@@ -245,12 +245,12 @@ pig piglet show <name>
 pig piglet show --record <path>
 pig piglet tree [name] [--depth <n>] [--json]
 pig piglet lineage <name|path|binary> [--source <name|path>] [--json]
-pig piglet verify <binary> [--source <name|path>]
+pig piglet verify <binary> [--source <name|path>] [--workspace <dir>]
 pig piglet remove <name> --source|--binary|--all
 pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]
 ```
 
-`prune` removes old built Binaries and keeps the newest `n` of each Piglet and target (default 2). Pulled installs stay. `verify` checks a Binary's signature, and with `--source` its recorded Piglet digests against that source, without running it. `pig piglet keygen <key-path>` creates an Ed25519 signing key pair, and `pig piglet trust [list|add|revoke|require]` manages trusted signer keys.
+`prune` removes old built Binaries and keeps the newest `n` of each Piglet and target (default 2). Pulled installs stay. `verify` checks a Binary's signature, and with `--source` its recorded Piglet digests against that source, without running it. `--workspace` names the workspace the build used for `workspace:` paths (default: the current directory, as for the build). `pig piglet keygen <key-path>` creates an Ed25519 signing key pair, and `pig piglet trust [list|add|revoke|require]` manages trusted signer keys.
 
 ### Pull signed Binary releases
 

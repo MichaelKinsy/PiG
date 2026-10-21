@@ -14,3 +14,7 @@ import (
 func (u *extensionUpgrader) analyzeExtension(context.Context, subprocess.ExtConfig) (*upgrade.Result, error) {
 	return nil, errors.New("this Piglet Binary compiled out the Go extension SDK, so it cannot analyze a Go extension for an upgrade")
 }
+
+func (u *extensionUpgrader) checkRewrite(context.Context, subprocess.ExtConfig, *upgrade.Result) (rewriteCheck, error) {
+	return rewriteCheck{}, errors.New("this Piglet Binary compiled out the Go extension SDK, so it cannot build a Go extension for an upgrade")
+}

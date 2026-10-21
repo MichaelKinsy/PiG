@@ -30,9 +30,20 @@ parity-fast-2:
 ci-drift: lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard port-lint source-hygiene test-provenance docs-drift bug-ledger-check any-trap perf-lint perf-scoreboard-check module-size
 ci-contracts: correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build
 ci-closure: closure-check
-# portmap-check runs the evidence tests of every proven PORT_MAP row under coverage; cold it needs more than an hour on a 4-CPU
-# runner, so it is its own job, warmed by the build/portmap-coverage cache.
-ci-portmap: portmap-check
+# portmap-check runs the evidence tests of every proven PORT_MAP row under coverage. It builds each evidence package's test binary once and
+# caches each green row in build/portmap-coverage, but a cold run is still about 18 CPU-minutes of 4-CPU runner time, so CI runs it as
+# PORTMAP_SHARDS parallel jobs; every shard computes the same plan, judges its own rows and skips the rest, and the Linux verification
+# job requires all of them.
+PORTMAP_SHARDS := 3
+ci-portmap-1: portmap-check-1
+ci-portmap-2: portmap-check-2
+ci-portmap-3: portmap-check-3
+portmap-check-1:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=1/$(PORTMAP_SHARDS)
+portmap-check-2:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=2/$(PORTMAP_SHARDS)
+portmap-check-3:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=3/$(PORTMAP_SHARDS)
 
 # Run after upstream-mirror under each selected Node runtime. Do not reinstall
 # npm dependencies here: the qualified npm requires a newer Node than Pi does.
@@ -86,4 +97,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: test-provenance test-expectation-lint ci-preflight ci-startup ci-build ci-checks ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
+.PHONY: test-provenance test-expectation-lint ci-preflight ci-startup ci-build ci-checks ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance

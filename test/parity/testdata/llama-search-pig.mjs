@@ -1,6 +1,6 @@
 // Pig's llama.cpp search over the scenarios of internal/codingagent/llama/ui_oracle_test.go; the owning Go test emits one JSON line of frames, settlements and completed searches per scenario.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './internal/codingagent/llama', '-run', '^TestLlamaSearchParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./internal/codingagent/llama', '-run', '^TestLlamaSearchParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

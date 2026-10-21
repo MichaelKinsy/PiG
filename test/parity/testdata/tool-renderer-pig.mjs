@@ -1,6 +1,6 @@
 // Pig's tool HTML renderer over the scenarios of internal/codingagent/export/tool_renderer_oracle_test.go; the owning Go test emits one JSON line of outputs per scenario.
 import { spawnSync } from 'node:child_process';
-const result = spawnSync('go', ['test', './internal/codingagent/export', '-run', '^TestToolHTMLRendererParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
+const result = spawnSync('./test/parity/testdata/prebuilt-go-test.sh', ['./internal/codingagent/export', '-run', '^TestToolHTMLRendererParity$', '-v', '-count=1'], { encoding: 'utf8', maxBuffer: 1 << 29 });
 if (result.status !== 0) {
  process.stderr.write(result.stdout ?? '');
  process.stderr.write(result.stderr ?? '');

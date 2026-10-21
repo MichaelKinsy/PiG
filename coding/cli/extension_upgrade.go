@@ -25,28 +25,35 @@ import (
 
 // pig additive (D109): pig compiles Go extensions against its own SDK, so an SDK release can break an extension written for an older one. Pi loads extension source in process and has no counterpart.
 
-// extensionDrift is one extension that failed to build only because it was written for an older SDK.
+// extensionDrift is one extension that failed to build and is written for an older SDK.
 type extensionDrift struct {
 	Name   string
 	Source string
 	Config subprocess.ExtConfig
 	Drift  []upgrade.Drift
+	// Plan is the type-checked plan of the upgrade when startup read the extension's types, else nil.
+	Plan *upgrade.Result
 }
 
-// sdkDriftOf returns the extensions whose load errors are SDK drift in their own source. A packed cell reports one build failure for every extension in it, so a drift counts for an extension only when a file it names is in that extension's source.
-func sdkDriftOf(errs []error, configs []subprocess.ExtConfig) []extensionDrift {
+// sdkDriftOf returns the extensions that failed to load and are written for an older SDK. A packed cell reports one build failure for every extension in it, so a drift counts for an extension only when a file it names is in that extension's source.
+// The go command prints at most ten compile errors, a recorded failure can predate the classification, and an extension can have compile errors of its own beside the SDK changes. So with an upgrader, every Go source extension whose build failed is type checked against the current SDK with the rules the upgrade rewrites by, and it is offered when the plan finds any changed API it uses. known lists the extensions already found; they are not read again.
+func sdkDriftOf(ctx context.Context, upgrader *extensionUpgrader, errs []error, configs []subprocess.ExtConfig, known []extensionDrift) []extensionDrift {
 	var found []extensionDrift
+	seen := func(source string) bool {
+		same := func(item extensionDrift) bool { return item.Source == source }
+		return slices.ContainsFunc(found, same) || slices.ContainsFunc(known, same)
+	}
 	for _, err := range errs {
 		loadErr, ok := errors.AsType[*subprocess.ExtensionLoadError](err)
 		if !ok {
 			continue
 		}
 		failure, ok := errors.AsType[*runtimecell.BuildFailure](loadErr.Err)
-		if !ok || len(failure.Drift) == 0 {
+		if !ok {
 			continue
 		}
 		for _, config := range configs {
-			if config.Name != loadErr.Name || config.Source == "" {
+			if config.Name != loadErr.Name || config.Source == "" || seen(config.Source) {
 				continue
 			}
 			roots := append([]string{config.Source}, config.GoWorkspaceModules...)
@@ -56,17 +63,59 @@ func sdkDriftOf(errs []error, configs []subprocess.ExtConfig) []extensionDrift {
 					own = append(own, drift)
 				}
 			}
-			// Two copies of one extension share its name: the drift belongs to the copy whose source holds the failing file.
+			var plan *upgrade.Result
+			if upgrader != nil && isGoSourceExtension(config) {
+				if result, err := upgrader.analyze(ctx, config); err == nil {
+					if drift := result.Drift(); len(drift) > 0 {
+						own, plan = drift, result
+					}
+				}
+			}
+			// Two copies of one extension share its name: the drift belongs to the copy whose source holds the failing file, or whose types show it.
 			if len(own) == 0 {
 				continue
 			}
-			if !slices.ContainsFunc(found, func(item extensionDrift) bool { return item.Source == config.Source }) {
-				found = append(found, extensionDrift{Name: config.Name, Source: config.Source, Config: config, Drift: own})
-			}
+			found = append(found, extensionDrift{Name: config.Name, Source: config.Source, Config: config, Drift: own, Plan: plan})
 			break
 		}
 	}
 	return found
+}
+
+// withUpgradeHints replaces the load error of each extension in drift with one that names the changed APIs and the command that upgrades it, so the line says what to do where the go command's own message says which line of code failed.
+func withUpgradeHints(errs []error, drift []extensionDrift) []error {
+	if len(drift) == 0 {
+		return errs
+	}
+	hinted := make([]error, len(errs))
+	for i, err := range errs {
+		hinted[i] = err
+		loadErr, ok := errors.AsType[*subprocess.ExtensionLoadError](err)
+		if !ok {
+			continue
+		}
+		for _, item := range drift {
+			roots := append([]string{item.Source}, item.Config.GoWorkspaceModules...)
+			if item.Name == loadErr.Name && (loadErr.Path == item.Source || pathWithinAny(loadErr.Path, roots)) {
+				hinted[i] = &subprocess.ExtensionLoadError{Name: loadErr.Name, Path: loadErr.Path, Err: errors.New(upgradeHint(item))}
+				break
+			}
+		}
+	}
+	return hinted
+}
+
+// upgradeHint is the one line a load error of a drifted extension reads: the first changed APIs and the exact command.
+func upgradeHint(item extensionDrift) string {
+	symbols := make([]string, len(item.Drift))
+	for i, drift := range item.Drift {
+		symbols[i] = drift.Symbol
+	}
+	slices.Sort(symbols)
+	if len(symbols) > 2 {
+		symbols = append(symbols[:2:2], fmt.Sprintf("and %d more", len(item.Drift)-2))
+	}
+	return "go build: written for an older SDK (" + strings.Join(symbols, ", ") + " changed); run: " + extensionUpgradeCommand([]extensionDrift{item})
 }
 
 func pathWithinAny(path string, roots []string) bool {
@@ -114,7 +163,7 @@ func extensionUpgradeCommand(items []extensionDrift) string {
 	return strings.Join(words, " ")
 }
 
-// sdkDriftNotice names each extension written for an older SDK, each changed API with its old and new shape, and the command that upgrades them.
+// sdkDriftNotice names each extension written for an older SDK, each changed API with its old and new shape, what the upgrade leaves for you to change with the file and line, and the command that upgrades them.
 func sdkDriftNotice(items []extensionDrift) string {
 	var out strings.Builder
 	for _, item := range items {
@@ -125,6 +174,12 @@ func sdkDriftNotice(items []extensionDrift) string {
 				line += ": needs a manual change"
 			}
 			out.WriteString(line + "\n")
+			if drift.Rewrites || drift.File == "" {
+				continue
+			}
+			if rule, ok := upgrade.RuleByID(drift.Rule); ok {
+				_, _ = fmt.Fprintf(&out, "    %s:%d: %s\n", drift.File, drift.Line, rule.Remedy)
+			}
 		}
 	}
 	_, _ = fmt.Fprintf(&out, "Run: %s\n", extensionUpgradeCommand(items))
@@ -137,10 +192,14 @@ type extensionUpgradeStatus string
 const (
 	upgradeUpToDate extensionUpgradeStatus = "up to date"
 	upgradeUpgraded extensionUpgradeStatus = "upgraded"
-	upgradePreview  extensionUpgradeStatus = "would upgrade"
-	upgradeManual   extensionUpgradeStatus = "needs manual changes"
-	upgradeFailed   extensionUpgradeStatus = "failed"
-	upgradeSkipped  extensionUpgradeStatus = "skipped"
+	// upgradePartial is a real run that applied every rewrite with one safe form and left uses for the author: the extension builds once they are made.
+	upgradePartial extensionUpgradeStatus = "partly upgraded"
+	// upgradePreview is a dry run whose rewritten extension builds; upgradePreviewPartial one that builds once the listed uses are made.
+	upgradePreview        extensionUpgradeStatus = "would upgrade"
+	upgradePreviewPartial extensionUpgradeStatus = "would partly upgrade"
+	upgradeManual         extensionUpgradeStatus = "needs manual changes"
+	upgradeFailed         extensionUpgradeStatus = "failed"
+	upgradeSkipped        extensionUpgradeStatus = "skipped"
 )
 
 // extensionUpgradeReport is what an upgrade did to one extension.
@@ -151,6 +210,8 @@ type extensionUpgradeReport struct {
 	// Note explains a skipped or failed extension.
 	Note   string
 	Result *upgrade.Result
+	// Unexpected are the build errors of the rewritten extension that the plan does not list.
+	Unexpected []string
 	// Backup is the directory that holds the files as they were.
 	Backup string
 	// Built is set when the upgraded extension compiled.
@@ -162,11 +223,20 @@ func (r extensionUpgradeReport) Ok() bool {
 	return r.Status == upgradeUpToDate || (r.Status == upgradeUpgraded && r.Built)
 }
 
+// rewriteCheck is the outcome of compiling an extension with a plan's rewrites applied.
+type rewriteCheck struct {
+	// Built is set when the rewritten extension compiled and linked.
+	Built bool
+	// Unexpected are the compile errors the plan neither rewrote nor listed, or the build's own failure when it printed none.
+	Unexpected []string
+}
+
 // extensionUpgrader rewrites Go extensions written for an older SDK.
 type extensionUpgrader struct {
 	configRoot string
-	// analyze reads the extension's types and plans the rewrites; rebuild compiles it. They are seams for tests.
+	// analyze reads the extension's types and plans the rewrites; check compiles the extension with them applied in a temporary directory; rebuild compiles it as startup does. They are seams for tests.
 	analyze func(ctx context.Context, config subprocess.ExtConfig) (*upgrade.Result, error)
+	check   func(ctx context.Context, config subprocess.ExtConfig, result *upgrade.Result) (rewriteCheck, error)
 	rebuild func(ctx context.Context, config subprocess.ExtConfig) error
 	now     func() time.Time
 }
@@ -174,6 +244,7 @@ type extensionUpgrader struct {
 func newExtensionUpgrader(configRoot string) *extensionUpgrader {
 	u := &extensionUpgrader{configRoot: configRoot, now: time.Now} //portlint:allow clock the backup directory is named for the real time of the upgrade; Pi has no counterpart (D109)
 	u.analyze = u.analyzeExtension
+	u.check = u.checkRewrite
 	u.rebuild = u.rebuildExtension
 	return u
 }
@@ -218,7 +289,7 @@ func (u *extensionUpgrader) rebuildExtension(ctx context.Context, config subproc
 	return err
 }
 
-// upgrade plans, backs up, rewrites and rebuilds one extension. With dryRun it plans only. It never touches a file the plan does not rewrite, and it is all or nothing: when a write or the rebuild fails, every file it changed is restored.
+// upgrade plans, backs up, rewrites and rebuilds one extension. With dryRun it plans and builds the result in a temporary directory, and writes nothing. It applies every rewrite that has one safe form and lists the rest, with their file, line and form. It never touches a file the plan does not rewrite. A rewrite that would add a compile error of its own is not written; when a write or the rebuild fails for a reason the plan does not list, every file it changed is restored.
 func (u *extensionUpgrader) upgrade(ctx context.Context, config subprocess.ExtConfig, dryRun bool) extensionUpgradeReport {
 	report := extensionUpgradeReport{Name: config.Name, Source: config.Source}
 	if !isGoSourceExtension(config) {
@@ -231,8 +302,9 @@ func (u *extensionUpgrader) upgrade(ctx context.Context, config subprocess.ExtCo
 		return report
 	}
 	report.Result = result
+	leftovers := len(result.Remaining) > 0 || len(result.Skipped) > 0 || len(result.Errors) > 0
 	switch {
-	case !result.Changed() && len(result.Remaining) == 0 && len(result.Skipped) == 0 && len(result.Errors) == 0:
+	case !result.Changed() && !leftovers:
 		report.Status = upgradeUpToDate
 		return report
 	case !result.Changed():
@@ -241,8 +313,25 @@ func (u *extensionUpgrader) upgrade(ctx context.Context, config subprocess.ExtCo
 			report.Status, report.Note = upgradeFailed, "the extension has compile errors that are not SDK changes"
 		}
 		return report
-	case dryRun:
+	}
+	// The build of the result proves what the report promises. A real run with nothing left for the author is proved by its own rebuild, which restores the files when it fails.
+	var check rewriteCheck
+	if dryRun || leftovers {
+		if check, err = u.check(ctx, config, result); err != nil {
+			report.Status, report.Note = upgradeFailed, fmt.Sprintf("build the rewritten extension: %v", err)
+			return report
+		}
+		if !check.Built && len(check.Unexpected) > 0 {
+			report.Status, report.Unexpected = upgradeFailed, check.Unexpected
+			report.Note = "the rewritten extension would not build for a reason that is not an SDK change the upgrade lists; no file was changed"
+			return report
+		}
+	}
+	if dryRun {
 		report.Status = upgradePreview
+		if !check.Built {
+			report.Status = upgradePreviewPartial
+		}
 		return report
 	}
 	if ctx.Err() != nil {
@@ -262,11 +351,16 @@ func (u *extensionUpgrader) upgrade(ctx context.Context, config subprocess.ExtCo
 		written = append(written, change)
 	}
 	if err := u.rebuild(ctx, config); err != nil {
+		if leftovers && !check.Built {
+			// The build fails on the uses the report lists, and on nothing else: the safe rewrites stay.
+			report.Status = upgradePartial
+			return report
+		}
 		report.Status, report.Note = upgradeFailed, rebuildNote(err)+restoreFiles(&report, written)
 		return report
 	}
 	report.Status, report.Built = upgradeUpgraded, true
-	if len(result.Remaining) > 0 || len(result.Skipped) > 0 {
+	if leftovers {
 		report.Status = upgradeManual
 	}
 	return report
@@ -276,6 +370,12 @@ func (u *extensionUpgrader) upgrade(ctx context.Context, config subprocess.ExtCo
 func restoreFiles(report *extensionUpgradeReport, changed []upgrade.FileChange) string {
 	var failed []error
 	for _, change := range changed {
+		if change.Created {
+			if err := os.Remove(change.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				failed = append(failed, err)
+			}
+			continue
+		}
 		if err := writeFileKeepingMode(change.Path, change.Before); err != nil {
 			failed = append(failed, err)
 		}
@@ -307,8 +407,10 @@ type backupManifest struct {
 }
 
 type backupFile struct {
-	Path   string `json:"path"`
-	Backup string `json:"backup"`
+	Path string `json:"path"`
+	// Backup is the copy of the file as it was. A file the upgrade added has none: Added is set, and the original state is that the file did not exist.
+	Backup string `json:"backup,omitempty"` //portlint:allow emptydrop PiG-only backup manifest read back by Go; an added file has no copy
+	Added  bool   `json:"added,omitempty"`  //portlint:allow emptydrop PiG-only backup manifest read back by Go
 }
 
 // backup copies each file the plan rewrites into a directory under the configuration root, with a manifest that maps the copies back.
@@ -321,6 +423,10 @@ func (u *extensionUpgrader) backup(config subprocess.ExtConfig, result *upgrade.
 	}
 	manifest := backupManifest{Extension: config.Name, Source: config.Source, Created: created.Format(time.RFC3339)}
 	for _, change := range result.Files {
+		if change.Created {
+			manifest.Files = append(manifest.Files, backupFile{Path: change.Path, Added: true})
+			continue
+		}
 		relative, err := filepath.Rel(config.Source, change.Path)
 		if err != nil || strings.HasPrefix(relative, "..") {
 			sum := sha256.Sum256([]byte(change.Path))
@@ -392,11 +498,14 @@ func writeFileKeepingMode(path string, data []byte) error {
 	return nil
 }
 
-// printUpgradeReport writes one extension's outcome: the diff of each file the plan changes, what the author still has to change, and the result of the rebuild.
+// printUpgradeReport writes one extension's outcome: the diff of each file the plan changes, what the author still has to change, with the file, line and form of each, and the result of the rebuild.
 func printUpgradeReport(w io.Writer, report extensionUpgradeReport, showDiff bool) {
 	_, _ = fmt.Fprintf(w, "%s: %s\n", report.Name, report.Status)
 	if report.Note != "" {
 		_, _ = fmt.Fprintf(w, "  %s\n", report.Note)
+	}
+	for _, message := range report.Unexpected {
+		_, _ = fmt.Fprintf(w, "  build error: %s\n", message)
 	}
 	result := report.Result
 	if result == nil {
@@ -412,7 +521,12 @@ func printUpgradeReport(w io.Writer, report extensionUpgradeReport, showDiff boo
 			symbols = append(symbols, symbol)
 		}
 		slices.Sort(symbols)
-		_, _ = fmt.Fprintf(w, "  %s: %d change(s) for %s\n", change.Path, len(change.Rewrites), strings.Join(symbols, ", "))
+		switch {
+		case change.Created:
+			_, _ = fmt.Fprintf(w, "  %s: new file with the helpers the changes call\n", change.Path)
+		default:
+			_, _ = fmt.Fprintf(w, "  %s: %d change(s) for %s\n", change.Path, len(change.Rewrites), strings.Join(symbols, ", "))
+		}
 		if showDiff {
 			label := change.Path
 			if relative, err := filepath.Rel(report.Source, change.Path); err == nil && !strings.HasPrefix(relative, "..") {
@@ -424,22 +538,49 @@ func printUpgradeReport(w io.Writer, report extensionUpgradeReport, showDiff boo
 	if report.Backup != "" {
 		_, _ = fmt.Fprintf(w, "  original files: %s\n", report.Backup)
 	}
-	for _, drift := range result.Remaining {
-		_, _ = fmt.Fprintf(w, "  still to change by hand: %s\n", drift)
-		if rule, ok := upgrade.RuleByID(drift.Rule); ok {
-			_, _ = fmt.Fprintf(w, "    %s\n", rule.Remedy)
-		}
-	}
-	for _, skipped := range result.Skipped {
-		_, _ = fmt.Fprintf(w, "  %s:%d: edit by hand (%s): %s\n", skipped.File, skipped.Line, skipped.Symbol, skipped.Reason)
-	}
-	for _, message := range result.Errors {
-		_, _ = fmt.Fprintf(w, "  compile error: %s\n", message)
-	}
+	printManualChanges(w, result)
 	switch {
 	case report.Status == upgradeUpgraded && report.Built:
 		_, _ = fmt.Fprintln(w, "  rebuilt: ok")
 	case report.Status == upgradeManual && report.Built:
 		_, _ = fmt.Fprintln(w, "  rebuilt: ok")
+	case report.Status == upgradePartial:
+		_, _ = fmt.Fprintln(w, "  rebuilt: no; the extension builds once the changes listed above are made")
+	case report.Status == upgradePreview:
+		_, _ = fmt.Fprintln(w, "  build of the rewritten extension: ok")
+	case report.Status == upgradePreviewPartial:
+		_, _ = fmt.Fprintln(w, "  build of the rewritten extension: fails only on the changes listed above")
+	}
+}
+
+// printManualChanges lists what the upgrade leaves for the author: each use with its file and line and the form to write, then the changes the compiler still rejects and any compile error that is not an SDK change.
+func printManualChanges(w io.Writer, result *upgrade.Result) {
+	for _, skipped := range result.Skipped {
+		_, _ = fmt.Fprintf(w, "  %s:%d: edit by hand (%s): %s\n", skipped.File, skipped.Line, skipped.Symbol, skipped.Reason)
+		switch {
+		case skipped.Suggest != "":
+			_, _ = fmt.Fprintf(w, "    write: %s\n", skipped.Suggest)
+		default:
+			if rule, ok := upgrade.RuleByID(skipped.Rule); ok {
+				_, _ = fmt.Fprintf(w, "    %s\n", rule.Remedy)
+			}
+		}
+	}
+	listed := map[string]int{}
+	for _, skipped := range result.Skipped {
+		listed[skipped.Symbol]++
+	}
+	for _, drift := range result.Remaining {
+		// A use listed above, with its line, is not listed twice.
+		if listed[drift.Symbol] >= drift.Count {
+			continue
+		}
+		_, _ = fmt.Fprintf(w, "  still to change by hand: %s\n", drift)
+		if rule, ok := upgrade.RuleByID(drift.Rule); ok {
+			_, _ = fmt.Fprintf(w, "    %s:%d: %s\n", drift.File, drift.Line, rule.Remedy)
+		}
+	}
+	for _, message := range result.Errors {
+		_, _ = fmt.Fprintf(w, "  compile error: %s\n", message)
 	}
 }

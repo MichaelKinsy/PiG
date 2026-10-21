@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -67,6 +66,8 @@ type result struct {
 	// for any other reason, so adding them alone cannot prove it. -fix-cells only adds: it never drops a citation or edits prose.
 	Add   []string
 	Other bool
+	// Skipped marks a row that another shard derives (-shard); it is not judged here.
+	Skipped bool
 }
 
 type reviewedEntry struct {
@@ -88,24 +89,41 @@ func main() {
 	updateBaseline := flag.Bool("update-baseline", false, "rewrite the baseline from the current derivation (shrink-only review)")
 	generate := flag.Bool("generate", false, "rewrite the PORT_MAP status column from the derivation")
 	doFixCells := flag.Bool("fix-cells", false, "rewrite the cited-file cell of every row whose only failures are WRONG-FILE or ZERO-SYMBOL")
+	shardFlag := flag.String("shard", "", "check only shard `N/M` of the ✅ rows (1 <= N <= M); every shard must pass, and together they check every row once")
 	flag.Parse()
-	res, err := checkWith(*root, true)
+	shard, err := parseShard(*shardFlag)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "portmapcheck:", err)
+		os.Exit(2)
+	}
+	if shard.total > 0 && (*updateBaseline || *generate || *doFixCells) {
+		fmt.Fprintln(os.Stderr, "portmapcheck: -shard judges part of the rows; -update-baseline, -generate and -fix-cells need all of them")
+		os.Exit(2)
+	}
+	res, err := checkShard(*root, true, shard)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "portmapcheck:", err)
 		os.Exit(2)
 	}
 	proven, unproven := 0, 0
 	for _, r := range res {
+		if r.Skipped {
+			continue
+		}
 		if r.Proven {
 			proven++
 		} else {
 			unproven++
 		}
 	}
-	fmt.Printf("portmap-check: %d ✅ rows, %d proven by the ledger, %d unproven\n", len(res), proven, unproven)
+	if shard.total > 0 {
+		fmt.Printf("portmap-check: shard %d/%d: %d of %d ✅ rows, %d proven by the ledger, %d unproven\n", shard.index+1, shard.total, proven+unproven, len(res), proven, unproven)
+	} else {
+		fmt.Printf("portmap-check: %d ✅ rows, %d proven by the ledger, %d unproven\n", len(res), proven, unproven)
+	}
 	if *report {
 		for _, r := range res {
-			if !r.Proven {
+			if !r.Skipped && !r.Proven {
 				fmt.Printf("%s | %s\n", r.Row.Pi, strings.Join(r.Reasons, "; "))
 			}
 		}
@@ -153,6 +171,12 @@ func check(root string) ([]result, error) { return checkWith(root, false) }
 // cited files and the evidence tests, that those tests pass and execute statements of every mapped cited file that has a function body
 // (rule 3; a file of declarations only has no statement to execute).
 func checkWith(root string, needCoverage bool) ([]result, error) {
+	return checkShard(root, needCoverage, shardSpec{})
+}
+
+// checkShard is checkWith for one shard of the ✅ rows: a row outside the shard is returned with Skipped set and nothing else derived
+// for the coverage run, so the shards together cover every row once.
+func checkShard(root string, needCoverage bool, shard shardSpec) ([]result, error) {
 	rows, err := readRows(root)
 	if err != nil {
 		return nil, err
@@ -174,51 +198,41 @@ func checkWith(root string, needCoverage bool) ([]result, error) {
 			return nil, fmt.Errorf("%s: %w", mutantsFile, err)
 		}
 	}
-	// Rows are independent: each runs its own evidence tests (go test processes with their own temp files), so the
-	// coverage runs go in parallel and the results keep PORT_MAP order.
 	var candidates []row
 	for _, r := range rows {
 		if r.Status == "✅" {
 			candidates = append(candidates, r)
 		}
 	}
+	// The derivation reads files only; the evidence runs below are where the time goes.
 	slots := make([]result, len(candidates))
-	sem := make(chan struct{}, max(1, runtime.NumCPU()/2))
 	var wg sync.WaitGroup
 	for i, r := range candidates {
-		wg.Go(func() {
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			slots[i] = deriveRow(root, r, inv, reviewed[r.Pi], markers, mutants[r.Pi], needCoverage)
-		})
+		wg.Go(func() { slots[i] = deriveRow(root, r, inv, reviewed[r.Pi], markers, needCoverage) })
 	}
 	wg.Wait()
+	if shard.total > 0 {
+		for i, s := range partition(slots, shard.total) {
+			slots[i].Skipped = s != shard.index
+		}
+	}
+	if needCoverage {
+		proveByEvidence(root, slots, mutants)
+	}
 	return slots, nil
 }
 
-func deriveRow(root string, r row, inv *inventory, reviewed reviewedEntry, markers map[string][]string, rowMutants []mutant, needCoverage bool) result {
-	{
-		res := derive(root, r, inv, reviewed, markers)
-		if needCoverage && res.Marker && onlyMarkerReason(res) {
-			res.Reasons, res.Proven = nil, true // coverage and a killed mutant decide below
-		}
-		if res.Proven {
-			res.Tests = evidenceTests(root, r.Pi, inv, markers)
-		}
-		if needCoverage && res.Proven {
-			e := coverageFor(root, res)
-			if why := coverageProblem(root, res, e); why != "" {
-				res.Proven = false
-				res.Reasons = append(res.Reasons, why)
-			} else if res.Marker {
-				if why := mutantProblem(root, res, rowMutants); why != "" {
-					res.Proven = false
-					res.Reasons = append(res.Reasons, why)
-				}
-			}
-		}
-		return res
+// deriveRow is the file-only derivation of one row: its ledger members, cited files and evidence tests. A row proven here still needs its
+// coverage record (proveByEvidence) when the check asks for coverage.
+func deriveRow(root string, r row, inv *inventory, reviewed reviewedEntry, markers map[string][]string, needCoverage bool) result {
+	res := derive(root, r, inv, reviewed, markers)
+	if needCoverage && res.Marker && onlyMarkerReason(res) {
+		res.Reasons, res.Proven = nil, true // coverage and a killed mutant decide later
 	}
+	if res.Proven {
+		res.Tests = evidenceTests(root, r.Pi, inv, markers)
+	}
+	return res
 }
 
 func derive(root string, r row, inv *inventory, reviewed reviewedEntry, markers map[string][]string) result {
@@ -707,6 +721,9 @@ func compareBaseline(root string, res []result) ([]string, error) {
 	seen := map[string]bool{}
 	for _, r := range res {
 		seen[r.Row.Pi] = true
+		if r.Skipped {
+			continue
+		}
 		if !r.Proven && !base[r.Row.Pi] {
 			problems = append(problems, fmt.Sprintf("%s:%d %s is ✅ but the ledger does not derive it: %s", portMapFile, r.Row.Line, r.Row.Pi, strings.Join(r.Reasons, "; ")))
 		}

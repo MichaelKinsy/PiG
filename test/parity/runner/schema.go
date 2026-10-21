@@ -215,6 +215,12 @@ type EnvOverrides struct {
 	// PigGoTests lists the packages (./-relative to cli.cwd) whose test binaries a cli-mode pig script runs through
 	// test/parity/testdata/prebuilt-go-test.sh. The runner builds them before the timed runs (go_prebuild.go).
 	PigGoTests []string `toml:"pig_go_tests"`
+	// PiGoTests is PigGoTests for the Pi side: a Pi script that dumps Go-side probes runs the test binaries through the same helper.
+	PiGoTests []string `toml:"pi_go_tests"`
+	// PigGoPrograms and PiGoPrograms list the main packages (./-relative to cli.cwd) a script of that side runs through
+	// test/parity/testdata/prebuilt-go-run.sh instead of `go run`. The runner builds them before the timed runs.
+	PigGoPrograms []string `toml:"pig_go_programs"`
+	PiGoPrograms  []string `toml:"pi_go_programs"`
 }
 
 // AssertSpec lists the assertions to evaluate against driver results.
@@ -353,16 +359,19 @@ func validate(sc *Scenario) error {
 	if sc.CLI.SnapshotCWD && sc.CLI.CWD == "" {
 		return fmt.Errorf("cli.snapshot_cwd requires cli.cwd")
 	}
-	if len(sc.Env.PigGoTests) > 0 {
+	for field, pkgs := range map[string][]string{"pig_go_tests": sc.Env.PigGoTests, "pi_go_tests": sc.Env.PiGoTests, "pig_go_programs": sc.Env.PigGoPrograms, "pi_go_programs": sc.Env.PiGoPrograms} {
+		if len(pkgs) == 0 {
+			continue
+		}
 		if sc.Driver != "cli-mode" {
-			return fmt.Errorf("pig_go_tests requires the cli-mode driver")
+			return fmt.Errorf("%s requires the cli-mode driver", field)
 		}
 		if sc.CLI.CWD == "" || strings.Contains(sc.CLI.CWD, "{{") {
-			return fmt.Errorf("pig_go_tests requires a fixed cli.cwd: its packages are relative to it")
+			return fmt.Errorf("%s requires a fixed cli.cwd: its packages are relative to it", field)
 		}
-		for _, pkg := range sc.Env.PigGoTests {
+		for _, pkg := range pkgs {
 			if !isLocalGoPackage(pkg) {
-				return fmt.Errorf("pig_go_tests entry %q must be a ./-relative package directory inside cli.cwd", pkg)
+				return fmt.Errorf("%s entry %q must be a ./-relative package directory inside cli.cwd", field, pkg)
 			}
 		}
 	}

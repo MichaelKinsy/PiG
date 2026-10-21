@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 if (process.argv[2] === "pig") {
-  process.stdout.write(execFileSync("go", ["run", "./test/parity/testdata/models-runtime-go"], { encoding: "utf8" }));
+  process.stdout.write(execFileSync("./test/parity/testdata/prebuilt-go-run.sh", ["./test/parity/testdata/models-runtime-go"], { encoding: "utf8" }));
 } else {
   const root = join(process.env.PI_PACKAGE_ROOT, "node_modules/@earendil-works/pi-ai/dist");
   const { createModels, createProvider } = await import(pathToFileURL(join(root, "models.js")));

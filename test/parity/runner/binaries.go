@@ -159,6 +159,19 @@ func failOrSkipMissingBinary(t *testing.T, reason string) {
 		"Set PIG_PARITY_ALLOW_ZERO=1 to accept this on purpose.", reason)
 }
 
+// upstreamMirrorMissing reports why the Pi source mirror (.upstream/current, made by `make upstream-mirror`) is unusable, or nil. Scenario
+// oracles and extensions import the mirrored Pi source (the codemode declarations, the example extensions), and the mirror is untracked, so a
+// fresh clone has none: without this check each of those scenarios fails on its own module-not-found or build-type error, on both sides, and the
+// cause reads as a scenario failure.
+func upstreamMirrorMissing(repoRoot string) error {
+	mirror := filepath.Join(repoRoot, ".upstream", "current")
+	info, err := os.Stat(filepath.Join(mirror, "packages"))
+	if err == nil && info.IsDir() {
+		return nil
+	}
+	return fmt.Errorf("Pi mirror missing: %s has no packages directory: run `make upstream-mirror`", mirror)
+}
+
 // ResolveUpstreamPiBin finds the highest-versioned upstream pi binary
 // installed by mise.
 //
