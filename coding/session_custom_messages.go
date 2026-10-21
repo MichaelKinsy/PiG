@@ -122,6 +122,7 @@ func (s *Session) startCustomRun(ctx context.Context, start *RunStart, app agent
 	if err != nil {
 		return fail(err)
 	}
+	prepared.takeNextTurn()
 	if schedule == nil {
 		return s.beginCustomRun(ctx, start, app, prepared)
 	}
@@ -150,7 +151,7 @@ func (s *Session) beginCustomRun(ctx context.Context, start *RunStart, app agent
 		return fail(errors.New("coding: session is closed"))
 	default:
 	}
-	starting := append([]agent.AgentMessage{app}, s.agent.TakePendingNextTurn()...)
+	starting := append([]agent.AgentMessage{app}, prepared.nextTurn...)
 	runCtx, cancel := context.WithCancel(ctx)
 	run, err := s.agent.BeginSendMessages(runCtx, starting)
 	if err != nil {
