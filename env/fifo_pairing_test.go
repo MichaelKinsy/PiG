@@ -83,6 +83,7 @@ func readFIFOWithin(fifo string, exited <-chan struct{}, read func() outcome, in
 // with ENXIO and there is nothing to signal. Windows has no FIFOs and the tests that use them skip there; the check
 // is made at run time so env carries no Windows-only test file (automation/ci/windows-test-packages.sh selects those).
 func redeliverFIFOEOF(path string) {
+	probeRedeliveriesTotal.Add(1)
 	if runtime.GOOS == "windows" {
 		return
 	}

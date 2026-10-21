@@ -15,11 +15,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {id: a, burners: 0, signals: ''}
-          - {id: b, burners: 0, signals: 200us}
-          - {id: c, burners: 2, signals: 200us}
-          - {id: d, burners: 0, signals: 1ms}
-          - {id: e, burners: 4, signals: ''}
+          - {id: f, burners: 0, signals: '', signame: WINCH, pattern: ''}
+          - {id: g, burners: 0, signals: 200us, signame: WINCH, pattern: '^(TestPairFIFOOpensBothEndsOnOneGoroutine|TestReadFIFOReturnsAfterWriterClosesWhateverTheInterleaving|TestZZProbeReport)$'}
+          - {id: h, burners: 0, signals: '', signame: WINCH, pattern: '^(TestPairFIFOOpensBothEndsOnOneGoroutine|TestReadFIFOReturnsAfterWriterClosesWhateverTheInterleaving|TestZZProbeReport)$'}
+          - {id: i, burners: 0, signals: 1ms, signame: CHLD, pattern: '^(TestPairFIFOOpensBothEndsOnOneGoroutine|TestReadFIFOReturnsAfterWriterClosesWhateverTheInterleaving|TestZZProbeReport)$'}
+          - {id: j, burners: 0, signals: 1ms, signame: CHLD, pattern: '^(TestProbeReadFIFO|TestZZProbeReport)$'}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -32,6 +32,8 @@ jobs:
         shell: bash
         env:
           PROBE_SIGNALS: ${{ matrix.signals }}
+          PROBE_SIGNAL_NAME: ${{ matrix.signame }}
+          PATTERN: ${{ matrix.pattern }}
         run: |
           sw_vers; sysctl -n hw.ncpu; uname -a
           go test -c -o /tmp/env.test ./env
@@ -40,13 +42,14 @@ jobs:
           mkdir -p /tmp/results; res=/tmp/results/${{ matrix.id }}.txt
           { sw_vers; sysctl -n hw.ncpu; } > $res 2>&1
           fails=0; runs=0
-          end=$((SECONDS + 900))
+          end=$((SECONDS + 840))
           while [ $SECONDS -lt $end ]; do
             runs=$((runs+1))
-            if ! /tmp/env.test -test.run '^TestProbeReadFIFO$' -test.v > /tmp/out.$runs 2>&1; then
-              fails=$((fails+1)); echo "=== FAIL run $runs"; cat /tmp/out.$runs; { echo "=== FAIL run $runs"; cat /tmp/out.$runs; } >> $res
+            runargs=(); if [ -n "$PATTERN" ]; then runargs=(-test.run "$PATTERN"); fi
+            if ! /tmp/env.test "${runargs[@]}" -test.v > /tmp/out.$runs 2>&1; then
+              fails=$((fails+1)); echo "=== FAIL run $runs"; { echo "=== FAIL run $runs"; grep -E 'WINDOW|REPORT|--- FAIL|fifo_pairing|fifo_probe|^ +\+' /tmp/out.$runs | head -80; } >> $res
             else
-              grep -h 'rounds=' /tmp/out.$runs; grep -h 'rounds=' /tmp/out.$runs >> $res
+              { echo "=== ok run $runs"; grep -E 'WINDOW|REPORT|rounds=' /tmp/out.$runs; } >> $res
             fi
           done
           echo "SUMMARY burners=${{ matrix.burners }} signals=${{ matrix.signals }} runs=$runs fails=$fails"

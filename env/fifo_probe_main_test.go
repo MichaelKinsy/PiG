@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -42,7 +43,45 @@ func (p *probeTrace) String() string {
 	return b.String()
 }
 
-var probeRedeliveries, probeRounds, probeHangs atomic.Int64
+var probeRedeliveries, probeRounds, probeHangs, probeRedeliveriesTotal atomic.Int64
+
+// probeSignals counts every signal the test process receives, by number.
+var probeSignals [65]atomic.Int64
+
+func probeSignalReport() string {
+	var b strings.Builder
+	for n := range probeSignals {
+		if c := probeSignals[n].Load(); c > 0 {
+			fmt.Fprintf(&b, " %v=%d", syscall.Signal(n), c)
+		}
+	}
+	return b.String()
+}
+
+func init() {
+	ch := make(chan os.Signal, 4096)
+	signal.Notify(ch)
+	go func() {
+		for sig := range ch {
+			if s, ok := sig.(syscall.Signal); ok && int(s) < len(probeSignals) {
+				probeSignals[int(s)].Add(1)
+			}
+		}
+	}()
+	if gap, err := time.ParseDuration(os.Getenv("PROBE_SIGNALS")); err == nil && gap > 0 {
+		sig := syscall.SIGWINCH
+		if os.Getenv("PROBE_SIGNAL_NAME") == "CHLD" {
+			sig = syscall.SIGCHLD
+		}
+		go func() {
+			for {
+				_ = syscall.Kill(os.Getpid(), sig)
+				time.Sleep(gap)
+			}
+		}()
+	}
+}
+
 
 // probeReadFile is os.ReadFile with a note after each step.
 func probeReadFile(name string, tr *probeTrace) outcome {
@@ -101,25 +140,9 @@ func probeReadFIFOWithin(fifo string, exited <-chan struct{}, tr *probeTrace, in
 }
 
 func TestProbeReadFIFO(t *testing.T) {
+	signalsBefore := probeSignalReport()
+	defer func() { t.Logf("WINDOW signals before:%s after:%s", signalsBefore, probeSignalReport()) }()
 	workers, rounds := 8, 1500
-	if os.Getenv("PROBE_SIGNALS") != "" {
-		// Signals interrupt a thread asleep in a FIFO open (msleep with PCATCH), which makes fifo_open take its
-		// error path; the storm shows whether that path loses or mis-pairs what the round depends on.
-		gap, _ := time.ParseDuration(os.Getenv("PROBE_SIGNALS"))
-		stop := make(chan struct{})
-		defer close(stop)
-		go func() {
-			for {
-				select {
-				case <-stop:
-					return
-				default:
-				}
-				_ = syscall.Kill(os.Getpid(), syscall.SIGWINCH)
-				time.Sleep(gap)
-			}
-		}()
-	}
 	var wg sync.WaitGroup
 	failures := make(chan string, workers*4)
 	for range workers {
