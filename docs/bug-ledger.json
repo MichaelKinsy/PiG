@@ -34247,6 +34247,44 @@
       "tests": []
     },
     {
+      "id": "BF-19a07f0",
+      "title": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and…",
+      "symptom": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and args_raw fields",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "19a07f0266",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-1ed43b3",
+      "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
+      "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1ed43b3d96",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b429de0",
       "title": "A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool…",
       "symptom": "A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool that returned while a sibling tool in the same batch still awaited reached an RPC client behind the sibling's own output in up to two runs in five, where Pi writes it right after the first tool's `tool_execution_end`.",
@@ -34278,6 +34316,45 @@
         "internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers",
         "test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun"
       ]
+    },
+    {
+      "id": "BF-d2aadd9",
+      "title": "A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an…",
+      "symptom": "A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an earlier member's factory has run.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an earlier member's factory has run. The generated runner started every member on a thread of its own and let them race for the factory turn; the host accepts the members in order and serves a connection only after the members before it, so a later member whose factory subscribed to the event bus held the turn and waited for a host that waited for the earlier member. The runner now starts each member's factory in the cell's order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d2aadd9e60",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-4e8c517",
+      "title": "fix(runtimecell): keep the Python runner's _run callable without the built event",
+      "symptom": "fix(runtimecell): keep the Python runner's _run callable without the built event",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4e8c517e40",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": []
     }
   ],
   "divergences": [

@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-1042 bugs. 992 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 164 bugs have no recorded test.
+1046 bugs. 996 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 168 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -1060,7 +1060,11 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-8343791](#bf-8343791) | CI: `TestStartupReusesPreTrustExtensionsAcrossEntrypoints` no longer reads an extension process that is still… | PiG's own defect | All platforms | Unreleased |
 | [BF-df96b6a](#bf-df96b6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-19a07f0](#bf-19a07f0) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
+| [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-b429de0](#bf-b429de0) | A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool… | PiG's own defect | All platforms | Unreleased |
+| [BF-d2aadd9](#bf-d2aadd9) | A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an… | PiG's own defect | All platforms | Unreleased |
+| [BF-4e8c517](#bf-4e8c517) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -15570,6 +15574,32 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `df96b6a5ac` (2026-10-21)
 - **Tests:** None recorded.
 
+### BF-19a07f0
+
+**fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and args_raw fields
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `19a07f0266` (2026-10-21)
+- **Tests:** None recorded.
+
+### BF-1ed43b3
+
+**fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1ed43b3d96` (2026-10-21)
+- **Tests:** None recorded.
+
 ### BF-b429de0
 
 **A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool…**
@@ -15583,6 +15613,33 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fix commits:** `0edebb2f36` (2026-10-21), `b429de0f57` (2026-10-21)
 - **Tests:** `coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTickCallsOfAToolRunAfterItsEndWhenTheyArriveLate`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTimerCallbackCallsWaitForTheLoopTurn`, `internal/jsloop/turns_test.go::TestTurnsForgetATickBoundaryWhenTheToolCallStartsAgain`, `internal/jsloop/turns_test.go::TestTurnsRunALateTickAtOnceWhileNoWaitIsOpen`, `internal/jsloop/turns_test.go::TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst`, `internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers`, `test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun`
 - **Release note:** A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool that returned while a sibling tool in the same batch still awaited reached an RPC client behind the sibling's own output in up to two runs in five, where Pi writes it right after the first tool's `tool_execution_end`. The Node runtime is another process: it wrote the callback's host call a few hundred microseconds after the tool's answer, and the host passed that tool's `tool_execution_end` in about the same time, so a call that arrived after it waited for the next `tool_execution_end` of any tool. The call now says which tool call queued its callback (`origin_tool_call_id`). The host runs it behind that call's `tool_execution_end` when it arrives before the event, and at once when it arrives after, where the runtime says a sibling tool still runs and the loop turns.
+
+### BF-d2aadd9
+
+**A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an earlier member's factory has run.
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d2aadd9e60` (2026-10-21)
+- **Tests:** None recorded.
+- **Release note:** A packed Go, Python or Rust cell no longer hangs when a later member's factory calls the host before an earlier member's factory has run. The generated runner started every member on a thread of its own and let them race for the factory turn; the host accepts the members in order and serves a connection only after the members before it, so a later member whose factory subscribed to the event bus held the turn and waited for a host that waited for the earlier member. The runner now starts each member's factory in the cell's order.
+
+### BF-4e8c517
+
+**fix(runtimecell): keep the Python runner's _run callable without the built event**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(runtimecell): keep the Python runner's _run callable without the built event
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4e8c517e40` (2026-10-21)
+- **Tests:** None recorded.
 
 ## Divergences from Pi added in this release
 
