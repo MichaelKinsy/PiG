@@ -128,12 +128,13 @@ func formatTokenCount(count int) string {
 	return fmt.Sprintf("%d", count)
 }
 
-// printModelList enumerates the models available in the given registry (already
-// populated with any extension-contributed providers) plus built-in models with
-// configured auth, then prints the catalog. Mirrors upstream listModels, which
-// runs after the extension-populated modelRuntime is built. The caller owns
-// process exit and extension-host teardown.
-func printModelList(registry *codingagent.ModelRegistry, agentDir, search string) {
+// printModelList prints the models the given registry (already populated with any
+// extension-contributed providers) reports as available. Mirrors upstream
+// listModels (cli/list-models.ts), which lists exactly modelRuntime.getAvailable():
+// a built-in model the runtime's own catalog no longer carries, such as one an
+// OpenRouter personalized catalog dropped, is not listed. The caller owns process
+// exit and extension-host teardown.
+func printModelList(registry *codingagent.ModelRegistry, search string) {
 	// Load error handling mirrors upstream.
 	if loadErr := registry.LoadError(); loadErr != "" {
 		fmt.Fprintln(os.Stderr, chalkYellow("Warning: errors loading models.json:\n"+loadErr))
@@ -141,33 +142,6 @@ func printModelList(registry *codingagent.ModelRegistry, agentDir, search string
 
 	// Auth-filtered models: mirrors upstream modelRegistry.getAvailable().
 	entries := registry.GetAvailable()
-
-	// Also include built-in models with configured auth (env keys, auth.json).
-	authed := codingagent.AuthenticatedProviders(agentDir)
-	for _, m := range ai.ListModels("") {
-		if !authed[m.Provider] {
-			continue
-		}
-		// Skip duplicates already covered by registry entries.
-		dup := false
-		for _, e := range entries {
-			if e.ProviderID == m.Provider && e.ModelID == m.ID {
-				dup = true
-				break
-			}
-		}
-		if !dup {
-			entries = append(entries, codingagent.ModelEntry{
-				ProviderID:    m.Provider,
-				ModelID:       m.ID,
-				DisplayName:   m.DisplayName,
-				Reasoning:     m.Reasoning,
-				Input:         m.Capabilities,
-				ContextWindow: m.ContextWindow,
-				MaxTokens:     m.MaxOutputTokens,
-			})
-		}
-	}
 
 	for _, line := range modelListLines(entries, search) {
 		fmt.Println(line)
