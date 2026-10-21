@@ -230,8 +230,7 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 		// keying only on stagedSDK would leave every such build unfingerprinted and
 		// indistinguishable from one of unknown provenance.
 		if fp, err := b.buildSDKFingerprint(srcDir, stagedSDK, buildType); err == nil && fp != "" {
-			marker := filepath.Join(filepath.Dir(entry.ArtifactPath), sdkFingerprintFile)
-			_ = os.WriteFile(marker, []byte(fp), 0o644)
+			recordSDKFingerprint(filepath.Dir(entry.ArtifactPath), fp)
 		}
 
 		return &BuildResult{BinaryPath: entry.ArtifactPath, Cached: entry.Reused, Hash: hash, Language: buildType}, nil

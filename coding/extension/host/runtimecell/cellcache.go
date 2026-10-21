@@ -206,7 +206,19 @@ func isSHA256Hex(value string) bool {
 
 // ReusePublishedArtifact returns the complete entry at finalDir published for
 // want, if one exists, and records its use. It never builds or waits for a lock.
+// The check and the record happen under the entry's shared usage lock, which a
+// collection holds exclusively while it renames an entry away: the entry is
+// either reused and recorded before a collection can take the lock, or the
+// collector has it and the entry is not reused.
 func ReusePublishedArtifact(finalDir string, want EntryIdentity) (PublishedEntry, bool) {
+	if _, ok := validCellEntry(finalDir, want); !ok {
+		return PublishedEntry{}, false
+	}
+	lock, ok := tryLockUsageShared(finalDir)
+	if !ok {
+		return PublishedEntry{}, false
+	}
+	defer func() { _ = lock.Unlock() }()
 	art, ok := validCellEntry(finalDir, want)
 	if !ok {
 		return PublishedEntry{}, false
