@@ -4,4 +4,4 @@
 
 ### Upgrading
 
-- Rust SDK: `pig_sdk::Color` is now `pig_sdk::tui::Color`, so an indexed color is `Color::Indexed(5)` instead of `Color::Indexed { index: 5 }`. `Color::Rgb { r, g, b }`, `Color::Oklch { l, c, h }` and `TextAttributes` are unchanged. Go (`sdk.Color`, `sdk.IndexedColor`, `sdk.RgbColorValue`, `sdk.OklchColorValue`, `sdk.TextAttributes`) are now aliases of the `extensions/sdk/tui` types, so code that used either set keeps compiling; a custom type can no longer implement `sdk.Color`, as before.
+- Rust SDK: `pig_sdk::Color` is now `pig_sdk::tui::Color`, so an indexed color is `Color::Indexed(5)` instead of `Color::Indexed { index: 5 }`. `Color::Rgb { r, g, b }`, `Color::Oklch { l, c, h }` and `TextAttributes` are unchanged. The Go SDK's color types are unchanged.
