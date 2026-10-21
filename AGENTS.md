@@ -308,7 +308,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `compaction` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 134 | 133 | 0 | 1 | 0 | 62 | not run |
+| `extensions-runtime` | 136 | 135 | 0 | 1 | 0 | 62 | not run |
 | `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 13 | 13 | 0 | 0 | 0 | 10 | not run |
 | `interactive-rendering` | 68 | 67 | 1 | 0 | 0 | 37 | not run |
@@ -320,9 +320,9 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `project-trust` | 26 | 26 | 0 | 0 | 0 | 19 | not run |
 | `providers-faux-streaming` | 66 | 65 | 0 | 1 | 0 | 49 | not run |
 | `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
-| `rpc` | 71 | 71 | 0 | 0 | 0 | 32 | not run |
+| `rpc` | 74 | 74 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
-| `session` | 42 | 42 | 0 | 0 | 0 | 19 | not run |
+| `session` | 43 | 43 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 28 | 27 | 1 | 0 | 0 | 20 | not run |
 | `startup` | 19 | 18 | 1 | 0 | 0 | 10 | not run |
@@ -647,7 +647,7 @@ artifacts, and published evidence.
 
 ## Commit hygiene
 
-User-facing changes go in `changelog.d/<lane>-<sha>.md`, one fragment per commit range, as `### Added`, `### Changed`, `### Fixed` (and `Upgrading`, `Deprecated`, `Removed`, `Security`, `Known issues`) sections of bullets in `CHANGELOG.md`'s style. `### Upgrading` is what a user of the previous release must change; the fold appends it to the release's "Upgrading from" section. Do not edit `CHANGELOG.md`. `make changelog-check` validates the fragments and `make changelog-unreleased` prints the assembly; fragments that predate the name rule are listed in `automation/ci/changelogfrag/legacy.txt` and the list only shrinks. The integrator runs `make changelog-fold VERSION=x.y.z` to append the fragments to that release in `CHANGELOG.md` and delete them; it runs again at release for fragments written since.
+User-facing changes go in `changelog.d/<lane>-<sha>.md`, one fragment per commit range, as `### Added`, `### Changed`, `### Fixed` (and `Upgrading`, `Deprecated`, `Removed`, `Security`, `Known issues`) sections of bullets in `CHANGELOG.md`'s style. `<sha>` is a commit of the range reachable from `HEAD`; a rebase, squash or amend replaces SHAs, so rename the fragment after the commit that replaced it. Every `### Fixed` bullet ends with `<!-- fix: <sha> -->` naming the commit (or commits, comma-separated) that fixes it, also reachable from `HEAD`: the bug ledger reads `### Fixed`, and a bullet without a marker has its commits guessed from history, which once credited the 0.5.0 squash and its ~11,000 tests to five bullets. `### Upgrading` is what a user of the previous release must change; the fold appends it to the release's "Upgrading from" section. Do not edit `CHANGELOG.md`. `make changelog-check` validates the names, sections, markers and reachability against the full history of `HEAD` (a shallow clone fails) and `make changelog-unreleased` prints the assembly; fragments whose commits a squash replaced before these rules are listed in `automation/ci/changelogfrag/legacy.txt`, are exempt from the name and marker rules, and the list only shrinks. The integrator runs `make changelog-fold VERSION=x.y.z` to append the fragments to that release in `CHANGELOG.md` and delete them; it runs again at release for fragments written since. `make bug-ledger` refuses to attribute the tests of a commit that touches more than 500 files (a squash or merge) and names the entry; name the real fix commit in its marker.
 
 Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `.github/CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 

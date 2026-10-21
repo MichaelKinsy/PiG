@@ -1,0 +1,31 @@
+# Pi 1.3.0 (1402973a) interactive-mode.ts:4305-4324 (shutdown from a signal), :4346-4352 (emergencyTerminalExit),
+# :4402-4417 (registerSignalHandlers); footer-data-provider.ts:316 (the .git/HEAD watcher).
+# An idle session in a git repository loses its terminal: the PTY, the session's controlling terminal, closes its
+# master while nothing is pending, and no Ctrl+D byte is sent. Pi's footer watches .git/HEAD, so its event loop
+# stays alive and the kernel's SIGHUP runs the graceful shutdown, whose title and keyboard-protocol writes meet EIO
+# and take the emergency exit: 129. PiG reads the end of input on a hung-up terminal as a dead terminal and exits 129
+# (D102 records its exit.log line; D186 records that Pi exits 0 instead when its event loop holds nothing). The probe adds no ticker, unlike 10-terminal-disconnect-exit: that scenario keeps
+# a plain-directory session working so a render is pending, because an idle Pi with nothing left in its event loop
+# can exit 0 before its SIGHUP handler runs.
+name = "36-terminal-disconnect-idle-repo"
+description = "A dead terminal under an idle session in a git repository exits 129"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe defaults to PIG_PARITY_PIG_BIN so it uses the verified harness build.
+pig_args = ["python3", "test/parity/testdata/session-wire.py", "--case", "disconnect-repo"]
+pi_args = ["python3", "test/parity/testdata/session-wire.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi", "--case", "disconnect-repo"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

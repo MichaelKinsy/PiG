@@ -22,6 +22,11 @@ var (
 // maxEditedTests is the most tests a commit may edit in place before the edits stop counting as the fix's guards.
 const maxEditedTests = 5
 
+// maxCommitFiles is the most files one commit may touch and still be a commit whose tests the ledger attributes to a fix. A commit above it is a squash or a merge of many changes: its tests are the tests of everything it carries, not of one fix, and crediting them to an entry made the 0.5.0 squash (13,725 files, about 11,000 tests) the "fix" of every release note that named no commit of its own.
+//
+// The threshold sits between the two populations of the repository's history. Counting every file a commit touches (git show --name-only --no-renames; the first parent for a merge), the largest fix-titled commit is 246 files (492afa2b, "Fix package skills directories") and the largest fix the ledger lists under another title is 237 (b341a82e, "go install works again", which adds 235 pinned ledger files); no other fix-titled commit is above 106. Every release or content squash above 500 is far larger: 799 (a8c5ae1b, Pi 1.0.3 content), 3,572 (0.2.0), 3,968 (0.4.0), 8,439 (0.3.0) and 13,725 (0.5.0). 500 is twice the largest legitimate fix and below the smallest of those squashes, so a legitimate fix does not trip it and a release squash always does. A feature pull request squash may sit between the two (f91b5a54, 400 files); it is not a fix, so it names no entry.
+const maxCommitFiles = 500
+
 // testIndex lists, for every Go test function in the tree under root, the files that declare it.
 type testIndex map[string][]string
 

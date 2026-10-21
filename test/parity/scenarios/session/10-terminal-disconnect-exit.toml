@@ -2,6 +2,7 @@
 # A positional extension command writes a readiness marker after initialization.
 # Close the PTY master (not a Ctrl+D byte) and compare the complete wait-status
 # record. The live SIGHUP control proves that a signal alone is not a dead tty.
+# The session keeps a status ticker running: an idle plain-directory Pi can exit 0 at the hangup instead (D186).
 name = "10-terminal-disconnect-exit"
 description = "A dead terminal exits 129 while a live SIGHUP restores and exits 0"
 covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]

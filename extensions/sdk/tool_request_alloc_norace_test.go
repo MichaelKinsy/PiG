@@ -5,7 +5,7 @@ package sdk
 import "testing"
 
 // toolRequestAllocBudget is the allocations one empty tool_call round trip may make on the in-process socket: the SDK's side (decode the request, arm it, dispatch, run the handler, encode the state and the response) plus the peer's decode of both answers. Lower it when a change removes allocations; raising it needs a reason.
-const toolRequestAllocBudget = 70
+const toolRequestAllocBudget = 68
 
 // The budget depends on sync.Pool reuse, and the race detector drops pool items at random (86-88 allocations under -race), so it is checked only in non-race builds, as the tui allocation budgets are.
 func TestToolRequestAllocBudget(t *testing.T) {

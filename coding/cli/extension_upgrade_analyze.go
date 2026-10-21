@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // goCompile is how the build of one extension runs the go command: where, with which flags and environment, and which package it compiles.
@@ -103,6 +104,9 @@ func (u *extensionUpgrader) checkRewrite(ctx context.Context, config subprocess.
 	return check, err
 }
 
+// compileErrorPosition matches the "path:line:col: " that starts a compile error message of upgrade.Result.Errors, up to the first ":line:col: ".
+var compileErrorPosition = lazyregexp.New(`^.*?:\d+:\d+: `)
+
 // classifyRewriteBuild reads the output of the build of a rewritten extension. A compile error the plan predicted (a use it lists for the author, or a compile error the extension already had) is expected; any other is not.
 func classifyRewriteBuild(runErr error, output []byte, dir string, rewritten map[string][]byte, result *upgrade.Result) rewriteCheck {
 	if runErr == nil {
@@ -119,10 +123,9 @@ func classifyRewriteBuild(runErr error, output []byte, dir string, rewritten map
 	}
 	known := map[string]bool{}
 	for _, message := range result.Errors {
-		// "path:line:col: message": the message follows the third colon.
-		parts := strings.SplitN(message, ":", 4)
-		if len(parts) == 4 {
-			known[strings.TrimSpace(parts[3])] = true
+		// "path:line:col: message": the message follows the first ":line:col: ". The path may hold a colon of its own (a Windows drive), so the message does not start after the third colon.
+		if at := compileErrorPosition.FindStringIndex(message); at != nil {
+			known[strings.TrimSpace(message[at[1]:])] = true
 		}
 	}
 	var check rewriteCheck

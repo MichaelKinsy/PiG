@@ -2462,3 +2462,45 @@ Parity allowance: `TestDecodePrintableKeyMatchesPi` accepts an uppercase letter 
 Remove when: Pi decodes a base-only Shift+letter as the uppercase letter, or the owner reverses the decision; then the branch, the allowance and the D185 test cases go.
 
 SCRUTINIZED:approved
+
+## D186 A hung-up terminal under a session whose event loop holds nothing: Pi exits 0 or 129, PiG exits 129
+
+What: when the terminal's master closes under an interactive session, the kernel sends SIGHUP and ends the session's input. Pi's SIGHUP handler (`registerSignalHandlers`, `packages/coding-agent/src/modes/interactive/interactive-mode.ts:4402-4417`) runs a graceful shutdown whose terminal writes meet EIO and take `emergencyTerminalExit` (exit 129, `:4346-4352`). Node's signal watcher does not keep the event loop alive. A session with no other referenced handle (a plain directory, no extension timers or sockets, no git watcher) has an empty loop when its input ends, and Pi exits 0 before the handler runs unless a write is still pending. Measured on Pi 1402973a, idle plain-directory hangups taken after the status render settled: 16 of 20 exited 0 and 4 exited 129. In a git repository, whose footer watches `.git/HEAD` (`footer-data-provider.ts:316`), 20 of 20 exited 129. PiG always exits 129 (`exitIfDeadTerminal`) and writes the `exit.log` line `terminal gone: <error> (exit 129)` (D102).
+
+Why: Pi's 0 is a timing outcome of an empty Node event loop, not a decision, and it contradicts the purpose of `emergencyTerminalExit`. PiG has no such loop whose emptiness it could reproduce. Exiting 0 on a dead terminal would leave no `exit.log` trace, which D102 forbids. This follows the owner ruling (D146) that a confirmed Pi bug is fixed whether or not Pi has it.
+
+Scope: only a hung-up output terminal under a session that holds nothing open. A live SIGHUP (exit 0) and a render that meets EIO (exit 129) match Pi and are unchanged. A session with a handle (a git repository, a running turn, extension timers) matches Pi.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-20 (the exit code of a session that no user action ended is 129 and leaves a trace, rather than a code that depends on Node's event-loop state).
+
+Call-site markers: `internal/codingagent/interactive_input.go` (`exitIfDeadTerminal`).
+
+Evidence: `36-terminal-disconnect-idle-repo` (a git repository: 129 on both sides), `10-terminal-disconnect-exit` (a working session in a plain directory: 129 on both sides) and `TestHungUpTerminalEOFExits129`. The idle plain-directory outcome is not compared, because Pi's own result varies between runs.
+
+Parity allowance: none.
+
+Remove when: Pi exits 129 for a hung-up terminal regardless of event-loop state.
+
+SCRUTINIZED:approved
+
+## D187 A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single thread lets a call that awaits work the SDK cannot see be overtaken
+
+What: the Go, Python and Rust extension SDKs keep, for the tool calls of one parallel batch, the orders Pi's one thread gives: the first dialog of each call opens in call order, and calls whose dialogs were answered back to back respond (and end) in the order of the answers. They hold a call to do it. A call's first host call, of any kind, waits until every earlier call of the batch has written its first host call or ended, and writing it passes the call's place on: a call that awaits an `exec` (or any other host call) before its first dialog is overtaken by the later calls' dialogs, as in Pi, where an awaited `exec` yields the thread (proved by a probe under Pi 1.3.0+1402973a: the call that awaits `pi.exec` before its dialog opens it after the later call's, 8 of 8 runs). A call whose dialog was answered holds the responses of the calls answered after it until it returns or makes its next host call. In Pi a call that awaits real work the SDK cannot see before its first host call (a `fetch`, a timer, a child process of its own) also yields the thread, so a later call's dialog opens first; and a continuation that awaits again yields at once. A native handler's blocking work (an HTTP request, a sleep, a wait on a channel) is invisible to the SDK, so the SDK holds the later calls' first host calls until the earlier handler reaches its first host call or its return, and holds the responses of the calls answered after a handler until it makes a host call or returns. The orders equal Pi's single-thread orders whenever the handlers await only host calls; a handler that awaits work the SDK cannot see makes a later call's dialog open after the handler's own, or a later response be written after the handler's, where Pi's thread would have put them first.
+
+Why: Pi runs every extension on one thread, so the order of a batch's synchronous prefixes and of its continuations is a fact of the language, and no hand-off is needed (`agent-loop.ts:586-647`, `rpc-mode.ts:91-130, 771-777`). A native SDK runs each request on a thread of its own, and the OS scheduler decides which first dialog is written first and which of two back-to-back answers a handler resumes on first, so without a gate a port opens its second dialog first and ends its calls in no order. The gate can only be placed at the points the SDK sees: its host calls and the end of the handler. It cannot know that a handler is blocked in its own work, so it cannot release the later calls at the moment Pi's thread would. The owner chose the ordering with this latency cost over leaving the orders to the scheduler.
+
+Scope: the tool calls of one parallel batch whose handlers make a host call (a dialog, `ui.select`, `ui.confirm`, `ui.input`, `ui.editor`, `ui.custom`, or any other), in the Go, Python and Rust SDKs, isolated and packed; only a dialog call opens a response slot, so a batch whose handlers open no dialog has no response gate, and the first host call of any kind takes part in the dialog place. Unchanged: the Node SDK, which one thread orders as Pi's does; a batch whose handlers make no host call (no slot, no queue wait); calls of other batches, other sessions' calls (a subagent's tool calls on the same connection) and nested calls, which take part in no order (the host names the batch on each `tool_call` request, and a request without one is ungated); the start order of the handlers, which the SDKs already kept; and the tool-result messages, which follow call order.
+
+Workaround: start the work that blocks as a host call (`exec`, `getFlag`, any call the SDK sees): the first host call passes the call's place on, so the later calls' dialogs open while it runs, as in Pi; or open the dialog before blocking work.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-20 (choice, not impossibility: the SDK cannot observe a handler's own blocking work; user impact: only the moment a later call's dialog opens or its response is written, never their order unless the handler awaits work the SDK cannot see; parity cost: a native handler that blocks, outside a host call, before its first host call delays the later calls' dialogs of its batch).
+
+Call-site markers: `extensions/sdk/tool_start_order.go` (`toolStart.beforeCall`, the first-host-call wait, and `toolStart.respond`, the response gate), `extensions/sdk-py/pig_sdk/__init__.py` (`_ToolStart.before_call` and `_ToolStart.respond`), `extensions/sdk-rs/src/tool_start_order.rs` (`ToolStart::before_call` and `ToolStart::respond`).
+
+Evidence: `TestToolBatchDialogsOpenInCallOrderAndResumeInAnswerOrderAcrossSDKs` (`test/extension-conformance`) fails for every native realization without the gates (the Go dialogs open as `[T0 T2 T3 T4 T5 T1]`, the ends follow no answer order) and passes for all nine with them; its last rounds make the first call await an `exec`, held until the other five dialogs are open, and fail for every native realization that keeps the dialog place across it (none of the later dialogs opens while the `exec` runs); the gate tests `TestToolDialogsOpenInCallOrder`, `TestToolFirstHostCallOfAnyKindPassesTheDialogPlace`, `TestToolResponsesFollowTheOrderTheAnswersWereRead` and `TestToolBatchOrdersAreIndependentAcrossBatches` (`extensions/sdk/tool_dialog_order_test.go`), `test_tool_dialog_order.py` (`extensions/sdk-py/tests`) and the `tool_start_order` and `tool_dispatch_wire` tests (`extensions/sdk-rs`) pin the held orders without a sleep and the independence of batches, including that a long call with no host call in one batch never holds another batch's dialog.
+
+Parity allowance: none: no Pi scenario asserts the moment a later call's dialog opens while an earlier call blocks.
+
+Remove when: a native SDK's handlers run where a blocked handler yields to the next one (an async handler model with the SDK's scheduler), or the SDK is told when a handler blocks, so a later call's dialog or response is released at the point Pi's thread would release it; then the gates in the three SDKs and this record go.
+
+SCRUTINIZED:approved

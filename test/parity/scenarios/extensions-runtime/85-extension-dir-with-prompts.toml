@@ -1,0 +1,85 @@
+# Behavior family: extensions-runtime
+# Scenario: whether a directory that holds an extension entry point and a
+# prompts/ directory is an extension or a Package depends on how it is named.
+#
+# Upstream evidence (Pi 1.3.0 at 1402973a, probed 2026-10-20 with
+# pi --mode rpc, stdin {"type":"get_commands"}); each directory has index.ts,
+# a package.json without a "pi" block, and prompts/<name>-dir-prompt.md:
+#   -e <dir>              prompt registered, extension NOT loaded
+#     resolveExtensionSources -> resolveLocalExtensionSource
+#     (package-manager.ts:1360-1390): a directory goes through
+#     collectPackageResources (:2214-2263); with no filter and no "pi" block,
+#     any of extensions/, skills/, prompts/ or themes/ makes it a Package, and
+#     the directory is added as an extension only when none exists (:1383-1385).
+#     index.ts is not consulted. Its prompt has origin "package".
+#   settings "extensions": [<dir>]   extension loaded, prompt NOT registered
+#     resolveLocalEntries (:2390-2411) -> collectFilesFromPaths (:2579-2596) ->
+#     collectAutoExtensionEntries (:593-601), which returns the directory's own
+#     index.ts or package.json "pi.extensions" entry.
+#   settings "packages": [<dir>]     prompt registered, extension NOT loaded
+#     resolvePackageSources (:1282-1300), the same Package rule as -e.
+# A Go, Python or Rust extension directory is classified by the same rule in
+# PiG, because the Package test runs before the language is looked at; Pi has
+# no such extension, so the per-language rows are PiG unit tests
+# (coding/cli TestCLIExtensionDirectoryWithResourceDirIsPackage and siblings).
+# A report that PiG wrongly treats an extension directory with prompts/ as a
+# Package, "unlike Pi", is not a difference: this pair is green before and
+# after, and pins the rule.
+
+name = "85-extension-dir-with-prompts"
+description = "A directory with an entry point and prompts/ is a Package for -e and packages, and an extension for the extensions setting"
+
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"commands","type":"get_commands"}']
+timeout_seconds = 30
+settle_seconds = 1
+canonical_json = true
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/cli-extension-dir-prompts/agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/cli-extension-dir-prompts/agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/cli-extension-dir-prompts/cli-ext"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/cli-extension-dir-prompts/cli-ext"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+stderr_equal = true
+both_contain = [
+  '"name":"cli-dir-prompt"',
+  '"name":"settings-dir-command"',
+  '"name":"package-dir-prompt"',
+]
+both_not_contain = [
+  '"name":"cli-dir-command"',
+  '"name":"settings-dir-prompt"',
+  '"name":"package-dir-command"',
+  "Failed to load extension",
+  "panic:",
+]
+
+# normalize-rationale: the runner copies the same agent fixture independently.
+# Only that ephemeral prefix differs; all member paths and diagnostics remain.
+[[assert.normalize_replace]]
+pattern = '/[^" ]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
+with = '<agent>'
+reason = "Isolated agent roots differ; preserve each resource path and its metadata."
+
+# normalize-rationale: D2 PiG's built-in pig-login extension adds /sprite, which Pi lacks.
+# Only that one command entry is removed; every other command and its order remain compared.
+[[assert.normalize_replace]]
+pattern = '\{"(?:name":"sprite","description":"Select the PiG login sprite\.","source":"extension","sourceInfo":\{"path":"builtin:pig-login","source":"builtin","scope":"temporary","origin":"top-level"\}|description":"Select the PiG login sprite\.","name":"sprite","source":"extension","sourceInfo":\{"origin":"top-level","path":"builtin:pig-login","scope":"temporary","source":"builtin"\})\},?'
+with = ""
+reason = "D2: PiG's built-in pig-login extension registers /sprite, which Pi has no counterpart for. Only that one command entry is removed; every other command, its order and its sourceInfo stay compared."

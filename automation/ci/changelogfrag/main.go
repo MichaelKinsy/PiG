@@ -7,8 +7,12 @@
 // lanes never edit the same file. The fragment holds "### Added", "### Changed", "### Fixed" and similar sections of
 // bullets in the style of CHANGELOG.md. The integrator folds the fragments into the release with -fold=<version>: each
 // bullet is appended to its section of "## [<version>]", and the folded fragments and their legacy.txt lines are
-// deleted, so a later fold takes only the fragments written since. Fragments that predate the rule are listed in
-// legacy.txt and are exempt.
+// deleted, so a later fold takes only the fragments written since.
+//
+// -check also resolves commits against the history of HEAD (history.go): the commit in a fragment's name and in each
+// fix marker must be reachable from HEAD, and every bullet of a section the bug ledger reads ("### Fixed") needs a
+// "<!-- fix: <sha> -->" marker, so the ledger never has to guess which commit fixed it. Fragments that predate these
+// rules, whose commits a squash replaced, are listed in legacy.txt and are exempt.
 package main
 
 import (
@@ -40,6 +44,8 @@ var (
 type fragment struct {
 	name  string
 	items map[string][]string
+	// legacy marks a fragment listed in legacy.txt; the history checks skip it.
+	legacy bool
 	// unsorted is the text of a legacy fragment that has no "### <section>" structure; the assembly prints it under
 	// "### Unsorted" so the integrator sorts it by hand instead of losing it.
 	unsorted string
@@ -128,6 +134,7 @@ func load(dir string) ([]fragment, []error) {
 			if err != nil {
 				f = fragment{name: name, unsorted: strings.TrimSpace(string(data))}
 			}
+			f.legacy = true
 			out = append(out, f)
 			continue
 		}
@@ -341,6 +348,9 @@ func run(args []string, stdout *os.File) error {
 		}
 	}
 	fragments, problems := load(dir)
+	if check {
+		problems = append(problems, checkHistory(dir, fragments)...)
+	}
 	if len(problems) > 0 {
 		var msg []string
 		for _, p := range problems {

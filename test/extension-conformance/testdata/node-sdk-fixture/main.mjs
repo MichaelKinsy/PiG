@@ -260,6 +260,16 @@ export default function (pi) {
     async execute(_id, params) { startedCalls += 1; return { content: [{ type: "text", text: `start#${startedCalls} n=${params.n}` }] }; },
   });
   pi.registerTool({
+    name: "dialog_order",
+    description: "Open a select dialog titled by the call and report the answer",
+    parameters: { type: "object", properties: { title: { type: "string" }, exec: { type: "boolean" } } },
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      if (params.exec === true) await pi.exec("dialog-order-exec", []).catch(() => {});
+      const selected = await ctx.ui.select(params.title, ["a", "b"]);
+      return { content: [{ type: "text", text: `dialog:${params.title}=${selected ?? ""}` }] };
+    },
+  });
+  pi.registerTool({
     name: "throw_probe",
     description: "Throw a value of the requested kind",
     parameters: { type: "object", properties: { kind: { type: "string" } } },
