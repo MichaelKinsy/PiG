@@ -242865,6 +242865,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#releaseStartupHeap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "releaseStartupHeap",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#releaseSyncLock",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "releaseSyncLock",
