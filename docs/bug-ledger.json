@@ -31929,6 +31929,37 @@
         "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/cli/rpc_shutdown_signal_test.go::TestRPCInputEndDuringSignalShutdownExitsZero"
       ]
+    },
+    {
+      "id": "BF-b1cea06",
+      "title": "Two parallel `edit` calls through two names of one existing file (a hard link, or a case alias on a…",
+      "symptom": "Two parallel `edit` calls through two names of one existing file (a hard link, or a case alias on a case-insensitive filesystem such as the macOS default) no longer lose one of the edits.",
+      "rootCause": "TestHardLinkAliasesDifferFromPi runs the pinned Pi's queue and PiG's over two hard links of one file: Pi starts both callbacks, PiG the second after the first ends. The doc comments of With and WithFileMutationQueue keep their upstream references.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "macOS",
+      "class": "ahead-of-pi",
+      "divergence": "D190",
+      "removeWhen": "Pi orders hard-link aliases (and, on a case-insensitive filesystem where its `realpath` keeps case, case aliases) by file identity, or an owner decision reverses this one; then the identity check, its marker, the allowance test and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two parallel `edit` calls through two names of one existing file (a hard link, or a case alias on a case-insensitive filesystem such as the macOS default) no longer lose one of the edits. The built-in file mutation queue made them run at once, so both read the original text and the later write dropped the earlier edit while both calls reported success; it now orders them in call order. Pi does not order hard-link aliases (D190).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b1cea06458",
+          "date": "2026-10-21"
+        },
+        {
+          "hash": "bfc03c667c",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/mutation_queue_alias_test.go::TestEditPreservesParallelAliasChanges",
+        "internal/codingagent/tools/mutation_queue_alias_test.go::TestHardLinkAliasesDifferFromPi",
+        "internal/codingagent/tools/mutation_queue_alias_test.go::TestMutationAliasReservationsKeepDispatchOrder",
+        "internal/codingagent/tools/mutation_queue_oracle_test.go::TestWithFileMutationQueueMatchesPi"
+      ]
     }
   ],
   "divergences": [
@@ -32180,6 +32211,11 @@
     {
       "id": "D187",
       "title": "A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single…"
+    },
+    {
+      "id": "D190",
+      "title": "The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a…",
+      "entry": "BF-b1cea06"
     }
   ],
   "exemptCommits": {
