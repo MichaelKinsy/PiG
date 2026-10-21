@@ -2560,11 +2560,11 @@ func Extension() *sdk.Extension {
 	// dialog-stack-probe opens its dialogs at the same time, each from its own goroutine, and reports each one's answer as it settles
 	// (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
 	ext.Command("dialog-stack-probe", "Open concurrent dialogs from one command", func(ctx sdk.Context, scenario string) error {
-		answer := func(value string, ok bool) string {
+		answer := func(value any, ok bool) string {
 			if !ok {
 				return "cancelled"
 			}
-			return value
+			return fmt.Sprint(value)
 		}
 		dialogs := map[string]func() (string, error){
 			"A": func() (string, error) {
@@ -2573,7 +2573,7 @@ func Extension() *sdk.Extension {
 			},
 			"B": func() (string, error) {
 				confirmed, err := ctx.Confirm("B", "message")
-				return strconv.FormatBool(confirmed), err
+				return fmt.Sprint(confirmed), err
 			},
 			"S": func() (string, error) {
 				value, ok, err := ctx.Select("S", []string{"s1", "s2"})
@@ -2581,7 +2581,7 @@ func Extension() *sdk.Extension {
 			},
 			"C": func() (string, error) {
 				confirmed, err := ctx.Confirm("C", "message")
-				return strconv.FormatBool(confirmed), err
+				return fmt.Sprint(confirmed), err
 			},
 			"I": func() (string, error) { value, ok, err := ctx.Input("I", "placeholder"); return answer(value, ok), err },
 			"E": func() (string, error) { value, ok, err := ctx.Editor("E", "prefill"); return answer(value, ok), err },
