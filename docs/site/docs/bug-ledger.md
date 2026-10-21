@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-934 bugs. 884 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 140 bugs have no recorded test.
+936 bugs. 886 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 140 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -953,6 +953,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-de19f79](#bf-de19f79) | The Python SDK test `test_provider_transport_shutdown_does_not_settle_owned_stream[True-*]` no longer fails… | PiG's own defect | All platforms | Unreleased |
 | [BF-afdb030](#bf-afdb030) | `pi.events.emit` in a Go, Rust or Python factory behaves as Pi's does: the first factory-time bus call… | PiG's own defect | All platforms | Unreleased |
 | [BF-afdb030-2](#bf-afdb030-2) | A Go extension SDK loop that is served without `Run` (a test on its own connection) no longer waits for a… | PiG's own defect | All platforms | Unreleased |
+| [BF-78fa8e4](#bf-78fa8e4) | The Node extension API probe of a failed factory (`TestUpstreamFailedFactoryDisablesCapturedAPI`) names… | PiG's own defect | All platforms | Unreleased |
+| [BF-19a0df2](#bf-19a0df2) | A listener a Go, Rust or Python factory subscribes hears another extension's emit made while the factory… | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -13957,8 +13959,8 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `afdb030faa` (2026-10-21)
-- **Tests:** `extensions/sdk-py/tests/test_event_bus_factory.py`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitOnErrorFailsWhenNobodyHears`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitReachesTheHostAndOwnListenersAtOnce`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitRunsListenersInOrderAndIsolatesFailures`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitWithoutAHostFails`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryListenerContextServesOnlyTheBus`, `extensions/sdk/tool_request_alloc_norace_test.go::TestToolRequestAllocBudget`, `test/extension-conformance/host_surface_test.go::TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs` and 1 more in docs/bug-ledger.json
-- **Release note:** `pi.events.emit` in a Go, Rust or Python factory behaves as Pi's does: the first factory-time bus call connects to the host (as `parseFrontmatter` does) and `Run` reuses the connection; the call returns once the listeners of the extensions loaded before this one and then the factory's own listeners (run inline, in subscription order) have finished; a listener that throws or panics is written to stderr as `Event handler error (channel):` and reaches neither the emitter nor the next listener; an `error` emit that nobody hears fails with the emitted error. Before, the emit was queued until after ready, and its failure only reached stderr. A factory with no host (no `PIG_EXT_SOCKET`) gets an error from its first bus call. Go gains `sdk.ServeFactory(conn, factory)` for a fused binary, which gives the factory the pipe as its connection.
+- **Tests:** `extensions/sdk-py/tests/test_event_bus_factory.py`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryListenerContextServesOnlyTheBus`, `extensions/sdk/tool_request_alloc_norace_test.go::TestToolRequestAllocBudget`, `test/extension-conformance/host_surface_test.go::TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs`, `test/extension-conformance/host_surface_test.go::TestOnLoadedAndFactoryEmitAcrossSDKs`
+- **Release note:** `pi.events.emit` in a Go, Rust or Python factory behaves as Pi's does: the first factory-time bus call connects to the host (as `parseFrontmatter` does) and `Run` reuses the connection; a listener the factory subscribes is registered with the host at once and answers the host's dispatches on that connection while the factory waits for a host call, so it hears another extension's emit made while the factory runs, a nested reply to the factory's own emit included, as Pi's shared emitter delivers it; the call returns once the host has delivered the emit to every listener, in registration order (the extensions loaded before this one, then this one's own), and each has finished; a listener that throws or panics is written to stderr as `Event handler error (channel):` and reaches neither the emitter nor the next listener; an `error` emit that nobody hears fails with the emitted error. Before, the emit was queued until after ready, and its failure only reached stderr. A factory with no host (no `PIG_EXT_SOCKET`) gets an error from its first bus call. Go gains `sdk.ServeFactory(conn, factory)` for a fused binary, which gives the factory the pipe as its connection.
 
 ### BF-afdb030-2
 
@@ -13971,8 +13973,36 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `afdb030faa` (2026-10-21)
-- **Tests:** `extensions/sdk-py/tests/test_event_bus_factory.py`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitOnErrorFailsWhenNobodyHears`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitReachesTheHostAndOwnListenersAtOnce`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitRunsListenersInOrderAndIsolatesFailures`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitWithoutAHostFails`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryListenerContextServesOnlyTheBus`, `extensions/sdk/tool_request_alloc_norace_test.go::TestToolRequestAllocBudget`, `test/extension-conformance/host_surface_test.go::TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs` and 1 more in docs/bug-ledger.json
+- **Tests:** `extensions/sdk-py/tests/test_event_bus_factory.py`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryListenerContextServesOnlyTheBus`, `extensions/sdk/tool_request_alloc_norace_test.go::TestToolRequestAllocBudget`, `test/extension-conformance/host_surface_test.go::TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs`, `test/extension-conformance/host_surface_test.go::TestOnLoadedAndFactoryEmitAcrossSDKs`
 - **Release note:** A Go extension SDK loop that is served without `Run` (a test on its own connection) no longer waits for a loaded gate that never closes; `TestToolRequestAllocBudget` hung for the whole test timeout.
+
+### BF-78fa8e4
+
+**The Node extension API probe of a failed factory (`TestUpstreamFailedFactoryDisablesCapturedAPI`) names…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Node extension API probe of a failed factory (`TestUpstreamFailedFactoryDisablesCapturedAPI`) names `onLoaded`, which the runtime already rejects after a failed load; the test failed with an uncaught assertion since `onLoaded` was added.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `78fa8e4f99` (2026-10-21)
+- **Tests:** `coding/extension/host/subprocess/upstream_factory_failure_test.go::TestUpstreamFailedFactoryDisablesCapturedAPI`
+- **Release note:** The Node extension API probe of a failed factory (`TestUpstreamFailedFactoryDisablesCapturedAPI`) names `onLoaded`, which the runtime already rejects after a failed load; the test failed with an uncaught assertion since `onLoaded` was added.
+
+### BF-19a0df2
+
+**A listener a Go, Rust or Python factory subscribes hears another extension's emit made while the factory…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The listener was registered when `Run` connected and missed such an emit.
+- **Root cause:** On registers the listener with the host at once over the factory's connection, a factory emit goes only through the host registry, and the connection answers events.dispatch while the factory waits (Go: a goroutine until Run; Python: a re-entrant loading_call; Rust: pump_until serves outside its lock). The nested c3:ack reply is a conformance row in every placement.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `19a0df2577` (2026-10-21)
+- **Tests:** `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryEmitOnErrorFailsWhenTheHostHeardNobody`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryListenerContextServesOnlyTheBus`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryListenerFailureFailsOnlyItsDispatch`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryListenerRegistersAtOnAndHearsBeforeRun`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryNestedReplyReachesTheFactoryListenerDuringEmit`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryUnsubscribeReachesTheHost`, `extensions/sdk/event_bus_factory_test.go::TestEventBusFactoryWithoutAHost`, `test/extension-conformance/host_surface_test.go::TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs`
+- **Release note:** A listener a Go, Rust or Python factory subscribes hears another extension's emit made while the factory runs, including a nested reply to the factory's own emit, as Pi's shared emitter delivers it: the listener is registered with the host when it is subscribed, a factory emit goes only through the host's ordered registry, and the factory's connection answers the host's dispatches while the factory waits for a host call. Before, the listener was registered when `Run` connected and missed such an emit.
 
 ## Divergences from Pi added in this release
 
