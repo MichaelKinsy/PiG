@@ -101,3 +101,7 @@ export const cases = [
   { name: "diff 099", args: ["line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\n", "other 1\nother 2\nother 3\nother 4\nother 5\nother 6\nother 7\nother 8\nother 9\n", 2] },
   { name: "diff 100", args: ["line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\n", "other 1\nother 2\nother 3\nother 4\nother 5\nother 6\nother 7\nother 8\nother 9\n", 10] },
 ];
+
+// A property Pi leaves undefined is no member of the answer (JSON.stringify drops it), so the vector records the JSON the answer has.
+const json = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
+export const call = async (fn, ...args) => json(await fn(...args));
