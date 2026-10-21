@@ -320,7 +320,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `project-trust` | 26 | 26 | 0 | 0 | 0 | 19 | not run |
 | `providers-faux-streaming` | 66 | 65 | 0 | 1 | 0 | 49 | not run |
 | `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
-| `rpc` | 71 | 71 | 0 | 0 | 0 | 32 | not run |
+| `rpc` | 72 | 72 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
 | `session` | 42 | 42 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
