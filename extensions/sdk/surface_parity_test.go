@@ -235,9 +235,9 @@ func TestExecWithOptionsSendsOptionsAndDecodesKilled(t *testing.T) {
 func TestDialogsWithOptionsSendTimeout(t *testing.T) {
 	ext := New("surface")
 	type outcome struct {
-		selected, text string
+		selected, text any
 		selectOK       bool
-		confirmed      bool
+		confirmed      any
 		inputOK        bool
 	}
 	got := make(chan outcome, 1)
@@ -542,4 +542,65 @@ func startDetachedCompact(t *testing.T, host *mockHost, name string) (string, *c
 		}
 	}
 	return callID, call
+}
+
+// Pi's RPC mode resolves a dialog with whatever JSON the client sent, so select, input, editor and confirm return it as decoded JSON, with undefined (ok false) apart from null.
+func TestDialogResultsCarryTheClientsJSONTypes(t *testing.T) {
+	ext := New("typed")
+	type outcome struct {
+		value any
+		ok    bool
+	}
+	got := make(chan []outcome, 1)
+	ext.Command("dialogs", "", func(ctx Context, _ string) error {
+		var all []outcome
+		for _, title := range []string{"s-number", "s-null", "s-undefined"} {
+			value, ok, err := ctx.Select(title, []string{"a"})
+			if err != nil {
+				return err
+			}
+			all = append(all, outcome{value, ok})
+		}
+		for _, title := range []string{"c-string", "c-null", "c-absent"} {
+			value, err := ctx.Confirm(title, "m")
+			if err != nil {
+				return err
+			}
+			all = append(all, outcome{value, true})
+		}
+		value, ok, err := ctx.Input("i-object", "p")
+		if err != nil {
+			return err
+		}
+		all = append(all, outcome{value, ok})
+		value, ok, err = ctx.Editor("e-array", "p")
+		if err != nil {
+			return err
+		}
+		all = append(all, outcome{value, ok})
+		got <- all
+		return nil
+	})
+	host, _, done := surfaceHost(t, ext, nil)
+	replies := map[string]string{
+		"s-number": `{"selected":5,"ok":true}`, "s-null": `{"selected":null,"ok":true}`, "s-undefined": `{"selected":"","ok":false}`,
+		"c-string": `{"confirmed":"yes"}`, "c-null": `{"confirmed":null}`, "c-absent": `{}`,
+		"i-object": `{"text":{"a":[1,"x"]},"ok":true}`, "e-array": `{"text":[1,2],"ok":true}`,
+	}
+	_, resp := runSurfaceCommand(t, host, "dialogs", func(call *callMsg) *callResultMsg {
+		title := decodeArgs(t, call.Args)["title"].(string)
+		return &callResultMsg{Result: json.RawMessage(replies[title])}
+	})
+	if resp.Error != nil {
+		t.Fatalf("response = %+v", resp)
+	}
+	want := []outcome{
+		{float64(5), true}, {nil, true}, {nil, false},
+		{"yes", true}, {nil, true}, {false, true},
+		{map[string]any{"a": []any{float64(1), "x"}}, true}, {[]any{float64(1), float64(2)}, true},
+	}
+	if o := <-got; !reflect.DeepEqual(o, want) {
+		t.Fatalf("dialog results = %#v, want %#v", o, want)
+	}
+	surfaceShutdown(t, host, done)
 }

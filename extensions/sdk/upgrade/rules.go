@@ -62,6 +62,7 @@ const (
 	RuleTransformHeaders    = "provider-stream-transform-headers-removed"
 	RuleProviderCredential  = "provider-credential-ordered"
 	RuleSystemPromptGetter  = "before-agent-start-system-prompt-getter"
+	RuleDialogResults       = "dialog-results-are-json-values"
 )
 
 // getter is one Context method that gained an error result. Params is the
@@ -218,6 +219,12 @@ func Rules() []Rule {
 			},
 		},
 		{
+			ID:      RuleDialogResults,
+			Summary: "Select, Input, Editor and Confirm return the JSON value the client answered with, as an any",
+			Remedy:  "Assert the type you expect: `answer, ok, err := ctx.Select(...)` then `choice, _ := answer.(string)`, and `confirmed, _ := answer.(bool)` for Confirm. Pi's RPC mode passes a client's JSON through unchecked, so the answer can be a number, nil, a map or a slice. A cancelled dialog is nil where it was the empty string.",
+			Changes: dialogResultChanges(),
+		},
+		{
 			ID:       RuleSystemPromptGetter,
 			Summary:  `before_agent_start's data["systemPrompt"] is an *SystemPrompt that renders the handler's current options`,
 			Rewrites: true,
@@ -228,6 +235,20 @@ func Rules() []Rule {
 		},
 	}
 }
+
+func dialogResultChanges() []Change {
+	var changes []Change
+	for _, name := range []string{"Select", "SelectWithOptions", "Input", "InputWithOptions", "Editor"} {
+		changes = append(changes, Change{Symbol: "Context." + name, Old: "func(...) (string, bool, error)", New: "func(...) (any, bool, error)", Since: dialogResultsSince})
+	}
+	for _, name := range []string{"Confirm", "ConfirmWithOptions"} {
+		changes = append(changes, Change{Symbol: "Context." + name, Old: "func(...) (bool, error)", New: "func(...) (any, error)", Since: dialogResultsSince})
+	}
+	return changes
+}
+
+// dialogResultsSince is the SDK release whose dialogs return JSON values.
+const dialogResultsSince = "0.5.2"
 
 // RuleByID returns the rule with the given ID.
 func RuleByID(id string) (Rule, bool) {

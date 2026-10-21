@@ -218,6 +218,11 @@ def conformance_sprite_definition() -> pig_sdk.SpriteDefinition:
     )
 
 
+def dialog_text(value) -> str:
+    """A dialog's string answer: select, input and editor results are whatever JSON the client sent, and undefined is None."""
+    return value if isinstance(value, str) else ""
+
+
 def new_extension() -> pig_sdk.Extension:
     # factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
     try:
@@ -419,6 +424,24 @@ def new_extension() -> pig_sdk.Extension:
             "host_info:" + json.dumps({"agentDir": pig_sdk.get_agent_dir(), "configDirName": pig_sdk.get_config_dir_name(), "version": pig_sdk.get_version(), "factoryAgentDir": factory_agent_dir}) + ":end", "info"
         ),
     )
+    # ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+    def ui_dialog_values_probe(ctx, _args):
+        def report(name, value, ok):
+            text = json.dumps(value, separators=(",", ":")) if ok else "<undefined>"
+            ctx.notify(f"{name}={text}", "info")
+        for title in ("S1", "S2", "S3", "S4"):
+            value, ok = ctx.select(title, ["a", "b"])
+            report(title, value, ok)
+        for title in ("C1", "C2", "C3", "C4"):
+            report(title, ctx.confirm(title, "m"), True)
+        for title in ("I1", "I2"):
+            value, ok = ctx.input(title, "p")
+            report(title, value, ok)
+        for title in ("E1", "E2"):
+            value, ok = ctx.editor(title, "p")
+            report(title, value, ok)
+
+    ext.command("ui_dialog_values_probe", "Report the typed result of each dialog", ui_dialog_values_probe)
     # ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
     def ui_forward_probe(ctx, _args):
         ctx.set_working_message("Thinking hard")
@@ -1293,10 +1316,11 @@ def new_extension() -> pig_sdk.Extension:
 
     def ui_availability(ctx: pig_sdk.Context, args: str) -> None:
         selected, _ = ctx.select("Pick", ["first", "second"])
+        selected = dialog_text(selected)
         ctx.notify("availability-notify", "info")
         if not ctx.has_ui():
-            assert ctx.input("Input", "placeholder") == ("", False)
-            assert ctx.editor("Editor", "prefill") == ("", False)
+            assert ctx.input("Input", "placeholder") == (None, False)
+            assert ctx.editor("Editor", "prefill") == (None, False)
             assert ctx.confirm("Confirm", "message") is False
             class NoUIComponent:
                 def render(self, width):
@@ -1324,6 +1348,7 @@ def new_extension() -> pig_sdk.Extension:
 
     def ui_state_barrier(ctx, args):
         selected, _ = ctx.select("expand", ["chosen"])
+        selected = dialog_text(selected)
         named = ctx.get_theme("light")
         missing = ctx.get_theme("missing")
         success, message = ctx.set_theme("missing")
@@ -1455,10 +1480,10 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", context_probe)
 
     def dialog_probe(ctx: pig_sdk.Context, args: str) -> None:
-        selected, _ = ctx.select("Pick", ["first", "second"])
-        input_value, _ = ctx.input("Input", "placeholder")
-        edited, _ = ctx.editor("Editor", "prefill")
-        confirmed = ctx.confirm("Confirm", "message")
+        selected = dialog_text(ctx.select("Pick", ["first", "second"])[0])
+        input_value = dialog_text(ctx.input("Input", "placeholder")[0])
+        edited = dialog_text(ctx.editor("Editor", "prefill")[0])
+        confirmed = ctx.confirm("Confirm", "message") is True
         ctx.notify(
             "select=%s input=%s editor=%s confirm=%s"
             % (selected, input_value, edited, str(confirmed).lower()),
