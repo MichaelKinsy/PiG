@@ -130,6 +130,7 @@ func AcquireArtifactUsageLease(artifactPath string) (*UsageLease, error) {
 		}
 		return nil, fmt.Errorf("cache artifact %s changed while acquiring its usage lease", artifactPath)
 	}
+	//portlint:allow clock a lease records the real time of a use, as AcquireUsageLease does; the Now seam dates collections
 	if err := TouchUsage(entryDir, time.Now()); err != nil {
 		_ = lock.Unlock()
 		return nil, err
@@ -144,10 +145,10 @@ func errCacheEntryRemoved(artifactPath string) error {
 // cacheEntryRemoved reports whether artifactPath was a file of a governed cache entry that is gone: it does not exist and its entry
 // directory sits beside the cache's .locks directory. A path outside the cache has no such directory beside it.
 func cacheEntryRemoved(entryDir, artifactPath string) bool {
-	if _, err := os.Lstat(artifactPath); !os.IsNotExist(err) {
+	if _, err := os.Lstat(artifactPath); !os.IsNotExist(err) { //perf:ok cold: runs only for a lease whose entry is not valid
 		return false
 	}
-	info, err := os.Stat(filepath.Dir(cacheLockPath(entryDir, "")))
+	info, err := os.Stat(filepath.Dir(cacheLockPath(entryDir, ""))) //perf:ok cold: runs only for a lease whose entry is not valid
 	return err == nil && info.IsDir()
 }
 
