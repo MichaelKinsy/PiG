@@ -1588,6 +1588,7 @@ type recordingCompactHandle struct {
 	cycleOptions         [][]ModelMutationOptions
 	cycled, switched     []*ai.Model
 	scopedModels         []extension.ScopedModel
+	available            []*ai.Model
 	compacted            []*extension.CompactOptions
 }
 
@@ -1614,7 +1615,7 @@ func (h *recordingCompactHandle) BeginModelCycleOnMain(_ context.Context, direct
 }
 func (h *recordingCompactHandle) LastAssistantText() *string { return h.lastAssistant }
 
-func (h *recordingCompactHandle) AvailableModelSnapshot() []*ai.Model { return nil }
+func (h *recordingCompactHandle) AvailableModelSnapshot() []*ai.Model { return h.available }
 
 func (h *recordingCompactHandle) ScopedModels() []extension.ScopedModel {
 	return h.scopedModels

@@ -91,8 +91,8 @@ func TestScopedSelectionKeepsProviderPrefixedIDsInSessionScope(t *testing.T) {
 	}
 	models := []tui.ModelItem{{FullID: "fixture/fixture/auto", Provider: "fixture"}, {FullID: "fixture/two", Provider: "fixture"}, {FullID: "fixture/three", Provider: "fixture"}}
 	selection, _ := newScopedModelsSelection(models, nil, nil)
-	handle := &recordingCompactHandle{}
-	m := &InteractiveMode{opts: InteractiveModeOptions{ModelRegistry: NewModelRegistry(dir), SessionHandle: handle}}
+	handle := &recordingCompactHandle{available: NewModelRegistry(dir).GetAvailableModelData()}
+	m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: handle}}
 	m.statusLine = NewFooterComponent(nil, "test", nil)
 	selection.apply(m, []string{"fixture/fixture/auto", "fixture/two"})
 	if got := len(handle.ScopedModels()); got != 2 {
@@ -114,7 +114,7 @@ func TestScopedSelectionSynchronizesSessionScope(t *testing.T) {
 	registry := NewModelRegistry(dir)
 	models := []tui.ModelItem{{FullID: "fixture/one", Provider: "fixture"}, {FullID: "fixture/two", Provider: "fixture"}, {FullID: "fixture/three", Provider: "fixture"}}
 	selection, _ := newScopedModelsSelection(models, nil, nil)
-	handle := &recordingCompactHandle{}
+	handle := &recordingCompactHandle{available: registry.GetAvailableModelData()}
 	m := &InteractiveMode{opts: InteractiveModeOptions{ModelRegistry: registry, SessionHandle: handle}}
 	m.statusLine = NewFooterComponent(nil, "test", nil)
 	for _, tc := range []struct {
