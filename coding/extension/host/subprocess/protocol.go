@@ -652,7 +652,7 @@ type InvalidateArgs struct {
 // NotifyReloadStarted (host→ext) tells a running generation that Host.Reload has begun, before the host writes the replacement generations' admissions to the process's control channel. In print and JSON mode a Node runtime that answered a prompt's last call or session_shutdown waits in place for the host's next step (Pi's print mode continues without an event-loop turn); this notification is that step for a reload, so the runtime returns to its event loop, which reads the admissions. It carries no arguments and changes no state. The host sends it only to a Node runtime: the Go, Rust and Python SDKs have no such wait.
 const NotifyReloadStarted = "reload_started"
 
-// NotifyTimerDefer (host→Node runtime) says whether the runtime must hold the timer and immediate callbacks it would run (D5): Pi runs the microtasks of a stdin command and its response before any timer, so a callback that fires while a command runs waits for the response, and the host cannot hold such a callback's calls because the runtime may wait for their answers. The args are TimerDeferArgs. The frame precedes every request the host sends for the command, so the runtime holds the callbacks before its handlers run.
+// NotifyTimerDefer (host→Node runtime) says whether the runtime must hold the timer and immediate callbacks it would run (D189): Pi runs the microtasks of a stdin command and its response before any timer, so a callback that fires while a command runs waits for the response, and the host cannot hold such a callback's calls because the runtime may wait for their answers. The args are TimerDeferArgs. The frame precedes every request the host sends for the command, so the runtime holds the callbacks before its handlers run.
 const NotifyTimerDefer = "timer_defer"
 
 // TimerDeferArgs carries NotifyTimerDefer. Seq numbers the frames of one connection; the runtime answers each with NotifyTimerDeferAck.
@@ -1338,7 +1338,7 @@ type CallPayload struct {
 	Method          string          `json:"method"` // e.g. "ui.notify", "ui.setStatus", "sendMessage"
 	Args            json.RawMessage `json:"args,omitempty"`
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
-	// Timer marks a call made by deferred work: from a callback of a timer or an immediate (setTimeout, setInterval, setImmediate) or from work such a callback started, and in the Go, Python and Rust SDKs from a context whose request already returned. The host runs such a call when Pi's loop would run the callback: not while the agent's run chains microtasks (jsloop.Turns, D5).
+	// Timer marks a call made by deferred work: from a callback of a timer or an immediate (setTimeout, setInterval, setImmediate) or from work such a callback started, and in the Go, Python and Rust SDKs from a context whose request already returned. The host runs such a call when Pi's loop would run the callback: not while the agent's run chains microtasks (jsloop.Turns, D189).
 	Timer bool `json:"timer,omitempty"`
 	// Tick marks a Timer call that Pi runs right after the tool_execution_end of the tool that queued it: the call of a process.nextTick callback, or of deferred work that makes the call while a sibling tool call still runs, so Pi's loop is turning (a timer callback in the Node runtime, a call through a request's context after its handler returned in the Go, Python and Rust SDKs).
 	Tick bool `json:"tick,omitempty"`

@@ -69,6 +69,7 @@ func buildBorderedLoader(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (t
 		loader.Frame = *n.Frame % len(loader.Frames)
 	}
 	inst.remember(n)
+	// upstream: packages/tui/src/components/loader.ts DEFAULT_INTERVAL_MS
 	out.Text, out.Interval = message, 80*time.Millisecond
 	out.Frames, out.Frame = loader.Frames, loader.Frame
 	b.f.loaders = append(b.f.loaders, &viewLoader{loader: loader, node: out, interval: out.Interval})

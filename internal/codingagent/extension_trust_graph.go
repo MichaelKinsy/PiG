@@ -79,7 +79,7 @@ func (g *GraphProjectTrustStore) Call(_ context.Context, method string, raw json
 			return nil, err
 		}
 		var decision *bool
-		if err := args.Decode(1, &decision); err != nil {
+		if err := args.Unmarshal(1, func(raw json.RawMessage) error { return json.Unmarshal(raw, &decision) }); err != nil {
 			return nil, err
 		}
 		return nil, g.store.Set(cwd, decision)
@@ -88,7 +88,7 @@ func (g *GraphProjectTrustStore) Call(_ context.Context, method string, raw json
 			Path     string `json:"path"`
 			Decision *bool  `json:"decision"`
 		}
-		if err := args.Decode(0, &updates); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &updates) }); err != nil {
 			return nil, err
 		}
 		batch := make([]ProjectTrustUpdate, len(updates))

@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// Turns models when Pi's event loop gets to run the callbacks of timers and immediates (D5). Pi runs the agent on the thread that runs the extensions, so a callback an extension queued with setTimeout or setImmediate cannot run while the agent runs a chain of microtasks; it runs when the chain awaits real work (a model response, a tool's I/O, a dialog, a child process), or when the chain ends and the loop is idle.
+// Turns models when Pi's event loop gets to run the callbacks of timers and immediates (D189). Pi runs the agent on the thread that runs the extensions, so a callback an extension queued with setTimeout or setImmediate cannot run while the agent runs a chain of microtasks; it runs when the chain awaits real work (a model response, a tool's I/O, a dialog, a child process), or when the chain ends and the loop is idle.
 //
 // A chain is the agent's run, from agent_start to the end of agent_settled. A wait is a stretch of the chain that awaits real work: while one is open the loop turns, so a callback runs at once. A turn is one completion of real work, such as a chunk of a model response. A callback that finds the chain running and no wait open is held, in arrival order, until a turn, a wait, or the end of the chain. Outside a chain a callback runs at once.
 //

@@ -1562,7 +1562,7 @@ def new_extension() -> pig_sdk.Extension:
             number = started_calls[0]
         return {"content": f"start#{number} n={params.get('n')}"}
 
-    # A tool that notifies inline and, from a thread released by timer_release, after its handler returned (D5).
+    # A tool that notifies inline and, from a thread released by timer_release, after its handler returned (D189).
     timer_gate = threading.Semaphore(0)
 
     stale_contexts = []

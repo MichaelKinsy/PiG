@@ -46,7 +46,7 @@ func NewGraphSettingsManager(scope subprocess.SessionGraphScope, op string, raw 
 			return nil, err
 		}
 		var options graphSettingsOptions
-		if err := args.Decode(2, &options); err != nil {
+		if err := args.Unmarshal(2, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		resolvedCwd, err := ResolvePath(cwd, "")
@@ -68,25 +68,25 @@ func NewGraphSettingsManager(scope subprocess.SessionGraphScope, op string, raw 
 		var storage struct {
 			WithLock string `json:"withLock"`
 		}
-		if err := args.Decode(0, &storage); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &storage) }); err != nil {
 			return nil, err
 		}
 		if storage.WithLock == "" {
 			return nil, errors.New("SettingsManager.fromStorage needs a storage with withLock")
 		}
 		var options graphSettingsOptions
-		if err := args.Decode(1, &options); err != nil {
+		if err := args.Unmarshal(1, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		return &GraphSettingsManager{NewSettingsManagerFromStorage(&graphSettingsStorage{scope: scope, callback: storage.WithLock}, SettingsManagerCreateOptions(options))}, nil
 	case "inMemory":
 		// inMemory(settings = {}, options = {})
 		var settings Settings
-		if err := args.Decode(0, &settings); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &settings) }); err != nil {
 			return nil, err
 		}
 		var options graphSettingsOptions
-		if err := args.Decode(1, &options); err != nil {
+		if err := args.Unmarshal(1, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		manager := NewInMemorySettingsManager(settings)
@@ -98,15 +98,109 @@ func NewGraphSettingsManager(scope subprocess.SessionGraphScope, op string, raw 
 	return nil, fmt.Errorf("SettingsManager has no static factory %q", op)
 }
 
-// setArg decodes argument i as T (the zero value for undefined and null) and passes it to fn.
-func setArg[T any](args GraphArgs, i int, fn func(T) error) error {
-	var value T
+// The set helpers decode argument i as the type the setter takes (the zero value for undefined and null) and pass it to fn.
+func argError(i int, err error) error { return fmt.Errorf("argument %d: %w", i+1, err) }
+
+func setString[T ~string](args GraphArgs, i int, fn func(T) error) error {
+	var value string
 	if raw := args.Raw(i); raw != nil {
 		if err := json.Unmarshal(raw, &value); err != nil {
-			return fmt.Errorf("argument %d: %w", i+1, err)
+			return argError(i, err)
+		}
+	}
+	return fn(T(value))
+}
+
+// setOptString passes nil for undefined and null, and the string otherwise.
+func setOptString(args GraphArgs, i int, fn func(*string) error) error {
+	raw := args.Raw(i)
+	if raw == nil {
+		return fn(nil)
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return argError(i, err)
+	}
+	return fn(&value)
+}
+
+func setBool(args GraphArgs, i int, fn func(bool) error) error {
+	var value bool
+	if raw := args.Raw(i); raw != nil {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return argError(i, err)
 		}
 	}
 	return fn(value)
+}
+
+func setInt[T ~int](args GraphArgs, i int, fn func(T) error) error {
+	var value int
+	if raw := args.Raw(i); raw != nil {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return argError(i, err)
+		}
+	}
+	return fn(T(value))
+}
+
+func setFloat(args GraphArgs, i int, fn func(float64) error) error {
+	var value float64
+	if raw := args.Raw(i); raw != nil {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return argError(i, err)
+		}
+	}
+	return fn(value)
+}
+
+func setStrings(args GraphArgs, i int, fn func([]string) error) error {
+	var value []string
+	if raw := args.Raw(i); raw != nil {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return argError(i, err)
+		}
+	}
+	return fn(value)
+}
+
+func setPackages(args GraphArgs, i int, fn func([]PackageSource) error) error {
+	var value []PackageSource
+	if raw := args.Raw(i); raw != nil {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return argError(i, err)
+		}
+	}
+	return fn(value)
+}
+
+func setQuietStartup(args GraphArgs, i int, fn func(QuietStartup) error) error {
+	var value QuietStartup
+	if raw := args.Raw(i); raw != nil {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return argError(i, err)
+		}
+	}
+	return fn(value)
+}
+
+func setWarnings(args GraphArgs, i int, fn func(WarningSettings) error) error {
+	var value WarningSettings
+	if raw := args.Raw(i); raw != nil {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return argError(i, err)
+		}
+	}
+	return fn(value)
+}
+
+// setWheelScrollLines is Pi's `number | "auto"`: a JSON number is the lines, and anything else is "auto".
+func setWheelScrollLines(args GraphArgs, i int, fn func(WheelScrollLines) error) error {
+	var lines float64
+	if raw := args.Raw(i); raw != nil && json.Unmarshal(raw, &lines) == nil {
+		return fn(WheelScrollLines{Lines: lines})
+	}
+	return fn(WheelScrollLines{Auto: true})
 }
 
 // optStr is a Pi `string | undefined` the runtime holds as a string: empty is undefined.
@@ -124,7 +218,7 @@ func settingsJSON(settings Settings) (any, error) {
 
 func applyOverrides(sm *SettingsManager, args GraphArgs) error {
 	var overrides Settings
-	if err := args.Decode(0, &overrides); err != nil {
+	if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &overrides) }); err != nil {
 		return err
 	}
 	sm.ApplyOverrides(overrides)
@@ -158,7 +252,7 @@ func modelArg(args GraphArgs, i int) (provider, id string, err error) {
 		Provider string `json:"provider"`
 		ID       string `json:"id"`
 	}
-	if err := args.Decode(i, &model); err != nil {
+	if err := args.Unmarshal(i, func(raw json.RawMessage) error { return json.Unmarshal(raw, &model) }); err != nil {
 		return "", "", err
 	}
 	return model.Provider, model.ID, nil
@@ -209,13 +303,6 @@ func wheelScrollLines(lines WheelScrollLines) any {
 	return lines.Lines
 }
 
-func toWheelScrollLines(value any) WheelScrollLines {
-	if number, ok := value.(float64); ok {
-		return WheelScrollLines{Lines: number}
-	}
-	return WheelScrollLines{Auto: true}
-}
-
 // Call runs a SettingsManager method.
 func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.RawMessage) (any, error) {
 	args, err := ParseGraphArgs(raw)
@@ -233,7 +320,7 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "isProjectTrusted":
 		return sm.IsProjectTrusted(), nil
 	case "setProjectTrusted":
-		return nil, setArg(args, 0, func(v bool) error {
+		return nil, setBool(args, 0, func(v bool) error {
 			sm.SetProjectTrusted(v)
 			return nil
 		})
@@ -249,7 +336,7 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getLastChangelogVersion":
 		return optStr(sm.GetLastChangelogVersion()), nil
 	case "setLastChangelogVersion":
-		return nil, setArg(args, 0, sm.SetLastChangelogVersion)
+		return nil, setString(args, 0, sm.SetLastChangelogVersion)
 	case "getSessionDir":
 		dir, err := sm.GetSessionDir()
 		return optStr(dir), err
@@ -258,9 +345,9 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getDefaultModel":
 		return optStr(sm.GetDefaultModel()), nil
 	case "setDefaultProvider":
-		return nil, setArg(args, 0, sm.SetDefaultProvider)
+		return nil, setString(args, 0, sm.SetDefaultProvider)
 	case "setDefaultModel":
-		return nil, setArg(args, 0, sm.SetDefaultModel)
+		return nil, setString(args, 0, sm.SetDefaultModel)
 	case "setDefaultModelAndProvider":
 		a0, err := args.String(0)
 		if err != nil {
@@ -274,21 +361,21 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getSteeringMode":
 		return sm.GetSteeringMode(), nil
 	case "setSteeringMode":
-		return nil, setArg(args, 0, sm.SetSteeringMode)
+		return nil, setString(args, 0, sm.SetSteeringMode)
 	case "getFollowUpMode":
 		return sm.GetFollowUpMode(), nil
 	case "setFollowUpMode":
-		return nil, setArg(args, 0, sm.SetFollowUpMode)
+		return nil, setString(args, 0, sm.SetFollowUpMode)
 	case "getThemeSetting":
 		return sm.GetThemeSetting(), nil
 	case "getTheme":
 		return optStr(sm.GetTheme()), nil
 	case "setTheme":
-		return nil, setArg(args, 0, sm.SetTheme)
+		return nil, setString(args, 0, sm.SetTheme)
 	case "getDefaultThinkingLevel":
 		return optStr(string(sm.GetDefaultThinkingLevel())), nil
 	case "setDefaultThinkingLevel":
-		return nil, setArg(args, 0, sm.SetDefaultThinkingLevel)
+		return nil, setString(args, 0, sm.SetDefaultThinkingLevel)
 	case "getModelThinkingLevel":
 		p, err := args.String(0)
 		if err != nil {
@@ -328,15 +415,15 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getTransport":
 		return sm.GetTransport(), nil
 	case "setTransport":
-		return nil, setArg(args, 0, sm.SetTransport)
+		return nil, setString(args, 0, sm.SetTransport)
 	case "getSessionShareDestination":
 		return sm.GetSessionShareDestination(), nil
 	case "setSessionShareDestination":
-		return nil, setArg(args, 0, sm.SetSessionShareDestination)
+		return nil, setString(args, 0, sm.SetSessionShareDestination)
 	case "getCompactionEnabled":
 		return sm.GetCompactionEnabled(), nil
 	case "setCompactionEnabled":
-		return nil, setArg(args, 0, sm.SetCompactionEnabled)
+		return nil, setBool(args, 0, sm.SetCompactionEnabled)
 	case "getCompactionReserveTokens":
 		provider, id, err := modelArg(args, 0)
 		if err != nil {
@@ -363,18 +450,18 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getRetryEnabled":
 		return sm.GetRetryEnabled(), nil
 	case "setRetryEnabled":
-		return nil, setArg(args, 0, sm.SetRetryEnabled)
+		return nil, setBool(args, 0, sm.SetRetryEnabled)
 	case "getRetrySettings":
 		cfg := sm.GetRetrySettings()
 		return map[string]any{"enabled": cfg.Enabled, "maxRetries": cfg.MaxRetries, "baseDelayMs": cfg.BaseDelayMs, "maxAgentDelayMs": cfg.MaxAgentDelayMs}, nil
 	case "getHttpIdleTimeoutMs":
 		return sm.GetHttpIdleTimeoutMs()
 	case "setHttpIdleTimeoutMs":
-		return nil, setArg(args, 0, sm.SetHttpIdleTimeoutMs)
+		return nil, setFloat(args, 0, sm.SetHttpIdleTimeoutMs)
 	case "getCacheWarmingMode":
 		return sm.GetCacheWarmingMode(), nil
 	case "setCacheWarmingMode":
-		return nil, setArg(args, 0, sm.SetCacheWarmingMode)
+		return nil, setString(args, 0, sm.SetCacheWarmingMode)
 	case "getProviderRetrySettings":
 		cfg := sm.GetProviderRetrySettings()
 		out := map[string]any{"maxRetryDelayMs": cfg.MaxRetryDelayMs}
@@ -394,14 +481,14 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getExternalEditorCommand":
 		return sm.GetExternalEditorCommand(), nil
 	case "setHideThinkingBlock":
-		return nil, setArg(args, 0, sm.SetHideThinkingBlock)
+		return nil, setBool(args, 0, sm.SetHideThinkingBlock)
 	case "setShowCacheMissNotices":
-		return nil, setArg(args, 0, sm.SetShowCacheMissNotices)
+		return nil, setBool(args, 0, sm.SetShowCacheMissNotices)
 	case "getShellPath":
 		path, err := sm.GetShellPath()
 		return optStr(path), err
 	case "setShellPath":
-		return nil, setArg(args, 0, func(v *string) error {
+		return nil, setOptString(args, 0, func(v *string) error {
 			if v == nil {
 				return sm.UpdateGlobal(func(s *Settings) { s.ShellPath, s.emptyStrings.shellPath = "", false })
 			}
@@ -410,15 +497,15 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getQuietStartup":
 		return sm.GetQuietStartup(), nil
 	case "setQuietStartup":
-		return nil, setArg(args, 0, sm.SetQuietStartup)
+		return nil, setQuietStartup(args, 0, sm.SetQuietStartup)
 	case "getDefaultProjectTrust":
 		return sm.GetDefaultProjectTrust(), nil
 	case "setDefaultProjectTrust":
-		return nil, setArg(args, 0, sm.SetDefaultProjectTrust)
+		return nil, setString(args, 0, sm.SetDefaultProjectTrust)
 	case "getShellCommandPrefix":
 		return optStr(sm.GetShellCommandPrefix()), nil
 	case "setShellCommandPrefix":
-		return nil, setArg(args, 0, func(v *string) error {
+		return nil, setOptString(args, 0, func(v *string) error {
 			if v == nil {
 				return sm.UpdateGlobal(func(s *Settings) { s.CommandPrefix, s.emptyStrings.commandPrefix = "", false })
 			}
@@ -427,57 +514,57 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getNpmCommand":
 		return sm.GetNpmCommand(), nil
 	case "setNpmCommand":
-		return nil, setArg(args, 0, sm.SetNpmCommand)
+		return nil, setStrings(args, 0, sm.SetNpmCommand)
 	case "getCollapseChangelog":
 		return sm.GetCollapseChangelog(), nil
 	case "setCollapseChangelog":
-		return nil, setArg(args, 0, sm.SetCollapseChangelog)
+		return nil, setBool(args, 0, sm.SetCollapseChangelog)
 	case "getEnableInstallTelemetry":
 		return sm.GetEnableInstallTelemetry(), nil
 	case "setEnableInstallTelemetry":
-		return nil, setArg(args, 0, sm.SetEnableInstallTelemetry)
+		return nil, setBool(args, 0, sm.SetEnableInstallTelemetry)
 	case "getEnableAnalytics":
 		return sm.GetEnableAnalytics(), nil
 	case "getTrackingId":
 		return optStr(sm.GetTrackingID()), nil
 	case "setEnableAnalytics":
-		return nil, setArg(args, 0, sm.SetEnableAnalytics)
+		return nil, setBool(args, 0, sm.SetEnableAnalytics)
 	case "getOrCreateDeviceId":
 		return sm.GetOrCreateDeviceID(), nil
 	case "getPackages":
 		return sm.GetPackages(), nil
 	case "setPackages":
-		return nil, setArg(args, 0, sm.SetPackages)
+		return nil, setPackages(args, 0, sm.SetPackages)
 	case "setProjectPackages":
-		return nil, setArg(args, 0, sm.SetProjectPackages)
+		return nil, setPackages(args, 0, sm.SetProjectPackages)
 	case "getExtensionPaths":
 		return sm.GetExtensionPaths(), nil
 	case "setExtensionPaths":
-		return nil, setArg(args, 0, sm.SetExtensionPaths)
+		return nil, setStrings(args, 0, sm.SetExtensionPaths)
 	case "setProjectExtensionPaths":
-		return nil, setArg(args, 0, sm.SetProjectExtensionPaths)
+		return nil, setStrings(args, 0, sm.SetProjectExtensionPaths)
 	case "getSkillPaths":
 		return sm.GetSkillPaths(), nil
 	case "setSkillPaths":
-		return nil, setArg(args, 0, sm.SetSkillPaths)
+		return nil, setStrings(args, 0, sm.SetSkillPaths)
 	case "setProjectSkillPaths":
-		return nil, setArg(args, 0, sm.SetProjectSkillPaths)
+		return nil, setStrings(args, 0, sm.SetProjectSkillPaths)
 	case "getPromptTemplatePaths":
 		return sm.GetPromptTemplatePaths(), nil
 	case "setPromptTemplatePaths":
-		return nil, setArg(args, 0, sm.SetPromptTemplatePaths)
+		return nil, setStrings(args, 0, sm.SetPromptTemplatePaths)
 	case "setProjectPromptTemplatePaths":
-		return nil, setArg(args, 0, sm.SetProjectPromptTemplatePaths)
+		return nil, setStrings(args, 0, sm.SetProjectPromptTemplatePaths)
 	case "getThemePaths":
 		return sm.GetThemePaths(), nil
 	case "setThemePaths":
-		return nil, setArg(args, 0, sm.SetThemePaths)
+		return nil, setStrings(args, 0, sm.SetThemePaths)
 	case "setProjectThemePaths":
-		return nil, setArg(args, 0, sm.SetProjectThemePaths)
+		return nil, setStrings(args, 0, sm.SetProjectThemePaths)
 	case "getEnableSkillCommands":
 		return sm.GetEnableSkillCommands(), nil
 	case "setEnableSkillCommands":
-		return nil, setArg(args, 0, sm.SetEnableSkillCommands)
+		return nil, setBool(args, 0, sm.SetEnableSkillCommands)
 	case "getThinkingBudgets":
 		return sm.GetThinkingBudgets(), nil
 	case "getTerminalCapabilityOverrides":
@@ -485,83 +572,83 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 	case "getShowImages":
 		return sm.GetShowImages(), nil
 	case "setShowImages":
-		return nil, setArg(args, 0, sm.SetShowImages)
+		return nil, setBool(args, 0, sm.SetShowImages)
 	case "getImageWidthCells":
 		return sm.GetImageWidthCells(), nil
 	case "setImageWidthCells":
-		return nil, setArg(args, 0, sm.SetImageWidthCells)
+		return nil, setInt(args, 0, sm.SetImageWidthCells)
 	case "getClearOnShrink":
 		return sm.GetClearOnShrink(), nil
 	case "setClearOnShrink":
-		return nil, setArg(args, 0, sm.SetClearOnShrink)
+		return nil, setBool(args, 0, sm.SetClearOnShrink)
 	case "getShowTerminalProgress":
 		return sm.GetShowTerminalProgress(), nil
 	case "setShowTerminalProgress":
-		return nil, setArg(args, 0, sm.SetShowTerminalProgress)
+		return nil, setBool(args, 0, sm.SetShowTerminalProgress)
 	case "getTuiMode":
 		return sm.GetTuiMode(), nil
 	case "setTuiMode":
-		return nil, setArg(args, 0, sm.SetTuiMode)
+		return nil, setString(args, 0, sm.SetTuiMode)
 	case "getFullscreenExitOutput":
 		return sm.GetFullscreenExitOutput(), nil
 	case "setFullscreenExitOutput":
-		return nil, setArg(args, 0, sm.SetFullscreenExitOutput)
+		return nil, setString(args, 0, sm.SetFullscreenExitOutput)
 	case "getFullscreenScrollbar":
 		return sm.GetFullscreenScrollbar(), nil
 	case "setFullscreenScrollbar":
-		return nil, setArg(args, 0, sm.SetFullscreenScrollbar)
+		return nil, setString(args, 0, sm.SetFullscreenScrollbar)
 	case "getFullscreenCopyOnSelect":
 		return sm.GetFullscreenCopyOnSelect(), nil
 	case "setFullscreenCopyOnSelect":
-		return nil, setArg(args, 0, sm.SetFullscreenCopyOnSelect)
+		return nil, setBool(args, 0, sm.SetFullscreenCopyOnSelect)
 	case "getFullscreenWheelScrollLines":
 		return wheelScrollLines(sm.GetFullscreenWheelScrollLines()), nil
 	case "setFullscreenWheelScrollLines":
-		return nil, setArg(args, 0, func(v any) error { return sm.SetFullscreenWheelScrollLines(toWheelScrollLines(v)) })
+		return nil, setWheelScrollLines(args, 0, sm.SetFullscreenWheelScrollLines)
 	case "getImageAutoResize":
 		return sm.GetImageAutoResize(), nil
 	case "setImageAutoResize":
-		return nil, setArg(args, 0, sm.SetImageAutoResize)
+		return nil, setBool(args, 0, sm.SetImageAutoResize)
 	case "getBlockImages":
 		return sm.GetBlockImages(), nil
 	case "setBlockImages":
-		return nil, setArg(args, 0, sm.SetBlockImages)
+		return nil, setBool(args, 0, sm.SetBlockImages)
 	case "getEnabledModels":
 		return sm.GetEnabledModels(), nil
 	case "getDefaultTools":
 		return sm.GetDefaultTools(), nil
 	case "setEnabledModels":
-		return nil, setArg(args, 0, sm.SetEnabledModels)
+		return nil, setStrings(args, 0, sm.SetEnabledModels)
 	case "getDoubleEscapeAction":
 		return sm.GetDoubleEscapeAction(), nil
 	case "setDoubleEscapeAction":
-		return nil, setArg(args, 0, sm.SetDoubleEscapeAction)
+		return nil, setString(args, 0, sm.SetDoubleEscapeAction)
 	case "getTreeFilterMode":
 		return sm.GetTreeFilterMode(), nil
 	case "setTreeFilterMode":
-		return nil, setArg(args, 0, sm.SetTreeFilterMode)
+		return nil, setString(args, 0, sm.SetTreeFilterMode)
 	case "getShowHardwareCursor":
 		return sm.GetShowHardwareCursor(), nil
 	case "setShowHardwareCursor":
-		return nil, setArg(args, 0, sm.SetShowHardwareCursor)
+		return nil, setBool(args, 0, sm.SetShowHardwareCursor)
 	case "getEditorPaddingX":
 		return sm.GetEditorPaddingX(), nil
 	case "setEditorPaddingX":
-		return nil, setArg(args, 0, sm.SetEditorPaddingX)
+		return nil, setInt(args, 0, sm.SetEditorPaddingX)
 	case "getOutputPad":
 		return sm.GetOutputPad(), nil
 	case "setOutputPad":
-		return nil, setArg(args, 0, sm.SetOutputPad)
+		return nil, setInt(args, 0, sm.SetOutputPad)
 	case "getAutocompleteMaxVisible":
 		return sm.GetAutocompleteMaxVisible(), nil
 	case "setAutocompleteMaxVisible":
-		return nil, setArg(args, 0, sm.SetAutocompleteMaxVisible)
+		return nil, setInt(args, 0, sm.SetAutocompleteMaxVisible)
 	case "getCodeBlockIndent":
 		return sm.GetCodeBlockIndent(), nil
 	case "getMermaidRenderingMode":
 		return sm.GetMermaidRenderingMode(), nil
 	case "setMermaidRenderingMode":
-		return nil, setArg(args, 0, sm.SetMermaidRenderingMode)
+		return nil, setString(args, 0, sm.SetMermaidRenderingMode)
 	case "getWarnings":
 		return readMerged(sm, func(s *Settings) WarningSettings {
 			if s.Warnings == nil {
@@ -570,7 +657,7 @@ func (g *GraphSettingsManager) Call(_ context.Context, method string, raw json.R
 			return *s.Warnings
 		}), nil
 	case "setWarnings":
-		return nil, setArg(args, 0, sm.SetWarnings)
+		return nil, setWarnings(args, 0, sm.SetWarnings)
 	}
 	return nil, errors.New("SettingsManager has no method " + method)
 }

@@ -1337,7 +1337,7 @@ export class Connection {
   call(method, args = {}, parentRequestId = "") {
     if (this.closed) return Promise.reject(new Error("extension connection closed"));
     const id = uuid();
-    // pig additive (D5): a call made by a timer's or an immediate's callback after its request's handler returned (the call has no parent) says so, and the host holds it until Pi's loop would have run the callback. A callback that runs while the handler still awaits is a turn of Pi's loop already.
+    // pig additive (D189): a call made by a timer's or an immediate's callback after its request's handler returned (the call has no parent) says so, and the host holds it until Pi's loop would have run the callback. A callback that runs while the handler still awaits is a turn of Pi's loop already.
     const kind = parentRequestId ? undefined : originKind();
     // Pi's loop turns while a sibling tool awaits real work, so a timer callback runs right after the tool that queued it ends, with its process.nextTick callbacks; the host releases a "tick" call there.
     const timer = kind !== undefined;
@@ -1535,7 +1535,7 @@ class RuntimeContext {
   get width() { return Number(this.runtime.ready?.width || 0); }
   get height() { return Number(this.runtime.ready?.height || 0); }
 
-  // pig additive: the provenance the loader stamped on this extension (types.ts SourceInfo: path, source, scope, origin, baseDir), the value ExtensionRunner.getExtensionPaths reads; undefined when the host holds none.
+  // pig additive (D19): the provenance the loader stamped on this extension (types.ts SourceInfo: path, source, scope, origin, baseDir), the value ExtensionRunner.getExtensionPaths reads; undefined when the host holds none.
   extensionSourceInfo() {
     this.runtime.extensionRuntime.assertActive();
     const info = this.runtime.ready?.sourceInfo;
@@ -1703,21 +1703,21 @@ class RuntimeUI {
     }
     return this.runtime.addWidthChangeHandler(handler);
   }
-  // pig additive: Pi calls a widget component's invalidate() on a theme change and the component reads ui.theme at its next render; a subprocess extension that pushes rows colored when it built them re-renders from this. The handler receives ui.theme after it took the new palette.
+  // pig additive (D19): Pi calls a widget component's invalidate() on a theme change and the component reads ui.theme at its next render; a subprocess extension that pushes rows colored when it built them re-renders from this. The handler receives ui.theme after it took the new palette.
   onThemeChange(handler) {
     if (typeof handler !== "function") {
       throw new TypeError("onThemeChange requires a handler function");
     }
     return this.runtime.addChangeHandler(this.runtime.themeChangeHandlers, handler);
   }
-  // pig additive: the original of a widget reads ui.getToolsExpanded() at every frame and Pi redraws on its expand key; the handler receives the new state after getToolsExpanded() reports it.
+  // pig additive (D19): the original of a widget reads ui.getToolsExpanded() at every frame and Pi redraws on its expand key; the handler receives the new state after getToolsExpanded() reports it.
   onToolsExpandedChange(handler) {
     if (typeof handler !== "function") {
       throw new TypeError("onToolsExpandedChange requires a handler function");
     }
     return this.runtime.addChangeHandler(this.runtime.toolsExpandedChangeHandlers, handler);
   }
-  // pig additive: a Pi extension rings the bell by writing BEL to process.stdout, which in this subprocess is not the terminal.
+  // pig additive (D19): a Pi extension rings the bell by writing BEL to process.stdout, which in this subprocess is not the terminal.
   bell() { this.runtime.fireAndForget("ui.bell", {}); }
   setStatus(key, text) {
     // Upstream mutates FooterDataProvider synchronously before requesting a
@@ -2084,7 +2084,7 @@ export class Runtime {
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
     this.widthChangeHandlers = [];
-    // pig additive: subscribers to the host's theme and tool-expansion changes, and the pi.onLoaded handlers. themeSignature and toolsExpandedKnown say the host has sent a first value, so a later different one is a change.
+    // pig additive (D19): subscribers to the host's theme and tool-expansion changes, and the pi.onLoaded handlers. themeSignature and toolsExpandedKnown say the host has sent a first value, so a later different one is a change.
     this.themeChangeHandlers = [];
     this.toolsExpandedChangeHandlers = [];
     this.themeSignature = undefined;
@@ -2221,7 +2221,7 @@ export class Runtime {
       registerCommand: (name, definition) => this.registerCommand(name, definition),
       registerShortcut: (key, definition) => this.registerShortcut(key, definition),
       registerFlag: (name, definition) => this.registerFlag(name, definition),
-      // pig additive: runs handler(ctx) once the runtime registered and has its state, before it serves a request.
+      // pig additive (D19): runs handler(ctx) once the runtime registered and has its state, before it serves a request.
       onLoaded: (handler) => {
         if (typeof handler !== "function") throw new TypeError("onLoaded requires a handler function");
         this.loadedHandlers.push(handler);
@@ -2588,9 +2588,9 @@ export class Runtime {
   addToolContext(ctx, toolCallId, toolCallIndex, params) {
     const runtime = this;
     return Object.defineProperties(ctx, {
-      // pig additive: the call's position among the tool calls of the assistant message that issued it (its batch); undefined for a call no assistant message issued, such as a nested executeTool call.
+      // pig additive (D19): the call's position among the tool calls of the assistant message that issued it (its batch); undefined for a call no assistant message issued, such as a nested executeTool call.
       toolCallIndex: { value: typeof toolCallIndex === "number" ? toolCallIndex : undefined, enumerable: true },
-      // pig additive: the JSON text of the call's arguments, members in the order the model wrote them. Pi's execute params is that object; this is its JSON.stringify.
+      // pig additive (D19): the JSON text of the call's arguments, members in the order the model wrote them. Pi's execute params is that object; this is its JSON.stringify.
       toolInput: { value: JSON.stringify(params), enumerable: true },
       tools: {
         get() {

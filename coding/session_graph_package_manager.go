@@ -34,7 +34,7 @@ func newGraphPackageManager(scope subprocess.SessionGraphScope, op string, raw j
 		SettingsManager   string   `json:"settingsManager"`
 		BuiltinExtensions []string `json:"builtinExtensions"`
 	}
-	if err := args.Decode(0, &options); err != nil {
+	if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 		return nil, err
 	}
 	object, ok := scope.Object(options.SettingsManager)
@@ -80,7 +80,7 @@ func (g *GraphPackageManager) Call(ctx context.Context, method string, raw json.
 		var options struct {
 			Local bool `json:"local"`
 		}
-		return options.Local, args.Decode(i, &options)
+		return options.Local, args.Unmarshal(i, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) })
 	}
 	switch method {
 	case "setProgressCallback":
@@ -100,7 +100,10 @@ func (g *GraphPackageManager) Call(ctx context.Context, method string, raw json.
 				Source  string  `json:"source"`
 				Message *string `json:"message,omitempty"`
 			}{event.Type, event.Action, event.Source, event.Message}
-			encoded, _ := jsstring.AppendMarshalJSON([]byte{'['}, wire)
+			encoded, err := jsstring.AppendMarshalJSON([]byte{'['}, wire)
+			if err != nil {
+				return
+			}
 			// The callback outlives the call that set it: it reports to the extension for as long as the connection lives.
 			//portlint:allow ctxbackground the progress callback is Pi's setProgressCallback: it reports for as long as the connection lives, with no call to cancel it
 			_, _ = g.scope.Callback(context.Background(), *id, json.RawMessage(append(encoded, ']')))
@@ -140,7 +143,10 @@ func (g *GraphPackageManager) Call(ctx context.Context, method string, raw json.
 		var onMissing packagemanager.MissingSourceCallback
 		if id != nil {
 			onMissing = func(source string) (packagemanager.MissingSourceAction, error) {
-				encoded, _ := jsstring.AppendMarshalJSON([]byte{'['}, source)
+				encoded, err := jsstring.AppendMarshalJSON([]byte{'['}, source)
+				if err != nil {
+					return "", err
+				}
 				result, err := g.scope.Callback(ctx, *id, json.RawMessage(append(encoded, ']')))
 				if err != nil {
 					return "", err
@@ -159,14 +165,14 @@ func (g *GraphPackageManager) Call(ctx context.Context, method string, raw json.
 		return graphResolvedPaths(paths), nil
 	case "resolveExtensionSources":
 		var sources []string
-		if err := args.Decode(0, &sources); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &sources) }); err != nil {
 			return nil, err
 		}
 		var options struct {
 			Local     bool `json:"local"`
 			Temporary bool `json:"temporary"`
 		}
-		if err := args.Decode(1, &options); err != nil {
+		if err := args.Unmarshal(1, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		paths, err := manager.ResolveExtensionSources(sources, options.Local, options.Temporary)

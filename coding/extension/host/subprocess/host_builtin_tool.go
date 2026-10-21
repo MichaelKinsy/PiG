@@ -98,16 +98,73 @@ func (c *builtinCallbacks) call(member string, args any) (json.RawMessage, error
 // recovers as the tool's thrown error.
 type callbackFailure struct{ err error }
 
-func callResult[T any](raw json.RawMessage, err error) (T, error) {
-	var out T
+// callResult is an extension callback's result when it answered, and its error otherwise. An empty result is the zero value of the type the caller decodes.
+func callResult(raw json.RawMessage, err error) (json.RawMessage, error) {
 	if err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+func decodeCallbackResult(err error) error {
+	return fmt.Errorf("decode callback result: %w", err)
+}
+
+func callString(raw json.RawMessage, err error) (string, error) {
+	var out string
+	if raw, err = callResult(raw, err); err != nil || len(raw) == 0 {
 		return out, err
 	}
-	if len(raw) == 0 {
-		return out, nil
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return out, decodeCallbackResult(err)
+	}
+	return out, nil
+}
+
+func callBool(raw json.RawMessage, err error) (bool, error) {
+	var out bool
+	if raw, err = callResult(raw, err); err != nil || len(raw) == 0 {
+		return out, err
 	}
 	if err := json.Unmarshal(raw, &out); err != nil {
-		return out, fmt.Errorf("decode callback result: %w", err)
+		return out, decodeCallbackResult(err)
+	}
+	return out, nil
+}
+
+func callStrings(raw json.RawMessage, err error) ([]string, error) {
+	var out []string
+	if raw, err = callResult(raw, err); err != nil || len(raw) == 0 {
+		return out, err
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return out, decodeCallbackResult(err)
+	}
+	return out, nil
+}
+
+type statWire struct {
+	IsDirectory bool `json:"isDirectory"`
+}
+
+func callStat(raw json.RawMessage, err error) (statWire, error) {
+	var out statWire
+	if raw, err = callResult(raw, err); err != nil || len(raw) == 0 {
+		return out, err
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return out, decodeCallbackResult(err)
+	}
+	return out, nil
+}
+
+func callSpawnContext(raw json.RawMessage, err error) (spawnContextWire, error) {
+	var out spawnContextWire
+	if raw, err = callResult(raw, err); err != nil || len(raw) == 0 {
+		return out, err
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return out, decodeCallbackResult(err)
 	}
 	return out, nil
 }
@@ -126,7 +183,7 @@ type writeArgs struct {
 // undefined: read treats every file as text and grep streams the file.
 
 func (c *builtinCallbacks) readFile(path string) ([]byte, error) {
-	encoded, err := callResult[string](c.call("operations.readFile", pathArgs{path}))
+	encoded, err := callString(c.call("operations.readFile", pathArgs{path}))
 	if err != nil {
 		return nil, err
 	}
@@ -144,14 +201,14 @@ func (c *builtinCallbacks) access(path string) error {
 }
 
 func (c *builtinCallbacks) exists(path string) (bool, error) {
-	return callResult[bool](c.call("operations.exists", pathArgs{path}))
+	return callBool(c.call("operations.exists", pathArgs{path}))
 }
 
 func (c *builtinCallbacks) readOperations(members []string) *tools.ReadOperations {
 	ops := &tools.ReadOperations{ReadFile: c.readFile, Access: c.access}
 	if slices.Contains(members, "detectImageMimeType") {
 		ops.DetectImageMimeType = func(path string) (string, error) {
-			return callResult[string](c.call("operations.detectImageMimeType", pathArgs{path}))
+			return callString(c.call("operations.detectImageMimeType", pathArgs{path}))
 		}
 	}
 	return ops
@@ -173,11 +230,11 @@ func (c *builtinCallbacks) editOperations() *tools.EditOperations {
 
 func (c *builtinCallbacks) grepOperations(members []string) *tools.GrepOperations {
 	ops := &tools.GrepOperations{IsDirectory: func(path string) (bool, error) {
-		return callResult[bool](c.call("operations.isDirectory", pathArgs{path}))
+		return callBool(c.call("operations.isDirectory", pathArgs{path}))
 	}}
 	if slices.Contains(members, "readFile") {
 		ops.ReadFile = func(path string) (string, error) {
-			return callResult[string](c.call("operations.readFile", pathArgs{path}))
+			return callString(c.call("operations.readFile", pathArgs{path}))
 		}
 	}
 	return ops
@@ -198,7 +255,7 @@ func (c *builtinCallbacks) findOperations() *tools.FindOperations {
 			if ignore == nil {
 				ignore = []string{}
 			}
-			return callResult[[]string](c.call("operations.glob", findGlobArgs{pattern, cwd, ignore, options.Limit}))
+			return callStrings(c.call("operations.glob", findGlobArgs{pattern, cwd, ignore, options.Limit}))
 		},
 	}
 }
@@ -211,13 +268,11 @@ func (c *builtinCallbacks) lsOperations() *tools.LsOperations {
 	return &tools.LsOperations{
 		Exists: c.exists,
 		Stat: func(path string) (tools.LsStat, error) {
-			stat, err := callResult[struct {
-				IsDirectory bool `json:"isDirectory"`
-			}](c.call("operations.stat", pathArgs{path}))
+			stat, err := callStat(c.call("operations.stat", pathArgs{path}))
 			return remoteLsStat{stat.IsDirectory}, err
 		},
 		Readdir: func(path string) ([]string, error) {
-			return callResult[[]string](c.call("operations.readdir", pathArgs{path}))
+			return callStrings(c.call("operations.readdir", pathArgs{path}))
 		},
 	}
 }
@@ -237,7 +292,7 @@ func (c *builtinCallbacks) spawnHook() tools.BashSpawnHook {
 				env[name] = value
 			}
 		}
-		out, err := callResult[spawnContextWire](c.call("spawnHook", spawnContextWire{Command: spawn.Command, Cwd: spawn.CWD, Env: env}))
+		out, err := callSpawnContext(c.call("spawnHook", spawnContextWire{Command: spawn.Command, Cwd: spawn.CWD, Env: env}))
 		if err != nil {
 			panic(callbackFailure{err})
 		}

@@ -717,7 +717,7 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": fmt.Sprintf("dialog:%v=%s", params["title"], selected)}, nil
 	})
 
-	// A tool that notifies inline and, from a goroutine timer_release releases, after its handler returned (D5).
+	// A tool that notifies inline and, from a goroutine timer_release releases, after its handler returned (D189).
 	timerGate := make(chan struct{}, 16)
 	var staleMu sync.Mutex
 	var stale *sdk.Context

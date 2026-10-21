@@ -1391,7 +1391,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleSetHiddenThinkingLabel(ui, call.Args)
 	case "ui.setWidget":
 		return b.handleSetWidget(extName, owner, call.Args)
-	// pig additive: a Pi extension rings the terminal bell by writing BEL to process.stdout, which a subprocess extension cannot reach.
+	// pig additive (D19): a Pi extension rings the terminal bell by writing BEL to process.stdout, which a subprocess extension cannot reach.
 	case CallUIBell:
 		if beller, ok := ui.(extension.TerminalBeller); ok {
 			beller.Bell()

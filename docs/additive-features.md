@@ -1515,3 +1515,22 @@ Remove when: Pi bounds what its bash block keeps, or adds a caller of `getOutput
 
 Approval: owner, 2026-10-14, TERN-CLAUDE-CHANNEL 2026-10-14T09:34:28Z (owner decisions: D176 approved). Earlier: tui squad lead, 2026-10-13 (TO-T2: replace `GetOutput`, record the retention change).
 SCRUTINIZED:approved
+
+## D189 Host calls made by deferred work carry a timer mark, and the host holds them for Pi's loop turn
+
+Stock disposition: required substrate. A subprocess extension runtime is another process, so only the wire can tell the host which calls Pi's single event loop would have run later; no product selects it.
+
+What: Pi runs an extension's `setTimeout`, `setImmediate` and `process.nextTick` callbacks on the thread that runs the agent, so such a callback runs only when the agent's run awaits real work or the loop is idle after `agent_settled`. A runtime's own loop runs the callback at once and writes the host calls it makes. `CallPayload.Timer` (`timer`) marks a call made by deferred work, and `CallPayload.Tick` (`tick`) marks a Node `nextTick` call or a timer call made while another tool call is still running. The Node runtime derives the marks from an `AsyncLocalStorage` store the timer, immediate and `nextTick` callbacks run in. The Go, Python and Rust SDKs mark a call made through a request's context after its handler returned (`timer`), never `tick`: they cannot tell such a call from a handler that awaits a call through an earlier request's context, and holding that call behind the handler hangs it. The host notification `timer_defer` (`on`, `seq`) tells a Node runtime to keep its timer and immediate callbacks waiting while a stdin command runs, and `timer_defer_ack` answers it. `jsloop.Turns` models Pi's loop in the host: a marked call is held while the RPC run chains microtasks and runs at the next real wait or at the end of `agent_settled`; a tick call is released after the `tool_execution_end` the RPC mode wrote. Print, JSON and interactive modes install no `Turns`, so nothing is held there.
+
+Pi source: `packages/coding-agent/src/core/agent-session.ts` and `packages/agent/src/agent-loop.ts` (the run chains microtasks), `packages/coding-agent/src/modes/rpc/rpc-mode.ts` (the stdin iteration and its response); the callbacks' order was probed on the pinned build for tool callbacks, sibling tools and `set_model` commands.
+
+Why: without the mark a timer callback's `sendMessage` or dialog request reached an RPC client before `tool_execution_end` or before the `set_model` response, where Pi writes it after `agent_settled` or after the response. The wire is Pi-owned, so the field lands in the host and every runtime at once, with no negotiation.
+
+Call-site markers: `extensions/sdk/protocol.go`, `extensions/sdk-py/pig_sdk/__init__.py`, `extensions/sdk-rs/src/protocol.rs`, `coding/extension/host/subprocess/runtime-node/timer-origin.mjs`, `coding/extension/host/subprocess/runtime-node/runtime.mjs`, `coding/extension/host/subprocess/protocol.go`, `coding/extension/host/subprocess/host.go`, `coding/cli/rpc_loop_turns.go`, `coding/cli/rpc_mode.go`, `internal/jsloop/turns.go`.
+
+Locked by: `TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs`, `TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun` and `TestHostCallAwaitedByARunningHandlerIsNotHeldForTheLoopTurn` (`test/extension-conformance`); `TestNodeTimerCallbackCallsWaitForTheLoopTurn` and the `Arm` tests (`coding/extension/host/subprocess`); the `internal/jsloop` turn table; RPC parity scenarios 68 to 72.
+
+Remove when: Pi runs extensions in a separate process, or the Node runtime shares the agent's event loop.
+
+Approval: owner, ordering design decision D5 (2026-10-20): add the wire field that tags timer-originated host calls, in the host and every runtime at once, with no negotiation.
+SCRUTINIZED:approved

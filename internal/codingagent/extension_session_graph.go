@@ -97,13 +97,13 @@ func (a GraphArgs) Int(i int) (int, error) {
 	return int(value), nil //portlint:allow numbers value is finite and within the int32 range here
 }
 
-// Decode decodes argument i into target; undefined and null leave target alone.
-func (a GraphArgs) Decode(i int, target any) error {
+// Unmarshal runs decode on argument i, with undefined and null left alone, and reports its error as the argument's.
+func (a GraphArgs) Unmarshal(i int, decode func(json.RawMessage) error) error {
 	raw := a.Raw(i)
 	if raw == nil {
 		return nil
 	}
-	if err := json.Unmarshal(raw, target); err != nil {
+	if err := decode(raw); err != nil {
 		return fmt.Errorf("argument %d: %w", i+1, err)
 	}
 	return nil
@@ -149,7 +149,7 @@ func NewGraphSessionManager(op string, raw json.RawMessage) (*GraphSessionManage
 			return nil, err
 		}
 		var options graphNewSessionOptions
-		if err := args.Decode(2, &options); err != nil {
+		if err := args.Unmarshal(2, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		dir, err := graphSessionDir(cwd, sessionDir)
@@ -218,11 +218,11 @@ func NewGraphSessionManager(op string, raw json.RawMessage) (*GraphSessionManage
 			}
 		}
 		var options graphNewSessionOptions
-		if err := args.Decode(1, &options); err != nil {
+		if err := args.Unmarshal(1, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		var entries []json.RawMessage
-		if err := args.Decode(2, &entries); err != nil {
+		if err := args.Unmarshal(2, func(raw json.RawMessage) error { return json.Unmarshal(raw, &entries) }); err != nil {
 			return nil, err
 		}
 		resolved := managerCWD(cwd)
@@ -259,7 +259,7 @@ func NewGraphSessionManager(op string, raw json.RawMessage) (*GraphSessionManage
 			return nil, err
 		}
 		var options graphNewSessionOptions
-		if err := args.Decode(3, &options); err != nil {
+		if err := args.Unmarshal(3, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		resolvedTarget, err := ResolvePath(targetCwd, "")
@@ -460,7 +460,7 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 		return session.GetEntryCount(), nil
 	case "appendMessage":
 		var message agent.AgentMessage
-		if err := args.Decode(0, &message); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &message) }); err != nil {
 			return nil, err
 		}
 		return session.AppendMessage(message)
@@ -486,7 +486,7 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 		provider, _ := args.String(1)
 		model, _ := args.String(2)
 		var usage ai.Usage
-		if err := args.Decode(3, &usage); err != nil {
+		if err := args.Unmarshal(3, func(raw json.RawMessage) error { return json.Unmarshal(raw, &usage) }); err != nil {
 			return nil, err
 		}
 		note, _ := args.String(4)
@@ -553,7 +553,7 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 			return session.AppendContextEdit(targetID, nil)
 		}
 		var replacement ContextEditReplacement
-		if err := args.Decode(1, &replacement); err != nil {
+		if err := args.Unmarshal(1, func(raw json.RawMessage) error { return json.Unmarshal(raw, &replacement) }); err != nil {
 			return nil, err
 		}
 		return session.AppendContextEdit(targetID, &replacement)
@@ -609,7 +609,7 @@ func (g *GraphSessionManager) Call(_ context.Context, method string, raw json.Ra
 		return path, nil
 	case "newSession":
 		var options graphNewSessionOptions
-		if err := args.Decode(0, &options); err != nil {
+		if err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &options) }); err != nil {
 			return nil, err
 		}
 		path, err := session.NewSession(&NewSessionOptions{ID: options.ID, ParentSession: options.ParentSession})

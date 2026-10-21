@@ -21,6 +21,7 @@ import (
 )
 
 // viewEditorMaxSlashCommands bounds an editor's autocomplete command list.
+// pig additive (D107): Pi's CombinedAutocompleteProvider takes any number of commands; the wire node is validated before the host builds it, so a frontend cannot make the host hold an unbounded list.
 const viewEditorMaxSlashCommands = 1000
 
 func init() {

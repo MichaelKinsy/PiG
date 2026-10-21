@@ -7145,30 +7145,6 @@ snippet = "if err := json.Unmarshal(data, &images); err != nil {"
 
 [[hit]]
 check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionClassify"
-snippet = "_ = json.Unmarshal(encodedModel, &wire)"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionClassify"
-snippet = "if err := json.Unmarshal(encodedOptions, &wireOptions); err != nil {"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionGenerateImages"
-snippet = "_ = json.Unmarshal(encodedModel, &wire)"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionGenerateImages"
-snippet = "if err := json.Unmarshal(encodedOptions, &wireOptions); err != nil {"
-
-[[hit]]
-check = "jsonclone"
 file = "internal/codingagent/extension_ui_phase.go"
 func = "InteractiveMode.awaitSessionBefore"
 snippet = "return json.Unmarshal(data, &value) == nil && value.Cancel, nil"

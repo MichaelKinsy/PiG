@@ -624,7 +624,7 @@ type wireTap struct {
 type wireCall struct {
 	method string
 	args   json.RawMessage
-	// timer is the call's Timer mark (D5).
+	// timer is the call's Timer mark (D189).
 	timer bool
 	// tick is the call's Tick mark.
 	tick bool

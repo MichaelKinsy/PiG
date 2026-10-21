@@ -32,7 +32,7 @@ func (r *notifyRecorder) notices() []string {
 	return slices.Clone(r.got)
 }
 
-// pig additive (D5): Pi runs a setImmediate or setTimeout callback an extension queued only when the agent's run awaits real work or is over, so its ui.notify reaches the UI behind everything the run's microtasks write. A Node runtime marks the host calls of such a callback that fires after its request's handler returned, and the host holds them while a chain runs (jsloop.Turns).
+// pig additive (D189): Pi runs a setImmediate or setTimeout callback an extension queued only when the agent's run awaits real work or is over, so its ui.notify reaches the UI behind everything the run's microtasks write. A Node runtime marks the host calls of such a callback that fires after its request's handler returned, and the host holds them while a chain runs (jsloop.Turns).
 // Probed against Pi 1.3.0: a tool's synchronous, queueMicrotask and promise notifications precede tool_execution_end; setImmediate and setTimeout(0) notifications follow agent_settled (test/parity scenario 63).
 func TestNodeTimerCallbackCallsWaitForTheLoopTurn(t *testing.T) {
 	nodeCellRequireNode(t)
