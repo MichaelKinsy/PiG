@@ -20,7 +20,7 @@ func NewSessionGraph() *SessionGraph { return &SessionGraph{} }
 var _ subprocess.SessionGraphBackend = (*SessionGraph)(nil)
 
 // New implements subprocess.SessionGraphBackend.
-func (*SessionGraph) New(_ context.Context, kind, op string, args json.RawMessage) (subprocess.SessionGraphObject, error) {
+func (*SessionGraph) New(_ context.Context, scope subprocess.SessionGraphScope, kind, op string, args json.RawMessage) (subprocess.SessionGraphObject, error) {
 	switch kind {
 	case subprocess.SessionGraphSessionManager:
 		return icodingagent.NewGraphSessionManager(op, args)
@@ -28,6 +28,8 @@ func (*SessionGraph) New(_ context.Context, kind, op string, args json.RawMessag
 		return icodingagent.NewGraphSettingsManager(op, args)
 	case subprocess.SessionGraphProjectTrustStore:
 		return icodingagent.NewGraphProjectTrustStore(op, args)
+	case subprocess.SessionGraphResourceLoader:
+		return newGraphResourceLoader(scope, op, args)
 	}
 	return nil, fmt.Errorf("the host does not construct %s", kind)
 }

@@ -609,6 +609,8 @@ pub struct Connection {
     pub(crate) views: crate::kit::ViewLedger,
     /// The setup callbacks of this connection's newSession calls in flight.
     pub(crate) setups: crate::setup_session::SetupRegistry,
+    /// The functions passed in options of session graph objects (DefaultResourceLoader's overrides), by the name the host runs them under.
+    pub(crate) graph_callbacks: crate::graph::GraphCallbacks,
     reader: Mutex<UnixStream>,
     writer: Mutex<UnixStream>,
     // control ends the socket for every clone without waiting on a reader or writer lock.
@@ -693,6 +695,7 @@ impl Connection {
             with_sessions: Default::default(),
             views: Default::default(),
             setups: Default::default(),
+            graph_callbacks: Default::default(),
             registered_tools: Mutex::new(HashMap::new()),
             tool_registration_lock: Mutex::new(()),
             late_declarations: Default::default(),

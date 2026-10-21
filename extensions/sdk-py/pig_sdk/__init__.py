@@ -4813,6 +4813,12 @@ class Extension:
             elif method == "setup":
                 self._setups.dispatch_setup(ctx, req.get("args") or {})
                 self._respond(req_id, None, None)
+            elif method == "sessionGraph.callback":
+                request = req.get("args") or {}
+                callback = getattr(self, "_graph_callbacks", {}).get(request.get("id"))
+                if callback is None:
+                    raise RuntimeError(f"unknown session graph callback {request.get('id')}")
+                self._respond(req_id, callback(*(request.get("args") or [])), None)
             elif method == "command":
                 name = req.get("tool", "")
                 args = req.get("args") or ""

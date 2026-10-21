@@ -2,7 +2,10 @@ package sdk
 
 import (
 	"errors"
+	"fmt"
 	"runtime"
+	"strconv"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -69,3 +72,58 @@ func graphStaticAsync[T any](c Context, kind, method string, args ...any) (T, er
 
 // graphDone is a method whose Pi result is void.
 type graphDone = json.RawMessage
+
+// requestGraphCallback runs a function passed in an option of a session graph object (host protocol RequestSessionGraphCallback).
+const requestGraphCallback = "sessionGraph.callback"
+
+// graphCallback is a function of an option: it takes the JSON arguments the host sends and answers the JSON result.
+type graphCallback func(args []json.RawMessage) (any, error)
+
+// graphCallbackRegistry names the functions an extension passed to session graph objects. A function stays until the connection ends: the host may run it again on a later reload of the object it was passed to, including after the extension dropped the object.
+type graphCallbackRegistry struct {
+	mu        sync.Mutex
+	next      uint64
+	callbacks map[string]graphCallback
+}
+
+func (r *graphCallbackRegistry) add(callback graphCallback) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.callbacks == nil {
+		r.callbacks = map[string]graphCallback{}
+	}
+	r.next++
+	id := "cb" + strconv.FormatUint(r.next, 10)
+	r.callbacks[id] = callback
+	return id
+}
+
+func (r *graphCallbackRegistry) get(id string) graphCallback {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.callbacks[id]
+}
+
+// callbackID names callback for the host. A nil callback is Pi's undefined option and has no name.
+func (c Context) callbackID(callback graphCallback) any {
+	if callback == nil {
+		return nil
+	}
+	return c.ext.graphCallbacks.add(callback)
+}
+
+// dispatchGraphCallback runs the function a RequestSessionGraphCallback names.
+func (e *Extension) dispatchGraphCallback(raw json.RawMessage) (any, error) {
+	var request struct {
+		ID   string            `json:"id"`
+		Args []json.RawMessage `json:"args"`
+	}
+	if err := json.Unmarshal(raw, &request); err != nil {
+		return nil, fmt.Errorf("decode session graph callback: %w", err)
+	}
+	callback := e.graphCallbacks.get(request.ID)
+	if callback == nil {
+		return nil, fmt.Errorf("unknown session graph callback %s", request.ID)
+	}
+	return callback(request.Args)
+}

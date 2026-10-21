@@ -249,6 +249,8 @@ type Extension struct {
 	withSessions withSessionRegistry
 	// setups holds the setup callbacks of NewSession calls in flight.
 	setups setupRegistry
+	// graphCallbacks holds the functions passed in options of session graph objects (DefaultResourceLoader's overrides).
+	graphCallbacks graphCallbackRegistry
 
 	modelStreamSeq atomic.Uint64
 	modelStreamsMu sync.RWMutex
@@ -1389,6 +1391,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 
 	case requestSetup:
 		_ = e.conn.respond(id, nil, e.dispatchSetup(ctx, req.Args))
+
+	case requestGraphCallback:
+		result, err := e.dispatchGraphCallback(req.Args)
+		_ = e.conn.respond(id, result, err)
 
 	case "command":
 		e.toolMu.RLock()

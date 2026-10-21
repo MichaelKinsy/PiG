@@ -2334,6 +2334,13 @@ impl Extension {
                     );
                 }
             }
+            "sessionGraph.callback" => {
+                let (result, error) = match crate::graph::dispatch_callback(conn, req.args.as_ref()) {
+                    Ok(value) => (Some(value), None),
+                    Err(message) => (None, Some(ErrorInfo { code: None, message })),
+                };
+                let _ = conn.respond(id, result, error);
+            }
             "setup" => {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                 let error = crate::setup_session::dispatch(&ctx, conn, req.args.as_ref()).err();

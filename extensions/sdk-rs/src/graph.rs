@@ -2,7 +2,9 @@
 
 use crate::context::Context;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::io;
+use std::sync::{Arc, Mutex};
 
 /// The extension's reference to a host object. The host drops its reference when this value is dropped or the connection closes.
 pub(crate) struct GraphObject {
@@ -72,4 +74,30 @@ impl Drop for GraphObject {
             let _ = context.call_host("sessionGraph.release", Some(json!({"handle": handle})));
         });
     }
+}
+
+/// A function an extension passed in an option of a session graph object: it takes the JSON arguments of Pi's function and answers its JSON result or the message of what it threw.
+pub type GraphCallback = Arc<dyn Fn(Vec<Value>) -> Result<Value, String> + Send + Sync>;
+
+/// The functions of one connection, by name. A function stays until the connection ends: the host may run it again on a later reload of the object it was passed to, including after the extension dropped the object.
+#[derive(Default)]
+pub(crate) struct GraphCallbacks {
+    callbacks: Mutex<HashMap<String, GraphCallback>>,
+}
+
+/// Names `callback` for the host. `None` is Pi's undefined option and has no name.
+pub(crate) fn callback_id(context: &Context, callback: Option<GraphCallback>) -> Value {
+    let Some(callback) = callback else { return Value::Null };
+    let mut callbacks = context.conn.graph_callbacks.callbacks.lock().unwrap();
+    let id = format!("cb{}", callbacks.len() + 1);
+    callbacks.insert(id.clone(), callback);
+    json!(id)
+}
+
+/// Runs the function a `sessionGraph.callback` request names.
+pub(crate) fn dispatch_callback(conn: &crate::protocol::Connection, args: Option<&Value>) -> Result<Value, String> {
+    let request = args.cloned().unwrap_or(Value::Null);
+    let id = request["id"].as_str().unwrap_or_default();
+    let callback = conn.graph_callbacks.callbacks.lock().unwrap().get(id).cloned().ok_or_else(|| format!("unknown session graph callback {id}"))?;
+    callback(request["args"].as_array().cloned().unwrap_or_default())
 }

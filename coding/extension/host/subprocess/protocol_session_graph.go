@@ -58,3 +58,12 @@ const SessionGraphClosedMessage = "Extension connection is closed"
 
 // SessionGraphUnavailableMessage answers a call on a host that serves no session graph.
 const SessionGraphUnavailableMessage = "The host serves no session graph"
+
+// RequestSessionGraphCallback (host→ext) runs a function an extension passed in an option of a session graph object (DefaultResourceLoader's systemPromptOverride, skillsOverride and the like). Args is a SessionGraphCallbackArgs; the response carries the function's result in Pi's JSON shape, and its error is the function's thrown error. The host sends it while a call of the object (reload) waits, so the extension answers it on another thread of control than the one that made the call.
+const RequestSessionGraphCallback = "sessionGraph.callback"
+
+// SessionGraphCallbackArgs is the RequestSessionGraphCallback argument. ID is the name the extension gave the function in the option that carried it.
+type SessionGraphCallbackArgs struct {
+	ID   string          `json:"id"`
+	Args json.RawMessage `json:"args,omitempty"`
+}

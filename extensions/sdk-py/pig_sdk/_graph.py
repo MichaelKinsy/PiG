@@ -1,6 +1,20 @@
 """The session graph: the classes Pi extensions construct around a session (SessionManager, SettingsManager, ModelRuntime, DefaultResourceLoader, DefaultPackageManager, ProjectTrustStore). The host owns each object for the extension's connection; the Python object holds the host's name for it. Every method is Pi's method under its snake_case name with Pi's positional parameters, and returns Pi's result in the JSON shape Pi's types have (an undefined result is None)."""
+from __future__ import annotations
+
 import threading
 from typing import Any
+
+
+def _callback_id(context: Any, callback: Any) -> str | None:
+    """Name ``callback`` for the host, which runs it with the JSON arguments of Pi's function. A function stays until the connection ends: the host may run it again on a later reload of the object it was passed to, including after the extension dropped the object. ``None`` is Pi's undefined option."""
+    if callback is None:
+        return None
+    extension = context.extension
+    with extension._state_lock:
+        callbacks = extension.__dict__.setdefault("_graph_callbacks", {})
+        callback_id = f"cb{len(callbacks) + 1}"
+        callbacks[callback_id] = callback
+    return callback_id
 
 
 class _GraphObject:
