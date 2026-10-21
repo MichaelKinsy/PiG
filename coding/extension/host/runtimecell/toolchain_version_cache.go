@@ -29,11 +29,12 @@ type toolchainVersionRecord struct {
 
 // Bounds on a version probe. A toolchain manager can take minutes to answer (rustup downloading the toolchain a rust-toolchain.toml names), so the probe is bounded rather than left to hang a start, and a start that waits for a peer's probe of the same record waits no longer than toolchainLockWait before it probes for itself.
 var (
-	toolchainProbeTimeout = 2 * time.Minute
-	toolchainLockWait     = 5 * time.Minute
+	toolchainProbeTimeout = 2 * time.Minute // pig additive (D20): the shared cell cache and its version probes have no upstream equivalent
+	toolchainLockWait     = 5 * time.Minute // pig additive (D20): see toolchainProbeTimeout
 )
 
 // toolchainProbeKillDelay is how long a killed probe may keep its output pipes open before Wait gives up on them: a rustup proxy leaves its download running in a child that holds them.
+// pig additive (D20): see toolchainProbeTimeout.
 const toolchainProbeKillDelay = 5 * time.Second
 
 // toolchainSlotsPerCommand is how many fingerprints' records a command keeps; the least recently written go first.
@@ -59,8 +60,9 @@ func commandVersion(cacheRoot, name string, args ...string) string {
 	}
 	// The lock only keeps peers from probing the same record at once. A peer that holds it past toolchainLockWait is not waited for: this start probes for itself, and the record is published by rename, so the two cannot corrupt it.
 	lock := flock.New(cachePath + ".lock")
+	//portlint:allow ctxbackground commandVersion has no caller context: it runs under hashing a cell's inputs, and toolchainLockWait bounds the wait
 	lockCtx, cancelLock := context.WithTimeout(context.Background(), toolchainLockWait)
-	locked, err := lock.TryLockContext(lockCtx, 25*time.Millisecond)
+	locked, err := lock.TryLockContext(lockCtx, 25*time.Millisecond) // pig additive (D20): poll interval of the bounded wait
 	cancelLock()
 	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		return "error:" + err.Error()
@@ -78,6 +80,8 @@ func commandVersion(cacheRoot, name string, args ...string) string {
 		if output, ok := readToolchainVersion(cachePath, fingerprint); ok {
 			return output
 		}
+		//portlint:allow ctxbackground commandVersion has no caller context: it runs under hashing a cell's inputs, and toolchainProbeTimeout bounds the probe
+		//perf:ok once per probe of an uncached toolchain, which spawns a process
 		probeCtx, cancelProbe := context.WithTimeout(context.Background(), toolchainProbeTimeout)
 		cmd := linkerexec.CommandContext(probeCtx, resolved, args...)
 		cmd.WaitDelay = toolchainProbeKillDelay
@@ -85,7 +89,7 @@ func commandVersion(cacheRoot, name string, args ...string) string {
 		timedOut := probeCtx.Err() != nil
 		cancelProbe()
 		if timedOut {
-			return fmt.Sprintf("error:%s did not answer within %s", filepath.Base(name), toolchainProbeTimeout)
+			return "error:" + filepath.Base(name) + " did not answer within " + toolchainProbeTimeout.String()
 		}
 		if err != nil {
 			return "error:" + err.Error()
@@ -143,7 +147,7 @@ func pruneToolchainVersions(cacheRoot, name string, args []string, keep string) 
 	}
 	modTime := make(map[string]time.Time, len(slots))
 	for _, slot := range slots {
-		if info, err := os.Stat(slot); err == nil {
+		if info, err := os.Stat(slot); err == nil { //perf:ok only when a command is over its record limit, after an uncached probe
 			modTime[slot] = info.ModTime()
 		}
 	}
