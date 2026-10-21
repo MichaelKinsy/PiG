@@ -213,7 +213,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 
 [export]
 "pi-coding-agent: AgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.abort" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.abort" = { go = "native:AgentSession.Abort", rust = "native:AgentSession::abort", python = "native:AgentSession.abort" }
 "pi-coding-agent: AgentSession.abortBash" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.abortBranchSummary" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.abortCompaction" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -228,7 +228,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: AgentSession.createReplacedSessionContext" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.cycleModel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.cycleThinkingLevel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.dispose" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.dispose" = { go = "native:AgentSession.Dispose", rust = "native:AgentSession::dispose", python = "native:AgentSession.dispose" }
 "pi-coding-agent: AgentSession.executeBash" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.exportToHtml" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.exportToJsonl" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -253,12 +253,12 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: AgentSession.isIdle" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.isRetrying" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.isStreaming" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.messages" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.messages" = { go = "native:AgentSession.Messages", rust = "native:AgentSession::messages", python = "native:AgentSession.messages" }
 "pi-coding-agent: AgentSession.model" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.modelRuntime" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.navigateTree" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.pendingMessageCount" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.prompt" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.prompt" = { go = "native:AgentSession.Prompt", rust = "native:AgentSession::prompt", python = "native:AgentSession.prompt" }
 "pi-coding-agent: AgentSession.promptTemplates" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.recordBashResult" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.refreshContext" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -287,7 +287,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: AgentSession.state" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.steer" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.steeringMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.subscribe" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.subscribe" = { go = "native:AgentSession.Subscribe", rust = "native:AgentSession::subscribe", python = "native:AgentSession.subscribe" }
 "pi-coding-agent: AgentSession.summarizeForBugReport" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.supportsThinking" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.systemPrompt" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -1031,7 +1031,7 @@ row = "a conformance fixture under test/extension-conformance (or a Pi-vector te
 "pi-coding-agent: convertToLlm" = { go = "native:ConvertToLlm", rust = "native:convert_to_llm", python = "native:convert_to_llm" }
 "pi-coding-agent: convertToPng" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
 "pi-coding-agent: copyToClipboard" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers" }
-"pi-coding-agent: createAgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
+"pi-coding-agent: createAgentSession" = { go = "host:Context.CreateAgentSession", rust = "host:Context::create_agent_session", python = "host:Context.create_agent_session" }
 "pi-coding-agent: createAgentSessionFromServices" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: createAgentSessionRuntime" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: createAgentSessionServices" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }

@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 804 | 794 | 794 |
+| `pi-coding-agent` | 920 | 305 | 910 | 798 | 788 | 788 |
 | `pi-tui` | 364 | 85 | 363 | 264 | 278 | 277 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -20,7 +20,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
-| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 432 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
+| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 414 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
 | SdkBuiltinToolDelegate | SdkBuiltinToolDelegate lane (built-in tool delegation, E7) | 0.5.2 | 60 | TestConformance_BuiltinToolDelegationAcrossSDKs |
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1129 | Per export: a port with a conformance row, or an owner-approved numbered divergence recorded in docs/parity/DIVERGENCES.md; the owner decides the divergence |
 | SdkLedgerHygiene | SdkLedgerHygiene lane (ledger hygiene) | 0.5.2 | 0 | A conformance fixture or vector test reaching each listed symbol; the row leaves [[unreached]] when it does |
@@ -30,7 +30,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 ## High-use gaps (block the release gate)
 
-89 exports imported by 5 or more scanned packages have a gap.
+88 exports imported by 5 or more scanned packages have a gap.
 
 | Export | uses | Gaps |
 |---|---|---|
@@ -45,7 +45,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `pi-tui: Input` | 30 | Go SdkTuiHelpers; Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-ai: StringEnum` | 28 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
 | `pi-ai/compat: StringEnum` | 28 | Go SdkPiAiHelpers; Rust SdkPiAiHelpers; Python SdkPiAiHelpers |
-| `pi-coding-agent: createAgentSession` | 20 | Go C2Sessions; Rust C2Sessions; Python C2Sessions |
 | `pi-tui: Editor` | 20 | Rust SdkTuiHelpers; Python SdkTuiHelpers |
 | `pi-coding-agent: buildSessionContext` | 19 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
 | `pi-coding-agent: DefaultResourceLoader` | 18 | Go SdkSessionGraph; Rust SdkSessionGraph; Python SdkSessionGraph |
@@ -158,7 +157,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Export | uses | Node | Go | Rust | Python |
 |---|---|---|---|---|---|
 | `AgentSession` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abort` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abort` | 0 | served | native:AgentSession.Abort | native:AgentSession::abort | native:AgentSession.abort |
 | `AgentSession.abortBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.abortBranchSummary` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.abortCompaction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -173,7 +172,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.cycleModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.cycleThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.dispose` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.dispose` | 0 | served | native:AgentSession.Dispose | native:AgentSession::dispose | native:AgentSession.dispose |
 | `AgentSession.executeBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.exportToHtml` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.exportToJsonl` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -198,12 +197,12 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `AgentSession.isIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.isRetrying` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.isStreaming` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.messages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.messages` | 0 | served | native:AgentSession.Messages | native:AgentSession::messages | native:AgentSession.messages |
 | `AgentSession.model` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.modelRuntime` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.navigateTree` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.pendingMessageCount` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.prompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.prompt` | 0 | served | native:AgentSession.Prompt | native:AgentSession::prompt | native:AgentSession.prompt |
 | `AgentSession.promptTemplates` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.recordBashResult` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.refreshContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -232,7 +231,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `AgentSession.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.subscribe` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.subscribe` | 0 | served | native:AgentSession.Subscribe | native:AgentSession::subscribe | native:AgentSession.subscribe |
 | `AgentSession.summarizeForBugReport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.supportsThinking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.systemPrompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
@@ -976,7 +975,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | `convertToLlm` | 17 | served | native:ConvertToLlm | native:convert_to_llm | native:convert_to_llm |
 | `convertToPng` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `copyToClipboard` | 8 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `createAgentSession` | 20 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `createAgentSession` | 20 | served | host:Context.CreateAgentSession | host:Context::create_agent_session | host:Context.create_agent_session |
 | `createAgentSessionFromServices` | 8 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `createAgentSessionRuntime` | 6 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `createAgentSessionServices` | 9 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
