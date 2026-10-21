@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,12 +71,22 @@ func TestPodCPULineRecordsTheClock(t *testing.T) {
 	if err != nil {
 		t.Skip("taskset is not installed")
 	}
+	// taskset refuses a core outside this process's affinity mask (a container's cpuset, a CI runner's cores), so the
+	// pinned cores are the first two it may use, not a fixed 0 and 1.
+	allowed, err := system{root: "/"}.cpusAllowed()
+	if err != nil {
+		t.Skipf("this process's allowed cores are unreadable: %v", err)
+	}
+	if len(allowed) < 2 {
+		t.Skipf("the clock is the highest of two pinned cores, and only %s is allowed", formatCPUList(allowed))
+	}
+	pin := allowed[:2]
 	root := fakeRoot(t, map[string]string{
-		"sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq": "2400000\n",
-		"sys/devices/system/cpu/cpu1/cpufreq/scaling_cur_freq": "1200000\n",
+		fmt.Sprintf("sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", pin[0]): "2400000\n",
+		fmt.Sprintf("sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", pin[1]): "1200000\n",
 	})
 	var out bytes.Buffer
-	s := &session{plan: &plan{Run: "r", StepTimeoutSeconds: 10}, env: testEnv(t, root), out: &out, pin: []int{0, 1}, taskset: taskset}
+	s := &session{plan: &plan{Run: "r", StepTimeoutSeconds: 10}, env: testEnv(t, root), out: &out, pin: pin, taskset: taskset}
 	if err := os.MkdirAll(filepath.Join(s.env.data, "r", "logs"), 0o755); err != nil {
 		t.Fatal(err)
 	}
