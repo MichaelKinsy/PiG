@@ -101,6 +101,7 @@ func (q *FileMutationQueue) Reserve(filePath string) (*MutationTicket, error) {
 		q.mu.Unlock()
 		return nil, err
 	}
+	//perf:ok once per file mutation call, which reads and writes the file; the identity of the file is what D190 orders by
 	info, err := os.Stat(key)
 	if err != nil && !isMissingPathError(err) {
 		q.mu.Unlock()
@@ -111,6 +112,7 @@ func (q *FileMutationQueue) Reserve(filePath string) (*MutationTicket, error) {
 		observed := q.files[path]
 		if observed == nil && info != nil {
 			// A queued write may have created a file that was missing at registration.
+			//perf:ok only for a queued call whose file was missing when it queued, and only while a call for an existing file is queued behind it
 			observed, _ = os.Stat(path)
 		}
 		// pig divergence (D190): a mutation also waits for earlier mutations of the same existing file reached by another canonical path (a hard link, or a case alias on a case-insensitive filesystem); Pi keys only by realpath, so it runs them at once and one overwrites the other.
