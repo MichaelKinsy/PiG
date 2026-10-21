@@ -151,7 +151,13 @@ func TestReadStoredCredentialMatchesThePinnedPackage(t *testing.T) {
 			}
 			got = canonical(t, encoded)
 		}
-		if want := canonical(t, c.Result); got != want {
+		var answer struct {
+			Credential json.RawMessage `json:"credential"`
+		}
+		if err := json.Unmarshal(c.Result, &answer); err != nil {
+			t.Fatal(err)
+		}
+		if want := canonical(t, answer.Credential); got != want {
 			t.Errorf("%s: %s, want %s", c.Name, got, want)
 		}
 	}

@@ -27,4 +27,5 @@ export const cases = [
   { name: "resize empty 29", args: ["", "image/jpeg", {"maxBytes": 100}] },
 ];
 const meta = (image) => (image ? { mimeType: image.mimeType, ...(image.originalWidth === undefined ? {} : { originalWidth: image.originalWidth, originalHeight: image.originalHeight, width: image.width, height: image.height, wasResized: image.wasResized }), decodes: image.data.length > 0 } : null);
-export const call = async (fn, data, mimeType, options) => { try { return meta(await fn(new Uint8Array(Buffer.from(data, "base64")), mimeType, options)); } catch { return null; } };
+// The answer is wrapped so that Pi's null is a value of the vector, not a missing result.
+export const call = async (fn, data, mimeType, options) => { try { return { image: meta(await fn(new Uint8Array(Buffer.from(data, "base64")), mimeType, options)) }; } catch { return { image: null }; } };

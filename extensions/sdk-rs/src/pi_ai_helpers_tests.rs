@@ -299,7 +299,7 @@ fn read_stored_credential_matches_the_pinned_package() {
             std::fs::write(&path, args[1].as_str().unwrap()).unwrap();
         }
         let got = crate::read_stored_credential(args[0].as_str().unwrap(), path.to_str()).unwrap().unwrap_or(Value::Null);
-        same(&got, &case["result"], case["name"].as_str().unwrap()).unwrap();
+        same(&got, &case["result"]["credential"], case["name"].as_str().unwrap()).unwrap();
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

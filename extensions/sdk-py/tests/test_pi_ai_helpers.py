@@ -204,4 +204,4 @@ def test_read_stored_credential_matches_the_pinned_package(tmp_path):
         if not _is_undefined(text):
             path.write_text(text, encoding="utf-8")
         got = pig_sdk.read_stored_credential(provider, str(path))
-        assert _json_stringify(got) == _json_stringify(case["result"]), case["name"]
+        assert _json_stringify(got) == _json_stringify(case["result"]["credential"]), case["name"]
