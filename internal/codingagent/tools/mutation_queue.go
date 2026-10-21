@@ -143,19 +143,20 @@ func (t *MutationTicket) Wait() {
 // gave up keeps its place until every earlier mutation of the path has completed and only then passes it on; a successor never runs ahead of a predecessor that is
 // still inside the queue. A ticket with no earlier mutation is admitted whatever ctx says.
 func (t *MutationTicket) WaitContext(ctx context.Context) error {
-	if t.prev == nil {
-		return nil
+	for i, prev := range t.prev {
+		select {
+		case <-prev:
+		case <-ctx.Done():
+			go func() {
+				for _, prev := range t.prev[i:] {
+					<-prev
+				}
+				t.Release()
+			}()
+			return ctx.Err()
+		}
 	}
-	select {
-	case <-t.prev:
-		return nil
-	case <-ctx.Done():
-		go func() {
-			<-t.prev
-			t.Release()
-		}()
-		return ctx.Err()
-	}
+	return nil
 }
 
 // Release signals this ticket's completion to the next queued caller, and
