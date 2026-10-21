@@ -46,6 +46,19 @@ Use `SET_VERSION_ARGS=--rename-current` only to rename an unpublished candidate.
 
 Dry-run prints the planned diff without writing or running consistency tests. An apply runs `go test ./test/gomodule -count=1` and `go test ./internal/codingagent -run '^TestParseChangelog_RealFile$' -count=1`. A failed check returns a nonzero status and retains the changes for inspection. The command does not stage files, commit, tag, or publish.
 
+## Changelog fragments and the bug ledger
+
+Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make changelog-fold VERSION=x.y.z` appends them to the release and deletes them, and `make bug-ledger` builds `docs/bug-ledger.json` from the `### Fixed` bullets, the commit history and the divergence records. Both read the history of the release commit, so both need a full clone (`fetch-depth: 0` in CI).
+
+`make changelog-check` fails a release candidate when:
+
+- a `### Fixed` bullet lacks a `<!-- fix: <sha> -->` marker. Without one the ledger guesses the fix commits from the history; when the only commit it finds is a squash, it credits the squash's tests to the bullet. A release candidate once grew `docs/bug-ledger.json` from about 2.1 MB to 9.8 MB this way, because five bullets were attributed to the 0.5.0 squash (about 11,000 tests), and the root module passed its size budget;
+- a marker, or the `<sha>` in the fragment's name, names a commit that `HEAD` does not reach. A rebase, squash or amend replaces SHAs, so after one of them rename each fragment after the commit that replaced the one it names (`git mv changelog.d/<lane>-<old>.md changelog.d/<lane>-<new>.md`) and update its markers.
+
+`make bug-ledger` refuses, with an error that names the entry, to attribute the tests of a commit that touches more than 500 files. The history it separates: the largest fix commit is 246 files, and every release or content squash above 500 is 799 files or more (the 0.5.0 squash is 13,725). If it names an entry, write or correct the marker of that entry's bullet so it names the commit that fixed the bug; if the commit fixes no product bug, give it a `Bug-Ledger: exempt <category>: <reason>` trailer.
+
+`automation/ci/changelogfrag/legacy.txt` lists the fragments whose commits the 0.5.0 squash replaced; no commit reachable from `HEAD` can name them, so they are exempt from the name and marker rules. The list only shrinks: the fold deletes a folded fragment and its line.
+
 ## Go module publication
 
 PiG publishes two Go modules from one release commit:

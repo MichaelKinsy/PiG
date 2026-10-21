@@ -68,6 +68,8 @@ type builder struct {
 	anchor map[*Entry]string
 	tests  map[string][]string
 	lanes  map[string][]laneCommit
+	// files caches the number of files each commit touches.
+	files map[string]int
 }
 
 // inHistory reports whether the commit named by a short hash is reachable from HEAD.
@@ -104,7 +106,34 @@ func keptRank(e *Entry) int {
 	return int(t.Unix())
 }
 
-func (b *builder) testsOf(hash, message string) ([]string, error) {
+// filesTouched counts the files commit hash changes; for a merge, the files it brings in over its first parent.
+func (b *builder) filesTouched(hash string) (int, error) {
+	if n, ok := b.files[hash]; ok {
+		return n, nil
+	}
+	out, err := b.r.git("show", "--format=", "--name-only", "--no-renames", "-m", "--first-parent", hash)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for l := range strings.SplitSeq(out, "\n") {
+		if l != "" {
+			n++
+		}
+	}
+	b.files[hash] = n
+	return n, nil
+}
+
+// testsOf returns the tests commit hash adds or names for entry. It refuses a commit that touches more than maxCommitFiles files: that is a squash or a merge, and its tests belong to everything it carries, not to the entry.
+func (b *builder) testsOf(entry *Entry, hash, message string) ([]string, error) {
+	n, err := b.filesTouched(hash)
+	if err != nil {
+		return nil, err
+	}
+	if n > maxCommitFiles {
+		return nil, b.squashError(entry, hash, n)
+	}
 	if t, ok := b.tests[hash]; ok {
 		return slices.Clone(t), nil
 	}
@@ -114,6 +143,16 @@ func (b *builder) testsOf(hash, message string) ([]string, error) {
 	}
 	b.tests[hash] = t
 	return slices.Clone(t), nil
+}
+
+// squashError says which entry would have been credited with the tests of the squash or merge commit hash, and how to name the commit that really fixed it.
+func (b *builder) squashError(e *Entry, hash string, files int) error {
+	label := fmt.Sprintf("%s %q", e.Origin, clip(e.Title, 80))
+	fix := "name the commit that fixed it with a <!-- fix: <commit> --> marker at the end of its changelog bullet"
+	if e.Origin == "commit" {
+		fix = "if it fixes no product bug, give it a \"Bug-Ledger: exempt <category>: <reason>\" trailer or an exempt.txt line; otherwise split it into commits that each fix one bug"
+	}
+	return fmt.Errorf("%s: commit %s touches %d files, more than the %d a fix commit may touch: it is a squash or a merge, and attributing its tests would credit this entry with the tests of everything the commit carries; %s", label, hash[:min(len(hash), 10)], files, maxCommitFiles, fix)
 }
 
 func (b *builder) commitRef(hash string) (Commit, error) {
@@ -174,7 +213,7 @@ func build(root, since string) (*Ledger, error) {
 	if err != nil {
 		return nil, err
 	}
-	b := &builder{r: r, root: root, since: since, base: base, rank: map[*Entry]int{}, kept: map[*Entry]bool{}, anchor: map[*Entry]string{}, tests: map[string][]string{}, lanes: map[string][]laneCommit{}}
+	b := &builder{r: r, root: root, since: since, base: base, rank: map[*Entry]int{}, kept: map[*Entry]bool{}, anchor: map[*Entry]string{}, tests: map[string][]string{}, files: map[string]int{}, lanes: map[string][]laneCommit{}}
 	if b.idx, err = buildTestIndex(root); err != nil {
 		return nil, err
 	}
@@ -409,7 +448,7 @@ func (b *builder) releaseNoteEntries(cur []bullet, first map[string]intro) error
 				}
 			}
 			for _, c := range append(slices.Clone(fix), testers...) {
-				tests, err := b.testsOf(c.Hash, c.Message)
+				tests, err := b.testsOf(e, c.Hash, c.Message)
 				if err != nil {
 					return err
 				}
@@ -461,7 +500,7 @@ func (b *builder) explicitFix(e *Entry, names []string, messages *[]string, rank
 			return err
 		}
 		*messages = append(*messages, msg)
-		tests, err := b.testsOf(full, msg)
+		tests, err := b.testsOf(e, full, msg)
 		if err != nil {
 			return err
 		}
@@ -795,7 +834,7 @@ func (b *builder) commitEntries() (map[string]int, error) {
 		}
 		e.Title, e.Symptom = clip(title, 110), title
 		e.Impact, e.Platform, e.Class = impactOf(title), platformOf(title), ClassOwn
-		if e.Tests, err = b.testsOf(c.hash, msg); err != nil {
+		if e.Tests, err = b.testsOf(e, c.hash, msg); err != nil {
 			return nil, err
 		}
 		e.RootCause, e.CauseFrom = rootCauseOf([]string{msg}, "")
