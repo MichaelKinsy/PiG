@@ -187,8 +187,21 @@ func TestHardLinkAliasesDifferFromPi(t *testing.T) {
 			defer mu.Unlock()
 			log = append(log, event)
 		}
+		snapshot := func() []string {
+			mu.Lock()
+			defer mu.Unlock()
+			return slices.Clone(log)
+		}
 		gates := []chan struct{}{make(chan struct{}), make(chan struct{})}
+		var opened [2]sync.Once
+		open := func(i int) { opened[i].Do(func() { close(gates[i]) }) }
 		var wg sync.WaitGroup
+		// A failed check must not leave a call waiting on its gate: the bubble would report a deadlock over the failure.
+		defer func() {
+			open(0)
+			open(1)
+			wg.Wait()
+		}()
 		for i, call := range scenario.Calls {
 			ticket, err := q.Reserve(filepath.Join(dir, call.Path))
 			if err != nil {
@@ -203,15 +216,14 @@ func TestHardLinkAliasesDifferFromPi(t *testing.T) {
 			})
 		}
 		synctest.Wait()
-		if !slices.Equal(log, []string{"start c0"}) {
-			t.Fatalf("log with the first call held = %v, want only its start", log)
+		if !slices.Equal(snapshot(), []string{"start c0"}) {
+			t.Fatalf("log with the first call held = %v, want only its start", snapshot())
 		}
-		close(gates[0])
+		open(0)
 		synctest.Wait()
-		if !slices.Equal(log, []string{"start c0", "end c0", "start c1"}) {
-			t.Fatalf("log after the first call ended = %v", log)
+		if !slices.Equal(snapshot(), []string{"start c0", "end c0", "start c1"}) {
+			t.Fatalf("log after the first call ended = %v", snapshot())
 		}
-		close(gates[1])
-		wg.Wait()
+		open(1)
 	})
 }
