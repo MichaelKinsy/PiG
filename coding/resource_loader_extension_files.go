@@ -87,22 +87,35 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		l.eventBus = extension.CreateEventBus()
 	}
 	factories := &extensionset.Loader{CWD: l.cwd, Inline: l.options.ExtensionFactories, Runtime: l.factoryRuntime, EventBus: l.eventBus}
+	// ctx ends the load; the extensions it loads belong to the loader, which stops them at its next load or Close. Pi's reload() has no caller whose end would stop them.
+	loadCtx, release := context.WithCancel(context.WithoutCancel(ctx))
+	stopWatching := context.AfterFunc(ctx, release)
+	defer stopWatching()
 	var result LoadExtensionsResult
 	if request.PreTrust != nil && l.files.host != nil {
 		// resource-loader.ts:747-790 loadFinalExtensionSet: the extensions the bootstrap pass loaded stay loaded, and a path it attempted, loaded or failed, is
 		// not attempted again; only the other paths load, in the same Host so the extensions share one runtime.
 		host := l.files.host
-		loaded, errs := host.LoadFinalExtensionSet(ctx, configs, l.filesConfigs)
+		loaded, errs := host.LoadFinalExtensionSet(loadCtx, configs, l.filesConfigs)
+		bootstrapRelease := l.files.release
 		result = LoadExtensionsResult{
 			Extensions: append([]extension.Extension{}, loaded...),
 			Errors:     slices.Concat(request.PreTrust.Errors, extensionLoadErrors(errs)),
 			Warnings:   slices.Clone(request.PreTrust.Warnings),
 			Runtime:    host.Runtime(),
 			host:       host,
+			bridge:     l.files.bridge,
+			release: func() {
+				release()
+				if bootstrapRelease != nil {
+					bootstrapRelease()
+				}
+			},
 		}
 	} else {
 		l.closeExtensionFiles()
-		result = loadExtensionPathsIn(ctx, filePaths, l.cwd, l.factoryRuntime)
+		result = loadExtensionPathsIn(loadCtx, filePaths, l.cwd, l.factoryRuntime)
+		result.release = release
 		if request.PreTrust != nil {
 			result.Errors = slices.Concat(request.PreTrust.Errors, result.Errors)
 			result.Warnings = slices.Concat(request.PreTrust.Warnings, result.Warnings)

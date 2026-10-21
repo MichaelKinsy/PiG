@@ -13,14 +13,9 @@ import (
 // builtinToolDefinition is the ToolDefinition of a built-in tool: the one [toolDefinition] builds for the session registry. A built-in tool's
 // schema is a fixed document, so a failure to encode it is a programming error.
 func builtinToolDefinition(tool agent.AgentTool) extension.ToolDefinition {
-	definition, err := toolDefinition(tool)
+	definition, err := tools.BuiltinToolDefinition(tool)
 	if err != nil {
 		panic(fmt.Sprintf("coding: the %s tool schema does not encode: %v", tool.Name(), err))
-	}
-	// A built-in definition carries no execution mode (the agent supplies the parallel default) and the edit tool draws its own shell.
-	definition.ExecutionMode = ""
-	if _, ok := tool.(*tools.EditTool); ok {
-		definition.RenderShell = extension.ToolRenderShellSelf // upstream: core/tools/edit.ts:157
 	}
 	return definition
 }

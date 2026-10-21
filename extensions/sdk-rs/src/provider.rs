@@ -43,6 +43,17 @@ struct SignalState {
 pub struct ProviderSignal {
     inner: Arc<(Mutex<SignalState>, Condvar)>,
 }
+/// Two signals are equal when they are the same signal: a clone is equal to its source.
+impl PartialEq for ProviderSignal {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+impl std::fmt::Debug for ProviderSignal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProviderSignal").field("cancelled", &self.is_cancelled()).finish()
+    }
+}
 pub struct ProviderSignalSubscription {
     signal: Weak<(Mutex<SignalState>, Condvar)>,
     id: u64,

@@ -37,6 +37,8 @@ func TestInteractiveModeBindsEveryHostCallback(t *testing.T) {
 		// Deprecated v0.2.0 fields that no extension call reads.
 		"GetBranch":  "deprecated: extensions read the branch through sessionRead or the session mirror",
 		"GetEntries": "deprecated: extensions read the entries through sessionRead or the session mirror",
+		// The factory builds a session over the AgentSessionServices, which only the coding/cli build holds (cli.BindChildSessions, called from cli_runtime_build.go for every mode that has a bridge).
+		"CreateChildSession": "bound by cli.BindChildSessions over the services the mode was built with; internal/codingagent cannot import it",
 	}
 	field := reflect.ValueOf(bridge).Elem().FieldByName("actions")
 	if !field.IsValid() || field.Kind() != reflect.Pointer || field.IsNil() {

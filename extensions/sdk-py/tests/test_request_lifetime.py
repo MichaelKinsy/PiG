@@ -229,7 +229,7 @@ def test_local_context_members_raise_the_stale_message_after_invalidate():
     ext = pig_sdk.Extension("stale-context")
     contexts = []
     ext.command("capture", "Capture", lambda ctx, _: contexts.append(ctx))
-    ready = {"cwd": "/work", "mode": "tui", "model": "m", "state": {"hasUI": True}}
+    ready = {"cwd": "/work", "mode": "tui", "state": {"hasUI": True, "model": {"id": "m", "provider": "p"}}}
     with connected_extension(ext, ready) as (send, receive):
         send({"type": "request", "id": "origin", "request": {"method": "command", "tool": "capture"}})
         assert receive("response")["id"] == "origin"
@@ -274,3 +274,22 @@ def test_loop_turned_notify_changes_nothing():
         response = receive("response")
         assert response["id"] == "after" and response["response"].get("error") is None, response
         assert seen == [("/work", True)]
+
+
+def test_call_after_the_handler_returned_carries_the_timer_mark():
+    # D189: deferred work is the work Pi runs once its event loop turns, so the call says so and the host holds it.
+    ext = pig_sdk.Extension("timer-mark")
+    contexts = []
+    ext.command("capture", "Capture original context", lambda ctx, _: contexts.append(ctx))
+    with connected_extension(ext) as (send, receive):
+        send({"type": "request", "id": "origin", "request": {"method": "command", "tool": "capture"}})
+        assert receive("response")["id"] == "origin"
+        ctx = contexts[0]
+        getter = threading.Thread(target=ctx.get_editor_text, daemon=True)
+        getter.start()
+        call = receive("call")
+        assert call["call"].get("timer") is True, call
+        assert "parent_request_id" not in call["call"], call
+        send({"type": "call_result", "id": call["id"], "call_result": {"result": {"text": ""}}})
+        getter.join(5)
+        assert not getter.is_alive()

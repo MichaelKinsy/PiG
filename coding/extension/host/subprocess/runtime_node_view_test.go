@@ -36,6 +36,9 @@ const ca = await import(RT + "/shims/pi-dist/pi-coding-agent/sdk-bundle/index.js
 const piCodingAgent = await import(RT + "/shims/pi-coding-agent.mjs");
 const terminalImage = await import(RT + "/shims/pi-dist/pi-tui/terminal-image.js");
 const { Container, Box, Text, TruncatedText, Markdown, Spacer, SelectList, SettingsList, Image, Loader, HStack, VStack, Input } = tui;
+const { Editor } = tui;
+const { ScrollView } = tui;
+const { MouseRegion } = tui;
 const { DynamicBorder, getMarkdownTheme, getSelectListTheme, getSettingsListTheme } = ca;
 // The rows must not depend on the terminal running the test.
 terminalImage.setCapabilities({ images: null, trueColor: true, hyperlinks: false });
@@ -949,6 +952,9 @@ const instances = {
   Container: new Container(), Box: new Box(), Text: new Text("x"), TruncatedText: new TruncatedText("x"),
   Markdown: new Markdown("x", 0, 0, getMarkdownTheme()), Spacer: new Spacer(), DynamicBorder: new DynamicBorder(),
   SelectList: new SelectList([], 5, getSelectListTheme()), SettingsList: new SettingsList([], 5, getSettingsListTheme(), () => {}, () => {}),
+  ScrollView: new ScrollView(new Text("x")),
+  MouseRegion: new MouseRegion(new Text("x"), () => undefined),
+  Editor: new Editor({ requestRender() {}, terminal: { rows: 24, columns: 80 } }, { borderColor: (s) => s, selectList: getSelectListTheme() }),
   Input: new Input(), Image: new Image(PNG, "image/png", { fallbackColor: (s) => s }), Loader: loader, HStack: new HStack(), VStack: new VStack(),
   UserMessageComponent: new ca.UserMessageComponent("x"), AssistantMessageComponent: new ca.AssistantMessageComponent(),
   ToolExecutionComponent: new ca.ToolExecutionComponent("x", "c", {}, {}, {}, fakeUi), BashExecutionComponent: bash,

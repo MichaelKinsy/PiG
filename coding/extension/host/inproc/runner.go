@@ -1609,6 +1609,7 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 	}
 
 	dispatchCtx := r.dispatchContext(ctx)
+	started := extension.DispatchStartedFromContext(ctx)
 
 	// Upstream spreads the event into currentEvent and writes each handler's
 	// content/details/isError/usage into it, so every handler sees its
@@ -1625,6 +1626,10 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 		for _, handler := range handlers {
 			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage, curStructured)
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			if started != nil {
+				// The handler ran to its first await, which is when Pi starts the next call's hooks; a handler in an extension process reported it when its request was written.
+				started()
+			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "tool_result", err)
 				continue

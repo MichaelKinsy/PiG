@@ -5,6 +5,7 @@ package sdk
 // Ports packages/coding-agent/src/core/event-bus.ts
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -29,7 +30,7 @@ type EventBus struct {
 	bound bool
 }
 
-// Events returns the extension's event bus. A listener subscribed before the extension runs is registered with the Host before the extension registers, as a node factory's `pi.events.on` is.
+// Events returns the extension's event bus. A listener subscribed while the factory runs is registered with the Host at once, as a node factory's `pi.events.on` is; with no Host to reach it waits for Run.
 func (e *Extension) Events() EventBus { return EventBus{ext: e} }
 
 // Events returns the event bus for calls made from this request.
@@ -57,9 +58,10 @@ type busSub struct {
 
 // busRegistry holds an extension's listeners. A dispatch can arrive before events.on returns, and after events.off for a listener the Host had already snapshotted, so a listener stays until the Host releases it.
 type busRegistry struct {
-	mu      sync.Mutex
-	live    bool
-	subs    map[string]*busSub
+	mu   sync.Mutex
+	live bool
+	subs map[string]*busSub
+	// pending holds the listeners subscribed where there is no Host to register them with (no PIG_EXT_SOCKET, as in a unit test), in subscription order. Run registers them before the extension registers.
 	pending []*busSub
 }
 
@@ -77,9 +79,7 @@ func (b EventBus) call(method string, args busCallArgs) error {
 		result, err := b.ctx.callHost(method, args)
 		return callResultError(result, err)
 	}
-	b.ext.eventMu.Lock()
-	conn := b.ext.conn
-	b.ext.eventMu.Unlock()
+	conn := b.ext.busConn()
 	if conn == nil {
 		return errBusNotConnected
 	}
@@ -88,6 +88,8 @@ func (b EventBus) call(method string, args busCallArgs) error {
 }
 
 // On subscribes handler to channel and returns its idempotent unsubscribe function. A failure to register with the Host is returned, and nothing stays subscribed.
+//
+// Called while the factory runs, On registers the listener with the Host at once, over the connection the factory opened, as Pi's shared emitter holds it from that moment: it hears another extension's emit made while the factory runs. Where there is no Host (no PIG_EXT_SOCKET, as in a unit test) the listener is queued and registered when the extension runs.
 func (b EventBus) On(channel string, handler EventBusHandler) (unsubscribe func(), err error) {
 	if handler == nil {
 		return func() {}, errors.New("pi.events.on: handler must not be nil")
@@ -99,17 +101,43 @@ func (b EventBus) On(channel string, handler EventBusHandler) (unsubscribe func(
 		registry.subs = make(map[string]*busSub)
 	}
 	registry.subs[sub.id] = sub
-	if !registry.live {
-		registry.pending = append(registry.pending, sub)
-		registry.mu.Unlock()
-		return b.ext.unsubscribe(sub), nil
-	}
-	sub.sent = true
+	live := registry.live
 	registry.mu.Unlock()
-	if err := b.call(callEventsOn, busCallArgs{Channel: channel, HandlerID: sub.id, Value: true}); err != nil {
+	forget := func() {
 		registry.mu.Lock()
 		delete(registry.subs, sub.id)
 		registry.mu.Unlock()
+	}
+	var factory *conn
+	if !live {
+		factory, err = b.ext.factoryBusConn()
+		if err != nil && !errors.Is(err, errNoFactoryHost) {
+			forget()
+			return func() {}, err
+		}
+		if factory == nil {
+			registry.mu.Lock()
+			if !registry.live {
+				registry.pending = append(registry.pending, sub)
+				registry.mu.Unlock()
+				return b.ext.unsubscribe(sub), nil
+			}
+			registry.mu.Unlock()
+		}
+	}
+	registry.mu.Lock()
+	sub.sent = true
+	registry.mu.Unlock()
+	args := busCallArgs{Channel: channel, HandlerID: sub.id, Value: true}
+	if factory != nil {
+		var result *callResultMsg
+		result, err = factory.call(callEventsOn, args)
+		err = callResultError(result, err)
+	} else {
+		err = b.call(callEventsOn, args)
+	}
+	if err != nil {
+		forget()
 		return func() {}, err
 	}
 	return b.ext.unsubscribe(sub), nil
@@ -135,6 +163,8 @@ func (e *Extension) unsubscribe(sub *busSub) func() {
 }
 
 // Emit delivers data to every listener of channel, in registration order, and returns when each has finished. Like EventEmitter, an emit on "error" with no listener fails.
+//
+// Called through [Extension.Events] while the factory runs (before [Extension.Run]), it does what Pi's synchronous emit does in a factory: the Host delivers it to every listener it holds, in registration order, the listeners of the extensions loaded before this one and then this extension's own, which [EventBus.On] registered with it at once; each finishes before Emit returns, and an emit on "error" that nobody hears fails. The first factory-time bus call connects to the Host, so a factory that runs with no Host (no PIG_EXT_SOCKET, as in a unit test) gets an error. A listener the factory's emit runs has a [Context] with no session state yet (its Cwd and Mode are empty), and until the extension registers the only host calls it can make are pi.events ones and the parse helpers (ParseFrontmatter, ParseDate): a nested [Context.Events] Emit reaches the same listeners. Use [Extension.OnLoaded] for work that needs the live session.
 func (b EventBus) Emit(channel string, data any) error {
 	encoded, err := json.MarshalJS(data)
 	if err != nil {
@@ -148,11 +178,11 @@ func (b EventBus) Emit(channel string, data any) error {
 	if b.bound {
 		result, err = b.ctx.callHost(callEventsEmit, json.RawMessage(args))
 	} else {
-		b.ext.eventMu.Lock()
-		conn := b.ext.conn
-		b.ext.eventMu.Unlock()
+		conn := b.ext.busConn()
 		if conn == nil {
-			return errBusNotConnected
+			if conn, err = b.ext.factoryBusConn(); err != nil {
+				return fmt.Errorf("%w (%w)", errBusNotConnected, err)
+			}
 		}
 		result, err = conn.call(callEventsEmit, json.RawMessage(args))
 	}
@@ -166,6 +196,96 @@ func (b EventBus) Emit(channel string, data any) error {
 		return fmt.Errorf("pi.events.emit %q: unhandled error event: %s", channel, encoded)
 	}
 	return nil
+}
+
+var errNoFactoryHost = errors.New("PIG_EXT_SOCKET is not set, so this extension was not launched by pig")
+
+// busConn is the connection a bus call made outside a request rides: the running extension's, or the factory's while it loads. It is nil before the first factory-time call.
+func (e *Extension) busConn() *conn {
+	e.eventMu.Lock()
+	defer e.eventMu.Unlock()
+	if e.conn != nil {
+		return e.conn
+	}
+	return e.loading
+}
+
+// factoryBusConn is the connection the factory's bus calls use before Run, opened by the first of them (factoryConnection); Run adopts it. While it is the factory's, a pump answers the events.dispatch requests the host sends it, so a listener the factory subscribed hears an emit another extension makes while the factory runs, even one made in reply to the factory's own emit. It is errNoFactoryHost when there is no Host to reach.
+func (e *Extension) factoryBusConn() (*conn, error) {
+	e.eventMu.Lock()
+	defer e.eventMu.Unlock()
+	if e.running {
+		return e.conn, nil
+	}
+	if e.loading != nil {
+		return e.loading, nil
+	}
+	c, err := factoryConnection()
+	if err != nil {
+		return nil, err
+	}
+	e.loading = c
+	e.pump = &factoryPump{stop: make(chan struct{}), done: make(chan struct{})}
+	go e.pump.serve(e, c)
+	return c, nil
+}
+
+// factoryPump reads the factory's connection until Run takes it over.
+type factoryPump struct {
+	stop chan struct{}
+	done chan struct{}
+}
+
+// stopFactoryPump ends the pump and waits until it has stopped reading, so that Run's loop is the only reader. An envelope the pump had not taken stays queued for the loop.
+func (e *Extension) stopFactoryPump() {
+	e.eventMu.Lock()
+	pump := e.pump
+	e.pump = nil
+	e.eventMu.Unlock()
+	if pump != nil {
+		close(pump.stop)
+		<-pump.done
+	}
+}
+
+func (p *factoryPump) serve(e *Extension, c *conn) {
+	defer close(p.done)
+	for {
+		select {
+		case <-p.stop:
+			return
+		case env, ok := <-c.incoming:
+			if !ok {
+				return
+			}
+			e.serveLoadingEnvelope(c, env)
+		}
+	}
+}
+
+// serveLoadingEnvelope answers what the Host sends a connection whose extension has not registered: listener dispatches, each on its own goroutine so that a listener's nested emit does not stop the next dispatch, and the release of a listener a dispatch unsubscribed. A request the extension cannot serve yet is refused, so the Host does not wait for it.
+func (e *Extension) serveLoadingEnvelope(c *conn, env envelope) {
+	switch {
+	case env.Type == msgRequest && env.Request != nil && env.Request.Method == methodEventsDispatch:
+		ctx := Context{ext: e, ctx: context.Background(), loading: c}
+		e.requestWG.Go(func() {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					_ = c.respond(env.ID, nil, fmt.Errorf("handler panicked: %v", recovered))
+				}
+			}()
+			e.dispatchEventBus(ctx, env.ID, env.Request)
+		})
+	case env.Type == msgNotify && env.Notify != nil && env.Notify.Method == notifyEventsRelease:
+		e.releaseEventListener(env.Notify.Args)
+		e.markNotifyHandled()
+	case env.Type == msgRequest:
+		method := ""
+		if env.Request != nil {
+			method = env.Request.Method
+		}
+		_ = c.respond(env.ID, nil, fmt.Errorf("%s: the extension has not registered with the host yet", method))
+	}
 }
 
 // registerPendingListeners sends the listeners subscribed before Run, in subscription order, and makes later subscriptions register at once.
@@ -202,6 +322,9 @@ func (e *Extension) resetEventBus() {
 	registry.subs = nil
 	registry.pending = nil
 	registry.mu.Unlock()
+	e.eventMu.Lock()
+	e.running = false
+	e.eventMu.Unlock()
 }
 
 func (e *Extension) releaseEventListener(args json.RawMessage) {
@@ -227,7 +350,7 @@ func (e *Extension) dispatchEventBus(ctx Context, id string, req *requestMsg) {
 		JSON      json.RawMessage `json:"json"`
 	}
 	if err := json.Unmarshal(req.Args, &args); err != nil {
-		_ = e.conn.respond(id, nil, fmt.Errorf("parse %s: %w", methodEventsDispatch, err))
+		_ = ctx.hostConnection().respond(id, nil, fmt.Errorf("parse %s: %w", methodEventsDispatch, err))
 		return
 	}
 	registry := &e.eventBus
@@ -235,15 +358,15 @@ func (e *Extension) dispatchEventBus(ctx Context, id string, req *requestMsg) {
 	sub := registry.subs[args.HandlerID]
 	registry.mu.Unlock()
 	if sub == nil || sub.channel != args.Channel {
-		_ = e.conn.respond(id, nil, fmt.Errorf("Unknown event bus handler: %s", args.HandlerID))
+		_ = ctx.hostConnection().respond(id, nil, fmt.Errorf("Unknown event bus handler: %s", args.HandlerID))
 		return
 	}
 	var data any
 	if len(args.JSON) != 0 {
 		if err := json.Unmarshal(args.JSON, &data); err != nil {
-			_ = e.conn.respond(id, nil, fmt.Errorf("decode %s payload: %w", args.Channel, err))
+			_ = ctx.hostConnection().respond(id, nil, fmt.Errorf("decode %s payload: %w", args.Channel, err))
 			return
 		}
 	}
-	_ = e.conn.respond(id, nil, sub.handler(ctx, data))
+	_ = ctx.hostConnection().respond(id, nil, sub.handler(ctx, data))
 }

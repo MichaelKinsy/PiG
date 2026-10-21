@@ -39,9 +39,10 @@ type remoteEditor struct {
 }
 
 var (
-	_ tui.EditorRemote           = (*remoteEditor)(nil)
-	_ extension.RemoteEditorHost = (*remoteEditor)(nil)
-	_ tui.EditorRemoteRenderer   = (*remoteEditor)(nil)
+	_ tui.EditorRemote            = (*remoteEditor)(nil)
+	_ extension.RemoteEditorHost  = (*remoteEditor)(nil)
+	_ tui.EditorRemoteRenderer    = (*remoteEditor)(nil)
+	_ tui.EditorRemoteInvalidator = (*remoteEditor)(nil)
 )
 
 // setRemoteEditor installs editor, or with nil restores the host's editor
@@ -435,50 +436,51 @@ func (m *InteractiveMode) runOnMainOK(fn func()) bool {
 	return m.postToMain(ctx, fn) == nil
 }
 
+// appActionKeys pairs each Pi app action id with the key action whose handler Pi binds on the default editor for it.
+var appActionKeys = []struct {
+	id  AppKeybinding
+	key keyAction
+}{
+	{AppInterrupt, actionInterrupt},
+	{AppExit, actionExit},
+	{AppClipboardPasteImage, actionPasteImage},
+	{AppClear, actionClearEditor},
+	{AppSuspend, actionSuspend},
+	{AppThinkingCycle, actionCycleThinking},
+	{AppModelCycleForward, actionCycleModelForward},
+	{AppModelCycleBackward, actionCycleModelBackward},
+	{AppModelSelect, actionModelPicker},
+	{AppToolsExpand, actionToggleTools},
+	{AppThinkingToggle, actionToggleThinking},
+	{AppEditorExternal, actionExternalEditor},
+	{AppMessageCopy, actionMessageCopy},
+	{AppMessageFollowUp, actionFollowUp},
+	{AppMessageDequeue, actionDequeue},
+	{AppSessionNew, actionSessionNew},
+	{AppSessionTree, actionSessionTree},
+	{AppSessionFork, actionSessionFork},
+	{AppSessionResume, actionSessionResume},
+}
+
 // appActionKey maps a Pi app action id to the key action whose handler Pi
 // binds on the default editor for it.
 func appActionKey(action AppKeybinding) (keyAction, bool) {
-	switch action {
-	case AppInterrupt:
-		return actionInterrupt, true
-	case AppExit:
-		return actionExit, true
-	case AppClipboardPasteImage:
-		return actionPasteImage, true
-	case AppClear:
-		return actionClearEditor, true
-	case AppSuspend:
-		return actionSuspend, true
-	case AppThinkingCycle:
-		return actionCycleThinking, true
-	case AppModelCycleForward:
-		return actionCycleModelForward, true
-	case AppModelCycleBackward:
-		return actionCycleModelBackward, true
-	case AppModelSelect:
-		return actionModelPicker, true
-	case AppToolsExpand:
-		return actionToggleTools, true
-	case AppThinkingToggle:
-		return actionToggleThinking, true
-	case AppEditorExternal:
-		return actionExternalEditor, true
-	case AppMessageCopy:
-		return actionMessageCopy, true
-	case AppMessageFollowUp:
-		return actionFollowUp, true
-	case AppMessageDequeue:
-		return actionDequeue, true
-	case AppSessionNew:
-		return actionSessionNew, true
-	case AppSessionTree:
-		return actionSessionTree, true
-	case AppSessionFork:
-		return actionSessionFork, true
-	case AppSessionResume:
-		return actionSessionResume, true
+	for _, pair := range appActionKeys {
+		if pair.id == action {
+			return pair.key, true
+		}
 	}
 	return actionInsert, false
+}
+
+// appActionID is the Pi app action id of a key action, the inverse of appActionKey.
+func appActionID(key keyAction) (AppKeybinding, bool) {
+	for _, pair := range appActionKeys {
+		if pair.key == key {
+			return pair.id, true
+		}
+	}
+	return "", false
 }
 
 // publishExtensionKeybindings snapshots the keybinding table extensions
@@ -513,6 +515,17 @@ func (h *remoteEditor) editorBase(op string, args json.RawMessage) (json.RawMess
 		Width int                        `json:"width"`
 		N     int                        `json:"n"`
 		Event extension.RemoteMouseEvent `json:"event"`
+		Value bool                       `json:"value"`
+		// Hooks are the app actions the component handles itself, which handleInput answers instead of running.
+		Hooks    []string `json:"hooks"`
+		Provider *struct {
+			Commands []struct {
+				Name         string `json:"name"`
+				Description  string `json:"description"`
+				ArgumentHint string `json:"argumentHint"`
+			} `json:"commands"`
+			BasePath string `json:"basePath"`
+		} `json:"provider"`
 	}
 	if len(args) > 0 {
 		if err := sdkjson.Unmarshal(args, &p); err != nil {
@@ -526,11 +539,17 @@ func (h *remoteEditor) editorBase(op string, args json.RawMessage) (json.RawMess
 		m.terminalInputMu.Lock()
 		listener := m.extensionShortcutListener
 		m.terminalInputMu.Unlock()
-		if listener != nil && listener(p.Data) {
+		// A component that sets its own onExtensionShortcut has run it already, and it replaces the host's: Pi gives the host's
+		// only to a component without one (interactive-mode.ts setCustomEditorComponent).
+		if listener != nil && !slices.Contains(p.Hooks, editorHookExtensionShortcut) && listener(p.Data) {
 			h.finishInput()
 			return reply(struct{}{})
 		}
 		action := classifyKeyWithBindings(p.Data, m.keybindings)
+		if hook, ok := h.editorHook(action, p.Hooks); ok {
+			// The component's handler runs in the extension, inside its handleInput call; its inputDone releases the key's ticket.
+			return reply(map[string]string{"hook": hook})
+		}
 		if action != actionInsert {
 			h.finishInput()
 		}
@@ -576,12 +595,86 @@ func (h *remoteEditor) editorBase(op string, args json.RawMessage) (json.RawMess
 	case "setAutocompleteMaxVisible":
 		m.editor.AsBase(func() { m.editor.SetAutocompleteMaxVisible(p.N) })
 	case "isShowingAutocomplete":
-		var open bool
-		m.editor.AsBase(func() { open = m.editor.AutocompleteOpen() })
-		return reply(map[string]any{"value": open})
+		return reply(map[string]any{"value": h.autocompleteOpen()})
+	case "getPaddingX":
+		return reply(map[string]any{"n": m.editor.PaddingX()})
+	case "getAutocompleteMaxVisible":
+		return reply(map[string]any{"n": m.editor.AutocompleteMaxVisible()})
+	case "borderColor":
+		return reply(map[string]any{"text": m.editor.ApplyBorderColor(p.Text)})
+	case "getDisableSubmit":
+		return reply(map[string]any{"value": m.editor.DisableSubmit})
+	case "setDisableSubmit":
+		m.editor.DisableSubmit = p.Value
+	case "getFocused":
+		return reply(map[string]any{"value": m.editor.Focused})
+	case "setFocused":
+		m.editor.SetFocused(p.Value)
+	case "setAutocompleteProvider":
+		// The provider is Pi's CombinedAutocompleteProvider(commands, basePath): the commands and the directory path completion starts from.
+		var provider tui.AutocompleteProvider
+		if a := p.Provider; a != nil {
+			commands := make([]tui.SlashCommand, len(a.Commands))
+			for i, c := range a.Commands {
+				commands[i] = tui.SlashCommand{Name: c.Name, Description: c.Description, ArgumentHint: c.ArgumentHint}
+			}
+			base := a.BasePath
+			if base == "" {
+				base = m.opts.CWD
+			}
+			provider = tui.NewCombinedProvider(commands, base, "")
+		}
+		m.editor.AsBase(func() { m.editor.SetAutocomplete(provider) })
+	case "onSubmit":
+		// Pi's `this.onSubmit?.(text)`: the host's submit handler, whose promise the caller does not await.
+		h.EditorSubmit(p.Text, func() {})
+	case "onChange":
+		if m.editor.OnChange != nil {
+			m.editor.OnChange(p.Text)
+		}
 	default:
 		return nil, fmt.Errorf("editor base: unknown operation %q", op)
 	}
 	m.requestRender()
 	return reply(struct{}{})
+}
+
+// editorHookExtensionShortcut is the hooks entry of a component that sets its own onExtensionShortcut.
+const editorHookExtensionShortcut = "extensionShortcut"
+
+// autocompleteOpen is Pi's isShowingAutocomplete() of the base editor.
+func (h *remoteEditor) autocompleteOpen() bool {
+	var open bool
+	h.m.editor.AsBase(func() { open = h.m.editor.AutocompleteOpen() })
+	return open
+}
+
+// editorHook returns the app action of a key that the component handles itself, which it listed in hooks, when Pi's
+// CustomEditor.handleInput would run its handler: Escape only while no autocomplete shows (otherwise the editor cancels the
+// autocomplete), Ctrl+D only on an empty editor (otherwise the editor deletes forward).
+func (h *remoteEditor) editorHook(action keyAction, hooks []string) (string, bool) {
+	id, ok := appActionID(action)
+	if !ok || !slices.Contains(hooks, string(id)) {
+		return "", false
+	}
+	switch action {
+	case actionInterrupt:
+		if h.autocompleteOpen() {
+			return "", false
+		}
+	case actionExit:
+		if h.m.editor.Text() != "" {
+			return "", false
+		}
+	}
+	return string(id), true
+}
+
+// Invalidate is tui.EditorRemoteInvalidator: the theme changed, which Pi's TUI delivers to the component as invalidate().
+func (h *remoteEditor) Invalidate() {
+	h.onLoop(func() {
+		if invalidator, ok := h.editor.(extension.RemoteEditorInvalidator); ok {
+			invalidator.Invalidate()
+		}
+	})
 }

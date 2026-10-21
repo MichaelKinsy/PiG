@@ -477,7 +477,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			select {
 			case <-rpcUI.PendingRequest():
 				return
-			case <-responses.idle():
+			case <-responses.Idle():
 			}
 			if commandJoin := host.commandJoin.Load(); commandJoin != nil {
 				// pig additive (D19): the host applies Pi's stdin-end window to runtimes that report none; a Node runtime reports each command's own window.
@@ -573,11 +573,21 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	// Preflight is not an agent run. Admission marks the Session streaming only after before_agent_start and image normalization finish.
 	streaming := func() bool { return sess().IsStreaming() }
 
+	// goCommand runs the completion of a command off the executor (a model change's handlers) as part of the command: the extension runtimes hold their timer callbacks until the work ended and the response it publishes was written. Pi runs these handlers and the response in the command's own microtasks, so a callback queued meanwhile runs after the response.
+	goCommand := func(turn *rpcResponseTurn, work func()) {
+		end := host.turns.Command()
+		commandWG.Go(func() {
+			work()
+			<-turn.Idle()
+			end()
+		})
+	}
+
 	handleCycleModel := func(id rpcRequestID, currentSession *coding.Session, turn *rpcResponseTurn) {
 		// Pi's `await session.cycleModel()` resumes in microtasks once the model_select listeners returned, so the deferred UI calls of those listeners follow the response (rpcBackgroundGate).
 		release := host.background.hold()
 		// build runs in the continuation, where Pi samples the response's state (the thinking level) after its await.
-		answer := func(build func() any) { turn.after(func() { writeRPC(build()); release() }) }
+		answer := func(build func() any) { turn.Microtask(func() { writeRPC(build()); release() }) }
 		result, complete, err := currentSession.BeginModelCycle(ctx, "forward")
 		if err != nil {
 			answer(func() any { return rpcError(id, "cycle_model", err.Error()) })
@@ -601,7 +611,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		if complete == nil {
 			publish()
 		} else {
-			commandWG.Go(func() { complete(); publish() })
+			goCommand(turn, func() { complete(); publish() })
 		}
 	}
 
@@ -617,9 +627,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		currentTurn := inputTurn
 		if currentTurn != nil {
 			inputTurn = nil
-			currentTurn.end()
+			currentTurn.End()
 			defer func() {
-				currentTurn.begin()
+				currentTurn.Begin()
 				inputTurn = currentTurn
 			}()
 		}
@@ -703,7 +713,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		})
 		startedReplacements = append(startedReplacements, pending)
 		replacementMu.Unlock()
-		batchDrained := turn.idle()
+		batchDrained := turn.Idle()
 		replacementWG.Add(1)
 		previous := replacementResolved
 		awaitPrechecks := func() {
@@ -876,7 +886,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 commandLoop:
 	for {
 		if len(inputBatch) == 0 && inputTurn != nil {
-			inputTurn.end()
+			inputTurn.End()
 			inputTurn = nil
 		}
 		// Upstream checks for ctx.shutdown() once after each handled command.
@@ -900,7 +910,9 @@ commandLoop:
 			}
 			// Pi reads a stdin chunk in an iteration of its own, after any microtask tail that agent_end started.
 			host.settle.wait(ctx, rpcUI.PendingRequest, shutdown.Started())
-			responses.begin()
+			// pig additive (D189): the extension runtimes hold their timer callbacks before the command's first event, which the loop's Begin below lets run.
+			host.loop.arm(ctx)
+			responses.Begin()
 			inputTurn = responses
 		}
 		line := inputBatch[0]
@@ -1081,7 +1093,7 @@ commandLoop:
 					close(applied)
 					return
 				}
-				commandWG.Go(func() { complete(); close(applied); turn.after(publish) })
+				goCommand(turn, func() { complete(); close(applied); turn.Microtask(publish) })
 			})
 
 		case RPCCommandCycleModel:
@@ -1097,7 +1109,7 @@ commandLoop:
 			commandID := env.ID
 			customInstructions := cmd.CustomInstructions
 			currentSession := sess()
-			batchDispatched := turn.idle()
+			batchDispatched := turn.Idle()
 			// Pi's compact() awaits abort() before it creates its abort controller, so a compact of the same batch aborts nothing of an earlier one. Compactions chain: each starts after the previous one settled.
 			commandWG.Add(1)
 			previous := compactResolved
@@ -1488,7 +1500,7 @@ commandLoop:
 	}
 
 	if inputTurn != nil {
-		inputTurn.end()
+		inputTurn.End()
 		inputTurn = nil
 	}
 
@@ -1513,8 +1525,8 @@ commandLoop:
 	cancel()
 	rpcUI.Close()
 	host.tasks.CloseAndWait()
-	responses.begin()
-	responses.end()
+	responses.Begin()
+	responses.End()
 	settleSessionWork()
 
 	// Runtime.Close closes the current Session, which closes its events channel, and retires its host.

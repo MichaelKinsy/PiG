@@ -15,15 +15,20 @@ import (
 	"slices"
 )
 
-//go:embed LICENSE pig_sdk/*.py pyproject.toml
+//go:embed LICENSE pig_sdk/*.py pig_sdk/tui/*.py pyproject.toml
 var Source embed.FS
 
 // BundledFiles lists the embedded files, relative to the SDK root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories.
 func BundledFiles() []string {
-	files, err := fs.Glob(Source, "pig_sdk/*.py")
-	if err != nil {
-		panic(err)
+	var files []string
+	// pig_sdk/__init__.py imports pig_sdk.tui at load, so the subpackage is staged with the package.
+	for _, pattern := range []string{"pig_sdk/*.py", "pig_sdk/tui/*.py"} {
+		matches, err := fs.Glob(Source, pattern)
+		if err != nil {
+			panic(err)
+		}
+		files = append(files, matches...)
 	}
 	files = append(files, "LICENSE", "pyproject.toml")
 	slices.Sort(files)

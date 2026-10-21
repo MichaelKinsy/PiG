@@ -1,0 +1,143 @@
+{
+	"extended": {
+		"diagnostics": [],
+		"skills": [
+			{
+				"baseDir": "alpha",
+				"description": "The alpha skill",
+				"disable": false,
+				"file": "SKILL.md",
+				"name": "alpha",
+				"origin": "top-level",
+				"scope": "project",
+				"source": "auto"
+			},
+			{
+				"baseDir": "beta",
+				"description": "The beta skill",
+				"disable": false,
+				"file": "SKILL.md",
+				"name": "beta",
+				"origin": "top-level",
+				"scope": "project",
+				"source": "test"
+			}
+		]
+	},
+	"overridden": {
+		"agentsFiles": [
+			{
+				"content": "virtual",
+				"path": "/virtual/AGENTS.md"
+			}
+		],
+		"appendSources": [],
+		"appendSystemPrompt": [
+			"a1",
+			"a2",
+			"z"
+		],
+		"extensionErrors": 0,
+		"extensions": 0,
+		"prompts": {
+			"diagnostics": [],
+			"prompts": [
+				{
+					"argumentHint": "",
+					"content": "Bye $1",
+					"description": "overridden bye",
+					"file": "bye.md",
+					"name": "bye",
+					"scope": "temporary"
+				}
+			]
+		},
+		"skills": {
+			"diagnostics": [],
+			"skills": []
+		},
+		"systemPrompt": "inline prompt!",
+		"systemPromptSource": null,
+		"themes": 0
+	},
+	"plain": {
+		"agentsFiles": [
+			{
+				"content": "project context\n",
+				"path": "\u003croot\u003e/project/AGENTS.md"
+			}
+		],
+		"appendSources": [
+			"\u003croot\u003e/project/.pig/APPEND_SYSTEM.md"
+		],
+		"appendSystemPrompt": [
+			"project append\n"
+		],
+		"extensionErrors": 0,
+		"extensions": 0,
+		"prompts": {
+			"diagnostics": [],
+			"prompts": [
+				{
+					"argumentHint": "\u003cname\u003e",
+					"content": "Hello $1",
+					"description": "Say hello",
+					"file": "hello.md",
+					"name": "hello",
+					"scope": "project"
+				}
+			]
+		},
+		"skills": {
+			"diagnostics": [],
+			"skills": [
+				{
+					"baseDir": "alpha",
+					"description": "The alpha skill",
+					"disable": false,
+					"file": "SKILL.md",
+					"name": "alpha",
+					"origin": "top-level",
+					"scope": "project",
+					"source": "auto"
+				}
+			]
+		},
+		"systemPrompt": "project system\n",
+		"systemPromptSource": "\u003croot\u003e/project/.pig/SYSTEM.md",
+		"themes": 0
+	},
+	"projectTrust": {
+		"errors": 0,
+		"extensions": 0
+	},
+	"trust": {
+		"calls": 1,
+		"skills": 1
+	},
+	"viaSettings": {
+		"diagnostics": [],
+		"skills": [
+			{
+				"baseDir": "alpha",
+				"description": "The alpha skill",
+				"disable": false,
+				"file": "SKILL.md",
+				"name": "alpha",
+				"origin": "top-level",
+				"scope": "project",
+				"source": "auto"
+			},
+			{
+				"baseDir": "beta",
+				"description": "The beta skill",
+				"disable": false,
+				"file": "SKILL.md",
+				"name": "beta",
+				"origin": "top-level",
+				"scope": "user",
+				"source": "local"
+			}
+		]
+	}
+}

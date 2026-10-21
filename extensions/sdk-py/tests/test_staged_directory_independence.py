@@ -16,5 +16,13 @@ def test_importing_the_package_loads_every_module():
     assert modules
     missing = [name for name in modules if f"pig_sdk.{name}" not in sys.modules]
     assert not missing, f"modules not loaded by `import pig_sdk`: {missing}"
-    subpackages = [name for name in os.listdir(package_dir) if os.path.isdir(os.path.join(package_dir, name)) and name != "__pycache__"]
-    assert not subpackages, f"the package has subpackages whose import could be deferred: {subpackages}"
+    subpackages = sorted(name for name in os.listdir(package_dir) if os.path.isfile(os.path.join(package_dir, name, "__init__.py")))
+    assert subpackages
+    missing = []
+    for subpackage in subpackages:
+        subpackage_dir = os.path.join(package_dir, subpackage)
+        names = [f"pig_sdk.{subpackage}"] + [
+            f"pig_sdk.{subpackage}.{name[:-3]}" for name in sorted(os.listdir(subpackage_dir)) if name.endswith(".py") and name != "__init__.py"
+        ]
+        missing += [name for name in names if name not in sys.modules]
+    assert not missing, f"subpackage modules not loaded by `import pig_sdk`: {missing}"

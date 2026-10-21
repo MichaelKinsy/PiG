@@ -18,7 +18,7 @@ func TestHeadlessFlagBindingSharesReferenceAndWireValues(t *testing.T) {
 	values := map[string]any{"enabled": true, "disabled": false, "empty": "", "configured": "cli-value"}
 	runner := inproc.NewRunner(nil, t.TempDir())
 	bridge := subprocess.NewUIBridge(func() {})
-	bindSessionExtensionActions(runner, bridge, func() *coding.Session { return nil }, extension.ContextActions{
+	coding.BindSessionExtensionActions(runner, bridge, func() *coding.Session { return nil }, extension.ContextActions{
 		GetFlagValue: func(name string) any { return values[name] },
 	}, nil)
 	ctx := extension.FromContext(runner.DispatchContext(t.Context()))

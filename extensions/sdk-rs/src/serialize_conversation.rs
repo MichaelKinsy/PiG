@@ -76,6 +76,12 @@ pub fn serialize_conversation_json(messages_json: &str) -> Result<JsString, Stri
     serialize(&messages).map(JsString::from_units)
 }
 
+/// `JSON.stringify(JSON.parse(text))`: the text re-written as a JavaScript object holds it, members in `Object.keys` order and numbers as JavaScript prints them. `None` when `text` is not JSON.
+pub(crate) fn js_stringify_text(text: &str) -> Option<String> {
+    let value = crate::protocol::on_deep_stack(|| parse_json(text)).ok()?.ok()?;
+    Some(String::from_utf16_lossy(&json_stringify(&value)))
+}
+
 fn serialize(messages: &[Json]) -> Result<Vec<u16>, String> {
     let mut parts: Vec<Vec<u16>> = Vec::new();
     for message in messages {

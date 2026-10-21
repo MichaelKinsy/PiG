@@ -1,0 +1,997 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-coding-agent@1.3.0",
+ "module": "pi-coding-agent",
+ "export": "generateUnifiedPatch",
+ "cases": [
+  {
+   "name": "patch 001",
+   "args": [
+    "src/a.ts",
+    "",
+    ""
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 002",
+   "args": [
+    "src/a.ts",
+    "",
+    "",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 003",
+   "args": [
+    "src/a.ts",
+    "",
+    "",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 004",
+   "args": [
+    "src/a.ts",
+    "",
+    "",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 005",
+   "args": [
+    "src/a.ts",
+    "",
+    "",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 006",
+   "args": [
+    "src/a.ts",
+    "same\n",
+    "same\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 007",
+   "args": [
+    "src/a.ts",
+    "same\n",
+    "same\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 008",
+   "args": [
+    "src/a.ts",
+    "same\n",
+    "same\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 009",
+   "args": [
+    "src/a.ts",
+    "same\n",
+    "same\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 010",
+   "args": [
+    "src/a.ts",
+    "same\n",
+    "same\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n"
+  },
+  {
+   "name": "patch 011",
+   "args": [
+    "src/a.ts",
+    "",
+    "new\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -0,0 +1,1 @@\n+new\n"
+  },
+  {
+   "name": "patch 012",
+   "args": [
+    "src/a.ts",
+    "",
+    "new\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -0,0 +1,1 @@\n+new\n"
+  },
+  {
+   "name": "patch 013",
+   "args": [
+    "src/a.ts",
+    "",
+    "new\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -0,0 +1,1 @@\n+new\n"
+  },
+  {
+   "name": "patch 014",
+   "args": [
+    "src/a.ts",
+    "",
+    "new\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -0,0 +1,1 @@\n+new\n"
+  },
+  {
+   "name": "patch 015",
+   "args": [
+    "src/a.ts",
+    "",
+    "new\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -0,0 +1,1 @@\n+new\n"
+  },
+  {
+   "name": "patch 016",
+   "args": [
+    "src/a.ts",
+    "old\n",
+    ""
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,1 +0,0 @@\n-old\n"
+  },
+  {
+   "name": "patch 017",
+   "args": [
+    "src/a.ts",
+    "old\n",
+    "",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,1 +0,0 @@\n-old\n"
+  },
+  {
+   "name": "patch 018",
+   "args": [
+    "src/a.ts",
+    "old\n",
+    "",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,1 +0,0 @@\n-old\n"
+  },
+  {
+   "name": "patch 019",
+   "args": [
+    "src/a.ts",
+    "old\n",
+    "",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,1 +0,0 @@\n-old\n"
+  },
+  {
+   "name": "patch 020",
+   "args": [
+    "src/a.ts",
+    "old\n",
+    "",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,1 +0,0 @@\n-old\n"
+  },
+  {
+   "name": "patch 021",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nB\nc\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n"
+  },
+  {
+   "name": "patch 022",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nB\nc\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,1 +2,1 @@\n-b\n+B\n"
+  },
+  {
+   "name": "patch 023",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nB\nc\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n"
+  },
+  {
+   "name": "patch 024",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nB\nc\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n"
+  },
+  {
+   "name": "patch 025",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nB\nc\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n"
+  },
+  {
+   "name": "patch 026",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc",
+    "a\nb\nc\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n b\n-c\n\\ No newline at end of file\n+c\n"
+  },
+  {
+   "name": "patch 027",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc",
+    "a\nb\nc\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -3,1 +3,1 @@\n-c\n\\ No newline at end of file\n+c\n"
+  },
+  {
+   "name": "patch 028",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc",
+    "a\nb\nc\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,2 +2,2 @@\n b\n-c\n\\ No newline at end of file\n+c\n"
+  },
+  {
+   "name": "patch 029",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc",
+    "a\nb\nc\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n b\n-c\n\\ No newline at end of file\n+c\n"
+  },
+  {
+   "name": "patch 030",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc",
+    "a\nb\nc\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n b\n-c\n\\ No newline at end of file\n+c\n"
+  },
+  {
+   "name": "patch 031",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nb\nc"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n b\n-c\n+c\n\\ No newline at end of file\n"
+  },
+  {
+   "name": "patch 032",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nb\nc",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -3,1 +3,1 @@\n-c\n+c\n\\ No newline at end of file\n"
+  },
+  {
+   "name": "patch 033",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nb\nc",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,2 +2,2 @@\n b\n-c\n+c\n\\ No newline at end of file\n"
+  },
+  {
+   "name": "patch 034",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nb\nc",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n b\n-c\n+c\n\\ No newline at end of file\n"
+  },
+  {
+   "name": "patch 035",
+   "args": [
+    "src/a.ts",
+    "a\nb\nc\n",
+    "a\nb\nc",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n b\n-c\n+c\n\\ No newline at end of file\n"
+  },
+  {
+   "name": "patch 036",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nchanged\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -12,9 +12,9 @@\n line 12\n line 13\n line 14\n line 15\n-line 16\n+changed\n line 17\n line 18\n line 19\n line 20\n"
+  },
+  {
+   "name": "patch 037",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nchanged\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -16,1 +16,1 @@\n-line 16\n+changed\n"
+  },
+  {
+   "name": "patch 038",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nchanged\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -15,3 +15,3 @@\n line 15\n-line 16\n+changed\n line 17\n"
+  },
+  {
+   "name": "patch 039",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nchanged\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -14,5 +14,5 @@\n line 14\n line 15\n-line 16\n+changed\n line 17\n line 18\n"
+  },
+  {
+   "name": "patch 040",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nchanged\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -6,21 +6,21 @@\n line 6\n line 7\n line 8\n line 9\n line 10\n line 11\n line 12\n line 13\n line 14\n line 15\n-line 16\n+changed\n line 17\n line 18\n line 19\n line 20\n line 21\n line 22\n line 23\n line 24\n line 25\n line 26\n"
+  },
+  {
+   "name": "patch 041",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nx\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\ny\nline 29\nline 30\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,7 +1,7 @@\n line 1\n line 2\n-line 3\n+x\n line 4\n line 5\n line 6\n line 7\n@@ -24,7 +24,7 @@\n line 24\n line 25\n line 26\n line 27\n-line 28\n+y\n line 29\n line 30\n"
+  },
+  {
+   "name": "patch 042",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nx\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\ny\nline 29\nline 30\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -3,1 +3,1 @@\n-line 3\n+x\n@@ -28,1 +28,1 @@\n-line 28\n+y\n"
+  },
+  {
+   "name": "patch 043",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nx\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\ny\nline 29\nline 30\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,3 +2,3 @@\n line 2\n-line 3\n+x\n line 4\n@@ -27,3 +27,3 @@\n line 27\n-line 28\n+y\n line 29\n"
+  },
+  {
+   "name": "patch 044",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nx\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\ny\nline 29\nline 30\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,5 +1,5 @@\n line 1\n line 2\n-line 3\n+x\n line 4\n line 5\n@@ -26,5 +26,5 @@\n line 26\n line 27\n-line 28\n+y\n line 29\n line 30\n"
+  },
+  {
+   "name": "patch 045",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nx\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\ny\nline 29\nline 30\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,13 +1,13 @@\n line 1\n line 2\n-line 3\n+x\n line 4\n line 5\n line 6\n line 7\n line 8\n line 9\n line 10\n line 11\n line 12\n line 13\n@@ -18,13 +18,13 @@\n line 18\n line 19\n line 20\n line 21\n line 22\n line 23\n line 24\n line 25\n line 26\n line 27\n-line 28\n+y\n line 29\n line 30\n"
+  },
+  {
+   "name": "patch 046",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "first\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,5 +1,5 @@\n-line 1\n+first\n line 2\n line 3\n line 4\n line 5\n"
+  },
+  {
+   "name": "patch 047",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "first\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,1 +1,1 @@\n-line 1\n+first\n"
+  },
+  {
+   "name": "patch 048",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "first\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-line 1\n+first\n line 2\n"
+  },
+  {
+   "name": "patch 049",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "first\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n-line 1\n+first\n line 2\n line 3\n"
+  },
+  {
+   "name": "patch 050",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "first\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,11 +1,11 @@\n-line 1\n+first\n line 2\n line 3\n line 4\n line 5\n line 6\n line 7\n line 8\n line 9\n line 10\n line 11\n"
+  },
+  {
+   "name": "patch 051",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nlast\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -26,5 +26,5 @@\n line 26\n line 27\n line 28\n line 29\n-line 30\n+last\n"
+  },
+  {
+   "name": "patch 052",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nlast\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -30,1 +30,1 @@\n-line 30\n+last\n"
+  },
+  {
+   "name": "patch 053",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nlast\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -29,2 +29,2 @@\n line 29\n-line 30\n+last\n"
+  },
+  {
+   "name": "patch 054",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nlast\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -28,3 +28,3 @@\n line 28\n line 29\n-line 30\n+last\n"
+  },
+  {
+   "name": "patch 055",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nlast\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -20,11 +20,11 @@\n line 20\n line 21\n line 22\n line 23\n line 24\n line 25\n line 26\n line 27\n line 28\n line 29\n-line 30\n+last\n"
+  },
+  {
+   "name": "patch 056",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,9 +2,8 @@\n line 2\n line 3\n line 4\n line 5\n-line 6\n line 7\n line 8\n line 9\n line 10\n"
+  },
+  {
+   "name": "patch 057",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -6,1 +5,0 @@\n-line 6\n"
+  },
+  {
+   "name": "patch 058",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -5,3 +5,2 @@\n line 5\n-line 6\n line 7\n"
+  },
+  {
+   "name": "patch 059",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -4,5 +4,4 @@\n line 4\n line 5\n-line 6\n line 7\n line 8\n"
+  },
+  {
+   "name": "patch 060",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,12 +1,11 @@\n line 1\n line 2\n line 3\n line 4\n line 5\n-line 6\n line 7\n line 8\n line 9\n line 10\n line 11\n line 12\n"
+  },
+  {
+   "name": "patch 061",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\ninserted\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -3,8 +3,9 @@\n line 3\n line 4\n line 5\n line 6\n+inserted\n line 7\n line 8\n line 9\n line 10\n"
+  },
+  {
+   "name": "patch 062",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\ninserted\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -6,0 +7,1 @@\n+inserted\n"
+  },
+  {
+   "name": "patch 063",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\ninserted\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -6,2 +6,3 @@\n line 6\n+inserted\n line 7\n"
+  },
+  {
+   "name": "patch 064",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\ninserted\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -5,4 +5,5 @@\n line 5\n line 6\n+inserted\n line 7\n line 8\n"
+  },
+  {
+   "name": "patch 065",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\ninserted\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,12 +1,13 @@\n line 1\n line 2\n line 3\n line 4\n line 5\n line 6\n+inserted\n line 7\n line 8\n line 9\n line 10\n line 11\n line 12\n"
+  },
+  {
+   "name": "patch 066",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\r\nc\r\n",
+    "a\r\nB\r\nc\r\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\r\n-b\r\n+B\r\n c\r\n"
+  },
+  {
+   "name": "patch 067",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\r\nc\r\n",
+    "a\r\nB\r\nc\r\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,1 +2,1 @@\n-b\r\n+B\r\n"
+  },
+  {
+   "name": "patch 068",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\r\nc\r\n",
+    "a\r\nB\r\nc\r\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\r\n-b\r\n+B\r\n c\r\n"
+  },
+  {
+   "name": "patch 069",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\r\nc\r\n",
+    "a\r\nB\r\nc\r\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\r\n-b\r\n+B\r\n c\r\n"
+  },
+  {
+   "name": "patch 070",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\r\nc\r\n",
+    "a\r\nB\r\nc\r\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\r\n-b\r\n+B\r\n c\r\n"
+  },
+  {
+   "name": "patch 071",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\n",
+    "a\nb\r\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-a\r\n-b\n+a\n+b\r\n"
+  },
+  {
+   "name": "patch 072",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\n",
+    "a\nb\r\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-a\r\n-b\n+a\n+b\r\n"
+  },
+  {
+   "name": "patch 073",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\n",
+    "a\nb\r\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-a\r\n-b\n+a\n+b\r\n"
+  },
+  {
+   "name": "patch 074",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\n",
+    "a\nb\r\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-a\r\n-b\n+a\n+b\r\n"
+  },
+  {
+   "name": "patch 075",
+   "args": [
+    "src/a.ts",
+    "a\r\nb\n",
+    "a\nb\r\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-a\r\n-b\n+a\n+b\r\n"
+  },
+  {
+   "name": "patch 076",
+   "args": [
+    "src/a.ts",
+    "héllo\n😀\n",
+    "héllo\n😀😀\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n héllo\n-😀\n+😀😀\n"
+  },
+  {
+   "name": "patch 077",
+   "args": [
+    "src/a.ts",
+    "héllo\n😀\n",
+    "héllo\n😀😀\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,1 +2,1 @@\n-😀\n+😀😀\n"
+  },
+  {
+   "name": "patch 078",
+   "args": [
+    "src/a.ts",
+    "héllo\n😀\n",
+    "héllo\n😀😀\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n héllo\n-😀\n+😀😀\n"
+  },
+  {
+   "name": "patch 079",
+   "args": [
+    "src/a.ts",
+    "héllo\n😀\n",
+    "héllo\n😀😀\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n héllo\n-😀\n+😀😀\n"
+  },
+  {
+   "name": "patch 080",
+   "args": [
+    "src/a.ts",
+    "héllo\n😀\n",
+    "héllo\n😀😀\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n héllo\n-😀\n+😀😀\n"
+  },
+  {
+   "name": "patch 081",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nmid\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -57,9 +57,9 @@\n line 57\n line 58\n line 59\n line 60\n-line 61\n+mid\n line 62\n line 63\n line 64\n line 65\n"
+  },
+  {
+   "name": "patch 082",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nmid\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -61,1 +61,1 @@\n-line 61\n+mid\n"
+  },
+  {
+   "name": "patch 083",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nmid\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -60,3 +60,3 @@\n line 60\n-line 61\n+mid\n line 62\n"
+  },
+  {
+   "name": "patch 084",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nmid\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -59,5 +59,5 @@\n line 59\n line 60\n-line 61\n+mid\n line 62\n line 63\n"
+  },
+  {
+   "name": "patch 085",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nmid\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -51,21 +51,21 @@\n line 51\n line 52\n line 53\n line 54\n line 55\n line 56\n line 57\n line 58\n line 59\n line 60\n-line 61\n+mid\n line 62\n line 63\n line 64\n line 65\n line 66\n line 67\n line 68\n line 69\n line 70\n line 71\n"
+  },
+  {
+   "name": "patch 086",
+   "args": [
+    "src/a.ts",
+    "x\nx\nx\nx\nx\n",
+    "x\nx\nx\nx\nx\nx\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -2,4 +2,5 @@\n x\n x\n x\n x\n+x\n"
+  },
+  {
+   "name": "patch 087",
+   "args": [
+    "src/a.ts",
+    "x\nx\nx\nx\nx\n",
+    "x\nx\nx\nx\nx\nx\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -5,0 +6,1 @@\n+x\n"
+  },
+  {
+   "name": "patch 088",
+   "args": [
+    "src/a.ts",
+    "x\nx\nx\nx\nx\n",
+    "x\nx\nx\nx\nx\nx\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -5,1 +5,2 @@\n x\n+x\n"
+  },
+  {
+   "name": "patch 089",
+   "args": [
+    "src/a.ts",
+    "x\nx\nx\nx\nx\n",
+    "x\nx\nx\nx\nx\nx\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -4,2 +4,3 @@\n x\n x\n+x\n"
+  },
+  {
+   "name": "patch 090",
+   "args": [
+    "src/a.ts",
+    "x\nx\nx\nx\nx\n",
+    "x\nx\nx\nx\nx\nx\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,5 +1,6 @@\n x\n x\n x\n x\n x\n+x\n"
+  },
+  {
+   "name": "patch 091",
+   "args": [
+    "src/a.ts",
+    "one\ntwo\n",
+    "two\none\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-one\n two\n+one\n"
+  },
+  {
+   "name": "patch 092",
+   "args": [
+    "src/a.ts",
+    "one\ntwo\n",
+    "two\none\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,1 +0,0 @@\n-one\n@@ -2,0 +2,1 @@\n+one\n"
+  },
+  {
+   "name": "patch 093",
+   "args": [
+    "src/a.ts",
+    "one\ntwo\n",
+    "two\none\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-one\n two\n+one\n"
+  },
+  {
+   "name": "patch 094",
+   "args": [
+    "src/a.ts",
+    "one\ntwo\n",
+    "two\none\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-one\n two\n+one\n"
+  },
+  {
+   "name": "patch 095",
+   "args": [
+    "src/a.ts",
+    "one\ntwo\n",
+    "two\none\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,2 +1,2 @@\n-one\n two\n+one\n"
+  },
+  {
+   "name": "patch 096",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\n",
+    "other 1\nother 2\nother 3\nother 4\nother 5\nother 6\nother 7\nother 8\nother 9\n"
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,9 +1,9 @@\n-line 1\n-line 2\n-line 3\n-line 4\n-line 5\n-line 6\n-line 7\n-line 8\n-line 9\n+other 1\n+other 2\n+other 3\n+other 4\n+other 5\n+other 6\n+other 7\n+other 8\n+other 9\n"
+  },
+  {
+   "name": "patch 097",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\n",
+    "other 1\nother 2\nother 3\nother 4\nother 5\nother 6\nother 7\nother 8\nother 9\n",
+    0
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,9 +1,9 @@\n-line 1\n-line 2\n-line 3\n-line 4\n-line 5\n-line 6\n-line 7\n-line 8\n-line 9\n+other 1\n+other 2\n+other 3\n+other 4\n+other 5\n+other 6\n+other 7\n+other 8\n+other 9\n"
+  },
+  {
+   "name": "patch 098",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\n",
+    "other 1\nother 2\nother 3\nother 4\nother 5\nother 6\nother 7\nother 8\nother 9\n",
+    1
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,9 +1,9 @@\n-line 1\n-line 2\n-line 3\n-line 4\n-line 5\n-line 6\n-line 7\n-line 8\n-line 9\n+other 1\n+other 2\n+other 3\n+other 4\n+other 5\n+other 6\n+other 7\n+other 8\n+other 9\n"
+  },
+  {
+   "name": "patch 099",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\n",
+    "other 1\nother 2\nother 3\nother 4\nother 5\nother 6\nother 7\nother 8\nother 9\n",
+    2
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,9 +1,9 @@\n-line 1\n-line 2\n-line 3\n-line 4\n-line 5\n-line 6\n-line 7\n-line 8\n-line 9\n+other 1\n+other 2\n+other 3\n+other 4\n+other 5\n+other 6\n+other 7\n+other 8\n+other 9\n"
+  },
+  {
+   "name": "patch 100",
+   "args": [
+    "src/a.ts",
+    "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\n",
+    "other 1\nother 2\nother 3\nother 4\nother 5\nother 6\nother 7\nother 8\nother 9\n",
+    10
+   ],
+   "result": "--- src/a.ts\n+++ src/a.ts\n@@ -1,9 +1,9 @@\n-line 1\n-line 2\n-line 3\n-line 4\n-line 5\n-line 6\n-line 7\n-line 8\n-line 9\n+other 1\n+other 2\n+other 3\n+other 4\n+other 5\n+other 6\n+other 7\n+other 8\n+other 9\n"
+  },
+  {
+   "name": "patch 101",
+   "args": [
+    "a b/ünï.txt",
+    "x\n",
+    "y\n"
+   ],
+   "result": "--- a b/ünï.txt\n+++ a b/ünï.txt\n@@ -1,1 +1,1 @@\n-x\n+y\n"
+  }
+ ]
+}

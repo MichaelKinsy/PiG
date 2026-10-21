@@ -1482,6 +1482,61 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"order_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "order_probe",
+					Description: "Make a host call and an update in the first tick",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"n":{"type":"number"}}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "order-done"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"mutation_order_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "mutation_order_probe",
+					Description: "Take the file mutation queue in the first statement and append a tag to the file",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"file":{"type":"string"},"tag":{"type":"string"}}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "mutation-done"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"timer_defer": {
+				Definition: extension.ToolDefinition{
+					Name:        "timer_defer",
+					Description: "Notify inline and from deferred work",
+					Parameters:  json.RawMessage(`{"type":"object"}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "queued"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"timer_stale": {
+				Definition: extension.ToolDefinition{
+					Name:        "timer_stale",
+					Description: "Await a host call made through an earlier request's context",
+					Parameters:  json.RawMessage(`{"type":"object"}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "applied"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"timer_release": {
+				Definition: extension.ToolDefinition{
+					Name:        "timer_release",
+					Description: "Release the deferred work",
+					Parameters:  json.RawMessage(`{"type":"object"}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "released"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"throw_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "throw_probe",
@@ -1848,6 +1903,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				Handler: func(context.Context, string) error { return nil },
 			},
 			// The in-process reference for exec_rejection_test.go's SDK rows: the host's own ExecCommand.
+			// The in-process reference for exec_abort_test.go's SDK rows: the host's own ExecCommand under a cancelled context, which that test runs itself.
+			"exec-abort-probe": {
+				Name: "exec-abort-probe", Description: "Abort a running exec through its signal",
+				Handler: func(context.Context, string) error { return nil },
+			},
 			"exec-reject-probe": {
 				Name: "exec-reject-probe", Description: "Report exec outcomes",
 				Handler: func(ctx context.Context, args string) error {
@@ -1948,6 +2008,34 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						}
 					}
 					ui.Notify("signal:"+state, "info")
+					return nil
+				},
+			},
+			"signal-abort": {
+				Name:        "signal-abort",
+				Description: "Abort the run and report ctx.signal",
+				Handler: func(ctx context.Context, _ string) error {
+					state := func(signal context.Context) string {
+						switch {
+						case signal == nil:
+							return "none"
+						case signal.Err() != nil:
+							return "aborted"
+						}
+						return "live"
+					}
+					held, err := extension.FromContext(ctx).Signal()
+					if err != nil {
+						return err
+					}
+					if err := extension.FromContext(ctx).Abort(); err != nil {
+						return err
+					}
+					after, err := extension.FromContext(ctx).Signal()
+					if err != nil {
+						return err
+					}
+					ui.Notify("abort:"+state(held)+":"+state(after), "info")
 					return nil
 				},
 			},

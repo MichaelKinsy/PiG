@@ -1,0 +1,69 @@
+# Behavior family: rpc
+# Surface: an extension tool that queues a notification on a process.nextTick, a setImmediate, a setTimeout(0), a queueMicrotask and a promise continuation, and notifies synchronously, then returns. Pi runs the agent's chain of microtasks to the end of agent_settled before its event loop turns (the faux model awaits no I/O), so the synchronous, queueMicrotask and promise notifications precede tool_execution_end, and the setImmediate and setTimeout(0) notifications follow agent_settled. Probed against Pi 1.3.0 (1402973a), identical in every run.
+#
+# PiG runs the extension in another process, whose loop ran the callbacks as soon as the tool answered, so both reached the host before tool_execution_end. The runtime now marks the host calls of a timer or an immediate that fires after its handler returned (CallPayload.Timer, D189), and the host holds them until the loop would turn (jsloop.Turns): after agent_settled here.
+# Pi runs a process.nextTick callback between tool_execution_end and the tool result message_start; the runtime marks it Tick and the host releases it after the tool_execution_end it wrote (jsloop.Turns.Ticked).
+
+name = "68-rpc-timer-callback-call-order"
+description = "RPC: a notification queued on setImmediate or setTimeout(0) by a tool reaches the client after agent_settled, behind the tool's synchronous, microtask and promise notifications."
+covers = [
+  "packages/agent/src/agent-loop.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"timers","type":"prompt","message":"Run: ext tool timer_order"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/timer-callback-order.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC timer callback probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_extensions = ["testdata/timer-callback-order.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC timer callback probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"message":"timer-order:sync"',
+  '"message":"timer-order:queueMicrotask"',
+  '"message":"timer-order:promise"',
+  '"message":"timer-order:nextTick"',
+  '"message":"timer-order:immediate"',
+  '"message":"timer-order:timeout0"',
+  'timer-order-done',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 10
+json_output_equal = true
+stderr_equal = true
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Pi rpc-mode.ts generates a UUID per UI request. Preserve distinct requests with an injective map; command IDs remain literal."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi times each response and tool run with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, its position and its number spelling."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."

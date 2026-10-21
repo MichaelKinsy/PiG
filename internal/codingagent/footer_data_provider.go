@@ -4,6 +4,8 @@ import (
 	"maps"
 	"slices"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 )
 
 // FooterDataProvider is the data a footer reads about its surroundings (footer-data-provider.ts FooterDataProvider): the working directory and
@@ -16,6 +18,8 @@ type FooterDataProvider struct {
 	gitPaths          *gitPaths // repository binding captured before extension startup
 	extensionStatuses map[string]string
 	providerCount     int
+	// changeObservers run after the git branch or the provider count changed (ObserveChange).
+	changeObservers changeobservers.Observers
 
 	// branchChangeMu guards the OnBranchChange subscribers (footer-data-provider.ts branchChangeCallbacks).
 	branchChangeMu     sync.Mutex
@@ -34,6 +38,7 @@ func NewFooterDataProvider() *FooterDataProvider {
 // SetCwd binds the provider to the repository present at cwd, resolving its branch.
 func (d *FooterDataProvider) SetCwd(cwd string) {
 	d.mu.Lock()
+	previous := d.gitBranch
 	d.cwd = cwd
 	d.gitPaths = nil
 	d.gitBranch = ""
@@ -41,7 +46,11 @@ func (d *FooterDataProvider) SetCwd(cwd string) {
 		d.gitPaths = &paths
 		d.gitBranch = resolveGitBranchFromPaths(paths)
 	}
+	changed := d.gitBranch != previous
 	d.mu.Unlock()
+	if changed {
+		d.changeObservers.Notify()
+	}
 }
 
 // GetGitBranch returns the cached git branch, empty outside a repo (getGitBranch).
@@ -61,8 +70,12 @@ func (d *FooterDataProvider) GetAvailableProviderCount() int {
 // SetProviderCount records the number of authenticated, reachable providers (setAvailableProviderCount).
 func (d *FooterDataProvider) SetProviderCount(n int) {
 	d.mu.Lock()
+	changed := d.providerCount != n
 	d.providerCount = n
 	d.mu.Unlock()
+	if changed {
+		d.changeObservers.Notify()
+	}
 }
 
 // GetExtensionStatuses returns a snapshot of all extension statuses (getExtensionStatuses).
@@ -114,8 +127,17 @@ func (d *FooterDataProvider) notifyBranchChange() {
 // setGitBranch records a branch the watcher resolved.
 func (d *FooterDataProvider) setGitBranch(branch string) {
 	d.mu.Lock()
+	changed := d.gitBranch != branch
 	d.gitBranch = branch
 	d.mu.Unlock()
+	if changed {
+		d.changeObservers.Notify()
+	}
+}
+
+// ObserveChange registers observe to run after the git branch or the number of available providers changed, the values a footer reads that no extension call sets. observe runs on the goroutine that made the change and must return at once. The returned function removes it and can be called repeatedly.
+func (d *FooterDataProvider) ObserveChange(observe func()) func() {
+	return d.changeObservers.Add(observe)
 }
 
 // boundGitPaths returns the repository binding, or nil outside a repository.

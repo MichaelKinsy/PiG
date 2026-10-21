@@ -64,3 +64,19 @@ func CreateBashToolDefinition(cwd string, options *BashToolOptions) (extension.T
 	definition.ExecutionMode = "" // upstream: core/tools/bash.ts createBashToolDefinition sets no executionMode; the agent supplies the parallel default
 	return definition, nil
 }
+
+// BuiltinToolDefinition is the ToolDefinition of a built-in tool as upstream's create<Tool>ToolDefinition builds it: the tool's definition with the
+// prompt snippet the system prompt lists it under, no execution mode (the agent supplies the parallel default) and, for edit, the renderShell the tool
+// draws itself (edit.ts:157).
+func BuiltinToolDefinition(tool agent.AgentTool) (extension.ToolDefinition, error) {
+	definition, err := ToolDefinitionFromAgentTool(tool)
+	if err != nil {
+		return extension.ToolDefinition{}, err
+	}
+	definition.PromptSnippet = prompts.DefaultToolSnippets()[tool.Name()]
+	definition.ExecutionMode = ""
+	if _, ok := tool.(*EditTool); ok {
+		definition.RenderShell = extension.ToolRenderShellSelf
+	}
+	return definition, nil
+}

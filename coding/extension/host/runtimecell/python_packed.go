@@ -200,8 +200,11 @@ func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 	fmt.Fprintf(&b, "_KEPT = [os.path.normcase(os.path.join(os.path.abspath(p), '')) for p in (%q, sys.prefix, sys.exec_prefix, sys.base_prefix, sys.base_exec_prefix, os.path.dirname(os.path.abspath(__file__)))]\n", filepath.ToSlash(sdkRoot))
 	b.WriteString(pythonRunnerModuleCache)
 	b.WriteString(pythonRunnerFactoryScope)
-	b.WriteString("def _run(item, sock):\n")
-	b.WriteString("    _build(item, sock).run_with_socket(sock)\n\n")
+	b.WriteString("def _run(item, sock, built=None):\n")
+	b.WriteString("    extension = _build(item, sock)\n")
+	b.WriteString("    if built is not None:\n")
+	b.WriteString("        built.set()\n")
+	b.WriteString("    extension.run_with_socket(sock)\n\n")
 	b.WriteString(pythonRunnerFailureReport)
 	b.WriteString(pythonRunnerMain)
 	return b.String()
@@ -238,28 +241,35 @@ def main():
     active_value = os.environ.get('PIG_EXT_ACTIVE_MEMBERS')
     active = set(active_value.split(',')) if active_value else None
 
-    def target(item, sock):
+    def target(item, sock, built):
         try:
             if not sock:
                 raise RuntimeError(f'{item[1]} not set for {item[0]}')
-            _run(item, sock)
+            _run(item, sock, built)
         except BaseException as exc:
             errors.append(f'{item[0]}: {exc}')
             _report_member_failure(item, exc, sock)
         finally:
+            built.set()
             with cond:
                 state['live'] -= 1
                 cond.notify_all()
 
     def start(item, sock):
+        # The returned event is set once the member's factory has returned or failed.
+        built = threading.Event()
         with cond:
             state['live'] += 1
-        threading.Thread(target=target, args=(item, sock)).start()
+        threading.Thread(target=target, args=(item, sock, built)).start()
+        return built
 
     for item in ITEMS:
         if active is not None and item[0] not in active:
             continue
-        start(item, os.environ.get(item[1]) or (os.environ.get('PIG_EXT_SOCKET') if len(ITEMS) == 1 else None))
+        # The host accepts the members in order and serves a connection only after the members before it. A factory that calls the host before it returns (a
+        # subscription on the event bus) waits for that service, so a later member must not take the factory turn before an earlier one: it would hold the turn
+        # while the host waits for the earlier member's connection.
+        start(item, os.environ.get(item[1]) or (os.environ.get('PIG_EXT_SOCKET') if len(ITEMS) == 1 else None)).wait()
 
     def control():
         for line in sys.stdin:

@@ -256,6 +256,76 @@ fn ledger_follows_the_frontend_flag_of_each_snapshot() {
 }
 
 #[test]
+fn input_encodes_its_fields() {
+    let ledger = ViewLedger::default();
+    let node = Input::new("i").value("v").prompt("").placeholder("p").placeholder_color("dim");
+    assert_eq!(
+        wire_view(&ledger, &View::new(node))["root"],
+        json!({"kind": "input", "id": "i", "value": "v", "prompt": "", "placeholder": "p", "placeholderColor": "dim"})
+    );
+    assert_eq!(wire_view(&ledger, &View::new(Input::new("i")))["root"], json!({"kind": "input", "id": "i"}));
+}
+
+#[test]
+fn editor_encodes_its_fields_and_omits_the_defaults() {
+    let ledger = ViewLedger::default();
+    let commands = Autocomplete::new([SlashCommand::new("help").description("Show help"), SlashCommand::new("model").argument_hint("<name>")]).base_path("/work");
+    let editor = Editor::new("e")
+        .value("one\ntwo")
+        .padding_x(2)
+        .autocomplete_max_visible(3)
+        .border_color("accent")
+        .disable_submit(true)
+        .history(["a", "b"])
+        .autocomplete(commands);
+    assert_eq!(
+        wire_view(&ledger, &View::new(editor))["root"],
+        json!({
+            "kind": "editor", "id": "e", "value": "one\ntwo", "paddingX": 2, "autocompleteMaxVisible": 3, "borderColor": "accent",
+            "disableSubmit": true, "history": ["a", "b"],
+            "autocomplete": {"commands": [{"name": "help", "description": "Show help"}, {"name": "model", "argumentHint": "<name>"}], "basePath": "/work"},
+        })
+    );
+    assert_eq!(wire_view(&ledger, &View::new(Editor::new("e")))["root"], json!({"kind": "editor", "id": "e"}));
+}
+
+#[test]
+fn scroll_view_encodes_its_child_and_options() {
+    let ledger = ViewLedger::default();
+    let view = ScrollView::new("s", Text::new("x", 1, 0))
+        .follow("end")
+        .primary(true)
+        .overscroll("contain")
+        .scrollbar("always")
+        .scrollbar_track_color("dim")
+        .scrollbar_thumb_color("accent")
+        .scrollbar_hide_delay_ms(0)
+        .scroll_top(4);
+    assert_eq!(
+        wire_view(&ledger, &View::new(view))["root"],
+        json!({
+            "kind": "scroll-view", "id": "s", "children": [{"kind": "text", "text": "x", "paddingX": 1, "paddingY": 0}],
+            "follow": "end", "primary": true, "overscroll": "contain", "scrollbar": "always", "scrollbarTrackColor": "dim",
+            "scrollbarThumbColor": "accent", "scrollbarHideDelayMs": 0, "scrollTop": 4,
+        })
+    );
+}
+
+#[test]
+fn mouse_region_encodes_its_handler_as_a_description() {
+    let ledger = ViewLedger::default();
+    let region = MouseRegion::new("m", Spacer::new(1)).types(["click"]).handled(false).capture(true).focus(true).render(false);
+    assert_eq!(
+        wire_view(&ledger, &View::new(region))["root"],
+        json!({
+            "kind": "mouse-region", "id": "m", "children": [{"kind": "spacer", "lines": 1}],
+            "region": {"types": ["click"], "handled": false, "capture": true, "focus": true, "render": false},
+        })
+    );
+    assert_eq!(wire_view(&ledger, &View::new(MouseRegion::new("m", Spacer::new(1))))["root"]["region"], json!({}));
+}
+
+#[test]
 fn events_decode_each_upstream_callback() {
     let (key, select) = Event::from_wire(&json!({
         "key": "custom-1", "node": "tracks", "type": "select", "index": 2,
@@ -272,6 +342,8 @@ fn events_decode_each_upstream_callback() {
             item: Some(SelectItem::new("k2", "Two").description("d")),
             id: String::new(),
             value: String::new(),
+            cursor: None,
+            mouse: None,
         }
     );
     let (_, change) =

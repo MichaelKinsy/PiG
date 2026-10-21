@@ -9,12 +9,15 @@ from .llm_convert import _js_number_to_string
 
 @dataclass(frozen=True)
 class ResizedImage:
-    """The dimensions of Pi's ResizedImage (utils/image-resize-core.ts) that format_dimension_note reads. Dimensions are JavaScript numbers."""
+    """Pi's ResizedImage (utils/image-resize-core.ts): the dimensions format_dimension_note reads, and the image as base64 ``data`` with its ``mime_type``. Dimensions
+    are JavaScript numbers. format_dimension_note reads only the dimensions, so a caller that has no image to hand it leaves ``data`` and ``mime_type`` empty."""
     original_width: float
     original_height: float
     width: float
     height: float
     was_resized: bool
+    data: str = ""
+    mime_type: str = ""
 
 
 def format_dimension_note(result: ResizedImage) -> Optional[str]:

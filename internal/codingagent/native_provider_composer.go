@@ -61,7 +61,8 @@ func applyNativeExtensionModels(id string, base []*ai.Model, anyDefinitions []ai
 			model.ProviderMeta.BaseURL = firstModelValue(model.ProviderMeta.BaseURL, defaults.ProviderMeta.BaseURL)
 		}
 		if model.ProviderMeta.API == "" {
-			return nil, fmt.Errorf(`Provider %s, model %s: no "api" specified. Set at provider or model level.`, id, model.ID)
+			// provider-composer.ts extensionModelFromDefinition:286 words this differently from the models.json check.
+			return nil, fmt.Errorf(`Provider %s, model %s: no "api" specified. Set it at model level or provider level.`, id, model.ID)
 		}
 		if model.ProviderMeta.BaseURL == "" {
 			return nil, fmt.Errorf(`Provider %s: "baseUrl" is required when defining custom models.`, id)

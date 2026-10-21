@@ -219,7 +219,7 @@
    "type": "ExecResult"
   },
   "production": [
-   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+   "call:coding/session_extension_host.go#BindSessionExtensionActions"
   ],
   "evidence": [
    "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
@@ -240,7 +240,7 @@
    "type": "ExecuteToolOptions"
   },
   "production": [
-   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+   "call:coding/session_extension_host.go#BindSessionExtensionActions"
   ],
   "evidence": [
    "test:coding/extension/host/inproc/tool_context_test.go#TestRunnerBindCoreKeepsTheSessionBindingAModeOmits",

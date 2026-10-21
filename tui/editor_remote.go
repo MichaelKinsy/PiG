@@ -28,6 +28,12 @@ type EditorRemote interface {
 	StateChanged()
 }
 
+// EditorRemoteInvalidator is an [EditorRemote] that learns of a theme change, which Pi's TUI delivers as invalidate() to every
+// component it holds (container.ts invalidate forwards to its children; a custom editor clears its caches there).
+type EditorRemoteInvalidator interface {
+	Invalidate()
+}
+
 type editorRemoteState struct {
 	remote          EditorRemote
 	frame           []string
@@ -42,6 +48,8 @@ type editorRemoteState struct {
 	// component sees keys and renders through [Editor.AsBase], and the text
 	// stays the editor's own.
 	delegated bool
+	// theme is the active theme the remote last drew with; a change invalidates the component.
+	theme *Theme
 }
 
 // SetRemote installs remote in place of the editor's own editing, or with
@@ -64,7 +72,7 @@ func (e *Editor) SetRemote(remote EditorRemote) {
 		return
 	}
 	e.AutocompleteCancel()
-	e.remote = &editorRemoteState{remote: remote, focusedReported: e.Focused, thinkingLevel: e.ThinkingLevel}
+	e.remote = &editorRemoteState{remote: remote, focusedReported: e.Focused, thinkingLevel: e.ThinkingLevel, theme: ActiveTheme()}
 	e.Invalidate()
 }
 
@@ -247,6 +255,12 @@ func (e *Editor) renderRemote(width int) []string {
 		e.remote.thinkingLevel = e.ThinkingLevel
 		e.remote.remote.StateChanged()
 	}
+	if theme := ActiveTheme(); theme != e.remote.theme {
+		e.remote.theme = theme
+		if invalidator, ok := e.remote.remote.(EditorRemoteInvalidator); ok {
+			invalidator.Invalidate()
+		}
+	}
 	if renderer, ok := e.remote.remote.(EditorRemoteRenderer); ok {
 		if lines, ok := renderer.RenderRemote(width); ok {
 			return lines
@@ -261,6 +275,10 @@ func (e *Editor) renderRemote(width int) []string {
 	}
 	return out
 }
+
+// ApplyBorderColor is Pi's `this.borderColor(text)`: the editor's border color function applied to text, which without one
+// is the color of its thinking level, of bash mode, or the default border. A custom component calls it to color its own border rows.
+func (e *Editor) ApplyBorderColor(text string) string { return e.colorEditorBorder(text) }
 
 // RemoteSuggestionQuery captures a local provider's synchronous answer and its awaited work without reading the editor again.
 type RemoteSuggestionQuery struct {

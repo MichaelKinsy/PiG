@@ -3884,22 +3884,6 @@ count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionClassify"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
-count = 2
-class = "cold: once per extension model call or subprocess request, not per delta or turn"
-
-[[hit]]
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionGenerateImages"
-pattern = "json-roundtrip"
-detail = "marshal+unmarshal"
-count = 2
-class = "cold: once per extension model call or subprocess request, not per delta or turn"
-
-[[hit]]
 file = "internal/codingagent/extension_model_registry.go"
 func = "testFauxProvider"
 pattern = "env-stat"

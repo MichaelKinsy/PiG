@@ -5,11 +5,11 @@ import (
 	"errors"
 )
 
-// SessionManager reads the active host session. Each call completes before returning;
+// ReadonlySessionManager (Pi's `ReadonlySessionManager`) reads the active host session. Each call completes before returning;
 // host and transport failures are returned rather than replaced by empty state.
-type SessionManager struct{ context Context }
+type ReadonlySessionManager struct{ context Context }
 
-func (c Context) SessionManager() SessionManager { return SessionManager{context: c} }
+func (c Context) SessionManager() ReadonlySessionManager { return ReadonlySessionManager{context: c} }
 
 func hostValue[T any](c Context, method string, args any) (T, error) {
 	var value T
@@ -26,61 +26,65 @@ func hostValue[T any](c Context, method string, args any) (T, error) {
 	return value, nil
 }
 
-func sessionValue[T any](s SessionManager, method string, args any) (T, error) {
+func sessionValue[T any](s ReadonlySessionManager, method string, args any) (T, error) {
 	return hostValue[T](s.context, "sessionRead", map[string]any{"method": method, "args": args})
 }
 
-func (s SessionManager) GetCwd() (string, error) { return sessionValue[string](s, "getCwd", nil) }
-func (s SessionManager) GetSessionDir() (string, error) {
+func (s ReadonlySessionManager) GetCwd() (string, error) {
+	return sessionValue[string](s, "getCwd", nil)
+}
+func (s ReadonlySessionManager) GetSessionDir() (string, error) {
 	return sessionValue[string](s, "getSessionDir", nil)
 }
-func (s SessionManager) GetSessionID() (string, error) {
+func (s ReadonlySessionManager) GetSessionID() (string, error) {
 	return sessionValue[string](s, "getSessionId", nil)
 }
-func (s SessionManager) GetSessionFile() (*string, error) {
+func (s ReadonlySessionManager) GetSessionFile() (*string, error) {
 	return sessionValue[*string](s, "getSessionFile", nil)
 }
-func (s SessionManager) GetSessionName() (*string, error) {
+func (s ReadonlySessionManager) GetSessionName() (*string, error) {
 	return sessionValue[*string](s, "getSessionName", nil)
 }
-func (s SessionManager) GetLeafID() (*string, error) {
+func (s ReadonlySessionManager) GetLeafID() (*string, error) {
 	return sessionValue[*string](s, "getLeafId", nil)
 }
-func (s SessionManager) GetHeader() (map[string]any, error) {
+func (s ReadonlySessionManager) GetHeader() (map[string]any, error) {
 	return sessionValue[map[string]any](s, "getHeader", nil)
 }
-func (s SessionManager) GetLeafEntry() (map[string]any, error) {
+func (s ReadonlySessionManager) GetLeafEntry() (map[string]any, error) {
 	return sessionValue[map[string]any](s, "getLeafEntry", nil)
 }
-func (s SessionManager) GetEntry(id string) (map[string]any, error) {
+func (s ReadonlySessionManager) GetEntry(id string) (map[string]any, error) {
 	return sessionValue[map[string]any](s, "getEntry", map[string]string{"id": id})
 }
-func (s SessionManager) GetLabel(id string) (*string, error) {
+func (s ReadonlySessionManager) GetLabel(id string) (*string, error) {
 	return sessionValue[*string](s, "getLabel", map[string]string{"id": id})
 }
-func (s SessionManager) GetEntries() ([]map[string]any, error) {
+func (s ReadonlySessionManager) GetEntries() ([]map[string]any, error) {
 	return sessionValue[[]map[string]any](s, "getEntries", nil)
 }
-func (s SessionManager) GetBranch(fromID *string) ([]map[string]any, error) {
+func (s ReadonlySessionManager) GetBranch(fromID *string) ([]map[string]any, error) {
 	return sessionValue[[]map[string]any](s, "getBranch", map[string]any{"fromId": fromID})
 }
-func (s SessionManager) GetChildren(parentID *string) ([]map[string]any, error) {
+func (s ReadonlySessionManager) GetChildren(parentID *string) ([]map[string]any, error) {
 	return sessionValue[[]map[string]any](s, "getChildren", map[string]any{"parentId": parentID})
 }
-func (s SessionManager) GetTree() ([]SessionTreeNode, error) {
+func (s ReadonlySessionManager) GetTree() ([]SessionTreeNode, error) {
 	return sessionValue[[]SessionTreeNode](s, "getTree", nil)
 }
-func (s SessionManager) BuildContextEntries() ([]map[string]any, error) {
+func (s ReadonlySessionManager) BuildContextEntries() ([]map[string]any, error) {
 	return sessionValue[[]map[string]any](s, "buildContextEntries", nil)
 }
-func (s SessionManager) BuildSessionProjection() (SessionProjection, error) {
+func (s ReadonlySessionManager) BuildSessionProjection() (SessionProjection, error) {
 	return sessionValue[SessionProjection](s, "buildSessionProjection", nil)
 }
-func (s SessionManager) BuildSessionContext() (SessionContext, error) {
+func (s ReadonlySessionManager) BuildSessionContext() (SessionContext, error) {
 	return sessionValue[SessionContext](s, "buildSessionContext", nil)
 }
-func (s SessionManager) IsPersisted() (bool, error) { return sessionValue[bool](s, "isPersisted", nil) }
-func (s SessionManager) UsesDefaultSessionDir() (bool, error) {
+func (s ReadonlySessionManager) IsPersisted() (bool, error) {
+	return sessionValue[bool](s, "isPersisted", nil)
+}
+func (s ReadonlySessionManager) UsesDefaultSessionDir() (bool, error) {
 	return sessionValue[bool](s, "usesDefaultSessionDir", nil)
 }
 

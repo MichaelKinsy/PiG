@@ -396,3 +396,40 @@ func TestDefaultResourceLoaderBuiltinErrorsFollowThePathOrder(t *testing.T) {
 		t.Fatalf("built-in errors = %+v, want %+v", got, want)
 	}
 }
+
+// resource-loader.ts reload() has no caller whose end stops the extensions it loaded: the loader owns them until its next load or Close. The context of ReloadWith ends the load, not the extensions. A child agent session reloads its loader inside a wire call that returns long before the session ends; the extension it loaded must still receive the session's events. The handler answers over the extension's own connection, which the host closes with the context the extension was started under.
+func TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload(t *testing.T) {
+	root := t.TempDir()
+	cwd, agentDir := filepath.Join(root, "project"), filepath.Join(root, "agent")
+	logFile := filepath.Join(root, "events.log")
+	ext := filepath.Join(root, "ok.ts")
+	writeExtensionFiles(t, map[string]string{
+		ext:                                      "import { appendFileSync } from \"node:fs\";\nexport default function (pi) { pi.on(\"session_start\", async (event) => { appendFileSync(" + strconv.Quote(logFile) + ", event.reason + \"\\n\"); }); }\n",
+		filepath.Join(agentDir, "settings.json"): `{"extensions": [` + strconv.Quote(ext) + `]}`,
+		filepath.Join(cwd, "keep"):               "",
+	})
+	loader := NewDefaultResourceLoader(DefaultResourceLoaderOptions{CWD: cwd, AgentDir: agentDir})
+	t.Cleanup(loader.Close)
+	reloadCtx, endReload := context.WithCancel(t.Context())
+	if err := loader.ReloadWith(reloadCtx); err != nil {
+		t.Fatal(err)
+	}
+	endReload()
+	loaded := loader.GetExtensions()
+	if len(loaded.Extensions) != 1 || len(loaded.Errors) != 0 {
+		t.Fatalf("extensions = %d, errors = %+v; want one extension and no error", len(loaded.Extensions), loaded.Errors)
+	}
+	handlers := loaded.Extensions[0].EventHandlers("session_start")
+	if len(handlers) != 1 {
+		t.Fatalf("session_start handlers = %d, want 1", len(handlers))
+	}
+	if _, err := handlers[0](extension.SessionStartEvent{Type: "session_start", Reason: "startup"}, t.Context()); err != nil {
+		t.Fatalf("the extension did not receive session_start after the context of the reload ended: %v", err)
+	}
+	if data, _ := os.ReadFile(logFile); string(data) != "startup\n" {
+		t.Fatalf("the handler recorded %q, want \"startup\\n\"", data)
+	}
+	if loaded.UIBridge() == nil {
+		t.Fatal("the extensions' host has no bridge for a session to bind its state to")
+	}
+}

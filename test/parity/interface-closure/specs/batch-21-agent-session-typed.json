@@ -39,7 +39,7 @@
    "coding/session_run_state.go#Session.IsIdle"
   ],
   "production": [
-   "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+   "call:coding/session_extension_host.go#ExtensionHostSessionActions"
   ],
   "evidence": [
    "test:coding/session_compaction_suite_active_test.go#TestAgentSessionCompactionSuiteAbortUpstream",
@@ -167,7 +167,7 @@
    "coding/session_scoped_models.go#Session.ScopedModels"
   ],
   "production": [
-   "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+   "call:coding/session_extension_host.go#ExtensionHostSessionActions"
   ],
   "evidence": [
    "test:coding/model_resolver_scope_upstream_test.go#TestModelResolverPersistedScopeUpstream",

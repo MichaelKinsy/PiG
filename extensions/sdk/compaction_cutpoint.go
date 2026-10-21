@@ -1,7 +1,7 @@
 package sdk
 
 // Pi's findCutPoint and findTurnStartIndex (core/compaction/compaction.ts) over the session entries an extension gets (for example from
-// [SessionManager.GetEntries]), each a decoded JSON object with a "type".
+// [ReadonlySessionManager.GetEntries]), each a decoded JSON object with a "type".
 
 import (
 	"maps"

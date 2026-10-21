@@ -28,7 +28,7 @@ func TestSessionExtensionActionsBindSessionName(t *testing.T) {
 		}
 	})
 	bridge := subprocess.NewUIBridge(nil)
-	bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+	coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 	var names []string
 	session.Subscribe(func(event agent.AgentEvent) {
 		if info, ok := event.(agent.SessionInfoChangedEvent); ok {

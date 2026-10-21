@@ -1,0 +1,85 @@
+[
+ {
+  "type": "session_start",
+  "reason": "startup",
+  "ctx": {
+   "hasUI": false,
+   "scoped": [
+    "sentinel/echo@high",
+    "nokey/locked@low"
+   ],
+   "model": "sentinel/echo",
+   "isIdle": true
+  },
+  "ui": {
+   "notify": "undefined",
+   "select": "undefined",
+   "confirm": "false",
+   "input": "undefined",
+   "editor": "undefined"
+  }
+ },
+ {
+  "type": "input"
+ },
+ {
+  "type": "before_agent_start"
+ },
+ {
+  "type": "agent_start",
+  "ctx": {
+   "hasUI": false,
+   "scoped": [
+    "sentinel/echo@high",
+    "nokey/locked@low"
+   ],
+   "model": "sentinel/echo",
+   "isIdle": false
+  }
+ },
+ {
+  "type": "turn_start"
+ },
+ {
+  "type": "message_start:system"
+ },
+ {
+  "type": "message_end:system"
+ },
+ {
+  "type": "message_start:user"
+ },
+ {
+  "type": "message_end:user"
+ },
+ {
+  "type": "context"
+ },
+ {
+  "type": "message_start:assistant"
+ },
+ {
+  "type": "message_update:assistant"
+ },
+ {
+  "type": "message_update:assistant"
+ },
+ {
+  "type": "message_update:assistant"
+ },
+ {
+  "type": "message_update:assistant"
+ },
+ {
+  "type": "message_update:assistant"
+ },
+ {
+  "type": "message_end:assistant"
+ },
+ {
+  "type": "turn_end"
+ },
+ {
+  "type": "agent_end"
+ }
+]

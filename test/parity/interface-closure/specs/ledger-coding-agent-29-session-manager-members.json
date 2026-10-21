@@ -7,7 +7,7 @@
    "internal/codingagent/session.go#Session.GetEntries"
   ],
   "production": [
-   "call:coding/cli/session_extension_actions.go#bindSessionReadActions"
+   "call:coding/session_extension_host.go#BindSessionReadActions"
   ],
   "evidence": [
    "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream",

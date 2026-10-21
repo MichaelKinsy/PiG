@@ -55,7 +55,7 @@ func TestScalingExtensionEventStatePush(t *testing.T) {
 			}
 		})
 		bridge := subprocess.NewUIBridge(nil)
-		bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
+		coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 		// The first event after a change of the log computes the estimate.
 		bridge.Snapshot(nil, 0, false)
 		return func() { bridge.Snapshot(nil, 0, false) }

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -106,7 +107,7 @@ type Client struct {
 	state            ClientState
 	transport        Transport
 	nextRequestID    int
-	lastPlaced       chan struct{} // closed once the newest request took its place on the wire; nil before the first request
+	placed           jsloop.Lane // the requests' places on the wire: a request is written after the one with the previous id
 	serverInfo       *Implementation
 	serverCaps       *ServerCapabilities
 	instructions     *string
@@ -752,15 +753,9 @@ func (c *Client) requestInternal(ctx context.Context, method string, params any,
 	c.nextRequestID++
 	// A request is written after the one with the previous id (see OrderedSender), as Pi's transport.send calls run in
 	// request order.
-	previousPlaced := c.lastPlaced
-	if previousPlaced == nil {
-		previousPlaced = closedChan
-	}
-	placed := make(chan struct{})
-	c.lastPlaced = placed
+	slot := c.placed.Reserve()
 	c.mu.Unlock()
-	var placeOnce sync.Once
-	place := func() { placeOnce.Do(func() { close(placed) }) }
+	place := slot.Release
 	sending := false
 	defer func() {
 		if !sending {
@@ -823,7 +818,7 @@ func (c *Client) requestInternal(ctx context.Context, method string, params any,
 	go func() {
 		defer c.wg.Done()
 		defer place()
-		<-previousPlaced
+		slot.Wait()
 		var err error
 		if ordered, ok := transport.(OrderedSender); ok {
 			err = ordered.SendOrdered(sendSignal, message, place)
@@ -1231,6 +1226,3 @@ func (c *Client) emitError(err error) {
 		l.fn(err)
 	}
 }
-
-// closedChan is a channel that is already closed.
-var closedChan = func() chan struct{} { c := make(chan struct{}); close(c); return c }()

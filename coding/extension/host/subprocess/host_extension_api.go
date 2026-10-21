@@ -38,21 +38,64 @@ type nestedCall struct {
 	cancel context.CancelFunc
 }
 
-// reserveNestedCall reserves call when it is an executeTool call or a dialog that carries a dialogId, and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op.
+// reserveNestedCall reserves call when it is a dialog that carries a dialogId, an executeTool, builtinTool.execute or builtinTool.localExec call, or an exec call whose signal the extension owns, and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op. An exec call is named in its own key space, so an exec id never meets an executeTool id.
 func (h *Host) reserveNestedCall(conn *Conn, call *CallPayload) (release func()) {
 	if id := dialogIDOf(call); id != "" {
 		return h.nested.reserve(conn, dialogSignalKey(id))
 	}
-	if call.Method != CallExecuteTool {
-		return func() {}
+	switch call.Method {
+	case CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec:
+		var named struct {
+			ExecuteID string `json:"executeId"`
+		}
+		if json.Unmarshal(call.Args, &named) != nil {
+			return func() {}
+		}
+		return h.nested.reserve(conn, named.ExecuteID)
+	case "exec", CallLoadingExec:
+		var named ExecArgs
+		if json.Unmarshal(call.Args, &named) != nil || !named.OwnSignal {
+			return func() {}
+		}
+		return h.nested.reserve(conn, execCallKey(named.ExecID))
 	}
-	var named struct {
-		ExecuteID string `json:"executeId"`
+	return func() {}
+}
+
+// execCallKey names an exec call among the reserved calls of its connection.
+func execCallKey(execID string) string { return "exec:" + execID }
+
+// execSignal derives the context an exec call runs under from its own context: when the extension passed options.signal, the command also ends when the extension reports the abort (CallExecCancel). The call's own context is untouched otherwise.
+func (h *Host) execSignal(ctx context.Context, conn *Conn, call *CallPayload) (context.Context, func()) {
+	if call.Method != "exec" && call.Method != CallLoadingExec {
+		return ctx, func() {}
 	}
-	if json.Unmarshal(call.Args, &named) != nil {
-		return func() {}
+	var named ExecArgs
+	if json.Unmarshal(call.Args, &named) != nil || !named.OwnSignal {
+		return ctx, func() {}
 	}
-	return h.nested.reserve(conn, named.ExecuteID)
+	signal := h.nested.signal(conn, execCallKey(named.ExecID))
+	if signal == nil {
+		return ctx, func() {}
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	stop := context.AfterFunc(signal, cancel)
+	return ctx, func() {
+		stop()
+		cancel()
+	}
+}
+
+// handleExecCancel serves CallExecCancel: the abort of the signal an extension passed to pi.exec. The call ends the command; it does not wait for it.
+//
+// upstream: core/exec.ts (the signal's abort listener)
+func (h *Host) handleExecCancel(conn *Conn, call *CallPayload) (*CallResultPayload, error) {
+	var cancel ExecCancel
+	if err := json.Unmarshal(call.Args, &cancel); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", call.Method, err)
+	}
+	h.nested.cancel(conn, execCallKey(cancel.ExecID))
+	return &CallResultPayload{}, nil
 }
 
 // dialogIDOf returns the dialogId of a ui.select, ui.confirm or ui.input call whose extension passed an options.signal, or "".
@@ -262,11 +305,7 @@ func (h *Host) handleMcpServersRead() (*CallResultPayload, error) {
 
 // handleLoadingExec serves CallLoadingExec: upstream's execCommand in the working directory the loader was given, which a factory's pi.exec uses before any session binds (loader.ts:411-414).
 func (h *Host) handleLoadingExec(ctx context.Context, call *CallPayload) (*CallResultPayload, error) {
-	var request struct {
-		Command string                 `json:"command"`
-		Args    []string               `json:"args"`
-		Options *extension.ExecOptions `json:"options,omitempty"`
-	}
+	var request ExecArgs
 	if err := json.Unmarshal(call.Args, &request); err != nil {
 		return nil, fmt.Errorf("parse exec args: %w", err)
 	}
@@ -293,6 +332,13 @@ func (h *Host) handleMcpServerCheck(me *managedExt, call *CallPayload) (*CallRes
 	return &CallResultPayload{}, nil
 }
 
+// publishVirtualModelChange sends every extension that replicates the model registry the catalog with the virtual model a call registered or removed. The registry's change listener does not see it (the model runtime keeps virtual models apart from the registry), and its availability refresh is queued, so without this a Node extension's ctx.modelRegistry would list the model only after an unrelated publication. The frame precedes the call's result on the connection's ordered stream, as a provider registration's does.
+func (h *Host) publishVirtualModelChange() {
+	if h.uiBridge != nil {
+		h.uiBridge.PublishModelCatalog()
+	}
+}
+
 // handleVirtualModelCall serves CallRegisterVirtualModel and CallUnregisterVirtualModel.
 //
 // upstream: loader.ts:480-497
@@ -309,6 +355,7 @@ func (h *Host) handleVirtualModelCall(_ context.Context, me *managedExt, call *C
 			return nil, err
 		}
 		h.trackVirtualModel(me, VirtualModelRef{Provider: decl.Provider, ID: decl.ID})
+		h.publishVirtualModelChange()
 		return &CallResultPayload{}, nil
 	}
 	var ref VirtualModelRef
@@ -317,6 +364,7 @@ func (h *Host) handleVirtualModelCall(_ context.Context, me *managedExt, call *C
 	}
 	h.providerRuntime.UnregisterVirtualModel(ref.Provider, ref.ID)
 	h.untrackVirtualModel(me, ref)
+	h.publishVirtualModelChange()
 	return &CallResultPayload{}, nil
 }
 

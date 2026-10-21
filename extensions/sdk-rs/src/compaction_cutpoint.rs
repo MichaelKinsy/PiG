@@ -1,5 +1,5 @@
 //! Pi's `findCutPoint` and `findTurnStartIndex` (`core/compaction/compaction.ts`) over the session entries an extension gets (for example from
-//! [`crate::SessionManager::get_entries`]), each a decoded JSON object with a `type`.
+//! [`crate::ReadonlySessionManager::get_entries`]), each a decoded JSON object with a `type`.
 
 use crate::compaction_estimate::estimate_tokens;
 use serde_json::{Map, Value, json};

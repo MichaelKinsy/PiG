@@ -122,7 +122,7 @@ func TestSharedSubprocessModelOperationsAcrossModes(t *testing.T) {
 			host.SetMode(string(mode))
 			host.SetUIBridge(bridge)
 			defer host.Shutdown("test done")
-			detach := wireSubprocessModelRegistry(bridge, session, services)
+			detach := coding.BindSessionModelOperations(bridge, session, services)
 			defer detach()
 			fixture, err := filepath.Abs(filepath.Join("testdata", "model-operations.mjs"))
 			if err != nil {
@@ -226,7 +226,7 @@ func TestSubprocessModelRegistryRefreshesConnectedNode(t *testing.T) {
 	host.SetUIBridge(bridge)
 	defer host.Shutdown("test done")
 	session := newModelRegistryTestSession(t, services)
-	detachModelRegistry := wireSubprocessModelRegistry(bridge, session, services)
+	detachModelRegistry := coding.BindSessionModelOperations(bridge, session, services)
 	defer detachModelRegistry()
 
 	fixture, err := filepath.Abs(filepath.Join("testdata", "model-registry-refresh.mjs"))
@@ -292,7 +292,7 @@ func TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh(t *testing.T
 	host.SetUIBridge(bridge)
 	defer host.Shutdown("test done")
 	session := newModelRegistryTestSession(t, services)
-	detachModelRegistry := wireSubprocessModelRegistry(bridge, session, services)
+	detachModelRegistry := coding.BindSessionModelOperations(bridge, session, services)
 	defer detachModelRegistry()
 	fixture, err := filepath.Abs(filepath.Join("testdata", "model-registry-refresh.mjs"))
 	if err != nil {
@@ -336,7 +336,7 @@ func TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration(t *t
 	host.SetUIBridge(bridge)
 	defer host.Shutdown("test done")
 	session := newModelRegistryTestSession(t, services)
-	detachModelRegistry := wireSubprocessModelRegistry(bridge, session, services)
+	detachModelRegistry := coding.BindSessionModelOperations(bridge, session, services)
 	defer detachModelRegistry()
 	fixture, err := filepath.Abs(filepath.Join("testdata", "model-registry-refresh.mjs"))
 	if err != nil {
@@ -385,7 +385,7 @@ func TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval(t *testi
 	host.SetUIBridge(bridge)
 	defer host.Shutdown("test done")
 	session := newModelRegistryTestSession(t, services)
-	detachModelRegistry := wireSubprocessModelRegistry(bridge, session, services)
+	detachModelRegistry := coding.BindSessionModelOperations(bridge, session, services)
 	defer detachModelRegistry()
 
 	fixture, err := filepath.Abs(filepath.Join("testdata", "model-registry-refresh.mjs"))

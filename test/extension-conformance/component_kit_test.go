@@ -126,6 +126,9 @@ func startKitCell(t *testing.T, tc kitCell) *harness {
 	keybindings := codingagent.DefaultKeybindingsManager().ExtensionKeybindingTable()
 	h.bridge.SetKeybindingsFunc(func() any { return keybindings })
 	h.bridge.SetFrontend(tc.frontend)
+	// The terminal's rows, which a view's editor reads (a widget case sets them).
+	rows := kitRowsOf(h)
+	h.host.SetHeightFunc(func() int { return int(rows.Load()) })
 	h.host.BroadcastStateUpdate()
 	return h
 }
@@ -610,32 +613,48 @@ func TestConformance_ComponentKitResolverDrawsCallAndResultViews(t *testing.T) {
 type wireTap struct {
 	// frames checks every frame the host writes (checkOutboundFrames).
 	frames *frameCheck
-	on     atomic.Bool
-	stall  atomic.Int64 // time.Duration
-	mu     sync.Mutex
-	calls  []wireCall
+	// order records the requests the host writes and the answers and updates it reads, in wire order, while recording is on (ordering_wire_test.go).
+	order orderLog
+	on    atomic.Bool
+	stall atomic.Int64 // time.Duration
+	mu    sync.Mutex
+	calls []wireCall
 }
 
 type wireCall struct {
 	method string
 	args   json.RawMessage
+	// timer is the call's Timer mark (D189).
+	timer bool
+	// tick is the call's Tick mark.
+	tick bool
 }
 
 func observeWire(t *testing.T, host *subprocess.Host) *wireTap {
 	tap := &wireTap{}
 	host.SetInboundObserver(tap.observe)
 	tap.frames = checkOutboundFrames(t, host)
+	host.SetOutboundObserver(func(extName string, frame []byte) {
+		if tap.on.Load() {
+			tap.order.outbound(extName, frame)
+		}
+		tap.frames.observe(extName, frame)
+	})
 	return tap
 }
 
-func (w *wireTap) observe(_ string, env *subprocess.Envelope) {
+func (w *wireTap) observe(extName string, env *subprocess.Envelope) {
 	if d := w.stall.Load(); d > 0 {
 		time.Sleep(time.Duration(d))
 	}
-	if !w.on.Load() || env.Call == nil {
+	if !w.on.Load() {
 		return
 	}
-	call := wireCall{method: env.Call.Method, args: slices.Clone(env.Call.Args)}
+	w.order.inbound(extName, env)
+	if env.Call == nil {
+		return
+	}
+	call := wireCall{method: env.Call.Method, args: slices.Clone(env.Call.Args), timer: env.Call.Timer, tick: env.Call.Tick}
 	w.mu.Lock()
 	w.calls = append(w.calls, call)
 	w.mu.Unlock()

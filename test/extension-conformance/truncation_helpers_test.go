@@ -87,7 +87,7 @@ func TestConformance_TruncationHelpersAgreeAcrossSDKs(t *testing.T) {
 			tcase{"fn": "tail", "content": content, "maxLines": rng.IntN(6), "maxBytes": rng.IntN(40)},
 			tcase{"fn": "line", "content": content, "maxChars": rng.IntN(30)})
 	}
-	cases = append(cases, tcase{"fn": "head", "content": lines(2500)}, tcase{"fn": "tail", "content": lines(2500)}, tcase{"fn": "tail", "content": strings.Repeat("y", 60*1024)})
+	cases = append(cases, tcase{"fn": "limits"}, tcase{"fn": "head", "content": lines(2500)}, tcase{"fn": "tail", "content": lines(2500)}, tcase{"fn": "tail", "content": strings.Repeat("y", 60*1024)})
 
 	run := func(t *testing.T, h *harness, c tcase) map[string]any {
 		t.Helper()
@@ -137,6 +137,12 @@ func TestConformance_TruncationHelpersAgreeAcrossSDKs(t *testing.T) {
 	}
 	// Pi's documented values, so a shared mistake in every SDK cannot pass: formatSize rounds half up (1.25KB is 1.3KB) and truncateTail keeps the end of an oversized last line.
 	for i, c := range cases {
+		if c["fn"] == "limits" {
+			// DEFAULT_MAX_LINES and DEFAULT_MAX_BYTES are Pi's truncate.ts values (2000 and 50KB): a constant an SDK got wrong differs from the Node reading.
+			if got := reference[i]; got["maxLines"] != float64(2000) || got["maxBytes"] != float64(51200) {
+				t.Fatalf("reference limits = %v, want 2000 lines and 51200 bytes", got)
+			}
+		}
 		if c["fn"] == "size" && c["bytes"] == 1280 {
 			if got := reference[i]["text"]; got != "1.3KB" {
 				t.Fatalf("reference formatSize(1280) = %v, want 1.3KB", got)

@@ -509,7 +509,7 @@ snippet = "now := func() float64 { return float64(time.Now().UnixMilli()) }"
 [[hit]]
 check = "clock"
 file = "internal/codingagent/session.go"
-func = "Session.AppendCompaction"
+func = "Session.appendCompaction"
 snippet = "now := time.Now().UTC()"
 
 [[hit]]
@@ -5601,12 +5601,6 @@ snippet = "ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTi
 
 [[hit]]
 check = "ctxbackground"
-file = "coding/cli/session_extension_actions.go"
-func = "bindSessionExtensionActions"
-snippet = "return extension.ExecCommand(context.Background(), cwd, command, args, opts)"
-
-[[hit]]
-check = "ctxbackground"
 file = "coding/cli/setup_command.go"
 func = "setupGo"
 snippet = "ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)"
@@ -7110,30 +7104,6 @@ check = "jsonclone"
 file = "internal/codingagent/export/tool_renderer.go"
 func = "parseToolResultImages"
 snippet = "if err := json.Unmarshal(data, &images); err != nil {"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionClassify"
-snippet = "_ = json.Unmarshal(encodedModel, &wire)"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionClassify"
-snippet = "if err := json.Unmarshal(encodedOptions, &wireOptions); err != nil {"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionGenerateImages"
-snippet = "_ = json.Unmarshal(encodedModel, &wire)"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/extension_model_operations.go"
-func = "extensionGenerateImages"
-snippet = "if err := json.Unmarshal(encodedOptions, &wireOptions); err != nil {"
 
 [[hit]]
 check = "jsonclone"

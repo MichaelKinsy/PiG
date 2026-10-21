@@ -20,16 +20,23 @@ import (
 // environment and passes os.Executable() (this same test binary) as the
 // command, so the same fixture works on every OS the test binary runs on,
 // including native Windows, instead of depending on /bin/echo or a
-// cmd.exe-only builtin.
+// cmd.exe-only builtin. Set to "hang", it prints "started" and waits for a
+// signal to end it, for the tests of an exec call's abort signal.
 const execEchoHelperEnv = "PIG_TEST_EXEC_ECHO_HELPER"
 
 var fixtureRoot, fixtureSourceRoot string
 
 // TestMain isolates the config root and points the SDK roots at this tree.
 func TestMain(m *testing.M) {
-	if os.Getenv(execEchoHelperEnv) == "1" {
+	switch os.Getenv(execEchoHelperEnv) {
+	case "1":
 		fmt.Println(strings.Join(os.Args[1:], " "))
 		os.Exit(0)
+	case "hang":
+		// A command that runs until a signal ends it.
+		fmt.Println("started")
+		time.Sleep(time.Minute)
+		os.Exit(3)
 	}
 	if real := os.Getenv(commandShimRealEnv); real != "" {
 		os.Exit(runCommandShim(real, os.Getenv(commandShimLogEnv)))

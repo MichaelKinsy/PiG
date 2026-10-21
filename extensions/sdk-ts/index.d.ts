@@ -81,8 +81,42 @@ export interface PiGViewLines {
   list?: PiGViewList;
 }
 
+/** The provenance the loader stamped on an extension (Pi's `SourceInfo`). */
+export interface PiGExtensionSourceInfo {
+  path: string;
+  source: string;
+  scope: string;
+  origin: string;
+  baseDir?: string;
+}
+
 declare module "@earendil-works/pi-coding-agent" {
+  interface ExtensionAPI {
+    /**
+     * Run `handler(ctx)` once the runtime registered and has its state, before
+     * it serves a request (`session_start` included) and after the emits its
+     * factory made were delivered. Pi has no such hook.
+     */
+    onLoaded(handler: (ctx: ExtensionContext) => void | Promise<void>): void;
+  }
+  interface ExtensionContext {
+    /** The provenance the loader stamped on this extension; undefined when the host holds none. */
+    extensionSourceInfo(): PiGExtensionSourceInfo | undefined;
+    /**
+     * In a tool's `execute`: the call's position among the tool calls of the
+     * assistant message that issued it; undefined for a nested `executeTool` call.
+     */
+    readonly toolCallIndex?: number;
+    /** In a tool's `execute`: `JSON.stringify` of the call's arguments, members in the model's order. */
+    readonly toolInput?: string;
+  }
   interface ExtensionUIContext {
+    /** Subscribe to changes of the host's theme; the handler receives `ui.theme` after it took the new palette. Returns the unsubscribe function. */
+    onThemeChange(handler: (theme: Theme) => void): () => void;
+    /** Subscribe to the host toggling tool-output expansion; the handler receives the new state. Returns the unsubscribe function. */
+    onToolsExpandedChange(handler: (expanded: boolean) => void): () => void;
+    /** Ring the terminal bell of the interactive terminal; nothing without a terminal UI. */
+    bell(): void;
     /** Set PiG's native login template, or reject an invalid definition. */
     setLogin(definition: PiGLoginDefinition): Promise<void>;
     /**

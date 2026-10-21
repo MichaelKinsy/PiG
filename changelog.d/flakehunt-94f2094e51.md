@@ -1,0 +1,3 @@
+### Fixed
+
+- CI: a Node extension no longer holds the first request the host sends it behind its bytecode-cache flush. The runtime flushed Node's compile cache when it processed the host's ready message, on the thread that serves requests; the flush serializes every compiled module and took 4.6 s on a starved machine, so a Markdown transform sent right after registration passed the five-second renderer inactivity lease (D56) while the extension was healthy and the proxy returned its input (`got ""` in `TestMarkdownContextsAcrossSDKs/subprocess-node-packed`). The flush now runs when the factory has loaded, before the member registers. <!-- fix: 94f2094e51 -->

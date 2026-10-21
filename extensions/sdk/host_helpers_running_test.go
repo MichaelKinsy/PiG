@@ -6,8 +6,8 @@ import "testing"
 // must keep working when the first one to start has stopped.
 func TestHelperConnectionSurvivesTheFirstRunningExtensionStopping(t *testing.T) {
 	first, second := &conn{}, &conn{}
-	adoptHelperConn(first, "/s/e-0.sock")
-	adoptHelperConn(second, "/s/e-1.sock")
+	adoptHelperConn(first, "/s/e-0.sock", nil)
+	adoptHelperConn(second, "/s/e-1.sock", nil)
 	t.Cleanup(func() { releaseHelperConn(first); releaseHelperConn(second) })
 	t.Setenv("PIG_EXT_SOCKET", "")
 	if got, err := helperConnection(); err != nil || got != first {
@@ -28,7 +28,7 @@ func TestHelperConnectionSurvivesTheFirstRunningExtensionStopping(t *testing.T) 
 // an answer the host would not send until the first member had connected (the conformance rust-packed hang).
 func TestHelperNamedForASocketDoesNotUseAnotherMembersConnection(t *testing.T) {
 	second := &conn{}
-	adoptHelperConn(second, "/s/e-1.sock")
+	adoptHelperConn(second, "/s/e-1.sock", nil)
 	t.Cleanup(func() { releaseHelperConn(second) })
 	t.Setenv("PIG_EXT_SOCKET", "/s/e-1.sock")
 	if got, err := helperConnection(); err != nil || got != second {
@@ -41,7 +41,7 @@ func TestHelperNamedForASocketDoesNotUseAnotherMembersConnection(t *testing.T) {
 	}
 	// A connection with no socket of its own (RunWithConn) answers whichever socket is named.
 	fused := &conn{}
-	adoptHelperConn(fused, "")
+	adoptHelperConn(fused, "", nil)
 	t.Cleanup(func() { releaseHelperConn(fused) })
 	if got, err := helperConnection(); err != nil || got != fused {
 		t.Fatalf("a connection with no socket: helperConnection = %p, %v; want %p", got, err, fused)

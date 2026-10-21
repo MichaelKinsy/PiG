@@ -881,6 +881,15 @@ classification = "upstream"
 rationale = "Pi's CURRENT_SESSION_VERSION (packages/coding-agent session-manager.ts): the version a Pi session file header carries."
 
 [[fields]]
+id = "extensions/sdk/tui/internal/widthx/unicode_tables.go#const.unicodeTablesVersion:go:-"
+path = "extensions/sdk/tui/internal/widthx/unicode_tables.go"
+owner = "<package>"
+field = "unicodeTablesVersion"
+wire_name = "-"
+classification = "external"
+rationale = "The SDK module's copy of tui/widthx/unicode_tables.go (tui/sdk_tui_copy_test.go): it identifies the Unicode standard data and upstream get-east-asian-width dependency used to generate terminal width tables; it does not select a Pig-owned format reader."
+
+[[fields]]
 id = "internal/coding/pigversion/pigversion.go#const.PigVersion:go:-"
 path = "internal/coding/pigversion/pigversion.go"
 owner = "<package>"
@@ -1437,3 +1446,4 @@ field = "unicodeTablesVersion"
 wire_name = "-"
 classification = "external"
 rationale = "Identifies the Unicode standard data and upstream get-east-asian-width dependency used to generate terminal width tables; it does not select a Pig-owned format reader."
+

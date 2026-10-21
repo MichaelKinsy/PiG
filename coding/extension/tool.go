@@ -3,7 +3,6 @@ package extension
 import (
 	"context"
 	"encoding/json"
-	"sync"
 )
 
 // ToolRenderResultOptions mirrors upstream ToolRenderResultOptions.
@@ -192,6 +191,9 @@ type ToolDefinition struct {
 	// synchronous prefix in call order, which Go goroutines do not give; this restores it for tools whose request order is
 	// observable, such as MCP tool calls to one server.
 	ReserveCallOrder func(params json.RawMessage) *CallOrder `json:"-"`
+	// MayTakeFileMutationQueue is set for a tool whose code runs in an extension that can register in the host's file mutation queue (withFileMutationQueue),
+	// so the dispatcher holds the edit and write calls that follow it in a parallel batch behind the end of its synchronous prefix (agent.MayTakeFileMutationQueue).
+	MayTakeFileMutationQueue bool `json:"-"`
 	// ReachesTools is for tools that reach other tools (such as codemode, which calls them, and tool_search, which loads
 	// them): which tools a call with the given input may reach. Extensions that register tools late, such as MCP servers
 	// that are still connecting, use it from their tool_call handler to finish registering those tools before the call runs.
@@ -257,38 +259,14 @@ type RegisteredTool struct {
 	Revision uint64 `json:"-"`
 }
 
-// CallOrder is a reserved place in a tool's call order. Wait returns when every earlier reservation was released;
-// Release, which is idempotent, hands the place on and must run however the call ends.
+// CallOrder is a reserved place in a tool's call order. Pi runs each call's synchronous prefix in call order, so
+// `Promise.all([tools.a(), tools.b()])` issues `a` first; Go's goroutines give no such order, so the host reserves each call's
+// place in call order (ToolDefinition.ReserveCallOrder) and a call issues its request only after every earlier reservation
+// released. Wait returns when every earlier reservation was released; Release, which is idempotent, hands the place on and must
+// run however the call ends.
 type CallOrder struct {
 	Wait    func()
 	Release func()
-}
-
-// CallLane keeps the calls of one destination in call order up to the point their requests are issued. Pi runs each call's
-// synchronous prefix in call order, so `Promise.all([tools.a(), tools.b()])` issues `a` first; Go's goroutines give no such order,
-// so the host reserves each call's place in call order (ToolDefinition.ReserveCallOrder) and a call issues its request only after
-// every earlier reservation released. The zero value is ready to use.
-type CallLane struct {
-	mu   sync.Mutex
-	tail chan struct{}
-}
-
-// Reserve takes the next place in the lane. It must run in call order, before any of the calls runs.
-func (l *CallLane) Reserve() *CallOrder {
-	done := make(chan struct{})
-	l.mu.Lock()
-	previous := l.tail
-	l.tail = done
-	l.mu.Unlock()
-	var once sync.Once
-	return &CallOrder{
-		Wait: func() {
-			if previous != nil {
-				<-previous
-			}
-		},
-		Release: func() { once.Do(func() { close(done) }) },
-	}
 }
 
 type callOrderKey struct{}
@@ -302,4 +280,17 @@ func WithCallOrder(ctx context.Context, order *CallOrder) context.Context {
 func CallOrderFromContext(ctx context.Context) (*CallOrder, bool) {
 	order, ok := ctx.Value(callOrderKey{}).(*CallOrder)
 	return order, ok && order != nil
+}
+
+type dispatchStartedKey struct{}
+
+// WithDispatchStarted returns ctx carrying started, which an event dispatch made with it calls once its first handler has started: an in-process handler when it returns, an extension process's handler when its request is written to the process. Pi starts the tool_result hooks of a parallel batch in the order their tools settled, each running to its first await before the next starts; the caller holds the hooks of later calls back until started runs. started must be idempotent.
+func WithDispatchStarted(ctx context.Context, started func()) context.Context {
+	return context.WithValue(ctx, dispatchStartedKey{}, started)
+}
+
+// DispatchStartedFromContext returns the function the dispatch calls when its first handler has started, or nil.
+func DispatchStartedFromContext(ctx context.Context) func() {
+	started, _ := ctx.Value(dispatchStartedKey{}).(func())
+	return started
 }

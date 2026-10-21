@@ -56,7 +56,7 @@ func buildGoSDKFixture(t *testing.T, name string) string {
 }
 
 // TestSharedSubprocessExecAcrossModes proves an extension's pi.exec call
-// succeeds in every mode that binds bindSessionExtensionActions (print, JSON,
+// succeeds in every mode that binds coding.BindSessionExtensionActions (print, JSON,
 // RPC), matching upstream, where core/extensions/loader.ts binds
 // ExtensionContext.exec identically regardless of mode (createExtensionContext
 // is not mode-conditional). Before this fix, only interactive mode registered
@@ -135,9 +135,9 @@ func TestSharedSubprocessExecAcrossModes(t *testing.T) {
 				defer host.Shutdown("test done")
 
 				// This is the shared, mode-independent wiring under test: print,
-				// JSON, and RPC mode all call bindSessionExtensionActions to bind
+				// JSON, and RPC mode all call coding.BindSessionExtensionActions to bind
 				// the session-backed subprocess host actions, including exec.
-				bindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{
+				coding.BindSessionExtensionActions(nil, bridge, func() *coding.Session { return session }, extension.ContextActions{
 					ModelRegistry:    services.Registry(),
 					IsProjectTrusted: services.SettingsManager().IsProjectTrusted,
 				}, nil)
@@ -153,6 +153,16 @@ func TestSharedSubprocessExecAcrossModes(t *testing.T) {
 				}
 				if err := command.Handler(ctx, ""); err != nil {
 					t.Fatalf("pi.exec in %s mode: %v", mode, err)
+				}
+				// The action the session binds runs under the call's context, so a signal the extension aborts ends a running command here as in
+				// interactive mode (core/exec.ts:46-52).
+				abortCommand, ok := ext.Commands["exec_abort_probe"]
+				if !ok {
+					t.Fatal("exec_abort_probe command not registered")
+				}
+				t.Setenv(execEchoHelperEnv, "hang")
+				if err := abortCommand.Handler(ctx, ""); err != nil {
+					t.Fatalf("pi.exec with an abort signal in %s mode: %v", mode, err)
 				}
 			})
 		}

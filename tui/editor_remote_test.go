@@ -137,3 +137,43 @@ func TestEditorRemoteSuggestionsUseTheEditorsProviders(t *testing.T) {
 		t.Fatalf("bash-mode suggestions = %+v", got)
 	}
 }
+
+type invalidatingRemote struct {
+	recordingRemote
+	invalidations int
+}
+
+func (r *invalidatingRemote) Invalidate() { r.invalidations++ }
+
+// Pi's TUI calls invalidate() on every component it holds when the theme changes, and a custom editor drops what it cached
+// there. The editor tells a remote component that asks for it, once per change.
+func TestEditorRemoteHearsAThemeChange(t *testing.T) {
+	previous := ActiveTheme().Name
+	t.Cleanup(func() { SetTheme(previous) })
+	SetTheme("dark")
+	e := NewEditor()
+	remote := &invalidatingRemote{}
+	e.SetRemote(remote)
+	e.Render(40)
+	if remote.invalidations != 0 {
+		t.Fatalf("invalidate before any theme change: %d", remote.invalidations)
+	}
+	SetTheme("light")
+	e.Render(40)
+	e.Render(40)
+	if remote.invalidations != 1 {
+		t.Fatalf("invalidate calls after one theme change = %d, want 1", remote.invalidations)
+	}
+}
+
+// ApplyBorderColor is `this.borderColor(text)`: the set function, else the editor's own default border color.
+func TestEditorApplyBorderColor(t *testing.T) {
+	e := NewEditor()
+	if got := e.ApplyBorderColor("──"); !strings.Contains(got, "──") || got == "──" {
+		t.Fatalf("default border color = %q, want the text in the default color", got)
+	}
+	e.BorderColor = func(text string) string { return "[" + text + "]" }
+	if got := e.ApplyBorderColor("──"); got != "[──]" {
+		t.Fatalf("set border color = %q", got)
+	}
+}

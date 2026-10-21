@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -339,6 +340,15 @@ func scanCode(src string, lang string) string {
 			i = j
 			lastSig = '/'
 			continue
+		case lang == "rust" && c == 'r' && (i == 0 || !isIdentByte(b[i-1])) && rawStringEnd(b, i) > 0:
+			// A raw string has no escapes: r"\?\" ends at its second quote.
+			end := rawStringEnd(b, i)
+			for k := i; k < end; k++ {
+				blank(k)
+			}
+			i = end - 1
+			lastSig = '"'
+			continue
 		case c == '"' || (c == '\'' && lang == "js") || (c == '`' && lang == "js"):
 			quote := c
 			j := i + 1
@@ -440,16 +450,22 @@ type blockScope struct {
 // ── Rust ────────────────────────────────────────────────────────────────────
 
 var (
-	rsImplRE   = regexp.MustCompile(`^\s*impl(?:\s*<[^{]*?>)?\s+(?:[A-Za-z_:<>, ]+?\s+for\s+)?([A-Za-z_][A-Za-z0-9_]*)`)
-	rsItemRE   = regexp.MustCompile(`^\s*pub(?:\([a-z]+\))?\s+(?:async\s+)?(fn|struct|enum|trait|mod|type|const|static)\s+([A-Za-z_][A-Za-z0-9_]*)`)
-	rsTraitFn  = regexp.MustCompile(`^\s*(?:async\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)`)
-	rsFieldRE  = regexp.MustCompile(`^\s*pub\s+([a-z_][A-Za-z0-9_]*)\s*:`)
-	rsVariant  = regexp.MustCompile(`^\s*([A-Z][A-Za-z0-9_]*)\s*[,({]?`)
-	rsReexport = regexp.MustCompile(`pub use [^;]*;`)
+	rsImplRE = regexp.MustCompile(`^\s*impl(?:\s*<[^{]*?>)?\s+(?:[A-Za-z_:<>, ]+?\s+for\s+)?([A-Za-z_][A-Za-z0-9_]*)`)
+	rsItemRE = regexp.MustCompile(`^\s*pub(?:\([a-z]+\))?\s+(?:async\s+)?(fn|struct|enum|trait|mod|type|const|static)\s+([A-Za-z_][A-Za-z0-9_]*)`)
+	// rsPublicItemRE is rsItemRE without restricted visibility: pub(crate) and pub(super) items are not API.
+	rsPublicItemRE = regexp.MustCompile(`^\s*pub\s+(?:async\s+)?(fn|struct|enum|trait|mod|type|const|static)\s+([A-Za-z_][A-Za-z0-9_]*)`)
+	rsTraitFn      = regexp.MustCompile(`^\s*(?:async\s+)?fn\s+([A-Za-z_][A-Za-z0-9_]*)`)
+	rsFieldRE      = regexp.MustCompile(`^\s*pub\s+([a-z_][A-Za-z0-9_]*)\s*:`)
+	rsVariant      = regexp.MustCompile(`^\s*([A-Z][A-Za-z0-9_]*)\s*[,({]?`)
+	rsReexport     = regexp.MustCompile(`pub use [^;]*;`)
 )
 
-func parseRust(dir string) (symbolSet, error) {
-	files, err := sourceFiles(dir, ".rs", nil)
+func parseRust(dir string) (symbolSet, error) { return parseRustItems(dir, rsItemRE, nil) }
+
+// parseRustItems reads a directory's Rust declarations with the given item
+// pattern; only (when not nil) limits it to those files.
+func parseRustItems(dir string, itemRE *regexp.Regexp, only func(path string) bool) (symbolSet, error) {
+	files, err := sourceFiles(dir, ".rs", func(name string) bool { return only != nil && !only(name) })
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +490,7 @@ func parseRust(dir string) (symbolSet, error) {
 			if direct {
 				switch top.kind {
 				case "impl", "trait":
-					if sm := rsItemRE.FindStringSubmatch(line); sm != nil && sm[1] == "fn" {
+					if sm := itemRE.FindStringSubmatch(line); sm != nil && sm[1] == "fn" {
 						syms[top.name+"::"+sm[2]] = true
 					} else if sm := rsTraitFn.FindStringSubmatch(line); sm != nil && top.kind == "trait" {
 						syms[top.name+"::"+sm[1]] = true
@@ -488,7 +504,7 @@ func parseRust(dir string) (symbolSet, error) {
 						syms[top.name+"::"+sm[1]] = true
 					}
 				default:
-					if sm := rsItemRE.FindStringSubmatch(line); sm != nil {
+					if sm := itemRE.FindStringSubmatch(line); sm != nil {
 						name := sm[2]
 						if top.kind == "mod" {
 							name = top.name + "::" + name
@@ -500,7 +516,7 @@ func parseRust(dir string) (symbolSet, error) {
 			// Decide what the next '{' on this line opens.
 			if sm := rsImplRE.FindStringSubmatch(line); sm != nil && direct {
 				pending = blockScope{name: sm[1], kind: "impl"}
-			} else if sm := rsItemRE.FindStringSubmatch(line); sm != nil && direct {
+			} else if sm := itemRE.FindStringSubmatch(line); sm != nil && direct {
 				switch sm[1] {
 				case "struct", "enum", "trait", "mod":
 					pending = blockScope{name: sm[2], kind: sm[1]}
@@ -663,4 +679,28 @@ func parseNodeReads(files []string) (symbolSet, error) {
 		}
 	}
 	return syms, nil
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+}
+
+// rawStringEnd returns the index just past the Rust raw string literal that
+// starts at b[i] (`r"..."`, `r#"..."#`, any number of hashes), or 0 when b[i]
+// does not start one.
+func rawStringEnd(b []byte, i int) int {
+	j := i + 1
+	hashes := 0
+	for j < len(b) && b[j] == '#' {
+		hashes++
+		j++
+	}
+	if j >= len(b) || b[j] != '"' {
+		return 0
+	}
+	closing := append([]byte{'"'}, bytes.Repeat([]byte{'#'}, hashes)...)
+	if k := bytes.Index(b[j+1:], closing); k >= 0 {
+		return j + 1 + k + len(closing)
+	}
+	return len(b)
 }

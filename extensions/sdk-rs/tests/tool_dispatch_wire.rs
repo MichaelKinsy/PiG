@@ -159,7 +159,7 @@ fn dialog_order_extension() -> Extension {
         |ctx, params| {
             let title = params["title"].as_str().unwrap_or("").to_string();
             let answer = match ctx.select(&title, &["a", "b"]) {
-                Ok((selected, _)) => selected,
+                Ok((selected, _)) => selected.as_str().unwrap_or("").to_string(),
                 Err(error) => return ToolResult::Error(error.to_string()),
             };
             if params["then"] == "host_call" {
@@ -305,5 +305,31 @@ fn a_long_call_of_one_batch_does_not_hold_the_dialogs_of_another_batch() {
     assert!(responded.contains(&"none".to_string()), "{responded:?}");
     release.send(()).unwrap();
     assert_eq!(host.response("long")["result"]["content"], "long done");
+    host.finish();
+}
+
+// runner.ts:1096-1125: concurrent emits start their handlers in call order, so an event or command request takes a place like a tool_call. A
+// request that ends before its handler (an unknown handler id or command) hands its place on, so the requests behind it still reach their
+// handlers. The order itself is pinned by `request_start_order::tests`, which hold the places.
+#[test]
+fn an_event_or_command_that_ends_before_its_handler_hands_on_its_place() {
+    let mut ext = Extension::new("dispatch");
+    ext.on_event("tool_result", |_, _| None);
+    ext.command("probe", "Probe", |_, _| pig_sdk::CommandResult::Ok);
+    let mut host = Host::start(ext);
+    for round in 0..8 {
+        send(
+            &mut host.stream,
+            &json!({"type":"request","id":format!("e{round}"),"request":{"method":"event","event":"tool_result","handler_id":99,"args":{}}}),
+        );
+        assert!(host.response(&format!("e{round}")).get("error").is_some_and(|error| !error.is_null()));
+        host.request(&format!("m{round}"), "command", "missing", json!(""));
+        assert!(host.response(&format!("m{round}")).get("error").is_some_and(|error| !error.is_null()));
+        send(
+            &mut host.stream,
+            &json!({"type":"request","id":format!("ok{round}"),"request":{"method":"event","event":"tool_result","handler_id":1,"args":{}}}),
+        );
+        assert!(host.response(&format!("ok{round}")).get("error").is_none_or(Value::is_null));
+    }
     host.finish();
 }

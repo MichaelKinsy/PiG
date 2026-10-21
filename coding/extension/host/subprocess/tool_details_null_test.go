@@ -24,6 +24,7 @@ func TestToolResponseKeepsExplicitNullDetails(t *testing.T) {
 			hostEnd, peer := net.Pipe()
 			conn := NewConn("details", hostEnd)
 			conn.Start(t.Context())
+			serveDispatch(conn)
 			t.Cleanup(func() { _ = peer.Close(); _ = conn.Close("test done") })
 			host := NewHost(t.TempDir())
 			defer host.Shutdown("test done")

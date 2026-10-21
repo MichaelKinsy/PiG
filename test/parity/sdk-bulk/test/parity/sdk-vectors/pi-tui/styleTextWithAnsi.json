@@ -1,0 +1,1409 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "styleTextWithAnsi",
+ "cases": [
+  {
+   "name": "case 0000",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0001",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "italic": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[3ma\u001b[0mb\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    "",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[9m\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2mhello\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {}
+   ],
+   "result": "\u001b[38;5;1m[object Object]a\u001b[0mb\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[9mx\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[9mhello\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "inverse": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[7mx\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0010",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[9ma\u001b[0mb\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0011",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "underline": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[4m\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0012",
+   "args": [
+    "hello",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[1mhello\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0013",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[3mx\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0014",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[2mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0015",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9ma\u001b[0mb\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0016",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "bold": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[1ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0017",
+   "args": [
+    "",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "underline": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[4m\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0018",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[3ma\u001b[0mb\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0019",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0020",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {}
+   ],
+   "result": "\u001b[38;5;1m[object Object]a\u001b[0mb\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0021",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "inverse": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[7mx\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0022",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9m\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0023",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[1m\u001b[2ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0024",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "inverse": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[7m\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0025",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0026",
+   "args": [
+    "hello",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[9mhello\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0027",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[3ma\u001b[0mb\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0028",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[9ma\u001b[0mb\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0029",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9ma\u001b[0mb\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0030",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0031",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[3mhello\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0032",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {}
+   ],
+   "result": "\u001b[38;5;1m[object Object]x\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0033",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {}
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0034",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[9mx\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0035",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2mhello\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0036",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9mx\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0037",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0038",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "bold": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[1ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0039",
+   "args": [
+    "",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[9m\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0040",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "inverse": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[7mhello\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0041",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0042",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0043",
+   "args": [
+    "hello",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "inverse": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[7mhello\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0044",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "dim": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[2ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0045",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9mhello\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0046",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "underline": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[4mx\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0047",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "inverse": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[7ma\u001b[0mb\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0048",
+   "args": [
+    "hello",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[1m\u001b[2mhello\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0049",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {}
+   ],
+   "result": "\u001b[38;5;1m[object Object]x\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0050",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9mx\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0051",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[2m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0052",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {}
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2ma\u001b[0mb\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0053",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "inverse": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[7m\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0054",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {}
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2ma\u001b[0mb\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0055",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[3mhello\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0056",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0057",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[9m\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0058",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0059",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {}
+   ],
+   "result": "\u001b[38;5;1m[object Object]a\u001b[0mb\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0060",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[2ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0061",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0062",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9mhello\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0063",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[9ma\u001b[0mb\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0064",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[2ma\u001b[0mb\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0065",
+   "args": [
+    "hello",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "underline": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[4mhello\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0066",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "underline": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[4ma\u001b[0mb\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0067",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {}
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2mx\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0068",
+   "args": [
+    "",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {}
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0069",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[2m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0070",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {}
+   ],
+   "result": "\u001b[38;5;1m[object Object]a\u001b[0mb\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0071",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "inverse": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[7ma\u001b[0mb\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0072",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[2m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0073",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[9ma\u001b[0mb\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0074",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[3mx\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0075",
+   "args": [
+    "",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[1m\u001b[2m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0076",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[3m\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0077",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "inverse": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[7mhello\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0078",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "underline": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[4mhello\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0079",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9mx\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0080",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[3mx\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0081",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[9ma\u001b[0mb\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0082",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0083",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[3mx\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0084",
+   "args": [
+    "hello",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "italic": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[3mhello\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0085",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[3m\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0086",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "underline": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[4ma\u001b[0mb\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0087",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "inverse": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[7mx\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0088",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "underline": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[4m\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0089",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[9m\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0090",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9mx\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0091",
+   "args": [
+    "a\u001b[0mb",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[9ma\u001b[0mb\u001b[29m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0092",
+   "args": [
+    "a\u001b[0mb",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "italic": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[3ma\u001b[0mb\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0093",
+   "args": [
+    "",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "italic": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[3m\u001b[23m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0094",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    {
+     "$": "NaN"
+    },
+    {
+     "inverse": true
+    }
+   ],
+   "result": "[object Object][object Object]\u001b[7mx\u001b[27m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0095",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "underline": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[4m\u001b[24m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0096",
+   "args": [
+    "",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "bold": true,
+     "italic": true,
+     "underline": true,
+     "inverse": true,
+     "strikethrough": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[1m\u001b[2m\u001b[3m\u001b[4m\u001b[7m\u001b[9m\u001b[29m\u001b[27m\u001b[24m\u001b[23m\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0097",
+   "args": [
+    "x",
+    "\u001b[38;5;1m",
+    "\u001b[48;5;2m",
+    {
+     "bold": true,
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m\u001b[48;5;2m\u001b[1m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0098",
+   "args": [
+    "hello",
+    "\u001b[38;5;1m",
+    {
+     "$": "NaN"
+    },
+    {
+     "dim": true
+    }
+   ],
+   "result": "\u001b[38;5;1m[object Object]\u001b[2mhello\u001b[22m\u001b[49m\u001b[39m"
+  },
+  {
+   "name": "case 0099",
+   "args": [
+    "x",
+    {
+     "$": "NaN"
+    },
+    "\u001b[48;5;2m",
+    {
+     "strikethrough": true
+    }
+   ],
+   "result": "[object Object]\u001b[48;5;2m\u001b[9mx\u001b[29m\u001b[49m\u001b[39m"
+  }
+ ]
+}

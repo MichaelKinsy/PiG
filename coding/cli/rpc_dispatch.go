@@ -1,104 +1,19 @@
 // Ports packages/coding-agent/src/modes/rpc/rpc-mode.ts
 package cli
 
-import "sync"
+import (
+	"sync"
 
-// rpcResponseTurn serializes input callbacks and awaited continuations. A completion from any earlier request waits for the currently admitted input batch, not just its original batch. Continuations never wait for future input.
-//
-// pending holds microtasks: continuations of awaits that settle without leaving the event loop. tasks holds the continuations of awaits whose work ran elsewhere (Node delivers them from a later event-loop task); each runs only after every queued microtask, and the microtasks it queues run before the next one, so a goroutine that finishes early cannot overtake a microtask the current callback queues later.
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
+)
+
+// rpcResponseTurn is the jsloop.Loop that serializes RPC input callbacks and awaited continuations, with the writer a completed response goes to. A completion from any earlier request waits for the currently admitted input batch, not just its original batch. Continuations never wait for future input.
 type rpcResponseTurn struct {
-	mu          sync.Mutex
-	execution   sync.Mutex
-	write       func(any)
-	pending     []func()
-	tasks       []func()
-	active      bool
-	idleWaiters []chan struct{}
+	jsloop.Loop
+	write func(any)
 }
 
-func (t *rpcResponseTurn) begin() {
-	t.execution.Lock()
-	t.mu.Lock()
-	t.active = true
-	t.mu.Unlock()
-}
-
-func (t *rpcResponseTurn) complete(response any) { t.after(func() { t.write(response) }) }
-
-func (t *rpcResponseTurn) after(continuation func()) { t.enqueue([]func(){continuation}) }
-
-// afterHops runs continuation after n microtasks; with n zero it runs it at once.
-func (t *rpcResponseTurn) afterHops(n int, continuation func()) {
-	if n == 0 {
-		continuation()
-		return
-	}
-	t.after(func() { t.afterHops(n-1, continuation) })
-}
-
-func (t *rpcResponseTurn) enqueue(continuations []func()) { t.schedule(continuations, false) }
-
-// enqueueTasks queues continuations of work that completed outside the executor, each as its own event-loop task.
-func (t *rpcResponseTurn) enqueueTasks(continuations []func()) { t.schedule(continuations, true) }
-
-func (t *rpcResponseTurn) schedule(continuations []func(), task bool) {
-	t.mu.Lock()
-	if task {
-		t.tasks = append(t.tasks, continuations...)
-	} else {
-		t.pending = append(t.pending, continuations...)
-	}
-	// A busy executor owns the queued work. Do not block its producers: an input command can be joining the operation that just completed.
-	if t.active || !t.execution.TryLock() {
-		t.mu.Unlock()
-		return
-	}
-	t.active = true
-	t.mu.Unlock()
-	t.end()
-}
-
-// idle reports when the admitted input and its queued continuations drain. It does not join suspended commands, which may still be waiting for input.
-func (t *rpcResponseTurn) idle() <-chan struct{} {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	done := make(chan struct{})
-	if t.active {
-		t.idleWaiters = append(t.idleWaiters, done)
-	} else {
-		close(done)
-	}
-	return done
-}
-
-// end drains with execution held. Unlocking execution while mu is still held makes idle publication atomic with producer admission; no completion can be stranded between the empty check and unlock. Continuations can enqueue more work without recursively acquiring execution.
-func (t *rpcResponseTurn) end() {
-	t.mu.Lock()
-	for {
-		pending := t.pending
-		t.pending = nil
-		if len(pending) == 0 && len(t.tasks) > 0 {
-			pending = []func(){t.tasks[0]}
-			t.tasks[0] = nil
-			t.tasks = t.tasks[1:]
-		}
-		if len(pending) == 0 {
-			t.active = false
-			for _, waiter := range t.idleWaiters {
-				close(waiter)
-			}
-			t.idleWaiters = nil
-			t.execution.Unlock()
-			t.mu.Unlock()
-			return
-		}
-		t.mu.Unlock()
-		for _, continuation := range pending {
-			continuation()
-		}
-		t.mu.Lock()
-	}
-}
+func (t *rpcResponseTurn) complete(response any) { t.Microtask(func() { t.write(response) }) }
 
 // rpcCommandJoin counts extension command invocations whose prompt response is not yet written. Pi processes stdin's end one event-loop iteration after the line that started a command, and shutdown() then exits within microtasks and one tick (rpc-mode.ts:728-744, output-guard.ts:105-108). The flush therefore joins each command until it has answered or the host counts it suspended: its Node runtime reported its event-loop window closed unresponded, or its runtime has no microtask continuation and the command is still running at the checkpoint. A command that is suspended when the flush ends never answers.
 type rpcCommandJoin struct {

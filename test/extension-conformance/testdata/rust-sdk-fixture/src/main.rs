@@ -224,6 +224,7 @@ impl ViewComponent for KitProbe {
             EventKind::Cancel => "cancel",
             EventKind::SelectionChange => "selectionChange",
             EventKind::Change => "change",
+            other => kit_event_name(other),
         };
         let value = event.item.map(|item| item.value).unwrap_or_default();
         self.log.push(format!("{kind}:{}:{value}", event.index));
@@ -312,6 +313,319 @@ fn kit_image_png(n: u32) -> Vec<u8> {
 /// kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
 const KIT_KINDS_PNG: &str = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082";
 
+const KIT_BRANCH_SUMMARY: &str = "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.";
+
+fn kit_branch_view(set: impl FnOnce(&mut kit::BranchSummary)) -> kit::View {
+    let mut node = kit::BranchSummary::new(KIT_BRANCH_SUMMARY).id("b");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+const KIT_COMPACTION_SUMMARY: &str = "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending.";
+
+fn kit_compaction_view(tokens: u64, set: impl FnOnce(&mut kit::CompactionSummary)) -> kit::View {
+    let mut node = kit::CompactionSummary::new(KIT_COMPACTION_SUMMARY, tokens).id("c");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+const KIT_SKILL_CONTENT: &str = "Review the diff for **bugs** first.\n\n- correctness\n- naming\n\nReport findings as a list.";
+
+fn kit_skill_view(set: impl FnOnce(&mut kit::SkillInvocation)) -> kit::View {
+    let mut node = kit::SkillInvocation::new("code-review", KIT_SKILL_CONTENT).id("s");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+fn kit_custom_message_view(text: &str, set: impl FnOnce(&mut kit::CustomMessage)) -> kit::View {
+    let mut node = kit::CustomMessage::new("ci-status", text).id("m");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+const KIT_WIDE_MESSAGE: &str = "A very long message that wraps around the narrow widths of the table";
+
+fn kit_cancellable_view(loader: kit::Loader) -> kit::View {
+    kit::View::new(Container::new().child(kit::CancellableLoader::new("c", loader))).focus("c")
+}
+
+fn kit_bordered_view(message: &str, set: impl FnOnce(kit::BorderedLoader) -> kit::BorderedLoader) -> kit::View {
+    kit::View::new(Container::new().child(set(kit::BorderedLoader::new("b", message)))).focus("b")
+}
+
+
+fn kit_input_view(focus: bool, set: impl FnOnce(kit::Input) -> kit::Input) -> kit::View {
+    let view = kit::View::new(Container::new().child(set(kit::Input::new("i"))));
+    if focus { view.focus("i") } else { view }
+}
+
+
+fn kit_editor_view(focus: bool, set: impl FnOnce(kit::Editor) -> kit::Editor) -> kit::View {
+    let view = kit::View::new(Container::new().child(set(kit::Editor::new("e"))));
+    if focus { view.focus("e") } else { view }
+}
+
+fn kit_editor_commands() -> kit::Autocomplete {
+    kit::Autocomplete::new(vec![
+        kit::SlashCommand::new("help").description("Show help"),
+        kit::SlashCommand::new("model").description("Switch the model").argument_hint("<name>"),
+        kit::SlashCommand::new("quit").description("Exit"),
+        kit::SlashCommand::new("session").description("Session info"),
+        kit::SlashCommand::new("settings").description("Open settings"),
+        kit::SlashCommand::new("share"),
+        kit::SlashCommand::new("skills").description("List skills"),
+        kit::SlashCommand::new("compact").description("Compact the context"),
+    ])
+}
+
+
+fn kit_scroll_child(kind: &str) -> kit::Node {
+    match kind {
+        "md" => Markdown::new("# Title\n\n- one\n- two with a long line that wraps at narrow widths\n\n`code`", 1, 0).into(),
+        "region" => Text::new("Region content\nsecond row", 1, 0).into(),
+        "empty" => Container::new().into(),
+        "branch" => kit::BranchSummary::new("The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.").id("b").into(),
+        _ => Text::new("Alpha line of the log\nBeta line of the log\nGamma line of the log that is long enough to wrap at the narrow widths\nDelta", 1, 0).into(),
+    }
+}
+
+
+/// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
+/// §10), built with the SDK's own constructors; the key is
+/// "<module>/<export>/<case name>" and the case's wire node is its vector's
+/// `root`.
+fn kit_widget_case(key: &str) -> Option<kit::View> {
+    Some(match key {
+        "pi-coding-agent/BranchSummaryMessageComponent/collapsed"
+        | "pi-coding-agent/BranchSummaryMessageComponent/click toggles"
+        | "pi-coding-agent/BranchSummaryMessageComponent/right click ignored" => kit_branch_view(|_| {}),
+        "pi-coding-agent/BranchSummaryMessageComponent/expanded" => kit_branch_view(|n| n.set_expanded(true)),
+        "pi-coding-agent/BranchSummaryMessageComponent/outputPad 0 collapsed" => kit_branch_view(|n| n.set_output_pad(0)),
+        "pi-coding-agent/BranchSummaryMessageComponent/outputPad 0 expanded" => kit_branch_view(|n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/BranchSummaryMessageComponent/empty summary expanded" => {
+            let mut node = kit::BranchSummary::new("");
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/CompactionSummaryMessageComponent/collapsed"
+        | "pi-coding-agent/CompactionSummaryMessageComponent/click toggles"
+        | "pi-coding-agent/CompactionSummaryMessageComponent/right click ignored" => kit_compaction_view(123456, |_| {}),
+        "pi-coding-agent/CompactionSummaryMessageComponent/expanded" => kit_compaction_view(123456, |n| n.set_expanded(true)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/outputPad 0 collapsed" => kit_compaction_view(123456, |n| n.set_output_pad(0)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/outputPad 0 expanded" => kit_compaction_view(123456, |n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/CompactionSummaryMessageComponent/tokens 999" => kit_compaction_view(999, |_| {}),
+        "pi-coding-agent/CompactionSummaryMessageComponent/tokens 1234567 expanded" => kit_compaction_view(1234567, |n| n.set_expanded(true)),
+        "pi-coding-agent/CompactionSummaryMessageComponent/empty summary tokens 0 expanded" => {
+            let mut node = kit::CompactionSummary::new("", 0);
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/SkillInvocationMessageComponent/collapsed"
+        | "pi-coding-agent/SkillInvocationMessageComponent/click toggles"
+        | "pi-coding-agent/SkillInvocationMessageComponent/right click ignored" => kit_skill_view(|_| {}),
+        "pi-coding-agent/SkillInvocationMessageComponent/expanded" => kit_skill_view(|n| n.set_expanded(true)),
+        "pi-coding-agent/SkillInvocationMessageComponent/outputPad 0 collapsed" => kit_skill_view(|n| n.set_output_pad(0)),
+        "pi-coding-agent/SkillInvocationMessageComponent/outputPad 0 expanded" => kit_skill_view(|n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/SkillInvocationMessageComponent/empty skill expanded" => {
+            let mut node = kit::SkillInvocation::new("", "");
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        "pi-coding-agent/CustomMessageComponent/default" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |_| {})
+        }
+        "pi-coding-agent/CustomMessageComponent/outputPad 0" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |n| n.set_output_pad(0))
+        }
+        "pi-coding-agent/CustomMessageComponent/expanded changes nothing" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |n| n.set_expanded(true))
+        }
+        "pi-coding-agent/CustomMessageComponent/empty text" => kit_custom_message_view("", |_| {}),
+        "pi-coding-agent/CustomMessageComponent/no id" => kit::View::new(kit::CustomMessage::new("note", "plain")),
+        "pi-tui/CancellableLoader/default"
+        | "pi-tui/CancellableLoader/escape aborts"
+        | "pi-tui/CancellableLoader/escape twice aborts twice"
+        | "pi-tui/CancellableLoader/other keys are ignored" => kit_cancellable_view(Loader::new("Working")),
+        "pi-tui/CancellableLoader/default message" => kit_cancellable_view(Loader::new("Loading...")),
+        "pi-tui/CancellableLoader/colors" => kit_cancellable_view(Loader::new("Working").spinner_color("accent").message_color("muted")),
+        "pi-tui/CancellableLoader/frame 3" => kit_cancellable_view(Loader::new("Working").frame(3)),
+        "pi-tui/CancellableLoader/indicator frames" => kit_cancellable_view(
+            Loader::new("Working")
+                .indicator(LoaderIndicator { frames: Some(vec!["*".into(), "+".into(), "x".into()]), interval_ms: Some(50) })
+                .frame(1),
+        ),
+        "pi-tui/CancellableLoader/hidden indicator" => {
+            kit_cancellable_view(Loader::new("Working").indicator(LoaderIndicator { frames: Some(vec![]), interval_ms: None }))
+        }
+        "pi-tui/CancellableLoader/wide message" => kit_cancellable_view(Loader::new(KIT_WIDE_MESSAGE).spinner_color("accent")),
+        "pi-coding-agent/BorderedLoader/cancellable"
+        | "pi-coding-agent/BorderedLoader/escape aborts"
+        | "pi-coding-agent/BorderedLoader/escape twice aborts twice"
+        | "pi-coding-agent/BorderedLoader/other keys are ignored" => kit_bordered_view("Fetching models", |l| l),
+        "pi-coding-agent/BorderedLoader/not cancellable" | "pi-coding-agent/BorderedLoader/escape ignored when not cancellable" => {
+            kit_bordered_view("Fetching models", |l| l.cancellable(false))
+        }
+        "pi-coding-agent/BorderedLoader/default message" => kit_bordered_view("Loading...", |l| l),
+        "pi-coding-agent/BorderedLoader/frame 4" => kit_bordered_view("Fetching models", |l| l.frame(4)),
+        "pi-coding-agent/BorderedLoader/wide message" => {
+            kit_bordered_view("Fetching the models of every configured provider, one after another", |l| l)
+        }
+        "pi-tui/Input/empty" => kit_input_view(false, |n| n),
+        "pi-tui/Input/empty focused"
+        | "pi-tui/Input/typing"
+        | "pi-tui/Input/left then insert"
+        | "pi-tui/Input/backspace and delete"
+        | "pi-tui/Input/home and end"
+        | "pi-tui/Input/kill word and yank"
+        | "pi-tui/Input/kill to end"
+        | "pi-tui/Input/paste scrolls"
+        | "pi-tui/Input/submit" => kit_input_view(true, |n| n),
+        "pi-tui/Input/placeholder" => kit_input_view(false, |n| n.placeholder("type here")),
+        "pi-tui/Input/placeholder focused colored" => kit_input_view(true, |n| n.placeholder("type here").placeholder_color("dim")),
+        "pi-tui/Input/custom prompt" => kit_input_view(true, |n| n.prompt("$ ").value("ls -la")),
+        "pi-tui/Input/value" => kit_input_view(false, |n| n.value("hello world")),
+        "pi-tui/Input/value focused" | "pi-tui/Input/click moves the cursor" | "pi-tui/Input/right click ignored" => {
+            kit_input_view(true, |n| n.value("hello world"))
+        }
+        "pi-tui/Input/wide characters" => kit_input_view(true, |n| n.value("漢字 and 😀 text")),
+        "pi-tui/Input/submit newline key" => kit_input_view(true, |n| n.value("preset")),
+        "pi-tui/Input/escape" => kit_input_view(true, |n| n.value("keep")),
+        "pi-tui/Editor/empty" => kit_editor_view(false, |n| n),
+        "pi-tui/Editor/empty focused" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/value" => kit_editor_view(false, |n| n.value("hello world")),
+        "pi-tui/Editor/multiline value focused" => kit_editor_view(true, |n| n.value("one\ntwo\nthree")),
+        "pi-tui/Editor/wrapped line" => kit_editor_view(true, |n| n.value("The quick brown fox jumps over the lazy dog and keeps running through the field")),
+        "pi-tui/Editor/wide characters" => kit_editor_view(true, |n| n.value("漢字 and 😀 text")),
+        "pi-tui/Editor/typing" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/newline" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/backspace and delete" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/kill word and yank" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/undo" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/submit" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/paste" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/paste large" => kit_editor_view(true, |n| n),
+        "pi-tui/Editor/cursor movement" => kit_editor_view(true, |n| n.value("one\ntwo\nthree")),
+        "pi-tui/Editor/submit multiline" => kit_editor_view(true, |n| n.value("one\ntwo")),
+        "pi-tui/Editor/submit disabled" => kit_editor_view(true, |n| n.value("keep").disable_submit(true)),
+        "pi-tui/Editor/padding" => kit_editor_view(true, |n| n.value("padded text").padding_x(2)),
+        "pi-tui/Editor/padding wrapped" => kit_editor_view(true, |n| n.value("The quick brown fox jumps over the lazy dog and keeps running").padding_x(3)),
+        "pi-tui/Editor/border color" => kit_editor_view(true, |n| n.value("colored").border_color("accent")),
+        "pi-tui/Editor/history" => kit_editor_view(true, |n| n.history(["first", "second", "third"])),
+        "pi-tui/Editor/history then edit" => kit_editor_view(true, |n| n.history(["first", "second"])),
+        "pi-tui/Editor/scrolls past the visible lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/scroll indicator below" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/more rows show more lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/few rows show five lines" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12")),
+        "pi-tui/Editor/page up and down" => kit_editor_view(true, |n| n.value("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30")),
+        "pi-tui/Editor/click moves the cursor" => kit_editor_view(true, |n| n.value("hello\nworld")),
+        "pi-tui/Editor/click on the border" => kit_editor_view(true, |n| n.value("hello\nworld")),
+        "pi-tui/Editor/right click ignored" => kit_editor_view(true, |n| n.value("hello")),
+        "pi-tui/Editor/slash opens the menu" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash narrows" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash no match" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash tab accepts" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash arrow then tab" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash enter accepts" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash escape closes" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash click selects" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/text after the slash opens nothing" => kit_editor_view(true, |n| n.autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash max visible 3" => kit_editor_view(true, |n| n.autocomplete_max_visible(3).autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/slash with padding" => kit_editor_view(true, |n| n.padding_x(2).autocomplete(kit_editor_commands())),
+        "pi-tui/Editor/autocomplete menu does not follow disabled submit" => kit_editor_view(true, |n| n.disable_submit(true).autocomplete(kit_editor_commands())),
+        "pi-tui/ScrollView/default" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")))),
+        "pi-tui/ScrollView/scrollbar always" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always"))),
+        "pi-tui/ScrollView/scrollbar auto" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("auto"))),
+        "pi-tui/ScrollView/scrollbar colors" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always").scrollbar_track_color("dim").scrollbar_thumb_color("accent"))),
+        "pi-tui/ScrollView/follow end" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).follow("end"))),
+        "pi-tui/ScrollView/primary and contain" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).primary(true).overscroll("contain"))),
+        "pi-tui/ScrollView/hide delay" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("auto").scrollbar_hide_delay_ms(50))),
+        "pi-tui/ScrollView/scroll top clamps" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text")).scroll_top(3))),
+        "pi-tui/ScrollView/markdown child" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("md")).scrollbar("always"))),
+        "pi-tui/ScrollView/after other rows" => kit::View::new(Container::new().child(Text::new("Header", 1, 0)).child(kit::ScrollView::new("s", kit_scroll_child("text")).scrollbar("always")).child(Text::new("Footer", 1, 0))),
+        "pi-tui/ScrollView/empty child" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("empty")).scrollbar("always"))),
+        "pi-tui/ScrollView/wheel and click pass" => kit::View::new(Container::new().child(kit::ScrollView::new("s", kit_scroll_child("text"))).child(Text::new("after", 1, 0))),
+        "pi-tui/MouseRegion/renders its child" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        "pi-tui/MouseRegion/every type by default" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        "pi-tui/MouseRegion/types filter" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).types(["click"]))),
+        "pi-tui/MouseRegion/not handled" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).handled(false))),
+        "pi-tui/MouseRegion/capture" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).capture(true))),
+        "pi-tui/MouseRegion/focus and render" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")).focus(true).render(false))),
+        "pi-tui/MouseRegion/local coordinates" => kit::View::new(Container::new().child(Text::new("Above the region", 1, 0)).child(kit::MouseRegion::new("m", kit_scroll_child("region"))).child(Text::new("Below", 1, 0))),
+        "pi-tui/MouseRegion/the child takes the event first" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("branch")))),
+        "pi-tui/MouseRegion/right button" => kit::View::new(Container::new().child(kit::MouseRegion::new("m", kit_scroll_child("region")))),
+        // kit-widget-cases
+        _ => return None,
+    })
+}
+
+/// kit-widget's component: it takes the keys and mouse events the view leaves
+/// to the extension, and notifies each callback its nodes fire as
+/// "kit-widget-event=<type>:<value>" (a change report is not one). It never
+/// closes itself: the harness delivers the case's steps and then reads the
+/// callbacks, and a probe that closed after the callbacks Pi fired would drop
+/// the steps still to come.
+struct KitWidgetProbe {
+    ctx: pig_sdk::Context,
+    view: kit::View,
+}
+
+impl ViewComponent for KitWidgetProbe {
+    fn view(&self, _width: u32) -> kit::View {
+        self.view.clone()
+    }
+
+    fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handles_mouse(&self) -> bool {
+        true
+    }
+
+    fn handle_mouse(&mut self, _event: &MouseEvent) -> Result<RemoteComponentResult, String> {
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handle_view_event(&mut self, event: kit::Event) -> Result<RemoteComponentResult, String> {
+        let entry = match event.kind {
+            EventKind::Change => return Ok(RemoteComponentResult::pending()),
+            EventKind::Mouse => match &event.mouse {
+                Some(m) => format!("mouse:{}/{}/{}/{}", m.kind, m.button, m.x, m.y),
+                None => "mouse:".to_string(),
+            },
+            kind => format!("{}:{}", kit_event_name(kind), event.value),
+        };
+        self.ctx.notify(&format!("kit-widget-event={entry}"), "info");
+        Ok(RemoteComponentResult::pending())
+    }
+}
+
+fn kit_event_name(kind: EventKind) -> &'static str {
+    match kind {
+        EventKind::Select => "select",
+        EventKind::Cancel => "cancel",
+        EventKind::SelectionChange => "selectionChange",
+        EventKind::Change => "change",
+        EventKind::Submit => "submit",
+        EventKind::Escape => "escape",
+        EventKind::Abort => "abort",
+        EventKind::Mouse => "mouse",
+    }
+}
+
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
     // factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
@@ -331,7 +645,7 @@ fn main() {
             json!(pig_sdk::convert_to_llm(case["messages"].as_array().map(Vec::as_slice).unwrap_or(&[])))
         } else {
             let i = &case["image"];
-            let image = pig_sdk::ResizedImage { original_width: i["originalWidth"].as_f64().unwrap_or(0.0), original_height: i["originalHeight"].as_f64().unwrap_or(0.0), width: i["width"].as_f64().unwrap_or(0.0), height: i["height"].as_f64().unwrap_or(0.0), was_resized: i["wasResized"].as_bool().unwrap_or(false) };
+            let image = pig_sdk::ResizedImage { original_width: i["originalWidth"].as_f64().unwrap_or(0.0), original_height: i["originalHeight"].as_f64().unwrap_or(0.0), width: i["width"].as_f64().unwrap_or(0.0), height: i["height"].as_f64().unwrap_or(0.0), was_resized: i["wasResized"].as_bool().unwrap_or(false), ..Default::default() };
             json!(pig_sdk::format_dimension_note(&image))
         };
         ctx.notify(&format!("convert:{}:end", json!({"result": result})), "info");
@@ -368,6 +682,7 @@ fn main() {
         "frontmatter": frontmatter_report(pig_sdk::parse_frontmatter("---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n")),
         "error": frontmatter_report(pig_sdk::parse_frontmatter("---\na: [\n---\nx")),
         "date": date_report(pig_sdk::parse_date("2020-01-02T03:04:05.678Z")),
+        "strip": match pig_sdk::strip_frontmatter("---\nz: 1\n---\nbody text\n") { Ok(body) => json!({"body": body}), Err(_) => json!({"error": true}) },
     });
     ext.command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", |ctx, args| {
         let case: serde_json::Value = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
@@ -388,11 +703,25 @@ fn main() {
         // The messages stay JSON text, so an unpaired surrogate escape reaches serialize_conversation_json as the unit it is.
         let case: std::collections::HashMap<String, Box<serde_json::value::RawValue>> = match serde_json::from_str(args) { Ok(case) => case, Err(err) => return CommandResult::Error(err.to_string()) };
         let messages = case.get("messages").map(|messages| messages.get()).unwrap_or("[]");
-        let out = match pig_sdk::serialize_conversation_json(messages) {
+        // A conversation a serde_json::Value can hold runs through the typed serialize_conversation; one with an unpaired surrogate, which a Value refuses, through the JSON-text form. Both answer Pi's text.
+        let exact = pig_sdk::serialize_conversation_json(messages);
+        // A conversation a serde_json::Value can hold also runs through the typed serialize_conversation: it must fail where the JSON-text form fails and, where both succeed, give the same text with each unpaired unit written as U+FFFD (a String cannot hold one).
+        let out = match (&exact, serde_json::from_str::<Vec<serde_json::Value>>(messages)) {
+            (Ok(text), Ok(typed)) => match pig_sdk::serialize_conversation(&typed) {
+                Ok(lossy) if lossy == text.to_string_lossy() => None,
+                _ => Some("{\"error\":\"typed serialize_conversation differs from serialize_conversation_json\"}".to_string()),
+            },
+            (Err(_), Ok(typed)) => match pig_sdk::serialize_conversation(&typed) {
+                Err(_) => None,
+                Ok(_) => Some("{\"error\":\"typed serialize_conversation succeeded where serialize_conversation_json failed\"}".to_string()),
+            },
+            _ => None,
+        };
+        let out = out.unwrap_or_else(|| match exact {
             // A JsString serializes as a JSON string that keeps an unpaired surrogate as its escape; a serde_json::Value could not hold it.
             Ok(text) => format!("{{\"result\":{}}}", serde_json::to_string(&text).unwrap_or_default()),
             Err(_) => "{\"error\":true}".to_string(),
-        };
+        });
         ctx.notify(&format!("serialize:{out}:end"), "info");
         CommandResult::Ok
     });
@@ -550,10 +879,25 @@ fn main() {
                 let (text, was) = pig_sdk::truncate_line(content, limit("maxChars").unwrap_or(pig_sdk::GREP_MAX_LINE_LENGTH));
                 json!({"text": text, "wasTruncated": was})
             }
+            "limits" => json!({"maxLines": pig_sdk::DEFAULT_MAX_LINES, "maxBytes": pig_sdk::DEFAULT_MAX_BYTES}),
             _ => json!({"text": pig_sdk::format_size(limit("bytes").unwrap_or(0))}),
         };
         ctx.notify(&format!("truncate:{result}:end"), "info");
         CommandResult::Ok
+    });
+    // builtin_probe: see the Go fixture (testfixture/builtin_tool.go).
+    ext.command("builtin_probe", "Delegate to a built-in tool through the SDK and report what it returned", |ctx, args| {
+        let case: Value = match serde_json::from_str(&args) {
+            Ok(case) => case,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        match builtin_probe(ctx, &case) {
+            Ok(report) => {
+                ctx.notify(&format!("builtin:{report}:end"), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err),
+        }
     });
     // message_probe reads the event payload in its JSON argument with the SDK's message_role and message_text helpers (TestConformance_MessageHelpersAgreeAcrossSDKs).
     ext.command("message_probe", "Report message_role and message_text of a JSON event payload", |ctx, args| {
@@ -640,6 +984,46 @@ fn main() {
         failed.sort_unstable();
         ctx.notify(&format!("file_queue:{}:end", json!({"log": *log.lock().unwrap(), "errors": failed})), "info");
         CommandResult::Ok
+    });
+    // host_paths_probe reports getPackageDir() and getShellConfig() as this SDK answers them, for the default shell and for the existing and the missing custom shell path
+    // in args ("<existing>|<missing>") (TestConformance_HostPathsAgreeAcrossSDKs).
+    ext.command("host_paths_probe", "Report getPackageDir and getShellConfig", |ctx, args| {
+        let (existing, missing) = args.split_once('|').unwrap_or((args, ""));
+        let shell = |custom: Option<&str>| match pig_sdk::get_shell_config(custom) {
+            Ok(config) => {
+                let mut report = json!({"shell": config.shell, "args": config.args});
+                if let Some(transport) = config.command_transport {
+                    report["commandTransport"] = json!(transport);
+                }
+                report
+            }
+            Err(err) => json!({"error": err.to_string()}),
+        };
+        match pig_sdk::get_package_dir() {
+            Ok(package_dir) => {
+                ctx.notify(&format!("host_paths:{}:end", json!({"packageDir": package_dir, "default": shell(None), "custom": shell(Some(existing)), "missing": shell(Some(missing))})), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // host_helpers_probe runs the host-served pi helpers over the golden file's inputs (TestConformance_HostHelpersAgreeAcrossSDKs). args is
+    // "<golden>|<auth.json path>|<text to copy>".
+    ext.command("host_helpers_probe", "Run the host-served pi helpers over the golden inputs", |ctx, args| match host_helpers_probe(&ctx, &args) {
+        Ok(report) => {
+            ctx.notify(&format!("host_helpers:{report}:end"), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err),
+    });
+    // pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the test) through this SDK's pi-ai
+    // helpers and reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
+    ext.command("pi_ai_helpers_probe", "Run the golden pi-ai helper calls", |ctx, args| match pi_ai_helpers_probe(&args) {
+        Ok(report) => {
+            ctx.notify(&format!("pi_ai_helpers:{report}:end"), "info");
+            CommandResult::Ok
+        }
+        Err(err) => CommandResult::Error(err),
     });
     // host_info_probe reports Pi's getAgentDir(), CONFIG_DIR_NAME and VERSION as this SDK answers them (TestConformance_HostConfigurationAgreesAcrossSDKs).
     ext.command("host_info_probe", "Report getAgentDir, CONFIG_DIR_NAME and VERSION", move |ctx, _args| {
@@ -758,6 +1142,9 @@ fn main() {
         let notify = ctx.clone();
         match ctx.set_editor_component(move |base| {
             let text = base.set_text(&JsString::from("eager")).and_then(|()| base.get_text());
+            // The stock editor's other queries and setters, at the values it already holds.
+            let _ = (base.get_cursor(), base.get_expanded_text(), base.is_showing_autocomplete());
+            let _ = (base.set_padding_x(0), base.set_autocomplete_max_visible(5));
             match text {
                 Ok(text) => notify.notify(&format!("eager:{}", text.to_string_lossy()), "info"),
                 Err(err) => notify.notify(&format!("eager-error:{err}"), "info"),
@@ -770,6 +1157,12 @@ fn main() {
     });
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", |ctx, _args| {
         match ctx.set_editor_component(|base| Box::new(EmbeddingEditor(ConformanceEditor { base }))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    ext.command("editor-install-hooks", "Install a custom editor that sets CustomEditor's handlers", |ctx, _args| {
+        match ctx.set_editor_component(|base| Box::new(HooksEditor::new(base))) {
             Ok(()) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
         }
@@ -830,7 +1223,7 @@ fn main() {
     });
     ext.command("timeout-probe", "Send JavaScript-number timeouts", |ctx, _| {
         for timeout in [0.5, 4294967296.5, 1e21] {
-            if let Err(err) = ctx.exec_with_options("timeout-command", &[], &pig_sdk::ExecOptions { timeout: Some(timeout), cwd: None }) {
+            if let Err(err) = ctx.exec_with_options("timeout-command", &[], &pig_sdk::ExecOptions { timeout: Some(timeout), ..Default::default() }) {
                 return CommandResult::Error(err);
             }
         }
@@ -852,6 +1245,36 @@ fn main() {
         }
         CommandResult::Ok
     });
+    ext.command("exec-abort-probe", "Abort a running exec through its signal", |ctx, args| {
+        let probe: Value = match serde_json::from_str(args) {
+            Ok(probe) => probe,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let command = probe["command"].as_str().unwrap_or_default().to_string();
+        let argv: Vec<String> = probe["args"].as_array().into_iter().flatten().filter_map(|arg| arg.as_str().map(str::to_string)).collect();
+        let signal = pig_sdk::ProviderSignal::new();
+        if probe["pre"].as_bool() == Some(true) {
+            signal.cancel();
+        } else {
+            let signal = signal.clone();
+            let pid_file = probe["pidFile"].as_str().unwrap_or_default().to_string();
+            thread::spawn(move || {
+                for _ in 0..1500 {
+                    if std::path::Path::new(&pid_file).exists() {
+                        break;
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                }
+                signal.cancel();
+            });
+        }
+        let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
+        match ctx.exec_with_options(&command, &argv, &pig_sdk::ExecOptions { signal: Some(signal), ..Default::default() }) {
+            Ok(result) => ctx.notify(&format!("exec-abort:killed={};code={};stdout={}", result.killed, result.exit_code, result.stdout.trim()), "info"),
+            Err(err) => ctx.notify(&format!("rejected:{err}"), "info"),
+        }
+        CommandResult::Ok
+    });
     ext.command("thinking-model", "Read the thinking level and switch the model", |ctx, _| {
         let level = match ctx.get_thinking_level() {
             Ok(level) => level,
@@ -861,6 +1284,28 @@ fn main() {
         let (ok, _) = ctx.set_model("probe/model");
         ctx.notify(&json!([level, ok]).to_string(), "info");
         CommandResult::Ok
+    });
+    ext.command("replicated-accessors", "Read the replicated accessors after each write", |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let last_type = || -> std::io::Result<String> { Ok(ctx.get_entries()?.last().and_then(|entry| entry["type"].as_str().map(str::to_string)).unwrap_or_default()) };
+            let mut out = serde_json::Map::new();
+            out.insert("name0".into(), json!(ctx.session_name()));
+            out.insert("model0".into(), json!(ctx.model()));
+            out.insert("provider0".into(), json!(ctx.model_provider()));
+            ctx.set_session_name("renamed")?;
+            out.insert("name1".into(), json!(ctx.session_name()));
+            ctx.set_label("one", "lab")?;
+            out.insert("entryAfterLabel".into(), json!(last_type()?));
+            ctx.send_message("probe", "hi", true, None, None)?;
+            out.insert("entryAfterMessage".into(), json!(last_type()?));
+            ctx.set_model("prov-after/id-after");
+            out.insert("model1".into(), json!(ctx.model()));
+            out.insert("provider1".into(), json!(ctx.model_provider()));
+            out.insert("qualified1".into(), json!(ctx.model_qualified()));
+            ctx.notify(&serde_json::Value::Object(out).to_string(), "info");
+            Ok(())
+        };
+        match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
     });
     ext.command("active_tools_set", "Set the active tools to the comma-separated names", |ctx, args| {
         let names: Vec<&str> = args.trim().split(',').collect();
@@ -927,6 +1372,7 @@ fn main() {
                 "entry":s.get_entry("one")?, "missing":s.get_entry("missing")?, "label":s.get_label("one")?,
                 "entries":s.get_entries()?, "branch":s.get_branch(Some("one"))?, "tree":s.get_tree()?,
                 "contextEntries":s.build_context_entries()?, "projection":s.build_session_projection()?,
+                "persisted":s.is_persisted()?, "usesDefaultDir":s.uses_default_session_dir()?, "children":s.get_children(Some("one"))?, "sessionContext":s.build_session_context()?,
                 "models":r.get_all()?, "available":r.get_available()?, "status":r.get_provider_auth_status("registry-probe")?,
                 "display":r.get_provider_display_name("registry-probe")?, "error":r.get_error()?,
                 "config":r.get_registered_provider_config("registry-probe")?, "ids":r.get_registered_provider_ids()?,
@@ -937,6 +1383,33 @@ fn main() {
             Ok(())
         };
         match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
+    ext.command("registry-edges", "Read the registry answers that depend on the provider state", |ctx, _| {
+        let run = || -> std::io::Result<()> {
+            let r = ctx.model_registry();
+            let mut models = r.get_all()?.as_array().cloned().unwrap_or_default();
+            models.push(json!({}));
+            let has_auth = models.iter().map(|model| r.has_configured_auth(model)).collect::<std::io::Result<Vec<_>>>()?;
+            let oauth = models.iter().map(|model| r.is_using_oauth(model)).collect::<std::io::Result<Vec<_>>>()?;
+            let out = json!({
+                "available": r.get_available()?, "hasAuth": has_auth, "oauth": oauth,
+                "found": r.find("registry-probe", "a")?, "foundOff": r.find("registry-off", "d")?,
+                "missing": r.find("registry-probe", "zzz")?, "mismatch": r.find("registry-probe", "c")?
+            });
+            ctx.notify(&out.to_string(), "info");
+            Ok(())
+        };
+        match run() { Ok(()) => CommandResult::Ok, Err(error) => CommandResult::Error(error.to_string()) }
+    });
+    ext.command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", |ctx, _| {
+        let report = |read: std::io::Result<Value>| match read {
+            Ok(value) => format!("ok:{value}"),
+            Err(error) => format!("error:{error}"),
+        };
+        let find = report(ctx.model_registry().find("registry-probe", "a").map(|model| model.unwrap_or(Value::Null)));
+        let entries = report(ctx.session_manager().get_entries());
+        ctx.notify(&json!({"find": find, "entries": entries}).to_string(), "info");
+        CommandResult::Ok
     });
     ext.command("session-order", "Read the session as Pi returns it", |ctx, _| {
         let run = || -> std::io::Result<()> {
@@ -1104,6 +1577,9 @@ fn main() {
     );
     let abort_observed = Arc::new(AtomicBool::new(false));
     let abort_set = abort_observed.clone();
+    let abort_reason: Arc<std::sync::Mutex<Option<String>>> = Arc::default();
+    let abort_reason_set = abort_reason.clone();
+    let abort_reason_read = abort_reason;
     ext.tool(
         "abort_tool",
         "Wait for the abort signal",
@@ -1113,6 +1589,7 @@ fn main() {
             while !ctx.is_cancelled() {
                 thread::sleep(Duration::from_millis(10));
             }
+            *abort_reason_set.lock().unwrap() = ctx.cancellation_reason();
             abort_set.store(true, Ordering::SeqCst);
             ToolResult::text("aborted")
         },
@@ -1136,6 +1613,10 @@ fn main() {
             CommandResult::Ok
         },
     );
+    ext.command("abort_reason", "Report the cancellation reason abort_tool saw", move |ctx, _args| {
+        ctx.notify(&format!("reason:{}", abort_reason_read.lock().unwrap().clone().unwrap_or_default()), "info");
+        CommandResult::Ok
+    });
     ext.tool(
         "rich_tool",
         "Return text, image, and terminate",
@@ -1183,6 +1664,83 @@ fn main() {
         |_ctx, params: Value| {
             let number = STARTED_CALLS.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
             ToolResult::text(format!("start#{number} n={}", params.get("n").map(Value::to_string).unwrap_or_default()))
+        },
+    );
+    // A tool that notifies inline and, from a thread timer_release releases, after its handler returned (D189).
+    static TIMER_GATE: (std::sync::Mutex<usize>, std::sync::Condvar) = (std::sync::Mutex::new(0), std::sync::Condvar::new());
+    static STALE_CTX: std::sync::Mutex<Option<pig_sdk::Context>> = std::sync::Mutex::new(None);
+    ext.tool(
+        "timer_defer",
+        "Notify inline and from deferred work",
+        json!({"type": "object"}),
+        |ctx, _params: Value| {
+            ctx.notify("inline:sync", "info");
+            *STALE_CTX.lock().unwrap() = Some(ctx.clone());
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let (released, signal) = &TIMER_GATE;
+                let mut count = released.lock().unwrap();
+                while *count == 0 {
+                    count = signal.wait(count).unwrap();
+                }
+                *count -= 1;
+                drop(count);
+                ctx.notify("deferred:thread", "info");
+            });
+            ToolResult::text("queued")
+        },
+    );
+    // timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+    ext.tool(
+        "timer_stale",
+        "Await a host call made through an earlier request's context",
+        json!({"type": "object"}),
+        |_ctx, _params: Value| {
+            let earlier = STALE_CTX.lock().unwrap().clone().expect("timer_defer has not run");
+            earlier.notify("stale:awaited", "info");
+            ToolResult::text("applied")
+        },
+    );
+    ext.tool(
+        "timer_release",
+        "Release the deferred work",
+        json!({"type": "object"}),
+        |_ctx, _params: Value| {
+            let (released, signal) = &TIMER_GATE;
+            *released.lock().unwrap() += 1;
+            signal.notify_one();
+            ToolResult::text("released")
+        },
+    );
+    // order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+    ext.tool(
+        "order_probe",
+        "Make a host call and an update in the first tick",
+        json!({"type": "object", "properties": {"n": {"type": "number"}}}),
+        |ctx, params: Value| {
+            let n = params.get("n").map(Value::to_string).unwrap_or_default();
+            ctx.notify(&format!("order-call={n}"), "info");
+            ctx.notify(&format!("order-then={n}"), "info");
+            let _ = ctx.on_update(ToolResult::Json(json!({"content": [{"type": "text", "text": format!("order-update={n}")}]})));
+            ToolResult::text(format!("order-done n={n}"))
+        },
+    );
+    // mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+    ext.tool(
+        "mutation_order_probe",
+        "Take the file mutation queue and append a tag to the file",
+        json!({"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}),
+        |_, params: Value| {
+            let file = params["file"].as_str().unwrap_or_default().to_string();
+            let tag = params["tag"].as_str().unwrap_or_default().to_string();
+            let result = pig_sdk::with_file_mutation_queue(&file, || {
+                let before = std::fs::read_to_string(&file).unwrap_or_default();
+                std::fs::write(&file, format!("{before}{tag}\n"))
+            });
+            match result {
+                Ok(Ok(())) => ToolResult::text(format!("mutated {tag}")),
+                Ok(Err(err)) | Err(err) => ToolResult::Error(err.to_string()),
+            }
         },
     );
     ext.tool(
@@ -1277,11 +1835,12 @@ fn main() {
     });
     ext.command("model-stream-probe", "Exercise model streaming", |ctx, _args| {
         let registry = ctx.model_registry();
-        let Some(current) = registry.find("conformance", "current") else { return CommandResult::Error("find current returned no model".into()); };
+        let find = |provider: &str, id: &str| registry.find(provider, id).map_err(|error| CommandResult::Error(format!("find {id}: {error}")));
+        let current = match find("conformance", "current") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find current returned no model".into()), Err(error) => return error };
         if current["id"] != "current" { return CommandResult::Error(format!("find current = {current}")); }
-        let Some(found) = registry.find("conformance", "declared") else { return CommandResult::Error("find declared returned no model".into()); };
+        let found = match find("conformance", "declared") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find declared returned no model".into()), Err(error) => return error };
         if found["id"] != "declared" || found["provider"] != "conformance" { return CommandResult::Error(format!("find declared = {found}")); }
-        let Some(slash) = registry.find("conformance", "org/model/name") else { return CommandResult::Error("find slash returned no model".into()); };
+        let slash = match find("conformance", "org/model/name") { Ok(Some(model)) => model, Ok(None) => return CommandResult::Error("find slash returned no model".into()), Err(error) => return error };
         if slash["id"] != "org/model/name" { return CommandResult::Error(format!("find slash = {slash}")); }
         let expected_limits = json!({"maxRequestBytes":12345,"images":{"maxPerMessage":7,"maxPerRequest":11,"resize":{"maxWidth":321,"maxHeight":123,"maxBytes":45678,"jpegQuality":67}}});
         if slash["inputLimits"] != expected_limits || ctx.get_model_info().unwrap().and_then(|model| model.input_limits) != Some(expected_limits) { return CommandResult::Error(format!("model inputLimits = {slash}")); }
@@ -1289,8 +1848,13 @@ fn main() {
             if slash.get(field).is_none() { return CommandResult::Error(format!("find slash missing {field}: {slash}")); }
         }
         if slash["input"].as_array().map(Vec::len) != Some(0) || slash["cost"]["input"] != 0 || slash["cost"]["tiers"].as_array().map(Vec::len) != Some(1) || slash["compat"]["supportsStrictMode"] != false { return CommandResult::Error(format!("find slash shape = {slash}")); }
-        if registry.find("conformance", "missing").is_some() { return CommandResult::Error("find missing returned a model".into()); }
-        if registry.find("conformance", "override-only").is_some() { return CommandResult::Error("find override-only returned a model".into()); }
+        for missing in ["missing", "override-only"] {
+            match find("conformance", missing) {
+                Ok(None) => {}
+                Ok(Some(_)) => return CommandResult::Error(format!("find {missing} returned a model")),
+                Err(error) => return error,
+            }
+        }
         let auth = match registry.get_api_key_and_headers(&found) {
             Ok(value) => value,
             Err(error) => return CommandResult::Error(format!("get auth: {error}")),
@@ -2382,6 +2946,17 @@ fn main() {
             }
         },
     );
+    // kit-widget "<case key>" opens a widget kind's Pi vector case in an
+    // overlay; the probe notifies its callbacks as they fire.
+    ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", |ctx, key| {
+        let Some(view) = kit_widget_case(key) else {
+            return CommandResult::Error(format!("kit-widget: unknown case {key:?}"));
+        };
+        match ctx.custom_view(KitWidgetProbe { ctx: ctx.clone(), view }, json!({"title": "Kit"})) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
     ext.command("kit-probe", "Exercise the component kit (D107)", |ctx, _args| {
         match ctx.custom_view(KitProbe { log: Vec::new() }, json!({"title": "Kit"})) {
             Ok(result) => {
@@ -2699,6 +3274,10 @@ fn main() {
         None
     });
     ext.on_event("tool_result", |ctx, data| {
+        if data["toolName"] == "order_probe" {
+            ctx.notify(&format!("order-result={}", data["toolCallId"].as_str().unwrap_or_default()), "info");
+            return None;
+        }
         let held: Vec<&str> = [
             ("bash", pig_sdk::is_bash_tool_result as fn(&Value) -> bool),
             ("powershell", pig_sdk::is_powershell_tool_result),
@@ -3009,7 +3588,69 @@ fn main() {
     register_conformance_oauth(&mut ext);
     register_conformance_oauth_object(&mut ext);
     register_conformance_oauth_large(&mut ext);
+    register_state_push_probe(&mut ext);
+    register_signal_abort(&mut ext);
     ext.run().unwrap();
+}
+
+/// How long a state-push-probe reader waits for the value it armed on to change before it reports the value it still holds.
+const STATE_PUSH_WINDOW: Duration = Duration::from_secs(5);
+
+/// Registers the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name.
+/// The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+fn register_state_push_probe(ext: &mut Extension) {
+    ext.command("state-push-probe", "Read one replicated accessor from a thread between requests", |ctx, args| {
+        let request: Value = match serde_json::from_str(args) {
+            Ok(request) => request,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let kind = request["kind"].as_str().unwrap_or("").to_string();
+        let dir = std::path::PathBuf::from(request["dir"].as_str().unwrap_or(""));
+        let read = match state_push_reader(ctx, &kind) {
+            Ok(read) => read,
+            Err(err) => return CommandResult::Error(err),
+        };
+        let armed = read();
+        thread::spawn(move || {
+            let mut current = armed.clone();
+            let deadline = std::time::Instant::now() + STATE_PUSH_WINDOW;
+            while current == armed && std::time::Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(2));
+                current = read();
+            }
+            let name = format!("state-push-{}", kind.replace(':', "_"));
+            let temp = dir.join(format!("{name}.tmp"));
+            if std::fs::write(&temp, format!("{armed}=>{current}")).is_ok() {
+                let _ = std::fs::rename(&temp, dir.join(name));
+            }
+        });
+        CommandResult::Ok
+    });
+}
+
+/// The read of one replicated accessor as a string, or an error for a kind the Rust SDK does not replicate: its thinking level is a host call, which is live.
+fn state_push_reader(ctx: &pig_sdk::Context, kind: &str) -> Result<Box<dyn Fn() -> String + Send>, String> {
+    let ctx = ctx.clone();
+    if kind == "model" {
+        return Ok(Box::new(move || ctx.model()));
+    }
+    if kind == "session-name" {
+        return Ok(Box::new(move || ctx.session_name()));
+    }
+    if kind == "theme" {
+        return Ok(Box::new(move || ctx.theme().name));
+    }
+    if let Some(key) = kind.strip_prefix("settings:") {
+        let key = key.to_string();
+        return Ok(Box::new(move || match ctx.get_settings() {
+            Ok(settings) => settings.get(&key).cloned().unwrap_or(Value::Null).to_string(),
+            Err(err) => format!("error:{err}"),
+        }));
+    }
+    if kind == "mcp" {
+        return Ok(Box::new(move || ctx.get_mcp_servers().iter().map(|server| server.name.clone()).collect::<Vec<_>>().join(",")));
+    }
+    Err(format!("state-push-probe: unsupported kind {kind:?}"))
 }
 
 /// Owns credential persistence for the conformance OAuth provider. Its returned
@@ -3176,6 +3817,19 @@ impl EditorComponent for ConformanceEditor {
         }
         self.base.set_text(&JsString::from(text.to_string_lossy().to_uppercase())).map_err(|e| e.to_string())
     }
+    // insert_text_at_cursor wraps the host's text in angle brackets and add_to_history prefixes it, unless it starts with "raw:" (TestEditorComponentOverridesReachSuper).
+    fn insert_text_at_cursor(&mut self, text: &JsString) -> Result<(), String> {
+        if text.to_string_lossy().starts_with("raw:") {
+            return self.base.insert_text_at_cursor(text).map_err(|e| e.to_string());
+        }
+        self.base.insert_text_at_cursor(&JsString::from(format!("<{}>", text.to_string_lossy()))).map_err(|e| e.to_string())
+    }
+    fn add_to_history(&mut self, text: &JsString) -> Result<(), String> {
+        if text.to_string_lossy().starts_with("raw:") {
+            return self.base.add_to_history(text).map_err(|e| e.to_string());
+        }
+        self.base.add_to_history(&JsString::from(format!("history:{}", text.to_string_lossy()))).map_err(|e| e.to_string())
+    }
     fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
         let mut rows = vec![JsString::from("[custom editor]")];
         rows.extend(self.base.render(width).map_err(|e| e.to_string())?);
@@ -3201,6 +3855,83 @@ impl EditorComponent for EmbeddingEditor {
     }
     fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
         self.0.render(width)
+    }
+}
+
+/// A CustomEditor subclass that sets the handlers Pi's CustomEditor keeps as public fields (on_escape, on_ctrl_d, on_paste_image,
+/// action_handlers through on_action, on_extension_shortcut), reads and sets the members it inherits from Pi's Editor on its base ("M"),
+/// and hears the host's working status and invalidate. Each handler writes what ran into the host's text
+/// (TestEditorComponentAppHandlersRunInTheExtension, TestEditorComponentInheritedMembersReachTheHost,
+/// TestEditorComponentHearsTheWorkingStatusAndInvalidate).
+struct HooksEditor(ConformanceEditor);
+
+fn io_message(err: std::io::Error) -> String {
+    err.to_string()
+}
+
+impl HooksEditor {
+    fn new(base: EditorBase) -> Self {
+        let say = |what: &'static str| -> pig_sdk::EditorHook {
+            let base = base.clone();
+            Arc::new(move || base.set_text(&JsString::from(format!("raw:hook={what}"))).map_err(io_message))
+        };
+        base.set_on_escape(Some(say("escape")));
+        base.set_on_ctrl_d(Some(say("ctrl-d")));
+        base.set_on_paste_image(Some(say("paste-image")));
+        base.on_action("app.clear", say("clear"));
+        // action_handlers is the live map: an entry removed from it is no longer the component's.
+        base.on_action("app.unused", say("unused"));
+        let _ = base.action_handlers().remove("app.unused");
+        let shortcut_base = base.clone();
+        base.set_on_extension_shortcut(Some(Arc::new(move |data: &JsString| {
+            if data != "S" {
+                return Ok(false);
+            }
+            shortcut_base.set_text(&JsString::from("raw:hook=shortcut")).map_err(io_message)?;
+            Ok(true)
+        })));
+        HooksEditor(ConformanceEditor { base })
+    }
+}
+
+impl EditorComponent for HooksEditor {
+    fn base(&self) -> &EditorBase {
+        self.0.base()
+    }
+    fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        if data != "M" {
+            return self.0.handle_input(data);
+        }
+        let base = &self.0.base;
+        let padding = base.get_padding_x().map_err(io_message)?;
+        let visible = base.get_autocomplete_max_visible().map_err(io_message)?;
+        let border = base.border_color(&JsString::from("x")).map_err(io_message)?;
+        base.set_disable_submit(true).map_err(io_message)?;
+        let disabled = base.disable_submit().map_err(io_message)?;
+        base.set_focused(true).map_err(io_message)?;
+        let focused = base.focused().map_err(io_message)?;
+        let provider = pig_sdk::kit::Autocomplete::new([pig_sdk::kit::SlashCommand::new("help").description("Show help")]).base_path("/work");
+        base.set_autocomplete_provider(Some(&provider)).map_err(io_message)?;
+        base.on_submit(&JsString::from("sub")).map_err(io_message)?;
+        base.on_change(&JsString::from("chg")).map_err(io_message)?;
+        let text = format!("raw:members=padding={padding},max={visible},border={},disable={disabled},focused={focused}", border.to_string_lossy());
+        base.set_text(&JsString::from(text)).map_err(io_message)
+    }
+    fn set_text(&mut self, text: &JsString) -> Result<(), String> {
+        self.0.set_text(text)
+    }
+    fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
+        self.0.render(width)
+    }
+    fn set_working_status_indicator(&mut self, status: Option<&pig_sdk::EditorStatus>) -> Result<(), String> {
+        let text = match status {
+            None => "raw:status=none".to_string(),
+            Some(status) => format!("raw:status={}/{}/{}", status.kind, status.message, status.frame),
+        };
+        self.0.base.set_text(&JsString::from(text)).map_err(io_message)
+    }
+    fn invalidate(&mut self) -> Result<(), String> {
+        self.0.base.set_text(&JsString::from("raw:invalidated")).map_err(io_message)
     }
 }
 
@@ -3263,6 +3994,512 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
             other => Err(format!("exec failed: {other}")),
         }),
     }
+}
+
+fn pi_ai_helpers_call(name: &str, args: &[Value]) -> Result<Option<Value>, String> {
+    let a = |i: usize| &args[i];
+    let messages = |i: usize| a(i).as_array().cloned().unwrap_or_default();
+    let flag = |i: usize| a(i).as_bool().unwrap_or_default();
+    Ok(Some(match name {
+        "StringEnum" => {
+            let values: Vec<&str> = a(0).as_array().unwrap().iter().filter_map(Value::as_str).collect();
+            let options = args.get(1).map(|o| pig_sdk::StringEnumOptions { description: o.get("description").and_then(Value::as_str).map(String::from), default: o.get("default").and_then(Value::as_str).map(String::from) });
+            pig_sdk::string_enum(&values, options.as_ref())
+        }
+        "getSupportedThinkingLevels" => json!(pig_sdk::get_supported_thinking_levels(a(0))),
+        "clampThinkingLevel" => json!(pig_sdk::clamp_thinking_level(a(0), a(1).as_str().unwrap_or_default())),
+        "calculateCost" => pig_sdk::calculate_cost(a(0), &mut a(1).clone())?,
+        "contentText" => json!(pig_sdk::content_text(Some(a(0)), args.get(1).and_then(Value::as_str).unwrap_or("\n"))?),
+        "getCurrentTools" => json!(pig_sdk::get_current_tools(&messages(0))),
+        "getCurrentSystemMessage" => return pig_sdk::get_current_system_message(&messages(0)),
+        "getCurrentSystemPrompt" => json!(pig_sdk::get_current_system_prompt(&messages(0))?),
+        "getInitialSystemMessage" => return Ok(pig_sdk::get_initial_system_message(&messages(0)).cloned()),
+        "getDeclaredTools" => json!(pig_sdk::get_declared_tools(&messages(0))),
+        "hasNonAdditiveToolChanges" => json!(pig_sdk::has_non_additive_tool_changes(&messages(0))),
+        "resolveTranscriptTools" => {
+            let resolved = pig_sdk::resolve_transcript_tools(&messages(0), flag(1));
+            json!({ "requestTools": resolved.request_tools, "anchorsAdditions": resolved.anchors_additions })
+        }
+        "collapseSystemMessages" => pig_sdk::collapse_system_messages(a(0))?,
+        "resolveTranscript" => pig_sdk::resolve_transcript(a(0), flag(1))?,
+        "withoutInitialSystemMessage" => json!(pig_sdk::without_initial_system_message(&messages(0))),
+        "normalizeContext" => pig_sdk::normalize_context(a(0)),
+        "createInitialSystemMessage" => {
+            let tools = args.get(1).filter(|tools| !tools.is_null()).map(|tools| tools.as_array().cloned().unwrap_or_default());
+            return Ok(pig_sdk::create_initial_system_message(a(0).as_str(), tools.as_deref()));
+        }
+        "getSystemMessageText" => json!(pig_sdk::get_system_message_text(a(0))?),
+        "renderSystemMessageUpdate" => json!(pig_sdk::render_system_message_update(a(0))?),
+        "getModelType" => json!(pig_sdk::get_model_type(a(0))),
+        "isModelType" => json!(pig_sdk::is_model_type(a(0), a(1).as_str().unwrap_or_default())),
+        "hasApi" => json!(pig_sdk::has_api(a(0), a(1).as_str().unwrap_or_default())),
+        "modelsAreEqual" => json!(pig_sdk::models_are_equal(Some(a(0)).filter(|first| !first.is_null()), Some(a(1)).filter(|other| !other.is_null()))),
+        "isRetryableAssistantError" => json!(pig_sdk::is_retryable_assistant_error(a(0))),
+        "isContextOverflow" => json!(pig_sdk::is_context_overflow(a(0), args.get(1).and_then(Value::as_f64))),
+        "isRecoverableLength" => json!(pig_sdk::is_recoverable_length(a(0), a(1).as_f64().unwrap_or_default())),
+        "retryDelayMs" => {
+            let policy = pig_sdk::RetryPolicy { base_delay_ms: a(0)["baseDelayMs"].as_f64().unwrap_or_default(), max_agent_delay_ms: a(0).get("maxAgentDelayMs").and_then(Value::as_f64) };
+            json!(pig_sdk::retry_delay_ms(&policy, a(1).as_i64().unwrap_or_default()))
+        }
+        "DEFAULT_MAX_AGENT_RETRY_DELAY_MS" => json!(pig_sdk::DEFAULT_MAX_AGENT_RETRY_DELAY_MS),
+        other => return Err(format!("no Rust counterpart for {other}")),
+    }))
+}
+
+fn pi_ai_helpers_probe(path: &str) -> Result<Value, String> {
+    let golden: Value = serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let mut cases = Vec::new();
+    for case in golden["cases"].as_array().ok_or("no cases")? {
+        let name = case["fn"].as_str().unwrap_or_default();
+        let value = pi_ai_helpers_call(name, case["args"].as_array().unwrap_or(&Vec::new())).map_err(|e| format!("{name}: {e}"))?;
+        cases.push(Value::Array(value.into_iter().collect()));
+    }
+    let mut auth = Vec::new();
+    for case in golden["auth"]["cases"].as_array().ok_or("no auth cases")? {
+        let vars: Vec<&str> = case["envVars"].as_array().unwrap().iter().filter_map(Value::as_str).collect();
+        let env = case["env"].clone();
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let seen_in = seen.clone();
+        let input = pig_sdk::APIKeyAuthInput {
+            ctx: pig_sdk::AuthContext {
+                env: Arc::new(move |name| {
+                    seen_in.lock().unwrap().push(name.clone());
+                    Ok(env.get(&name).and_then(Value::as_str).map(String::from))
+                }),
+                file_exists: Arc::new(|_| Ok(false)),
+            },
+            credential: case.get("credential").filter(|c| !c.is_null()).cloned(),
+            signal: pig_sdk::ProviderSignal::default(),
+        };
+        let result = (pig_sdk::env_api_key_auth(case["name"].as_str().unwrap_or_default(), &vars).resolve)(input)?;
+        auth.push(json!({ "result": result.map(|r| serde_json::to_value(r).unwrap()), "seen": *seen.lock().unwrap() }));
+    }
+    let prompts = Arc::new(Mutex::new(Vec::new()));
+    let prompts_in = prompts.clone();
+    let credential = (pig_sdk::env_api_key_auth("Name", &["FIRST", "SECOND"]).login.unwrap())(pig_sdk::AuthInteraction {
+        signal: pig_sdk::ProviderSignal::default(),
+        prompt: Arc::new(move |request| {
+            prompts_in.lock().unwrap().push(request);
+            Ok("typed-key".to_string())
+        }),
+        notify: Arc::new(|_| Ok(())),
+    })?;
+    let now = || std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |elapsed| elapsed.as_millis() as u64);
+    let mut timing = Vec::new();
+    for case in golden["timing"].as_array().ok_or("no timing")? {
+        let stream = pig_sdk::create_assistant_message_event_stream();
+        let kind = case["kind"].as_str().unwrap_or_default();
+        let message = |is_later: bool| {
+            let mut message = json!({ "role": "assistant", "content": [], "stopReason": if kind == "error" { "error" } else { "stop" } });
+            match case["timestamp"].as_str().unwrap_or_default() {
+                _ if is_later => message["timestamp"] = json!(now()),
+                "now" => message["timestamp"] = json!(now()),
+                "old" => message["timestamp"] = json!(1),
+                _ => {}
+            }
+            if !case["preset"].is_null() && !is_later {
+                message["durationMs"] = case["preset"].clone();
+            }
+            message
+        };
+        let (final_message, later) = (message(false), message(true));
+        let delivered = match kind {
+            "done" => {
+                stream.push(json!({ "type": "done", "reason": "stop", "message": final_message }));
+                stream.next().unwrap()["message"].clone()
+            }
+            "error" => {
+                stream.push(json!({ "type": "error", "reason": "error", "error": final_message }));
+                stream.next().unwrap()["error"].clone()
+            }
+            "end" => {
+                stream.end(final_message);
+                stream.result().unwrap()
+            }
+            _ => {
+                stream.push(json!({ "type": "done", "reason": "stop", "message": final_message }));
+                stream.end(later);
+                stream.next().unwrap()["message"].clone()
+            }
+        };
+        let value = delivered.get("durationMs");
+        let kept = value.filter(|value| !case["preset"].is_null() && **value == case["preset"]).cloned().unwrap_or(Value::Null);
+        timing.push(json!({ "present": value.is_some(), "value": kept, "laterTimed": false }));
+    }
+    Ok(json!({ "cases": cases, "timing": timing, "auth": auth, "login": { "prompts": *prompts.lock().unwrap(), "result": credential } }))
+}
+
+fn host_helpers_probe(ctx: &pig_sdk::Context, args: &str) -> Result<Value, String> {
+    let mut parts = args.splitn(3, '|');
+    let (golden_path, auth_path, text) = (parts.next().unwrap_or_default(), parts.next().unwrap_or_default(), parts.next().unwrap_or_default());
+    let golden: Value = serde_json::from_str(&std::fs::read_to_string(golden_path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let io = |e: std::io::Error| e.to_string();
+    let mut diffs = Vec::new();
+    for case in golden["diffs"].as_array().ok_or("no diffs")? {
+        let lines = case.get("contextLines").and_then(Value::as_i64);
+        let (old, new) = (case["oldContent"].as_str().unwrap_or_default(), case["newContent"].as_str().unwrap_or_default());
+        let mut report = json!({"patch": ctx.generate_unified_patch(case.get("path").and_then(Value::as_str).unwrap_or("src/a.ts"), old, new, lines).map_err(io)?});
+        if !case.get("patchOnly").and_then(Value::as_bool).unwrap_or(false) {
+            let diff = ctx.generate_diff_string(old, new, lines).map_err(io)?;
+            report["diff"] = json!(diff.diff);
+            report["firstChangedLine"] = json!(diff.first_changed_line);
+        }
+        diffs.push(report);
+    }
+    let mut entries = Vec::new();
+    for case in golden["entries"].as_array().ok_or("no entries")? {
+        entries.push(json!(pig_sdk::session_entry_to_context_messages(&case["entry"]).map_err(io)?));
+    }
+    let mut images = Vec::new();
+    for case in golden["images"].as_array().ok_or("no images")? {
+        let (data, mime) = (case["data"].as_str().unwrap_or_default(), case["mimeType"].as_str().unwrap_or_default());
+        if case["op"] == "convert" {
+            images.push(match ctx.convert_to_png(data, mime).map_err(io)? {
+                Some(converted) => json!({"mimeType": converted.mime_type, "decodes": !converted.data.is_empty()}),
+                None => Value::Null,
+            });
+            continue;
+        }
+        let options = case.get("options").filter(|o| o.is_object()).map(|o| pig_sdk::ImageResizeOptions {
+            max_width: o.get("maxWidth").and_then(Value::as_u64).map(|v| v as u32),
+            max_height: o.get("maxHeight").and_then(Value::as_u64).map(|v| v as u32),
+            max_bytes: o.get("maxBytes").and_then(Value::as_u64),
+            jpeg_quality: o.get("jpegQuality").and_then(Value::as_u64).map(|v| v as u32),
+        });
+        let input = decode_base64(data);
+        images.push(match ctx.resize_image(&input, mime, options.as_ref()).map_err(io)? {
+            Some(resized) => json!({"mimeType": resized.mime_type, "originalWidth": resized.original_width, "originalHeight": resized.original_height, "width": resized.width, "height": resized.height, "wasResized": resized.was_resized, "decodes": !resized.data.is_empty()}),
+            None => Value::Null,
+        });
+    }
+    let credential = |provider: &str, path: Option<&str>| pig_sdk::read_stored_credential(provider, path).ok().flatten().unwrap_or(Value::Null);
+    let creds = json!({
+        "explicit": credential("anthropic", Some(auth_path)), "default": credential("anthropic", None), "absentProvider": credential("nobody", Some(auth_path)),
+        "missingFile": credential("anthropic", Some(&format!("{auth_path}.missing"))), "notJSON": credential("anthropic", Some(&format!("{auth_path}.bad"))),
+    });
+    ctx.copy_to_clipboard(text).map_err(io)?;
+    Ok(json!({"diffs": diffs, "entries": entries, "images": images, "creds": creds}))
+}
+
+fn decode_base64(text: &str) -> Vec<u8> {
+    let value = |c: u8| match c {
+        b'A'..=b'Z' => Some(c - b'A'),
+        b'a'..=b'z' => Some(c - b'a' + 26),
+        b'0'..=b'9' => Some(c - b'0' + 52),
+        b'+' => Some(62),
+        b'/' => Some(63),
+        _ => None,
+    };
+    let (mut out, mut buffer, mut bits) = (Vec::new(), 0u32, 0);
+    for byte in text.bytes().filter_map(value) {
+        buffer = (buffer << 6) | u32::from(byte);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buffer >> bits) as u8);
+            buffer &= (1 << bits) - 1;
+        }
+    }
+    out
+}
+
+// ── builtin_probe (TestConformance_BuiltinToolDelegationAcrossSDKs) ──────────────────────────────────────────────────────────────────────────────────────────
+
+type CallLog = Arc<Mutex<Vec<String>>>;
+
+fn log_call(log: &CallLog, entry: String) {
+    log.lock().unwrap().push(entry);
+}
+
+fn builtin_report(result: &pig_sdk::AgentToolResult) -> Value {
+    let blocks: Vec<Value> = result
+        .content
+        .iter()
+        .map(|block| match block["type"].as_str() {
+            Some("text") => json!({"type": "text", "text": block["text"].as_str().unwrap_or("")}),
+            other => json!({"type": other, "mimeType": block["mimeType"]}),
+        })
+        .collect();
+    let mut report = json!({"content": blocks, "isError": result.is_error});
+    if !result.details.is_null() {
+        report["details"] = result.details.clone();
+        report["detailsJSON"] = json!(serde_json::to_string(&result.details).unwrap_or_default());
+    }
+    if let Some(structured) = result.structured_content.as_ref().and_then(Value::as_object) {
+        let keys: Vec<&String> = structured.keys().collect();
+        report["structuredKeys"] = json!(keys);
+        report["exitCode"] = structured.get("exit_code").cloned().unwrap_or(Value::Null);
+    }
+    report
+}
+
+fn path_op<R: 'static>(log: &CallLog, label: &'static str, result: impl Fn(&str) -> Result<R, String> + Send + Sync + 'static) -> pig_sdk::PathOperation<R> {
+    let log = log.clone();
+    Arc::new(move |path| {
+        log_call(&log, format!("{label}:{path}"));
+        result(path)
+    })
+}
+
+fn write_op(log: &CallLog) -> pig_sdk::WriteOperation {
+    let log = log.clone();
+    Arc::new(move |path, content| {
+        log_call(&log, format!("writeFile:{path}:{content}"));
+        Ok(())
+    })
+}
+
+/// The options of the case for `tool`, with callbacks that log into `log`; one value per tool kind so the factories take the right type.
+struct ProbeOptions {
+    read: pig_sdk::ReadToolOptions,
+    write: pig_sdk::WriteToolOptions,
+    edit: pig_sdk::EditToolOptions,
+    ls: pig_sdk::LsToolOptions,
+    grep: pig_sdk::GrepToolOptions,
+    find: pig_sdk::FindToolOptions,
+    bash: pig_sdk::BashToolOptions,
+    powershell: pig_sdk::PowerShellToolOptions,
+}
+
+fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
+    let custom = case["ops"].as_str() == Some("custom");
+    let expose = case["exposeSessionEnvironment"].as_bool();
+    let mut options = ProbeOptions {
+        read: pig_sdk::ReadToolOptions { auto_resize_images: case["autoResizeImages"].as_bool(), ..Default::default() },
+        write: Default::default(),
+        edit: Default::default(),
+        ls: Default::default(),
+        grep: Default::default(),
+        find: Default::default(),
+        bash: pig_sdk::BashToolOptions {
+            command_prefix: case["commandPrefix"].as_str().filter(|prefix| !prefix.is_empty()).map(str::to_string),
+            expose_session_environment: expose,
+            ..Default::default()
+        },
+        powershell: pig_sdk::PowerShellToolOptions { expose_session_environment: expose, ..Default::default() },
+    };
+    if case["hook"].as_bool() == Some(true) {
+        let hook_log = log.clone();
+        options.bash.spawn_hook = Some(Arc::new(move |spawn: pig_sdk::BashSpawnContext| {
+            log_call(&hook_log, format!("spawnHook:{}", spawn.command));
+            let mut env = spawn.env.clone();
+            env.insert("HOOK_VAR".to_string(), "hook-env".to_string());
+            Ok(pig_sdk::BashSpawnContext { command: "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"".to_string(), cwd: spawn.cwd, env })
+        }));
+    }
+    if !custom {
+        return options;
+    }
+    options.read.operations = Some(pig_sdk::ReadOperations {
+        read_file: path_op(log, "readFile", |path| Ok(format!("OPS:{path}").into_bytes())),
+        access: path_op(log, "access", |_| Ok(())),
+        detect_image_mime_type: None,
+    });
+    options.write.operations = Some(pig_sdk::WriteOperations { write_file: write_op(log), mkdir: path_op(log, "mkdir", |_| Ok(())) });
+    options.edit.operations = Some(pig_sdk::EditOperations {
+        read_file: path_op(log, "readFile", |_| Ok(b"hello world\n".to_vec())),
+        write_file: write_op(log),
+        access: path_op(log, "access", |_| Ok(())),
+    });
+    options.ls.operations = Some(pig_sdk::LsOperations {
+        exists: path_op(log, "exists", |_| Ok(true)),
+        stat: path_op(log, "stat", |path| Ok(pig_sdk::LsStat { is_directory: !path.contains('.') })),
+        readdir: path_op(log, "readdir", |_| Ok(vec!["b.txt".to_string(), "a.txt".to_string(), "sub".to_string()])),
+    });
+    options.grep.operations = Some(pig_sdk::GrepOperations {
+        is_directory: path_op(log, "isDirectory", |_| Err("no such path for the probe".to_string())),
+        read_file: None,
+    });
+    let glob_log = log.clone();
+    options.find.operations = Some(pig_sdk::FindOperations {
+        exists: path_op(log, "exists", |_| Ok(false)),
+        glob: Arc::new(move |pattern, _cwd, _options| {
+            log_call(&glob_log, format!("glob:{pattern}"));
+            Ok(Vec::new())
+        }),
+    });
+    let exec_log = log.clone();
+    options.bash.operations = Some(pig_sdk::BashOperations {
+        exec: Arc::new(move |command, cwd, exec_options| {
+            log_call(&exec_log, format!("exec:{command}|cwd={cwd}"));
+            (exec_options.on_data)(format!("custom:{command}").as_bytes());
+            Ok(Some(0))
+        }),
+    });
+    options
+}
+
+fn builtin_probe(ctx: &pig_sdk::Context, case: &Value) -> Result<Value, String> {
+    let kind = case["kind"].as_str().unwrap_or("");
+    let factory_cwd = case["factoryCwd"].as_str().unwrap_or("").to_string();
+    match kind {
+        "cwd" => return Ok(json!({"cwd": ctx.cwd()})),
+        "register" => return builtin_register(ctx, &factory_cwd),
+        "local" => return Ok(builtin_local(case)),
+        "sets" => {
+            let names = |tools: Vec<pig_sdk::BuiltinTool>| tools.into_iter().map(|tool| tool.name).collect::<Vec<_>>();
+            let coding = names(pig_sdk::create_coding_tools(&factory_cwd, None).map_err(|e| e.to_string())?);
+            let read_only = names(pig_sdk::create_read_only_tools(&factory_cwd, None).map_err(|e| e.to_string())?);
+            return Ok(json!({"coding": coding, "readOnly": read_only}));
+        }
+        _ => {}
+    }
+    let log: CallLog = Arc::new(Mutex::new(Vec::new()));
+    let options = builtin_options(case, &log);
+    let tool = case["tool"].as_str().unwrap_or("bash");
+    macro_rules! create {
+        ($definition:ident, $tool:ident, $options:expr) => {
+            if kind == "definition" { Created::Definition(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else if case["noContext"].as_bool() == Some(true) { Created::Tool(pig_sdk::$tool(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) } else { Created::Executor(pig_sdk::$definition(&factory_cwd, Some($options)).map_err(|e| e.to_string())?) }
+        };
+    }
+    let created = match tool {
+        "read" => create!(create_read_tool_definition, create_read_tool, options.read),
+        "write" => create!(create_write_tool_definition, create_write_tool, options.write),
+        "edit" => create!(create_edit_tool_definition, create_edit_tool, options.edit),
+        "ls" => create!(create_ls_tool_definition, create_ls_tool, options.ls),
+        "grep" => create!(create_grep_tool_definition, create_grep_tool, options.grep),
+        "find" => create!(create_find_tool_definition, create_find_tool, options.find),
+        "powershell" => create!(create_powershell_tool_definition, create_powershell_tool, options.powershell),
+        _ => create!(create_bash_tool_definition, create_bash_tool, options.bash),
+    };
+    if kind == "definition" {
+        let Created::Definition(built) = created else { unreachable!() };
+        let d = &built.definition;
+        let sampling = d.constrained_sampling.as_ref().map(|sampling| match sampling {
+            pig_sdk::ToolConstrainedSampling::Config(config) => serde_json::to_value(config).unwrap_or(Value::Null),
+            pig_sdk::ToolConstrainedSampling::Disabled => json!(false),
+        });
+        return Ok(json!({"definition": {
+            "name": d.name, "label": d.label, "description": d.description, "promptSnippet": d.prompt_snippet.clone().unwrap_or_default(),
+            "promptGuidelines": if d.prompt_guidelines.is_empty() { Value::Null } else { json!(d.prompt_guidelines) }, "parameters": d.parameters,
+            "outputSchema": d.output_schema.clone().unwrap_or(Value::Null), "constrainedSampling": sampling.unwrap_or(Value::Null),
+            "executionMode": d.execution_mode.clone().unwrap_or_default(), "renderShell": if d.render_shell == ToolRenderShell::SelfShell { "self" } else { "" },
+        }}));
+    }
+    let signal = pig_sdk::ProviderSignal::new();
+    if case["preAborted"].as_bool() == Some(true) {
+        signal.cancel();
+    }
+    let updates: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let abort_on_output = case["abortOnOutput"].as_bool() == Some(true);
+    let on_update: Option<pig_sdk::ExecuteToolUpdate> = (case["updates"].as_bool() == Some(true) || abort_on_output).then(|| {
+        let updates = updates.clone();
+        let signal = signal.clone();
+        Arc::new(move |partial: pig_sdk::AgentToolResult| {
+            let text = partial.text();
+            if abort_on_output && !text.is_empty() {
+                signal.cancel();
+            }
+            updates.lock().unwrap().push(text);
+        }) as pig_sdk::ExecuteToolUpdate
+    });
+    let params = case.get("params").cloned().unwrap_or_else(|| json!({}));
+    let outcome = match created {
+        Created::Tool(tool) => tool.execute("probe-call", params, Some(&signal), on_update),
+        Created::Executor(built) => built.executor().execute_with(ctx, "probe-call", params, Some(&signal), on_update),
+        Created::Definition(_) => unreachable!(),
+    };
+    let mut report = json!({});
+    match outcome {
+        Ok(result) => report["result"] = builtin_report(&result),
+        Err(error) => report["error"] = json!(error.to_string()),
+    }
+    if case["updates"].as_bool() == Some(true) {
+        report["updates"] = json!(updates.lock().unwrap().clone());
+    }
+    report["calls"] = json!(log.lock().unwrap().clone());
+    Ok(report)
+}
+
+enum Created {
+    Definition(pig_sdk::BuiltinToolDefinition),
+    Executor(pig_sdk::BuiltinToolDefinition),
+    Tool(pig_sdk::BuiltinTool),
+}
+
+fn wrap_first_text(result: &mut pig_sdk::AgentToolResult, wrap: impl Fn(&str) -> String) {
+    if let Some(block) = result.content.first_mut() {
+        let text = block["text"].as_str().unwrap_or("").to_string();
+        block["text"] = json!(wrap(&text));
+    }
+}
+
+/// Overrides the read and bash tools with wrapped built-ins, as Pi's `pi.registerTool({ ...definition, execute })` does: the wrapper runs the built-in through
+/// the SDK and post-processes its result, so only a tool that really ran on the host can produce the sentinel text.
+fn builtin_register(ctx: &pig_sdk::Context, factory_cwd: &str) -> Result<Value, String> {
+    let mut read = pig_sdk::create_read_tool_definition(factory_cwd, None).map_err(|e| e.to_string())?;
+    let run_read = read.executor();
+    read.definition.execute = Box::new(move |ctx, params| match run_read.execute(ctx, params) {
+        Ok(mut result) => {
+            wrap_first_text(&mut result, |text| format!("«delegated:{text}»"));
+            result.details = json!({"delegated": true});
+            result.into_tool_result()
+        }
+        Err(error) => ToolResult::error(error.to_string()),
+    });
+    let read_name = read.definition.name.clone();
+    ctx.register_tool(read.definition).map_err(|e| e.to_string())?;
+    let mut bash = pig_sdk::create_bash_tool_definition(factory_cwd, None).map_err(|e| e.to_string())?;
+    let run_bash = bash.executor();
+    bash.definition.execute = Box::new(move |ctx, params| match run_bash.execute(ctx, params) {
+        Ok(mut result) => {
+            wrap_first_text(&mut result, |text| format!("«{text}»"));
+            result.into_tool_result()
+        }
+        Err(error) => ToolResult::error(error.to_string()),
+    });
+    let bash_name = bash.definition.name.clone();
+    ctx.register_tool(bash.definition).map_err(|e| e.to_string())?;
+    Ok(json!({"registered": [read_name, bash_name]}))
+}
+
+fn builtin_local(case: &Value) -> Value {
+    let operations = if case["shell"].as_str() == Some("powershell") { pig_sdk::create_local_powershell_operations() } else { pig_sdk::create_local_bash_operations(None) };
+    let signal = pig_sdk::ProviderSignal::new();
+    let chunks: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink = chunks.clone();
+    let abort_signal = signal.clone();
+    let abort_on_output = case["abortOnOutput"].as_bool() == Some(true);
+    let env = case["env"].as_object().map(|object| object.iter().map(|(name, value)| (name.clone(), value.as_str().unwrap_or("").to_string())).collect());
+    let options = pig_sdk::BashExecOptions {
+        on_data: Arc::new(move |data| {
+            sink.lock().unwrap().push(String::from_utf8_lossy(data).into_owned());
+            if abort_on_output {
+                abort_signal.cancel();
+            }
+        }),
+        signal,
+        timeout: case["timeout"].as_f64(),
+        env,
+    };
+    let mut report = json!({});
+    match (operations.exec)(case["command"].as_str().unwrap_or(""), case["factoryCwd"].as_str().unwrap_or(""), options) {
+        Ok(code) => report["exitCode"] = json!(code),
+        Err(message) => report["error"] = json!(message),
+    }
+    report["output"] = json!(chunks.lock().unwrap().join(""));
+    report
+}
+
+/// Contributes the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a handler that holds
+/// the signal and reads it again right after the abort sees it aborted, in the same turn.
+fn register_signal_abort(ext: &mut Extension) {
+    ext.command("signal-abort", "Abort the run and report ctx.signal", |ctx, _args| {
+        let state = |cancelled: Option<bool>| match cancelled {
+            None => "none",
+            Some(true) => "aborted",
+            Some(false) => "live",
+        };
+        let held = ctx.signal();
+        ctx.abort();
+        let report = format!(
+            "abort:{}:{}",
+            state(held.map(|signal| signal.is_cancelled())),
+            state(ctx.signal().map(|signal| signal.is_cancelled()))
+        );
+        ctx.notify(&report, "info");
+        CommandResult::Ok
+    });
 }
 
 /// A dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is null.

@@ -7,7 +7,7 @@
    "coding/session_tools.go#Session.ActiveToolNames"
   ],
   "production": [
-   "call:coding/cli/session_extension_actions.go#bindSessionExtensionActions"
+   "call:coding/session_extension_host.go#BindSessionExtensionActions"
   ],
   "evidence": [
    "test:coding/cli/session_extension_actions_tools_test.go#TestSessionExtensionActionsBindActiveTools",

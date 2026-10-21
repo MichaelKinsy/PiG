@@ -116,6 +116,10 @@ func (s *Session) toolResultHook(ctx context.Context, toolCallID, parentToolCall
 	if len(args) > 0 {
 		_ = json.Unmarshal(args, &input)
 	}
+	if started := agent.ToolHookStartedFromContext(ctx); started != nil {
+		// A parallel batch starts the tool_result hooks of its calls in the order their tools settled (agent-loop.ts:619-647); the dispatch reports when the first handler started.
+		ctx = extension.WithDispatchStarted(ctx, started)
+	}
 	details := extension.ToolResultDetailsFor(result.Details)
 	if result.DetailsNull() {
 		// upstream: agent-session.ts:_afterToolCall sets `details: result.details`, so a tool's details: null reaches the handlers as null.

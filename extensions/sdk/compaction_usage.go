@@ -34,7 +34,7 @@ func ShouldCompact(contextTokens, contextWindow int, settings CompactionSettings
 	return contextTokens > contextWindow-settings.ReserveTokens
 }
 
-// GetLastAssistantUsage is Pi's getLastAssistantUsage over the session entries Pi hands an extension (for example [SessionManager.GetEntries]): the usage of
+// GetLastAssistantUsage is Pi's getLastAssistantUsage over the session entries Pi hands an extension (for example [ReadonlySessionManager.GetEntries]): the usage of
 // the last assistant message that did not abort or fail and whose usage is not all zero, or nil. As in JavaScript's arithmetic, a null token count is 0 and
 // a missing or non-numeric one is NaN, so it never makes a usage valid.
 func GetLastAssistantUsage(entries []map[string]any) *UsageInfo {

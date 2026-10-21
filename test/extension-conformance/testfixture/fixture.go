@@ -21,6 +21,7 @@ import (
 	"maps"
 	"math"
 	"net/http"
+	"os"
 	"reflect"
 	"slices"
 	"strconv"
@@ -313,6 +314,9 @@ func Extension() *sdk.Extension {
 		factoryAgentDir = "error: " + factoryAgentDirErr.Error()
 	}
 	registerAutocompleteFixture(ext)
+	registerPiAiHelpersFixture(ext)
+	registerHostPathsFixture(ext)
+	registerHostHelpersFixture(ext)
 	schemaRejected := RejectInvalidToolSchema(ext)
 	ext.Command("schema-probe", "Report schema rejection", func(ctx sdk.Context, _ string) error {
 		ctx.Notify(fmt.Sprintf("schema-rejected:%t", schemaRejected), "info")
@@ -366,6 +370,38 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	ext.Command("exec-abort-probe", "Abort a running exec through its signal", func(ctx sdk.Context, args string) error {
+		var probe struct {
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+			PidFile string   `json:"pidFile"`
+			Pre     bool     `json:"pre"`
+		}
+		if err := json.Unmarshal([]byte(args), &probe); err != nil {
+			return err
+		}
+		signal, abort := context.WithCancel(context.Background())
+		defer abort()
+		if probe.Pre {
+			abort()
+		} else {
+			go func() {
+				for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+					if _, err := os.Stat(probe.PidFile); err == nil {
+						break
+					}
+				}
+				abort()
+			}()
+		}
+		result, err := ctx.ExecWithOptions(probe.Command, probe.Args, sdk.ExecOptions{Signal: signal})
+		if err != nil {
+			ctx.Notify("rejected:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("exec-abort:killed=%t;code=%d;stdout=%s", result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout)), "info")
+		return nil
+	})
 	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {
 		level, err := ctx.GetThinkingLevel()
 		if err != nil {
@@ -383,6 +419,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify(string(data), "info")
 		return nil
 	})
+	ext.Command("replicated-accessors", "Read the replicated accessors after each write", replicatedAccessorsProbe)
 	ext.Command("active_tools_set", "Set the active tools to the comma-separated names", func(ctx sdk.Context, args string) error {
 		ctx.SetActiveTools(strings.Split(strings.TrimSpace(args), ","))
 		return nil
@@ -477,6 +514,8 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	ext.Command("registry-session", "Read registry and session facades", registrySessionProbe)
+	ext.Command("registry-edges", "Read the registry answers that depend on the provider state", registryEdgesProbe)
+	ext.Command("registry-unbound-reads", "Report find and a session read against a host that cannot answer", registryUnboundReadsProbe)
 	ext.MessageRenderer("conformance-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, width int) ([]string, error) {
 		if message["content"] == "padding-options" {
 			wire, err := json.Marshal(options)
@@ -611,11 +650,14 @@ func Extension() *sdk.Extension {
 	})
 
 	var abortObserved atomic.Bool
+	var abortReason atomic.Value
+	abortReason.Store("")
 	ext.Tool("abort_tool", "Wait for the abort signal", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.OnUpdate("waiting"); err != nil {
 			return nil, err
 		}
 		<-ctx.Done()
+		abortReason.Store(ctx.CancellationReason())
 		abortObserved.Store(true)
 		return "aborted", nil
 	})
@@ -629,6 +671,10 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("abort_probe", "Report whether abort_tool saw its abort signal", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("abort:%t", abortObserved.Load()), "info")
+		return nil
+	})
+	ext.Command("abort_reason", "Report the cancellation reason abort_tool saw", func(ctx sdk.Context, args string) error {
+		ctx.Notify("reason:"+abortReason.Load().(string), "info")
 		return nil
 	})
 
@@ -669,6 +715,62 @@ func Extension() *sdk.Extension {
 			return nil, err
 		}
 		return map[string]string{"content": fmt.Sprintf("dialog:%v=%s", params["title"], selected)}, nil
+	})
+
+	// A tool that notifies inline and, from a goroutine timer_release releases, after its handler returned (D189).
+	timerGate := make(chan struct{}, 16)
+	var staleMu sync.Mutex
+	var stale *sdk.Context
+	ext.Tool("timer_defer", "Notify inline and from deferred work", sdk.Schema{"type": "object"}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		staleMu.Lock()
+		stale = &ctx
+		staleMu.Unlock()
+		ctx.Notify("inline:sync", "info")
+		go func() {
+			<-timerGate
+			ctx.Notify("deferred:goroutine", "info")
+		}()
+		return map[string]string{"content": "queued"}, nil
+	})
+	// timer_stale awaits a host call it makes through the context of the earlier timer_defer request, which Pi-port extensions keep (an activeCtx), and returns once it was applied. The call is not detached work: the handler waits for it, so the host must not hold it for a loop turn that waits for the handler.
+	ext.Tool("timer_stale", "Await a host call made through an earlier request's context", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		staleMu.Lock()
+		earlier := stale
+		staleMu.Unlock()
+		if earlier == nil {
+			return nil, fmt.Errorf("timer_defer has not run")
+		}
+		earlier.Notify("stale:awaited", "info")
+		return map[string]string{"content": "applied"}, nil
+	})
+	ext.Tool("timer_release", "Release the deferred work", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		timerGate <- struct{}{}
+		return map[string]string{"content": "released"}, nil
+	})
+
+	// order_probe makes the host calls and updates whose order the ordering rows pin (ordering_test.go): its first acts are two synchronous host calls, then one update, and the tool_result handler below reports each result as its first act.
+	ext.Tool("order_probe", "Make a host call and an update in the first tick", sdk.Schema{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		ctx.Notify(fmt.Sprintf("order-call=%v", params["n"]), "info")
+		ctx.Notify(fmt.Sprintf("order-then=%v", params["n"]), "info")
+		if err := ctx.OnUpdate(sdk.ToolResult{Content: fmt.Sprintf("order-update=%v", params["n"])}); err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": fmt.Sprintf("order-done n=%v", params["n"])}, nil
+	})
+
+	// mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs): Pi registers it in the queue
+	// before the edit or write call that follows it in a batch.
+	ext.Tool("mutation_order_probe", "Take the file mutation queue in the first statement and append a tag to the file", sdk.Schema{"type": "object", "properties": map[string]any{"file": map[string]any{"type": "string"}, "tag": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		file, _ := params["file"].(string)
+		tag, _ := params["tag"].(string)
+		_, err := sdk.WithFileMutationQueue(file, func() (struct{}, error) {
+			before, _ := os.ReadFile(file)
+			return struct{}{}, os.WriteFile(file, append(before, tag+"\n"...), 0o600)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "mutated " + tag}, nil
 	})
 
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
@@ -1459,6 +1561,9 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	registerKitWidgets(ext)
+	registerEditorHooks(ext)
+
 	ext.Command("kit-probe", "Exercise the component kit (D107)", func(ctx sdk.Context, args string) error {
 		result, err := ctx.Custom(&kitProbe{}, sdk.RemoteOverlayOptions{Title: "Kit"})
 		if err != nil {
@@ -1646,15 +1751,24 @@ func Extension() *sdk.Extension {
 
 	ext.Command("model-stream-probe", "Exercise model streaming", func(ctx sdk.Context, _ string) error {
 		registry := ctx.ModelRegistry()
-		current := registry.Find("conformance", "current")
+		current, err := registry.Find("conformance", "current")
+		if err != nil {
+			return err
+		}
 		if current == nil || fmt.Sprint(current["id"]) != "current" {
 			return fmt.Errorf("find current = %#v", current)
 		}
-		found := registry.Find("conformance", "declared")
+		found, err := registry.Find("conformance", "declared")
+		if err != nil {
+			return err
+		}
 		if found == nil || fmt.Sprint(found["id"]) != "declared" || fmt.Sprint(found["provider"]) != "conformance" {
 			return fmt.Errorf("find declared = %#v", found)
 		}
-		slash := registry.Find("conformance", "org/model/name")
+		slash, err := registry.Find("conformance", "org/model/name")
+		if err != nil {
+			return err
+		}
 		if slash == nil || fmt.Sprint(slash["id"]) != "org/model/name" {
 			return fmt.Errorf("find slash = %#v", slash)
 		}
@@ -1684,10 +1798,18 @@ func Extension() *sdk.Extension {
 		if len(input) != 0 || cost["input"] != float64(0) || len(tiers) != 1 || compat["supportsStrictMode"] != false {
 			return fmt.Errorf("find slash shape = %#v", slash)
 		}
-		if missing := registry.Find("conformance", "missing"); missing != nil {
+		missing, err := registry.Find("conformance", "missing")
+		if err != nil {
+			return err
+		}
+		if missing != nil {
 			return fmt.Errorf("find missing = %#v", missing)
 		}
-		if overrideOnly := registry.Find("conformance", "override-only"); overrideOnly != nil {
+		overrideOnly, err := registry.Find("conformance", "override-only")
+		if err != nil {
+			return err
+		}
+		if overrideOnly != nil {
 			return fmt.Errorf("find override-only = %#v", overrideOnly)
 		}
 		auth, err := registry.GetApiKeyAndHeaders(found)
@@ -2064,6 +2186,7 @@ func Extension() *sdk.Extension {
 		"frontmatter": helperReport(factoryCall, "frontmatter", "---\nz: 1\n10: a\n2: b\nnested:\n  y: 1\n  3: x\n  \"q r\": [1, 2]\n---\nbody text\n"),
 		"error":       helperReport(factoryCall, "frontmatter", "---\na: [\n---\nx"),
 		"date":        helperReport(factoryCall, "date", "2020-01-02T03:04:05.678Z"),
+		"strip":       helperReport(factoryCall, "strip", "---\nz: 1\n---\nbody text\n"),
 	}
 	ext.Command("helper_probe", "Run parseFrontmatter, stripFrontmatter or Date.parse on its argument", func(ctx sdk.Context, args string) error {
 		var c struct {
@@ -2231,6 +2354,8 @@ func Extension() *sdk.Extension {
 			result = map[string]any{"text": text, "wasTruncated": was}
 		case "size":
 			result = map[string]any{"text": sdk.FormatSize(c.Bytes)}
+		case "limits":
+			result = map[string]any{"maxLines": sdk.DefaultMaxLines, "maxBytes": sdk.DefaultMaxBytes}
 		default:
 			return fmt.Errorf("unknown truncation helper %q", c.Fn)
 		}
@@ -2241,6 +2366,7 @@ func Extension() *sdk.Extension {
 		ctx.Notify("truncate:"+string(wire)+":end", "info")
 		return nil
 	})
+	registerBuiltinToolProbe(ext)
 	// message_probe reads the event payload in its JSON argument with the SDK's messageRole and messageText helpers
 	// (TestConformance_MessageHelpersAgreeAcrossSDKs).
 	ext.Command("message_probe", "Report messageRole and messageText of a JSON event payload", func(ctx sdk.Context, args string) error {
@@ -2780,6 +2906,10 @@ func Extension() *sdk.Extension {
 		return nil, nil
 	})
 	ext.OnEvent("tool_result", func(ctx sdk.Context, event map[string]any) (any, error) {
+		if event["toolName"] == "order_probe" {
+			ctx.Notify(fmt.Sprintf("order-result=%v", event["toolCallId"]), "info")
+			return nil, nil
+		}
 		var held []string
 		for _, guard := range []struct {
 			name string
@@ -2855,6 +2985,9 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("tool-end=%v:%v:%v:%v:%v", event["toolName"], len(content), image["data"], nested["value"], event["isError"]), "info")
 		return nil, nil
 	})
+
+	registerStatePushProbe(ext)
+	registerSignalAbort(ext)
 
 	return ext
 }
@@ -3024,8 +3157,44 @@ func (e *conformanceEditor) HandleInput(data string) error {
 			return err
 		}
 		return e.Editor.SetText("raw:lines=" + strings.Join(lines, "|"))
+	case "K":
+		// The default editor's queries and setters (TestEditorComponentGoBaseQueriesReachTheHost): the answers come back as text.
+		cursor, err := e.GetCursor()
+		if err != nil {
+			return err
+		}
+		expanded, err := e.GetExpandedText()
+		if err != nil {
+			return err
+		}
+		showing, err := e.IsShowingAutocomplete()
+		if err != nil {
+			return err
+		}
+		if err := e.SetPaddingX(3); err != nil {
+			return err
+		}
+		if err := e.SetAutocompleteMaxVisible(7); err != nil {
+			return err
+		}
+		return e.Editor.SetText(fmt.Sprintf("raw:cursor=%d,%d|expanded=%s|autocomplete=%t", cursor.Line, cursor.Col, expanded, showing))
 	}
 	return e.Editor.HandleInput(data)
+}
+
+// InsertTextAtCursor wraps the host's text in angle brackets and AddToHistory prefixes it, unless it starts with "raw:" (TestEditorComponentOverridesReachSuper).
+func (e *conformanceEditor) InsertTextAtCursor(text string) error {
+	if strings.HasPrefix(text, "raw:") {
+		return e.Editor.InsertTextAtCursor(text)
+	}
+	return e.Editor.InsertTextAtCursor("<" + text + ">")
+}
+
+func (e *conformanceEditor) AddToHistory(text string) error {
+	if strings.HasPrefix(text, "raw:") {
+		return e.Editor.AddToHistory(text)
+	}
+	return e.Editor.AddToHistory("history:" + text)
 }
 
 func (e *conformanceEditor) SetText(text string) error {
@@ -3191,6 +3360,26 @@ func nonNilMaps(values []map[string]any) []map[string]any {
 		return []map[string]any{}
 	}
 	return values
+}
+
+// registerSignalAbort contributes the signal-abort row every SDK fixture carries. Pi's ctx.abort() aborts the run's signal before it returns (agent.ts:340-342), so a
+// handler that holds the signal and reads it again right after the abort sees it aborted, in the same turn.
+func registerSignalAbort(ext *sdk.Extension) {
+	state := func(signal interface{ Err() error }) string {
+		switch {
+		case signal == nil:
+			return "none"
+		case signal.Err() != nil:
+			return "aborted"
+		}
+		return "live"
+	}
+	ext.Command("signal-abort", "Abort the run and report ctx.signal", func(ctx sdk.Context, _ string) error {
+		held := ctx.Signal()
+		ctx.Abort()
+		ctx.Notify("abort:"+state(held)+":"+state(ctx.Signal()), "info")
+		return nil
+	})
 }
 
 // dialogText is a dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is nil.

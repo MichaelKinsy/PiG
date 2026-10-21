@@ -58,6 +58,8 @@ runtime.applyState({ thinkingLevel: "high", keybindings: { definitions, userBind
 runtime.ui.theme.setPalette({ name: "t", foregrounds: { borderMuted: "\x1b[31m", thinkingHigh: "\x1b[32m", bashMode: "\x1b[33m", accent: "\x1b[34m", muted: "\x1b[35m", thinkingOff: "\x1b[36m" }, backgrounds: {}, modifiers: true, mode: "truecolor" });
 
 class Modal extends pigAgent.CustomEditor {
+  invalidated = 0;
+  invalidate() { this.invalidated++; super.invalidate(); }
   handleInput(data) {
     if (data === "!") { this.mode = "normal"; return; }
     super.handleInput(data);
@@ -147,6 +149,11 @@ runtime.handleNotify({ method: "ui.editor.setText", args: { key, text: "" } });
 runtime.handleNotify({ method: "ui.editor.configure", args: { key, paddingX: 1, autocompleteMaxVisible: 7, focused: false, thinkingLevel: "off", shortcuts: [] } });
 assert.equal(editor.borderColor("x"), "\x1b[36mx\x1b[39m", "thinking level change");
 assert.equal(editor.focused, false);
+
+// The theme changed: Pi's TUI calls invalidate() on the editor it holds.
+const invalidatedBefore = editor.invalidated;
+runtime.handleNotify({ method: "ui.editor.invalidate", args: { key } });
+assert.equal(editor.invalidated, invalidatedBefore + 1, "invalidate reached the component");
 
 // Autocomplete asks the host and shows its items.
 runtime.handleNotify({ method: "ui.editor.input", args: { key, data: "/" } });
