@@ -157,6 +157,10 @@ try {
   await rm(sessionDir, { recursive: true, force: true });
 }
 
+// The queue keeps Pi's own per-process behavior in a process with no extension runtime (shims/file-mutation-queue-bridge.mjs); the runtime built above is not one, so drop it.
+const { setRuntime } = await import(pathToFileURL(join(repositoryRoot, "coding", "extension", "host", "subprocess", "runtime-node", "state.mjs")));
+setRuntime(null);
+
 const queueDir = await mkdtemp(join(tmpdir(), "pig-node-queue-"));
 try {
   const order = [];
