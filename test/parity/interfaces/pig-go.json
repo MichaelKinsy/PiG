@@ -178588,6 +178588,17 @@
       "shapeHash": "sha256:a2dc5b6c17ad7fe1b560763878faf44308daed44267e15366e6cb6ee8c664d57"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.armRequestScope",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Extension.armRequestScope",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) (Context, *requestScope)"
+      },
+      "shapeHash": "sha256:ef999474e1b4d6e53f5fec4825902e82c3de3809fef9ba81dd56f044253f9da7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.busConn",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Extension.busConn",
@@ -195396,6 +195407,28 @@
       "shapeHash": "sha256:c8b63da1afba7ee0381bffd6877a211021ee2094db852c109f8afdd525da2313"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestScope",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "requestScope",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "requestScope"
+      },
+      "shapeHash": "sha256:c8d0967bd9f3c2e6daae9de1f711fc46470e3db0541548069d0042e42ebf9838"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestScope.end",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "requestScope.end",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestSetup",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "requestSetup",
@@ -198419,6 +198452,17 @@
         "type": "func() *Place"
       },
       "shapeHash": "sha256:9a0389b81f7e171c31ec6a30a183bcce85f54f4eed3aacb86a7603f58543b35c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Lane.ReserveInto",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop",
+      "name": "Lane.ReserveInto",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p *Place) *Place"
+      },
+      "shapeHash": "sha256:fa71308b1e2eebdc020605f9c2f4bd6a4c784b8c431e1a68d9b699259d9d718c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop#Place",
