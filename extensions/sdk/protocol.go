@@ -173,13 +173,11 @@ type rendererDef struct {
 }
 
 type readyMsg struct {
-	SessionName string          `json:"session_name"`
-	Cwd         string          `json:"cwd"`
-	Mode        string          `json:"mode"`
-	Width       int             `json:"width"`
-	Height      int             `json:"height,omitempty"`
-	Model       string          `json:"model"`
-	State       json.RawMessage `json:"state,omitempty"` // initial StatePayload snapshot
+	Cwd    string          `json:"cwd"`
+	Mode   string          `json:"mode"`
+	Width  int             `json:"width"`
+	Height int             `json:"height,omitempty"`
+	State  json.RawMessage `json:"state,omitempty"` // initial StatePayload snapshot
 }
 
 type requestMsg struct {

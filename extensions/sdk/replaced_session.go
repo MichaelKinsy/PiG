@@ -26,6 +26,7 @@ type replacementState struct {
 	hasUI         bool
 	model         string
 	modelProvider string
+	sessionName   string
 }
 
 type withSessionEntry struct {
@@ -133,8 +134,11 @@ func (e *Extension) dispatchWithSession(ctx Context, args json.RawMessage) error
 			Cwd   string `json:"cwd"`
 			Mode  string `json:"mode"`
 			State *struct {
-				HasUI *bool          `json:"hasUI"`
-				Model map[string]any `json:"model"`
+				HasUI   *bool          `json:"hasUI"`
+				Model   map[string]any `json:"model"`
+				Session *struct {
+					SessionName string `json:"sessionName"`
+				} `json:"session"`
 			} `json:"state"`
 		} `json:"ready"`
 	}
@@ -153,6 +157,9 @@ func (e *Extension) dispatchWithSession(ctx Context, args json.RawMessage) error
 				state.hasUI = *ready.State.HasUI
 			}
 			state.model, state.modelProvider = modelIdentity(ready.State.Model)
+			if ready.State.Session != nil {
+				state.sessionName = ready.State.Session.SessionName
+			}
 		}
 	}
 	ctx.replacement = state

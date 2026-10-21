@@ -315,10 +315,22 @@ func (c Context) callHostAfterBegin(method string, args any, detached bool, sent
 		sent()
 	}
 	result, err := c.hostConnection().waitCall(pending)
+	// The host sends the state a publishing call changed before the call's result, and the main loop applies notifies after the read loop routed the result here: wait for those notifies so the caller's next replicated read sees the write.
+	if err == nil && result != nil && statePublishingCalls[method] && c.ext != nil && c.hostConnection() == c.ext.conn {
+		c.ext.waitNotifications(result.notifySeq, nil)
+	}
 	if !effect {
 		c.reportRequestState("progress", "")
 	}
 	return result, err
+}
+
+// statePublishingCalls are the Session writes after which the host pushes its state before the call's result (coding/extension/host/subprocess
+// host_calls.go publishesStateBeforeResult): the calls whose effect an SDK reads from replicated state. Pi's equivalents change the Session
+// synchronously, so a read after the call must see the write (agent-session.ts setModel, setSessionName, sessionManager.appendLabelChange and
+// appendCustomEntry, sendCustomMessage).
+var statePublishingCalls = map[string]bool{
+	"setModel": true, "appendEntry": true, "setLabel": true, "setSessionName": true, "sendMessage": true,
 }
 
 // rpcSynchronousUIEffects are the UI calls Pi's RPC mode applies at once, inside the handler's synchronous part (rpc-mode.ts
@@ -638,14 +650,8 @@ func (c Context) AppendEntry(customType string, data any) error {
 	if err != nil {
 		return err
 	}
-	if err := callResultError(result, nil); err != nil {
-		return err
-	}
-	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. The host sends the state carrying it before the call result, and the main loop applies notifies after the read loop routed the result here, so wait for those notifies: the caller's next session read then sees the entry.
-	if result != nil && c.ext != nil && c.hostConnection() == c.ext.conn {
-		c.ext.waitNotifications(result.notifySeq, nil)
-	}
-	return nil
+	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. callHost waits for the state the host pushed before the result (statePublishingCalls), so the caller's next session read sees the entry.
+	return callResultError(result, nil)
 }
 
 // ── Editor Access ────────────────────────────────────────────────────────────
@@ -2032,8 +2038,9 @@ func (c Context) Height() int {
 	return c.ext.height
 }
 
-// Model returns the active provider model ID when the host exposes one, falling
-// back to the model name from the ready/state message.
+// Model returns the active model's ID: Pi's ctx.model.id, the identity every SDK reports (Python ctx.model and Rust ctx.model() return the
+// same ID). It is "" while the Session has no model. The host's state updates keep it current, and a model write (SetModel) is visible to the
+// next read.
 func (c Context) Model() string {
 	c.assertActive()
 	if c.replacement != nil {
@@ -2076,6 +2083,24 @@ func (c Context) ModelQualified() string {
 		return c.ext.modelProvider + "/" + c.ext.model
 	}
 	return c.ext.model
+}
+
+// SessionName returns the session's name, "" while it has none: the replicated value behind Pi's ctx.sessionManager.getSessionName(). The
+// host's state updates keep it current, and SetSessionName is visible to the next read. A replacement Session's name comes from the host.
+func (c Context) SessionName() string {
+	c.assertActive()
+	if c.replacement != nil {
+		if name, err := c.GetSessionName(); err == nil {
+			if name == nil {
+				return ""
+			}
+			return *name
+		}
+		return c.replacement.sessionName
+	}
+	c.ext.mu.RLock()
+	defer c.ext.mu.RUnlock()
+	return c.ext.sessionName
 }
 
 // ToolCallID returns the current tool call ID (only valid inside tool handlers).

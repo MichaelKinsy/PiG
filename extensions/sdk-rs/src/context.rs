@@ -1417,6 +1417,46 @@ impl ModelRegistry {
     }
 }
 
+/// The Session's identity as the host's state snapshots replicate it: Pi's `ctx.model.id`, `ctx.model.provider` and
+/// `ctx.sessionManager.getSessionName()`. The ready state and every `state_update` pass through [`SessionIdentity::apply_state`].
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SessionIdentity {
+    pub(crate) model: String,
+    pub(crate) model_provider: String,
+    pub(crate) session_name: String,
+}
+
+impl SessionIdentity {
+    /// Applies a state snapshot. An absent `model` keeps the replica and an explicit null clears it (the Session holds no model). Every session snapshot carries the name, `""` for a session with no name.
+    pub(crate) fn apply_state(&mut self, state: &serde_json::Map<String, serde_json::Value>) {
+        if let Some(model) = state.get("model") {
+            (self.model, self.model_provider) = model_identity(model);
+        }
+        if let Some(session) = state.get("session").and_then(serde_json::Value::as_object) {
+            self.session_name = session.get("sessionName").and_then(serde_json::Value::as_str).unwrap_or_default().to_string();
+        }
+    }
+}
+
+/// The id (the name when the model has no id) and the provider id of a state snapshot's model; both empty for no model.
+pub(crate) fn model_identity(model: &serde_json::Value) -> (String, String) {
+    let Some(model) = model.as_object() else {
+        return (String::new(), String::new());
+    };
+    let id = model
+        .get("id")
+        .and_then(serde_json::Value::as_str)
+        .filter(|id| !id.is_empty())
+        .or_else(|| model.get("name").and_then(serde_json::Value::as_str))
+        .unwrap_or_default();
+    let provider = match model.get("provider") {
+        Some(serde_json::Value::String(provider)) => provider.as_str(),
+        Some(serde_json::Value::Object(provider)) => provider.get("id").and_then(serde_json::Value::as_str).unwrap_or_default(),
+        _ => "",
+    };
+    (id.to_string(), provider.to_string())
+}
+
 /// Context provides access to the host's UI and session state.
 /// Passed to every handler function. Clones share the connection, cancellation and live session state, so retained callbacks can own a context without copying that state.
 #[derive(Clone)]
@@ -1425,12 +1465,11 @@ pub struct Context {
     pub(crate) conn: Arc<Connection>,
     pub(crate) tool_call_id: Option<String>,
     pub(crate) request_id: String,
-    pub(crate) session_name: String,
     pub(crate) cwd: String,
     pub(crate) mode: String,
     pub(crate) shared_width: Arc<AtomicU32>,
     pub(crate) shared_height: Arc<AtomicU32>,
-    pub(crate) shared_model: Arc<Mutex<String>>,
+    pub(crate) shared_identity: Arc<Mutex<SessionIdentity>>,
     pub(crate) flag_defaults: Arc<HashMap<String, serde_json::Value>>,
     pub(crate) shared_session: Arc<Mutex<SessionMirror>>,
     /// Serializes the one-time session-log subscribe so concurrent first
@@ -1799,21 +1838,47 @@ impl Context {
         self.shared_height.load(Ordering::Relaxed)
     }
 
-    /// Returns the current model name.
-    pub fn model(&self) -> String {
-        self.assert_active();
+    /// The model's id and provider id. A replacement context asks the host, since this process replicates only the requesting Session's model.
+    fn current_model(&self) -> (String, String) {
         if self.replacement {
-            // This process replicates only the requesting Session's model.
             if let Ok(info) = self.get_model_info() {
-                return info.map(|info| info.id).unwrap_or_default();
+                return info.map(|info| (info.id, info.provider)).unwrap_or_default();
             }
         }
-        self.shared_model.lock().unwrap().clone()
+        let identity = self.shared_identity.lock().unwrap();
+        (identity.model.clone(), identity.model_provider.clone())
     }
 
-    /// Returns the session name.
-    pub fn session_name(&self) -> &str {
-        &self.session_name
+    /// Returns the active model's id: Pi's `ctx.model.id`, the identity every SDK reports (Go `Model()` and Python `ctx.model` return the same
+    /// id). Empty while the Session has no model.
+    pub fn model(&self) -> String {
+        self.assert_active();
+        self.current_model().0
+    }
+
+    /// Returns the active model's provider id (Pi's `ctx.model.provider`); empty while the Session has no model.
+    pub fn model_provider(&self) -> String {
+        self.assert_active();
+        self.current_model().1
+    }
+
+    /// Returns the `provider/id` string `set_model` takes; just the id when the provider is unknown.
+    pub fn model_qualified(&self) -> String {
+        self.assert_active();
+        let (id, provider) = self.current_model();
+        if provider.is_empty() { id } else { format!("{provider}/{id}") }
+    }
+
+    /// Returns the session's name, empty while it has none: the replicated value behind Pi's `ctx.sessionManager.getSessionName()`. State
+    /// updates keep it current and `set_session_name` is visible to the next read. A replacement Session's name comes from the host.
+    pub fn session_name(&self) -> String {
+        self.assert_active();
+        if self.replacement {
+            if let Ok(name) = self.get_session_name() {
+                return name.unwrap_or_default();
+            }
+        }
+        self.shared_identity.lock().unwrap().session_name.clone()
     }
 
     /// Streams a partial result of the running tool, as upstream's `onUpdate`
@@ -4644,13 +4709,12 @@ mod width_change_tests {
             request_parent: None,
             tool_call_id: None,
             request_id: String::new(),
-            session_name: String::new(),
             cwd: String::new(),
             mode: String::new(),
             shared_width: width,
             flag_defaults: Arc::new(HashMap::new()),
             shared_height: Arc::new(AtomicU32::new(0)),
-            shared_model: Arc::new(Mutex::new(String::new())),
+            shared_identity: Arc::new(Mutex::new(SessionIdentity::default())),
             shared_session: Arc::new(Mutex::new(SessionMirror::default())),
             session_sub_lock: Arc::new(Mutex::new(())),
             cancel_flag: Arc::new(AtomicBool::new(false)),
@@ -4744,6 +4808,37 @@ mod width_change_tests {
     }
 }
 
+#[cfg(test)]
+mod session_identity_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn apply(identity: &mut SessionIdentity, state: serde_json::Value) {
+        identity.apply_state(state.as_object().unwrap());
+    }
+
+    fn read(identity: &SessionIdentity) -> (&str, &str, &str) {
+        (&identity.model, &identity.model_provider, &identity.session_name)
+    }
+
+    // A state snapshot replicates Pi's ctx.model.id, ctx.model.provider and ctx.sessionManager.getSessionName(): the id (the name only when the model has no id), an
+    // explicit null clears the model, an absent member keeps it, and every session snapshot carries the name with "" for no name. The Go and Python SDKs read the same
+    // members (test/extension-conformance/replicated_accessors_test.go).
+    #[test]
+    fn state_snapshots_replicate_the_model_identity_and_the_session_name() {
+        let mut identity = SessionIdentity::default();
+        assert_eq!(read(&identity), ("", "", ""));
+        apply(&mut identity, json!({"model": {"id": "id-sentinel", "name": "Name Sentinel", "provider": {"id": "prov-sentinel"}}, "session": {"sessionName": "s-sentinel"}}));
+        assert_eq!(read(&identity), ("id-sentinel", "prov-sentinel", "s-sentinel"));
+        apply(&mut identity, json!({"isIdle": true}));
+        assert_eq!(read(&identity), ("id-sentinel", "prov-sentinel", "s-sentinel"));
+        apply(&mut identity, json!({"model": {"id": "", "name": "Only Name", "provider": "flat-provider"}, "session": {"sessionName": ""}}));
+        assert_eq!(read(&identity), ("Only Name", "flat-provider", ""));
+        apply(&mut identity, json!({"model": null}));
+        assert_eq!(read(&identity), ("", "", ""));
+    }
+}
+
 #[cfg(all(test, unix))]
 mod login_call_tests {
     use super::*;
@@ -4756,13 +4851,12 @@ mod login_call_tests {
             conn: Arc::new(Connection::new(stream)),
             request_id: String::new(),
             tool_call_id: None,
-            session_name: String::new(),
             cwd: String::new(),
             mode: String::new(),
             shared_width: Arc::new(AtomicU32::new(0)),
             flag_defaults: Arc::new(HashMap::new()),
             shared_height: Arc::new(AtomicU32::new(0)),
-            shared_model: Arc::new(Mutex::new(String::new())),
+            shared_identity: Arc::new(Mutex::new(SessionIdentity::default())),
             shared_session: Arc::new(Mutex::new(SessionMirror::default())),
             session_sub_lock: Arc::new(Mutex::new(())),
             cancel_flag: Arc::new(AtomicBool::new(false)),
@@ -4791,7 +4885,7 @@ mod login_call_tests {
         let mut ctx = Arc::try_unwrap(context(extension_stream)).ok().unwrap();
         ctx.cwd = "/work".into();
         ctx.mode = "tui".into();
-        *ctx.shared_model.lock().unwrap() = "m".into();
+        ctx.shared_identity.lock().unwrap().model = "m".into();
         ctx.shared_ui.lock().unwrap().has_ui = true;
         assert_eq!((ctx.cwd(), ctx.mode(), ctx.model().as_str(), ctx.has_ui()), ("/work", "tui", "m", true));
         const STALE: &str = "This extension ctx is stale after session replacement or reload.";
@@ -5050,12 +5144,11 @@ mod sdk_surface_call_tests {
             request_parent: None,
             flag_defaults: Arc::new(HashMap::new()),
             tool_call_id: None,
-            session_name: String::new(),
             cwd: String::new(),
             mode: String::new(),
             shared_width: Arc::new(AtomicU32::new(0)),
             shared_height: Arc::new(AtomicU32::new(0)),
-            shared_model: Arc::new(Mutex::new(String::new())),
+            shared_identity: Arc::new(Mutex::new(SessionIdentity::default())),
             shared_session: Arc::new(Mutex::new(SessionMirror::default())),
             session_sub_lock: Arc::new(Mutex::new(())),
             cancel_flag: Arc::new(AtomicBool::new(false)),
