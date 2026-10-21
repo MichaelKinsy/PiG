@@ -225,8 +225,8 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		check func(map[string]any) string
 		want  string
 	}{
-		{0, text, "from-H\nline2\n"},       // the context's working directory wins over the factory's
-		{1, text, "from-X\n"},             // a tool without a context uses the factory's
+		{0, text, "from-H\nline2\n"}, // the context's working directory wins over the factory's
+		{1, text, "from-X\n"},        // a tool without a context uses the factory's
 		{2, text, "l3\nl4\n\n[27 more lines in file. Use offset=5 to continue.]"},
 		{4, errorOf, "ENOENT: no such file or directory, access '<host>/nope.txt'"},
 		{5, errorOf, "Offset 99 is beyond end of file (31 lines total)"},
