@@ -32715,6 +32715,28 @@
         "coding/extension/host/subprocess/node_cell_memory_test.go::TestNodeCellAddedMembersStayWithinTheirOwnState",
         "coding/extension/host/subprocess/node_cell_memory_test.go::TestNodeCellMembersShareOneIOWorker"
       ]
+    },
+    {
+      "id": "BF-0b6bd6b",
+      "title": "In a Rust extension's `before_agent_start` handler, `ctx.get_system_prompt()` returns the prompt the…",
+      "symptom": "In a Rust extension's `before_agent_start` handler, `ctx.get_system_prompt()` returns the prompt the handler's own edit of `systemPromptOptions` renders, as Pi's `ctx.getSystemPrompt()` and the Go, Python and Node SDKs do.",
+      "rootCause": "It returned the prompt rendered before the edit, because the handler held the event exclusively and the context could not read it.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In a Rust extension's `before_agent_start` handler, `ctx.get_system_prompt()` returns the prompt the handler's own edit of `systemPromptOptions` renders, as Pi's `ctx.getSystemPrompt()` and the Go, Python and Node SDKs do. It returned the prompt rendered before the edit, because the handler held the event exclusively and the context could not read it. The handler now edits the options through the `BeforeAgentStartEvent` the context shares, and a read after an edit asks the host to render the edited options.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0b6bd6bd45",
+          "date": "2026-10-21"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/ctx_system_prompt_read_test.go::TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs"
+      ]
     }
   ],
   "divergences": [
