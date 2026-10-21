@@ -9,6 +9,7 @@
 # fails until each cell is one of:
 #
 #   native:<symbol>      a symbol of the SDK (Go Name, Rust snake_case, Python snake_case)
+#                        a public subpackage's symbol carries its qualifier: tui.VisibleWidth (Go), tui::visible_width (Rust), tui.visible_width (Python)
 #   kit:<view>           a declarative component-kit view
 #   host:<symbol>        the same behavior through a context call
 #   identity             a pure type or alias (only for listed policy identity_runtime helpers)
