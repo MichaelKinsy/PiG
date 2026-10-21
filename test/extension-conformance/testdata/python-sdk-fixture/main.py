@@ -213,6 +213,24 @@ KIT_WIDGET_CASES[_BORDERED + "default message"] = lambda: _kit_bordered("Loading
 KIT_WIDGET_CASES[_BORDERED + "frame 4"] = lambda: _kit_bordered(frame=4)
 KIT_WIDGET_CASES[_BORDERED + "wide message"] = lambda: _kit_bordered("Fetching the models of every configured provider, one after another")
 
+def _kit_input(focus: bool = True, **options: Any) -> kit.View:
+    return kit.View(kit.Container([kit.Input("i", **options)]), focus="i" if focus else None)
+
+
+_INPUT = "pi-tui/Input/"
+KIT_WIDGET_CASES[_INPUT + "empty"] = lambda: _kit_input(False)
+for _name in ("empty focused", "typing", "left then insert", "backspace and delete", "home and end", "kill word and yank", "kill to end", "paste scrolls", "submit"):
+    KIT_WIDGET_CASES[_INPUT + _name] = lambda: _kit_input()
+KIT_WIDGET_CASES[_INPUT + "placeholder"] = lambda: _kit_input(False, placeholder="type here")
+KIT_WIDGET_CASES[_INPUT + "placeholder focused colored"] = lambda: _kit_input(placeholder="type here", placeholder_color="dim")
+KIT_WIDGET_CASES[_INPUT + "custom prompt"] = lambda: _kit_input(prompt="$ ", value="ls -la")
+KIT_WIDGET_CASES[_INPUT + "value"] = lambda: _kit_input(False, value="hello world")
+for _name in ("value focused", "click moves the cursor", "right click ignored"):
+    KIT_WIDGET_CASES[_INPUT + _name] = lambda: _kit_input(value="hello world")
+KIT_WIDGET_CASES[_INPUT + "wide characters"] = lambda: _kit_input(value="漢字 and 😀 text")
+KIT_WIDGET_CASES[_INPUT + "submit newline key"] = lambda: _kit_input(value="preset")
+KIT_WIDGET_CASES[_INPUT + "escape"] = lambda: _kit_input(value="keep")
+
 # kit-widget-cases
 
 

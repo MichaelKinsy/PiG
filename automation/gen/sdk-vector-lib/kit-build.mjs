@@ -51,8 +51,13 @@ export function buildTree(lib, node, registry = builders) {
   return make(lib, node, build);
 }
 
-// A step is { keys: "…" } or { mouse: { type, button, x, y, … } } (the local cell of the root component).
-function applyStep(lib, root, rows, width, step) {
+// A step is { flush: true }, { keys: "…" } or { mouse: { type, button, x, y, … } } (the local cell of the root component).
+async function applyStep(lib, root, rows, width, step) {
+  // A flush lets the asynchronous work a step started (an editor's autocomplete query) settle before the next render.
+  if (step.flush) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return;
+  }
   if (step.keys !== undefined) {
     // The focused node takes the keys; a case names it with `focus` (the node's id) through its builder's registry.
     if (root.__focus?.handleInput) root.__focus.handleInput(step.keys);
@@ -76,13 +81,15 @@ export async function renderCase(env, spec, registry = builders, themeName = "da
     lib.changes = [];
     lib.timers = [];
     lib.focus = spec.focus;
+    // The terminal's rows: an editor shows max(5, floor(rows * 0.3)) lines.
+    lib.rows = spec.rows ?? 24;
     lib.probe = undefined;
     const root = buildTree(lib, spec.root, registry);
     if (spec.focus) root.__focus = lib.ids[spec.focus];
     let rows = root.render(width);
     const states = [rows];
     for (const step of spec.steps ?? []) {
-      applyStep(lib, root, rows, width, step);
+      await applyStep(lib, root, rows, width, step);
       rows = root.render(width);
       states.push(rows);
       if (lib.probe) lib.changes.push(lib.probe());

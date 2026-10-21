@@ -21,6 +21,7 @@ var widgetVectorExports = []struct{ dir, export string }{
 	{"pi-coding-agent", "CustomMessageComponent"},
 	{"pi-tui", "CancellableLoader"},
 	{"pi-coding-agent", "BorderedLoader"},
+	{"pi-tui", "Input"},
 }
 
 // widgetVectorSpec is a case's argument: the wire node, the steps delivered to the focused node or the pointer, and the

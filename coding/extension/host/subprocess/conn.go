@@ -143,10 +143,13 @@ type Conn struct {
 	// reportView reports a rejected view of this connection's extension
 	// (D107). Set by the Host before the connection starts reading.
 	reportView func(surface string, err error)
-	name       string
-	conn       net.Conn
-	closing    atomic.Bool
-	closed     atomic.Bool
+	// terminalRows is the host's terminal height, which a view's editor reads
+	// (D107). Set by the Host before the connection starts reading.
+	terminalRows func() int
+	name         string
+	conn         net.Conn
+	closing      atomic.Bool
+	closed       atomic.Bool
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
 

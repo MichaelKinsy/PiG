@@ -30,6 +30,7 @@ var kitWidgetExports = []struct{ dir, export string }{
 	{"pi-coding-agent", "CustomMessageComponent"},
 	{"pi-tui", "CancellableLoader"},
 	{"pi-coding-agent", "BorderedLoader"},
+	{"pi-tui", "Input"},
 }
 
 type kitWidgetCase struct {
@@ -157,7 +158,8 @@ func runKitWidget(t *testing.T, h *harness, ui *kitUI, tc kitCell, key string, c
 		for _, message := range h.ui.Recorded() {
 			if log, ok := strings.CutPrefix(message, "kit-widget="); ok {
 				for _, entry := range strings.Split(strings.TrimSuffix(log, ":info"), ",") {
-					if !strings.HasPrefix(entry, "change:") && !strings.HasPrefix(entry, "rawmouse:") && !strings.HasPrefix(entry, "input:") {
+					// An earlier case's overlay closes when this one opens, and notifies an empty log.
+					if entry != "" && !strings.HasPrefix(entry, "change:") && !strings.HasPrefix(entry, "rawmouse:") && !strings.HasPrefix(entry, "input:") {
 						got = append(got, entry)
 					}
 				}

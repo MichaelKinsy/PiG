@@ -20,6 +20,9 @@ func init() {
 				c.fail("input needs an id")
 			}
 			c.fg(n.PlaceholderColor)
+			if cur := n.Cursor; cur != nil && (cur.Line != 0 || cur.Col < 0) {
+				c.fail("input cursor must be {line: 0, col >= 0}")
+			}
 		},
 		build:     buildInput,
 		focusable: true,
@@ -73,7 +76,7 @@ func (v *viewInputState) refresh(node *frontend.ViewNode) {
 }
 
 func buildInput(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {
-	inst, fresh := b.widgetInstance(n, widgetCtorKey(n, func(c *ViewNode) { c.Value = "" }))
+	inst, fresh := b.widgetInstance(n, widgetCtorKey(n, func(c *ViewNode) { c.Value, c.Cursor, c.Focused = "", nil, false }))
 	inst.node = out
 	if fresh {
 		options := tui.InputOptions{Prompt: n.Prompt, Placeholder: n.Placeholder}
@@ -96,6 +99,10 @@ func buildInput(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Compon
 	state.b = b
 	if n.Value != "" && fresh || !fresh && n.Value != inst.sent.Value {
 		state.comp.SetValue(n.Value)
+	}
+	// A sender that owns the cursor (Node's) names it with every frame; the host applies it when it moved.
+	if n.Cursor != nil && (fresh || inst.sent.Cursor == nil || *inst.sent.Cursor != *n.Cursor) {
+		state.comp.SetCursor(n.Cursor.Col)
 	}
 	if fresh {
 		state.value, state.cursor = state.comp.GetValue(), state.comp.Cursor()

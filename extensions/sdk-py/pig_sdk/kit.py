@@ -1469,3 +1469,46 @@ class BorderedLoader(_Node):
 
 
 __all__ += ["BorderedLoader", "CancellableLoader"]
+
+
+class Input(_Node):
+    """Pi-tui's ``Input({prompt, placeholder, placeholderStyle})``: a one-line
+    text field. ``id`` is required and unique within the view. The host owns the
+    value and the cursor and runs Input's own key and mouse handling once the
+    view's ``focus`` names it, as the focused component of Pi's TUI takes every
+    key. The extension receives ``onSubmit`` as a :data:`SUBMIT` event,
+    ``onEscape`` as an :data:`ESCAPE` event, and a :data:`CHANGE` event with the
+    value and ``cursor`` after each key or press that changed either.
+    ``value`` is ``setValue``'s argument, applied when it differs from the one
+    the previous frame sent; ``prompt`` ``None`` takes upstream's ``"> "``;
+    ``placeholder_color`` is a theme foreground token for ``placeholderStyle``."""
+
+    kind = "input"
+
+    def __init__(
+        self,
+        id: str,  # noqa: A002 - upstream's field name
+        value: str = "",
+        *,
+        prompt: str | None = None,
+        placeholder: str = "",
+        placeholder_color: str | None = None,
+    ) -> None:
+        self.id = str(id)
+        self.value = str(value)
+        self.prompt = prompt
+        self.placeholder = str(placeholder)
+        self.placeholder_color = placeholder_color
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {"id": self.id}
+        if self.value:
+            out["value"] = self.value
+        _put(out, "prompt", self.prompt)
+        if self.placeholder:
+            out["placeholder"] = self.placeholder
+        _put(out, "placeholderColor", self.placeholder_color)
+        return out
+
+
+__all__ += ["Input"]

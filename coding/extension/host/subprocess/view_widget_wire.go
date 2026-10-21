@@ -51,6 +51,14 @@ type ViewWidgetFields struct {
 	Prompt           *string `json:"prompt,omitempty"`
 	Placeholder      string  `json:"placeholder,omitempty"`
 	PlaceholderColor string  `json:"placeholderColor,omitempty"`
+	// Cursor and Focused are the state of an input or an editor whose
+	// component the sender owns (Node's): the cursor it holds and its
+	// Focusable flag, applied each frame when they differ from the frame
+	// before. A host-owned widget (the Go, Rust and Python SDKs') keeps its
+	// own cursor and takes its focus from the view's Focus, so those SDKs
+	// send neither.
+	Cursor  *ViewCursor `json:"cursor,omitempty"`
+	Focused bool        `json:"focused,omitempty"`
 
 	// AutocompleteMaxVisible, BorderColor (a foreground token for
 	// borderColor, default "borderMuted"), DisableSubmit, History (the
