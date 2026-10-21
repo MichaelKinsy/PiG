@@ -1419,8 +1419,15 @@ class RuntimeContext {
       (err) => { if (typeof onError === "function") onError(err instanceof Error ? err : new Error(String(err))); },
     );
   }
-  getSystemPrompt() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPrompt; }
-  getSystemPromptOptions() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPromptOptions ?? {}; }
+  // agent-session.ts:1474-1476, 3495-3496 read the Session. The replicated prompt state lags this extension's own writes to the loadout, so once it has made one a read asks the Host (see Runtime.promptWritten).
+  getSystemPrompt() {
+    this.runtime.extensionRuntime.assertActive();
+    return this.runtime.promptWritten ? this.runtime.callSync("getSystemPrompt")?.prompt ?? "" : this.runtime.state.systemPrompt;
+  }
+  getSystemPromptOptions() {
+    this.runtime.extensionRuntime.assertActive();
+    return this.runtime.promptWritten ? this.runtime.callSync("getSystemPromptOptions") ?? {} : this.runtime.state.systemPromptOptions ?? {};
+  }
   // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
   waitForIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("waitForIdle", {}); }
   newSession(options = {}) {
@@ -1938,6 +1945,8 @@ export class Runtime {
     this.sessionLogRequested = false;
     this.sessionLogGeneration = 0;
     this.sessionLogSync = undefined;
+    // Whether this extension has changed the active tools or registered a tool since it loaded. The Host pushes the system prompt and its options with the next event, after the handler that wrote them, so from the first write on a read asks the Host instead of the push (Pi's getters read the Session, agent-session.ts:1474-1476, 3495-3496).
+    this.promptWritten = false;
     this.state = {
       commands: [],
       thinkingLevel: "",
@@ -2006,9 +2015,8 @@ export class Runtime {
       sendMessage: action((message, options = {}) => {
         this.reportCommandYield();
         if (options?.deliverAs === "nextTurn") return this.fireAndForget("sendMessage", { message, options });
-        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session.
+        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session, unless the Session holds the message back: one sent while the agent_settled handlers run waits for them (agent-session.ts:2344-2349) and the session stays idle. The Host knows which, so the answer is its own.
         if (options?.triggerTurn) {
-          const idle = this.state.isIdle;
           try { this.writeSync("sendMessage", { message, options }); }
           catch (err) {
             if (!isHostCancellation(err)) {
@@ -2016,7 +2024,7 @@ export class Runtime {
             }
             return;
           }
-          if (idle) this.state.isIdle = false;
+          this.state.isIdle = this.callSync("isIdle")?.idle === true;
           return;
         }
         try { this.writeSync("sendMessage", { message, options }); }
@@ -2077,6 +2085,7 @@ export class Runtime {
       }),
       setActiveTools: action((tools) => {
         this.fireAndForget("setActiveTools", { tools });
+        this.promptWritten = true;
       }),
       setModel: async (model) => {
         if (!this.conn || !this.hostReady) throw new Error("Extension runtime not initialized");
@@ -2209,7 +2218,10 @@ export class Runtime {
       throw new Error(`Tool "${definition.name}" registered by extension "${this.entry}" must define an object parameter schema.`);
     }
     this.tools.set(definition.name, definition);
-    if (this.conn) this.callSync("registerTool", this.toolDeclaration(definition));
+    if (this.conn) {
+      this.callSync("registerTool", this.toolDeclaration(definition));
+      this.promptWritten = true;
+    }
   }
 
   // A host call the factory may make before the extension registers: it opens the connection a loading factory needs, as the shared event bus does.
@@ -4752,7 +4764,7 @@ export class Runtime {
     // notify and LoginOptions.getDeviceId are synchronous in Pi (auth/types.ts:160, 208).
     const providerCallback = method === "provider.callback" && (args.method === "notify" || args.method === "getDeviceId");
     const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
-    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
       throw new Error(`Host method ${method} is not a synchronous bridge operation`);
     }
     if (!this.conn) throw new Error("runtime not connected");
