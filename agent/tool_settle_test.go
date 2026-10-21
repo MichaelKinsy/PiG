@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // signal notes that a goroutine parked, without ever blocking the gate's lock when the note is already pending.
@@ -16,50 +17,6 @@ func signal(ch chan struct{}) {
 	case ch <- struct{}{}:
 	default:
 	}
-}
-
-// Slots run their actions in the order they settled, whatever order their goroutines reach Run in; a slot that never settled
-// settles when it reaches Run; a settled slot that is closed without running stops holding up the slots behind it.
-func TestSettleGateRunsActionsInSettleOrder(t *testing.T) {
-	var gate SettleGate
-	parked := make(chan struct{}, 8)
-	gate.SetParkedHook(func() { signal(parked) })
-	first, second, third := gate.NewSlot(), gate.NewSlot(), gate.NewSlot()
-	third.Settle()
-	first.Settle()
-	// second is never settled by a reader: it settles on reaching Run, behind both.
-
-	var mu sync.Mutex
-	var order []string
-	record := func(name string) func() {
-		return func() {
-			mu.Lock()
-			order = append(order, name)
-			mu.Unlock()
-		}
-	}
-	var done sync.WaitGroup
-	done.Go(func() { second.Run(record("second")) })
-	// second holds the turn behind third and first, which settled before it reached Run.
-	awaitSignal(t, parked, "second waits for the slots that settled before it")
-	done.Go(func() { first.Run(record("first")) })
-	done.Go(func() { third.Run(record("third")) })
-	done.Wait()
-	if want := []string{"third", "first", "second"}; !reflect.DeepEqual(order, want) {
-		t.Fatalf("actions ran in order %v, want the settle order %v", order, want)
-	}
-
-	// A settled slot that is closed without running releases the slots behind it.
-	var gate2 SettleGate
-	abandoned, waiting := gate2.NewSlot(), gate2.NewSlot()
-	abandoned.Settle()
-	parked2 := make(chan struct{}, 1)
-	gate2.SetParkedHook(func() { signal(parked2) })
-	ran := make(chan struct{})
-	go waiting.Run(func() { close(ran) })
-	awaitSignal(t, parked2, "the slot waits behind the settled one")
-	abandoned.Close()
-	awaitSignal(t, ran, "the slot behind an abandoned one runs")
 }
 
 // A parallel batch emits each call's tool_execution_end in the order the calls' tools settled, which a tool that learns its
@@ -71,7 +28,7 @@ func TestParallelToolEndsFollowTheOrderTheToolsSettle(t *testing.T) {
 	release := map[string]chan struct{}{"call-1": make(chan struct{}), "call-2": make(chan struct{})}
 	returned := map[string]chan struct{}{"call-1": make(chan struct{}), "call-2": make(chan struct{})}
 	var mu sync.Mutex
-	slots := map[string]*SettleSlot{}
+	slots := map[string]*jsloop.SettleSlot{}
 	executing := make(chan struct{}, len(ids))
 	parked := make(chan struct{}, len(ids))
 	tool := &scriptTool{name: "p", mode: ToolModeParallel, params: map[string]any{"type": "object"},
@@ -84,7 +41,7 @@ func TestParallelToolEndsFollowTheOrderTheToolsSettle(t *testing.T) {
 			mu.Lock()
 			slots[id] = slot
 			mu.Unlock()
-			slot.gate.SetParkedHook(func() { signal(parked) })
+			slot.Gate().SetParkedHook(func() { signal(parked) })
 			executing <- struct{}{}
 			awaitSignal(t, release[id], "release of "+id)
 			close(returned[id])
