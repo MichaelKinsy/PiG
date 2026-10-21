@@ -53,8 +53,8 @@ func TestSessionOriginWritersObeyTheWriterSubscribedGate(t *testing.T) {
 				return true
 			}
 			// The innermost function literal around the writer must test the flag.
-			for i := len(stack) - 1; i >= 0; i-- {
-				if fn, ok := stack[i].(*ast.FuncLit); ok {
+			for _, s := range slices.Backward(stack) {
+				if fn, ok := s.(*ast.FuncLit); ok {
 					if !callsLoadOnWriting(fn.Body) {
 						t.Errorf("%s: %s writes a Session-origin event without testing the writer-subscribed flag (writing.Load()) in its function", name, fset.Position(node.Pos()))
 					}
