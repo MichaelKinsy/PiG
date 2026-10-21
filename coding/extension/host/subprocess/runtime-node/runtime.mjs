@@ -14,9 +14,9 @@ import { basename } from "node:path";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { inspect } from "node:util";
-import { flushCompileCache } from "node:module";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
+import { installTimerOrigin, originKind, originToolCallId, outsideTimer, setHandlersRunning, setTimerDefer, setToolCallIdSource } from "./timer-origin.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
 import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
 import { EditorComponentHost } from "./editor-component.mjs";
@@ -34,11 +34,38 @@ import { deriveView, surfaceTheme, VIEW_THEME_TOKENS } from "./view-walk.mjs";
 import { dispatchOverlayMouse, takesMouse } from "./mouse.mjs";
 import { EventReplicas } from "./event-stream.mjs";
 
+installTimerOrigin();
+setToolCallIdSource(() => {
+  for (const runtime of liveRuntimes) {
+    const toolCallId = runtime.requestContext.getStore()?.toolCallId;
+    if (toolCallId !== undefined) return toolCallId;
+  }
+  return undefined;
+});
+setHandlersRunning(() => {
+  for (const runtime of liveRuntimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (!request.settled) return true;
+    }
+  }
+  return false;
+});
+
 // Pi hands every extension one shared event bus (resource-loader.ts creates
 // one per loader and passes it to each extension). Every Node realm of this
 // Host shares it: this process's listeners stay in its own heap, and
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
+
+// siblingToolPending reports whether a tool call is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does.
+function siblingToolPending() {
+  for (const runtime of liveRuntimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (request.toolCall && !request.settled) return true;
+    }
+  }
+  return false;
+}
 const xrefRealm = new Realm(() => {
   const preferred = currentRuntime();
   for (const runtime of preferred ? [preferred, ...liveRuntimes] : liveRuntimes) {
@@ -153,6 +180,31 @@ function modelRegistryKey(provider, modelId) {
   return `${provider}\u0000${modelId}`;
 }
 
+// virtual-models.ts: the api of a virtual model.
+const VIRTUAL_MODEL_API = "pi-virtual";
+
+// replaceProviderEntries returns entries (the catalog Map, or a list of models) with the models of provider name replaced by replacements, in the place of the provider's first entry, or last when it had none.
+function replaceProviderEntries(entries, name, replacements) {
+  if (entries instanceof Map) {
+    const next = new Map();
+    let placed = false;
+    const place = () => {
+      for (const model of replacements) next.set(modelRegistryKey(name, modelIDFromModel(model)), model);
+      placed = true;
+    };
+    for (const [key, model] of entries) {
+      if (model.provider !== name) next.set(key, model);
+      else if (!placed) place();
+    }
+    if (!placed) place();
+    return next;
+  }
+  const index = entries.findIndex((model) => model.provider === name);
+  const kept = entries.filter((model) => model.provider !== name);
+  kept.splice(index < 0 ? kept.length : index, 0, ...replacements);
+  return kept;
+}
+
 // models.ts EXTENDED_THINKING_LEVELS, getSupportedThinkingLevels and clampThinkingLevel; defaults.ts THINKING_LEVEL_OPTIONS.
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
@@ -234,6 +286,9 @@ function piSession() {
 }
 function piProviderComposer() {
   return requireModule("./shims/pi-dist/pi-coding-agent/core/provider-composer.js");
+}
+function piVirtualModels() {
+  return requireModule("./shims/pi-dist/pi-coding-agent/core/virtual-models.js");
 }
 let piBuiltinProviderMap;
 function piBuiltinProvider(id) {
@@ -1336,12 +1391,19 @@ export class Connection {
   call(method, args = {}, parentRequestId = "") {
     if (this.closed) return Promise.reject(new Error("extension connection closed"));
     const id = uuid();
+    // pig additive (D189): a call made by a timer's or an immediate's callback after its request's handler returned (the call has no parent) says so, and the host holds it until Pi's loop would have run the callback. A callback that runs while the handler still awaits is a turn of Pi's loop already.
+    const kind = parentRequestId ? undefined : originKind();
+    // Pi's loop turns while a sibling tool awaits real work, so a timer callback runs right after the tool that queued it ends, with its process.nextTick callbacks; the host releases a "tick" call there.
+    const timer = kind !== undefined;
+    const tick = kind === "tick" || (timer && siblingToolPending());
+    // The host runs a tick call after the tool_execution_end of the tool call whose handler queued the callback, which this process cannot order against the call: it says which tool call that was.
+    const originTool = tick ? originToolCallId() : undefined;
     return new Promise((resolve, reject) => {
       this.touchRequest(parentRequestId);
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain();
       try {
-        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}) } });
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}), ...(originTool !== undefined ? { origin_tool_call_id: originTool } : {}) } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -1520,7 +1582,7 @@ class RuntimeContext {
       signal: guarded(() => runtime.runSignal?.controller.signal),
     });
     this.theme = runtime.ui.theme;
-    values.model = normalizeModel(runtime.state.model) ?? (runtime.ready.model ? normalizeModel({ id: runtime.ready.model }) : undefined);
+    values.model = normalizeModel(runtime.state.model);
   }
 
   // Live terminal geometry. Getters rather than snapshots so a resize is
@@ -1529,9 +1591,16 @@ class RuntimeContext {
   get width() { return Number(this.runtime.ready?.width || 0); }
   get height() { return Number(this.runtime.ready?.height || 0); }
 
+  // pig additive (D19): the provenance the loader stamped on this extension (types.ts SourceInfo: path, source, scope, origin, baseDir), the value ExtensionRunner.getExtensionPaths reads; undefined when the host holds none.
+  extensionSourceInfo() {
+    this.runtime.extensionRuntime.assertActive();
+    const info = this.runtime.ready?.sourceInfo;
+    return info && typeof info === "object" ? { ...info } : undefined;
+  }
+
   isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.isIdle; }
   isProjectTrusted() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.projectTrusted; }
-  abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.fireAndForget("abort", {}); }
+  abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.abortRun(); }
   // Pi's hasPendingMessages is a live getter (agent-session.js:2728, `pendingMessageCount > 0`),
   // so a cached snapshot would hide a queue transition that happens while a handler is awaited.
   hasPendingMessages() {
@@ -1637,6 +1706,9 @@ function createNoOpUI(ui) {
     // pig divergence (D2): sprite validation remains owned by the host.
     registerSprite: ui.registerSprite,
     onWidthChange: ui.onWidthChange,
+    onThemeChange: ui.onThemeChange,
+    onToolsExpandedChange: ui.onToolsExpandedChange,
+    bell: ui.bell,
   };
 }
 
@@ -1687,6 +1759,22 @@ class RuntimeUI {
     }
     return this.runtime.addWidthChangeHandler(handler);
   }
+  // pig additive (D19): Pi calls a widget component's invalidate() on a theme change and the component reads ui.theme at its next render; a subprocess extension that pushes rows colored when it built them re-renders from this. The handler receives ui.theme after it took the new palette.
+  onThemeChange(handler) {
+    if (typeof handler !== "function") {
+      throw new TypeError("onThemeChange requires a handler function");
+    }
+    return this.runtime.addChangeHandler(this.runtime.themeChangeHandlers, handler);
+  }
+  // pig additive (D19): the original of a widget reads ui.getToolsExpanded() at every frame and Pi redraws on its expand key; the handler receives the new state after getToolsExpanded() reports it.
+  onToolsExpandedChange(handler) {
+    if (typeof handler !== "function") {
+      throw new TypeError("onToolsExpandedChange requires a handler function");
+    }
+    return this.runtime.addChangeHandler(this.runtime.toolsExpandedChangeHandlers, handler);
+  }
+  // pig additive (D19): a Pi extension rings the bell by writing BEL to process.stdout, which in this subprocess is not the terminal.
+  bell() { this.runtime.fireAndForget("ui.bell", {}); }
   setStatus(key, text) {
     // Upstream mutates FooterDataProvider synchronously before requesting a
     // render. Keep the subprocess replica current before sending the host call
@@ -1794,7 +1882,7 @@ class RuntimeUI {
     if (this.runtime.contextValues.mode === "rpc") return { success: false, error: "Theme switching not supported in RPC mode" };
     const result = this.runtime.callSync("ui.setTheme", { theme: name });
     const palette = this.runtime.callSync("ui.theme")?.theme;
-    if (palette) this.theme.setPalette(palette);
+    if (palette) this.runtime.applyThemePalette(palette);
     return result;
   }
   getToolsExpanded() { return this.runtime.state.toolsExpanded ?? false; }
@@ -2046,11 +2134,19 @@ export class Runtime {
     this.bashOperations = new Map();
     this.bashOperationsSeq = 0;
     this.nextExecuteId = 1;
+    this.nextExecId = 1;
     this.nextDialogId = 1;
     // Raw terminal-input handlers, consulted synchronously while the host
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
     this.widthChangeHandlers = [];
+    // pig additive (D19): subscribers to the host's theme and tool-expansion changes, and the pi.onLoaded handlers. themeSignature and toolsExpandedKnown say the host has sent a first value, so a later different one is a change.
+    this.themeChangeHandlers = [];
+    this.toolsExpandedChangeHandlers = [];
+    this.themeSignature = undefined;
+    this.toolsExpandedKnown = false;
+    this.loadedHandlers = [];
+    this.loadedPromise = undefined;
     this.commands = new Map();
     this.shortcuts = new Map();
     this.flags = new Map();
@@ -2103,6 +2199,12 @@ export class Runtime {
     this.catalog = emptyCatalog;
     this.models = new Map();
     this.modelsComplete = true;
+    // The registry the Host last published: its catalog and its provider, error and registration state. ctx.modelRegistry reads catalog and registryState, which are these until this process writes the registry (holdRegistryWrite).
+    this.hostCatalog = emptyCatalog;
+    this.hostRegistry = this.registryState;
+    this.registryHolds = new Map();
+    // The virtual-model registrations and removals this process made that the Host's snapshot does not show yet, by provider and id (holdVirtualWrite).
+    this.virtualWrites = new Map();
     this.nextModelStreamId = 1;
     this.footerFactory = undefined;
     this.headerFactory = undefined;
@@ -2175,6 +2277,11 @@ export class Runtime {
       registerCommand: (name, definition) => this.registerCommand(name, definition),
       registerShortcut: (key, definition) => this.registerShortcut(key, definition),
       registerFlag: (name, definition) => this.registerFlag(name, definition),
+      // pig additive (D19): runs handler(ctx) once the runtime registered and has its state, before it serves a request.
+      onLoaded: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onLoaded requires a handler function");
+        this.loadedHandlers.push(handler);
+      },
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
       registerMarkdownTransformer: (transformer) => {
@@ -2406,11 +2513,41 @@ export class Runtime {
   }
 
   // loader.ts:411-414: pi.exec spawns the child whenever it is called. A callback the factory scheduled can call it after the factory returned and before the registered connection exists, while connect() opens it. That call waits for the register frame and runs as the loader's exec; opening a second connection would leave the call or the registration on a socket the Host does not read.
+  //
+  // core/exec.ts:46-52 kills the child when options.signal aborts, and the call has no other signal. An AbortSignal cannot cross the process boundary: the call names itself by an exec id and carries ownSignal, which detaches it from the calling request, and the abort reaches the Host as exec.cancel.
   exec(request) {
-    if (this.conn) return this.call("exec", request);
-    if (this.loadState === "loading") return this.loadingExec(request);
-    if (this.connecting) return this.connecting.then(() => this.call("exec.loading", request));
-    return this.call("exec", request);
+    const signal = request.options?.signal;
+    if (!signal || typeof signal.addEventListener !== "function") return this.execCall(request, false, () => {});
+    const { signal: _signal, ...options } = request.options;
+    const execId = `x${this.nextExecId++}`;
+    let stopListening;
+    // After the call is sent: the Host applies a cancel only after the call it names started the child, so a signal that aborted already still spawns the child and then kills it, as exec.ts does.
+    const sent = () => {
+      const cancel = () => { this.cancelExec(execId); };
+      if (signal.aborted) cancel();
+      else {
+        signal.addEventListener("abort", cancel, { once: true });
+        stopListening = () => signal.removeEventListener("abort", cancel);
+      }
+    };
+    return this.execCall({ ...request, options, execId, ownSignal: true }, true, sent).finally(() => stopListening?.());
+  }
+
+  execCall(request, detached, sent) {
+    if (this.conn) { const result = this.call("exec", request, { detached }); sent(); return result; }
+    if (this.loadState === "loading") { const result = this.loadingExec(request); sent(); return result; }
+    if (this.connecting) return this.connecting.then(() => { const result = this.call("exec.loading", request, { detached }); sent(); return result; });
+    const result = this.call("exec", request, { detached });
+    sent();
+    return result;
+  }
+
+  // The abort of an exec call's signal. It has no failure path, as exec.ts's abort listener has none: a call that ended or a connection that closed leaves nothing to cancel.
+  cancelExec(execId) {
+    const connection = this.conn ?? this.earlyConn;
+    if (!connection || connection.closed) return;
+    const cancelled = connection === this.conn ? connection.call("exec.cancel", { execId }, "") : connection.callAppliedOnReceipt("exec.cancel", { execId });
+    cancelled.catch(() => {});
   }
 
   // loader.ts:411-414 gives a loading factory an exec that spawns the child itself, with no session bound. The Host runs it in the loader's working directory over the connection the factory opened. The Host's reply is applied when it arrives: nothing reads this connection's queue before the register frame, and the factory awaits the call.
@@ -2421,6 +2558,12 @@ export class Runtime {
 
   // pig additive (D19): a file mutation queue call (shims/file-mutation-queue-bridge.mjs). Pi's queue is a module-level map every extension shares, so a factory may use it while it loads: like exec, the call opens the loading connection and is applied when its reply arrives. The call is detached from the request that makes it: an aborted request does not end the wait for the file or the release of its turn, as Pi's queue does not.
   fileMutation(method, args) {
+    const owner = method === "fileMutation.enter" ? this.activeRequest() : undefined;
+    if (owner?.windowSettled) {
+      const settled = owner.windowSettled;
+      owner.windowSettled = undefined;
+      return settled.then(() => this.fileMutation(method, args));
+    }
     if (this.conn) return this.call(method, args, { detached: true });
     if (this.loadState === "loading") {
       this.ensureConnectionSync();
@@ -2481,6 +2624,7 @@ export class Runtime {
       else this.virtualModels.set(key, previous);
       throw error;
     }
+    this.holdVirtualWrite(declaration.provider, declaration.id, declaration);
   }
 
   // loader.ts:492-495.
@@ -2491,14 +2635,19 @@ export class Runtime {
       this.virtualModelUnregistrations.push({ provider, id });
     } else {
       this.callSync("unregisterVirtualModel", { provider, id });
+      this.holdVirtualWrite(provider, id, undefined);
     }
     this.virtualModels.delete(key);
   }
 
   // runner.ts:952-985 (createToolContext). The context of a tool call also lists the tools executeTool can call and runs one. An explicit signal replaces the calling tool's, so the call is not tied to the calling request; without one the Host cancels the call with the request.
-  addToolContext(ctx, toolCallId) {
+  addToolContext(ctx, toolCallId, toolCallIndex, params) {
     const runtime = this;
     return Object.defineProperties(ctx, {
+      // pig additive (D19): the call's position among the tool calls of the assistant message that issued it (its batch); undefined for a call no assistant message issued, such as a nested executeTool call.
+      toolCallIndex: { value: typeof toolCallIndex === "number" ? toolCallIndex : undefined, enumerable: true },
+      // pig additive (D19): the JSON text of the call's arguments, members in the order the model wrote them. Pi's execute params is that object; this is its JSON.stringify.
+      toolInput: { value: JSON.stringify(params), enumerable: true },
       tools: {
         get() {
           runtime.extensionRuntime.assertActive();
@@ -2605,9 +2754,12 @@ export class Runtime {
     this.registerLate({ commands: [this.commandDeclaration(command)] });
   }
 
-  // A registration made after the register frame went out reaches the host as registerDeclaration: loader.ts writes it into the extension's own Map, which the runner reads live.
+  // A registration made after the register frame went out reaches the host as registerDeclaration: loader.ts writes it into the extension's own Map, which the runner reads live (loader.ts:303-318).
+  // getCommands answers from the list the host replicates, and the host pushes it with its next state, so a command registered here is read back before the call returns, as agent-session.ts:3391-3414 reads the runner's Map at the moment of the call.
   registerLate(declarations) {
-    if (this.conn) this.callSync("registerDeclaration", declarations);
+    if (!this.conn) return;
+    this.callSync("registerDeclaration", declarations);
+    if (declarations.commands !== undefined) this.state.commands = this.callSync("getCommands")?.commands ?? [];
   }
 
   commandDeclaration(cmd) {
@@ -2720,7 +2872,7 @@ export class Runtime {
     let emission;
     try {
       conn.requestState(env.id, "started");
-      runWithRuntime(this, () => this.requestContext.run(request, () => {
+      runWithRuntime(this, () => this.requestContext.run(request, outsideTimer(() => {
         try {
           const args = env.request.args ?? {};
           if (env.request.method === "xref.op") result = xrefRealm.serve(args);
@@ -2732,7 +2884,7 @@ export class Runtime {
         } catch (error) {
           failure = error;
         }
-      }));
+      })));
     } finally {
       request.settled = true;
     }
@@ -2887,14 +3039,15 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
+    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain();
     refreshQuitDrain();
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
-    const task = this.requestContext.run(request, async () => {
+    const task = this.requestContext.run(request, outsideTimer(async () => {
       try {
+        if (this.loadedPromise && env.request?.method !== "events.dispatch") await this.loadedPromise;
         await this.handleRequest(env.id, env.request || {}, requestCtx);
       } finally {
         if (env.request?.method === "event") this.loadHighlightLanguagesAfterStartup(env.request.event);
@@ -2906,7 +3059,7 @@ export class Runtime {
         refreshQuitDrain();
       }
       if (request.responded && endsPrompt(env.request, this.ready?.mode, this.runSignal !== undefined)) awaitHostStep(request.connection);
-    });
+    }));
     this.requestTasks.add(task);
     void task.then(
       () => this.requestTasks.delete(task),
@@ -2934,7 +3087,6 @@ export class Runtime {
           this.replaceModels(this.ready.models);
           this.contextValues.cwd = this.ready.cwd || this.contextValues.cwd;
           this.contextValues.mode = this.ready.mode || this.contextValues.mode;
-          this.contextValues.model = this.ready.model ? { id: this.ready.model } : this.contextValues.model;
           if (env.ready?.state) {
             // StatePayload is whole here, so an absent frontend is false.
             this.setFrontend(env.ready.state.frontend === true);
@@ -2947,8 +3099,7 @@ export class Runtime {
             this.highlightAfter = new Set(["session_start", "resources_discover"]);
             this.loadHighlightLanguagesAfterStartup();
           }
-          // The host owns process teardown, so flush bytecode when processing ready rather than relying on normal Node exit. Factory/module state is not persisted.
-          flushCompileCache();
+          if (this.loadedHandlers.length > 0) this.loadedPromise = this.runLoadedHandlers();
           continue;
         }
         if (env.type === "ping") {
@@ -3232,7 +3383,12 @@ export class Runtime {
     }
     if (typeof snapshot.hasPendingMessages === "boolean") this.state.hasPendingMessages = snapshot.hasPendingMessages;
     if (typeof snapshot.editorText === "string") this.state.editorText = snapshot.editorText;
-    if (typeof snapshot.toolsExpanded === "boolean") this.state.toolsExpanded = snapshot.toolsExpanded;
+    if (typeof snapshot.toolsExpanded === "boolean") {
+      const changed = this.toolsExpandedKnown && this.state.toolsExpanded !== snapshot.toolsExpanded;
+      this.state.toolsExpanded = snapshot.toolsExpanded;
+      this.toolsExpandedKnown = true;
+      if (changed) this.fireChangeHandlers(this.toolsExpandedChangeHandlers, snapshot.toolsExpanded);
+    }
     if (Object.hasOwn(snapshot, "contextUsage")) {
       this.state.contextUsage = snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage };
     }
@@ -3250,7 +3406,7 @@ export class Runtime {
     // Markdown reads.
     // The host's active theme colors ctx.ui.theme and the pi-coding-agent
     // theme helpers, as Pi's global theme does in its own process.
-    if (snapshot.theme && typeof snapshot.theme === "object") this.ui.theme.setPalette(snapshot.theme);
+    if (snapshot.theme && typeof snapshot.theme === "object") this.applyThemePalette(snapshot.theme);
     applyTerminalCapabilities(snapshot.terminalCapabilities);
     if (snapshot.keybindings && typeof snapshot.keybindings === "object") this.applyKeybindings(snapshot.keybindings);
     if (typeof snapshot.hasUI === "boolean") this.state.hasUI = snapshot.hasUI;
@@ -3916,17 +4072,189 @@ export class Runtime {
   // applyModelRegistryState installs a host registry snapshot: the catalog
   // and the provider, error and registration state ctx.modelRegistry reads.
   // The members of a cell share the decoded snapshot, so each takes its own
-  // copy of what an extension can reach.
+  // copy of what an extension can reach. A write this process made that the Host has not answered yet stays on the snapshot.
   applyModelRegistryState(state) {
     if (!state || typeof state !== "object") return;
     if (Array.isArray(state.models)) this.replaceModels(state.models);
     this.registryProviders.clear();
-    this.registryState = {
+    this.hostRegistry = {
       typedModels: Array.isArray(state.typedModels) ? state.typedModels.map((model) => ({ ...structuredClone(model) })) : [],
       providers: state.providers && typeof state.providers === "object" ? structuredClone(state.providers) : {},
       registered: Array.isArray(state.registered) ? structuredClone(state.registered) : [],
       error: typeof state.error === "string" && state.error !== "" ? state.error : undefined,
     };
+    this.registryState = this.hostRegistry;
+    for (const [key, write] of this.virtualWrites) if (this.hostShowsVirtualWrite(write)) this.virtualWrites.delete(key);
+    for (const name of this.overlayNames()) this.overlayProvider(name);
+  }
+
+  // Pi's registerProvider and unregisterProvider recompose the provider and rewrite the model snapshot before they return, so the next read of ctx.modelRegistry holds the write (model-runtime.ts:928-957, model-registry.ts:64-74). The Host's registry reaches this process later, and a publication that predates the write would undo it, so the view keeps the write over the snapshot until the Host answers it. The Host publishes the registry with the write, ahead of its answer on the connection's one ordered stream: by the answer the snapshot holds the write, and it stands alone again. Every member of a packed process holds the write, as every extension holds one registry. answered is the Host call's settled operation, or undefined when no call was made, which no answer ends.
+  holdRegistryWrite(name, answered) {
+    const members = new Set([this, ...liveRuntimes]);
+    for (const runtime of members) {
+      runtime.registryHolds.set(name, (runtime.registryHolds.get(name) ?? 0) + 1);
+      runtime.overlayProvider(name);
+    }
+    if (answered === undefined) return;
+    void answered.then(() => {
+      for (const runtime of members) runtime.releaseRegistryHold(name);
+    });
+  }
+
+  releaseRegistryHold(name) {
+    const held = (this.registryHolds.get(name) ?? 1) - 1;
+    if (held > 0) {
+      this.registryHolds.set(name, held);
+      return;
+    }
+    this.registryHolds.delete(name);
+    this.setCatalog(this.hostCatalog);
+    this.registryProviders.clear();
+    this.registryState = this.hostRegistry;
+    for (const other of this.overlayNames()) this.overlayProvider(other);
+  }
+
+  // holdVirtualWrite records a virtual-model registration (model) or removal (undefined) this process made, and rewrites the provider's view from it. Pi's registerVirtualModel and unregisterVirtualModel update the model snapshot before they return (model-runtime.ts:964-992). The Host registers the model before it answers, but publishes the registry later, from its refresh, so the write stays on the view until a Host snapshot shows it (hostShowsVirtualWrite): a publication that predates the write cannot undo it. Every member of a packed process holds the write, as every extension holds one registry.
+  holdVirtualWrite(provider, id, model) {
+    const written = model === undefined ? undefined : normalizeModel(piVirtualModels().createVirtualModel(model));
+    for (const runtime of new Set([this, ...liveRuntimes])) {
+      runtime.virtualWrites.set(modelRegistryKey(provider, id), { provider, id, model: written });
+      runtime.overlayProvider(provider);
+    }
+  }
+
+  // hostShowsVirtualWrite is whether the Host's snapshot already holds the write: the registered definition, or the model gone.
+  hostShowsVirtualWrite(write) {
+    const shown = this.hostCatalog.get(modelRegistryKey(write.provider, write.id));
+    const virtual = shown?.api === VIRTUAL_MODEL_API;
+    if (write.model === undefined) return !virtual;
+    return virtual && shown.name === write.model.name && shown.contextWindow === write.model.contextWindow && shown.maxTokens === write.model.maxTokens;
+  }
+
+  virtualModelsOf(name) {
+    let virtual = [...this.hostCatalog.values()].filter((model) => model.provider === name && model.api === VIRTUAL_MODEL_API);
+    for (const write of this.virtualWrites.values()) {
+      if (write.provider !== name) continue;
+      const at = virtual.findIndex((model) => model.id === write.id);
+      if (write.model === undefined) virtual = virtual.filter((model) => model.id !== write.id);
+      else if (at >= 0) virtual[at] = write.model;
+      else virtual.push(write.model);
+    }
+    return virtual;
+  }
+
+  // overlayNames are the providers whose view this process rewrites: the ones it registered, the ones it registered virtual models of, and the keyless virtual providers.
+  overlayNames() {
+    const names = new Set(this.registryHolds.keys());
+    for (const write of this.virtualWrites.values()) names.add(write.provider);
+    for (const model of this.hostCatalog.values()) {
+      if (model.api === VIRTUAL_MODEL_API && this.keylessVirtualProvider(model.provider)) names.add(model.provider);
+    }
+    return names;
+  }
+
+  // keylessVirtualProvider is whether name is a provider of only virtual models that the Host's state does not report configured. withVirtualModels lists such a provider keyless (virtual-models.ts:187-199), so Pi has it configured and available as soon as a virtual model is registered (model-runtime.ts:974-982), and keeps it so. The Host's provider state lists only the providers a registration, a models.json entry or a credential defines, so it has none for this one.
+  keylessVirtualProvider(name) {
+    const state = this.hostRegistry.providers?.[name];
+    return state?.configured !== true && state?.modelsConfig === undefined && piBuiltinProvider(name) === undefined && !(this.hostRegistry.registered ?? []).some((entry) => entry.name === name) && this.nativeProviderObjects.get(name) === undefined && this.nativeProviders.get(name) === undefined;
+  }
+
+  // overlayProvider rewrites one provider of the view from this process's own registration of it, as Pi's recompose and snapshot update do (model-runtime.ts:298-340, 910-957): its models, whether it is configured and what its auth status reports, and for a provider with no registration left, the registration layer the snapshot still lists.
+  overlayProvider(name) {
+    const hostState = this.hostRegistry.providers?.[name];
+    const native = this.nativeProviderObjects.get(name)?.provider ?? this.nativeProviders.get(name);
+    const extension = native === undefined ? this.registeredProviderConfig(name) : undefined;
+    const registered = native !== undefined || extension !== undefined;
+
+    // composeProvider (model-runtime.ts:316-336): the registration over the built-in provider and the models.json layer; a composition that fails leaves the built-in provider.
+    let provider = native;
+    if (provider === undefined) {
+      provider = piBuiltinProvider(name);
+      if (extension !== undefined || hostState?.modelsConfig !== undefined) {
+        try {
+          provider = piProviderComposer().composeModelProvider(name, provider, { getProvider: () => hostState?.modelsConfig }, extension);
+        } catch {
+          // The built-in provider stands, as in Pi's composeProvider.
+        }
+      }
+    }
+    const listed = provider === undefined ? [] : (provider.getAllModels?.() ?? provider.getModels());
+    const chat = [];
+    const typed = [];
+    for (const model of listed) ((model.type ?? "chat") === "chat" ? chat : typed).push(model);
+    // withVirtualModels (virtual-models.ts:201-234): the provider's virtual models stay, and hide a physical chat model of the same id.
+    // The Host's virtual models of the provider, with the registrations and removals this process made that the Host's snapshot does not show yet.
+    const virtual = this.virtualModelsOf(name);
+    const hidden = new Set(virtual.map((model) => model.id));
+    const physical = chat.filter((model) => !hidden.has(model.id)).map(normalizeModel).filter(Boolean);
+    this.setCatalog(replaceProviderEntries(this.catalog, name, [...physical, ...virtual]));
+
+    const providers = { ...this.hostRegistry.providers };
+    let listedRegistration = this.hostRegistry.registered;
+    if (registered) {
+      // markProvisionallyConfigured (model-runtime.ts:910-925): a provider with a stored credential or a configured key is configured at once, and an existing check result is never replaced. getProviderAuthStatus (model-runtime.ts:645-660) reads the registration live after the runtime key and the stored credential.
+      const status = piProviderComposer().configuredRequestAuthStatus(hostState?.modelsConfig, extension);
+      const stored = hostState?.authStatus?.source === "stored";
+      const marked = hostState?.configured !== true && (stored || status?.configured === true);
+      const oauthOnly = native ? Boolean(native.auth?.oauth && !native.auth?.apiKey) : Boolean(extension.oauth && !extension.apiKey);
+      const checked = hostState?.configured === true;
+      let authStatus = hostState?.authStatus;
+      if (hostState?.authStatus?.source !== "runtime" && !stored) {
+        authStatus = status ?? (checked ? hostState.authStatus : marked ? { configured: true, source: "environment", label: "configured provider" } : { configured: false });
+      }
+      providers[name] = { ...hostState, configured: checked || marked, usingOAuth: hostState?.usingOAuth === true || (marked && oauthOnly), authStatus };
+    } else {
+      // unregisterProvider (model-runtime.ts:951-957) recomposes without the registration layer and rewrites the models; its configured mark and check result stay until the next availability pass.
+      listedRegistration = listedRegistration.filter((entry) => entry.name !== name);
+      if (hostState !== undefined) {
+        const { extensionConfig: _dropped, ...rest } = hostState;
+        const status = piProviderComposer().configuredRequestAuthStatus(hostState.modelsConfig, undefined);
+        let authStatus = hostState.authStatus;
+        if (hostState.authStatus?.source !== "runtime" && hostState.authStatus?.source !== "stored") {
+          authStatus = status ?? (hostState.configured === true ? (hostState.authStatus?.source === "environment" ? hostState.authStatus : { configured: true, source: "environment", label: "configured provider" }) : { configured: false });
+        }
+        providers[name] = { ...rest, composed: rest.modelsConfig !== undefined, authStatus };
+      }
+    }
+    // A provider of only virtual models needs no credentials: withVirtualModels lists it keyless (virtual-models.ts:187-199), and registerVirtualModel marks it configured at once, before its refresh lands (model-runtime.ts:974-982).
+    if (provider === undefined && virtual.length > 0) {
+      const state = providers[name];
+      providers[name] = { ...state, configured: true, usingOAuth: state?.usingOAuth === true, authStatus: state?.authStatus?.configured === true ? state.authStatus : { configured: true, source: "environment", label: "virtual" } };
+    }
+    // Availability follows the provider's auth (virtual-models.ts withVirtualModels): a virtual model this process registered is available when its provider is configured, and one it removed is not.
+    const available = providers[name]?.availableModelIds;
+    if (Array.isArray(available)) {
+      const ids = new Set(available);
+      for (const write of this.virtualWrites.values()) {
+        if (write.provider !== name) continue;
+        if (write.model === undefined) ids.delete(write.id);
+        else if (providers[name].configured === true) ids.add(write.id);
+      }
+      providers[name] = { ...providers[name], availableModelIds: [...ids] };
+    }
+    this.registryProviders.delete(name);
+    this.registryState = {
+      ...this.hostRegistry,
+      typedModels: replaceProviderEntries(this.hostRegistry.typedModels ?? [], name, typed.map((model) => ({ ...structuredClone(model) }))),
+      providers,
+      registered: listedRegistration,
+    };
+  }
+
+  // setCatalog installs a catalog and keeps this extension's copies of the models that did not change.
+  setCatalog(next) {
+    if (next === this.catalog) return;
+    const copies = new Map();
+    for (const [key, copy] of this.models) {
+      if (next.get(key) === this.catalog.get(key)) copies.set(key, copy);
+    }
+    if (this.modelsComplete) {
+      for (const [key, template] of next) {
+        if (!copies.has(key)) copies.set(key, structuredClone(template));
+      }
+    }
+    this.catalog = next;
+    this.models = copies;
   }
 
   // Compose the same built-in, models.json and extension layers as Pi. Auth
@@ -3953,7 +4281,8 @@ export class Runtime {
   }
 
   replaceModels(models) {
-    this.catalog = catalogOf(models);
+    this.hostCatalog = catalogOf(models);
+    this.catalog = this.hostCatalog;
     this.models = new Map();
     this.modelsComplete = this.catalog.size === 0;
   }
@@ -3974,6 +4303,13 @@ export class Runtime {
     if (aborted) this.runSignal.controller.abort();
   }
 
+  // ctx.abort(). Pi's abort is synchronous up to agent.abort(), which aborts the active run's controller before it returns (agent-session.ts:2464-2474, 3472-3478; agent.ts:340-342), so a handler that aborts and reads ctx.signal, or the signal its tool received, in the same turn sees it aborted. The host's abort and its run_signal frame follow; the frame finds the controller aborted. Every member of a packed process holds the same run, as every extension holds one agent.
+  abortRun() {
+    this.runSignal?.controller.abort();
+    for (const runtime of liveRuntimes) runtime.runSignal?.controller.abort();
+    this.fireAndForget("abort", {});
+  }
+
   handleNotify(notify) {
     if (notify.method?.startsWith("ui.editor.")) {
       let args = notify.args;
@@ -3986,6 +4322,16 @@ export class Runtime {
       return;
     }
     switch (notify.method) {
+      case "tool_window_settled": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        this.requestRecords.get(args?.request_id)?.settleWindow?.();
+        return;
+      }
       case "bash_operations_release": {
         let args = notify.args;
         try {
@@ -3994,6 +4340,18 @@ export class Runtime {
           return;
         }
         this.bashOperations.delete(args?.handle);
+        return;
+      }
+      case "timer_defer": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        setTimerDefer(args?.on === true);
+        // The host waits for this ack before it dispatches the command's first event (Turns.Arm): every call this runtime made before the hold is on the wire ahead of it.
+        this.conn?.notify("timer_defer_ack", { seq: args?.seq ?? 0 });
         return;
       }
       case "run_signal": {
@@ -4139,7 +4497,7 @@ export class Runtime {
         } catch {
           args = {};
         }
-        this.ui.theme.setPalette(args || {});
+        this.applyThemePalette(args || {});
         for (const key of this.widgets.keys()) this.renderWidget(key);
         for (const overlay of this.customOverlays?.values() || []) overlay.renderFrame();
         this.renderSpecialSurface("header");
@@ -4261,7 +4619,7 @@ export class Runtime {
       };
     }
     this.providers.set(name, config);
-    if (this.providersSent) this.fireAndForget("registerProvider", { ...this.providerDeclaration(name, config), configRef: this.providerConfigRef(merged) });
+    if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("registerProvider", { ...this.providerDeclaration(name, config), configRef: this.providerConfigRef(merged) }));
   }
 
   // The declaration of a provider config, as the register frame and a registration after the factory carry it: the config without its callbacks, and the operations that run in this process.
@@ -4296,10 +4654,13 @@ export class Runtime {
       this.transferProviderOwnership(provider.id, undefined);
       this.nativeProviderObjects.set(provider.id, { owner: this, provider });
     }
+    if (this.providersSent) {
+      this.holdRegistryWrite(provider.id, this.fireAndForget("registerProvider", { name: provider.id, config: {}, native: declaration }));
+      return;
+    }
     const models = this.allModels();
     for(const [key,model] of models) if(model.provider===provider.id)models.delete(key);
     for(const model of declaration.models) models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
-    if(this.providersSent) this.fireAndForget("registerProvider",{name:provider.id,config:{},native:declaration});
   }
 
   unregisterProvider(name) {
@@ -4311,25 +4672,7 @@ export class Runtime {
     this.registeredProviderConfigs.delete(name);
     this.nativeProviders.delete(name);
     if (this.loadState === "active") this.transferProviderOwnership(name, undefined);
-    if (this.providersSent) {
-      // Pi's unregisterProvider removes the registration synchronously (model-runtime.ts:791-797); the Host's registry update arrives later, so every member of this process drops its stale entry now.
-      for (const runtime of liveRuntimes) runtime.dropRegistration(name);
-      this.dropRegistration(name);
-      this.fireAndForget("unregisterProvider", { name });
-    }
-  }
-
-  // Pi's unregisterProvider recomposes the provider from its built-in and models.json layers before it returns (model-runtime.ts:942-948), so the snapshot's extension layer goes with the registration.
-  dropRegistration(name) {
-    const providers = this.registryState.providers ?? {};
-    const state = providers[name];
-    let next = providers;
-    if (state?.extensionConfig !== undefined) {
-      const { extensionConfig: _dropped, ...rest } = state;
-      next = { ...providers, [name]: { ...rest, composed: rest.modelsConfig !== undefined } };
-    }
-    this.registryProviders.delete(name);
-    this.registryState = { ...this.registryState, providers: next, registered: (this.registryState.registered ?? []).filter((entry) => entry.name !== name) };
+    if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("unregisterProvider", { name }));
   }
 
   // The Host forwards its caller's abort to a request that already settled while the extension still holds refreshSignal, until releaseRetainedSignal reports that it does not.
@@ -4472,7 +4815,10 @@ export class Runtime {
           };
           let result;
           try {
-            result = await tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id));
+            const pending = tool.execute?.(request.tool_call_id, params, this.toolSignal(request, ctx), onUpdate, this.addToolContext(ctx, request.tool_call_id, request.tool_call_index, params));
+            // Calling an async execute runs its synchronous prefix before it returns its Promise (agent-loop.ts:619-647: Pi starts the next call of the batch only then). A prefix that took a place in the host's file mutation queue (withFileMutationQueue) sent that call before this point, so the host registers the edit and write calls behind this tool after it. A Promise that settles in the microtasks that follow needs no report: its answer ends the wait.
+            this.reportToolPrefixOver(id, pending);
+            result = await pending;
           } finally {
             done = true;
           }
@@ -4949,7 +5295,7 @@ export class Runtime {
     // notify and LoginOptions.getDeviceId are synchronous in Pi (auth/types.ts:160, 208).
     const providerCallback = method === "provider.callback" && (args.method === "notify" || args.method === "getDeviceId");
     const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
-    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "hasPendingMessages", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
       throw new Error(`Host method ${method} is not a synchronous bridge operation`);
     }
     if (!this.conn) throw new Error("runtime not connected");
@@ -5040,7 +5386,7 @@ export class Runtime {
   createReplacedSessionContext(ready, requestId) {
     const runtime = Object.create(this);
     runtime.extensionRuntime = { assertActive() {} };
-    runtime.ready = { ...this.ready, cwd: ready.cwd || this.ready.cwd, mode: ready.mode || this.ready.mode, model: ready.model };
+    runtime.ready = { ...this.ready, cwd: ready.cwd || this.ready.cwd, mode: ready.mode || this.ready.mode };
     const snapshot = ready.state ?? {};
     const session = snapshot.session ?? {};
     runtime.state = {
@@ -5094,6 +5440,49 @@ export class Runtime {
   // addTerminalInputHandler subscribes to raw terminal input, telling the host
   // to start forwarding only on the first handler and to stop on the last, so
   // an extension that never subscribes costs the input loop nothing.
+  // applyThemePalette installs the host's palette and tells the onThemeChange subscribers when it differs from the one before (Pi calls a widget component's invalidate() on a theme change).
+  applyThemePalette(palette) {
+    const signature = JSON.stringify(palette);
+    const changed = this.themeSignature !== undefined && this.themeSignature !== signature;
+    this.ui.theme.setPalette(palette);
+    this.themeSignature = signature;
+    if (changed) this.fireChangeHandlers(this.themeChangeHandlers, this.ui.theme);
+  }
+
+  // fireChangeHandlers calls the handlers subscribed now, in order; a throw or a rejection of one does not stop the others.
+  fireChangeHandlers(handlers, value) {
+    for (const handler of [...handlers]) {
+      try {
+        const result = handler(value);
+        if (result && typeof result.then === "function") result.then(undefined, () => {});
+      } catch {}
+    }
+  }
+
+  addChangeHandler(handlers, handler) {
+    handlers.push(handler);
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      const i = handlers.indexOf(handler);
+      if (i >= 0) handlers.splice(i, 1);
+    };
+  }
+
+  // runLoadedHandlers runs the pi.onLoaded handlers in order, each to completion. Requests wait for them (startRequest), the loop does not, so a handler's host calls are answered.
+  async runLoadedHandlers() {
+    const handlers = this.loadedHandlers;
+    this.loadedHandlers = [];
+    for (const handler of handlers) {
+      try {
+        await handler(this.ctx);
+      } catch (error) {
+        process.stderr.write(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
+      }
+    }
+  }
+
   addWidthChangeHandler(handler) {
     this.widthChangeHandlers.push(handler);
     let done = false;
@@ -5170,7 +5559,14 @@ export class Runtime {
   adoptHostLeafEntry(match) {
     const sessionManager = this.contextValues.sessionManager;
     if (!(sessionManager instanceof RuntimeSessionManager) || !this.conn) return undefined;
-    const entry = this.conn.callSync("sessionRead", { method: "getLeafEntry" }, this.activeRequest()?.id ?? "");
+    let entry;
+    try {
+      entry = this.conn.callSync("sessionRead", { method: "getLeafEntry" }, this.activeRequest()?.id ?? "");
+    } catch (err) {
+      // The write already succeeded and the adoption is only a cache of it: a host that answers no leaf (reads not bound) leaves the entry to the log synchronization, while a cancellation is still the caller's.
+      if (isHostCancellation(err)) throw err;
+      return undefined;
+    }
     if (!entry || typeof entry !== "object" || !match(entry) || sessionManager.getEntry(entry.id)) return undefined;
     this.pendingEntries.push(entry);
     return entry;
@@ -5207,6 +5603,20 @@ export class Runtime {
       owner?.pendingHostCalls.delete(operation);
     });
     owner?.pendingHostCalls.add(operation);
+    return operation;
+  }
+
+  // reportToolPrefixOver tells the host that the tool_call request id awaits something, once the microtasks that follow the call to execute ran and left its Promise pending.
+  reportToolPrefixOver(id, pending) {
+    let settled = false;
+    Promise.resolve(pending).then(() => { settled = true; }, () => { settled = true; });
+    queueMicrotask(() => {
+      if (settled || this.conn.closed) return;
+      // Pi registers the edit and write calls behind this tool in the file mutation queue before the tool's next call: the host says when it has, and the tool's next fileMutation.enter waits for it.
+      const request = this.requestRecords.get(id);
+      if (request) request.windowSettled = new Promise((resolve) => { request.settleWindow = resolve; });
+      this.conn.requestState(id, "blocked", "external_io");
+    });
   }
 
   // reportCommandYield follows a send from an RPC command's handler. The host holds the run the send starts while the handler runs, as Pi's run starts only once the handler that sent it awaits or returns (agent-session.ts:2129, 2293 sendCustomMessage); a handler still unsettled at the next event-loop turn has awaited, so the command reports its suspension then.

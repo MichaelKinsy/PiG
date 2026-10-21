@@ -34,7 +34,7 @@ failed.commitLoad();
 const collections = [failed.handlers, failed.tools, failed.commands, failed.shortcuts, failed.flags, failed.renderers, failed.entryRenderers, failed.providers, failed.registeredProviderConfigs, failed.nativeProviders, failed.providerStreams, failed.oauthProviders];
 const sizes = collections.map(collection => collection.size);
 let lateEvents = 0;
-const results = await probeFailedAPI(failed.api, () => lateEvents++);
+const results = await probeFailedAPI(failed.api, () => lateEvents++, true);
 for (const result of results) {
   assert.deepEqual(result, {method:result.method, asynchronous:false, error:'Extension "<failing>" failed to load and its API is no longer active.'});
 }

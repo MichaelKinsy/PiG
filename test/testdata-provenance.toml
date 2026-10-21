@@ -147,3 +147,8 @@ paths = ["coding/cli/testdata/piglet-inventory/*.txt"]
 owner = "pig"
 invariant = "TestStripLeakGate"
 why = "Pi has no Piglets, so which tools, commands and extensions each shipped Piglet exposes is PiG's own. TestStripLeakGate asserts that a stripped ID leaves every surface; the inventory adds the reviewed per-Piglet list of which IDs each one strips, regenerated only after review."
+
+[[golden]]
+paths = ["test/parity/sdk-vectors/*/*.json"]
+owner = "pi"
+generator = "automation/gen/generate-sdk-vectors.mjs"

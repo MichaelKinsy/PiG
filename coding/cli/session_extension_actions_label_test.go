@@ -36,7 +36,7 @@ func TestSessionExtensionActionsBindSetLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 	bridge := subprocess.NewUIBridge(nil)
-	bindSessionReadActions(bridge, func() *coding.Session { return session }, session.CWD(), t.TempDir())
+	coding.BindSessionReadActions(bridge, func() *coding.Session { return session }, session.CWD(), t.TempDir())
 	setLabel := func(label string) {
 		t.Helper()
 		args, _ := json.Marshal(map[string]string{"entryId": entryID, "label": label})

@@ -1,0 +1,4808 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "matchesKey",
+ "cases": [
+  {
+   "name": "case 0000",
+   "args": [
+    "\u0000",
+    "ctrl+space"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0001",
+   "args": [
+    "\u0012",
+    "ctrl+r"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    "&",
+    "&"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    ":",
+    ":"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    "N",
+    "shift+n"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    "b",
+    "b"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    "v",
+    "v"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    "\u001b\u0007",
+    "super+alt+q"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    "\u001b\u0015",
+    "ctrl+alt+u"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    "\u001b%",
+    "alt+%"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0010",
+   "args": [
+    "\u001b9",
+    "alt+9"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0011",
+   "args": [
+    "\u001bW",
+    "ctrl+super+-"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0012",
+   "args": [
+    "\u001bl",
+    "alt+l"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0013",
+   "args": [
+    "\u001b",
+    "alt+backspace"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0014",
+   "args": [
+    "\u001b[1;3:2A",
+    "shift+super+&"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0015",
+   "args": [
+    "\u001b[1;7:1A",
+    "super+_"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0016",
+   "args": [
+    "\u001b[1;11A",
+    "super+alt+up"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0017",
+   "args": [
+    "\u001b[1;66:2A",
+    "ctrl+\""
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0018",
+   "args": [
+    "\u001b[1;1:3B",
+    "ctrl+alt+f5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0019",
+   "args": [
+    "\u001b[1;6:1B",
+    "ctrl+shift+down"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0020",
+   "args": [
+    "\u001b[1;9:3B",
+    "ctrl+super+escape"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0021",
+   "args": [
+    "\u001b[1;17:3B",
+    "ctrl+shift+super+tab"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0022",
+   "args": [
+    "\u001b[1;129:3B",
+    "shift+alt+super+home"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0023",
+   "args": [
+    "\u001b[1;4:3C",
+    "shift+alt+right"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0024",
+   "args": [
+    "\u001b[1;8:1C",
+    "alt+shift+ctrl+b"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0025",
+   "args": [
+    "\u001b[1;13C",
+    "super+ctrl+right"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0026",
+   "args": [
+    "\u001b[1;65C",
+    "super+ctrl+l"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0027",
+   "args": [
+    "\u001b[1;3:1D",
+    "alt+super+q"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0028",
+   "args": [
+    "\u001b[1;7:1D",
+    "ctrl+alt+left"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0029",
+   "args": [
+    "\u001b[1;10:3D",
+    "ctrl+super+y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0030",
+   "args": [
+    "\u001b[1;66:1D",
+    "alt+4"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0031",
+   "args": [
+    "\u001b[1;1:3H",
+    "home"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0032",
+   "args": [
+    "\u001b[1;6H",
+    "ctrl+]"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0033",
+   "args": [
+    "\u001b[1;9:3H",
+    "super+home"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0034",
+   "args": [
+    "\u001b[1;17:2H",
+    "super+alt+ctrl+!"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0035",
+   "args": [
+    "\u001b[1;129:3H",
+    "home"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0036",
+   "args": [
+    "\u001b[1;4:3F",
+    "shift+alt+end"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0037",
+   "args": [
+    "\u001b[1;8:1F",
+    "shift+alt+super+}"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0038",
+   "args": [
+    "\u001b[1;13F",
+    "super+ctrl+end"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0039",
+   "args": [
+    "\u001b[1;65F",
+    "super+alt+shift+ctrl+f5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0040",
+   "args": [
+    "\u001b[1;5:3E",
+    "alt+super+escape"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0041",
+   "args": [
+    "\u001b[1;34:3E",
+    "shift+end"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0042",
+   "args": [
+    "\u001b[1;5:3P",
+    "alt+d"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0043",
+   "args": [
+    "\u001b[1;34:3P",
+    "shift+super+n"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0044",
+   "args": [
+    "\u001b[1;5:3Q",
+    "super+shift+ctrl+x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0045",
+   "args": [
+    "\u001b[1;34:3Q",
+    "ctrl+8"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0046",
+   "args": [
+    "\u001b[1;5:3R",
+    "shift+ctrl+,"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0047",
+   "args": [
+    "\u001b[1;34:3R",
+    "super+ctrl+*"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0048",
+   "args": [
+    "\u001b[1;5:3S",
+    "ctrl+shift+super+<"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0049",
+   "args": [
+    "\u001b[1;34:3S",
+    "f8"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0050",
+   "args": [
+    "\u001b[1;6:1Z",
+    "alt+shift+space"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0051",
+   "args": [
+    "\u001b[1;66:1Z",
+    "alt+super+down"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0052",
+   "args": [
+    "\u001b[1;6a",
+    "shift+super+h"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0053",
+   "args": [
+    "\u001b[1;66a",
+    "ctrl+shift+alt+super+r"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0054",
+   "args": [
+    "\u001b[1;5:3b",
+    "ctrl+alt+super+1"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0055",
+   "args": [
+    "\u001b[1;34:3b",
+    "shift+ctrl+="
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0056",
+   "args": [
+    "\u001b[1;5:2c",
+    "@"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0057",
+   "args": [
+    "\u001b[1;34:2c",
+    "ctrl+shift+alt++"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0058",
+   "args": [
+    "\u001b[1;5:1d",
+    "ctrl+alt+f1"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0059",
+   "args": [
+    "\u001b[1;34:1d",
+    "super+shift+f11"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0060",
+   "args": [
+    "\u001b[1;5e",
+    "alt+shift+ctrl+insert"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0061",
+   "args": [
+    "\u001b[1;34e",
+    "ctrl+alt+super+a"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0062",
+   "args": [
+    "\u001b[1;6:1~",
+    "super+alt+shift+k"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0063",
+   "args": [
+    "\u001b[1;2:1^",
+    "alt+ctrl+v"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0064",
+   "args": [
+    "\u001b[1;6:3@",
+    "ctrl+shift+super+5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0065",
+   "args": [
+    "\u001b[2;6~",
+    "ctrl+shift+insert"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0066",
+   "args": [
+    "\u001b[2;6:1$",
+    "super+shift+,"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0067",
+   "args": [
+    "\u001b[2;2@",
+    "alt+super+*"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0068",
+   "args": [
+    "\u001b[3;3~",
+    "ctrl+super+}"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0069",
+   "args": [
+    "\u001b[3;1:2$",
+    "super+shift+ctrl+\""
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0070",
+   "args": [
+    "\u001b[3;5:3^",
+    "ctrl+alt+super+f10"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0071",
+   "args": [
+    "\u001b[4;1:2~",
+    "shift+alt+super+delete"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0072",
+   "args": [
+    "\u001b[4;6$",
+    "ctrl+alt+a"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0073",
+   "args": [
+    "\u001b[4;2@",
+    "super+shift+k"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0074",
+   "args": [
+    "\u001b[5;3~",
+    "alt+pageUp"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0075",
+   "args": [
+    "\u001b[5;1:1$",
+    "shift+alt+x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0076",
+   "args": [
+    "\u001b[5;5:2^",
+    "alt+shift+ctrl+7"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0077",
+   "args": [
+    "\u001b[6;1~",
+    "pageDown"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0078",
+   "args": [
+    "\u001b[6;6:2~",
+    "ctrl+shift+alt+super+!"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0079",
+   "args": [
+    "\u001b[6^",
+    "ctrl+alt+)"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0080",
+   "args": [
+    "\u001b[6;5@",
+    "super+shift+?"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0081",
+   "args": [
+    "\u001b[7;5~",
+    "alt+shift+f6"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0082",
+   "args": [
+    "\u001b[7;3:2$",
+    "shift+super+f12"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0083",
+   "args": [
+    "\u001b[7;9:3^",
+    "ctrl+shift+super+clear"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0084",
+   "args": [
+    "\u001b[8;2:1~",
+    "shift+end"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0085",
+   "args": [
+    "\u001b[8;9:3~",
+    "super+end"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0086",
+   "args": [
+    "\u001b[8;3^",
+    "alt+super+o"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0087",
+   "args": [
+    "\u001b[8;9:2@",
+    "shift+z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0088",
+   "args": [
+    "\u001b[11;3:1$",
+    "alt+9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0089",
+   "args": [
+    "\u001b[11;9:3^",
+    "shift+super+."
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0090",
+   "args": [
+    "\u001b[12;3:2~",
+    "super+shift+ctrl+("
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0091",
+   "args": [
+    "\u001b[12^",
+    "ctrl+?"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0092",
+   "args": [
+    "\u001b[12;5@",
+    "alt+shift+ctrl+f9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0093",
+   "args": [
+    "\u001b[[13$",
+    "ctrl+super+backspace"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0094",
+   "args": [
+    "\u001b[13;5:1^",
+    "shift+alt+super+left"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0095",
+   "args": [
+    "\u001b[14;1~",
+    "super+alt+shift+ctrl+i"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0096",
+   "args": [
+    "\u001b[14;5:2$",
+    "alt+shift+t"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0097",
+   "args": [
+    "\u001b[14;1:2@",
+    "alt+super+3"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0098",
+   "args": [
+    "\u001b[15;5:3~",
+    "super+alt+ctrl+["
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0099",
+   "args": [
+    "\u001b[15;1:3^",
+    "alt+$"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0100",
+   "args": [
+    "\u001b[15;6:1@",
+    "shift+super+~"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0101",
+   "args": [
+    "\u001b[17;2$",
+    "super+shift+ctrl+f3"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0102",
+   "args": [
+    "\u001b[17;6:2^",
+    "esc"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0103",
+   "args": [
+    "\u001b[18;2:1~",
+    "ctrl+shift+end"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0104",
+   "args": [
+    "\u001b[18;6:3$",
+    "ctrl+super+d"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0105",
+   "args": [
+    "\u001b[18;2:3@",
+    "shift+alt+super+n"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0106",
+   "args": [
+    "\u001b[19;9~",
+    "super+alt+shift+ctrl+x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0107",
+   "args": [
+    "\u001b[19;3^",
+    "alt+shift+8"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0108",
+   "args": [
+    "\u001b[19;9:2@",
+    "alt+super+,"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0109",
+   "args": [
+    "\u001b[20;3:1$",
+    "super+alt+ctrl+*"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0110",
+   "args": [
+    "\u001b[20;9:3^",
+    "alt+>"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0111",
+   "args": [
+    "\u001b[21;3:2~",
+    "shift+alt+f8"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0112",
+   "args": [
+    "\u001b[21^",
+    "ctrl+shift+super+space"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0113",
+   "args": [
+    "\u001b[21;5@",
+    "left"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0114",
+   "args": [
+    "\u001b[[23$",
+    "ctrl+shift+i"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0115",
+   "args": [
+    "\u001b[23;5:1^",
+    "ctrl+super+s"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0116",
+   "args": [
+    "\u001b[24;1~",
+    "super+shift+2"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0117",
+   "args": [
+    "\u001b[24;5:2$",
+    "super+alt+shift+ctrl+="
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0118",
+   "args": [
+    "\u001b[24;1:2@",
+    "alt+shift+#"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0119",
+   "args": [
+    "\u001b[29;6~",
+    "alt+super+|"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0120",
+   "args": [
+    "\u001b[29;2^",
+    "shift+f3"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0121",
+   "args": [
+    "\u001b[29;6:2@",
+    "alt+shift+ctrl+escape"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0122",
+   "args": [
+    "\u001b[57427;2:2$",
+    "ctrl+alt+super+home"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0123",
+   "args": [
+    "\u001b[57427;9^",
+    "shift+ctrl+d"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0124",
+   "args": [
+    "\u001b[97;1:4u",
+    "a"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0125",
+   "args": [
+    "\u001b[97;7u",
+    "ctrl+shift+q"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0126",
+   "args": [
+    "\u001b[97;10:3u",
+    "super+alt+t"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0127",
+   "args": [
+    "\u001b[27;66;97~",
+    "alt+z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0128",
+   "args": [
+    "\u001b[97:97:99;1:3u",
+    "a"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0129",
+   "args": [
+    "\u001b[97:;2u",
+    "ctrl+9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0130",
+   "args": [
+    "\u001b[98;4:1u",
+    "shift+alt+b"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0131",
+   "args": [
+    "\u001b[98;8u",
+    "ctrl+shift+alt+b"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0132",
+   "args": [
+    "\u001b[98;13:1u",
+    "ctrl+super+b"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0133",
+   "args": [
+    "\u001b[98;129u",
+    "super+&"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0134",
+   "args": [
+    "\u001b[98:33;65u",
+    "ctrl+shift++"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0135",
+   "args": [
+    "\u001b[27;1;99~",
+    "c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0136",
+   "args": [
+    "\u001b[99;6u",
+    "ctrl+shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0137",
+   "args": [
+    "\u001b[99;10:1u",
+    "shift+super+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0138",
+   "args": [
+    "\u001b[99;34u",
+    "ctrl+alt+f8"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0139",
+   "args": [
+    "\u001b[99:65;65u",
+    "alt+shift+ctrl+esc"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0140",
+   "args": [
+    "\u001b[99:1103:1076;6u",
+    "ctrl+shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0141",
+   "args": [
+    "\u001b[27;3;100~",
+    "alt+d"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0142",
+   "args": [
+    "\u001b[100;7:2u",
+    "alt+ctrl+d"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0143",
+   "args": [
+    "\u001b[27;11;100~",
+    "super+alt+d"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0144",
+   "args": [
+    "\u001b[100;130:3u",
+    "shift+d"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0145",
+   "args": [
+    "\u001b[100:33:99;2u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0146",
+   "args": [
+    "\u001b[100:;65u",
+    "d"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0147",
+   "args": [
+    "\u001b[101;4:3u",
+    "ctrl+alt+u"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0148",
+   "args": [
+    "\u001b[27;9;101~",
+    "super+e"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0149",
+   "args": [
+    "\u001b[101;13:3u",
+    "ctrl+super+1"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0150",
+   "args": [
+    "\u001b[101:65:99;2u",
+    "shift+e"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0151",
+   "args": [
+    "\u001b[101:0:99;1:3u",
+    "e"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0152",
+   "args": [
+    "\u001b[102;1:4u",
+    "f"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0153",
+   "args": [
+    "\u001b[102;7u",
+    "alt+super+!"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0154",
+   "args": [
+    "\u001b[102;10:3u",
+    "alt+shift+%"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0155",
+   "args": [
+    "\u001b[27;66;102~",
+    "ctrl+alt+super+)"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0156",
+   "args": [
+    "\u001b[102:97:99;1:3u",
+    "f"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0157",
+   "args": [
+    "\u001b[102:;2u",
+    "ctrl+shift+super+?"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0158",
+   "args": [
+    "\u001b[103;4:1u",
+    "shift+alt+g"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0159",
+   "args": [
+    "\u001b[103;8u",
+    "ctrl+shift+alt+g"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0160",
+   "args": [
+    "\u001b[103;13:1u",
+    "ctrl+super+g"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0161",
+   "args": [
+    "\u001b[103;129u",
+    "space"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0162",
+   "args": [
+    "\u001b[103:33;65u",
+    "super+shift+ctrl+clear"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0163",
+   "args": [
+    "\u001b[27;1;104~",
+    "h"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0164",
+   "args": [
+    "\u001b[104;6u",
+    "ctrl+shift+h"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0165",
+   "args": [
+    "\u001b[104;10:1u",
+    "shift+super+h"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0166",
+   "args": [
+    "\u001b[104;34u",
+    "ctrl+alt+super+i"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0167",
+   "args": [
+    "\u001b[104:65;65u",
+    "p"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0168",
+   "args": [
+    "\u001b[104:1103:1076;6u",
+    "ctrl+shift+h"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0169",
+   "args": [
+    "\u001b[27;3;105~",
+    "alt+i"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0170",
+   "args": [
+    "\u001b[105;7:2u",
+    "alt+ctrl+i"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0171",
+   "args": [
+    "\u001b[27;11;105~",
+    "super+alt+i"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0172",
+   "args": [
+    "\u001b[105;130:3u",
+    "shift+i"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0173",
+   "args": [
+    "\u001b[105:33:99;2u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0174",
+   "args": [
+    "\u001b[105:;65u",
+    "i"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0175",
+   "args": [
+    "\u001b[106;4:3u",
+    "super+alt+ctrl+%"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0176",
+   "args": [
+    "\u001b[27;9;106~",
+    "super+j"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0177",
+   "args": [
+    "\u001b[106;13:3u",
+    "shift+|"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0178",
+   "args": [
+    "\u001b[106:65:99;2u",
+    "shift+j"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0179",
+   "args": [
+    "\u001b[106:0:99;1:3u",
+    "j"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0180",
+   "args": [
+    "\u001b[107;1:4u",
+    "k"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0181",
+   "args": [
+    "\u001b[107;7u",
+    "shift+alt+f12"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0182",
+   "args": [
+    "\u001b[107;10:3u",
+    "super+alt+shift+enter"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0183",
+   "args": [
+    "\u001b[27;66;107~",
+    "alt+shift+insert"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0184",
+   "args": [
+    "\u001b[107:97:99;1:3u",
+    "k"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0185",
+   "args": [
+    "\u001b[107:;2u",
+    "alt+a"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0186",
+   "args": [
+    "\u001b[108;4:1u",
+    "shift+alt+l"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0187",
+   "args": [
+    "\u001b[108;8u",
+    "ctrl+shift+alt+l"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0188",
+   "args": [
+    "\u001b[108;13:1u",
+    "ctrl+super+l"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0189",
+   "args": [
+    "\u001b[108;129u",
+    "super+shift+s"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0190",
+   "args": [
+    "\u001b[108:33;65u",
+    "alt+ctrl+x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0191",
+   "args": [
+    "\u001b[27;1;109~",
+    "m"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0192",
+   "args": [
+    "\u001b[109;6u",
+    "ctrl+shift+m"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0193",
+   "args": [
+    "\u001b[109;10:1u",
+    "shift+super+m"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0194",
+   "args": [
+    "\u001b[109;34u",
+    "ctrl+shift+alt+]"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0195",
+   "args": [
+    "\u001b[109:65;65u",
+    "super+shift+/"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0196",
+   "args": [
+    "\u001b[109:1103:1076;6u",
+    "ctrl+shift+m"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0197",
+   "args": [
+    "\u001b[27;3;110~",
+    "alt+n"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0198",
+   "args": [
+    "\u001b[110;7:2u",
+    "alt+ctrl+n"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0199",
+   "args": [
+    "\u001b[27;11;110~",
+    "super+alt+n"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0200",
+   "args": [
+    "\u001b[110;130:3u",
+    "shift+n"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0201",
+   "args": [
+    "\u001b[110:33:99;2u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0202",
+   "args": [
+    "\u001b[110:;65u",
+    "n"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0203",
+   "args": [
+    "\u001b[111;4:3u",
+    "ctrl+shift+alt+return"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0204",
+   "args": [
+    "\u001b[27;9;111~",
+    "super+o"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0205",
+   "args": [
+    "\u001b[111;13:3u",
+    "ctrl+shift+super+home"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0206",
+   "args": [
+    "\u001b[111:65:99;2u",
+    "shift+o"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0207",
+   "args": [
+    "\u001b[111:0:99;1:3u",
+    "o"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0208",
+   "args": [
+    "\u001b[112;1:4u",
+    "p"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0209",
+   "args": [
+    "\u001b[112;7u",
+    "shift+alt+super+m"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0210",
+   "args": [
+    "\u001b[112;10:3u",
+    "ctrl+super+q"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0211",
+   "args": [
+    "\u001b[27;66;112~",
+    "ctrl+shift+alt+super+v"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0212",
+   "args": [
+    "\u001b[112:97:99;1:3u",
+    "p"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0213",
+   "args": [
+    "\u001b[112:;2u",
+    "ctrl+alt+super+5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0214",
+   "args": [
+    "\u001b[113;4:1u",
+    "shift+alt+q"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0215",
+   "args": [
+    "\u001b[113;8u",
+    "ctrl+shift+alt+q"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0216",
+   "args": [
+    "\u001b[113;13:1u",
+    "ctrl+super+q"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0217",
+   "args": [
+    "\u001b[113;129u",
+    "alt+$"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0218",
+   "args": [
+    "\u001b[113:33;65u",
+    "shift+alt+super+*"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0219",
+   "args": [
+    "\u001b[27;1;114~",
+    "r"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0220",
+   "args": [
+    "\u001b[114;6u",
+    "ctrl+shift+r"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0221",
+   "args": [
+    "\u001b[114;10:1u",
+    "shift+super+r"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0222",
+   "args": [
+    "\u001b[114;34u",
+    "super+alt+shift+ctrl+f4"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0223",
+   "args": [
+    "\u001b[114:65;65u",
+    "alt+f11"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0224",
+   "args": [
+    "\u001b[114:1103:1076;6u",
+    "ctrl+shift+r"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0225",
+   "args": [
+    "\u001b[27;3;115~",
+    "alt+s"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0226",
+   "args": [
+    "\u001b[115;7:2u",
+    "alt+ctrl+s"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0227",
+   "args": [
+    "\u001b[27;11;115~",
+    "super+alt+s"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0228",
+   "args": [
+    "\u001b[115;130:3u",
+    "shift+s"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0229",
+   "args": [
+    "\u001b[115:33:99;2u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0230",
+   "args": [
+    "\u001b[115:;65u",
+    "s"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0231",
+   "args": [
+    "\u001b[116;4:3u",
+    "super+alt+shift+ctrl+q"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0232",
+   "args": [
+    "\u001b[27;9;116~",
+    "super+t"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0233",
+   "args": [
+    "\u001b[116;13:3u",
+    "ctrl+alt+y"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0234",
+   "args": [
+    "\u001b[116:65:99;2u",
+    "shift+t"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0235",
+   "args": [
+    "\u001b[116:0:99;1:3u",
+    "t"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0236",
+   "args": [
+    "\u001b[117;1:4u",
+    "u"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0237",
+   "args": [
+    "\u001b[117;7u",
+    "super+,"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0238",
+   "args": [
+    "\u001b[117;10:3u",
+    "shift+@"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0239",
+   "args": [
+    "\u001b[27;66;117~",
+    "super+ctrl+&"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0240",
+   "args": [
+    "\u001b[117:97:99;1:3u",
+    "u"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0241",
+   "args": [
+    "\u001b[117:;2u",
+    "ctrl+shift+alt+:"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0242",
+   "args": [
+    "\u001b[118;4:1u",
+    "shift+alt+v"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0243",
+   "args": [
+    "\u001b[118;8u",
+    "ctrl+shift+alt+v"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0244",
+   "args": [
+    "\u001b[118;13:1u",
+    "ctrl+super+v"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0245",
+   "args": [
+    "\u001b[118;129u",
+    "super+alt+esc"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0246",
+   "args": [
+    "\u001b[118:33;65u",
+    "alt+shift+ctrl+backspace"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0247",
+   "args": [
+    "\u001b[27;1;119~",
+    "w"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0248",
+   "args": [
+    "\u001b[119;6u",
+    "ctrl+shift+w"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0249",
+   "args": [
+    "\u001b[119;10:1u",
+    "shift+super+w"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0250",
+   "args": [
+    "\u001b[119;34u",
+    "super+ctrl+f"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0251",
+   "args": [
+    "\u001b[119:65;65u",
+    "super+alt+l"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0252",
+   "args": [
+    "\u001b[119:1103:1076;6u",
+    "ctrl+shift+w"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0253",
+   "args": [
+    "\u001b[27;3;120~",
+    "alt+x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0254",
+   "args": [
+    "\u001b[120;7:2u",
+    "alt+ctrl+x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0255",
+   "args": [
+    "\u001b[27;11;120~",
+    "super+alt+x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0256",
+   "args": [
+    "\u001b[120;130:3u",
+    "shift+x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0257",
+   "args": [
+    "\u001b[120:33:99;2u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0258",
+   "args": [
+    "\u001b[120:;65u",
+    "x"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0259",
+   "args": [
+    "\u001b[121;4:3u",
+    "shift+super+@"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0260",
+   "args": [
+    "\u001b[27;9;121~",
+    "super+y"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0261",
+   "args": [
+    "\u001b[121;13:3u",
+    "super+alt+ctrl+("
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0262",
+   "args": [
+    "\u001b[121:65:99;2u",
+    "shift+y"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0263",
+   "args": [
+    "\u001b[121:0:99;1:3u",
+    "y"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0264",
+   "args": [
+    "\u001b[122;1:4u",
+    "z"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0265",
+   "args": [
+    "\u001b[122;7u",
+    "ctrl+f9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0266",
+   "args": [
+    "\u001b[122;10:3u",
+    "super+shift+ctrl+f12"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0267",
+   "args": [
+    "\u001b[27;66;122~",
+    "shift+space"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0268",
+   "args": [
+    "\u001b[122:97:99;1:3u",
+    "z"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0269",
+   "args": [
+    "\u001b[122:;2u",
+    "ctrl+shift+alt+super+up"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0270",
+   "args": [
+    "\u001b[48;4:1u",
+    "shift+alt+0"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0271",
+   "args": [
+    "\u001b[48;8u",
+    "ctrl+shift+alt+0"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0272",
+   "args": [
+    "\u001b[48;13:1u",
+    "ctrl+super+0"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0273",
+   "args": [
+    "\u001b[48;129u",
+    "alt+shift+p"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0274",
+   "args": [
+    "\u001b[48:33:1076;6u",
+    "shift+ctrl+0"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0275",
+   "args": [
+    "\u001b[48::1076;6u",
+    "ctrl+shift+alt+x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0276",
+   "args": [
+    "\u001b[49;4:1u",
+    "ctrl+alt+super+1"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0277",
+   "args": [
+    "\u001b[49;8u",
+    "alt+shift+ctrl+5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0278",
+   "args": [
+    "\u001b[49;13:1u",
+    "ctrl+9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0279",
+   "args": [
+    "\u001b[49u",
+    "1"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0280",
+   "args": [
+    "\u001b[49:33:99;1:3u",
+    "c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0281",
+   "args": [
+    "\u001b[49::99;1:3u",
+    "1"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0282",
+   "args": [
+    "\u001b[50;4:2u",
+    "alt+shift+2"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0283",
+   "args": [
+    "\u001b[27;8;50~",
+    "alt+shift+ctrl+2"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0284",
+   "args": [
+    "\u001b[50;13:2u",
+    "super+ctrl+2"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0285",
+   "args": [
+    "\u001b[50::51u",
+    "2"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0286",
+   "args": [
+    "\u001b[50:33:99;1:3u",
+    "super+shift+f4"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0287",
+   "args": [
+    "\u001b[50:;65u",
+    "2"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0288",
+   "args": [
+    "\u001b[51;4:3u",
+    "shift+alt+3"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0289",
+   "args": [
+    "\u001b[51;9u",
+    "super+3"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0290",
+   "args": [
+    "\u001b[51;13:3u",
+    "ctrl+super+3"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0291",
+   "args": [
+    "\u001b[51::52u",
+    "shift+alt+super+pageDown"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0292",
+   "args": [
+    "\u001b[51:33;65u",
+    "super+alt+right"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0293",
+   "args": [
+    "\u001b[51::99;5u",
+    "ctrl+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0294",
+   "args": [
+    "\u001b[52;4:3u",
+    "ctrl+i"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0295",
+   "args": [
+    "\u001b[27;9;52~",
+    "super+4"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0296",
+   "args": [
+    "\u001b[52;13:3u",
+    "shift+alt+p"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0297",
+   "args": [
+    "\u001b[52:65;2u",
+    "ctrl+w"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0298",
+   "args": [
+    "\u001b[52:0;2u",
+    "ctrl+shift+alt+super+z"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0299",
+   "args": [
+    "\u001b[52::99;5u",
+    "super+alt+ctrl+3"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0300",
+   "args": [
+    "\u001b[53;4:4u",
+    "alt+shift+5"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0301",
+   "args": [
+    "\u001b[53;10u",
+    "shift+super+5"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0302",
+   "args": [
+    "\u001b[53;13:4u",
+    "super+ctrl+5"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0303",
+   "args": [
+    "\u001b[53:65:99;2u",
+    "shift+5"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0304",
+   "args": [
+    "\u001b[53:0:99;2u",
+    "shift+5"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0305",
+   "args": [
+    "\u001b[53:97:98;2:2u",
+    "shift+5"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0306",
+   "args": [
+    "\u001b[54;5u",
+    "ctrl+6"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0307",
+   "args": [
+    "\u001b[54;10u",
+    "ctrl+<"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0308",
+   "args": [
+    "\u001b[54;17u",
+    "super+shift+ctrl+\""
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0309",
+   "args": [
+    "\u001b[54:65:1076;6u",
+    "ctrl+shift+6"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0310",
+   "args": [
+    "\u001b[54:0:1076;6u",
+    "ctrl+shift+6"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0311",
+   "args": [
+    "\u001b[55;1u",
+    "7"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0312",
+   "args": [
+    "\u001b[27;5;55~",
+    "ctrl+7"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0313",
+   "args": [
+    "\u001b[27;10;55~",
+    "super+shift+7"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0314",
+   "args": [
+    "\u001b[55;18u",
+    "shift+up"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0315",
+   "args": [
+    "\u001b[55:65:1076;6u",
+    "shift+alt+c"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0316",
+   "args": [
+    "\u001b[55:0:1076;6u",
+    "alt+g"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0317",
+   "args": [
+    "\u001b[27;1;56~",
+    "8"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0318",
+   "args": [
+    "\u001b[56;6u",
+    "ctrl+shift+8"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0319",
+   "args": [
+    "\u001b[56;10:1u",
+    "shift+super+8"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0320",
+   "args": [
+    "\u001b[56;34u",
+    "super+ctrl+w"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0321",
+   "args": [
+    "\u001b[56:65:99;1:3u",
+    "8"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0322",
+   "args": [
+    "\u001b[56:0:99;1:3u",
+    "8"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0323",
+   "args": [
+    "\u001b[57;1:1u",
+    "9"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0324",
+   "args": [
+    "\u001b[57;6u",
+    "super+shift+ctrl+]"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0325",
+   "args": [
+    "\u001b[57;10:1u",
+    "shift+alt+,"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0326",
+   "args": [
+    "\u001b[57;34:1u",
+    "super+alt+shift+ctrl+@"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0327",
+   "args": [
+    "\u001b[57:65;65u",
+    "9"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0328",
+   "args": [
+    "\u001b[57:0;65u",
+    "9"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0329",
+   "args": [
+    "\u001b[32;1:2u",
+    "space"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0330",
+   "args": [
+    "\u001b[27;6;32~",
+    "shift+ctrl+space"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0331",
+   "args": [
+    "\u001b[32;10:2u",
+    "super+shift+space"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0332",
+   "args": [
+    "\u001b[32;34:3u",
+    "alt+shift+ctrl+f8"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0333",
+   "args": [
+    "\u001b[32:97;2u",
+    "shift+space"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0334",
+   "args": [
+    "\u001b[32:1103;2u",
+    "shift+space"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0335",
+   "args": [
+    "\u001b[9;1:3u",
+    "shift+alt+super+insert"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0336",
+   "args": [
+    "\u001b[9;7u",
+    "alt+ctrl+tab"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0337",
+   "args": [
+    "\u001b[9;10:3u",
+    "super+shift+tab"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0338",
+   "args": [
+    "\u001b[9;66u",
+    "super+alt+ctrl+d"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0339",
+   "args": [
+    "\u001b[9:97:99;2u",
+    "j"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0340",
+   "args": [
+    "\u001b[9:1103:99;2u",
+    "super+alt+shift+m"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0341",
+   "args": [
+    "\u001b[13;1:3u",
+    "ctrl+alt+super+q"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0342",
+   "args": [
+    "\u001b[13;6u",
+    "ctrl+shift+enter"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0343",
+   "args": [
+    "\u001b[27;10;13~",
+    "super+shift+enter"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0344",
+   "args": [
+    "\u001b[13;18u",
+    "super+shift+ctrl+1"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0345",
+   "args": [
+    "\u001b[13::14u",
+    "return"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0346",
+   "args": [
+    "\u001b[13:33:1076;6u",
+    "ctrl+super+`"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0347",
+   "args": [
+    "\u001b[13::99;2u",
+    "shift+enter"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0348",
+   "args": [
+    "\u001b[27;4u",
+    "alt+ctrl+,"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0349",
+   "args": [
+    "\u001b[27;34:1u",
+    "ctrl+shift+super+*"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0350",
+   "args": [
+    "\u001b[27:97:99;1:3u",
+    "escape"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0351",
+   "args": [
+    "\u001b[27::99;2u",
+    "shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0352",
+   "args": [
+    "\u001b[127;4:1u",
+    "alt+shift+backspace"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0353",
+   "args": [
+    "\u001b[127;8u",
+    "alt+shift+ctrl+backspace"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0354",
+   "args": [
+    "\u001b[127;13:1u",
+    "super+ctrl+backspace"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0355",
+   "args": [
+    "\u001b[27;129;127~",
+    "alt+shift+ctrl+tab"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0356",
+   "args": [
+    "\u001b[127:33:99;1:3u",
+    "backspace"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0357",
+   "args": [
+    "\u001b[127::99;1:3u",
+    "c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0358",
+   "args": [
+    "\u001b[8;10u",
+    "alt+ctrl+d"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0359",
+   "args": [
+    "\u001b[8:65:99;2u",
+    "shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0360",
+   "args": [
+    "\u001b[8::1076;6u",
+    "ctrl+shift+u"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0361",
+   "args": [
+    "\u001b[0;10:1u",
+    "alt+super+3"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0362",
+   "args": [
+    "\u001b[0:65:99;1:3u",
+    "c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0363",
+   "args": [
+    "\u001b[0:;65u",
+    "shift+super+/"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0364",
+   "args": [
+    "\u001b[31;10:4u",
+    "alt+shift+ctrl+)"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0365",
+   "args": [
+    "\u001b[31:65;65u",
+    "?"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0366",
+   "args": [
+    "\u001b[31::99;5u",
+    "super+alt+f5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0367",
+   "args": [
+    "\u001b[64;4:4u",
+    "alt+shift+@"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0368",
+   "args": [
+    "\u001b[64;10u",
+    "shift+super+@"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0369",
+   "args": [
+    "\u001b[64;13:4u",
+    "super+ctrl+@"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0370",
+   "args": [
+    "\u001b[64:65:1076;6u",
+    "ctrl+shift+@"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0371",
+   "args": [
+    "\u001b[64:0;65u",
+    "@"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0372",
+   "args": [
+    "\u001b[65;4u",
+    "shift+alt+a"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0373",
+   "args": [
+    "\u001b[65;10u",
+    "shift+super+a"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0374",
+   "args": [
+    "\u001b[65;130u",
+    "super+shift+ctrl+p"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0375",
+   "args": [
+    "\u001b[65:33:99;2u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0376",
+   "args": [
+    "\u001b[65:97:98;2:2u",
+    "shift+a"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0377",
+   "args": [
+    "\u001b[90;7u",
+    "alt+ctrl+6"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0378",
+   "args": [
+    "\u001b[90;17u",
+    "ctrl+super+="
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0379",
+   "args": [
+    "\u001b[90:65;65u",
+    "super+alt+."
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0380",
+   "args": [
+    "\u001b[90:1103:99;1:3u",
+    "c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0381",
+   "args": [
+    "\u001b[27;4;96~",
+    "shift+alt+`"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0382",
+   "args": [
+    "\u001b[96;7:4u",
+    "ctrl+alt+`"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0383",
+   "args": [
+    "\u001b[27;13;96~",
+    "ctrl+super+`"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0384",
+   "args": [
+    "\u001b[96;65u",
+    "shift+f2"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0385",
+   "args": [
+    "\u001b[96:33:99;1:3u",
+    "`"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0386",
+   "args": [
+    "\u001b[96:97:98;2:2u",
+    "super+shift+ctrl+f11"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0387",
+   "args": [
+    "\u001b[123;5u",
+    "ctrl+{"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0388",
+   "args": [
+    "\u001b[123;10u",
+    "super+shift+ctrl+backspace"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0389",
+   "args": [
+    "\u001b[123;17u",
+    "shift+alt+home"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0390",
+   "args": [
+    "\u001b[123:65:1076;6u",
+    "ctrl+right"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0391",
+   "args": [
+    "\u001b[123:1103;2u",
+    "shift+{"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0392",
+   "args": [
+    "\u001b[27;2;126~",
+    "~"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0393",
+   "args": [
+    "\u001b[27;7;126~",
+    "alt+ctrl+m"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0394",
+   "args": [
+    "\u001b[126;10:4u",
+    "super+alt+shift+p"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0395",
+   "args": [
+    "\u001b[27;130;126~",
+    "super+shift+v"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0396",
+   "args": [
+    "\u001b[126:97;65u",
+    "ctrl+alt+super+0"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0397",
+   "args": [
+    "\u001b[126::1076;6u",
+    "ctrl+shift+~"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0398",
+   "args": [
+    "\u001b[33;4:1u",
+    "shift+alt+super+9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0399",
+   "args": [
+    "\u001b[33;8u",
+    "ctrl+super+["
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0400",
+   "args": [
+    "\u001b[33;13:1u",
+    "ctrl+shift+'"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0401",
+   "args": [
+    "\u001b[33u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0402",
+   "args": [
+    "\u001b[33:0;2u",
+    "alt+ctrl+*"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0403",
+   "args": [
+    "\u001b[35;1:1u",
+    "#"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0404",
+   "args": [
+    "\u001b[35;6u",
+    "shift+ctrl+#"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0405",
+   "args": [
+    "\u001b[35;10:1u",
+    "super+shift+#"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0406",
+   "args": [
+    "\u001b[27;34;35~",
+    "ctrl+shift+alt+f4"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0407",
+   "args": [
+    "\u001b[35:97;2u",
+    "shift+#"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0408",
+   "args": [
+    "\u001b[35:1103:1076;6u",
+    "shift+ctrl+#"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0409",
+   "args": [
+    "\u001b[27;3;38~",
+    "alt+&"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0410",
+   "args": [
+    "\u001b[38;7:2u",
+    "alt+ctrl+&"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0411",
+   "args": [
+    "\u001b[27;11;38~",
+    "super+alt+&"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0412",
+   "args": [
+    "\u001b[38;130:3u",
+    "shift+&"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0413",
+   "args": [
+    "\u001b[38:33:99;2u",
+    "shift+&"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0414",
+   "args": [
+    "\u001b[38:;65u",
+    "&"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0415",
+   "args": [
+    "\u001b[42;4:3u",
+    "alt+shift+*"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0416",
+   "args": [
+    "\u001b[42;9u",
+    "super+alt+t"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0417",
+   "args": [
+    "\u001b[42;13:3u",
+    "super+ctrl+*"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0418",
+   "args": [
+    "\u001b[42:65;2u",
+    "ctrl+shift+4"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0419",
+   "args": [
+    "\u001b[42:0:1076;6u",
+    "super+ctrl+8"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0420",
+   "args": [
+    "\u001b[43;1:3u",
+    "super+["
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0421",
+   "args": [
+    "\u001b[43;7u",
+    "ctrl+alt++"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0422",
+   "args": [
+    "\u001b[43;10:3u",
+    "shift+super++"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0423",
+   "args": [
+    "\u001b[43;66u",
+    "shift++"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0424",
+   "args": [
+    "\u001b[43:97:1076;6u",
+    "shift+ctrl++"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0425",
+   "args": [
+    "\u001b[43:1103;65u",
+    "alt+ctrl+}"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0426",
+   "args": [
+    "\u001b[27;4;44~",
+    "alt+shift+,"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0427",
+   "args": [
+    "\u001b[44;7:4u",
+    "alt+ctrl+,"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0428",
+   "args": [
+    "\u001b[27;13;44~",
+    "super+ctrl+,"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0429",
+   "args": [
+    "\u001b[27;65;44~",
+    "ctrl+shift+super+escape"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0430",
+   "args": [
+    "\u001b[44:33:99;1:3u",
+    "shift+alt+space"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0431",
+   "args": [
+    "\u001b[45;1u",
+    "-"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0432",
+   "args": [
+    "\u001b[27;5;45~",
+    "ctrl+-"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0433",
+   "args": [
+    "\u001b[27;10;45~",
+    "super+shift+-"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0434",
+   "args": [
+    "\u001b[45;18u",
+    "shift+ctrl+e"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0435",
+   "args": [
+    "\u001b[45:65:99;1:3u",
+    "ctrl+shift+super+k"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0436",
+   "args": [
+    "\u001b[45:1103:99;2u",
+    "shift+-"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0437",
+   "args": [
+    "\u001b[46;3u",
+    "alt+."
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0438",
+   "args": [
+    "\u001b[46;7:1u",
+    "shift+alt+super+x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0439",
+   "args": [
+    "\u001b[46;11u",
+    "ctrl+super+1"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0440",
+   "args": [
+    "\u001b[46;130:2u",
+    "shift+."
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0441",
+   "args": [
+    "\u001b[46:33;2u",
+    "ctrl+shift+alt+="
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0442",
+   "args": [
+    "\u001b[46::99;1:3u",
+    "."
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0443",
+   "args": [
+    "\u001b[47;4:3u",
+    "shift+alt+/"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0444",
+   "args": [
+    "\u001b[47;9u",
+    "super+/"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0445",
+   "args": [
+    "\u001b[47;13:3u",
+    "ctrl+super+/"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0446",
+   "args": [
+    "\u001b[47:65;2u",
+    "shift+/"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0447",
+   "args": [
+    "\u001b[47:0:1076;6u",
+    "shift+ctrl+/"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0448",
+   "args": [
+    "\u001b[58;1:3u",
+    ":"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0449",
+   "args": [
+    "\u001b[27;6;58~",
+    "ctrl+shift+alt+super+f7"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0450",
+   "args": [
+    "\u001b[58;10:2u",
+    "shift+super+f11"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0451",
+   "args": [
+    "\u001b[58;34:4u",
+    "alt+super+return"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0452",
+   "args": [
+    "\u001b[58:97:1076;6u",
+    "ctrl+shift+:"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0453",
+   "args": [
+    "\u001b[58:1103;65u",
+    ":"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0454",
+   "args": [
+    "\u001b[27;4;59~",
+    "shift+alt+;"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0455",
+   "args": [
+    "\u001b[59;7:4u",
+    "ctrl+alt+;"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0456",
+   "args": [
+    "\u001b[27;13;59~",
+    "ctrl+super+;"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0457",
+   "args": [
+    "\u001b[59;65u",
+    "super+alt+shift+ctrl+n"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0458",
+   "args": [
+    "\u001b[59:33:99;1:3u",
+    ";"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0459",
+   "args": [
+    "\u001b[59:97:98;2:2u",
+    "shift+super+x"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0460",
+   "args": [
+    "\u001b[60;5u",
+    "ctrl+<"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0461",
+   "args": [
+    "\u001b[60;10u",
+    "super+shift+5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0462",
+   "args": [
+    "\u001b[60;17u",
+    "ctrl+alt+9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0463",
+   "args": [
+    "\u001b[60:65:1076;6u",
+    "super+alt+shift+ctrl+\\"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0464",
+   "args": [
+    "\u001b[60:1103;2u",
+    "shift+<"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0465",
+   "args": [
+    "\u001b[27;2;61~",
+    "shift+="
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0466",
+   "args": [
+    "\u001b[61;7:1u",
+    "ctrl+alt+="
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0467",
+   "args": [
+    "\u001b[61;11u",
+    "alt+super+="
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0468",
+   "args": [
+    "\u001b[61;130:1u",
+    "shift+="
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0469",
+   "args": [
+    "\u001b[61:33;2u",
+    "shift+="
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0470",
+   "args": [
+    "\u001b[61::1076;6u",
+    "shift+ctrl+="
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0471",
+   "args": [
+    "\u001b[62;4:2u",
+    "shift+alt+>"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0472",
+   "args": [
+    "\u001b[27;8;62~",
+    "ctrl+alt+>"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0473",
+   "args": [
+    "\u001b[62;13:2u",
+    "ctrl+super+>"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0474",
+   "args": [
+    "\u001b[62u",
+    "super+alt+pageUp"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0475",
+   "args": [
+    "\u001b[62:0:99;2u",
+    "shift+>"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0476",
+   "args": [
+    "\u001b[63;1:1u",
+    "shift+e"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0477",
+   "args": [
+    "\u001b[63;6u",
+    "ctrl+alt+i"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0478",
+   "args": [
+    "\u001b[63;10:1u",
+    "shift+alt+super+l"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0479",
+   "args": [
+    "\u001b[63;34:1u",
+    "super+ctrl+q"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0480",
+   "args": [
+    "\u001b[63:97;2u",
+    "ctrl+super+w"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0481",
+   "args": [
+    "\u001b[63:1103:1076;6u",
+    "super+alt+shift+0"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0482",
+   "args": [
+    "\u001b[91;4u",
+    "shift+alt+["
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0483",
+   "args": [
+    "\u001b[91;7:3u",
+    "ctrl+alt+["
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0484",
+   "args": [
+    "\u001b[91;13u",
+    "ctrl+super+["
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0485",
+   "args": [
+    "\u001b[91;130:4u",
+    "shift+["
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0486",
+   "args": [
+    "\u001b[91:33:1076;6u",
+    "ctrl+shift+["
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0487",
+   "args": [
+    "\u001b[91::99;5u",
+    "ctrl+["
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0488",
+   "args": [
+    "\u001b[92;4:4u",
+    "alt+shift+\\"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0489",
+   "args": [
+    "\u001b[92;10u",
+    "shift+super+\\"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0490",
+   "args": [
+    "\u001b[92;13:4u",
+    "super+ctrl+\\"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0491",
+   "args": [
+    "\u001b[92:65:1076;6u",
+    "ctrl+shift+\\"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0492",
+   "args": [
+    "\u001b[92:0;65u",
+    "\\"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0493",
+   "args": [
+    "\u001b[93;2u",
+    "shift+]"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0494",
+   "args": [
+    "\u001b[27;7;93~",
+    "alt+ctrl+]"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0495",
+   "args": [
+    "\u001b[93;10:4u",
+    "super+shift+]"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0496",
+   "args": [
+    "\u001b[93;130u",
+    "super+alt+ctrl+down"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0497",
+   "args": [
+    "\u001b[93:97;65u",
+    "]"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0498",
+   "args": [
+    "\u001b[93::99;2u",
+    "super+shift+ctrl+h"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0499",
+   "args": [
+    "\u001b[94;4:1u",
+    "alt+shift+^"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0500",
+   "args": [
+    "\u001b[94;8u",
+    "alt+shift+ctrl+^"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0501",
+   "args": [
+    "\u001b[94;13:1u",
+    "super+ctrl+^"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0502",
+   "args": [
+    "\u001b[27;129;94~",
+    "shift+0"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0503",
+   "args": [
+    "\u001b[94:0;2u",
+    "shift+^"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0504",
+   "args": [
+    "\u001b[27;1;95~",
+    "alt+shift+ctrl+9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0505",
+   "args": [
+    "\u001b[95;6u",
+    "ctrl+shift+_"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0506",
+   "args": [
+    "\u001b[95;10:1u",
+    "shift+super+_"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0507",
+   "args": [
+    "\u001b[95;34u",
+    "super+shift+!"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0508",
+   "args": [
+    "\u001b[95:65;65u",
+    "super+alt+ctrl+&"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0509",
+   "args": [
+    "\u001b[95:1103:1076;6u",
+    "ctrl+shift+_"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0510",
+   "args": [
+    "\u001b[27;3;39~",
+    "alt+'"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0511",
+   "args": [
+    "\u001b[39;7:2u",
+    "alt+ctrl+'"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0512",
+   "args": [
+    "\u001b[27;11;39~",
+    "super+alt+'"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0513",
+   "args": [
+    "\u001b[39;130:3u",
+    "shift+'"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0514",
+   "args": [
+    "\u001b[39:33:99;2u",
+    "!"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0515",
+   "args": [
+    "\u001b[39:;65u",
+    "'"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0516",
+   "args": [
+    "\u001b[34;10:3u",
+    "ctrl+alt+super+down"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0517",
+   "args": [
+    "\u001b[34:65:99;1:3u",
+    "ctrl+shift+alt+h"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0518",
+   "args": [
+    "\u001b[34::99;5u",
+    "ctrl+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0519",
+   "args": [
+    "\u001b[36;4:4u",
+    "shift+alt+$"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0520",
+   "args": [
+    "\u001b[27;9;36~",
+    "alt+shift+ctrl+w"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0521",
+   "args": [
+    "\u001b[36;13:4u",
+    "ctrl+super+$"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0522",
+   "args": [
+    "\u001b[36:65:99;2u",
+    "ctrl+alt+super+6"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0523",
+   "args": [
+    "\u001b[36:0:99;1:3u",
+    "alt+-"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0524",
+   "args": [
+    "\u001b[37;1:4u",
+    "ctrl+shift+;"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0525",
+   "args": [
+    "\u001b[37;7u",
+    "/"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0526",
+   "args": [
+    "\u001b[37;10:3u",
+    "ctrl+shift+super+#"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0527",
+   "args": [
+    "\u001b[27;66;37~",
+    "shift+("
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0528",
+   "args": [
+    "\u001b[37:97:99;1:3u",
+    "%"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0529",
+   "args": [
+    "\u001b[37:;2u",
+    "ctrl+shift+alt+super+<"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0530",
+   "args": [
+    "\u001b[27;4;40~",
+    "super+shift+f2"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0531",
+   "args": [
+    "\u001b[40;7:4u",
+    "ctrl+alt+f6"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0532",
+   "args": [
+    "\u001b[27;13;40~",
+    "shift+alt+super+f9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0533",
+   "args": [
+    "\u001b[40;129u",
+    "("
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0534",
+   "args": [
+    "\u001b[40:33;65u",
+    "("
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0535",
+   "args": [
+    "\u001b[41;1u",
+    "ctrl+shift+super+pageUp"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0536",
+   "args": [
+    "\u001b[27;5;41~",
+    "ctrl+)"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0537",
+   "args": [
+    "\u001b[27;10;41~",
+    "shift+super+)"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0538",
+   "args": [
+    "\u001b[41;18u",
+    "shift+super+g"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0539",
+   "args": [
+    "\u001b[41:65:99;1:3u",
+    "ctrl+n"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0540",
+   "args": [
+    "\u001b[41:1103:99;2u",
+    "shift+)"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0541",
+   "args": [
+    "\u001b[27;2;124~",
+    "ctrl+shift+alt+w"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0542",
+   "args": [
+    "\u001b[124;7:1u",
+    "alt+ctrl+|"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0543",
+   "args": [
+    "\u001b[124;11u",
+    "super+alt+|"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0544",
+   "args": [
+    "\u001b[124;130:1u",
+    "super+shift+9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0545",
+   "args": [
+    "\u001b[124:33;2u",
+    "shift+|"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0546",
+   "args": [
+    "\u001b[124::1076;6u",
+    "alt+."
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0547",
+   "args": [
+    "\u001b[27;10;233~",
+    "super+ctrl+*"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0548",
+   "args": [
+    "\u001b[233:65:1076;6u",
+    "ctrl+shift+super+<"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0549",
+   "args": [
+    "\u001b[233::99;1:3u",
+    "ctrl+shift+alt+f4"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0550",
+   "args": [
+    "\u001b[1073;10:3u",
+    "alt+esc"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0551",
+   "args": [
+    "\u001b[1073:65;65u",
+    "ctrl+end"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0552",
+   "args": [
+    "\u001b[1073::99;5u",
+    "ctrl+alt+super+right"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0553",
+   "args": [
+    "\u001b[27;11;1103~",
+    "super+alt+shift+j"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0554",
+   "args": [
+    "\u001b[1103:97:99;2u",
+    "ctrl+super+t"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0555",
+   "args": [
+    "\u001b[20013;1u",
+    "ctrl+alt+0"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0556",
+   "args": [
+    "\u001b[20013;13:1u",
+    "super+shift+`"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0557",
+   "args": [
+    "\u001b[20013:97:99;1:3u",
+    "ctrl+shift+alt+super+."
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0558",
+   "args": [
+    "\u001b[128512;1:2u",
+    "ctrl+shift+alt+super+^"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0559",
+   "args": [
+    "\u001b[128512;13:4u",
+    "shift+alt+:"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0560",
+   "args": [
+    "\u001b[128512:33;2u",
+    "ctrl+shift+alt+f5"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0561",
+   "args": [
+    "\u001b[57344;2u",
+    "ctrl+shift+super+f12"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0562",
+   "args": [
+    "\u001b[57344;18u",
+    "super+alt+shift+ctrl+clear"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0563",
+   "args": [
+    "\u001b[57344:33:99;2u",
+    "super+ctrl+a"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0564",
+   "args": [
+    "\u001b[27;3;57348~",
+    "shift+alt+i"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0565",
+   "args": [
+    "\u001b[27;34;57348~",
+    "super+shift+ctrl+s"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0566",
+   "args": [
+    "\u001b[57348:33:99;1:3u",
+    "c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0567",
+   "args": [
+    "\u001b[57358;4:1u",
+    "9"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0568",
+   "args": [
+    "\u001b[57358;34:3u",
+    "ctrl+shift+alt+."
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0569",
+   "args": [
+    "\u001b[57358:0;2u",
+    "alt+shift+ctrl+&"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0570",
+   "args": [
+    "\u001b[57399;3u",
+    "super+alt+shift+|"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0571",
+   "args": [
+    "\u001b[57399;7:4u",
+    "shift+alt+<"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0572",
+   "args": [
+    "\u001b[57399;13:3u",
+    "alt+super+f1"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0573",
+   "args": [
+    "\u001b[57399:65:99;2u",
+    "shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0574",
+   "args": [
+    "\u001b[57399:0:99;2u",
+    "shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0575",
+   "args": [
+    "\u001b[57399:97:98;2:2u",
+    "shift+b"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0576",
+   "args": [
+    "\u001b[57414;4:4u",
+    "shift+alt+enter"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0577",
+   "args": [
+    "\u001b[57414;10:1u",
+    "super+shift+enter"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0578",
+   "args": [
+    "\u001b[57414;34:4u",
+    "super+right"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0579",
+   "args": [
+    "\u001b[57414:65:99;2u",
+    "super+shift+d"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0580",
+   "args": [
+    "\u001b[57414:0;2u",
+    "shift+enter"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0581",
+   "args": [
+    "\u001b[57414::99;1:3u",
+    "return"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0582",
+   "args": [
+    "\u001b[57417;4:3u",
+    "alt+ctrl+p"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0583",
+   "args": [
+    "\u001b[57417;10:1u",
+    "ctrl+shift+alt+super+t"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0584",
+   "args": [
+    "\u001b[57417;66u",
+    "shift+left"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0585",
+   "args": [
+    "\u001b[57417:97:99;2u",
+    "shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0586",
+   "args": [
+    "\u001b[57417:1103:99;2u",
+    "shift+c"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0587",
+   "args": [
+    "\u001b[57425;2u",
+    "shift+insert"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0588",
+   "args": [
+    "\u001b[57425;7:3u",
+    "alt+ctrl+insert"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0589",
+   "args": [
+    "\u001b[57425;13:2u",
+    "super+ctrl+insert"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0590",
+   "args": [
+    "\u001b[57425::57426u",
+    "insert"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0591",
+   "args": [
+    "\u001b[57425:33;65u",
+    "insert"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0592",
+   "args": [
+    "\u001b[57425:;65u",
+    "alt+super+}"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0593",
+   "args": [
+    "\u001b[57426;5u",
+    "ctrl+delete"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0594",
+   "args": [
+    "\u001b[57426;10:3u",
+    "shift+super+delete"
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0595",
+   "args": [
+    "\u001b[57426;130u",
+    "f11"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0596",
+   "args": [
+    "\u001b[57426:97:1076;6u",
+    "super+alt+shift+enter"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0597",
+   "args": [
+    "\u001b[57426:1103:1076;6u",
+    "ctrl+alt+super+backspace"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0598",
+   "args": [
+    "\u001b[57427;4:4u",
+    "alt+ctrl+pageDown"
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0599",
+   "args": [
+    "\u001b[27;66;57427~",
+    "ctrl+shift+super+f"
+   ],
+   "result": false
+  }
+ ]
+}

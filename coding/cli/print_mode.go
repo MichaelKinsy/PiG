@@ -357,7 +357,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 
 	// currentCommands is the command catalog of the current Session. Prompts read it at the moment they are sent.
 	var currentCommands atomic.Pointer[headlessCommandCatalog]
-	var detachModelRegistry, stopRunSignal func()
+	var detachModelRegistry, stopRunSignal, stopHostState func()
 	var publishedCommands atomic.Pointer[headlessCommandCatalog]
 	// bind wires the Session to this mode as upstream rebindSession does: extension bindings, command actions, then the event subscription. It emits session_start for the Session's own reason, which is startup for the first Session.
 	// A reload binds the same Session to a replacement runner: the Session has reloaded its resources and rebuilt its system prompt, and the event subscription stays (agent-session.ts:3575-3625).
@@ -370,9 +370,13 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if stopRunSignal != nil {
 			stopRunSignal()
 		}
-		detachModelRegistry = wireSubprocessModelRegistry(bridge, session, services)
-		stopRunSignal = watchSessionRunSignal(bridge, session)
-		bindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
+		if stopHostState != nil {
+			stopHostState()
+		}
+		detachModelRegistry = coding.BindSessionModelOperations(bridge, session, services)
+		stopRunSignal = coding.WatchSessionRunSignal(bridge, session)
+		stopHostState = coding.WatchHostState(bridge, session)
+		coding.BindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
 		// writing is set once session_start is dispatched; a reload binds the same Session, whose writer stays subscribed.
 		var writing atomic.Bool
 		writing.Store(reloading)
@@ -395,7 +399,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			runner.BindCommandActions(rt.ExtensionCommandActions(session))
 		}
 		flagValues := services.ExtensionFlagValues()
-		bindSessionExtensionActions(runner, bridge, current, extension.ContextActions{
+		coding.BindSessionExtensionActions(runner, bridge, current, extension.ContextActions{
 			ModelRegistry: services.Registry(),
 			// upstream: agent-session.ts:3440 isProjectTrusted reads the Session's settings manager.
 			IsProjectTrusted: services.SettingsManager().IsProjectTrusted,
@@ -469,6 +473,9 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		}
 		if stopRunSignal != nil {
 			stopRunSignal()
+		}
+		if stopHostState != nil {
+			stopHostState()
 		}
 	}()
 

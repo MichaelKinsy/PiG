@@ -62,9 +62,18 @@ func newNodeAPIRig(t *testing.T, isolation string, actions *subprocess.HostCallb
 // loadNodeFixtures starts a Host on bridge and loads the fixtures as Node extensions under one isolation.
 func loadNodeFixtures(t *testing.T, isolation string, bridge *subprocess.UIBridge, fixtures []nodeAPIFixture) (*subprocess.Host, []extension.Extension) {
 	t.Helper()
+	return loadNodeFixturesWith(t, isolation, bridge, fixtures, nil)
+}
+
+// loadNodeFixturesWith is loadNodeFixtures with configure run on the Host before any fixture loads, as a mode binds the Host's providers before its extensions.
+func loadNodeFixturesWith(t *testing.T, isolation string, bridge *subprocess.UIBridge, fixtures []nodeAPIFixture, configure func(*subprocess.Host)) (*subprocess.Host, []extension.Extension) {
+	t.Helper()
 	h := subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	h.SetUIBridge(bridge)
 	t.Cleanup(func() { h.Shutdown("test complete") })
+	if configure != nil {
+		configure(h)
+	}
 	var configs []subprocess.ExtConfig
 	for _, f := range fixtures {
 		path := filepath.Join(t.TempDir(), f.name+".mjs")

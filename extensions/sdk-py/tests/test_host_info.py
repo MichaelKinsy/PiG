@@ -24,6 +24,37 @@ class HostInfo(unittest.TestCase):
                 with self.assertRaises(pig_sdk.HostInfoUnavailable):
                     pig_sdk.get_agent_dir()
 
+    def test_package_dir_and_default_shell_come_from_the_host(self) -> None:
+        entry = '{"agentDir":"/a","packageDir":"/opt/pig","shell":{"shell":"/bin/bash","args":["-c"]}}'
+        with mock.patch.dict(os.environ, {"PIG_EXT_HOST_INFO": entry}):
+            self.assertEqual(pig_sdk.get_package_dir(), "/opt/pig")
+            self.assertEqual(pig_sdk.get_shell_config(), pig_sdk.ShellConfig("/bin/bash", ("-c",)))
+        with mock.patch.dict(os.environ, {"PIG_EXT_HOST_INFO": '{"agentDir":"/a","shell":{"error":"No bash shell found."}}'}):
+            with self.assertRaisesRegex(OSError, "No bash shell found."):
+                pig_sdk.get_shell_config()
+            with self.assertRaises(pig_sdk.HostInfoUnavailable):
+                pig_sdk.get_package_dir()
+        with mock.patch.dict(os.environ, {"PIG_EXT_HOST_INFO": ""}):
+            with self.assertRaises(pig_sdk.HostInfoUnavailable):
+                pig_sdk.get_shell_config()
+
+    def test_a_custom_shell_path_is_checked_here_as_pi_does(self) -> None:
+        import tempfile
+
+        with mock.patch.dict(os.environ, {"PIG_EXT_HOST_INFO": ""}), tempfile.TemporaryDirectory() as existing:
+            self.assertEqual(pig_sdk.get_shell_config(existing), pig_sdk.ShellConfig(existing, ("-c",)))
+            with self.assertRaisesRegex(OSError, "Custom shell path not found: " + existing + "/missing"):
+                pig_sdk.get_shell_config(existing + "/missing")
+        from pig_sdk.host_info import _is_legacy_wsl_bash_path
+
+        legacy = {
+            "C:\\Windows\\System32\\bash.exe": True, "c:/windows/sysnative/bash.exe": True, "D:\\WINDOWS\\SYSTEM32\\BASH.EXE": True, "\u212a:\\windows\\system32\\bash.exe": True,
+            "C:\\Windows\\System32\\bash.exe ": False, "C:\\Windows\\bash.exe": False, "C:\\Program Files\\Git\\bin\\bash.exe": False,
+            "1:\\windows\\system32\\bash.exe": False, "\u0130:\\windows\\system32\\bash.exe": False, "C:\\W\u0130ndows\\System32\\bash.exe": False,
+        }
+        for shell, want in legacy.items():
+            self.assertEqual(_is_legacy_wsl_bash_path(shell), want, shell)
+
 
 if __name__ == "__main__":
     unittest.main()

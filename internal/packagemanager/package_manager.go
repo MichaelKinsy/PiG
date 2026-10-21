@@ -103,6 +103,11 @@ func (m *PackageManager) Remove(source string, local bool) error {
 	if local && !m.SettingsManager.IsProjectTrusted() {
 		return errors.New("Project is not trusted; refusing to access project package storage")
 	}
+	// upstream: package-manager.ts:1075 withProgress("remove", ...) reports every kind of source, a local path included.
+	return WithProgress(m.progress, "remove", source, fmt.Sprintf("Removing %s...", source), func() error { return m.removeArtifacts(source, local) })
+}
+
+func (m *PackageManager) removeArtifacts(source string, local bool) error {
 	switch DetectSourceKind(source) {
 	case "npm":
 		return m.uninstallManagedNPM(source, local)

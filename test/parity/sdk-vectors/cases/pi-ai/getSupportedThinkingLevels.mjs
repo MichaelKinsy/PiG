@@ -1,0 +1,20 @@
+// Calls of Pi's getSupportedThinkingLevels that exercise its documented behavior; generate-sdk-vectors.mjs runs Pi's own function over them.
+export const cases = [
+  { name: "case 0001", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": false}] },
+  { name: "case 0002", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true}] },
+  { name: "case 0003", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {}}] },
+  { name: "case 0004", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"xhigh": "x"}}] },
+  { name: "case 0005", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"max": "m"}}] },
+  { name: "case 0006", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"xhigh": "x", "max": "m"}}] },
+  { name: "case 0007", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"xhigh": "x", "minimal": null}}] },
+  { name: "case 0008", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"off": null}}] },
+  { name: "case 0009", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"off": null, "minimal": null, "low": null}}] },
+  { name: "case 0010", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"off": null, "minimal": null, "low": null, "medium": null, "high": null}}] },
+  { name: "case 0011", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"off": null, "minimal": null, "low": null, "medium": null, "high": null, "xhigh": "x", "max": "m"}}] },
+  { name: "case 0012", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"high": null, "xhigh": "x"}}] },
+  { name: "case 0013", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"medium": "m", "high": "h"}}] },
+  { name: "case 0014", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"xhigh": null, "max": null}}] },
+  { name: "case 0015", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"off": "o", "max": "m", "xhigh": null}}] },
+  { name: "case 0016", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": true, "thinkingLevelMap": {"off": null, "low": null, "medium": null, "high": null, "xhigh": null}}] },
+  { name: "case 0017", args: [{"id": "m", "provider": "p", "api": "x", "reasoning": false, "thinkingLevelMap": {"minimal": null, "low": null, "medium": null}}] },
+];

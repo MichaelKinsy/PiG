@@ -36,12 +36,22 @@ type LoadExtensionsResult struct {
 	Runtime *extension.ExtensionRuntime
 	// host is the Extension Host that DiscoverAndLoadExtensions started for the extensions; Close shuts it down.
 	host *subprocess.Host
+	// bridge is the host's UI bridge: a headless one, which a Session over the extensions binds to its state.
+	bridge *subprocess.UIBridge
+	// release ends the lifetime the host loaded the extensions under, when a loader owns it; Close calls it.
+	release context.CancelFunc
 }
+
+// UIBridge is the UI bridge of the Extension Host that loaded the result's extensions, which carries the Session state the extensions' contexts read; nil for a result from another source. It has no UI: contexts that read it report hasUI false and its dialogs answer nothing, as Pi's headless extension context does.
+func (r LoadExtensionsResult) UIBridge() *subprocess.UIBridge { return r.bridge }
 
 // Close shuts down the Extension Host that DiscoverAndLoadExtensions started for the result's extensions. Pi's extensions live in the importing process and need no close. A result from another source has no host and Close does nothing.
 func (r LoadExtensionsResult) Close() {
 	if r.host != nil {
 		r.host.Shutdown("quit")
+	}
+	if r.release != nil {
+		r.release()
 	}
 }
 
@@ -123,7 +133,7 @@ func (l *DefaultResourceLoader) findSourceInfo(resourcePath string, extra extens
 func (l *DefaultResourceLoader) GetExtensions() LoadExtensionsResult {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	return LoadExtensionsResult{Extensions: cloneCollection(l.extensions.Extensions), Errors: cloneCollection(l.extensions.Errors), Warnings: cloneCollection(l.extensions.Warnings), Runtime: l.extensions.Runtime}
+	return LoadExtensionsResult{Extensions: cloneCollection(l.extensions.Extensions), Errors: cloneCollection(l.extensions.Errors), Warnings: cloneCollection(l.extensions.Warnings), Runtime: l.extensions.Runtime, bridge: l.extensions.bridge}
 }
 
 // GetThemes returns the themes found by the last Reload and ExtendResources (resource-loader.ts getThemes).

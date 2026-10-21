@@ -380,6 +380,12 @@ export class EditorComponentHost {
         });
         return true;
       }
+      case "ui.editor.invalidate": {
+        // The theme changed: Pi's TUI calls invalidate() on every component it holds, and the editor drops what it cached.
+        const session = this.current(args?.key);
+        if (session) this.run(session, (editor) => editor.invalidate?.());
+        return true;
+      }
       case "ui.editor.submitted": {
         const session = this.current(args?.key);
         const resolve = session?.submits.get(Number(args.id));

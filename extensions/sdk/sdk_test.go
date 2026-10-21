@@ -267,10 +267,9 @@ func TestExtension_RegisterAndReady(t *testing.T) {
 	host.writeEnvelope(t, envelope{
 		Type: msgReady,
 		Ready: &readyMsg{
-			SessionName: "test-session",
-			Cwd:         "/tmp/test",
-			Width:       120,
-			Model:       "claude-4-sonnet",
+			Cwd:   "/tmp/test",
+			Width: 120,
+			State: json.RawMessage(`{"model":{"id":"claude-4-sonnet","provider":"anthropic"},"session":{"sessionName":"test-session"}}`),
 		},
 	})
 

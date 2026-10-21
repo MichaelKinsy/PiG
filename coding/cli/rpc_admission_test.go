@@ -27,7 +27,7 @@ func TestRPCAwaitHandlerAdmitsCompletedHandlerWithItsResult(t *testing.T) {
 				a := &rpcAdmission{ctx: t.Context(), turn: turn}
 				release := make(chan struct{})
 				admitted := make(chan *rpcPromise[int], 1)
-				turn.begin()
+				turn.Begin()
 				go func() {
 					admitted <- rpcAwaitHandler(a, func(ctx context.Context) (int, error) {
 						tc.report(ctx)
@@ -54,7 +54,7 @@ func TestRPCAwaitHandlerAdmitsCompletedHandlerWithItsResult(t *testing.T) {
 				var got []int
 				p.then(func(v int, _ error) { got = append(got, v) })
 				synctest.Wait()
-				turn.end()
+				turn.End()
 				if !slices.Equal(got, []int{7}) {
 					t.Fatalf("continuation in the admitting input batch = %v, want [7]", got)
 				}
@@ -74,12 +74,12 @@ func TestRPCPromiseReactionOrder(t *testing.T) {
 	if !reflect.DeepEqual(got, []int{1, 2, 3}) {
 		t.Fatal(got)
 	}
-	turn.begin()
+	turn.Begin()
 	p.then(func(v int, _ error) { got = append(got, v+3) })
 	if len(got) != 3 {
 		t.Fatalf("fulfilled await ran inside the input callback: %v", got)
 	}
-	turn.end()
+	turn.End()
 	if !reflect.DeepEqual(got, []int{1, 2, 3, 4}) {
 		t.Fatal(got)
 	}
@@ -98,7 +98,7 @@ func TestRPCAwaitInOrderResolvesInArrivalOrder(t *testing.T) {
 		start := make(chan struct{})
 		close(start)
 		var previous <-chan struct{} = start
-		turn.begin()
+		turn.Begin()
 		for i := range release {
 			var p *rpcPromise[int]
 			p, previous = rpcAwaitInOrder(a, previous, func() (int, error) {
@@ -112,7 +112,7 @@ func TestRPCAwaitInOrderResolvesInArrivalOrder(t *testing.T) {
 			close(r)
 			synctest.Wait()
 		}
-		turn.end()
+		turn.End()
 		synctest.Wait()
 		if want := []any{"get_state", 0, 1, 2}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("responses=%v want=%v", got, want)
@@ -131,12 +131,12 @@ func TestRPCAwaitInOrderEarlyWorkResumesAfterTheNextLine(t *testing.T) {
 		defer a.tasks.CloseAndWait()
 		start := make(chan struct{})
 		close(start)
-		turn.begin()
+		turn.Begin()
 		p, _ := rpcAwaitInOrder(a, start, func() (string, error) { return "set_model", nil })
 		synctest.Wait()
 		p.then(func(v string, _ error) { turn.write(v) })
 		turn.complete("cycle_model")
-		turn.end()
+		turn.End()
 		if want := []any{"cycle_model", "set_model"}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("responses=%v want=%v", got, want)
 		}
@@ -149,7 +149,7 @@ func TestRPCAwaitWorkResumesAfterTheBatchsMicrotasks(t *testing.T) {
 		var got []string
 		turn := &rpcResponseTurn{write: func(v any) { got = append(got, v.(string)) }}
 		a := &rpcAdmission{ctx: t.Context(), turn: turn}
-		turn.begin()
+		turn.Begin()
 		done := make(chan struct{})
 		work := rpcAwaitWork(a, true, func() (struct{}, error) { defer close(done); return struct{}{}, nil })
 		if !registerAfterDone {
@@ -158,9 +158,8 @@ func TestRPCAwaitWorkResumesAfterTheBatchsMicrotasks(t *testing.T) {
 		<-done
 		// The goroutine has delivered its result before the later command of the batch runs: as an event-loop task, or, when the result bypasses the task queue, by settling the promise directly. Waiting for either keeps the bypass a deterministic ordering failure instead of a hang.
 		delivered := func() bool {
-			turn.mu.Lock()
-			queued := len(turn.tasks) > 0
-			turn.mu.Unlock()
+			_, tasks := turn.Queued()
+			queued := tasks > 0
 			work.mu.Lock()
 			defer work.mu.Unlock()
 			return queued || work.done
@@ -172,7 +171,7 @@ func TestRPCAwaitWorkResumesAfterTheBatchsMicrotasks(t *testing.T) {
 			work.then(func(struct{}, error) { turn.write("set") })
 		}
 		turn.complete("cycle")
-		turn.end()
+		turn.End()
 		a.taskGroup().CloseAndWait()
 		if want := []string{"cycle", "set"}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("registerAfterDone=%v: responses=%v want=%v", registerAfterDone, got, want)

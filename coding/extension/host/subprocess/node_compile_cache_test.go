@@ -118,3 +118,47 @@ export default function(pi:any) {
 		})
 	}
 }
+
+// pig additive (D20): the bytecode flush is a synchronous pass over every module the runtime compiled, so a Node extension makes it before its register frame, not after the host's ready message. Once registered the host sends requests under the renderer inactivity lease (D56), and a flush that follows ready holds the first request, a Markdown transform or a render, until the flush ends: 4.6 s on a starved machine, which is most of the 5 s lease. The register frame is where the host first learns of the extension, so the artifacts must exist when it is read.
+func TestNodeFlushesCompileCacheBeforeItRegisters(t *testing.T) {
+	t.Setenv("NODE_DISABLE_COMPILE_CACHE", "")
+	if err := os.Unsetenv("NODE_DISABLE_COMPILE_CACHE"); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NODE_COMPILE_CACHE", "")
+	root := t.TempDir()
+	pigHome := filepath.Join(root, "pig")
+	t.Setenv("PIG_HOME", pigHome)
+	entry := filepath.Join(root, "cache.ts")
+	write(t, entry, `import {Text} from "@earendil-works/pi-tui";
+export default function(pi:any) {
+ if(typeof Text!=="function")throw new Error("missing Text");
+ pi.registerCommand("cache",{handler:()=>{}});
+}`)
+	published := make(chan int, 1)
+	host := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	host.SetInboundObserver(func(_ string, env *Envelope) {
+		if env.Type != MsgRegister {
+			return
+		}
+		files := 0
+		_ = filepath.WalkDir(filepath.Join(pigHome, "cache", "node-compile"), func(_ string, entry os.DirEntry, err error) error {
+			if err == nil && entry.Type().IsRegular() {
+				files++
+			}
+			return nil
+		})
+		select {
+		case published <- files:
+		default:
+		}
+	})
+	t.Cleanup(func() { host.Shutdown("test done") })
+	loaded, errs := host.LoadAll(t.Context(), []ExtConfig{{Name: "cache", Source: entry, Enabled: true}})
+	if len(errs) != 0 || len(loaded) != 1 {
+		t.Fatalf("load = %v, %v", loaded, errs)
+	}
+	if files := <-published; files == 0 {
+		t.Fatal("the extension registered before it flushed its compiled bytecode: the first request waits for the flush")
+	}
+}

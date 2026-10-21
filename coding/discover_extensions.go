@@ -98,6 +98,12 @@ func loadExtensionPathsIn(ctx context.Context, paths []string, cwd string, runti
 	}
 	host := subprocess.NewHostWithConfigRoot(cwd, icodingagent.ConfigRoot())
 	host.UseRuntime(runtime)
+	// A headless bridge: the loaded extensions' contexts read the Session state a Session binds to it (agent-session.ts _bindExtensionCore), and with no UI bound hasUI is false.
+	bridge := subprocess.NewUIBridge(func() {})
+	// The load-time pi-ai calls a module makes run through the global API providers until a Session binds its own model surface, as they do on a host with no bridge.
+	icodingagent.WireEarlyModelStream(bridge, "")
+	host.SetUIBridge(bridge)
+	result.bridge = bridge
 	host.SetMode(string(extension.ModePrint))
 	host.Builder().SetStagedSDKVerifier(subprocess.DefaultStagedSDKVerifier(icodingagent.ConfigRoot()))
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return append([]subprocess.ExtConfig(nil), configs...), nil })

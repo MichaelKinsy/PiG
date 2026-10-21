@@ -1,0 +1,4206 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "wrapTextWithAnsi",
+ "cases": [
+  {
+   "name": "case 0000",
+   "args": [
+    "",
+    47
+   ],
+   "result": [
+    ""
+   ]
+  },
+  {
+   "name": "case 0001",
+   "args": [
+    "a\r\nb",
+    37
+   ],
+   "result": [
+    "a",
+    "b"
+   ]
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    "éé",
+    30
+   ],
+   "result": [
+    "éé"
+   ]
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    "\u001b[48;5;236m bg \u001b[0m",
+    11
+   ],
+   "result": [
+    "\u001b[48;5;236m bg \u001b[0m"
+   ]
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    "hello\u001b—|path/to/file.tsİ12345‍⁠🇺🇸กำpath/to/file.ts\u001b[31m  İfoo-barfoo-bar\u001bc\u001b_Gf=100,a=T;AAAA\u001b\\/  ß‌ß\u001b[3mhelloThe quick brown fox…🇺🇸\u001b]8;;\u001b\\❤Z̴̢̛̗͓\u001b[29mworld",
+    5
+   ],
+   "result": [
+    "hello\u001b",
+    "—|pat",
+    "h/to/",
+    "file.",
+    "tsİ12",
+    "345‍⁠🇺🇸",
+    "กำpat",
+    "h/to/",
+    "file.",
+    "ts\u001b[31m",
+    "\u001b[31mİfoo-",
+    "\u001b[31mbarfo",
+    "\u001b[31mo-bar\u001b",
+    "\u001b[31mc\u001b_Gf=100,a=T;AAAA\u001b\\/",
+    "\u001b[31mß‌ß\u001b[3mhel",
+    "\u001b[3;31mloThe",
+    "\u001b[3;31mquick",
+    "\u001b[3;31mbrown",
+    "\u001b[3;31m",
+    "\u001b[3;31mfox…",
+    "\u001b[3;31m🇺🇸\u001b]8;;\u001b\\❤Z̴̢̛̗͓\u001b[29mw",
+    "\u001b[3;31morld"
+   ]
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    "\u001b[58;5;1m—|/👍🏽—\u001b[m你好，世界กำ⭐…ＡＢＣＡＢＣ\u001b[31\u001b[200~foo-bar\u001b[1;5A \u001b[38:2::1:2:3m\u001b[38;2;10;20;30m‌\u001b[  \na b\u001b_pi:c\u0007\u001b(B✔éİລຳ   \u001b[48;2;1;2;3m↔️",
+    40
+   ],
+   "result": [
+    "\u001b[58;5;1m—|/👍🏽—\u001b[m你好，世界กำ⭐…ＡＢＣＡＢＣ\u001b[31\u001b[200~foo-bar\u001b[1;5A \u001b[38:2::1:2:3m\u001b[38;2;10;20;30m‌\u001b[  ",
+    "\u001b[38;2;10;20;30ma b\u001b_pi:c\u0007\u001b(B✔éİລຳ   \u001b[48;2;1;2;3m↔️"
+   ]
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    "—a\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007\u001b[?25lᄀ가helloThe quick brown fox\u001b]8;id=1;https://e.com/p?q=1\u001b\\|\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[H\u001b[9m\u001b[7m\u001b[3m🫱🏻‍🫲🏿\u001b_pi:c\u000712345\u001b[200~。漢字 -\u001b]8;;\u001b\\\u001b[1mé↔️ক্ষ",
+    3
+   ],
+   "result": [
+    "—a\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007\u001b[?25lᄀ가helloThe quick brown fox\u001b]8;id=1;https://e.com/\u001b]8;;\u0007",
+    "\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007p?q\u001b]8;;\u0007",
+    "\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007=1\u001b\\\u001b]8;;\u0007",
+    "\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007|\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[H\u001b[9m\u001b[7m\u001b[3m🫱🏻‍🫲🏿\u001b_pi:c\u0007\u001b]8;;\u001b\\",
+    "\u001b[3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\123\u001b]8;;\u001b\\",
+    "\u001b[3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\45\u001b[200~。漢字 -\u001b]8;;\u001b\\\u001b[1mé\u001b]8;;\u001b\\",
+    "\u001b[1;3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\↔️\u001b]8;;\u001b\\",
+    "\u001b[1;3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\ক্ষ"
+   ]
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    "The quick brown fox👍🏽\u001b[58;5;1mé😀‌\u001b[38;2;10;20;30m/\u001b[H\u001b]8;;\u001b\\1️⃣path/to/file.ts🧑🏾‍🦰—The quick brown fox\u001b[58;5;1m",
+    15
+   ],
+   "result": [
+    "The quick brown",
+    "fox👍🏽\u001b[58;5;1mé😀‌\u001b[38;2;10;20;30m/\u001b[H\u001b]8;;\u001b\\1️⃣path",
+    "\u001b[1;5;38;2;10;20;30m/to/file.ts🧑🏾‍🦰—T",
+    "\u001b[1;5;38;2;10;20;30mhe quick brown",
+    "\u001b[1;5;38;2;10;20;30mfox\u001b[58;5;1m"
+   ]
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    "🔥worldhello helloworld👨‍👩‍👧‍👦12345…\u001b[48;2;1;2;3m✓  \u001b[1;38;5;196mન્ન\u001b[999999999m\u001b]1337;File=inline=1:AAAA\u0007~/src\u001b[38;2;10;20;30mfoo-bar\u001b(B✓—foo-barİカナ\u001b]0;title\u0007\u001b[49mworldक्ष、­x⚠日本語のテキストä「a b​",
+    42
+   ],
+   "result": [
+    "🔥worldhello helloworld👨‍👩‍👧‍👦12345…\u001b[48;2;1;2;3m✓",
+    "\u001b[48;2;1;2;3m\u001b[1;38;5;196mન્ન\u001b[999999999m\u001b]1337;File=inline=1:AAAA\u0007~/src\u001b[38;2;10;20;30mfoo-bar\u001b(B✓—foo-barİカナ\u001b]0;title\u0007\u001b[49mworldक्ष、­x⚠",
+    "\u001b[1;38;2;10;20;30m日本語のテキストä「a b​"
+   ]
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    "foo-barำworld—Z̴̢̛̗͓\u001b[31  ~/srcক্ষำİ⭐a bक्‍ष\u001b[999999999m\tworld⬜️ન્નa b\u001b[1;5A\u001b[5n\u001b[2K…🏴‍☠️helloé‌helloThe quick brown foxİ12345hello\na🧑🏾‍🦰a b~/srca b\u001b(B",
+    49
+   ],
+   "result": [
+    "foo-barำworld—Z̴̢̛̗͓\u001b[31  ~/srcক্ষำİ⭐a bक्‍ष\u001b[999999999m\tworld⬜️ન્નa b\u001b[1;5A\u001b[5n\u001b[2K…🏴‍☠️helloé‌helloThe",
+    "quick brown foxİ12345hello",
+    "a🧑🏾‍🦰a b~/srca b\u001b(B"
+   ]
+  },
+  {
+   "name": "case 0010",
+   "args": [
+    "ລຳ👍🏽\n🧑🏾‍🦰…12345⚠ä12345🏴‍☠️",
+    18
+   ],
+   "result": [
+    "ລຳ👍🏽",
+    "🧑🏾‍🦰…12345⚠ä12345🏴‍☠️"
+   ]
+  },
+  {
+   "name": "case 0011",
+   "args": [
+    "\u001b[38:2::1:2:3mß\u001b[999999999m\u001b[49m\u001b]8;;unterminated‌\u001bX sos\u001b\\foo-bar​",
+    14
+   ],
+   "result": [
+    "\u001b[38:2::1:2:3mß\u001b[999999999m\u001b[49m\u001b]8;;unterminated‌\u001bX sos\u001b\\foo-bar​"
+   ]
+  },
+  {
+   "name": "case 0012",
+   "args": [
+    "ক্ষ#️⃣\u001b[999999999m\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]8;;http://x.test/a\u0007⭐ \u001b]133;A\u0007|  é⚠\u001b]8;;\u001b\\a b|⌚\u001b(B\u001b[29mThe quick brown fox​helloß⚠️\u001b7|x↔️—\u001b[~/src\u001b[2K1️⃣|カナ\u001bc\u001b[4:3mİ",
+    9
+   ],
+   "result": [
+    "ক্ষ#️⃣\u001b[999999999m\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]8;;http://x.test/a\u0007⭐ \u001b]133;A\u0007|\u001b]8;;\u0007",
+    "\u001b]8;;http://x.test/a\u0007é⚠\u001b]8;;\u001b\\a",
+    "b|⌚\u001b(B\u001b[29mThe",
+    "quick",
+    "brown",
+    "fox​helloß",
+    "⚠️\u001b7|x↔️—\u001b[~/src\u001b[2K",
+    "1️⃣|カナ\u001bc\u001b[4:3mİ"
+   ]
+  },
+  {
+   "name": "case 0013",
+   "args": [
+    "path/to/file.ts\u001b[2K「🫱🏻‍🫲🏿path/to/file.ts\u001b[58;5;1m\u001b[49m  ßéä\u001b[58;5;1ma\u001b>ähello❤#️⃣かな|☺️↔️ aä",
+    35
+   ],
+   "result": [
+    "path/to/file.ts\u001b[2K「🫱🏻‍🫲🏿path/to/file.ts",
+    "\u001b[58;5;1m\u001b[49m  ßéä\u001b[58;5;1ma\u001b>ähello❤#️⃣かな|☺️↔️ aä"
+   ]
+  },
+  {
+   "name": "case 0014",
+   "args": [
+    "a b  ßລຳa⭐\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    26
+   ],
+   "result": [
+    "a b  ßລຳa⭐\u001b]8;id=1;https://e.com/p?q=1\u001b\\"
+   ]
+  },
+  {
+   "name": "case 0015",
+   "args": [
+    "~/src\u001b[1m\u001b[38:2::1:2:3m",
+    45
+   ],
+   "result": [
+    "~/src\u001b[1m\u001b[38:2::1:2:3m"
+   ]
+  },
+  {
+   "name": "case 0016",
+   "args": [
+    "☺️ຳ‌👍🏽  /foo-bar\u001b[Hक्‍ष🏴‍☠️foo-barThe quick brown foxক্ষक्‍षa\u001b[1;5A❤ß⬜️กำß\u001b[29m🧑🏾‍🦰\u001b[7m\u001b[31\u001b[0m\u001bc\u001bc\u001b]133;B\u001b\\world\u001b[H",
+    8
+   ],
+   "result": [
+    "☺️ຳ‌👍🏽",
+    "/foo-bar\u001b[H",
+    "क्‍ष🏴‍☠️foo-",
+    "barThe",
+    "quick",
+    "brown",
+    "foxক্ষक्‍षa\u001b[1;5A❤ß⬜️กำß\u001b[29m",
+    "🧑🏾‍🦰\u001b[7m\u001b[31\u001b[0m\u001bc\u001bc\u001b]133;B\u001b\\worl",
+    "d\u001b[H"
+   ]
+  },
+  {
+   "name": "case 0017",
+   "args": [
+    "ન્નhelloaß✓é…\u001b]133;B\u001b\\⚠\u001b[ma—1️⃣12345\u001b[m",
+    36
+   ],
+   "result": [
+    "ન્નhelloaß✓é…\u001b]133;B\u001b\\⚠\u001b[ma—1️⃣12345\u001b[m"
+   ]
+  },
+  {
+   "name": "case 0018",
+   "args": [
+    "、\u001b>world\u001b[|İ Z̴̢̛̗͓|‌\u001b[3m\u001b[24m\u001b]1337;File=inline=1:AAAA\u0007world\u001b[2mस्त्र\t\u001b]8;;\u001b\\hello\u001b[👩‍💻~/srcᄀ가İéa b1️⃣path/to/file.ts日本語のテキスト\u001b[H|",
+    8
+   ],
+   "result": [
+    "、",
+    "\u001b>world\u001b[|İ Z̴̢̛̗͓|‌\u001b[3m\u001b[24m\u001b]1337;File=inline=1:AAAA\u0007wo",
+    "\u001b[3mrld\u001b[2mस्त्र",
+    "\u001b[2;3m\t\u001b]8;;\u001b\\hello\u001b[👩‍💻~/srcᄀ가İéa b1️⃣path/to/file.ts日本語のテキスト\u001b[H",
+    "\u001b[2;3m|"
+   ]
+  },
+  {
+   "name": "case 0019",
+   "args": [
+    "\u001b[2m🇺🇸foo-bar🧑🏾‍🦰ລຳß\t。✓ \u001bX sos\u001b\\\u001b[29ma#️⃣ન્ન\u001b[200~é﻿The quick brown fox✓helloक्‍ष\u001b[1;38;5;196m~/srcpath/to/file.tsß12345‌hello ~/src",
+    27
+   ],
+   "result": [
+    "\u001b[2m🇺🇸foo-bar🧑🏾‍🦰ລຳß\t。✓ \u001bX",
+    "\u001b[2msos\u001b\\\u001b[29ma#️⃣ન્ન\u001b[200~é﻿The quick brown fox✓helloक्‍ष\u001b[1;38;5;196m~/srcpath/to/file.",
+    "\u001b[1;2;38;5;196mtsß12345‌hello ~/src"
+   ]
+  },
+  {
+   "name": "case 0020",
+   "args": [
+    "  —",
+    32
+   ],
+   "result": [
+    "  —"
+   ]
+  },
+  {
+   "name": "case 0021",
+   "args": [
+    "✓  foo-bar\u001b[58;5;1mhello\u001bक्षworld~/src\u001b]1337;File=inline=1:AAAA\u0007 worldລຳ\u001b[4:3m\u001b[m—  12345  |\u001b7 \u001b[22m|world#️⃣İ。、\u001b[999999999m  \u001b[9m\u001b=\u001bX sos\u001b\\|\u001b]8;id=1;https://e.com/p?q=1\u001b\\ำ\u001b[4:3m",
+    30
+   ],
+   "result": [
+    "✓  foo-bar\u001b[58;5;1mhello\u001bक्षworld~/src\u001b]1337;File=inline=1:AAAA\u0007",
+    "\u001b[1;5mworldລຳ\u001b[4:3m\u001b[m—  12345  |\u001b7 \u001b[22m|world#️⃣İ",
+    "。、\u001b[999999999m  \u001b[9m\u001b=\u001bX sos\u001b\\|\u001b]8;id=1;https://e.com/p?q=1\u001b\\ำ\u001b[4:3m"
+   ]
+  },
+  {
+   "name": "case 0022",
+   "args": [
+    "\u001b[1;5A、\u001b]8;;http://x.test/a\u0007\u001b[2m  ক্ষ\u001b[24mक्ष\u001b[mfoo-bar\u001b[48;2;1;2;3mक्‍षhelloThe quick brown fox  \u001b]0;title\u0007world\u001b[23mpath/to/file.ts1️⃣\u001b[\u001b[7m🧑🏾‍🦰⁠path/to/file.ts\u001b7~/src/",
+    23
+   ],
+   "result": [
+    "\u001b[1;5A、\u001b]8;;http://x.test/a\u0007\u001b[2m  ক্ষ\u001b[24mक्ष\u001b[mfoo-bar\u001b[48;2;1;2;3mक्‍षhelloThe",
+    "\u001b[48;2;1;2;3mquick brown fox",
+    "\u001b[48;2;1;2;3m\u001b]0;title\u0007world\u001b[23mpath/to/file.ts1️⃣\u001b[\u001b[7m",
+    "\u001b[7;48;2;1;2;3m🧑🏾‍🦰⁠path/to/file.ts\u001b7~/src",
+    "\u001b[7;48;2;1;2;3m/"
+   ]
+  },
+  {
+   "name": "case 0023",
+   "args": [
+    "स्त्र 🤝foo-barßຳ\u001b[1m⁠\u001b[0m👍🏽\u001b[2m🏴‍☠️⭐⬜️\u001b[39m\u001b]8;;\u0007\u001b8İ a b-​\u001b[200~\u001b[1;5A  ↔️\u001b]133;A\u0007",
+    27
+   ],
+   "result": [
+    "स्त्र 🤝foo-barßຳ\u001b[1m⁠\u001b[0m👍🏽\u001b[2m🏴‍☠️⭐⬜️\u001b[39m\u001b]8;;\u0007\u001b8İ a",
+    "\u001b[2mb-​\u001b[200~\u001b[1;5A  ↔️\u001b]133;A\u0007"
+   ]
+  },
+  {
+   "name": "case 0024",
+   "args": [
+    " worldfoo-bar—\u001bX sos\u001b\\⌚、‌⌚\u001b]8;;http://x.test/a\u0007\u001b[31m한국어a\t\u001b[38;2;10;20;30m\u001b[5nworlda b12345\u001b8\u001b[27m  \u001b[",
+    25
+   ],
+   "result": [
+    " worldfoo-bar—\u001bX sos\u001b\\⌚、‌",
+    "⌚\u001b]8;;http://x.test/a\u0007\u001b[31m한국어a\t\u001b[38;2;10;20;30m\u001b[5nworlda b12345\u001b8\u001b[27m  \u001b["
+   ]
+  },
+  {
+   "name": "case 0025",
+   "args": [
+    "🔥😀カナન્ન\u001b[7m\u001b[Hpath/to/file.tsxx̀\u001b[m\t🫱🏻‍🫲🏿foo-bar—İกำ \u001b[9m  ~/srcpath/to/file.ts1️⃣foo-bar\u001b[5n\u001b[1;5A\u001b^pm\u001b\\\u001b7​The quick brown fox\u001b[1;38;5;196ma\u001b[?25l日本語のテキスト⬜️ＡＢＣx12345\u001b]133;A\u0007‍",
+    21
+   ],
+   "result": [
+    "🔥😀カナ",
+    "ન્ન\u001b[7m\u001b[Hpath/to/file.tsxx̀\u001b[m",
+    "\t🫱🏻‍🫲🏿foo-bar—İกำ \u001b[9m",
+    "\u001b[9m~/srcpath/to/file.ts",
+    "\u001b[9m1️⃣foo-bar\u001b[5n\u001b[1;5A\u001b^pm\u001b\\\u001b7​The quick",
+    "\u001b[9mbrown fox\u001b[1;38;5;196ma\u001b[?25l日本語",
+    "\u001b[1;9;38;5;196mのテキスト",
+    "\u001b[1;9;38;5;196m⬜️ＡＢＣx12345\u001b]133;A\u0007‍"
+   ]
+  },
+  {
+   "name": "case 0026",
+   "args": [
+    "12345ＡＢＣ|The quick brown foxpath/to/file.ts﻿   🇬🇧🇫🇷 カナ\u001b[27m\u001b[999999999m  \u001b>world🏳️‍🌈⭐foo-bara b",
+    38
+   ],
+   "result": [
+    "12345ＡＢＣ|The quick brown",
+    "foxpath/to/file.ts﻿   🇬🇧🇫🇷 カナ\u001b[27m\u001b[999999999m",
+    "\u001b>world🏳️‍🌈⭐foo-bara b"
+   ]
+  },
+  {
+   "name": "case 0027",
+   "args": [
+    " ລຳfoo-bar☺️\u001b[200~\u001b8ßİ\u001b(B✔\u001b[23mำ각​—hello\u001b[9m🇬🇧🇫🇷\u001b[31m \thello foo-bar",
+    32
+   ],
+   "result": [
+    " ລຳfoo-bar☺️\u001b[200~\u001b8ßİ\u001b(B✔\u001b[23mำ각​—hello\u001b[9m🇬🇧🇫🇷\u001b[31m",
+    "\u001b[9;31m\thello foo-bar"
+   ]
+  },
+  {
+   "name": "case 0028",
+   "args": [
+    "—\u001b[38;2;10;20;30mかな…✔~/src",
+    28
+   ],
+   "result": [
+    "—\u001b[38;2;10;20;30mかな…✔~/src"
+   ]
+  },
+  {
+   "name": "case 0029",
+   "args": [
+    "…",
+    41
+   ],
+   "result": [
+    "…"
+   ]
+  },
+  {
+   "name": "case 0030",
+   "args": [
+    "ßé©️ั⚠a\u001b[?25l🇺🇸İ\u001b_pi:c\u0007xfoo-bar\u001b[22m\t\u001bP1$r\u001b\\ำ\u001b[9m/\u001b]133;B\u001b\\~/src\u001b[31\u001b_Gf=100,a=T;AAAA\u001b\\\u001b[38:2::1:2:3m\u001b~/srchello",
+    32
+   ],
+   "result": [
+    "ßé©️ั⚠a\u001b[?25l🇺🇸İ\u001b_pi:c\u0007xfoo-bar\u001b[22m\t\u001bP1$r\u001b\\ำ\u001b[9m/\u001b]133;B\u001b\\~/src\u001b[31\u001b_Gf=100,a=T;AA",
+    "\u001b[9mAA\u001b\\\u001b[38:2::1:2:3m\u001b~/srchello"
+   ]
+  },
+  {
+   "name": "case 0031",
+   "args": [
+    "⌚\u001b[31m\u001b]8;;unterminated\u001b[5n⚠️\u001b]8;;\u0007a b\u001b]8;;unterminated\u001b[1m#️⃣…foo-bar स्त्रfoo-bar\u001b]8;;http://x.test/a\u0007ä❤hello\u001b[?25l",
+    21
+   ],
+   "result": [
+    "⌚\u001b[31m\u001b]8;;unterminated\u001b[5n⚠️\u001b]8;;\u0007a b\u001b]8;;unterminated\u001b[1m#️⃣…foo-bar स्त्रfoo-bar\u001b]8;;http://x.test/a\u0007ä❤hello\u001b[?25l"
+   ]
+  },
+  {
+   "name": "case 0032",
+   "args": [
+    "…❤️",
+    30
+   ],
+   "result": [
+    "…❤️"
+   ]
+  },
+  {
+   "name": "case 0033",
+   "args": [
+    "\u001b]8;;http://x.test/a\u0007-a b\u001b[23m\u001bX sos\u001b\\😀\u001b[38;2;10;20;30m~/src﻿❤İस्त्र",
+    33
+   ],
+   "result": [
+    "\u001b]8;;http://x.test/a\u0007-a b\u001b[23m\u001bX sos\u001b\\😀\u001b[38;2;10;20;30m~/src﻿❤İस्त्र"
+   ]
+  },
+  {
+   "name": "case 0034",
+   "args": [
+    "、—ß\u001b[58;5;1m\u001b[5n—\u001bX sos\u001b\\\u001b(B\u001b>…ั\u001b8漢字 、a b漢字👨‍👩‍👧‍👦👍🏽\u001b[58;5;1mThe quick brown fox👩‍💻12345",
+    23
+   ],
+   "result": [
+    "、—ß\u001b[58;5;1m\u001b[5n—\u001bX sos\u001b\\\u001b(B\u001b>…ั\u001b8漢字 、a b漢字👨‍👩‍👧‍👦👍🏽\u001b[58;5;1mThe quick brown",
+    "\u001b[1;5mfox👩‍💻12345"
+   ]
+  },
+  {
+   "name": "case 0035",
+   "args": [
+    "ન્નक्षworldß⌚\u001bP1$r\u001b\\⚠ລຳ🫱🏻‍🫲🏿\u001b(B\u001b[a ba b \u001b[22mahello😀漢字\u001b[38;2;10;20;30m🤝\u001bcกำ🔥",
+    40
+   ],
+   "result": [
+    "ન્નक्षworldß⌚\u001bP1$r\u001b\\⚠ລຳ🫱🏻‍🫲🏿\u001b(B\u001b[a ba b \u001b[22mahello😀漢字",
+    "\u001b[38;2;10;20;30m🤝\u001bcกำ🔥"
+   ]
+  },
+  {
+   "name": "case 0036",
+   "args": [
+    "、\u001b]133;A\u0007\u001b[38;2;10;20;30m\u001b_Gf=100,a=T;AAAA\u001b\\✔⚠\u001b[999999999m、\u001bx…The quick brown foxa bhelloßa bhello⚠각",
+    7
+   ],
+   "result": [
+    "、\u001b]133;A\u0007\u001b[38;2;10;20;30m\u001b_Gf=100,a=T;AAAA\u001b\\✔⚠\u001b[999999999m、",
+    "\u001b[38;2;10;20;30m\u001bx…The",
+    "\u001b[38;2;10;20;30mquick",
+    "\u001b[38;2;10;20;30mbrown",
+    "\u001b[38;2;10;20;30mfoxa",
+    "\u001b[38;2;10;20;30mbhelloß",
+    "\u001b[38;2;10;20;30ma",
+    "\u001b[38;2;10;20;30mbhello⚠",
+    "\u001b[38;2;10;20;30m각"
+   ]
+  },
+  {
+   "name": "case 0037",
+   "args": [
+    " ß\u001b[?25l\u001b[0mhelloé✓ ✓स्त्र👍🏽\u001b[38:2::1:2:3m\u001b[4mpath/to/file.tsຳລຳカナßxß\u001b[4m#️⃣ລຳक्षa b👨‍👩‍👧‍👦~/src✔a b\n\u001b[22mhello",
+    36
+   ],
+   "result": [
+    " ß\u001b[?25l\u001b[0mhelloé✓ ✓स्त्र👍🏽\u001b[38:2::1:2:3m\u001b[4mpath/to/file.tsຳລຳカ\u001b[24m",
+    "\u001b[4mナßxß\u001b[4m#️⃣ລຳक्षa b👨‍👩‍👧‍👦~/src✔a b",
+    "\u001b[4m\u001b[22mhello"
+   ]
+  },
+  {
+   "name": "case 0038",
+   "args": [
+    " \t👍🏽a bThe quick brown foxক্ষ\u001b[m\u001b[27m\u001b]133;B\u001b\\|\u001b[2m\u001b[1;38;5;196mক্ষ​foo-bar、world #️⃣ …\u001b8  각—\u001b]133;A\u0007\u001b[3m 🧑🏾‍🦰\u001b[a b☺️",
+    24
+   ],
+   "result": [
+    " \t👍🏽a bThe quick brown",
+    "foxক্ষ\u001b[m\u001b[27m\u001b]133;B\u001b\\|\u001b[2m\u001b[1;38;5;196mক্ষ​foo-bar、world",
+    "\u001b[1;2;38;5;196m#️⃣ …\u001b8  각—\u001b]133;A\u0007\u001b[3m 🧑🏾‍🦰\u001b[a b☺️"
+   ]
+  },
+  {
+   "name": "case 0039",
+   "args": [
+    "\u001b[38:2::1:2:3m\u001b[1;5AThe quick brown foxworld\u001b]0;title\u0007각ßຳ」—\u001b]8;;unterminated\u001b[24m⌚The quick brown fox‌  กำ|foo-barİ。❤かなßລຳ\u001b]8;;\u001b\\—👍🏽é\u001b[path/to/file.ts‍\u001b[58;5;1m\u001b[3m",
+    28
+   ],
+   "result": [
+    "\u001b[38:2::1:2:3m\u001b[1;5AThe quick brown foxworld\u001b]0;title\u0007각ßຳ」—\u001b]8;;unterminated\u001b[24m⌚The quick brown fox‌",
+    "กำ|foo-barİ。❤かなßລຳ\u001b]8;;\u001b\\—👍🏽é\u001b[path/to/file.ts‍\u001b[58;5;1m\u001b[3m"
+   ]
+  },
+  {
+   "name": "case 0040",
+   "args": [
+    "⁠ＡＢＣ\u001b]1337;File=inline=1:AAAA\u0007\u001b]0;title\u0007\u001b[2Kİᄀ가​🏴‍☠️ßİ\u001b[31world\u001b8\u001b[29ma \u001b[200~\u001b]0;title\u0007x\u001b[4:3m」helloั🧑🏾‍🦰ß\u001b]8;;unterminated\u001b[48;2;1;2;3m",
+    41
+   ],
+   "result": [
+    "⁠ＡＢＣ\u001b]1337;File=inline=1:AAAA\u0007\u001b]0;title\u0007\u001b[2Kİᄀ가​🏴‍☠️ßİ\u001b[31world\u001b8\u001b[29ma \u001b[200~\u001b]0;title\u0007x\u001b[4:3m」helloั🧑🏾‍🦰ß\u001b]8;;unterminated\u001b[48;2;1;2;3m"
+   ]
+  },
+  {
+   "name": "case 0041",
+   "args": [
+    "ำx—\u001b[1;38;5;196m\u001b[39mかな",
+    48
+   ],
+   "result": [
+    "ำx—\u001b[1;38;5;196m\u001b[39mかな"
+   ]
+  },
+  {
+   "name": "case 0042",
+   "args": [
+    "\n🇬🇧🇫🇷ᄀ가🧑🏾‍🦰|ัa bpath/to/file.ts\u001b[4:3m\u001b[1;38;5;196m✓éThe quick brown fox 日本語のテキストຳ한국어\u001b[m~/src  x\u001b[999999999m\u001b[5n。/ foo-bar \u001bP1$r\u001b\\\u001b[200~x☺️©️\u001b[29m\u001b_pi:c\u0007~/src",
+    33
+   ],
+   "result": [
+    "",
+    "🇬🇧🇫🇷ᄀ가🧑🏾‍🦰|ัa bpath/to/file.ts\u001b[4:3m\u001b[1;38;5;196m✓éThe",
+    "\u001b[1;38;5;196mquick brown fox 日本語のテキストຳ",
+    "\u001b[1;38;5;196m한국어\u001b[m~/src  x\u001b[999999999m\u001b[5n。/ foo-bar \u001bP1$r\u001b\\\u001b[200~x☺️©️\u001b[29m\u001b_pi:c\u0007~/src"
+   ]
+  },
+  {
+   "name": "case 0043",
+   "args": [
+    "\u001b]8;;unterminated~/src\u001b[2Ka b❤‌↔️hello\u001b]133;B\u001b\\|The quick brown fox👩‍💻\u001bX sos\u001b\\world",
+    27
+   ],
+   "result": [
+    "\u001b]8;;unterminated~/src\u001b[2Ka b❤‌↔️hello\u001b]133;B\u001b\\|The quick brown fox👩‍💻\u001bX\u001b]8;;\u001b\\",
+    "\u001b]8;;unterminated~/src\u001b[2Ka b❤‌↔️hello\u001b]133;B\u001b\\sos\u001b\\world"
+   ]
+  },
+  {
+   "name": "case 0044",
+   "args": [
+    "a b\u001b_pi:c\u0007world⬜️The quick brown fox\u001b[999999999m​\u001b[7m\u001b]8;;http://x.test/a\u0007İ…The quick brown fox12345apath/to/file.ts한국어\u001b[7m かなລຳ\u001b[38:2::1:2:3ma b🇬🇧🇫🇷\u001b>foo-baréक्‍ष",
+    25
+   ],
+   "result": [
+    "a b\u001b_pi:c\u0007world⬜️The quick brown",
+    "fox\u001b[999999999m​\u001b[7m\u001b]8;;http://x.test/a\u0007İ…The quick brown\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007fox12345apath/to/file.ts\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007한국어\u001b[7m かなລຳ\u001b[38:2::1:2:3ma\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007b🇬🇧🇫🇷\u001b>foo-baréक्‍ष"
+   ]
+  },
+  {
+   "name": "case 0045",
+   "args": [
+    "İक्‍ष\u001b]8;;unterminated\u001b[3m\u001b[999999999mกำ  \u001b[999999999m\u001b]133;A\u0007~/srcİ…Z̴̢̛̗͓❤The quick brown fox|☺️\u001b[38:2::1:2:3m\u001b8↔️ 。\u001b[1;5A\u001b[4m…\u001b[3m👍🏽  漢字\u001b_Gf=100,a=T;AAAA\u001b\\🇺🇸 ﻿かな\u001b=x",
+    20
+   ],
+   "result": [
+    "İक्‍ष\u001b]8;;unterminated\u001b[3m\u001b[999999999mกำ  \u001b[999999999m\u001b]133;A\u0007~/srcİ…Z̴̢̛̗͓❤The\u001b]8;;\u0007",
+    "\u001b]8;;unterminated\u001b[3m\u001b[999999999mกำ  \u001b[999999999m\u001b]133;A\u0007quick brown\u001b]8;;\u0007",
+    "\u001b]8;;unterminated\u001b[3m\u001b[999999999mกำ  \u001b[999999999m\u001b]133;A\u0007fox|☺️\u001b[38:2::1:2:3m\u001b8↔️ 。\u001b[1;5A\u001b[4m…\u001b[3m👍🏽  漢\u001b[24m\u001b]8;;\u0007",
+    "\u001b[3;4m\u001b]8;;unterminated\u001b[3m\u001b[999999999mกำ  \u001b[999999999m\u001b]133;A\u0007字\u001b_Gf=100,a=T;AAAA\u001b\\🇺🇸 ﻿かな\u001b=x"
+   ]
+  },
+  {
+   "name": "case 0046",
+   "args": [
+    "\t🇬🇧🇫🇷a日本語のテキストß、\u001b[2mThe quick brown foxa\u001b^pm\u001b\\…‍ \u001b[29m   \u001b[27m~/src🔥\u001b[23mThe quick brown foxİক্ষx\u001b]8;;\u001b\\é\u001b[7m\u001b[31。……",
+    50
+   ],
+   "result": [
+    "\t🇬🇧🇫🇷a日本語のテキストß、\u001b[2mThe quick brown",
+    "\u001b[2mfoxa\u001b^pm\u001b\\…‍ \u001b[29m   \u001b[27m~/src🔥\u001b[23mThe quick brown foxİক্ষx\u001b]8;;\u001b\\é\u001b[7m\u001b[31。",
+    "\u001b[2;7m……"
+   ]
+  },
+  {
+   "name": "case 0047",
+   "args": [
+    "\u001b_pi:c\u0007",
+    9
+   ],
+   "result": [
+    "\u001b_pi:c\u0007"
+   ]
+  },
+  {
+   "name": "case 0048",
+   "args": [
+    " \u001b[49ma b\u001b_pi:c\u0007\u001b[38;2;10;20;30méİ。é\u001b[29ma b❤️",
+    28
+   ],
+   "result": [
+    " \u001b[49ma b\u001b_pi:c\u0007\u001b[38;2;10;20;30méİ。é\u001b[29ma b❤️"
+   ]
+  },
+  {
+   "name": "case 0049",
+   "args": [
+    "…\u001b8worldক্ষßéß\npath/to/file.tsa\u001b[m\u001b]8;;http://x.test/a\u0007\u001b[1;38;5;196mＡＢＣລຳpath/to/file.ts🧑🏾‍🦰\u001bİ~/srcéかなำ\u001b_Gf=100,a=T;AAAA\u001b\\foo-barx­world👍🏽。hello—\u001b>🔥",
+    29
+   ],
+   "result": [
+    "…\u001b8worldক্ষßéß",
+    "path/to/file.tsa\u001b[m\u001b]8;;http://x.test/a\u0007\u001b[1;38;5;196mＡＢＣລຳpath/\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007to/file.ts🧑🏾‍🦰\u001bİ~/srcéかなำ\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007\u001b_Gf=100,a=T;AAAA\u001b\\foo-barx­world👍🏽。hello—\u001b>🔥"
+   ]
+  },
+  {
+   "name": "case 0050",
+   "args": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\、~/src한국어🏴‍☠️\u001b[3m12345-\u001b]8;;\u001b\\क्‍ष~/src⬜️ન્ન↔️  \u001b[5nThe quick brown fox~/src\u001b[29m\u001b>☺️",
+    24
+   ],
+   "result": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\、~/src한국어\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\🏴‍☠️\u001b[3m12345-\u001b]8;;\u001b\\क्‍ष~/src⬜️ન્ન↔️",
+    "\u001b[3m\u001b[5nThe quick brown fox~/src\u001b[29m\u001b>☺️"
+   ]
+  },
+  {
+   "name": "case 0051",
+   "args": [
+    "。…​a~/srcx\u001b_pi:c\u0007\u001b]8;;unterminated\u001b]8;;\u0007\u001b]1337;File=inline=1:AAAA\u0007ᄀ가~/src\u001b[9m\u001b[5n\u001b[39mThe quick brown fox—\u001b[4mThe quick brown fox12345カナั\u001b8\u001b[39mক্ষ​👩‍💻12345각ß12345\u001b]8;;\u0007",
+    18
+   ],
+   "result": [
+    "。…​a~/srcx\u001b_pi:c\u0007\u001b]8;;unterminated\u001b]8;;\u0007\u001b]1337;File=inline=1:AAAA\u0007ᄀ가\u001b]8;;\u0007",
+    "\u001b]8;;unterminated\u001b]8;;\u0007~/src\u001b[9m\u001b[5n\u001b[39mThe quick\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;unterminated\u001b]8;;\u0007brown fox—\u001b[4mThe\u001b[24m\u001b]8;;\u0007",
+    "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007quick brown\u001b[24m\u001b]8;;\u0007",
+    "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007fox12345カナั\u001b[24m\u001b]8;;\u0007",
+    "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007\u001b8\u001b[39mক্ষ​👩‍💻12345각ß12345\u001b]8;;\u0007"
+   ]
+  },
+  {
+   "name": "case 0052",
+   "args": [
+    "⁠\u001b[5n",
+    34
+   ],
+   "result": [
+    "⁠\u001b[5n"
+   ]
+  },
+  {
+   "name": "case 0053",
+   "args": [
+    "✓world⁠ั\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    26
+   ],
+   "result": [
+    "✓world⁠ั\u001b]8;id=1;https://e.com/p?q=1\u001b\\"
+   ]
+  },
+  {
+   "name": "case 0054",
+   "args": [
+    "\u001b[29m\u001b]8;;unterminatedั🧑🏾‍🦰\u001b[3m ⚠️­\u001b=foo-bar각",
+    12
+   ],
+   "result": [
+    "\u001b[29m\u001b]8;;untermin",
+    "atedั🧑🏾‍🦰\u001b[3m",
+    "\u001b[3m⚠️­\u001b=foo-bar각"
+   ]
+  },
+  {
+   "name": "case 0055",
+   "args": [
+    "、\u001bP1$r\u001b\\  a…~/src⬜️😀🫱🏻‍🫲🏿a b İ\u001b[m\u001b]0;title\u0007©️\u001b[m~/src⬜️xำ❤️✓かな~/src\n👍🏽🧑🏾‍🦰world‍🇺🇸⬜️กำ\u001b]8;;\u0007\u001b=❤️",
+    1
+   ],
+   "result": [
+    "",
+    "、",
+    "\u001bP",
+    "1",
+    "$",
+    "r\u001b",
+    "\\",
+    "a",
+    "…",
+    "~",
+    "/",
+    "s",
+    "r",
+    "c",
+    "⬜️",
+    "😀",
+    "🫱🏻‍🫲🏿",
+    "a",
+    "b",
+    "İ\u001b[m\u001b]0;title\u0007",
+    "©️\u001b[m",
+    "~",
+    "/",
+    "s",
+    "r",
+    "c",
+    "⬜️",
+    "xำ",
+    "❤️",
+    "✓",
+    "",
+    "か",
+    "",
+    "な",
+    "~",
+    "/",
+    "s",
+    "r",
+    "c",
+    "",
+    "👍🏽",
+    "🧑🏾‍🦰",
+    "w",
+    "o",
+    "r",
+    "l",
+    "d‍",
+    "🇺🇸",
+    "⬜️",
+    "กำ\u001b]8;;\u0007",
+    "\u001b=",
+    "❤️"
+   ]
+  },
+  {
+   "name": "case 0056",
+   "args": [
+    "\u001b]8;;\u001b\\、漢字\u001b]1337;File=inline=1:AAAA\u0007worldhellofoo-barન્નworldworld\u001b_pi:c\u0007\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]133;B\u001b\\\té \u001b[4:3mThe quick brown foxİ|⌚foo-bar」กำ⌚\u001b[7mᄀ가\u001b[49mäThe quick brown foxé🇺🇸~/src각🏳️‍🌈⚠-क्‍ष—\u001b[?25l",
+    13
+   ],
+   "result": [
+    "\u001b]8;;\u001b\\、漢字",
+    "\u001b]1337;File=inline=1:AAAA\u0007worldhellofoo",
+    "-barન્નworldwo",
+    "rld\u001b_pi:c\u0007\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]133;B\u001b\\\té \u001b[4:3mThe",
+    "quick brown",
+    "foxİ|⌚foo-ba",
+    "r」กำ⌚\u001b[7mᄀ가\u001b[49mäThe",
+    "\u001b[7mquick brown",
+    "\u001b[7mfoxé🇺🇸~/src각",
+    "\u001b[7m🏳️‍🌈⚠-क्‍ष—\u001b[?25l"
+   ]
+  },
+  {
+   "name": "case 0057",
+   "args": [
+    "🤝🤝ຳＡＢＣ\u001b[58;5;1m#️⃣ักำ—\u001bP1$r\u001b\\\u001b[39m↔️\u001b[27mfoo-barThe quick brown fox\u001b(B\n⚠|—👍🏽path/to/file.ts\u001b[1;5A\u001b[Ha b\u001b]133;A\u0007…ＡＢＣworld©️\u001b[2K你好，世界~/src」",
+    19
+   ],
+   "result": [
+    "🤝🤝ຳＡＢＣ\u001b[58;5;1m#️⃣ักำ—\u001bP1$r\u001b",
+    "\u001b[1;5m\\\u001b[39m↔️\u001b[27mfoo-barThe quick",
+    "\u001b[1;5mbrown fox\u001b(B",
+    "\u001b[1;5m⚠|—👍🏽path/to/file.t",
+    "\u001b[1;5ms\u001b[1;5A\u001b[Ha b\u001b]133;A\u0007…ＡＢＣworld©️",
+    "\u001b[1;5m\u001b[2K你好，世界~/src」"
+   ]
+  },
+  {
+   "name": "case 0058",
+   "args": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\x  \u001bfoo-bara",
+    19
+   ],
+   "result": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\x  \u001bfoo-bara"
+   ]
+  },
+  {
+   "name": "case 0059",
+   "args": [
+    "\u001b[31m\u001b(Bworld path/to/file.ts|﻿ßfoo-bar🤝world\u001bX sos\u001b\\你好，世界⭐⚠️x☺️é\n​path/to/file.tspath/to/file.ts",
+    17
+   ],
+   "result": [
+    "\u001b[31m\u001b(Bworld",
+    "\u001b[31mpath/to/file.ts|﻿ß",
+    "\u001b[31mfoo-bar🤝world\u001bX",
+    "\u001b[31msos\u001b\\你好，世界",
+    "\u001b[31m⭐⚠️x☺️é",
+    "\u001b[31m​path/to/file.tspa",
+    "\u001b[31mth/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0060",
+   "args": [
+    "\u001b[1;38;5;196m12345✓\u001b>⌚ＡＢＣfoo-bara\u001b[31m\u001b]8;;\u0007-‌  🏴‍☠️✓👍🏽world",
+    1
+   ],
+   "result": [
+    "\u001b[1;38;5;196m1",
+    "\u001b[1;38;5;196m2",
+    "\u001b[1;38;5;196m3",
+    "\u001b[1;38;5;196m4",
+    "\u001b[1;38;5;196m5",
+    "\u001b[1;38;5;196m✓\u001b",
+    "\u001b[1;38;5;196m>",
+    "\u001b[1;38;5;196m⌚",
+    "\u001b[1;38;5;196mＡ",
+    "\u001b[1;38;5;196mＢ",
+    "\u001b[1;38;5;196mＣ",
+    "\u001b[1;38;5;196mf",
+    "\u001b[1;38;5;196mo",
+    "\u001b[1;38;5;196mo",
+    "\u001b[1;38;5;196m-",
+    "\u001b[1;38;5;196mb",
+    "\u001b[1;38;5;196ma",
+    "\u001b[1;38;5;196mr",
+    "\u001b[1;38;5;196ma\u001b[31m\u001b]8;;\u0007",
+    "\u001b[1;31m-‌",
+    "\u001b[1;31m",
+    "\u001b[1;31m",
+    "\u001b[1;31m🏴‍☠️",
+    "\u001b[1;31m✓",
+    "\u001b[1;31m👍🏽",
+    "\u001b[1;31mw",
+    "\u001b[1;31mo",
+    "\u001b[1;31mr",
+    "\u001b[1;31ml",
+    "\u001b[1;31md"
+   ]
+  },
+  {
+   "name": "case 0061",
+   "args": [
+    "ä⚠️\u001b]133;B\u001b\\\u001b[?25l漢字ক্ষ\u001b[1;38;5;196m\u001b[24m—worldpath/to/file.ts",
+    24
+   ],
+   "result": [
+    "ä⚠️\u001b]133;B\u001b\\\u001b[?25l漢字ক্ষ\u001b[1;38;5;196m\u001b[24m—worldpath/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0062",
+   "args": [
+    "hello🔥ß\u001b[38:2::1:2:3m\u001b[1;38;5;196mＡＢＣa b",
+    33
+   ],
+   "result": [
+    "hello🔥ß\u001b[38:2::1:2:3m\u001b[1;38;5;196mＡＢＣa b"
+   ]
+  },
+  {
+   "name": "case 0063",
+   "args": [
+    "©️🧑🏾‍🦰a\u001b⚠\u001b[4:3m©️/\u001b]8;;\u001b\\\u001b[49m한국어foo-bar⭐\u001b^pm\u001b\\\t\u001b[9m﻿ß👨‍👩‍👧‍👦a…、👍🏽\u001b[49m \u001b_Gf=100,a=T;AAAA\u001b\\x…\u001b[3mhello🫱🏻‍🫲🏿12345\u001b[49m」\u001b[31mß",
+    22
+   ],
+   "result": [
+    "©️🧑🏾‍🦰a\u001b⚠\u001b[4:3m©️/\u001b]8;;\u001b\\\u001b[49m한국어",
+    "foo-bar⭐\u001b^pm\u001b\\\t\u001b[9m﻿ß👨‍👩‍👧‍👦a…",
+    "\u001b[9m、👍🏽\u001b[49m \u001b_Gf=100,a=T;AAAA\u001b\\x…\u001b[3mhello🫱🏻‍🫲🏿12345\u001b[49m」\u001b[31mß"
+   ]
+  },
+  {
+   "name": "case 0064",
+   "args": [
+    "~/src你好，世界﻿ 🇺🇸\u001b[38:2::1:2:3m…\u001b[31m̀/漢字⚠️👨‍👩‍👧‍👦\u001b[22m…ำ\u001b[0mßß \u001b[58;5;1mİ­❤️ 👍🏽🏳️‍🌈path/to/file.ts",
+    8
+   ],
+   "result": [
+    "~/src你",
+    "好，世界",
+    "🇺🇸\u001b[38:2::1:2:3m…\u001b[31m̀/漢字",
+    "\u001b[31m⚠️👨‍👩‍👧‍👦\u001b[22m…ำ\u001b[0mßß",
+    "\u001b[58;5;1mİ­❤️",
+    "\u001b[1;5m👍🏽🏳️‍🌈path",
+    "\u001b[1;5m/to/file",
+    "\u001b[1;5m.ts"
+   ]
+  },
+  {
+   "name": "case 0065",
+   "args": [
+    " ß ",
+    17
+   ],
+   "result": [
+    " ß "
+   ]
+  },
+  {
+   "name": "case 0066",
+   "args": [
+    "⁠각̀\u001b8",
+    46
+   ],
+   "result": [
+    "⁠각̀\u001b8"
+   ]
+  },
+  {
+   "name": "case 0067",
+   "args": [
+    "worldhello­\u001b]8;;\u0007\u001b]0;title\u0007|\u001b[31",
+    8
+   ],
+   "result": [
+    "worldhel",
+    "lo­\u001b]8;;\u0007\u001b]0;title\u0007|\u001b[31"
+   ]
+  },
+  {
+   "name": "case 0068",
+   "args": [
+    "The quick brown fox🏴‍☠️❤é✔⬜️\u001b[31🏴‍☠️x path/to/file.ts",
+    23
+   ],
+   "result": [
+    "The quick brown",
+    "fox🏴‍☠️❤é✔⬜️\u001b[31🏴‍☠️x",
+    "path/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0069",
+   "args": [
+    "é \u001b[7m\u001b[4:3m✔\u001b[38;2;10;20;30m﻿\u001bcক্ষ\u001b[4m…",
+    36
+   ],
+   "result": [
+    "é \u001b[7m\u001b[4:3m✔\u001b[38;2;10;20;30m﻿\u001bcক্ষ\u001b[4m…"
+   ]
+  },
+  {
+   "name": "case 0070",
+   "args": [
+    "é漢字\u001b[9m…\u001b>hello|ન્ન\u001b[31m\u001b[49m  \u001b[\u001b[49m\u001bX sos\u001b\\world👨‍👩‍👧‍👦\u001b[1;38;5;196m🏳️‍🌈\u001b[49m \u001b[39m  \u001b]133;B\u001b\\‍\u001b[22m⭐",
+    32
+   ],
+   "result": [
+    "é漢字\u001b[9m…\u001b>hello|ન્ન\u001b[31m\u001b[49m  \u001b[\u001b[49m\u001bX sos\u001b\\world👨‍👩‍👧‍👦\u001b[1;38;5;196m🏳️‍🌈",
+    "\u001b[1;9;38;5;196m\u001b[49m \u001b[39m  \u001b]133;B\u001b\\‍\u001b[22m⭐"
+   ]
+  },
+  {
+   "name": "case 0071",
+   "args": [
+    "ক্ষ⭐|—12345path/to/file.ts  —\u001bP1$r\u001b\\ຳ12345hello\u001b[m|​—~/srcᄀ가\u001b[31m\u001b[38;2;10;20;30mworld\u001b[0m👍🏽🏳️‍🌈~/src\u001b[38:2::1:2:3m\u001b]8;;http://x.test/a\u0007\u001b[1;38;5;196mລຳ❤、äß­—#️⃣ຳक्ष",
+    7
+   ],
+   "result": [
+    "ক্ষ⭐|—1",
+    "2345pat",
+    "h/to/fi",
+    "le.ts",
+    "—\u001bP1$r\u001b\\ຳ",
+    "12345he",
+    "llo\u001b[m|​—~/",
+    "srcᄀ가",
+    "\u001b[31m\u001b[38;2;10;20;30mworld\u001b[0m👍🏽",
+    "🏳️‍🌈~/src\u001b[38:2::1:2:3m\u001b]8;;http://x.test/a\u0007\u001b[1;38;5;196m\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007ລຳ❤、\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007äß­—#️⃣ຳक्ष"
+   ]
+  },
+  {
+   "name": "case 0072",
+   "args": [
+    "hello🏳️‍🌈",
+    14
+   ],
+   "result": [
+    "hello🏳️‍🌈"
+   ]
+  },
+  {
+   "name": "case 0073",
+   "args": [
+    "\u001b[49m~/src\u001b_Gf=100,a=T;AAAA\u001b\\ \u001b[200~helloa bกำß\u001b]133;B\u001b\\\u001bX sos\u001b\\|12345~/src",
+    16
+   ],
+   "result": [
+    "\u001b[49m~/src\u001b_Gf=100,a=T;AAAA\u001b\\",
+    "\u001b[200~helloa",
+    "bกำß\u001b]133;B\u001b\\\u001bX",
+    "sos\u001b\\|12345~/src"
+   ]
+  },
+  {
+   "name": "case 0074",
+   "args": [
+    "\u001b]8;;unterminated⚠️\nİ\u001b>\u001b]8;;unterminated「12345 ન્ન\u001b[0mfoo-bar\u001b[200~⭐#️⃣\u001b]1337;File=inline=1:AAAA\u0007\u001b]133;A\u0007👍🏽\u001b]1337;File=inline=1:AAAA\u0007a b\u001b(B👩‍💻helloThe quick brown foxＡＢＣİ。ᄀ가\u001b]8;;http://x.test/a\u0007world‌กำ\u001b[0mस्त्र\u001b[1;38;5;196m\u001b[29m✓",
+    30
+   ],
+   "result": [
+    "\u001b]8;;unterminated⚠️",
+    "İ\u001b>\u001b]8;;unterminated「12345 ન્ન\u001b[0mfoo-bar\u001b[200~⭐#️⃣\u001b]1337;File=inline=1:AAAA\u0007\u001b]133;A\u0007👍🏽\u001b]1337;File=inline=1:AAAA\u0007a b\u001b(B👩‍💻helloThe quick\u001b]8;;\u0007",
+    "\u001b]8;;unterminated「12345 ન્ન\u001b[0mfoo-bar\u001b[200~⭐#️⃣\u001b]1337;File=inline=1:AAAA\u0007brown foxＡＢＣİ。ᄀ가\u001b]8;;\u0007",
+    "\u001b]8;;unterminated「12345 ન્ન\u001b[0mfoo-bar\u001b[200~⭐#️⃣\u001b]1337;File=inline=1:AAAA\u0007\u001b]8;;http://x.test/a\u0007world‌กำ\u001b[0mस्त्र\u001b[1;38;5;196m\u001b[29m✓"
+   ]
+  },
+  {
+   "name": "case 0075",
+   "args": [
+    "—\u001b=ä",
+    35
+   ],
+   "result": [
+    "—\u001b=ä"
+   ]
+  },
+  {
+   "name": "case 0076",
+   "args": [
+    "\u001b7The quick brown fox\u001b[2K」❤x\u001b[39m\u001b^pm\u001b\\ ﻿ßworld\u001b[9m \u001b]133;B\u001b\\Z̴̢̛̗͓ ©️x😀かなß🧑🏾‍🦰ລຳİ—",
+    48
+   ],
+   "result": [
+    "\u001b7The quick brown fox\u001b[2K」❤x\u001b[39m\u001b^pm\u001b\\ ﻿ßworld\u001b[9m \u001b]133;B\u001b\\Z̴̢̛̗͓ ©️x😀かな",
+    "\u001b[9mß🧑🏾‍🦰ລຳİ—"
+   ]
+  },
+  {
+   "name": "case 0077",
+   "args": [
+    "​\u001b[48;2;1;2;3m-  1️⃣\u001b]8;;http://x.test/a\u0007\u001b[24mİfoo-bar\u001b_pi:c\u0007world🔥  \u001b8…\u001b_pi:c\u0007👍🏽x\u001b]133;B\u001b\\\u001b>\u001b[Hİ\u001b[38:2::1:2:3m🏳️‍🌈स्त्र~/srcworld‍🧑🏾‍🦰\u001b[4m12345\u001b[2K\u001b[24mລຳＡＢＣ\u001b[2K12345",
+    11
+   ],
+   "result": [
+    "​\u001b[48;2;1;2;3m-",
+    "\u001b[48;2;1;2;3m1️⃣\u001b]8;;http://x.test/a\u0007\u001b[24mİfoo-bar\u001b_pi:c\u0007w\u001b]8;;\u0007",
+    "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007orld🔥  \u001b]8;;\u0007",
+    "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007\u001b8…\u001b_pi:c\u0007👍🏽x\u001b]133;B\u001b\\\u001b>\u001b[Hİ\u001b[38:2::1:2:3m🏳️‍🌈\u001b]8;;\u0007",
+    "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007स्त्र~/srcwor\u001b]8;;\u0007",
+    "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007ld‍🧑🏾‍🦰\u001b[4m12345\u001b[2K\u001b[24mລຳ\u001b]8;;\u0007",
+    "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007ＡＢＣ\u001b[2K12345"
+   ]
+  },
+  {
+   "name": "case 0078",
+   "args": [
+    "\u001b[-\u001b>   hello❤ 🏳️‍🌈| \u001b[9mß\u001b[23mZ̴̢̛̗͓é\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[58;5;1m path/to/file.ts1️⃣path/to/file.tsa©️path/to/file.ts",
+    40
+   ],
+   "result": [
+    "\u001b[-\u001b>   hello❤ 🏳️‍🌈| \u001b[9mß\u001b[23mZ̴̢̛̗͓é\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[58;5;1m \u001b]8;;\u001b\\",
+    "\u001b[1;5;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\path/to/file.ts1️⃣path/to/file.tsa©️path/\u001b]8;;\u001b\\",
+    "\u001b[1;5;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0079",
+   "args": [
+    "🫱🏻‍🫲🏿🔥\u001bP1$r\u001b\\  worldกำ\u001b[1m⁠…path/to/file.tsำa⌚/\u001b[1;5Aกำ \u001b[1;38;5;196m#️⃣ path/to/file.ts",
+    28
+   ],
+   "result": [
+    "🫱🏻‍🫲🏿🔥\u001bP1$r\u001b\\",
+    "worldกำ\u001b[1m⁠…path/to/file.tsำa⌚/\u001b[1;5Aกำ \u001b[1;38;5;196m",
+    "\u001b[1;38;5;196m#️⃣ path/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0080",
+   "args": [
+    "world\u001b",
+    2
+   ],
+   "result": [
+    "wo",
+    "rl",
+    "d\u001b"
+   ]
+  },
+  {
+   "name": "case 0081",
+   "args": [
+    "\u001b[1;38;5;196mpath/to/file.ts\u001bP1$r\u001b\\é👍🏽The quick brown foxßຳThe quick brown foxThe quick brown fox\u001b[5n\u001b[3m#️⃣a你好，世界\t❤ä| \u001b7path/to/file.tsThe quick brown fox  \u001b[200~\u001b[24m🧑🏾‍🦰각日本語のテキスト",
+    23
+   ],
+   "result": [
+    "\u001b[1;38;5;196mpath/to/file.ts\u001bP1$r\u001b\\é👍🏽",
+    "\u001b[1;38;5;196mThe quick brown",
+    "\u001b[1;38;5;196mfoxßຳThe quick brown",
+    "\u001b[1;38;5;196mfoxThe quick brown",
+    "\u001b[1;38;5;196mfox\u001b[5n\u001b[3m#️⃣a你好，世界\t❤ä|",
+    "\u001b[1;3;38;5;196m\u001b7path/to/file.tsThe",
+    "\u001b[1;3;38;5;196mquick brown fox  \u001b[200~\u001b[24m🧑🏾‍🦰각日",
+    "\u001b[1;3;38;5;196m本語のテキスト"
+   ]
+  },
+  {
+   "name": "case 0082",
+   "args": [
+    "/\u001b_pi:c\u0007\u001b]0;title\u0007worldä\u001b[4m\u001b[24m12345\u001b_Gf=100,a=T;AAAA\u001b\\|~/src\u001b8\u001b^pm\u001b\\\u001b[999999999m\u001b[9m\u001b[31ক্ষ|\u001b[31\u001b[4m\u001b[29mß|…a ",
+    9
+   ],
+   "result": [
+    "/\u001b_pi:c\u0007\u001b]0;title\u0007worldä\u001b[4m\u001b[24m12",
+    "345\u001b_Gf=100,a=T;AAAA\u001b\\|~/src\u001b",
+    "8\u001b^pm\u001b\\\u001b[999999999m\u001b[9m\u001b[31ক্ষ|\u001b[31\u001b[4m\u001b[29mß|…a\u001b[24m",
+    "\u001b[4m"
+   ]
+  },
+  {
+   "name": "case 0083",
+   "args": [
+    "a\u001b[9m\u001b]8;;\u0007 world\u001b[999999999mé🇺🇸©️。🫱🏻‍🫲🏿\u001b]0;title\u0007",
+    36
+   ],
+   "result": [
+    "a\u001b[9m\u001b]8;;\u0007 world\u001b[999999999mé🇺🇸©️。🫱🏻‍🫲🏿\u001b]0;title\u0007"
+   ]
+  },
+  {
+   "name": "case 0084",
+   "args": [
+    "—helloस्त्रa\n/aßa\u001b[0m🤝 👍🏽12345The quick brown foxक्षworldZ̴̢̛̗͓|\u001b[5né✓̀aัThe quick brown fox……​ßThe quick brown fox ↔️\u001b[1m",
+    41
+   ],
+   "result": [
+    "—helloस्त्रa",
+    "/aßa\u001b[0m🤝 👍🏽12345The quick brown",
+    "foxक्षworldZ̴̢̛̗͓|\u001b[5né✓̀aัThe quick brown fox……​ßThe quick brown fox ↔️\u001b[1m"
+   ]
+  },
+  {
+   "name": "case 0085",
+   "args": [
+    "é­\u001b>ລຳx\u001b[3m hellox\u001b[H✓",
+    26
+   ],
+   "result": [
+    "é­\u001b>ລຳx\u001b[3m hellox\u001b[H✓"
+   ]
+  },
+  {
+   "name": "case 0086",
+   "args": [
+    "\u001b]133;B\u001b\\  👩‍💻🧑🏾‍🦰Z̴̢̛̗͓\u001b[9m\u001b8ＡＢＣworldक्ष🏴‍☠️✓foo-bar|\u001b[1;5Aİัpath/to/file.tspath/to/file.ts﻿|#️⃣-\u001b[1m🏳️‍🌈\u001b^pm\u001b\\かなä」path/to/file.ts",
+    32
+   ],
+   "result": [
+    "\u001b]133;B\u001b\\",
+    "👩‍💻🧑🏾‍🦰Z̴̢̛̗͓\u001b[9m\u001b8ＡＢＣworldक्ष🏴‍☠️✓foo-bar|\u001b[1;5Aİัpath/to/file.tspath/to/file.ts﻿|#️⃣-\u001b[1m🏳️‍🌈\u001b",
+    "\u001b[1;9m^pm\u001b\\かなä」path/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0087",
+   "args": [
+    "ລຳ⚠️~/src̀—|ລຳ각。\u001b[2m  path/to/file.ts\u001b[Hß|-a b \u001b]8;id=1;https://e.com/p?q=1\u001b\\İ✔|İ☺️。é\u001b[39mカナ⚠️  ",
+    27
+   ],
+   "result": [
+    "ລຳ⚠️~/src̀—|ລຳ각。\u001b[2m",
+    "\u001b[2mpath/to/file.ts\u001b[Hß|-a b",
+    "\u001b[2m\u001b]8;id=1;https://e.com/p?q=1\u001b\\İ✔|İ☺️。é\u001b[39mカナ⚠️"
+   ]
+  },
+  {
+   "name": "case 0088",
+   "args": [
+    "\u001bX sos\u001b\\✓\u001b[0m©️ 🤝\u001b[3m̀~/srcกำ  1️⃣\u001b[2mİa\u001b]8;;\u001b\\🏳️‍🌈\u001b[1mस्त्रかな⚠\u001b]8;id=1;https://e.com/p?q=1\u001b\\a✓  \u001b[1m「\u001b^pm\u001b\\#️⃣path/to/file.tsa\u001b]8;;\u001b\\12345」ＡＢＣa—⌚a bລຳ",
+    13
+   ],
+   "result": [
+    "\u001bX sos\u001b\\✓\u001b[0m©️",
+    "🤝\u001b[3m̀~/srcกำ",
+    "\u001b[3m1️⃣\u001b[2mİa\u001b]8;;\u001b\\🏳️‍🌈\u001b[1mस्त्रかな",
+    "\u001b[1;2;3m⚠\u001b]8;id=1;https://e.com/p?q=1\u001b\\a✓  \u001b[1m「\u001b]8;;\u001b\\",
+    "\u001b[1;2;3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b^pm\u001b\\#️⃣path/to\u001b]8;;\u001b\\",
+    "\u001b[1;2;3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\/file.tsa\u001b]8;;\u001b\\1234",
+    "\u001b[1;2;3m5」",
+    "\u001b[1;2;3mＡＢＣa—⌚a",
+    "\u001b[1;2;3mbລຳ"
+   ]
+  },
+  {
+   "name": "case 0089",
+   "args": [
+    "กำworldafoo-bar」 \u001b[48;2;1;2;3mworld\u001b]8;;http://x.test/a\u0007\u001b[2K\u001b[2m\u001b]8;;http://x.test/a\u0007#️⃣The quick brown foxß12345",
+    36
+   ],
+   "result": [
+    "กำworldafoo-bar」 \u001b[48;2;1;2;3mworld\u001b]8;;http://x.test/a\u0007\u001b[2K\u001b[2m\u001b]8;;http://x.test/a\u0007#️⃣The quick\u001b]8;;\u0007",
+    "\u001b[2;48;2;1;2;3m\u001b]8;;http://x.test/a\u0007brown foxß12345"
+   ]
+  },
+  {
+   "name": "case 0090",
+   "args": [
+    "İ\u001bX sos\u001b\\foo-barThe quick brown fox…  \u001b[39m🇬🇧🇫🇷a😀ન્ન—-ລຳ\u001b[38;2;10;20;30mกำaกำ12345Z̴̢̛̗͓",
+    19
+   ],
+   "result": [
+    "İ\u001bX sos\u001b\\foo-barThe",
+    "quick brown fox…",
+    "\u001b[39m🇬🇧🇫🇷a😀ન્ન—-ລຳ\u001b[38;2;10;20;30mกำaกำ1",
+    "\u001b[38;2;10;20;30m2345Z̴̢̛̗͓"
+   ]
+  },
+  {
+   "name": "case 0091",
+   "args": [
+    "ລຳ\u001b]133;A\u0007\u001b[—ຳ\u001b]8;;unterminated\u001b_Gf=100,a=T;AAAA\u001b\\漢字かな/~/src\u001b=「©️~/src­ન્ન⚠️ᄀ가path/to/file.tspath/to/file.tsThe quick brown fox\u001b[38;2;10;20;30m|\u001bc각foo-bar​#️⃣‍foo-bar\u001b[48;2;1;2;3m\u001b]0;title\u000712345\u001b]8;;unterminated\npath/to/file.ts",
+    39
+   ],
+   "result": [
+    "ລຳ\u001b]133;A\u0007\u001b[—ຳ\u001b]8;;unterminated\u001b_Gf=100,a=T;AAAA\u001b\\漢字かな/~/src\u001b=「©️~/src­ન્ન⚠️ᄀ가",
+    "path/to/file.tspath/to/file.tsThe quick",
+    "brown fox\u001b[38;2;10;20;30m|\u001bc각",
+    "\u001b[38;2;10;20;30mfoo-bar​#️⃣‍foo-bar\u001b[48;2;1;2;3m\u001b]0;title\u000712345\u001b]8;;unterminated",
+    "\u001b[38;2;10;20;30;48;2;1;2;3mpath/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0092",
+   "args": [
+    "foo-barกำpath/to/file.tsかなworld… 🇬🇧🇫🇷‍\u001b]8;id=1;https://e.com/p?q=1\u001b\\\tThe quick brown fox\n—\u001b[5n  The quick brown fox❤️❤️  🏴‍☠️「hello",
+    34
+   ],
+   "result": [
+    "foo-barกำpath/to/file.tsかなworld…",
+    "🇬🇧🇫🇷‍\u001b]8;id=1;https://e.com/p?q=1\u001b\\\tThe quick brown fox",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\—\u001b[5n  The quick brown fox❤️❤️  🏴‍☠️\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\「hello"
+   ]
+  },
+  {
+   "name": "case 0093",
+   "args": [
+    "ᄀ가a b  ລຳＡＢＣa👍🏽स्त्रİ—かな\u001b[1;38;5;196m",
+    25
+   ],
+   "result": [
+    "ᄀ가a b  ລຳＡＢＣa👍🏽स्त्रİ—か",
+    "な\u001b[1;38;5;196m"
+   ]
+  },
+  {
+   "name": "case 0094",
+   "args": [
+    "\u001b[\u001b[48;2;1;2;3mຳhello",
+    24
+   ],
+   "result": [
+    "\u001b[\u001b[48;2;1;2;3mຳhello"
+   ]
+  },
+  {
+   "name": "case 0095",
+   "args": [
+    "⌚\u001b[39mক্ষé‍\u001b[38;2;10;20;30mİaİpath/to/file.ts⌚",
+    16
+   ],
+   "result": [
+    "⌚\u001b[39mক্ষé‍\u001b[38;2;10;20;30mİaİpath/to/",
+    "\u001b[38;2;10;20;30mfile.ts⌚"
+   ]
+  },
+  {
+   "name": "case 0096",
+   "args": [
+    "❤️\u001b[27m­\n 1️⃣épath/to/file.ts\u001b[49m\u001b[9mक्‍ष—©️̀\u001b_pi:c\u0007— ＡＢＣ~/src12345🇬🇧🇫🇷✓ foo-bar\n1️⃣    \u001b[27m©️",
+    48
+   ],
+   "result": [
+    "❤️\u001b[27m­",
+    " 1️⃣épath/to/file.ts\u001b[49m\u001b[9mक्‍ष—©️̀\u001b_pi:c\u0007— ＡＢＣ~/src12345🇬🇧🇫🇷✓",
+    "\u001b[9mfoo-bar",
+    "\u001b[9m1️⃣    \u001b[27m©️"
+   ]
+  },
+  {
+   "name": "case 0097",
+   "args": [
+    " world‍ัั\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]8;;\u001b\\\u001b^pm\u001b\\  क्षक्ष🔥Z̴̢̛̗͓👨‍👩‍👧‍👦foo-barİfoo-barस्त्र你好，世界ᄀ가🇺🇸漢字|⌚\u001b]133;B\u001b\\ຳ\u001b7path/to/file.ts⬜️­The quick brown fox\u001b]8;;unterminated",
+    35
+   ],
+   "result": [
+    " world‍ัั\u001b_Gf=100,a=T;AAAA\u001b\\\u001b]8;;\u001b\\\u001b^pm\u001b\\",
+    "क्षक्ष🔥Z̴̢̛̗͓👨‍👩‍👧‍👦foo-barİfoo-barस्त्र你好，世",
+    "界ᄀ가🇺🇸漢字|⌚\u001b]133;B\u001b\\ຳ\u001b7path/to/file.ts⬜️­The",
+    "quick brown fox\u001b]8;;unterminated"
+   ]
+  },
+  {
+   "name": "case 0098",
+   "args": [
+    "\u001b[The quick brown fox|a b  ",
+    12
+   ],
+   "result": [
+    "\u001b[The quick",
+    "brown fox|a",
+    "b"
+   ]
+  },
+  {
+   "name": "case 0099",
+   "args": [
+    "\u001b[31ＡＢＣ\u001b[27mक्‍षhello\u001b[24mx\u001b[5n",
+    49
+   ],
+   "result": [
+    "\u001b[31ＡＢＣ\u001b[27mक्‍षhello\u001b[24mx\u001b[5n"
+   ]
+  },
+  {
+   "name": "case 0100",
+   "args": [
+    " กำ👍🏽é\u001b[1mß\u001b]8;;unterminated\u001b[24m\u001b[27mworld -a b「\u001b[3m\u001b[27mİ…\u001b[mx👩‍💻  a\u001b[?25l\u001b7…̀\u001b[5n",
+    18
+   ],
+   "result": [
+    "",
+    "กำ👍🏽é\u001b[1mß\u001b]8;;untermin",
+    "\u001b[1mated\u001b[24m\u001b[27mworld -a b「",
+    "\u001b[1m\u001b[3m\u001b[27mİ…\u001b[mx👩‍💻  a\u001b[?25l\u001b7…̀\u001b[5n"
+   ]
+  },
+  {
+   "name": "case 0101",
+   "args": [
+    "…-©️ລຳกำworld\u001b]1337;File=inline=1:AAAA\u0007\u001b[29m  İ| a |\u001b_pi:c\u0007̀é🏴‍☠️©️🧑🏾‍🦰~/src❤️\u001b[m\u001b7",
+    23
+   ],
+   "result": [
+    "…-©️ລຳกำworld\u001b]1337;File=inline=1:AAAA\u0007\u001b[29m  İ| a",
+    "|\u001b_pi:c\u0007̀é🏴‍☠️©️🧑🏾‍🦰~/src❤️\u001b[m\u001b7"
+   ]
+  },
+  {
+   "name": "case 0102",
+   "args": [
+    "🏳️‍🌈|😀\u001b>\u001b[1;5A⚠️ß xpath/to/file.ts12345\n\u001b[3m",
+    14
+   ],
+   "result": [
+    "🏳️‍🌈|😀\u001b>\u001b[1;5A⚠️ß",
+    "xpath/to/file.",
+    "ts12345",
+    "\u001b[3m"
+   ]
+  },
+  {
+   "name": "case 0103",
+   "args": [
+    "、\u001b]133;A\u0007\u001bP1$r\u001b\\\u001bX sos\u001b\\foo-bar",
+    14
+   ],
+   "result": [
+    "、\u001b]133;A\u0007\u001bP1$r\u001b\\\u001bX",
+    "sos\u001b\\foo-bar"
+   ]
+  },
+  {
+   "name": "case 0104",
+   "args": [
+    "……ᄀ가🧑🏾‍🦰✔12345\u001b[29mhello\u001b[Hworld",
+    21
+   ],
+   "result": [
+    "……ᄀ가",
+    "🧑🏾‍🦰✔12345\u001b[29mhello\u001b[Hworld"
+   ]
+  },
+  {
+   "name": "case 0105",
+   "args": [
+    "、xx✓\u001b8\u001b7…a\u001b]8;;http://x.test/a\u0007🇺🇸#️⃣é#️⃣👨‍👩‍👧‍👦aລຳ \u001b[0m👨‍👩‍👧‍👦ß\u001b[38;2;10;20;30mworlda bfoo-bar⚠\u001bX sos\u001b\\İ­\u001b[2K\u001b[58;5;1m̀ન્ન⚠️ન્ન\u001b[7m",
+    34
+   ],
+   "result": [
+    "、xx✓\u001b8\u001b7…a\u001b]8;;http://x.test/a\u0007🇺🇸#️⃣é#️⃣👨‍👩‍👧‍👦aລຳ \u001b[0m👨‍👩‍👧‍👦ß\u001b[38;2;10;20;30mworlda\u001b]8;;\u0007",
+    "\u001b[38;2;10;20;30m\u001b]8;;http://x.test/a\u0007bfoo-bar⚠\u001bX sos\u001b\\İ­\u001b[2K\u001b[58;5;1m̀ન્ન⚠️ન્ન\u001b[7m"
+   ]
+  },
+  {
+   "name": "case 0106",
+   "args": [
+    "กำ\u001b>\u001b[2m",
+    26
+   ],
+   "result": [
+    "กำ\u001b>\u001b[2m"
+   ]
+  },
+  {
+   "name": "case 0107",
+   "args": [
+    "\u001b]0;title\u0007🇬🇧🇫🇷👩‍💻a b⭐\u001b[29m\u001b[38;2;10;20;30m\u001b[200~\u001b]133;A\u0007world  …カナ—|\u001b>The quick brown fox  a\u001b[7m你好，世界\u001b[1;5Aßé\u001b=「👩‍💻\u001bX sos\u001b\\⚠\u001b[4mfoo-bar~/src\u001bcfoo-bar|—foo-baréİ ",
+    39
+   ],
+   "result": [
+    "\u001b]0;title\u0007🇬🇧🇫🇷👩‍💻a b⭐\u001b[29m\u001b[38;2;10;20;30m\u001b[200~\u001b]133;A\u0007world  …カナ—|\u001b>The quick brown fox  a\u001b[7m你好，世界",
+    "\u001b[7;38;2;10;20;30m\u001b[1;5Aßé\u001b=「👩‍💻\u001bX sos\u001b\\⚠\u001b[4mfoo-bar~/src\u001bcfoo-bar|—foo-baréİ"
+   ]
+  },
+  {
+   "name": "case 0108",
+   "args": [
+    "éカナ/ß\u001b[4:3mé⚠\u001b]8;;\u001b\\12345̀  \u001b[48;2;1;2;3m\u001b[9m",
+    13
+   ],
+   "result": [
+    "éカナ",
+    "/ß\u001b[4:3mé⚠\u001b]8;;\u001b\\12345̀  \u001b[48;2;1;2;3m\u001b[9m"
+   ]
+  },
+  {
+   "name": "case 0109",
+   "args": [
+    "İ\u001b[1m日本語のテキスト\u001b]8;;unterminated​🔥The quick brown foxfoo-barä|\tัfoo-bar…a b~/src—||hello\u001b[4m\u001b[31mé|\u001b[29m\u001b8",
+    41
+   ],
+   "result": [
+    "İ\u001b[1m日本語のテキスト\u001b]8;;unterminated​🔥The",
+    "\u001b[1mquick brown foxfoo-barä|\tัfoo-bar…a",
+    "\u001b[1mb~/src—||hello\u001b[4m\u001b[31mé|\u001b[29m\u001b8"
+   ]
+  },
+  {
+   "name": "case 0110",
+   "args": [
+    "漢字\u001b]133;A\u0007The quick brown foxßäß😀aक्ष12345path/to/file.tspath/to/file.tsfoo-bar—~/srcxworld「",
+    16
+   ],
+   "result": [
+    "漢字\u001b]133;A\u0007The quick",
+    "brown",
+    "foxßäß😀aक्ष12345",
+    "path/to/file.tsp",
+    "ath/to/file.tsfo",
+    "o-bar—~/srcxworl",
+    "d「"
+   ]
+  },
+  {
+   "name": "case 0111",
+   "args": [
+    "12345\u001b[38;2;10;20;30ma b\u001b]133;A\u0007☺️\u001b(B \u001b[7m12345\u001b]133;A\u0007🇺🇸12345각\u001b]8;;\u0007\u001b]133;B\u001b\\\u001b_Gf=100,a=T;AAAA\u001b\\」\u001b]8;;\u001b\\/The quick brown foxé\u001b[29mé🏴‍☠️。Z̴̢̛̗͓\u001b[1m",
+    20
+   ],
+   "result": [
+    "12345\u001b[38;2;10;20;30ma b\u001b]133;A\u0007☺️\u001b(B",
+    "\u001b[38;2;10;20;30m\u001b[7m12345\u001b]133;A\u0007🇺🇸12345각\u001b]8;;\u0007\u001b]133;B\u001b\\\u001b_Gf=100,a=T;AAAA\u001b\\」\u001b]8;;\u001b\\/The",
+    "\u001b[7;38;2;10;20;30mquick brown foxé\u001b[29mé🏴‍☠️",
+    "\u001b[7;38;2;10;20;30m。Z̴̢̛̗͓\u001b[1m"
+   ]
+  },
+  {
+   "name": "case 0112",
+   "args": [
+    "カナ\u001b[31mß\u001b[29m你好，世界 ̀path/to/file.ts\u001b]8;;\u0007",
+    23
+   ],
+   "result": [
+    "カナ\u001b[31mß\u001b[29m你好，世界",
+    "\u001b[31m ̀path/to/file.ts\u001b]8;;\u0007"
+   ]
+  },
+  {
+   "name": "case 0113",
+   "args": [
+    "﻿Z̴̢̛̗͓ß~/src",
+    16
+   ],
+   "result": [
+    "﻿Z̴̢̛̗͓ß~/src"
+   ]
+  },
+  {
+   "name": "case 0114",
+   "args": [
+    "…‍path/to/file.tsworld👩‍💻aé你好，世界-worldé\u001b[4:3mThe quick brown fox\u001b[1mhello\u001b[27mßhello\u001b[58;5;1mß \u001b[7mß‌\u001b[49m",
+    14
+   ],
+   "result": [
+    "…‍path/to/file.",
+    "tsworld👩‍💻aé你",
+    "好，世界",
+    "-worldé\u001b[4:3mThe",
+    "quick brown",
+    "fox\u001b[1mhello\u001b[27mßhello\u001b[58;5;1m",
+    "\u001b[1;5mß \u001b[7mß‌\u001b[49m"
+   ]
+  },
+  {
+   "name": "case 0115",
+   "args": [
+    "a b|☺️\u001b[你好，世界\u001b[999999999m | \u001b[49m\u001b=İ👩‍💻   ↔️\u001b[38;2;10;20;30mx🧑🏾‍🦰İ。Z̴̢̛̗͓\u001b[2m12345|ＡＢＣ…ß",
+    27
+   ],
+   "result": [
+    "a b|☺️\u001b[你好，世界\u001b[999999999m | \u001b[49m\u001b=İ👩‍💻   ↔️\u001b[38;2;10;20;30mx🧑🏾‍🦰İ。",
+    "\u001b[38;2;10;20;30mZ̴̢̛̗͓\u001b[2m12345|ＡＢＣ…ß"
+   ]
+  },
+  {
+   "name": "case 0116",
+   "args": [
+    "helloxカナ \u001b]8;;\u0007The quick brown fox\u001b[1;5AＡＢＣ🔥\u001b(B…",
+    47
+   ],
+   "result": [
+    "helloxカナ \u001b]8;;\u0007The quick brown fox\u001b[1;5AＡＢＣ🔥\u001b(B…"
+   ]
+  },
+  {
+   "name": "case 0117",
+   "args": [
+    "\u001b8⁠é|😀path/to/file.ts\u001b>x\u001b[0ma\u001b[48;2;1;2;3m⬜️‍ำ\u001b[48;2;1;2;3m🇬🇧🇫🇷\u001b^pm\u001b\\한국어  \u001b]8;;\u001b\\\u001b[hello⌚",
+    23
+   ],
+   "result": [
+    "\u001b8⁠é|😀path/to/file.ts\u001b>x\u001b[0ma\u001b[48;2;1;2;3m",
+    "\u001b[48;2;1;2;3m⬜️‍ำ\u001b[48;2;1;2;3m🇬🇧🇫🇷\u001b^pm\u001b\\한국어",
+    "\u001b[48;2;1;2;3m\u001b]8;;\u001b\\\u001b[hello⌚"
+   ]
+  },
+  {
+   "name": "case 0118",
+   "args": [
+    "\u001b[23m\u001b[1;38;5;196m",
+    34
+   ],
+   "result": [
+    "\u001b[23m\u001b[1;38;5;196m"
+   ]
+  },
+  {
+   "name": "case 0119",
+   "args": [
+    "ß\u001b[38:2::1:2:3mfoo-bar̀﻿\u001b[9m\u001b[1;38;5;196méa bZ̴̢̛̗͓\u001b]8;;\u0007\u001bP1$r\u001b\\👍🏽日本語のテキスト漢字a|foo-bar👍🏽\u001b>",
+    29
+   ],
+   "result": [
+    "ß\u001b[38:2::1:2:3mfoo-bar̀﻿\u001b[9m\u001b[1;38;5;196méa bZ̴̢̛̗͓\u001b]8;;\u0007\u001bP1$r\u001b\\👍🏽日本語の",
+    "\u001b[1;9;38;5;196mテキスト漢字a|foo-bar👍🏽\u001b>"
+   ]
+  },
+  {
+   "name": "case 0120",
+   "args": [
+    "é\t🔥a|🇬🇧🇫🇷…\u001b[4m|❤ßa‍İ🫱🏻‍🫲🏿helloＡＢＣx ✓\u001b[22m你好，世界👍🏽\u001b[31world\u001b7world",
+    50
+   ],
+   "result": [
+    "é\t🔥a|🇬🇧🇫🇷…\u001b[4m|❤ßa‍İ🫱🏻‍🫲🏿helloＡＢＣx ✓\u001b[22m你好，世界\u001b[24m",
+    "\u001b[4m👍🏽\u001b[31world\u001b7world"
+   ]
+  },
+  {
+   "name": "case 0121",
+   "args": [
+    "—|a  🇺🇸。\u001b]8;;http://x.test/a\u0007The quick brown fox \u001b[5nx\u001b[31m|🏴‍☠️⁠ำa\u001b[The quick brown fox",
+    21
+   ],
+   "result": [
+    "—|a  🇺🇸。\u001b]8;;http://x.test/a\u0007The quick\u001b]8;;\u0007",
+    "\u001b]8;;http://x.test/a\u0007brown fox \u001b[5nx\u001b[31m|🏴‍☠️⁠ำa\u001b[The\u001b]8;;\u0007",
+    "\u001b[31m\u001b]8;;http://x.test/a\u0007quick brown fox"
+   ]
+  },
+  {
+   "name": "case 0122",
+   "args": [
+    " 12345   ั|İ\u001bcZ̴̢̛̗͓↔️かな⬜️a b—foo-bar",
+    12
+   ],
+   "result": [
+    " 12345",
+    " ั|İ\u001bcZ̴̢̛̗͓↔️かな",
+    "⬜️a",
+    "b—foo-bar"
+   ]
+  },
+  {
+   "name": "case 0123",
+   "args": [
+    "☺️กำ\u001b[48;2;1;2;3m漢字x」\u001b[31m­\u001b[4:3mThe quick brown fox­🇺🇸world\u001b[49mThe quick brown fox\u001b_pi:c\u0007漢字İxक्‍ष12345\u001b[58;5;1mpath/to/file.tsfoo-barfoo-bar\u001bc👍🏽~/src\u001b[1;38;5;196m\u001b[2m|  ન્ન12345",
+    8
+   ],
+   "result": [
+    "☺️กำ\u001b[48;2;1;2;3m漢字",
+    "\u001b[48;2;1;2;3mx」\u001b[31m­\u001b[4:3mThe",
+    "\u001b[31;48;2;1;2;3mquick",
+    "\u001b[31;48;2;1;2;3mbrown",
+    "\u001b[31;48;2;1;2;3mfox­🇺🇸wor",
+    "\u001b[31;48;2;1;2;3mld\u001b[49mThe",
+    "\u001b[31mquick",
+    "\u001b[31mbrown",
+    "\u001b[31mfox\u001b_pi:c\u0007漢字",
+    "\u001b[31mİxक्‍ष1234",
+    "\u001b[31m5\u001b[58;5;1mpath/to",
+    "\u001b[1;5;31m/file.ts",
+    "\u001b[1;5;31mfoo-barf",
+    "\u001b[1;5;31moo-bar\u001bc",
+    "\u001b[1;5;31m👍🏽~/src\u001b[1;38;5;196m\u001b[2m|",
+    "\u001b[1;2;5;38;5;196mન્ન12345"
+   ]
+  },
+  {
+   "name": "case 0124",
+   "args": [
+    "ক্ষZ̴̢̛̗͓  İ⭐ ‌aThe quick brown foxhelloäस्त्र\u001b[29m​\u001bé\u001b]133;B\u001b\\\u001b[3m각world",
+    43
+   ],
+   "result": [
+    "ক্ষZ̴̢̛̗͓  İ⭐ ‌aThe quick brown foxhelloäस्त्र\u001b[29m​\u001bé\u001b]133;B\u001b\\\u001b[3m각",
+    "\u001b[3mworld"
+   ]
+  },
+  {
+   "name": "case 0125",
+   "args": [
+    "a|\u001b]1337;File=inline=1:AAAA\u0007äThe quick brown fox⚠。🇬🇧🇫🇷☺️ન્ન \nক্ষ🇺🇸👍🏽é\u001b[5nxİ    क्ष\u001b[23m12345 ßຳ\u001b]8;;\u001b\\\u001b[4mworld—ক্ষworld̀a",
+    1
+   ],
+   "result": [
+    "a",
+    "|\u001b]1337;File=inline=1:AAAA\u0007",
+    "ä",
+    "T",
+    "h",
+    "e",
+    "q",
+    "u",
+    "i",
+    "c",
+    "k",
+    "b",
+    "r",
+    "o",
+    "w",
+    "n",
+    "f",
+    "o",
+    "x",
+    "⚠",
+    "",
+    "。",
+    "",
+    "🇬🇧",
+    "🇫🇷",
+    "☺️",
+    "ન્ન",
+    "",
+    "ক্ষ",
+    "🇺🇸",
+    "👍🏽",
+    "é\u001b[5nxİ    क्ष\u001b[23m",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "",
+    "ßຳ\u001b]8;;\u001b\\\u001b[4m\u001b[24m",
+    "\u001b[4mw\u001b[24m",
+    "\u001b[4mo\u001b[24m",
+    "\u001b[4mr\u001b[24m",
+    "\u001b[4ml\u001b[24m",
+    "\u001b[4md\u001b[24m",
+    "\u001b[4m—\u001b[24m",
+    "\u001b[4mক্ষ\u001b[24m",
+    "\u001b[4mw\u001b[24m",
+    "\u001b[4mo\u001b[24m",
+    "\u001b[4mr\u001b[24m",
+    "\u001b[4ml\u001b[24m",
+    "\u001b[4md̀\u001b[24m",
+    "\u001b[4ma"
+   ]
+  },
+  {
+   "name": "case 0126",
+   "args": [
+    "\u001b[0mThe quick brown fox   hello。İx#️⃣­é \u001bX sos\u001b\\~/src‍😀\u001b[5nかなİ\u001b[ß©️ำ-\u001b[49ma b각👍🏽\u001b[7m\u001b[5nx\u001b\u001b[5npath/to/file.ts、 ລຳ❤स्त्र",
+    3
+   ],
+   "result": [
+    "\u001b[0mThe",
+    "qui",
+    "ck",
+    "bro",
+    "wn",
+    "fox",
+    "hel",
+    "lo",
+    "。",
+    "İx",
+    "#️⃣­é",
+    "\u001bX",
+    "sos\u001b",
+    "\\~/",
+    "src‍",
+    "😀\u001b[5nかなİ\u001b[ß©️ำ-\u001b[49ma",
+    "b각",
+    "👍🏽\u001b[7m\u001b[",
+    "\u001b[7m5nx\u001b\u001b",
+    "\u001b[7m[5n",
+    "\u001b[7mpat",
+    "\u001b[7mh/t",
+    "\u001b[7mo/f",
+    "\u001b[7mile",
+    "\u001b[7m.ts",
+    "\u001b[7m、",
+    "\u001b[7mລຳ❤",
+    "\u001b[7mस्त्र"
+   ]
+  },
+  {
+   "name": "case 0127",
+   "args": [
+    "ั",
+    10
+   ],
+   "result": [
+    "ั"
+   ]
+  },
+  {
+   "name": "case 0128",
+   "args": [
+    "  …ax\u001b[7m⌚\u001b[39m⁠\u001bchello각ન્નé「#️⃣…aİ\u001b[H\u001b[999999999m\u001b]8;;http://x.test/a\u0007🫱🏻‍🫲🏿漢字x|\u001b[22m\u001b[7m\u001b[1m|\u001b]8;;\u001b\\\u001b7\u001b[7mxä-\u001b[7m\u001bX sos\u001b\\\u001b[23mhello﻿",
+    29
+   ],
+   "result": [
+    "  …ax\u001b[7m⌚\u001b[39m⁠\u001bchello각ન્નé「#️⃣…aİ\u001b[H\u001b[999999999m\u001b]8;;http://x.test/a\u0007🫱🏻‍🫲🏿漢\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007字x|\u001b[22m\u001b[7m\u001b[1m|\u001b]8;;\u001b\\\u001b7\u001b[7mxä-\u001b[7m\u001bX sos\u001b\\\u001b[23mhello"
+   ]
+  },
+  {
+   "name": "case 0129",
+   "args": [
+    "​👩‍💻path/to/file.ts̀İ☺️hello…~/srcéx…—­\u001b=ＡＢＣ。↔️\u001b(B\u001b[9m\u001b[2mຳZ̴̢̛̗͓‍|| \u001b[22m\u001b[5n🧑🏾‍🦰̀world\u001b[1m The quick brown foxéİＡＢＣ각\u001b[24m",
+    23
+   ],
+   "result": [
+    "​👩‍💻path/to/file.ts̀İ☺️hel",
+    "lo…~/srcéx…—­\u001b=ＡＢＣ。",
+    "↔️\u001b(B\u001b[9m\u001b[2mຳZ̴̢̛̗͓‍|| \u001b[22m\u001b[5n🧑🏾‍🦰̀world\u001b[1m The quick",
+    "\u001b[1;9mbrown foxéİＡＢＣ각\u001b[24m"
+   ]
+  },
+  {
+   "name": "case 0130",
+   "args": [
+    "ＡＢＣ‍…-~/src\u001b[27m\u001b[4:3ma…\u001b[23mworld⚠️é\u001b[48;2;1;2;3m。한국어path/to/file.ts\u001b_pi:c\u0007\u001b[29m",
+    21
+   ],
+   "result": [
+    "ＡＢＣ‍…-~/src\u001b[27m\u001b[4:3ma…\u001b[23mworld",
+    "⚠️é\u001b[48;2;1;2;3m。한국어",
+    "\u001b[48;2;1;2;3mpath/to/file.ts\u001b_pi:c\u0007\u001b[29m"
+   ]
+  },
+  {
+   "name": "case 0131",
+   "args": [
+    "…✓\u001b[9m\nThe quick brown foxß\u001b[31  \u001b]0;title\u0007각foo-barß\u001b[4:3mäworld🏴‍☠️aß👨‍👩‍👧‍👦⁠…~/src\u001b]8;;\u0007\u001b]133;A\u0007  🧑🏾‍🦰你好，世界path/to/file.ts foo-bar",
+    4
+   ],
+   "result": [
+    "…✓\u001b[9m",
+    "\u001b[9mThe",
+    "\u001b[9mquic",
+    "\u001b[9mk",
+    "\u001b[9mbrow",
+    "\u001b[9mn",
+    "\u001b[9mfoxß\u001b[31  \u001b]0;title\u0007각foo-barß\u001b[4:3m",
+    "\u001b[9mäwor",
+    "\u001b[9mld🏴‍☠️",
+    "\u001b[9maß👨‍👩‍👧‍👦⁠",
+    "\u001b[9m…~/s",
+    "\u001b[9mrc\u001b]8;;\u0007\u001b]133;A\u0007",
+    "\u001b[9m🧑🏾‍🦰你",
+    "\u001b[9m好，",
+    "\u001b[9m世界",
+    "\u001b[9mpath",
+    "\u001b[9m/to/",
+    "\u001b[9mfile",
+    "\u001b[9m.ts",
+    "\u001b[9mfoo-",
+    "\u001b[9mbar"
+   ]
+  },
+  {
+   "name": "case 0132",
+   "args": [
+    "\u001b[H。 स्त्र日本語のテキスト—ß\u001b>  #️⃣",
+    27
+   ],
+   "result": [
+    "\u001b[H。 स्त्र日本語のテキスト—ß\u001b>",
+    "#️⃣"
+   ]
+  },
+  {
+   "name": "case 0133",
+   "args": [
+    "क्‍षfoo-bar~/src\u001bX sos\u001b\\स्त्र\u001b[999999999m你好，世界👍🏽🧑🏾‍🦰「—­\u001b[49m⭐-ั\u001b8」—",
+    6
+   ],
+   "result": [
+    "क्‍षfoo-",
+    "bar~/s",
+    "rc\u001bX",
+    "sos\u001b\\",
+    "स्त्र\u001b[999999999m你",
+    "好，世",
+    "界👍🏽🧑🏾‍🦰",
+    "「",
+    "—­\u001b[49m⭐-ั\u001b8",
+    "」—"
+   ]
+  },
+  {
+   "name": "case 0134",
+   "args": [
+    "日本語のテキスト  ＡＢＣ|path/to/file.tsx\u001b[—|hello~/src⁠ＡＢＣ「İ…क्ष\u001b[38;2;10;20;30m﻿İ\u001b]1337;File=inline=1:AAAA\u0007  ⁠~/src\u001b]8;;unterminated\u001b]8;;\u001b\\a❤️é\u001b]8;;\u0007\u001b_pi:c\u0007\u001b]8;;\u0007「a b­\u001b[7mß\u001b[1m\u001b[38;2;10;20;30m\u001bP1$r\u001b\\",
+    42
+   ],
+   "result": [
+    "日本語のテキスト  ＡＢＣ|path/to/file.tsx\u001b[—|hello~/src⁠ＡＢＣ「İ…क्ष\u001b[38;2;10;20;30m﻿İ",
+    "\u001b[38;2;10;20;30m\u001b]1337;File=inline=1:AAAA\u0007  ⁠~/src\u001b]8;;unterminated\u001b]8;;\u001b\\a❤️é\u001b]8;;\u0007\u001b_pi:c\u0007\u001b]8;;\u0007「a b­\u001b[7mß\u001b[1m\u001b[38;2;10;20;30m\u001bP1$r\u001b\\"
+   ]
+  },
+  {
+   "name": "case 0135",
+   "args": [
+    "\u001b]8;;unterminatedᄀ가⭐\n \u001b[24m©️İéß⭐…\u001bc\n\u001b[27m\u001b[49mßé\u001b[5n‌x\t日本語のテキストpath/to/file.tsかなfoo-bar日本語のテキスト\u001b[38;2;10;20;30mThe quick brown foxລຳ❤️กำ🏳️‍🌈\u001b[29m\u001b[31mＡＢＣx",
+    12
+   ],
+   "result": [
+    "\u001b]8;;untermin",
+    "atedᄀ가⭐",
+    " \u001b[24m©️İéß⭐…\u001bc",
+    "\u001b[27m\u001b[49mßé\u001b[5n‌x\t日本語のテキストpath/to/file.tsかなfoo-bar日本語のテキスト\u001b[38;2;10;20;30mThe quick",
+    "\u001b[38;2;10;20;30mbrown",
+    "\u001b[38;2;10;20;30mfoxລຳ❤️กำ🏳️‍🌈\u001b[29m\u001b[31m",
+    "\u001b[31mＡＢＣx"
+   ]
+  },
+  {
+   "name": "case 0136",
+   "args": [
+    "xस्त्र\u001b^pm\u001b\\한국어स्त्रé",
+    31
+   ],
+   "result": [
+    "xस्त्र\u001b^pm\u001b\\한국어स्त्रé"
+   ]
+  },
+  {
+   "name": "case 0137",
+   "args": [
+    "\u001b[9mfoo-bar|❤\u001b[9m、foo-bar\u001b[29m\u001b]8;;\u001b\\world🇺🇸ß❤ન્ન  🤝ำ©️İ\u001b7 \u001b[31m🤝👍🏽각👍🏽\n|☺️\u001b(B—👨‍👩‍👧‍👦\u001b_pi:c\u0007你好，世界",
+    6
+   ],
+   "result": [
+    "\u001b[9mfoo-ba",
+    "\u001b[9mr|❤\u001b[9m、",
+    "\u001b[9mfoo-ba",
+    "\u001b[9mr\u001b[29m\u001b]8;;\u001b\\world",
+    "🇺🇸ß❤ન્ન",
+    "🤝ำ©️İ\u001b",
+    "7 \u001b[31m🤝👍🏽",
+    "\u001b[31m각👍🏽",
+    "\u001b[31m|☺️\u001b(B—",
+    "\u001b[31m👨‍👩‍👧‍👦\u001b_pi:c\u0007你好",
+    "\u001b[31m，世界"
+   ]
+  },
+  {
+   "name": "case 0138",
+   "args": [
+    "\u001b[5n\u001b[ ক্ষß  ન્નั\u001bcかな",
+    14
+   ],
+   "result": [
+    "\u001b[5n\u001b[ ক্ষß  ન્નั\u001bc",
+    "かな"
+   ]
+  },
+  {
+   "name": "case 0139",
+   "args": [
+    "  \u001b[HZ̴̢̛̗͓\u001b[38;2;10;20;30m🫱🏻‍🫲🏿\u001b]8;id=1;https://e.com/p?q=1\u001b\\\nThe quick brown fox  a b⌚The quick brown fox한국어\u001b[38:2::1:2:3m~/src\u001b[39m\u001bworld\u001b[mé|、\u001b[31a b|\u001b[4:3m漢字éépath/to/file.tsa\u001b[?25la bfoo-barক্ষ\u001b[2m",
+    14
+   ],
+   "result": [
+    "  \u001b[HZ̴̢̛̗͓\u001b[38;2;10;20;30m🫱🏻‍🫲🏿\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    "\u001b[38;2;10;20;30m\u001b]8;id=1;https://e.com/p?q=1\u001b\\The quick\u001b]8;;\u001b\\",
+    "\u001b[38;2;10;20;30m\u001b]8;id=1;https://e.com/p?q=1\u001b\\brown fox  a\u001b]8;;\u001b\\",
+    "\u001b[38;2;10;20;30m\u001b]8;id=1;https://e.com/p?q=1\u001b\\b⌚The quick\u001b]8;;\u001b\\",
+    "\u001b[38;2;10;20;30m\u001b]8;id=1;https://e.com/p?q=1\u001b\\brown fox한국\u001b]8;;\u001b\\",
+    "\u001b[38;2;10;20;30m\u001b]8;id=1;https://e.com/p?q=1\u001b\\어\u001b[38:2::1:2:3m~/src\u001b[39m\u001bworld\u001b[mé|\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\、\u001b[31a b|\u001b[4:3m漢字\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\éépath/to/file\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\.tsa\u001b[?25la bfoo-barক্ষ\u001b[2m"
+   ]
+  },
+  {
+   "name": "case 0140",
+   "args": [
+    "\u001b[5n…path/to/file.tsa😀—x\u001b^pm\u001b\\é\u001b[\u001b]1337;File=inline=1:AAAA\u0007ß",
+    21
+   ],
+   "result": [
+    "\u001b[5n…path/to/file.tsa😀—x\u001b^pm\u001b\\é\u001b[\u001b]1337;File=inline=1:AAAA\u0007ß"
+   ]
+  },
+  {
+   "name": "case 0141",
+   "args": [
+    "」-  ̀\u001b[38;2;10;20;30m-/ world\u001b]1337;File=inline=1:AAAA\u0007\u001b[3m—⚠️\u001b[1mhello日本語のテキスト🏳️‍🌈…İThe quick brown fox",
+    31
+   ],
+   "result": [
+    "」-  ̀\u001b[38;2;10;20;30m-/ world\u001b]1337;File=inline=1:AAAA\u0007\u001b[3m—⚠️\u001b[1mhello日本語のテ",
+    "\u001b[1;3;38;2;10;20;30mキスト🏳️‍🌈…İThe quick brown fox"
+   ]
+  },
+  {
+   "name": "case 0142",
+   "args": [
+    " \u001b_Gf=100,a=T;AAAA\u001b\\日本語のテキストThe quick brown fox a🔥\u001b[1m✓hello⌚",
+    9
+   ],
+   "result": [
+    " \u001b_Gf=100,a=T;AAAA\u001b\\日本語の",
+    "テキスト",
+    "The quick",
+    "brown fox",
+    "a🔥\u001b[1m✓hello",
+    "\u001b[1m⌚"
+   ]
+  },
+  {
+   "name": "case 0143",
+   "args": [
+    "\u001b7",
+    48
+   ],
+   "result": [
+    "\u001b7"
+   ]
+  },
+  {
+   "name": "case 0144",
+   "args": [
+    " ß❤",
+    38
+   ],
+   "result": [
+    " ß❤"
+   ]
+  },
+  {
+   "name": "case 0145",
+   "args": [
+    "  path/to/file.ts\u001b[4:3m🇺🇸é \u001b]133;A\u0007…\u001b[9mworld。—你好，世界ß🏴‍☠️🇺🇸、😀ᄀ가「—12345a\u001b[1;38;5;196m⭐éZ̴̢̛̗͓क्‍षß\u001b[3m\u001b[22m↔️ path/to/file.ts\u001b[31The quick brown fox­­The quick brown fox。",
+    34
+   ],
+   "result": [
+    "  path/to/file.ts\u001b[4:3m🇺🇸é \u001b]133;A\u0007…\u001b[9mworld。—你好",
+    "\u001b[9m，世界ß🏴‍☠️🇺🇸、😀ᄀ가「",
+    "\u001b[9m—12345a\u001b[1;38;5;196m⭐éZ̴̢̛̗͓क्‍षß\u001b[3m\u001b[22m↔️",
+    "\u001b[3;9;38;5;196mpath/to/file.ts\u001b[31The quick brown",
+    "\u001b[3;9;38;5;196mfox­­The quick brown fox。"
+   ]
+  },
+  {
+   "name": "case 0146",
+   "args": [
+    "😀\u001b^pm\u001b\\‍\u001b[3m",
+    48
+   ],
+   "result": [
+    "😀\u001b^pm\u001b\\‍\u001b[3m"
+   ]
+  },
+  {
+   "name": "case 0147",
+   "args": [
+    "The quick brown foxxa你好，世界İ\u001b[27m",
+    27
+   ],
+   "result": [
+    "The quick brown foxxa你好，",
+    "世界İ\u001b[27m"
+   ]
+  },
+  {
+   "name": "case 0148",
+   "args": [
+    "x",
+    47
+   ],
+   "result": [
+    "x"
+   ]
+  },
+  {
+   "name": "case 0149",
+   "args": [
+    "\u001b=กำ\u001b_Gf=100,a=T;AAAA\u001b\\⚠️\u001b[24m\u001b[22m   ⌚path/to/file.ts",
+    37
+   ],
+   "result": [
+    "\u001b=กำ\u001b_Gf=100,a=T;AAAA\u001b\\⚠️\u001b[24m\u001b[22m   ⌚path/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0150",
+   "args": [
+    "ຳ\u001bP1$r\u001b\\かなfoo-bar👨‍👩‍👧‍👦✔\u001b]8;;http://x.test/a\u0007",
+    32
+   ],
+   "result": [
+    "ຳ\u001bP1$r\u001b\\かなfoo-bar👨‍👩‍👧‍👦✔\u001b]8;;http://x.test/a\u0007"
+   ]
+  },
+  {
+   "name": "case 0151",
+   "args": [
+    "⌚\n⌚✓é🇬🇧🇫🇷❤️",
+    11
+   ],
+   "result": [
+    "⌚",
+    "⌚✓é🇬🇧🇫🇷❤️"
+   ]
+  },
+  {
+   "name": "case 0152",
+   "args": [
+    "」#️⃣|  」 ລຳ각|\u001b[23m12345path/to/file.ts̀\u001b[0m \u001bX sos\u001b\\…⚠️—worldhello12345a\u001b]1337;File=inline=1:AAAA\u0007 ",
+    19
+   ],
+   "result": [
+    "」#️⃣|  」 ລຳ각",
+    "|\u001b[23m12345path/to/file.",
+    "ts̀\u001b[0m \u001bX",
+    "sos\u001b\\…⚠️—worldhello1",
+    "2345a\u001b]1337;File=inline=1:AAAA\u0007"
+   ]
+  },
+  {
+   "name": "case 0153",
+   "args": [
+    "你好，世界한국어é/~/src|\u001b_pi:c\u0007The quick brown fox」path/to/file.ts🏴‍☠️İ\n\u001b[38:2::1:2:3mİ\u001b[49m👨‍👩‍👧‍👦⬜️ a b12345⚠「\na🤝\n\u001b[2mworld",
+    2
+   ],
+   "result": [
+    "你",
+    "好",
+    "，",
+    "世",
+    "界",
+    "한",
+    "국",
+    "어",
+    "é/",
+    "~/",
+    "sr",
+    "c|\u001b_pi:c\u0007",
+    "Th",
+    "e",
+    "qu",
+    "ic",
+    "k",
+    "br",
+    "ow",
+    "n",
+    "fo",
+    "x",
+    "」",
+    "pa",
+    "th",
+    "/t",
+    "o/",
+    "fi",
+    "le",
+    ".t",
+    "s",
+    "🏴‍☠️",
+    "İ",
+    "\u001b[38:2::1:2:3mİ\u001b[49m",
+    "👨‍👩‍👧‍👦",
+    "⬜️",
+    "a",
+    "b1",
+    "23",
+    "45",
+    "⚠",
+    "「",
+    "a",
+    "🤝",
+    "\u001b[2mwo",
+    "\u001b[2mrl",
+    "\u001b[2md"
+   ]
+  },
+  {
+   "name": "case 0154",
+   "args": [
+    "foo-bar~/src\u001b[38:2::1:2:3m#️⃣ ⌚1234512345日本語のテキストé\u001b[2KThe quick brown fox\u001b[m…\u001b]133;A\u0007\u001b[2K \u001b[48;2;1;2;3mhello\u001bc  \u001b[200~\u001b_Gf=100,a=T;AAAA\u001b\\İ\u001b]8;id=1;https://e.com/p?q=1\u001b\\world",
+    38
+   ],
+   "result": [
+    "foo-bar~/src\u001b[38:2::1:2:3m#️⃣ ⌚1234512345日本語のテ",
+    "キストé\u001b[2KThe quick brown fox\u001b[m…\u001b]133;A\u0007\u001b[2K \u001b[48;2;1;2;3mhello\u001bc",
+    "\u001b[48;2;1;2;3m\u001b[200~\u001b_Gf=100,a=T;AAAA\u001b\\İ\u001b]8;id=1;https://e.com/p?q=1\u001b\\world"
+   ]
+  },
+  {
+   "name": "case 0155",
+   "args": [
+    "The quick brown fox\u001b[27m12345worldx",
+    32
+   ],
+   "result": [
+    "The quick brown fox\u001b[27m12345worldx"
+   ]
+  },
+  {
+   "name": "case 0156",
+   "args": [
+    "é\u001b]133;B\u001b\\\u001b[3m\u001b]8;;http://x.test/a\u0007ั✔ -\u001b[29mworldＡＢＣ\u001b[49mລຳ🧑🏾‍🦰กำカナ日本語のテキストéworld\u001b=world\nxfoo-bar🫱🏻‍🫲🏿\u001b[27m~/srcᄀ가…ન્નworldİ",
+    27
+   ],
+   "result": [
+    "é\u001b]133;B\u001b\\\u001b[3m\u001b]8;;http://x.test/a\u0007ั✔ -\u001b[29mworldＡＢＣ\u001b[49mລຳ🧑🏾‍🦰กำカナ日\u001b]8;;\u0007",
+    "\u001b[3m\u001b]8;;http://x.test/a\u0007本語のテキストéworld\u001b=world",
+    "\u001b[3m\u001b]8;;http://x.test/a\u0007xfoo-bar🫱🏻‍🫲🏿\u001b[27m~/srcᄀ가…ન્નworldİ"
+   ]
+  },
+  {
+   "name": "case 0157",
+   "args": [
+    " \u001b[49m1️⃣  —",
+    27
+   ],
+   "result": [
+    " \u001b[49m1️⃣  —"
+   ]
+  },
+  {
+   "name": "case 0158",
+   "args": [
+    "|̀🇺🇸\u001b[29m—ລຳ\u001b[38:2::1:2:3mpath/to/file.ts…a🔥a b🤝|\u001b^pm\u001b\\你好，世界⌚☺️\u001b[3m\u001b[1m\u001b[31ຳ­\u001b[29mhello\u001b]0;title\u0007ＡＢＣ",
+    2
+   ],
+   "result": [
+    "|̀",
+    "🇺🇸\u001b[29m",
+    "—",
+    "ລຳ\u001b[38:2::1:2:3m",
+    "pa",
+    "th",
+    "/t",
+    "o/",
+    "fi",
+    "le",
+    ".t",
+    "s…",
+    "a",
+    "🔥",
+    "a",
+    "b",
+    "🤝",
+    "|\u001b^",
+    "pm\u001b",
+    "\\",
+    "你",
+    "好",
+    "，",
+    "世",
+    "界",
+    "⌚",
+    "☺️\u001b[3m\u001b[1m\u001b[31ຳ­\u001b[29m",
+    "\u001b[1;3mhe",
+    "\u001b[1;3mll",
+    "\u001b[1;3mo\u001b]0;title\u0007",
+    "\u001b[1;3mＡ",
+    "\u001b[1;3mＢ",
+    "\u001b[1;3mＣ"
+   ]
+  },
+  {
+   "name": "case 0159",
+   "args": [
+    "🇺🇸©️a bxİ\u001b]8;id=1;https://e.com/p?q=1\u001b\\ éworld\u001b[23m…\u001b[1m \u001b[38:2::1:2:3m12345‍⚠️worldx\u001b_Gf=100,a=T;AAAA\u001b\\ ❤…\u001bX sos\u001b\\İ‌🤝",
+    12
+   ],
+   "result": [
+    "🇺🇸©️a bxİ\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\éworld\u001b[23m…\u001b[1m \u001b]8;;\u001b\\",
+    "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[38:2::1:2:3m12345‍⚠️world\u001b]8;;\u001b\\",
+    "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\x\u001b_Gf=100,a=T;AAAA\u001b\\ ❤…\u001bX\u001b]8;;\u001b\\",
+    "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\sos\u001b\\İ‌🤝"
+   ]
+  },
+  {
+   "name": "case 0160",
+   "args": [
+    "x\u001b[999999999m…©️\u001b[24mক্ষ ahello\u001b[999999999m\u001b]133;B\u001b\\ \u001b[58;5;1mຳक्ष↔️\u001b8path/to/file.ts\u001b[49m\u001b>「\u001b]1337;File=inline=1:AAAA\u0007world\u001b[24mกำ\n|\u001b[22mfoo-bar\u001b[1m\u001b[5n  The quick brown fox\u001b[?25l éfoo-bar✓İ⁠",
+    37
+   ],
+   "result": [
+    "x\u001b[999999999m…©️\u001b[24mক্ষ ahello\u001b[999999999m\u001b]133;B\u001b\\ \u001b[58;5;1mຳक्ष↔️\u001b8path/to/file.ts\u001b[49m\u001b>",
+    "\u001b[1;5m「\u001b]1337;File=inline=1:AAAA\u0007world\u001b[24mกำ",
+    "\u001b[1;5m|\u001b[22mfoo-bar\u001b[1m\u001b[5n  The quick brown fox\u001b[?25l",
+    "\u001b[1;5méfoo-bar✓İ⁠"
+   ]
+  },
+  {
+   "name": "case 0161",
+   "args": [
+    "⚠\u001b—\u001b^pm\u001b\\🇬🇧🇫🇷ລຳ🏴‍☠️| é\u001b]133;A\u0007\u001b[4:3m  日本語のテキスト👨‍👩‍👧‍👦—\u001b=\u001b[7m👩‍💻İThe quick brown foxক্ষ\u001b[2mworld👍🏽İ日本語のテキストé",
+    37
+   ],
+   "result": [
+    "⚠\u001b—\u001b^pm\u001b\\🇬🇧🇫🇷ລຳ🏴‍☠️| é\u001b]133;A\u0007\u001b[4:3m  日本語のテキスト",
+    "👨‍👩‍👧‍👦—\u001b=\u001b[7m👩‍💻İThe quick brown foxক্ষ\u001b[2mworld👍🏽İ",
+    "\u001b[2;7m日本語のテキストé"
+   ]
+  },
+  {
+   "name": "case 0162",
+   "args": [
+    "\u001b_Gf=100,a=T;AAAA\u001b\\カナ、foo-bar\u001b]8;;unterminated  ⌚\u001b7✓|—|\u001b[31m漢字\u001b[31\u001b[7m12345\u001bc\u001b(B\u001b[1;38;5;196m❤️world\u001b[3m~/src\u001b[31m👩‍💻\u001bc\u001b\u001b[31\u001b[22m",
+    30
+   ],
+   "result": [
+    "\u001b_Gf=100,a=T;AAAA\u001b\\カナ、foo-bar\u001b]8;;unterminated",
+    "⌚\u001b7✓|—|\u001b[31m漢字",
+    "\u001b[31m\u001b[31\u001b[7m12345\u001bc\u001b(B\u001b[1;38;5;196m❤️world\u001b[3m~/src\u001b[31m👩‍💻\u001bc\u001b\u001b[31\u001b[22m"
+   ]
+  },
+  {
+   "name": "case 0163",
+   "args": [
+    "İ…foo-bar‌」éa\u001b]8;;http://x.test/a\u0007foo-barafoo-bar\nß",
+    24
+   ],
+   "result": [
+    "İ…foo-bar‌」",
+    "éa\u001b]8;;http://x.test/a\u0007foo-barafoo-bar",
+    "\u001b]8;;http://x.test/a\u0007ß"
+   ]
+  },
+  {
+   "name": "case 0164",
+   "args": [
+    " 👍🏽\u001b[38:2::1:2:3m|  hello❤️hello…—「ຳ👍🏽 ",
+    34
+   ],
+   "result": [
+    " 👍🏽\u001b[38:2::1:2:3m|  hello❤️hello…—「ຳ👍🏽 "
+   ]
+  },
+  {
+   "name": "case 0165",
+   "args": [
+    "⚠️ＡＢＣ~/srcＡＢＣhello",
+    27
+   ],
+   "result": [
+    "⚠️ＡＢＣ~/srcＡＢＣhello"
+   ]
+  },
+  {
+   "name": "case 0166",
+   "args": [
+    "/한국어\u001b[48;2;1;2;3m\u001b]1337;File=inline=1:AAAA\u0007İ",
+    16
+   ],
+   "result": [
+    "/한국어\u001b[48;2;1;2;3m\u001b]1337;File=inline=1:AAAA\u0007İ"
+   ]
+  },
+  {
+   "name": "case 0167",
+   "args": [
+    "~/src👨‍👩‍👧‍👦\u001b[a👩‍💻\u001bP1$r\u001b\\a b✔xaThe quick brown fox🇺🇸İ\u001b[24m\u001b[3m|xaa b",
+    45
+   ],
+   "result": [
+    "~/src👨‍👩‍👧‍👦\u001b[a👩‍💻\u001bP1$r\u001b\\a b✔xaThe quick brown fox🇺🇸İ\u001b[24m\u001b[3m|xaa b"
+   ]
+  },
+  {
+   "name": "case 0168",
+   "args": [
+    "\u001b]0;title\u0007hello\u001b[9m⚠️\u001b]8;;http://x.test/a\u0007  —ᄀ가x⭐\u001b]8;;unterminated✓~/src\u001b[23m",
+    1
+   ],
+   "result": [
+    "\u001b]0;title\u0007h",
+    "e",
+    "l",
+    "l",
+    "o\u001b[9m",
+    "\u001b[9m⚠️",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007 \u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007—\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007ᄀ가\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007x\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007⭐\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b]\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u00078\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007;\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007;\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007u\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007n\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007t\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007e\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007r\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007i\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007n\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007a\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007t\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007e\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007d\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007✓\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007~\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007/\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007s\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007r\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007c\u001b[23m"
+   ]
+  },
+  {
+   "name": "case 0169",
+   "args": [
+    "İ\u001b[0méa b漢字—你好，世界\u001b[1mำß\u001b[2m    x  क्‍षé\u001b[48;2;1;2;3m​12345hello\u001b[0mpath/to/file.ts\u001b[29m",
+    41
+   ],
+   "result": [
+    "İ\u001b[0méa b漢字—你好，世界\u001b[1mำß\u001b[2m    x",
+    "\u001b[1;2mक्‍षé\u001b[48;2;1;2;3m​12345hello\u001b[0mpath/to/file.ts\u001b[29m"
+   ]
+  },
+  {
+   "name": "case 0170",
+   "args": [
+    " 각\u001b[Hhello\u001b(Bworld\u001b[22méক্ষ~/srca‌\u001b[2m\u001b]8;;unterminated\u001b[49m\u001b[31m  world✓\u001b[48;2;1;2;3mworld\u001b[1m \u001b[39m\nhelloस्त्र\u001b[29m\u001b |❤️axx\u001b[1;38;5;196m  a b🧑🏾‍🦰",
+    20
+   ],
+   "result": [
+    " 각",
+    "\u001b[Hhello\u001b(Bworld\u001b[22méক্ষ~/src",
+    "a‌\u001b[2m\u001b]8;;unterminated\u001b[49m\u001b[31m",
+    "\u001b[2;31mworld✓\u001b[48;2;1;2;3mworld\u001b[1m \u001b[39m",
+    "\u001b[1;2;48;2;1;2;3mhelloस्त्र\u001b[29m\u001b |❤️axx\u001b[1;38;5;196m  a",
+    "\u001b[1;2;38;5;196;48;2;1;2;3mb🧑🏾‍🦰"
+   ]
+  },
+  {
+   "name": "case 0171",
+   "args": [
+    "👍🏽\u001b[1;38;5;196m😀」🔥é。\n\u001b[24mworld✔12345👩‍💻 \n …⬜️İ\u001b]8;;http://x.test/a\u0007foo-bar 、é  👩‍💻‍ 한국어İক্ষaक्‍ष",
+    5
+   ],
+   "result": [
+    "👍🏽\u001b[1;38;5;196m😀",
+    "\u001b[1;38;5;196m」🔥é",
+    "\u001b[1;38;5;196m。",
+    "\u001b[1;38;5;196m\u001b[24mworld",
+    "\u001b[1;38;5;196m✔1234",
+    "\u001b[1;38;5;196m5👩‍💻",
+    "\u001b[1;38;5;196m",
+    "\u001b[1;38;5;196m…⬜️İ\u001b]8;;http://x.test/a\u0007f\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007oo-ba\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007r 、é\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007👩‍💻‍ 한\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007국어\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007İক্ষa\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007क्‍ष"
+   ]
+  },
+  {
+   "name": "case 0172",
+   "args": [
+    "é\u001b[48;2;1;2;3m\u001b[1;5Apath/to/file.ts​1️⃣İ\u001b[200~⁠  ❤  ＡＢＣ|\u001b>|✔👍🏽\u001b[4mx」ক্ষ12345\u001b[9m12345a b\u001b[38:2::1:2:3m⬜️🇺🇸\u001b[1mapath/to/file.ts",
+    14
+   ],
+   "result": [
+    "é\u001b[48;2;1;2;3m\u001b[1;5Apath/to/file.ts​1️⃣İ\u001b[200~⁠  ❤  ＡＢＣ|\u001b>|✔👍🏽\u001b[4mx」\u001b[24m",
+    "\u001b[4;48;2;1;2;3mক্ষ12345\u001b[9m12345a \u001b[24m",
+    "\u001b[4;9;48;2;1;2;3mb\u001b[38:2::1:2:3m⬜️🇺🇸\u001b[1mapath/to/\u001b[24m",
+    "\u001b[1;4;9;48;2;1;2;3mfile.ts"
+   ]
+  },
+  {
+   "name": "case 0173",
+   "args": [
+    "「\u001bX sos\u001b\\\u001b[999999999m12345🏳️‍🌈The quick brown foxक्‍षfoo-barカナ✓path/to/file.tsß漢字\nß👩‍💻",
+    41
+   ],
+   "result": [
+    "「\u001bX sos\u001b\\\u001b[999999999m12345🏳️‍🌈The quick brown",
+    "foxक्‍षfoo-barカナ✓path/to/file.tsß漢字",
+    "ß👩‍💻"
+   ]
+  },
+  {
+   "name": "case 0174",
+   "args": [
+    "🫱🏻‍🫲🏿|©️क्‍ष☺️👩‍💻|\u001bc⁠\u001b[48;2;1;2;3mé…स्त्र",
+    22
+   ],
+   "result": [
+    "🫱🏻‍🫲🏿|©️क्‍ष☺️👩‍💻|\u001bc⁠\u001b[48;2;1;2;3mé…स्त्र"
+   ]
+  },
+  {
+   "name": "case 0175",
+   "args": [
+    "「\u001b[1m\u001b[\u001b[38:2::1:2:3m\u001b[2Kx\u001b[38:2::1:2:3m⚠👍🏽foo-bar\u001bP1$r\u001b\\ન્ન­❤️a b\u001b[31m\u001b^pm\u001b\\각\u001b[4m\u001b[2K/↔️\u001b[2K12345hello\u001bfoo-barß\u001b[39m\u001b[999999999m\u001b[2K🔥foo-bara b…~/srcかな\t",
+    42
+   ],
+   "result": [
+    "「\u001b[1m\u001b[\u001b[38:2::1:2:3m\u001b[2Kx\u001b[38:2::1:2:3m⚠👍🏽foo-bar\u001bP1$r\u001b\\ન્ન­❤️a b\u001b[31m\u001b^pm\u001b\\각",
+    "\u001b[1;31m\u001b[4m\u001b[2K/↔️\u001b[2K12345hello\u001bfoo-barß\u001b[39m\u001b[999999999m\u001b[2K🔥foo-bara b…~/srcか\u001b[24m",
+    "\u001b[1;4mな"
+   ]
+  },
+  {
+   "name": "case 0176",
+   "args": [
+    "❤İ\u001b[3mThe quick brown foxé12345\u001b]8;id=1;https://e.com/p?q=1\u001b\\­a—foo-barＡＢＣThe quick brown fox \u001b[27m\u001b12345、 \u001b(B—👩‍💻path/to/file.ts⚠️\u001b8\u001bc\u001b[31」\u001b]133;B\u001b\\hello12345\u001b[|The quick brown fox \u001b]1337;File=inline=1:AAAA\u0007\u001b[7m ",
+    13
+   ],
+   "result": [
+    "❤İ\u001b[3mThe quick",
+    "\u001b[3mbrown",
+    "\u001b[3mfoxé12345\u001b]8;id=1;https://e.com/p?q=1\u001b\\­a—fo\u001b]8;;\u001b\\",
+    "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\o-barＡＢＣTh\u001b]8;;\u001b\\",
+    "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\e quick brown\u001b]8;;\u001b\\",
+    "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\fox \u001b[27m\u001b12345、 \u001b]8;;\u001b\\",
+    "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b(B—👩‍💻path/to/\u001b]8;;\u001b\\",
+    "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\file.ts⚠️\u001b8\u001bc\u001b[31」\u001b]133;B\u001b\\hello12345\u001b[|The quick brown fox \u001b]1337;File=inline=1:AAAA\u0007\u001b[7m"
+   ]
+  },
+  {
+   "name": "case 0177",
+   "args": [
+    "🫱🏻‍🫲🏿🫱🏻‍🫲🏿a✓ a bx",
+    41
+   ],
+   "result": [
+    "🫱🏻‍🫲🏿🫱🏻‍🫲🏿a✓ a bx"
+   ]
+  },
+  {
+   "name": "case 0178",
+   "args": [
+    "12345ຳ\u001b_Gf=100,a=T;AAAA\u001b\\✓\u001b]0;title\u0007 \u001b[49mpath/to/file.tsZ̴̢̛̗͓xa\u001b[27méかな↔️⚠️#️⃣The quick brown foxัworld/カナ⌚world",
+    26
+   ],
+   "result": [
+    "12345ຳ\u001b_Gf=100,a=T;AAAA\u001b\\✓\u001b]0;title\u0007",
+    "\u001b[49mpath/to/file.tsZ̴̢̛̗͓xa\u001b[27méかな",
+    "↔️⚠️#️⃣The quick brown",
+    "foxัworld/カナ⌚world"
+   ]
+  },
+  {
+   "name": "case 0179",
+   "args": [
+    "path/to/file.ts 🇺🇸~/src ✔",
+    46
+   ],
+   "result": [
+    "path/to/file.ts 🇺🇸~/src ✔"
+   ]
+  },
+  {
+   "name": "case 0180",
+   "args": [
+    "path/to/file.tsำa☺️…\t🇬🇧🇫🇷",
+    15
+   ],
+   "result": [
+    "path/to/file.t",
+    "sำa☺️…\t🇬🇧🇫🇷"
+   ]
+  },
+  {
+   "name": "case 0181",
+   "args": [
+    "\u001b[200~x日本語のテキスト/\u001b[23m\u001b[999999999mpath/to/file.ts\u001b[200~world\u001b[4m\u001b[49m日本語のテキスト↔️✓worldThe quick brown fox\tThe quick brown fox\u001b[m—é✓",
+    45
+   ],
+   "result": [
+    "\u001b[200~x日本語のテキスト/\u001b[23m\u001b[999999999mpath/to/file.ts\u001b[200~world\u001b[4m\u001b[49m日本語のテキスト↔️✓worldThe\u001b[24m",
+    "\u001b[4mquick brown fox\tThe quick brown fox\u001b[m—é✓"
+   ]
+  },
+  {
+   "name": "case 0182",
+   "args": [
+    "\u001b(Bhello \u001b[9mxक्‍षhello❤日本語のテキストa#️⃣\u001b[39m\u001b_pi:c\u0007",
+    15
+   ],
+   "result": [
+    "\u001b(Bhello",
+    "\u001b[9mxक्‍षhello❤日本語",
+    "\u001b[9mのテキストa#️⃣\u001b[39m\u001b_pi:c\u0007"
+   ]
+  },
+  {
+   "name": "case 0183",
+   "args": [
+    "ß12345…🏴‍☠️\u001b[2K\u001b]133;A\u0007",
+    22
+   ],
+   "result": [
+    "ß12345…🏴‍☠️\u001b[2K\u001b]133;A\u0007"
+   ]
+  },
+  {
+   "name": "case 0184",
+   "args": [
+    "กำ\u001b[1m﻿\u001b[29m\u001b]1337;File=inline=1:AAAA\u0007​👍🏽\u001b]0;title\u0007ＡＢＣ",
+    27
+   ],
+   "result": [
+    "กำ\u001b[1m﻿\u001b[29m\u001b]1337;File=inline=1:AAAA\u0007​👍🏽\u001b]0;title\u0007ＡＢＣ"
+   ]
+  },
+  {
+   "name": "case 0185",
+   "args": [
+    "ᄀ가ß​🫱🏻‍🫲🏿-ຳx\u001b=a b\u001b[38;2;10;20;30mİa bworldfoo-bar",
+    27
+   ],
+   "result": [
+    "ᄀ가ß​🫱🏻‍🫲🏿-ຳx\u001b=a b\u001b[38;2;10;20;30mİa",
+    "\u001b[38;2;10;20;30mbworldfoo-bar"
+   ]
+  },
+  {
+   "name": "case 0186",
+   "args": [
+    "\u001b_pi:c\u0007",
+    32
+   ],
+   "result": [
+    "\u001b_pi:c\u0007"
+   ]
+  },
+  {
+   "name": "case 0187",
+   "args": [
+    "。\u001b[49m\u001b>/\u001b[5nfoo-bar—İ ",
+    21
+   ],
+   "result": [
+    "。\u001b[49m\u001b>/\u001b[5nfoo-bar—İ "
+   ]
+  },
+  {
+   "name": "case 0188",
+   "args": [
+    "x  |각12345かなİ「a b\u001b[999999999mThe quick brown fox\n",
+    2
+   ],
+   "result": [
+    "x",
+    "|",
+    "각",
+    "12",
+    "34",
+    "5",
+    "か",
+    "な",
+    "İ",
+    "「",
+    "a",
+    "b\u001b[999999999mT",
+    "he",
+    "qu",
+    "ic",
+    "k",
+    "br",
+    "ow",
+    "n",
+    "fo",
+    "x",
+    ""
+   ]
+  },
+  {
+   "name": "case 0189",
+   "args": [
+    "hello|\u001b]8;;\u0007x\u001b]8;id=1;https://e.com/p?q=1\u001b\\12345x—\u001b[1méa b",
+    1
+   ],
+   "result": [
+    "h",
+    "e",
+    "l",
+    "l",
+    "o",
+    "|\u001b]8;;\u0007",
+    "x\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\1\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\2\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\3\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\4\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\5\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\x\u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\—\u001b[1m\u001b]8;;\u001b\\",
+    "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\é\u001b]8;;\u001b\\",
+    "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\a\u001b]8;;\u001b\\",
+    "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\b"
+   ]
+  },
+  {
+   "name": "case 0190",
+   "args": [
+    "ä©️漢字~/src❤🇬🇧🇫🇷worldกำ👍🏽✓helloßfoo-bar|The quick brown fox",
+    7
+   ],
+   "result": [
+    "ä©️漢字",
+    "~/src❤",
+    "🇬🇧🇫🇷wor",
+    "ldกำ👍🏽✓",
+    "helloßf",
+    "oo-bar|",
+    "The",
+    "quick",
+    "brown",
+    "fox"
+   ]
+  },
+  {
+   "name": "case 0191",
+   "args": [
+    "hello world",
+    28
+   ],
+   "result": [
+    "hello world"
+   ]
+  },
+  {
+   "name": "case 0192",
+   "args": [
+    " \u001b]8;;http://x.test/a\u0007…⬜️ＡＢＣ\u001b7aß你好，世界world\u001b[7m\u001b[4:3m\u001b[1m\u001b[3m⌚İé \u001bX sos\u001b\\\u001b]133;A\u0007İ\u001b[?25l。world\u001b[2K|\u001b[38:2::1:2:3mกำß",
+    30
+   ],
+   "result": [
+    " \u001b]8;;http://x.test/a\u0007…⬜️ＡＢＣ\u001b7aß你好，世界\u001b]8;;\u0007",
+    "\u001b]8;;http://x.test/a\u0007world\u001b[7m\u001b[4:3m\u001b[1m\u001b[3m⌚İé \u001bX sos\u001b\\\u001b]133;A\u0007İ\u001b[?25l。world\u001b[2K|\u001b[38:2::1:2:3mกำß"
+   ]
+  },
+  {
+   "name": "case 0193",
+   "args": [
+    "ລຳ",
+    46
+   ],
+   "result": [
+    "ລຳ"
+   ]
+  },
+  {
+   "name": "case 0194",
+   "args": [
+    "स्त्र、⌚hello\u001b[23mworld⭐xZ̴̢̛̗͓\nx✓xworld̀\u001b[38:2::1:2:3m\u001b[m\t12345",
+    3
+   ],
+   "result": [
+    "स्त्र",
+    "、",
+    "⌚h",
+    "ell",
+    "o\u001b[23mwo",
+    "rld",
+    "⭐x",
+    "Z̴̢̛̗͓",
+    "x✓x",
+    "wor",
+    "ld̀\u001b[38:2::1:2:3m\u001b[m",
+    "",
+    "123",
+    "45"
+   ]
+  },
+  {
+   "name": "case 0195",
+   "args": [
+    "12345\u001b[38;2;10;20;30ma b\u001b]133;A\u0007☺️\u001b(B \u001b[7m12345\u001b]133;A\u0007🇺🇸12345각\u001b]8;;\u0007\u001b]133;B\u001b\\\u001b_Gf=100,a=T;AAAA\u001b\\」\u001b]8;;\u001b\\/The quick brown foxé\u001b[29mé🏴‍☠️。Z̴̢̛̗͓\u001b[1m",
+    3
+   ],
+   "result": [
+    "123",
+    "45\u001b[38;2;10;20;30ma",
+    "\u001b[38;2;10;20;30m",
+    "\u001b[38;2;10;20;30mb\u001b]133;A\u0007☺️\u001b",
+    "\u001b[38;2;10;20;30m(B",
+    "\u001b[38;2;10;20;30m\u001b[7m123",
+    "\u001b[7;38;2;10;20;30m45\u001b]133;A\u0007",
+    "\u001b[7;38;2;10;20;30m🇺🇸1",
+    "\u001b[7;38;2;10;20;30m234",
+    "\u001b[7;38;2;10;20;30m5각",
+    "\u001b[7;38;2;10;20;30m\u001b]8;;\u0007\u001b]133;B\u001b\\\u001b_Gf=100,a=T;AAAA\u001b\\」",
+    "\u001b[7;38;2;10;20;30m\u001b]8;;\u001b\\/Th",
+    "\u001b[7;38;2;10;20;30me",
+    "\u001b[7;38;2;10;20;30mqui",
+    "\u001b[7;38;2;10;20;30mck",
+    "\u001b[7;38;2;10;20;30mbro",
+    "\u001b[7;38;2;10;20;30mwn",
+    "\u001b[7;38;2;10;20;30mfox",
+    "\u001b[7;38;2;10;20;30mé\u001b[29mé",
+    "\u001b[7;38;2;10;20;30m🏴‍☠️",
+    "\u001b[7;38;2;10;20;30m。Z̴̢̛̗͓\u001b[1m"
+   ]
+  },
+  {
+   "name": "case 0196",
+   "args": [
+    "\u001b[48;2;1;2;3m\u001b[1;38;5;196maक्‍ष\u001bX sos\u001b\\\n\u001bP1$r\u001b\\İpath/to/file.tsworldhello|The quick brown fox\u001b[24m\u001b]8;;http://x.test/a\u0007…」foo-bara b​~/srcß\u001bX sos\u001b\\\u001b[27m…\u001b[31\u001b=\u001b8⭐  \u001bcpath/to/file.ts",
+    27
+   ],
+   "result": [
+    "\u001b[48;2;1;2;3m\u001b[1;38;5;196maक्‍ष\u001bX sos\u001b\\",
+    "\u001b[1;38;5;196;48;2;1;2;3m\u001bP1$r\u001b\\İpath/to/file.tsworldh",
+    "\u001b[1;38;5;196;48;2;1;2;3mello|The quick brown fox\u001b[24m\u001b]8;;http://x.test/a\u0007…」\u001b]8;;\u0007",
+    "\u001b[1;38;5;196;48;2;1;2;3m\u001b]8;;http://x.test/a\u0007foo-bara b​~/srcß\u001bX\u001b]8;;\u0007",
+    "\u001b[1;38;5;196;48;2;1;2;3m\u001b]8;;http://x.test/a\u0007sos\u001b\\\u001b[27m…\u001b[31\u001b=\u001b8⭐\u001b]8;;\u0007",
+    "\u001b[1;38;5;196;48;2;1;2;3m\u001b]8;;http://x.test/a\u0007\u001bcpath/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0197",
+   "args": [
+    "‍\u001b]8;;unterminatedworld、日本語のテキストa b\u001b[4m⌚\u001b7\u001b[H\u001b[23mक्‍ष⚠️\u001b[?25l⚠️ำ日本語のテキスト\u001b[0m한국어path/to/file.tsfoo-barxworld ↔️|\u001bcລຳ\u001b[5nfoo-bar\u001b[H⬜️path/to/file.ts ‍12345",
+    45
+   ],
+   "result": [
+    "‍\u001b]8;;unterminatedworld、日本語のテキストa",
+    "b\u001b[4m⌚\u001b7\u001b[H\u001b[23mक्‍ष⚠️\u001b[?25l⚠️ำ日本語のテキスト\u001b[0m한국어path/to/file.tsfoo-barxworld",
+    "↔️|\u001bcລຳ\u001b[5nfoo-bar\u001b[H⬜️path/to/file.ts ‍12345"
+   ]
+  },
+  {
+   "name": "case 0198",
+   "args": [
+    "\u001b]133;B\u001b\\Z̴̢̛̗͓|\u001b>a\u001b[49m…\u001b7カナäThe quick brown fox\u001b[38:2::1:2:3m… path/to/file.ts👍🏽éworldpath/to/file.ts\u001b]0;title\u0007é",
+    14
+   ],
+   "result": [
+    "\u001b]133;B\u001b\\Z̴̢̛̗͓|\u001b>a\u001b[49m…\u001b7カナäThe",
+    "quick brown",
+    "fox\u001b[38:2::1:2:3m…",
+    "path/to/file.t",
+    "s👍🏽éworldpath/",
+    "to/file.ts\u001b]0;title\u0007é"
+   ]
+  },
+  {
+   "name": "case 0199",
+   "args": [
+    "worldxxa b",
+    30
+   ],
+   "result": [
+    "worldxxa b"
+   ]
+  },
+  {
+   "name": "case 0200",
+   "args": [
+    "aa\u001b[49mpath/to/file.tsa bhello。  ⚠️\u001b[31mworldfoo-bar❤️‍",
+    36
+   ],
+   "result": [
+    "aa\u001b[49mpath/to/file.tsa bhello。",
+    "⚠️\u001b[31mworldfoo-bar❤️‍"
+   ]
+  },
+  {
+   "name": "case 0201",
+   "args": [
+    "👍🏽👍🏽\u001b[?25l\u001b[1m你好，世界ન્નß \u001b[4:3mhello1️⃣a\u001b[?25l」「hello\u001b[24m aworldworld🏴‍☠️| かな\u001b>\u001b[200~한국어 é|  ",
+    43
+   ],
+   "result": [
+    "👍🏽👍🏽\u001b[?25l\u001b[1m你好，世界ન્નß \u001b[4:3mhello1️⃣a\u001b[?25l」「hello\u001b[24m aworldworld🏴‍☠️|",
+    "\u001b[1mかな\u001b>\u001b[200~한국어 é|"
+   ]
+  },
+  {
+   "name": "case 0202",
+   "args": [
+    "👍🏽स्त्रຳ你好，世界  ‌#️⃣\u001b[1;5A—  ​hello⌚。ન્ન☺️\u001b[39mລຳ각\u001b[4m\u001b[999999999m🏴‍☠️↔️",
+    42
+   ],
+   "result": [
+    "👍🏽स्त्रຳ你好，世界  ‌#️⃣\u001b[1;5A—  ​hello⌚。ન્ન☺️\u001b[39mລຳ각\u001b[4m\u001b[999999999m🏴‍☠️↔️"
+   ]
+  },
+  {
+   "name": "case 0203",
+   "args": [
+    "  helloক্ষカナ」👍🏽क्‍षカナ-⚠️ a bßé ~/srchello\u001b(Ba ba b你好，世界|\u001b[4:3mfoo-bar",
+    30
+   ],
+   "result": [
+    "  helloক্ষカナ」👍🏽क्‍षカナ-⚠️ a",
+    "bßé ~/srchello\u001b(Ba ba b你好，世",
+    "界|\u001b[4:3mfoo-bar"
+   ]
+  },
+  {
+   "name": "case 0204",
+   "args": [
+    "/",
+    17
+   ],
+   "result": [
+    "/"
+   ]
+  },
+  {
+   "name": "case 0205",
+   "args": [
+    "、한국어  \u001b[39m©️  🇺🇸\u001b]133;B\u001b\\\u001bX sos\u001b\\\nລຳ﻿↔️\u001b[31x\u001b7\u001b[7m—ન્ન각\u001b[7m☺️world\u001bP1$r\u001b\\\t12345﻿⭐~/src12345\u001b[0mfoo-barカナ#️⃣",
+    35
+   ],
+   "result": [
+    "、한국어  \u001b[39m©️  🇺🇸\u001b]133;B\u001b\\\u001bX sos\u001b\\",
+    "ລຳ﻿↔️\u001b[31x\u001b7\u001b[7m—ન્ન각",
+    "\u001b[7m\u001b[7m☺️world\u001bP1$r\u001b\\\t12345﻿⭐~/src12345\u001b[0mfoo",
+    "-barカナ#️⃣"
+   ]
+  },
+  {
+   "name": "case 0206",
+   "args": [
+    "\u001b[39m\u001b[4m😀\u001b[31m❤️↔️\u001b[9m🇬🇧🇫🇷world",
+    18
+   ],
+   "result": [
+    "\u001b[39m\u001b[4m😀\u001b[31m❤️↔️\u001b[9m🇬🇧🇫🇷world"
+   ]
+  },
+  {
+   "name": "case 0207",
+   "args": [
+    "­\u001b(Bİİworld\u001b]8;;\u0007world﻿\u001bP1$r\u001b\\",
+    43
+   ],
+   "result": [
+    "­\u001b(Bİİworld\u001b]8;;\u0007world﻿\u001bP1$r\u001b\\"
+   ]
+  },
+  {
+   "name": "case 0208",
+   "args": [
+    "、\u001b>world\u001b[|İ Z̴̢̛̗͓|‌\u001b[3m\u001b[24m\u001b]1337;File=inline=1:AAAA\u0007world\u001b[2mस्त्र\t\u001b]8;;\u001b\\hello\u001b[👩‍💻~/srcᄀ가İéa b1️⃣path/to/file.ts日本語のテキスト\u001b[H|",
+    29
+   ],
+   "result": [
+    "、\u001b>world\u001b[|İ Z̴̢̛̗͓|‌\u001b[3m\u001b[24m\u001b]1337;File=inline=1:AAAA\u0007world\u001b[2mस्त्र\t\u001b]8;;\u001b\\hello\u001b[👩‍💻~/srcᄀ가İéa b1️⃣path/to/file.ts日本語のテキスト\u001b[H|"
+   ]
+  },
+  {
+   "name": "case 0209",
+   "args": [
+    "a。⬜️The quick brown fox\u001b]8;;\u001b\\각\u001b=ß\u001b=—hello\u001b[27m\u001b_Gf=100,a=T;AAAA\u001b\\The quick brown foxß\u001b^pm\u001b\\\u001bP1$r\u001b\\\u001b[1;5Aßक्‍षx\u001b[22mस्त्रカナ👍🏽\u001b[23m‍กำ|ำ⬜️\u001b[31m\u001b[1;38;5;196mक्ष각",
+    40
+   ],
+   "result": [
+    "a。⬜️The quick brown fox\u001b]8;;\u001b\\각\u001b=ß\u001b=—hello\u001b[27m\u001b_Gf=100,a=T;AAAA\u001b\\The",
+    "quick brown foxß\u001b^pm\u001b\\\u001bP1$r\u001b\\\u001b[1;5Aßक्‍षx\u001b[22mस्त्रカナ",
+    "👍🏽\u001b[23m‍กำ|ำ⬜️\u001b[31m\u001b[1;38;5;196mक्ष각"
+   ]
+  },
+  {
+   "name": "case 0210",
+   "args": [
+    "­foo-barั\u001b]8;;\u001b\\你好，世界\u001b[38;2;10;20;30m",
+    37
+   ],
+   "result": [
+    "­foo-barั\u001b]8;;\u001b\\你好，世界\u001b[38;2;10;20;30m"
+   ]
+  },
+  {
+   "name": "case 0211",
+   "args": [
+    "é­\u001b>ລຳx\u001b[3m hellox\u001b[H✓",
+    29
+   ],
+   "result": [
+    "é­\u001b>ລຳx\u001b[3m hellox\u001b[H✓"
+   ]
+  },
+  {
+   "name": "case 0212",
+   "args": [
+    "\u001b[38;2;10;20;30m\u001b[1m  \u001b[39m\u001b[39m✔﻿~/src",
+    8
+   ],
+   "result": [
+    "\u001b[38;2;10;20;30m\u001b[1m  \u001b[39m\u001b[39m✔﻿~/src"
+   ]
+  },
+  {
+   "name": "case 0213",
+   "args": [
+    "-日本語のテキスト—☺️hello‍éß~/src\u001b[4:3m\u001b[H🏴‍☠️👍🏽\u001b[24m\u001bcกำ🏴‍☠️\u001b[1;38;5;196m\u001b_Gf=100,a=T;AAAA\u001b\\path/to/file.ts\u001b[38:2::1:2:3m\u001b]133;B\u001b\\|path/to/file.tsન્નapath/to/file.ts\u001b[4m\u001b[mäThe quick brown fox…、a\u001b]8;;\u0007\u001b[999999999mé❤️",
+    10
+   ],
+   "result": [
+    "-日本語の",
+    "テキスト",
+    "—☺️hello‍éß",
+    "~/src\u001b[4:3m\u001b[H🏴‍☠️👍🏽\u001b[24m\u001bc",
+    "กำ🏴‍☠️\u001b[1;38;5;196m\u001b_Gf=100,a=T;AAAA\u001b\\path/t",
+    "\u001b[1;38;5;196mo/file.ts\u001b[38:2::1:2:3m\u001b]133;B\u001b\\|",
+    "\u001b[1;38;5;196mpath/to/fi",
+    "\u001b[1;38;5;196mle.tsન્નapa",
+    "\u001b[1;38;5;196mth/to/file",
+    "\u001b[1;38;5;196m.ts\u001b[4m\u001b[mäThe",
+    "quick",
+    "brown fox…",
+    "、a\u001b]8;;\u0007\u001b[999999999mé❤️"
+   ]
+  },
+  {
+   "name": "case 0214",
+   "args": [
+    "你好，世界\t\u001b]8;;unterminatedworldpath/to/file.ts\u001b[1;38;5;196m\u001b[H☺️กำ「\u001b]133;A\u0007\u001b[2m  \u001b[2m각é\u001b]133;A\u0007🇺🇸…⁠ß\u001b—\n",
+    43
+   ],
+   "result": [
+    "你好，世界\t\u001b]8;;unterminatedworldpath/to/file.ts\u001b[1;38;5;196m\u001b[H☺️กำ「\u001b]133;A\u0007\u001b[2m  \u001b[2m각é\u001b]133;A\u0007🇺🇸…⁠ß\u001b—",
+    "\u001b[2m\u001b]8;;unterminatedworldpath/to/file.ts\u001b[1;38;5;196m\u001b[H☺️กำ「\u001b]133;A\u0007"
+   ]
+  },
+  {
+   "name": "case 0215",
+   "args": [
+    "\u001b[38;2;10;20;30m  स्त्र⁠\u001bP1$r\u001b\\\u001b[9m12345🇺🇸",
+    41
+   ],
+   "result": [
+    "\u001b[38;2;10;20;30m  स्त्र⁠\u001bP1$r\u001b\\\u001b[9m12345🇺🇸"
+   ]
+  },
+  {
+   "name": "case 0216",
+   "args": [
+    "🫱🏻‍🫲🏿🫱🏻‍🫲🏿a✓ a bx",
+    19
+   ],
+   "result": [
+    "🫱🏻‍🫲🏿🫱🏻‍🫲🏿a✓ a bx"
+   ]
+  },
+  {
+   "name": "case 0217",
+   "args": [
+    "\u001b[1;38;5;196m🫱🏻‍🫲🏿\u001b]8;;http://x.test/a\u0007 日本語のテキスト。漢字  \u001b[7m\u001bP1$r\u001b\\\u001b^pm\u001b\\\u001b[58;5;1mhellopath/to/file.tsस्त्रक्‍षİ」",
+    3
+   ],
+   "result": [
+    "\u001b[1;38;5;196m🫱🏻‍🫲🏿\u001b]8;;http://x.test/a\u0007\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007日\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007本\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007語\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007の\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007テ\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007キ\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007ス\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007ト\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007。\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007漢\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007字\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007\u001b]8;;\u0007",
+    "\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007\u001b[7m\u001bP1$\u001b]8;;\u0007",
+    "\u001b[1;7;38;5;196m\u001b]8;;http://x.test/a\u0007r\u001b\\\u001b^\u001b]8;;\u0007",
+    "\u001b[1;7;38;5;196m\u001b]8;;http://x.test/a\u0007pm\u001b\\\u001b[58;5;1m\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007hel\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007lop\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007ath\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007/to\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007/fi\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007le.\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007ts\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007स्त्र\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007क्‍षİ\u001b]8;;\u0007",
+    "\u001b[1;5;7;38;5;196m\u001b]8;;http://x.test/a\u0007」"
+   ]
+  },
+  {
+   "name": "case 0218",
+   "args": [
+    "|a b\u001b(B、hello🇺🇸ન્નำᄀ가hellofoo-bar1️⃣\u001bX sos\u001b\\स्त्र\u001b[9m\n\u001b[7m…helloक्‍षक्‍ष\u001b[22m日本語のテキスト🏴‍☠️👍🏽world\u001b[H\u001b[1;5Aस्त्र\u001bc\u001b[é\u001b[23m👩‍💻\u001b[39mั",
+    35
+   ],
+   "result": [
+    "|a b\u001b(B、hello🇺🇸ન્નำᄀ가hellofoo-bar1️⃣\u001bX",
+    "sos\u001b\\स्त्र\u001b[9m",
+    "\u001b[9m\u001b[7m…helloक्‍षक्‍ष\u001b[22m日本語のテキスト",
+    "\u001b[7;9m🏴‍☠️👍🏽world\u001b[H\u001b[1;5Aस्त्र\u001bc\u001b[é\u001b[23m👩‍💻\u001b[39mั"
+   ]
+  },
+  {
+   "name": "case 0219",
+   "args": [
+    " foo-barThe quick brown fox✔  。\u001b[1mThe quick brown fox👨‍👩‍👧‍👦İ👍🏽👍🏽🤝 a b…❤\n​ä\u001b[31m你好，世界foo-bar",
+    11
+   ],
+   "result": [
+    " foo-barThe",
+    "quick brown",
+    "fox✔  。\u001b[1mThe",
+    "\u001b[1mquick brown",
+    "\u001b[1m",
+    "\u001b[1mfox👨‍👩‍👧‍👦İ👍🏽👍🏽",
+    "\u001b[1m🤝 a b…❤",
+    "\u001b[1m​ä\u001b[31m你好，世界",
+    "\u001b[1;31mfoo-bar"
+   ]
+  },
+  {
+   "name": "case 0220",
+   "args": [
+    "\u001b=~/src\u001b[?25l日本語のテキストThe quick brown foxั\u001b[2K",
+    37
+   ],
+   "result": [
+    "\u001b=~/src\u001b[?25l日本語のテキストThe quick brown foxั\u001b[2K"
+   ]
+  },
+  {
+   "name": "case 0221",
+   "args": [
+    "\u001b]8;;\u001b\\éé⁠\u001b]8;;unterminated̀12345\u001b[1;38;5;196m İ👨‍👩‍👧‍👦\u001b[22m‌\u001b]133;B\u001b\\ foo-bar­worldx\u001b[9m\u001b[49m",
+    29
+   ],
+   "result": [
+    "\u001b]8;;\u001b\\éé⁠\u001b]8;;unterminated̀12345\u001b[1;38;5;196m İ👨‍👩‍👧‍👦\u001b[22m‌\u001b]133;B\u001b\\ foo-bar­worldx\u001b[9m\u001b[49m"
+   ]
+  },
+  {
+   "name": "case 0222",
+   "args": [
+    "\u001b]8;;http://a\u0007link\u001b]8;;\u0007",
+    22
+   ],
+   "result": [
+    "\u001b]8;;http://a\u0007link\u001b]8;;\u0007"
+   ]
+  },
+  {
+   "name": "case 0223",
+   "args": [
+    " \u001b[1;38;5;196mé\u001b_Gf=100,a=T;AAAA\u001b\\  \u001b[4:3m\n🔥 \u001b_pi:c\u0007ß한국어The quick brown foxé \u001b>⬜️\u001b[1mx⭐\u001b[24m-⌚",
+    26
+   ],
+   "result": [
+    " \u001b[1;38;5;196mé\u001b_Gf=100,a=T;AAAA\u001b\\  \u001b[4:3m",
+    "\u001b[1;38;5;196m🔥 \u001b_pi:c\u0007ß한국어The quick brown",
+    "\u001b[1;38;5;196mfoxé \u001b>⬜️\u001b[1mx⭐\u001b[24m-⌚"
+   ]
+  },
+  {
+   "name": "case 0224",
+   "args": [
+    "world\u001b[27mThe quick brown foxİ­x\u001b[31m\u001b[58;5;1mຳ\u001b[hello\u001b[4m‍…你好，世界\u001b[9mक्ष\u001b[4:3m…12345😀x̀a」🔥  \u001b=1234512345\u001b[?25la bİ",
+    27
+   ],
+   "result": [
+    "world\u001b[27mThe quick brown",
+    "foxİ­x\u001b[31m\u001b[58;5;1mຳ\u001b[hello\u001b[4m‍…你好，世界\u001b[24m",
+    "\u001b[1;4;5;31m\u001b[9mक्ष\u001b[4:3m…12345😀x̀a」🔥\u001b[24m",
+    "\u001b[1;4;5;9;31m\u001b=1234512345\u001b[?25la bİ"
+   ]
+  },
+  {
+   "name": "case 0225",
+   "args": [
+    "-\u001b[7m\u001b[mั⚠\u001b]8;;unterminated\u001b[mworld",
+    14
+   ],
+   "result": [
+    "-\u001b[7m\u001b[mั⚠\u001b]8;;untermin",
+    "ated\u001b[mworld"
+   ]
+  },
+  {
+   "name": "case 0226",
+   "args": [
+    "©️é🇺🇸\u001b[ma b—\u001b[7m\u001b[22mhello—\u001b[49m\u001b[1;5Aé12345…\u001b_pi:c\u0007",
+    21
+   ],
+   "result": [
+    "©️é🇺🇸\u001b[ma",
+    "b—\u001b[7m\u001b[22mhello—\u001b[49m\u001b[1;5Aé12345…\u001b_pi:c\u0007"
+   ]
+  },
+  {
+   "name": "case 0227",
+   "args": [
+    "­\u001b[?25lกำન્ન👍🏽path/to/file.tsfoo-bar…\u001b[1;5A\u001b_Gf=100,a=T;AAAA\u001b\\",
+    44
+   ],
+   "result": [
+    "­\u001b[?25lกำન્ન👍🏽path/to/file.tsfoo-bar…\u001b[1;5A\u001b_Gf=100,a=T;AAAA\u001b\\"
+   ]
+  },
+  {
+   "name": "case 0228",
+   "args": [
+    " ✔  \u001b[31\u001b🤝👍🏽  é\u001b[3m\n\u001b]133;B\u001b\\\u001b7path/to/file.ts|~/srcั\u001b[27m/—foo-bara b\u001b]133;B\u001b\\  ‍-é…⚠hello\u001b[38;2;10;20;30mThe quick brown fox—\u001b(B\u001b]0;title\u0007\u001b[58;5;1m",
+    47
+   ],
+   "result": [
+    " ✔  \u001b[31\u001b🤝👍🏽  é\u001b[3m",
+    "\u001b[3m\u001b]133;B\u001b\\\u001b7path/to/file.ts|~/srcั\u001b[27m/—foo-bara b\u001b]133;B\u001b\\",
+    "\u001b[3m ‍-é…⚠hello\u001b[38;2;10;20;30mThe quick brown fox—\u001b(B\u001b]0;title\u0007\u001b[58;5;1m"
+   ]
+  },
+  {
+   "name": "case 0229",
+   "args": [
+    "  …」 ❤⭐ä✓foo-bar⚠\u001b[39mhello~/src\u001b[200~\u001b[23m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b7 foo-bar⁠\u001b]8;;unterminatedİéx\u001b]8;;http://x.test/a\u0007\u001b7…क्ष\u001b]1337;File=inline=1:AAAA\u0007",
+    10
+   ],
+   "result": [
+    "  …」",
+    "❤⭐ä✓foo-b",
+    "ar⚠\u001b[39mhello~/",
+    "src\u001b[200~\u001b[23m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b7 \u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\foo-bar⁠\u001b]8;;unterminatedİéx\u001b]8;;http://x.test/a\u0007\u001b7…\u001b]8;;\u0007",
+    "\u001b]8;;unterminatedİéx\u001b]8;;http://x.test/a\u0007क्ष\u001b]1337;File=inline=1:AAAA\u0007"
+   ]
+  },
+  {
+   "name": "case 0230",
+   "args": [
+    "\u001b]1337;File=inline=1:AAAA\u0007\u001b[?25l-İ✔한국어\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    38
+   ],
+   "result": [
+    "\u001b]1337;File=inline=1:AAAA\u0007\u001b[?25l-İ✔한국어\u001b]8;id=1;https://e.com/p?q=1\u001b\\"
+   ]
+  },
+  {
+   "name": "case 0231",
+   "args": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\",
+    38
+   ],
+   "result": [
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\"
+   ]
+  },
+  {
+   "name": "case 0232",
+   "args": [
+    "ລຳ\u001b[200~ຳ­ahello…The quick brown foxé—|x🔥—\u001b[3m\u001b=hellohello🧑🏾‍🦰worldworld~/src각",
+    6
+   ],
+   "result": [
+    "ລຳ\u001b[200~ຳ­ahello…The quick brown foxé—|x🔥—\u001b[3m\u001b=hel",
+    "\u001b[3mlohell",
+    "\u001b[3mo🧑🏾‍🦰wor",
+    "\u001b[3mldworl",
+    "\u001b[3md~/src",
+    "\u001b[3m각"
+   ]
+  },
+  {
+   "name": "case 0233",
+   "args": [
+    "\u001b]8;;\u001b\\\u001b[49m",
+    22
+   ],
+   "result": [
+    "\u001b]8;;\u001b\\\u001b[49m"
+   ]
+  },
+  {
+   "name": "case 0234",
+   "args": [
+    "a。⬜️The quick brown fox\u001b]8;;\u001b\\각\u001b=ß\u001b=—hello\u001b[27m\u001b_Gf=100,a=T;AAAA\u001b\\The quick brown foxß\u001b^pm\u001b\\\u001bP1$r\u001b\\\u001b[1;5Aßक्‍षx\u001b[22mस्त्रカナ👍🏽\u001b[23m‍กำ|ำ⬜️\u001b[31m\u001b[1;38;5;196mक्ष각",
+    1
+   ],
+   "result": [
+    "a",
+    "",
+    "。",
+    "",
+    "⬜️",
+    "T",
+    "h",
+    "e",
+    "q",
+    "u",
+    "i",
+    "c",
+    "k",
+    "b",
+    "r",
+    "o",
+    "w",
+    "n",
+    "f",
+    "o",
+    "x",
+    "\u001b]8;;\u001b\\",
+    "각",
+    "\u001b=",
+    "ß\u001b",
+    "=",
+    "—",
+    "h",
+    "e",
+    "l",
+    "l",
+    "o\u001b[27m\u001b_Gf=100,a=T;AAAA\u001b\\",
+    "T",
+    "h",
+    "e",
+    "q",
+    "u",
+    "i",
+    "c",
+    "k",
+    "b",
+    "r",
+    "o",
+    "w",
+    "n",
+    "f",
+    "o",
+    "x",
+    "ß\u001b",
+    "^",
+    "p",
+    "m\u001b",
+    "\\\u001b",
+    "P",
+    "1",
+    "$",
+    "r\u001b",
+    "\\\u001b[1;5Aßक्‍षx\u001b[22m",
+    "स्त्र",
+    "",
+    "カ",
+    "",
+    "ナ",
+    "",
+    "👍🏽\u001b[23m",
+    "‍",
+    "กำ",
+    "|ำ",
+    "⬜️\u001b[31m\u001b[1;38;5;196m",
+    "\u001b[1;38;5;196mक्ष",
+    "\u001b[1;38;5;196m",
+    "\u001b[1;38;5;196m각"
+   ]
+  },
+  {
+   "name": "case 0235",
+   "args": [
+    "\u001b[2KThe quick brown foxfoo-barßa\u001b[23mZ̴̢̛̗͓~/src\u001b[9m  foo-barfoo-barำé\u001bX sos\u001b\\The quick brown fox  a bั\u001b[24m\u001b]0;title\u0007world🇬🇧🇫🇷-\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007worldpath/to/file.tsxfoo-bar⌚\u001b[31x\u001b[9m…",
+    28
+   ],
+   "result": [
+    "\u001b[2KThe quick brown",
+    "foxfoo-barßa\u001b[23mZ̴̢̛̗͓~/src\u001b[9m",
+    "\u001b[9mfoo-barfoo-barำé\u001bX sos\u001b\\The",
+    "\u001b[9mquick brown fox  a",
+    "\u001b[9mbั\u001b[24m\u001b]0;title\u0007world🇬🇧🇫🇷-\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007worldpath/to/file\u001b]8;;\u0007",
+    "\u001b[1;9;38;5;196m\u001b]8;;http://x.test/a\u0007.tsxfoo-bar⌚\u001b[31x\u001b[9m…"
+   ]
+  },
+  {
+   "name": "case 0236",
+   "args": [
+    "🇺🇸각~/srcカナ\u001b[1;5A​ \u001b]8;;unterminated  worldລຳ12345क्‍षpath/to/file.ts…foo-bar​path/to/file.ts🏴‍☠️⚠…。ั~/src⚠️",
+    20
+   ],
+   "result": [
+    "🇺🇸각~/srcカナ\u001b[1;5A​ \u001b]8;;unterminated",
+    "worldລຳ12345क्‍षpath/t",
+    "o/file.ts…foo-bar​pat",
+    "h/to/file.ts🏴‍☠️⚠…。ั",
+    "~/src⚠️"
+   ]
+  },
+  {
+   "name": "case 0237",
+   "args": [
+    "ຳ漢字foo-barx⚠️\u001b8\u001b]1337;File=inline=1:AAAA\u0007The quick brown fox",
+    48
+   ],
+   "result": [
+    "ຳ漢字foo-barx⚠️\u001b8\u001b]1337;File=inline=1:AAAA\u0007The quick brown fox"
+   ]
+  },
+  {
+   "name": "case 0238",
+   "args": [
+    "foo-bar~/src\u001b[38:2::1:2:3m#️⃣ ⌚1234512345日本語のテキストé\u001b[2KThe quick brown fox\u001b[m…\u001b]133;A\u0007\u001b[2K \u001b[48;2;1;2;3mhello\u001bc  \u001b[200~\u001b_Gf=100,a=T;AAAA\u001b\\İ\u001b]8;id=1;https://e.com/p?q=1\u001b\\world",
+    19
+   ],
+   "result": [
+    "foo-bar~/src\u001b[38:2::1:2:3m#️⃣",
+    "⌚1234512345日本語",
+    "のテキストé\u001b[2KThe",
+    "quick brown fox\u001b[m…\u001b]133;A\u0007\u001b[2K",
+    "\u001b[48;2;1;2;3mhello\u001bc",
+    "\u001b[48;2;1;2;3m\u001b[200~\u001b_Gf=100,a=T;AAAA\u001b\\İ\u001b]8;id=1;https://e.com/p?q=1\u001b\\wor\u001b]8;;\u001b\\",
+    "\u001b[48;2;1;2;3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\ld"
+   ]
+  },
+  {
+   "name": "case 0239",
+   "args": [
+    "x\u001b]8;;unterminateda b한국어\u001b[1;38;5;196m❤क्‍षé\u001b]133;B\u001b\\éx⬜️⬜️apath/to/file.ts12345\u001b[İ\u001b[0mßworld|\u001b]133;A\u0007foo-bar⚠",
+    39
+   ],
+   "result": [
+    "x\u001b]8;;unterminateda b한국어\u001b[1;38;5;196m❤क्‍षé\u001b]133;B\u001b\\éx⬜️⬜️apath/to/file.ts12345\u001b[İ\u001b[0mßworld|\u001b]133;A\u0007foo-\u001b]8;;\u001b\\",
+    "\u001b]8;;unterminateda b한국어\u001b[1;38;5;196m❤क्‍षé\u001b]133;B\u001b\\bar⚠"
+   ]
+  },
+  {
+   "name": "case 0240",
+   "args": [
+    "ß12345…🏴‍☠️\u001b[2K\u001b]133;A\u0007",
+    29
+   ],
+   "result": [
+    "ß12345…🏴‍☠️\u001b[2K\u001b]133;A\u0007"
+   ]
+  },
+  {
+   "name": "case 0241",
+   "args": [
+    "|\u001b]8;;unterminatedß\n각é\u001b[4:3m\u001b[999999999m12345 ﻿éfoo-bar☺️foo-bar\n",
+    14
+   ],
+   "result": [
+    "|\u001b]8;;untermina",
+    "tedß",
+    "각é\u001b[4:3m\u001b[999999999m12345",
+    "﻿éfoo-bar☺️foo-",
+    "bar",
+    ""
+   ]
+  },
+  {
+   "name": "case 0242",
+   "args": [
+    "/",
+    14
+   ],
+   "result": [
+    "/"
+   ]
+  },
+  {
+   "name": "case 0243",
+   "args": [
+    "\u001b]8;;\u001b\\✓\u001b]133;B\u001b\\🫱🏻‍🫲🏿क्‍ष\n😀path/to/file.ts\u001b[2m\u001b[31m\u001b[200~path/to/file.ts",
+    45
+   ],
+   "result": [
+    "\u001b]8;;\u001b\\✓\u001b]133;B\u001b\\🫱🏻‍🫲🏿क्‍ष",
+    "😀path/to/file.ts\u001b[2m\u001b[31m\u001b[200~path/to/file.ts"
+   ]
+  },
+  {
+   "name": "case 0244",
+   "args": [
+    "\u001b8éßa ba -foo-barworld\u001b[22mhello你好，世界✔‌ＡＢＣİ👨‍👩‍👧‍👦|\t|」|…👍🏽… \u001b[m\u001b(B\u001b[?25lカナfoo-bar\u001b^pm\u001b\\😀\u001b]8;;\u001b\\\u001b[29m日本語のテキスト",
+    17
+   ],
+   "result": [
+    "\u001b8éßa ba",
+    "-foo-barworld\u001b[22mhell",
+    "o你好，世界",
+    "✔‌ＡＢＣİ👨‍👩‍👧‍👦|\t|」",
+    "|…👍🏽… \u001b[m\u001b(B\u001b[?25lカナfoo-bar\u001b^pm\u001b\\😀\u001b]8;;\u001b\\\u001b[29m日本語",
+    "のテキスト"
+   ]
+  },
+  {
+   "name": "case 0245",
+   "args": [
+    "x\u001b[999999999m…©️\u001b[24mক্ষ ahello\u001b[999999999m\u001b]133;B\u001b\\ \u001b[58;5;1mຳक्ष↔️\u001b8path/to/file.ts\u001b[49m\u001b>「\u001b]1337;File=inline=1:AAAA\u0007world\u001b[24mกำ\n|\u001b[22mfoo-bar\u001b[1m\u001b[5n  The quick brown fox\u001b[?25l éfoo-bar✓İ⁠",
+    1
+   ],
+   "result": [
+    "x\u001b[999999999m",
+    "…",
+    "©️\u001b[24m",
+    "ক্ষ",
+    "a",
+    "h",
+    "e",
+    "l",
+    "l",
+    "o",
+    "\u001b[999999999m\u001b]133;B\u001b\\",
+    "\u001b[58;5;1mຳ",
+    "\u001b[1;5mक्ष",
+    "\u001b[1;5m↔️",
+    "\u001b[1;5m\u001b8",
+    "\u001b[1;5mp",
+    "\u001b[1;5ma",
+    "\u001b[1;5mt",
+    "\u001b[1;5mh",
+    "\u001b[1;5m/",
+    "\u001b[1;5mt",
+    "\u001b[1;5mo",
+    "\u001b[1;5m/",
+    "\u001b[1;5mf",
+    "\u001b[1;5mi",
+    "\u001b[1;5ml",
+    "\u001b[1;5me",
+    "\u001b[1;5m.",
+    "\u001b[1;5mt",
+    "\u001b[1;5ms\u001b[49m\u001b",
+    "\u001b[1;5m>",
+    "\u001b[1;5m",
+    "\u001b[1;5m「",
+    "\u001b[1;5m\u001b]1337;File=inline=1:AAAA\u0007w",
+    "\u001b[1;5mo",
+    "\u001b[1;5mr",
+    "\u001b[1;5ml",
+    "\u001b[1;5md\u001b[24m",
+    "\u001b[1;5mกำ",
+    "\u001b[1;5m|\u001b[22m",
+    "\u001b[5mf",
+    "\u001b[5mo",
+    "\u001b[5mo",
+    "\u001b[5m-",
+    "\u001b[5mb",
+    "\u001b[5ma",
+    "\u001b[5mr\u001b[1m\u001b",
+    "\u001b[1;5m[",
+    "\u001b[1;5m5",
+    "\u001b[1;5mn",
+    "\u001b[1;5m",
+    "\u001b[1;5mT",
+    "\u001b[1;5mh",
+    "\u001b[1;5me",
+    "\u001b[1;5m",
+    "\u001b[1;5mq",
+    "\u001b[1;5mu",
+    "\u001b[1;5mi",
+    "\u001b[1;5mc",
+    "\u001b[1;5mk",
+    "\u001b[1;5m",
+    "\u001b[1;5mb",
+    "\u001b[1;5mr",
+    "\u001b[1;5mo",
+    "\u001b[1;5mw",
+    "\u001b[1;5mn",
+    "\u001b[1;5m",
+    "\u001b[1;5mf",
+    "\u001b[1;5mo",
+    "\u001b[1;5mx\u001b",
+    "\u001b[1;5m[",
+    "\u001b[1;5m?",
+    "\u001b[1;5m2",
+    "\u001b[1;5m5",
+    "\u001b[1;5ml",
+    "\u001b[1;5m",
+    "\u001b[1;5mé",
+    "\u001b[1;5mf",
+    "\u001b[1;5mo",
+    "\u001b[1;5mo",
+    "\u001b[1;5m-",
+    "\u001b[1;5mb",
+    "\u001b[1;5ma",
+    "\u001b[1;5mr",
+    "\u001b[1;5m✓",
+    "\u001b[1;5mİ⁠"
+   ]
+  },
+  {
+   "name": "case 0246",
+   "args": [
+    "—⬜️\u001b[4m\u001b[27mຳ你好，世界\u001b[2m\u001b>foo-bar~/src\u001b⬜️—\u001b]133;A\u0007path/to/file.tsન્નä ",
+    33
+   ],
+   "result": [
+    "—⬜️\u001b[4m\u001b[27mຳ你好，世界\u001b[24m",
+    "\u001b[4m\u001b[2m\u001b>foo-bar~/src\u001b⬜️—\u001b]133;A\u0007path/to/file.tsન્ન\u001b[24m",
+    "\u001b[2;4mä"
+   ]
+  },
+  {
+   "name": "case 0247",
+   "args": [
+    "İa",
+    40
+   ],
+   "result": [
+    "İa"
+   ]
+  },
+  {
+   "name": "case 0248",
+   "args": [
+    "\u001b[5n\u001b[ ক্ষß  ન્નั\u001bcかな",
+    21
+   ],
+   "result": [
+    "\u001b[5n\u001b[ ক্ষß  ન્નั\u001bcかな"
+   ]
+  },
+  {
+   "name": "case 0249",
+   "args": [
+    "\u001b]8;;unterminatedxক্ষ\nxक्ष⭐⭐ \u001b[1maé你好，世界👩‍💻\u001bc—The quick brown fox\u001b(B\u001b^pm\u001b\\\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[9m🫱🏻‍🫲🏿ক্ষxé\u001b]8;;unterminated",
+    46
+   ],
+   "result": [
+    "\u001b]8;;unterminatedxক্ষ",
+    "xक्ष⭐⭐ \u001b[1maé你好，世界👩‍💻\u001bc—The quick brown",
+    "\u001b[1mfox\u001b(B\u001b^pm\u001b\\\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[9m🫱🏻‍🫲🏿ক্ষxé\u001b]8;;unterminated"
+   ]
+  },
+  {
+   "name": "case 0250",
+   "args": [
+    "foo-bar~/src\u001b[38:2::1:2:3m#️⃣ ⌚1234512345日本語のテキストé\u001b[2KThe quick brown fox\u001b[m…\u001b]133;A\u0007\u001b[2K \u001b[48;2;1;2;3mhello\u001bc  \u001b[200~\u001b_Gf=100,a=T;AAAA\u001b\\İ\u001b]8;id=1;https://e.com/p?q=1\u001b\\world",
+    15
+   ],
+   "result": [
+    "foo-bar~/src\u001b[38:2::1:2:3m#️⃣",
+    "⌚1234512345日",
+    "本語のテキスト",
+    "é\u001b[2KThe quick",
+    "brown fox\u001b[m…\u001b]133;A\u0007\u001b[2K",
+    "\u001b[48;2;1;2;3mhello\u001bc",
+    "\u001b[48;2;1;2;3m\u001b[200~\u001b_Gf=100,a=T;AAAA\u001b\\",
+    "\u001b[48;2;1;2;3mİ\u001b]8;id=1;https://e.com/p?q=1\u001b\\world"
+   ]
+  },
+  {
+   "name": "case 0251",
+   "args": [
+    "/กำThe quick brown fox—é日本語のテキストำ",
+    37
+   ],
+   "result": [
+    "/กำThe quick brown fox—é日本語のテキ",
+    "ストำ"
+   ]
+  },
+  {
+   "name": "case 0252",
+   "args": [
+    "-x🤝\u001b]8;;\u001b\\—↔️\u001bpath/to/file.ts\u001b[1;5A\u001b[49mß|İ ‍\u001b[999999999m-hello﻿x~/srcpath/to/file.ts\u001b[29m😀İ~/srcx",
+    10
+   ],
+   "result": [
+    "-x🤝\u001b]8;;\u001b\\—↔️\u001bpat",
+    "h/to/file.",
+    "ts\u001b[1;5A\u001b[49mß|İ ‍\u001b[999999999m-hel",
+    "lo﻿x~/srcpa",
+    "th/to/file",
+    ".ts\u001b[29m😀İ~/sr",
+    "cx"
+   ]
+  },
+  {
+   "name": "case 0253",
+   "args": [
+    "🏳️‍🌈The quick brown fox\u001b]8;id=1;https://e.com/p?q=1\u001b\\̀~/src\u001b]1337;File=inline=1:AAAA\u0007İ\u001b[31🫱🏻‍🫲🏿̀…The quick brown fox👩‍💻、foo-barİİ©️🫱🏻‍🫲🏿\u001b[24mworld\u001b[58;5;1m\u001b[24m",
+    20
+   ],
+   "result": [
+    "🏳️‍🌈The quick brown",
+    "fox\u001b]8;id=1;https://e.com/p?q=1\u001b\\̀~/src\u001b]1337;File=inline=1:AAAA\u0007İ\u001b[31🫱🏻‍🫲🏿̀…The quick brown fox👩‍💻、foo-barİİ©️🫱🏻‍🫲🏿\u001b[24mworld\u001b[58;5;1m\u001b[24m"
+   ]
+  },
+  {
+   "name": "case 0254",
+   "args": [
+    "\u001b[3m\u001b[27mx  漢字",
+    34
+   ],
+   "result": [
+    "\u001b[3m\u001b[27mx  漢字"
+   ]
+  },
+  {
+   "name": "case 0255",
+   "args": [
+    "\u001b[m—🏴‍☠️\u001b[hello\n\n\u001b=\u001b[49mpath/to/file.ts⬜️xThe quick brown fox",
+    26
+   ],
+   "result": [
+    "\u001b[m—🏴‍☠️\u001b[hello",
+    "",
+    "\u001b=\u001b[49mpath/to/file.ts⬜️xThe",
+    "quick brown fox"
+   ]
+  },
+  {
+   "name": "case 0256",
+   "args": [
+    "⌚é\u001b[H\u001b[22m⚠️12345❤️xfoo-barThe quick brown fox你好，世界",
+    4
+   ],
+   "result": [
+    "⌚é\u001b[H\u001b[22m",
+    "⚠️12",
+    "345",
+    "❤️xf",
+    "oo-b",
+    "arTh",
+    "e",
+    "quic",
+    "k",
+    "brow",
+    "n",
+    "fox",
+    "你好",
+    "，世",
+    "界"
+   ]
+  },
+  {
+   "name": "case 0257",
+   "args": [
+    "❤  ન્ન﻿\u001b]133;B\u001b\\/\u001bP1$r\u001b\\\u001b[29ma#️⃣☺️你好，世界a b\u001b[9ma bfoo-barhello—かな\u001b]8;;http://x.test/a\u0007\u001b]8;;http://x.test/a\u0007­✓\u001b[29mThe quick brown fox—The quick brown fox\u001b[3m\u001b=",
+    29
+   ],
+   "result": [
+    "❤  ન્ન﻿\u001b]133;B\u001b\\/\u001bP1$r\u001b\\\u001b[29ma#️⃣☺️你好，世界a",
+    "b\u001b[9ma bfoo-barhello—かな\u001b]8;;http://x.test/a\u0007\u001b]8;;http://x.test/a\u0007­✓\u001b[29mThe\u001b]8;;\u0007",
+    "\u001b]8;;http://x.test/a\u0007quick brown fox—The quick\u001b]8;;\u0007",
+    "\u001b]8;;http://x.test/a\u0007brown fox\u001b[3m\u001b="
+   ]
+  },
+  {
+   "name": "case 0258",
+   "args": [
+    "\u001b[H。 स्त्र日本語のテキスト—ß\u001b>  #️⃣",
+    21
+   ],
+   "result": [
+    "\u001b[H。 स्त्र日本語のテキス",
+    "ト—ß\u001b>  #️⃣"
+   ]
+  },
+  {
+   "name": "case 0259",
+   "args": [
+    "1234512345",
+    16
+   ],
+   "result": [
+    "1234512345"
+   ]
+  },
+  {
+   "name": "case 0260",
+   "args": [
+    "かなworld ન્ન12345foo-bar👨‍👩‍👧‍👦🇺🇸​\u001b[2mé",
+    35
+   ],
+   "result": [
+    "かなworld ન્ન12345foo-bar👨‍👩‍👧‍👦🇺🇸​\u001b[2mé"
+   ]
+  },
+  {
+   "name": "case 0261",
+   "args": [
+    "\u001b]133;B\u001b\\Z̴̢̛̗͓|\u001b>a\u001b[49m…\u001b7カナäThe quick brown fox\u001b[38:2::1:2:3m… path/to/file.ts👍🏽éworldpath/to/file.ts\u001b]0;title\u0007é",
+    27
+   ],
+   "result": [
+    "\u001b]133;B\u001b\\Z̴̢̛̗͓|\u001b>a\u001b[49m…\u001b7カナäThe quick brown",
+    "fox\u001b[38:2::1:2:3m…",
+    "path/to/file.ts👍🏽éworldpath",
+    "/to/file.ts\u001b]0;title\u0007é"
+   ]
+  },
+  {
+   "name": "case 0262",
+   "args": [
+    "a b\u001b[49m❤️\u001b[?25lhello日本語のテキストworld…  ન્ન漢字\u001b[200~\u001b]8;;unterminated🔥  a…|\u001b_Gf=100,a=T;AAAA\u001b\\你好，世界\u001b>\u001b>🤝👩‍💻a  ক্ষ 12345\u001b>",
+    3
+   ],
+   "result": [
+    "a",
+    "b\u001b[49m❤️\u001b[?25lhello日本語のテキストworld…  ન્ન漢字\u001b[200~\u001b]8;;unterm",
+    "ina",
+    "ted",
+    "🔥",
+    "a…|",
+    "\u001b_Gf=100,a=T;AAAA\u001b\\你",
+    "好",
+    "，",
+    "世",
+    "界",
+    "\u001b>\u001b>",
+    "🤝",
+    "👩‍💻a",
+    "ক্ষ",
+    "123",
+    "45\u001b>"
+   ]
+  },
+  {
+   "name": "case 0263",
+   "args": [
+    "✔x\u001b[path/to/file.ts   ̀|\u001b[200~\u001b[Hक्‍ष \u001b[31\nworld🏳️‍🌈xThe quick brown foxhello‌— \u001b]0;title\u0007\u001b]133;B\u001b\\a b⬜️The quick brown fox\u001b[2m",
+    2
+   ],
+   "result": [
+    "✔x\u001b[path/to/file.ts   ̀|\u001b[200~\u001b[H",
+    "क्‍ष",
+    "\u001b[3",
+    "1",
+    "wo",
+    "rl",
+    "d",
+    "🏳️‍🌈",
+    "xT",
+    "he",
+    "qu",
+    "ic",
+    "k",
+    "br",
+    "ow",
+    "n",
+    "fo",
+    "xh",
+    "el",
+    "lo‌",
+    "—",
+    "\u001b]0;title\u0007\u001b]133;B\u001b\\a",
+    "b",
+    "⬜️",
+    "Th",
+    "e",
+    "qu",
+    "ic",
+    "k",
+    "br",
+    "ow",
+    "n",
+    "fo",
+    "x\u001b[2m"
+   ]
+  },
+  {
+   "name": "case 0264",
+   "args": [
+    "\u001b[4:3mThe quick brown fox—\u001b[24mન્નİ\u001b[5n|",
+    20
+   ],
+   "result": [
+    "\u001b[4:3mThe quick brown",
+    "fox—\u001b[24mન્નİ\u001b[5n|"
+   ]
+  },
+  {
+   "name": "case 0265",
+   "args": [
+    "Z̴̢̛̗͓é\u001b[2K﻿a。  a|👨‍👩‍👧‍👦…\u001b[2Kİ …✓\u001b(Bİ\u001b]8;;\u0007\u001b[0ma bຳhelloa b ",
+    12
+   ],
+   "result": [
+    "Z̴̢̛̗͓é\u001b[2K﻿a。",
+    "a|👨‍👩‍👧‍👦…\u001b[2Kİ",
+    "…✓\u001b(Bİ\u001b]8;;\u0007\u001b[0ma",
+    "bຳhelloa b"
+   ]
+  },
+  {
+   "name": "case 0266",
+   "args": [
+    "|12345✔⬜️\u001b]8;;\u001b\\ß\u001b]133;B\u001b\\\u001b]133;A\u0007\u001b]0;title\u0007❤ hello\u001b[4:3m❤\u001b[27m\u001b[38:2::1:2:3m ~/src\u001b[?25lຳ⚠️~/src  x\n",
+    46
+   ],
+   "result": [
+    "|12345✔⬜️\u001b]8;;\u001b\\ß\u001b]133;B\u001b\\\u001b]133;A\u0007\u001b]0;title\u0007❤ hello\u001b[4:3m❤\u001b[27m\u001b[38:2::1:2:3m ~/src\u001b[?25lຳ⚠️~/src  x",
+    ""
+   ]
+  },
+  {
+   "name": "case 0267",
+   "args": [
+    "İ❤ำ 🇺🇸\u001b]133;B\u001b\\world/",
+    37
+   ],
+   "result": [
+    "İ❤ำ 🇺🇸\u001b]133;B\u001b\\world/"
+   ]
+  },
+  {
+   "name": "case 0268",
+   "args": [
+    " \u001bc\u001b[4mß🇬🇧🇫🇷",
+    27
+   ],
+   "result": [
+    " \u001bc\u001b[4mß🇬🇧🇫🇷"
+   ]
+  },
+  {
+   "name": "case 0269",
+   "args": [
+    "\u001b[4mThe quick brown fox\u001b[9m한국어✔\u001b[200~—🇬🇧🇫🇷かな🏳️‍🌈The quick brown foxক্ষ\u001bP1$r\u001b\\ 👍🏽foo-bar↔️a  \u001b[48;2;1;2;3m\u001b]0;title\u0007​\u001b[5n‌ßस्त्र\u001bP1$r\u001b\\\u001b8\u001bX sos\u001b\\\u001b^pm\u001b\\­\u001b[1;5Aworld  foo-bar☺️ßß",
+    14
+   ],
+   "result": [
+    "\u001b[4mThe quick\u001b[24m",
+    "\u001b[4mbrown fox\u001b[9m한국\u001b[24m",
+    "\u001b[4;9m어✔\u001b[200~—🇬🇧🇫🇷かな🏳️‍🌈The quick brown foxক্ষ\u001bP1$r\u001b\\ 👍🏽foo-bar↔️a  \u001b[48;2;1;2;3m\u001b]0;title\u0007​\u001b[5n‌ßस्त्र\u001bP1$r\u001b\\\u001b8\u001bX sos\u001b\\\u001b^pm\u001b\\­\u001b[1;5Aworld\u001b[24m",
+    "\u001b[4;9;48;2;1;2;3mfoo-bar☺️ßß"
+   ]
+  },
+  {
+   "name": "case 0270",
+   "args": [
+    "स्त्र\u001b[5né👍🏽\u001b[1;38;5;196mßİß|क्‍ष🫱🏻‍🫲🏿x…İ\u001b(B|\u001b]133;A\u0007",
+    28
+   ],
+   "result": [
+    "स्त्र\u001b[5né👍🏽\u001b[1;38;5;196mßİß|क्‍ष🫱🏻‍🫲🏿x…İ\u001b(B|\u001b]133;A\u0007"
+   ]
+  },
+  {
+   "name": "case 0271",
+   "args": [
+    "\u001b7x  \u001b]0;title\u0007\u001b[29m—ัworld  —hello\u001b[H\u001b[200~x…path/to/file.ts  ©️The quick brown foxworld\u001b[23m👨‍👩‍👧‍👦「İ\u001b[31m⁠12345",
+    25
+   ],
+   "result": [
+    "\u001b7x  \u001b]0;title\u0007\u001b[29m—ัworld  —hello\u001b[H\u001b[200~x…path/to/file.ts  ©️The quick brown foxworld\u001b[23m👨‍👩‍👧‍👦「",
+    "İ\u001b[31m⁠12345"
+   ]
+  },
+  {
+   "name": "case 0272",
+   "args": [
+    "éa b~/src",
+    21
+   ],
+   "result": [
+    "éa b~/src"
+   ]
+  },
+  {
+   "name": "case 0273",
+   "args": [
+    "a b\u001b[4:3m—🏴‍☠️world‌̀path/to/file.ts-aİhello✓world… \u001b[?25lhello‍\u001b]0;title\u0007\t  😀…✔éかなhello\u001b7‌⁠",
+    13
+   ],
+   "result": [
+    "a",
+    "b\u001b[4:3m—🏴‍☠️world‌̀path",
+    "/to/file.ts-a",
+    "İhello✓world…",
+    "\u001b[?25lhello‍\u001b]0;title\u0007",
+    "😀…✔éかな",
+    "hello\u001b7‌⁠"
+   ]
+  },
+  {
+   "name": "case 0274",
+   "args": [
+    "ન્ન a、 \u001b]133;A\u0007\u001b]0;title\u0007 ßhello\u001bX sos\u001b\\😀—\u001b[999999999m—  ",
+    36
+   ],
+   "result": [
+    "ન્ન a、 \u001b]133;A\u0007\u001b]0;title\u0007 ßhello\u001bX sos\u001b\\😀—\u001b[999999999m—  "
+   ]
+  },
+  {
+   "name": "case 0275",
+   "args": [
+    "|éß  \u001b[48;2;1;2;3m ＡＢＣa b",
+    19
+   ],
+   "result": [
+    "|éß  \u001b[48;2;1;2;3m ＡＢＣa b"
+   ]
+  },
+  {
+   "name": "case 0276",
+   "args": [
+    "world\nᄀ가world\u001b[38;2;10;20;30mx—  \u001b[2m⁠ำ",
+    33
+   ],
+   "result": [
+    "world",
+    "ᄀ가world\u001b[38;2;10;20;30mx—  \u001b[2m⁠ำ"
+   ]
+  },
+  {
+   "name": "case 0277",
+   "args": [
+    "ำ\u001b]1337;File=inline=1:AAAA\u0007한국어カナa bßa bpath/to/file.ts\u001b^pm\u001b\\x\u001b]8;;http://x.test/a\u0007a b‍  ‍😀⚠️world\u001b[7m🇬🇧🇫🇷İ\u001b[?25l🔥 漢字🫱🏻‍🫲🏿\u001b(B—😀#️⃣⭐|path/to/file.ts 👨‍👩‍👧‍👦",
+    13
+   ],
+   "result": [
+    "ำ\u001b]1337;File=inline=1:AAAA\u0007한국어カナa",
+    "bßa",
+    "bpath/to/file",
+    ".ts\u001b^pm\u001b\\x\u001b]8;;http://x.test/a\u0007a b‍ \u001b]8;;\u0007",
+    "\u001b]8;;http://x.test/a\u0007 ‍😀⚠️world\u001b[7m🇬🇧\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007🇫🇷İ\u001b[?25l🔥 漢\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007字\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007🫱🏻‍🫲🏿\u001b(B—😀#️⃣⭐|p\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007ath/to/file.t\u001b]8;;\u0007",
+    "\u001b[7m\u001b]8;;http://x.test/a\u0007s 👨‍👩‍👧‍👦"
+   ]
+  },
+  {
+   "name": "case 0278",
+   "args": [
+    "‍\u001b]8;;unterminatedworld、日本語のテキストa b\u001b[4m⌚\u001b7\u001b[H\u001b[23mक्‍ष⚠️\u001b[?25l⚠️ำ日本語のテキスト\u001b[0m한국어path/to/file.tsfoo-barxworld ↔️|\u001bcລຳ\u001b[5nfoo-bar\u001b[H⬜️path/to/file.ts ‍12345",
+    42
+   ],
+   "result": [
+    "‍\u001b]8;;unterminatedworld、日本語のテキストa",
+    "b\u001b[4m⌚\u001b7\u001b[H\u001b[23mक्‍ष⚠️\u001b[?25l⚠️ำ日本語のテキスト\u001b[0m한국어path/to/file.tsfoo-barxworld",
+    "↔️|\u001bcລຳ\u001b[5nfoo-bar\u001b[H⬜️path/to/file.ts ‍12345"
+   ]
+  },
+  {
+   "name": "case 0279",
+   "args": [
+    "ß\u001b[31m」\u001b]8;;unterminatedThe quick brown fox…\u001b[23m",
+    39
+   ],
+   "result": [
+    "ß\u001b[31m」\u001b]8;;unterminatedThe quick brown fox…\u001b[23m"
+   ]
+  },
+  {
+   "name": "case 0280",
+   "args": [
+    "🧑🏾‍🦰\u001b]8;;http://x.test/a\u0007\u001b[2mßhelloworld",
+    27
+   ],
+   "result": [
+    "🧑🏾‍🦰\u001b]8;;http://x.test/a\u0007\u001b[2mßhelloworld"
+   ]
+  },
+  {
+   "name": "case 0281",
+   "args": [
+    "\u001b[0m⚠️a b\u001b>İ­\u001b[1m",
+    44
+   ],
+   "result": [
+    "\u001b[0m⚠️a b\u001b>İ­\u001b[1m"
+   ]
+  },
+  {
+   "name": "case 0282",
+   "args": [
+    "İ\u001b[1m日本語のテキスト\u001b]8;;unterminated​🔥The quick brown foxfoo-barä|\tัfoo-bar…a b~/src—||hello\u001b[4m\u001b[31mé|\u001b[29m\u001b8",
+    43
+   ],
+   "result": [
+    "İ\u001b[1m日本語のテキスト\u001b]8;;unterminated​🔥The",
+    "\u001b[1mquick brown foxfoo-barä|\tัfoo-bar…a",
+    "\u001b[1mb~/src—||hello\u001b[4m\u001b[31mé|\u001b[29m\u001b8"
+   ]
+  },
+  {
+   "name": "case 0283",
+   "args": [
+    "ລຳ👍🏽\n🧑🏾‍🦰…12345⚠ä12345🏴‍☠️",
+    31
+   ],
+   "result": [
+    "ລຳ👍🏽",
+    "🧑🏾‍🦰…12345⚠ä12345🏴‍☠️"
+   ]
+  },
+  {
+   "name": "case 0284",
+   "args": [
+    "⭐क्‍ष\u001b[1;38;5;196m\u001b]8;;unterminated​a  ",
+    44
+   ],
+   "result": [
+    "⭐क्‍ष\u001b[1;38;5;196m\u001b]8;;unterminated​a  "
+   ]
+  },
+  {
+   "name": "case 0285",
+   "args": [
+    "क्ष🇬🇧🇫🇷",
+    35
+   ],
+   "result": [
+    "क्ष🇬🇧🇫🇷"
+   ]
+  },
+  {
+   "name": "case 0286",
+   "args": [
+    "ＡＢ",
+    23
+   ],
+   "result": [
+    "ＡＢ"
+   ]
+  },
+  {
+   "name": "case 0287",
+   "args": [
+    "\u001bc12345\n你好，世界İa-The quick brown foxß↔️",
+    39
+   ],
+   "result": [
+    "\u001bc12345",
+    "你好，世界İa-The quick brown foxß↔️"
+   ]
+  },
+  {
+   "name": "case 0288",
+   "args": [
+    "👩‍💻… ক্ষ12345\u001b]8;;unterminatedᄀ가\u001bP1$r\u001b\\🏴‍☠️̀⌚x…x  \u001b[1mß\u001b]8;;http://x.test/a\u0007🫱🏻‍🫲🏿|",
+    31
+   ],
+   "result": [
+    "👩‍💻… ক্ষ12345\u001b]8;;unterminatedᄀ가\u001bP1$r\u001b\\🏴‍☠️̀⌚x…x  \u001b[1mß\u001b]8;;http://x.test/a\u0007🫱🏻‍🫲🏿|"
+   ]
+  },
+  {
+   "name": "case 0289",
+   "args": [
+    "⁠|foo-bar‍🫱🏻‍🫲🏿स्त्र",
+    8
+   ],
+   "result": [
+    "⁠|foo-bar‍",
+    "🫱🏻‍🫲🏿स्त्र"
+   ]
+  },
+  {
+   "name": "case 0290",
+   "args": [
+    "—⬜️\u001b[4m\u001b[27mຳ你好，世界\u001b[2m\u001b>foo-bar~/src\u001b⬜️—\u001b]133;A\u0007path/to/file.tsન્નä ",
+    43
+   ],
+   "result": [
+    "—⬜️\u001b[4m\u001b[27mຳ你好，世界\u001b[24m",
+    "\u001b[4m\u001b[2m\u001b>foo-bar~/src\u001b⬜️—\u001b]133;A\u0007path/to/file.tsન્નä"
+   ]
+  },
+  {
+   "name": "case 0291",
+   "args": [
+    "ｱｲｳ",
+    29
+   ],
+   "result": [
+    "ｱｲｳ"
+   ]
+  },
+  {
+   "name": "case 0292",
+   "args": [
+    "The quick brown foxhello🏳️‍🌈|foo-baré\u001bP1$r\u001b\\\u001b[38:2::1:2:3mé✔ß |…\u001b^pm\u001b\\🤝\u001b]8;;http://x.test/a\u0007\u001b[5nİ#️⃣🔥path/to/file.ts12345~/srcক্ষ\u001b[49m",
+    14
+   ],
+   "result": [
+    "The quick",
+    "brown",
+    "foxhello🏳️‍🌈|foo",
+    "-baré\u001bP1$r\u001b\\\u001b[38:2::1:2:3mé✔ß",
+    "|…\u001b^pm\u001b\\🤝\u001b]8;;http://x.test/a\u0007\u001b[5nİ#️⃣🔥path/to/file.ts12345~/srcক্ষ\u001b[49m"
+   ]
+  },
+  {
+   "name": "case 0293",
+   "args": [
+    "⁠xé12345\u001b[22m\u001b[H🫱🏻‍🫲🏿日本語のテキスト \u001b[23m\u001bX sos\u001b\\↔️\u001bX sos\u001b\\\u001b[4m ̀\u001b[4mß👍🏽😀\n\u001b[58;5;1m…🫱🏻‍🫲🏿| |你好，世界­\u001b(B\u001b[31mক্ষhello\u001b]133;A\u0007~/src",
+    42
+   ],
+   "result": [
+    "⁠xé12345\u001b[22m\u001b[H🫱🏻‍🫲🏿日本語のテキスト \u001b[23m\u001bX sos\u001b\\↔️\u001bX",
+    "sos\u001b\\\u001b[4m ̀\u001b[4mß👍🏽😀",
+    "\u001b[4m\u001b[58;5;1m…🫱🏻‍🫲🏿| |你好，世界­\u001b(B\u001b[31mক্ষhello\u001b]133;A\u0007~/src"
+   ]
+  },
+  {
+   "name": "case 0294",
+   "args": [
+    "\u001b[1;5A❤️path/to/file.ts\u001b7é\u001b]8;id=1;https://e.com/p?q=1\u001b\\İhello\u001b[38:2::1:2:3mक्‍ष  ",
+    30
+   ],
+   "result": [
+    "\u001b[1;5A❤️path/to/file.ts\u001b7é\u001b]8;id=1;https://e.com/p?q=1\u001b\\İhello\u001b[38:2::1:2:3mक्‍ष  "
+   ]
+  },
+  {
+   "name": "case 0295",
+   "args": [
+    "world\u001b[7mxß—❤️\u001b[5na\u001b(B🔥foo-bar、",
+    4
+   ],
+   "result": [
+    "worl",
+    "d\u001b[7mxß—",
+    "\u001b[7m❤️\u001b[5",
+    "\u001b[7mna\u001b(B",
+    "\u001b[7m🔥fo",
+    "\u001b[7mo-ba",
+    "\u001b[7mr、"
+   ]
+  },
+  {
+   "name": "case 0296",
+   "args": [
+    "⚠️#️⃣\u001b>‍\u001b[24ma\u001b=‍ß。ß\u001b[48;2;1;2;3m1️⃣",
+    1
+   ],
+   "result": [
+    "",
+    "⚠️",
+    "#️⃣",
+    "\u001b>‍\u001b[24m",
+    "a\u001b",
+    "=‍",
+    "ß",
+    "",
+    "。",
+    "ß\u001b[48;2;1;2;3m",
+    "\u001b[48;2;1;2;3m1️⃣"
+   ]
+  },
+  {
+   "name": "case 0297",
+   "args": [
+    "—\u001b[49mworldຳ⚠️  The quick brown foxカナक्‍ष」😀12345ຳન્ન​\u001b[4:3mfoo-bar\u001b[29m🤝a b\u001b]8;;\u001b\\\u001b[4:3m✔\u001b[29m\u001b]133;B\u001b\\\u001b[ world👍🏽a🤝äworldpath/to/file.tsİຳᄀ가",
+    23
+   ],
+   "result": [
+    "—\u001b[49mworldຳ⚠️  The quick",
+    "brown foxカナक्‍ष」",
+    "😀12345ຳન્ન​\u001b[4:3mfoo-bar\u001b[29m🤝a",
+    "b\u001b]8;;\u001b\\\u001b[4:3m✔\u001b[29m\u001b]133;B\u001b\\\u001b[",
+    "world👍🏽a🤝äworldpath/to",
+    "/file.tsİຳᄀ가"
+   ]
+  },
+  {
+   "name": "case 0298",
+   "args": [
+    "\u001b[1;38;5;196m「#️⃣🇬🇧🇫🇷worlda b🫱🏻‍🫲🏿x🤝  The quick brown fox\u001b[7m❤hellopath/to/file.tsZ̴̢̛̗͓\u001b_Gf=100,a=T;AAAA\u001b\\漢字",
+    44
+   ],
+   "result": [
+    "\u001b[1;38;5;196m「#️⃣🇬🇧🇫🇷worlda b🫱🏻‍🫲🏿x🤝  The quick brown",
+    "\u001b[1;38;5;196mfox\u001b[7m❤hellopath/to/file.tsZ̴̢̛̗͓\u001b_Gf=100,a=T;AAAA\u001b\\漢字"
+   ]
+  },
+  {
+   "name": "case 0299",
+   "args": [
+    "…İThe quick brown foxßThe quick brown foxa b\u001b[H©️—⭐\u001b]133;A\u0007helloस्त्र\nक्‍ष|a你好，世界̀กำa b",
+    25
+   ],
+   "result": [
+    "…İThe quick brown foxßThe",
+    "quick brown foxa",
+    "b\u001b[H©️—⭐\u001b]133;A\u0007helloस्त्र",
+    "क्‍ष|a你好，世界̀กำa b"
+   ]
+  }
+ ]
+}

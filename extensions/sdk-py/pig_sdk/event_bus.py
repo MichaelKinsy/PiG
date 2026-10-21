@@ -15,6 +15,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from . import host_helpers
+
 if TYPE_CHECKING:
     from . import Context, Extension
 
@@ -39,8 +41,12 @@ class EventBus:
         """Subscribe ``handler(ctx, data)`` to ``channel`` and return the unsubscribe function.
 
         A subscription made while the factory runs is registered with the host
-        before the extension is, as a Node factory's ``pi.events.on`` is
-        (loader.ts:501-509).
+        at once, over the connection the factory opened, as Pi's shared emitter
+        holds it from that moment (loader.ts:501-509): the listener hears an
+        emit another extension makes while the factory runs, while the factory
+        is waiting for one of its own host calls. With no host to reach (no
+        ``PIG_EXT_SOCKET``, as in a unit test) it is queued and registered when
+        the extension runs.
         """
         return self._extension._bus.on(channel, handler, self._ctx)
 
@@ -50,6 +56,21 @@ class EventBus:
         Raises ``TypeError`` for a payload without a JSON form, and
         ``RuntimeError`` for an emit on ``"error"`` that no listener handles,
         as EventEmitter throws (event-bus.ts:15-22).
+
+        Called while the factory runs (through ``Extension.events``, before the
+        extension serves), it does what Pi's synchronous emit does in a factory:
+        the host delivers it to every listener it holds, in registration order,
+        the listeners of the extensions loaded before this one and then this
+        extension's own, which ``on`` registered with it at once; each
+        finishes before ``emit`` returns, and an emit on ``"error"`` that
+        nobody hears raises. The first factory-time bus call connects to the
+        host (as ``parse_frontmatter`` does) and ``run`` reuses the
+        connection: a factory that runs with no host (no ``PIG_EXT_SOCKET``,
+        as in a unit test) gets ``RuntimeError``. A listener the factory's emit
+        runs has a ``Context`` with no session state yet, and until the
+        extension registers the only host calls it can make are ``pi.events``
+        ones and the parse helpers (``parse_frontmatter``, ``parse_date``).
+        Use ``Extension.on_loaded`` for work that needs the live session.
         """
         self._extension._bus.emit(channel, data, self._ctx)
 
@@ -82,7 +103,7 @@ class _EventBusHub:
         self._lock = threading.Lock()
         # A listener stays here after unsubscribe until the host releases it: the host dispatches the snapshot it took before the off call, as EventEmitter clones its listener array for each emit.
         self._subs: dict[str, _Subscription] = {}
-        # Subscriptions made while the factory runs, not yet sent.
+        # The listeners subscribed where there is no host to register them with (no PIG_EXT_SOCKET, as in a unit test), or while the extension connects, in subscription order: register_pending registers them with the host before the extension registers.
         self._pending: list[_Subscription] = []
         self._live = False
 
@@ -94,7 +115,8 @@ class _EventBusHub:
         sub = _Subscription(_next_handler_id(), channel, handler)
         with self._lock:
             self._subs[sub.id] = sub
-            if not self._live:
+            # Before the extension connects, the factory's connection is the host's way to hold the listener: with none to reach, or once run has taken the socket, it waits for register_pending.
+            if not self._live and (self._extension._sock is not None or not host_helpers._socket_path()):
                 self._pending.append(sub)
                 return self._unsubscribe(sub)
             sub.sent = True
@@ -117,13 +139,12 @@ class _EventBusHub:
                 sent = sub.sent
                 if not sent:
                     self._subs.pop(sub.id, None)
-                    if sub in self._pending:
-                        self._pending.remove(sub)
+                    self._pending = [pending for pending in self._pending if pending is not sub]
             if not sent:
                 return
             # EventEmitter.off never throws (event-bus.ts:27); a failed off is reported, as the Go SDK reports it.
             try:
-                self._extension._call("events.off", {"handlerId": sub.id})
+                self._call("events.off", {"handlerId": sub.id}, None)
             except Exception as exc:  # noqa: BLE001 - upstream's unsubscribe cannot fail; report it
                 print(f"extension: pi.events unsubscribe {sub.channel!r}: {exc}", file=sys.stderr)
 
@@ -136,10 +157,6 @@ class _EventBusHub:
             json.dumps(data, allow_nan=False)
         except (TypeError, ValueError) as exc:
             raise TypeError("event payload must be JSON-serializable") from exc
-        with self._lock:
-            live = self._live
-        if not live:
-            raise RuntimeError("pi.events.emit is not available until the extension is connected to the host")
         reply = self._call("events.emit", {"channel": channel, "json": data, "value": True}, ctx)
         if (reply.get("result") or {}).get("unhandledError"):
             raise RuntimeError(f"pi.events.emit {channel!r}: unhandled error event: {json.dumps(data)}")
@@ -175,4 +192,9 @@ class _EventBusHub:
             self._extension._load_call("events.on", {"channel": sub.channel, "handlerId": sub.id, "value": True})
 
     def _call(self, method: str, args: dict[str, Any], ctx: Context | None) -> dict[str, Any]:
-        return ctx._call(method, args) if ctx is not None else self._extension._call(method, args)
+        if ctx is not None:
+            return ctx._call(method, args)
+        if self._live or self._extension._sock is not None:
+            return self._extension._call(method, args)
+        # The factory's connection, which run takes over: the host's dispatches on it are answered while this call waits.
+        return {"result": host_helpers.loading_call(method, args, self._extension)}

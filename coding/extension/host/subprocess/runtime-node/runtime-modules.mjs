@@ -13,6 +13,7 @@ export const RUNTIME_REQUIRES = Object.freeze([
   "./shims/pi-dist/pi-ai/sdk-bundle/providers.js",
   "./shims/pi-dist/pi-coding-agent/core/provider-composer.js",
   "./shims/pi-dist/pi-coding-agent/core/session-manager.js",
+  "./shims/pi-dist/pi-coding-agent/core/virtual-models.js",
   "./shims/pi-dist/pi-coding-agent/modes/interactive/components/status-indicator.js",
   "./shims/pi-dist/pi-coding-agent/sdk-bundle/index.js",
   "./shims/pi-dist/pi-coding-agent/utils/syntax-highlight.js",

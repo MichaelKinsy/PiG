@@ -41,7 +41,14 @@ struct BusState {
     conn: Option<Arc<Connection>>,
     // A dispatch can arrive before events.on returns, and after events.off for a listener the Host had already snapshotted, so a listener stays until the Host releases it.
     subs: HashMap<String, Arc<Sub>>,
+    // The listeners subscribed where there is no Host to register them with (no PIG_EXT_SOCKET, as in a unit test), or while the extension connects, in subscription order: `go_live` registers them with the Host before the extension registers.
     pending: Vec<Arc<Sub>>,
+}
+
+/// A listener the extension registers with the Host when it connects.
+pub(crate) struct LiveOp {
+    pub(crate) handler_id: String,
+    pub(crate) channel: String,
 }
 
 /// An extension's listeners.
@@ -52,7 +59,7 @@ pub(crate) struct BusRegistry {
 
 impl BusRegistry {
     /// Makes later subscriptions register at once and returns the listeners subscribed before the extension ran, in subscription order.
-    pub(crate) fn go_live(&self, conn: &Arc<Connection>) -> Vec<(String, String)> {
+    pub(crate) fn go_live(&self, conn: &Arc<Connection>) -> Vec<LiveOp> {
         let mut state = self.state.lock().unwrap();
         state.live = true;
         state.conn = Some(conn.clone());
@@ -64,9 +71,38 @@ impl BusRegistry {
                 continue;
             }
             sub_state.sent = true;
-            out.push((sub.id.clone(), sub.channel.clone()));
+            out.push(LiveOp { handler_id: sub.id.clone(), channel: sub.channel.clone() });
         }
         out
+    }
+
+    /// Records the connection `run` took, so a subscription made while the extension connects waits for [`go_live`](Self::go_live) instead of dialling a second connection.
+    pub(crate) fn adopt(&self, conn: &Arc<Connection>) {
+        self.state.lock().unwrap().conn = Some(conn.clone());
+    }
+
+    /// What serves the host's frames on the factory's connection while one of its calls waits: the dispatch of a listener the factory subscribed, which runs on this thread with a [`Context`] that has no session state, and the release of an unsubscribed one. Anything else the extension cannot serve before it registers is refused, so the Host does not wait for it.
+    fn loading_server(self: &Arc<Self>, conn: &Arc<Connection>) -> crate::protocol::LoadingServer {
+        let registry = self.clone();
+        let conn = Arc::downgrade(conn);
+        Arc::new(move |env| {
+            let Some(conn) = conn.upgrade() else { return };
+            match env.msg_type.as_str() {
+                "request" => {
+                    let Some(id) = env.id.as_deref() else { return };
+                    let request = env.request.as_ref();
+                    let error = if request.is_some_and(|request| request.method == "events.dispatch") {
+                        let ctx = Context::for_factory(conn.clone(), registry.clone());
+                        registry.dispatch(&ctx, request.and_then(|request| request.args.as_ref()).unwrap_or(&Value::Null)).err()
+                    } else {
+                        Some(format!("{}: the extension has not registered with the host yet", request.map_or("", |request| request.method.as_str())))
+                    };
+                    let _ = conn.respond(id, None, error.map(|message| crate::protocol::ErrorInfo { code: None, message }));
+                }
+                "notify" if env.notify.as_ref().is_some_and(|notify| notify.method == "events.release") => registry.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref())),
+                _ => {}
+            }
+        })
     }
 
     /// Forgets a finished run's listeners: the Host dropped them when the connection closed.
@@ -127,15 +163,20 @@ impl EventBus {
         Self { registry, ctx }
     }
 
+    /// The connection a bus call made outside a request rides: the running extension's, or, while the factory runs, the one its first call dials (host_helpers.rs `dial_loading`), which `run` takes over. A call on that one answers the Host's dispatches while it waits, so a listener the factory subscribed hears an emit another extension makes then, even one made in reply to the factory's own emit.
+    fn connection(&self) -> io::Result<Arc<Connection>> {
+        if let Some(conn) = self.registry.state.lock().unwrap().conn.clone() {
+            return Ok(conn);
+        }
+        let conn = crate::host_helpers::dial_loading()?;
+        conn.set_loading_server(self.registry.loading_server(&conn));
+        Ok(conn)
+    }
+
     fn call(&self, method: &str, args: Value) -> io::Result<Option<Value>> {
         let result = match &self.ctx {
             Some(ctx) => ctx.call_wire(method, Some(args))?,
-            None => {
-                let conn = self.registry.state.lock().unwrap().conn.clone().ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::NotConnected, "pi.events: the extension is not connected to the host yet")
-                })?;
-                conn.call(method, Some(args))?
-            }
+            None => self.connection()?.call(method, Some(args))?
         };
         if let Some(err) = result.error {
             return Err(io::Error::other(crate::context::host_error_message(err)));
@@ -143,7 +184,7 @@ impl EventBus {
         Ok(result.result)
     }
 
-    /// Subscribes `handler` to `channel`. A listener subscribed before the extension runs is registered with the Host before the extension registers, as a node factory's `pi.events.on` is. A failure to register with the Host is returned, and nothing stays subscribed.
+    /// Subscribes `handler` to `channel`. A listener subscribed while the factory runs is registered with the Host at once, over the connection the factory opened, as Pi's shared emitter holds it from that moment: it hears an emit another extension makes while the factory runs, while the factory waits for a host call of its own. With no Host to reach (no `PIG_EXT_SOCKET`, as in a unit test) it is queued and registered when the extension runs. A failure to register with the Host is returned, and nothing stays subscribed.
     pub fn on(
         &self,
         channel: impl Into<String>,
@@ -160,12 +201,29 @@ impl EventBus {
         {
             let mut state = self.registry.state.lock().unwrap();
             state.subs.insert(sub.id.clone(), sub.clone());
-            if !state.live {
+            if !state.live && state.conn.is_some() {
+                // `run` has taken the connection and registers the listener in `go_live`.
                 state.pending.push(sub);
                 return Ok(subscription);
             }
-            sub.state.lock().unwrap().sent = true;
         }
+        if !self.registry.state.lock().unwrap().live && self.ctx.is_none() {
+            match self.connection() {
+                Ok(_) => {}
+                Err(err) if err.kind() == io::ErrorKind::NotConnected => {
+                    let mut state = self.registry.state.lock().unwrap();
+                    if !state.live {
+                        state.pending.push(sub);
+                        return Ok(subscription);
+                    }
+                }
+                Err(err) => {
+                    self.registry.state.lock().unwrap().subs.remove(&sub.id);
+                    return Err(err);
+                }
+            }
+        }
+        sub.state.lock().unwrap().sent = true;
         if let Err(err) = self.call("events.on", json!({"channel": channel, "handlerId": subscription.sub.id, "value": true})) {
             self.registry.state.lock().unwrap().subs.remove(&subscription.sub.id);
             return Err(err);
@@ -174,6 +232,8 @@ impl EventBus {
     }
 
     /// Delivers `data` to every listener of `channel`, in registration order, and returns when each has finished. Like EventEmitter, an emit on `"error"` with no listener fails.
+    ///
+    /// Called through [`Extension::events`](crate::Extension::events) while the factory runs (before the extension runs), it does what Pi's synchronous emit does in a factory: the Host delivers it to every listener it holds, in registration order, the listeners of the extensions loaded before this one and then this extension's own, which [`on`](Self::on) registered with it at once; each finishes before `emit` returns, and an emit on `"error"` that nobody hears fails. The first factory-time bus call connects to the Host (as `parse_frontmatter` does) and `run` reuses the connection: a factory that runs with no Host (no `PIG_EXT_SOCKET`, as in a unit test) gets an error. A listener the factory's emit runs has a [`Context`] with no session state yet (its `cwd` and `mode` are empty), and until the extension registers the only host calls it can make are `pi.events` ones and the parse helpers (`parse_frontmatter`, `parse_date`). Use [`Extension::on_loaded`](crate::Extension::on_loaded) for work that needs the live session.
     pub fn emit(&self, channel: &str, data: Value) -> io::Result<()> {
         let outcome = self.call("events.emit", json!({"channel": channel, "value": true, "json": data}))?;
         if outcome.is_some_and(|outcome| outcome["unhandledError"] == Value::Bool(true)) {

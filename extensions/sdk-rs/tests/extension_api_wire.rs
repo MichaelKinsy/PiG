@@ -716,6 +716,59 @@ fn execute_tool_signal_cancels_the_nested_call() {
     host.finish();
 }
 
+// core/exec.ts:46-52 (ExecOptions.signal): the caller's signal aborts the command and the call has no other. The call names itself by an
+// exec id, is sent outside the calling request, and the host is told with exec.cancel after the call itself.
+#[test]
+fn exec_signal_cancels_the_command() {
+    let signal = ProviderSignal::new();
+    let tool_signal = signal.clone();
+    let (started_tx, started_rx) = mpsc::channel::<()>();
+    let started_tx = Mutex::new(started_tx);
+    let mut ext = Extension::new("api");
+    ext.tool("caller", "Caller", empty_schema(), move |ctx, _| {
+        started_tx.lock().unwrap().send(()).unwrap();
+        let result = ctx
+            .exec_with_options("sleep", &["30"], &pig_sdk::ExecOptions { timeout: Some(5000.0), signal: Some(tool_signal.clone()), ..Default::default() })
+            .unwrap();
+        ToolResult::json(json!({"content":"returned","details":{"stdout":result.stdout,"code":result.exit_code,"killed":result.killed}}))
+    });
+    let mut host = Host::start(ext, json!({}));
+    host.tool_call("r1", "caller", "call-1", json!({}));
+    started_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+    let call = host.expect_call("exec");
+    let exec_id = call["call"]["args"]["execId"].as_str().unwrap().to_string();
+    assert_eq!(call["call"]["args"], json!({"command":"sleep","args":["30"],"options":{"timeout":5000.0},"execId":exec_id,"ownSignal":true}));
+    assert!(call["call"].get("parent_request_id").is_none(), "an exec with a signal is not tied to the calling request: {call}");
+    signal.cancel();
+    let cancel = host.expect_call("exec.cancel");
+    assert_eq!(cancel["call"]["args"], json!({"execId":exec_id}));
+    host.reply(&cancel, json!({}));
+    host.reply(&call, json!({"stdout":"so far","stderr":"","code":0,"killed":true}));
+    assert_eq!(host.response("r1")["result"]["details"], json!({"stdout":"so far","code":0,"killed":true}));
+    host.finish();
+}
+
+// A signal that is cancelled before the call still sends the call first and the cancel behind it, so the host starts the command and ends it, as exec.ts does.
+#[test]
+fn exec_with_a_cancelled_signal_sends_the_cancel_behind_the_call() {
+    let signal = ProviderSignal::new();
+    signal.cancel();
+    let mut ext = Extension::new("api");
+    ext.tool("caller", "Caller", empty_schema(), move |ctx, _| {
+        let result = ctx.exec_with_options("sleep", &["30"], &pig_sdk::ExecOptions { signal: Some(signal.clone()), ..Default::default() }).unwrap();
+        ToolResult::json(json!({"content":"returned","details":{"killed":result.killed}}))
+    });
+    let mut host = Host::start(ext, json!({}));
+    host.tool_call("r1", "caller", "call-1", json!({}));
+    let call = host.expect_call("exec");
+    let cancel = host.expect_call("exec.cancel");
+    assert_eq!(cancel["call"]["args"]["execId"], call["call"]["args"]["execId"]);
+    host.reply(&cancel, json!({}));
+    host.reply(&call, json!({"stdout":"","stderr":"","code":0,"killed":true}));
+    assert_eq!(host.response("r1")["result"]["details"]["killed"], true);
+    host.finish();
+}
+
 // runner.ts:952: the context with executeTool exists for a tool call, whose id names the nested calls.
 #[test]
 fn execute_tool_outside_a_tool_call_is_an_error() {

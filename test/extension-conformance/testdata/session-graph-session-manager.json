@@ -1,0 +1,246 @@
+{
+	"branch": {
+		"children": 2,
+		"leafIsAlt": true,
+		"shape": [
+			"message\u003c-1",
+			"message\u003c0"
+		]
+	},
+	"branched": {
+		"count": 3,
+		"idChanged": true,
+		"inDir": true,
+		"isFile": true,
+		"newFile": true,
+		"shape": [
+			"message\u003c-1",
+			"branch_summary\u003c0",
+			"label\u003c1"
+		]
+	},
+	"compaction": {
+		"badReplacement": "error: must be null or contain",
+		"badSwitch": "error: not a valid",
+		"badTarget": "error: not found",
+		"cleared": null,
+		"details": {
+			"k": 1
+		},
+		"editType": "context_edit",
+		"firstKept": true,
+		"fromHook": null,
+		"leaf": true,
+		"replacement": {
+			"content": "edited"
+		},
+		"summary": "sum",
+		"switched": {
+			"count": 11,
+			"file": true,
+			"id": false,
+			"shape": false
+		},
+		"target": true,
+		"tokensBefore": 100,
+		"type": "compaction"
+	},
+	"context": {
+		"messages": 2,
+		"model": {
+			"modelId": "m",
+			"provider": "p"
+		},
+		"thinkingLevel": "high"
+	},
+	"created": {
+		"cwd": "\u003croot\u003e/project",
+		"defaultDir": false,
+		"dir": "\u003croot\u003e/sessions",
+		"entries": 0,
+		"fileInDir": true,
+		"fileSuffix": true,
+		"id": "fixed-session-1",
+		"leaf": null,
+		"persisted": true
+	},
+	"errors": {
+		"badId": "error: Session id must be",
+		"noFork": "error: Cannot fork",
+		"notSession": "error: not a valid"
+	},
+	"extra": {
+		"msgCustomType": "note-msg",
+		"msgType": "custom_message",
+		"usageKind": "test",
+		"usageType": "usage"
+	},
+	"find": {
+		"found": true,
+		"missing": true
+	},
+	"fork": {
+		"count": 11,
+		"cwd": true,
+		"id": "forked-1",
+		"inDir": true,
+		"parent": true,
+		"shape": [
+			"message\u003c-1",
+			"message\u003c0",
+			"session_info\u003c1",
+			"label\u003c2",
+			"custom\u003c3",
+			"thinking_level_change\u003c4",
+			"model_change\u003c5",
+			"custom_message\u003c6",
+			"usage\u003c7",
+			"message\u003c0",
+			"branch_summary\u003c0"
+		]
+	},
+	"list": [
+		{
+			"createdRecent": true,
+			"cwd": "\u003croot\u003e/project",
+			"fileInDir": true,
+			"firstMessage": "hello",
+			"id": "\u003cuuid\u003e",
+			"messageCount": 1,
+			"modifiedMs": 1,
+			"name": null
+		},
+		{
+			"createdRecent": true,
+			"cwd": "\u003croot\u003e/project",
+			"fileInDir": true,
+			"firstMessage": "hello",
+			"id": "fixed-session-1",
+			"messageCount": 3,
+			"modifiedMs": 3,
+			"name": "graph"
+		}
+	],
+	"listAll": [
+		{
+			"createdRecent": true,
+			"cwd": "\u003croot\u003e/project",
+			"fileInDir": true,
+			"firstMessage": "hello",
+			"id": "\u003cuuid\u003e",
+			"messageCount": 1,
+			"modifiedMs": 1,
+			"name": null
+		},
+		{
+			"createdRecent": true,
+			"cwd": "\u003croot\u003e/project",
+			"fileInDir": true,
+			"firstMessage": "hello",
+			"id": "fixed-session-1",
+			"messageCount": 3,
+			"modifiedMs": 3,
+			"name": "graph"
+		}
+	],
+	"listFork": [
+		{
+			"createdRecent": true,
+			"cwd": "\u003croot\u003e/other",
+			"fileInDir": true,
+			"firstMessage": "hello",
+			"id": "forked-1",
+			"messageCount": 3,
+			"modifiedMs": 3,
+			"name": "graph"
+		}
+	],
+	"log": {
+		"count": 7,
+		"customData": {
+			"a": 1,
+			"b": 2
+		},
+		"customType": "note",
+		"entryType": "message",
+		"headerCwd": "\u003croot\u003e/project",
+		"headerId": "fixed-session-1",
+		"headerType": "session",
+		"headerVersion": 3,
+		"label": "start",
+		"leafIsLast": true,
+		"missing": true,
+		"name": "graph",
+		"shape": [
+			"message\u003c-1",
+			"message\u003c0",
+			"session_info\u003c1",
+			"label\u003c2",
+			"custom\u003c3",
+			"thinking_level_change\u003c4",
+			"model_change\u003c5"
+		]
+	},
+	"memory": {
+		"count": 1,
+		"cwd": "\u003croot\u003e/project",
+		"defaultDir": false,
+		"dir": "",
+		"file": null,
+		"id": "mem-1",
+		"leafBefore": null,
+		"persisted": false
+	},
+	"opened": {
+		"count": 11,
+		"cwd": "\u003croot\u003e/project",
+		"dirIsFileDir": true,
+		"file": true,
+		"headerCwd": "\u003croot\u003e/project",
+		"id": "fixed-session-1",
+		"name": "graph"
+	},
+	"override": {
+		"cwd": "\u003croot\u003e/other",
+		"id": "fixed-session-1"
+	},
+	"progress": {
+		"list": {
+			"calls": true,
+			"last": [
+				2,
+				2
+			]
+		},
+		"listAll": {
+			"calls": true,
+			"last": [
+				2,
+				2
+			]
+		}
+	},
+	"recent": {
+		"cwd": "\u003croot\u003e/project",
+		"hasEntries": true,
+		"inDir": true
+	},
+	"reset": {
+		"leaf": null
+	},
+	"seeded": {
+		"count": 1,
+		"hasId": true,
+		"leaf": "e1"
+	},
+	"summary": {
+		"fromId": false,
+		"parentIsFirst": true,
+		"text": "summary text",
+		"type": "branch_summary"
+	},
+	"tree": {
+		"firstChildren": 1,
+		"roots": 1
+	}
+}

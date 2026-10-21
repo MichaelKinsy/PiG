@@ -1,0 +1,317 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "normalizeContext",
+ "cases": [
+  {
+   "name": "case 0001",
+   "args": [
+    {
+     "messages": []
+    }
+   ],
+   "result": {
+    "messages": []
+   }
+  },
+  {
+   "name": "case 0002",
+   "args": [
+    {
+     "messages": [],
+     "systemPrompt": ""
+    }
+   ],
+   "result": {
+    "messages": []
+   }
+  },
+  {
+   "name": "case 0003",
+   "args": [
+    {
+     "messages": [],
+     "tools": []
+    }
+   ],
+   "result": {
+    "messages": []
+   }
+  },
+  {
+   "name": "case 0004",
+   "args": [
+    {
+     "messages": [],
+     "systemPrompt": "sp"
+    }
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "sp",
+      "timestamp": 0
+     }
+    ]
+   }
+  },
+  {
+   "name": "case 0005",
+   "args": [
+    {
+     "messages": [],
+     "tools": [
+      {
+       "name": "t",
+       "description": "t tool",
+       "parameters": {
+        "type": "object",
+        "properties": {
+         "path": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "",
+      "toolsAdded": [
+       {
+        "name": "t",
+        "description": "t tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ],
+      "timestamp": 0
+     }
+    ]
+   }
+  },
+  {
+   "name": "case 0006",
+   "args": [
+    {
+     "systemPrompt": "sp",
+     "tools": [
+      {
+       "name": "t",
+       "description": "t tool",
+       "parameters": {
+        "type": "object",
+        "properties": {
+         "path": {
+          "type": "string"
+         }
+        }
+       }
+      },
+      {
+       "name": "u",
+       "description": "u tool",
+       "parameters": {
+        "type": "object",
+        "properties": {
+         "path": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ],
+     "messages": [
+      {
+       "role": "user",
+       "content": "hi",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "sp",
+      "toolsAdded": [
+       {
+        "name": "t",
+        "description": "t tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       {
+        "name": "u",
+        "description": "u tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ],
+      "timestamp": 0
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "case 0007",
+   "args": [
+    {
+     "systemPrompt": "",
+     "tools": [
+      {
+       "name": "t",
+       "description": "t tool",
+       "parameters": {
+        "type": "object",
+        "properties": {
+         "path": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ],
+     "messages": [
+      {
+       "role": "user",
+       "content": "hi",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "",
+      "toolsAdded": [
+       {
+        "name": "t",
+        "description": "t tool",
+        "parameters": {
+         "type": "object",
+         "properties": {
+          "path": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ],
+      "timestamp": 0
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "case 0008",
+   "args": [
+    {
+     "tools": [],
+     "messages": [
+      {
+       "role": "user",
+       "content": "hi",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     }
+    ]
+   }
+  },
+  {
+   "name": "case 0009",
+   "args": [
+    {
+     "systemPrompt": "sp",
+     "messages": [
+      {
+       "role": "user",
+       "content": "hi",
+       "timestamp": 2
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "a"
+        }
+       ],
+       "timestamp": 3
+      }
+     ]
+    }
+   ],
+   "result": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "sp",
+      "timestamp": 0
+     },
+     {
+      "role": "user",
+      "content": "hi",
+      "timestamp": 2
+     },
+     {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "a"
+       }
+      ],
+      "timestamp": 3
+     }
+    ]
+   }
+  }
+ ]
+}

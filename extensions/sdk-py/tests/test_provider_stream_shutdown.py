@@ -56,6 +56,8 @@ def test_provider_transport_shutdown_does_not_settle_owned_stream(method, preclo
             ctx._cancelled.set()
             assert not stream._terminal, "request abort fabricated a local result"
         ext._stop_runtime()
+        # The worker removes itself from the request threads before its function returns, so a shutdown that finds no thread to wait for can run in the instant before the thread is gone: wait for it, as the assertion means "ends", not "has already ended".
+        worker.join(5)
         assert not worker.is_alive(), "transport worker survived shutdown"
         assert len(outcome) == 1 and "closed" in outcome[0]
         assert not stream._terminal, "transport fabricated a local result"

@@ -1,0 +1,88 @@
+{
+	"added": {
+		"again": false,
+		"first": true,
+		"installed": "\u003croot\u003e/pkgs/localpkg",
+		"list": [
+			{
+				"filtered": false,
+				"installedPath": "\u003croot\u003e/pkgs/localpkg",
+				"scope": "user",
+				"source": "../pkgs/localpkg"
+			}
+		],
+		"packages": [
+			"../pkgs/localpkg"
+		]
+	},
+	"initial": {
+		"installed": "\u003croot\u003e/pkgs/localpkg",
+		"list": 0
+	},
+	"installed": {
+		"events": [
+			"start:install",
+			"complete:install",
+			"start:remove",
+			"complete:remove"
+		],
+		"list": [
+			{
+				"filtered": false,
+				"installedPath": "\u003croot\u003e/pkgs/localpkg",
+				"scope": "user",
+				"source": "../pkgs/localpkg"
+			},
+			{
+				"filtered": false,
+				"installedPath": "\u003croot\u003e/pkgs/localpkg",
+				"scope": "project",
+				"source": "../../pkgs/localpkg"
+			}
+		]
+	},
+	"missing": {
+		"calls": [
+			"npm:not-installed-pkg"
+		],
+		"skills": 0
+	},
+	"removeOnly": {
+		"list": 2
+	},
+	"removed": {
+		"list": 1,
+		"project": true,
+		"settings": true,
+		"settingsAgain": false
+	},
+	"resolved": {
+		"extensions": 0,
+		"prompts": 0,
+		"skills": [
+			{
+				"enabled": true,
+				"file": "SKILL.md",
+				"origin": "package",
+				"scope": "user",
+				"source": "../pkgs/localpkg"
+			}
+		],
+		"themes": 0
+	},
+	"temporary": {
+		"extensions": 0,
+		"prompts": 0,
+		"skills": [
+			{
+				"enabled": true,
+				"file": "SKILL.md",
+				"origin": "package",
+				"scope": "temporary",
+				"source": "\u003croot\u003e/pkgs/localpkg"
+			}
+		],
+		"themes": 0
+	},
+	"updates": 0
+}

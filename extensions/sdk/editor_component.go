@@ -60,6 +60,8 @@ type EditorCursor struct {
 type Editor struct {
 	ext *Extension
 	key string
+
+	hooks editorHooks
 }
 
 func (e *Editor) call(op string, args map[string]any) (json.RawMessage, error) {
@@ -84,11 +86,7 @@ func (e *Editor) field(op string, args map[string]any, dst any) error {
 	return nil
 }
 
-// HandleInput is the default editor's handleInput.
-func (e *Editor) HandleInput(data string) error {
-	_, err := e.call("handleInput", map[string]any{"data": data})
-	return err
-}
+// HandleInput is declared in editor_hooks.go: CustomEditor's, with the handlers the component set.
 
 // HandleMouse is the default editor's handleMouse.
 func (e *Editor) HandleMouse(event EditorMouseEvent) error {
@@ -196,6 +194,10 @@ type editorSession struct {
 	lastLines []string
 	lastWidth int
 	rendered  bool
+
+	// lastStatus is the working status the component was last told, and statusSent that it was told one.
+	lastStatus *EditorStatus
+	statusSent bool
 }
 
 func (s *editorSession) post(task func()) {
@@ -272,15 +274,16 @@ func (s *editorSession) renderNow() {
 // handleEditorNotify routes the host's editor notifies to the installed component; it reports whether method was one.
 func (e *Extension) handleEditorNotify(method string, args json.RawMessage) bool {
 	switch method {
-	case "ui.editor.input", "ui.editor.mouse", "ui.editor.setText", "ui.editor.insertText", "ui.editor.addToHistory", "ui.editor.configure", "ui.editor.closed":
+	case "ui.editor.input", "ui.editor.mouse", "ui.editor.setText", "ui.editor.insertText", "ui.editor.addToHistory", "ui.editor.configure", "ui.editor.invalidate", "ui.editor.closed":
 	default:
 		return false
 	}
 	var payload struct {
-		Key   string           `json:"key"`
-		Data  string           `json:"data"`
-		Text  string           `json:"text"`
-		Event EditorMouseEvent `json:"event"`
+		Key           string           `json:"key"`
+		Data          string           `json:"data"`
+		Text          string           `json:"text"`
+		Event         EditorMouseEvent `json:"event"`
+		WorkingStatus *EditorStatus    `json:"workingStatus"`
 	}
 	if json.Unmarshal(args, &payload) != nil {
 		return true
@@ -307,7 +310,10 @@ func (e *Extension) handleEditorNotify(method string, args json.RawMessage) bool
 	case "ui.editor.addToHistory":
 		s.post(func() { s.fail("addToHistory", s.component.AddToHistory(payload.Text)); s.renderNow() })
 	case "ui.editor.configure":
-		s.post(s.renderNow)
+		status := payload.WorkingStatus
+		s.post(func() { s.editorConfigured(status); s.renderNow() })
+	case "ui.editor.invalidate":
+		s.post(func() { s.fail("invalidate", s.invalidate()); s.renderNow() })
 	case "ui.editor.closed":
 		e.detachEditor(s)
 	}

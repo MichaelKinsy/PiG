@@ -60,7 +60,11 @@ mod constrained_sampling;
 pub use constrained_sampling::ToolConstrainedSampling;
 mod context;
 #[cfg(test)]
+mod pi_ai_helpers_tests;
+#[cfg(test)]
 mod model_info_tests;
+#[cfg(test)]
+mod theme_helper_tests;
 #[cfg(test)]
 mod branch_entry_tests;
 #[cfg(test)]
@@ -86,9 +90,22 @@ mod setup_session;
 pub use setup_session::{SetupFn, SetupSessionManager};
 pub use replaced_session::{ReplacedSessionContext, WithSessionFn};
 mod session_manager;
-pub use session_manager::SessionManager;
+pub use session_manager::ReadonlySessionManager;
+mod graph;
+mod session_manager_class;
+pub use session_manager_class::{ListProgress, NewSessionOptions, SessionInfo, SessionManager};
+mod settings_manager;
+pub use settings_manager::{SettingsError, SettingsManager, SettingsManagerCreateOptions, SettingsStorage};
+mod model_runtime;
+pub use model_runtime::{ModelRuntime, ModelRuntimeCreateOptions};
+mod package_manager;
+pub use package_manager::{DefaultPackageManager, PackageManagerOptions};
+mod resource_loader;
+pub use resource_loader::{DefaultResourceLoader, DefaultResourceLoaderOptions, InlineExtensionFactory, LoaderOverride};
+mod project_trust;
+pub use project_trust::{has_trust_requiring_project_resources, ProjectTrustStore, ProjectTrustStoreEntry, ProjectTrustUpdate};
 mod host_info;
-pub use host_info::{get_agent_dir, get_config_dir_name, get_version};
+pub use host_info::{ShellConfig, get_agent_dir, get_config_dir_name, get_package_dir, get_shell_config, get_version};
 mod file_mutation_queue;
 pub use file_mutation_queue::with_file_mutation_queue;
 mod language;
@@ -101,13 +118,24 @@ mod image_dimension_note;
 pub use image_dimension_note::{ResizedImage, format_dimension_note};
 mod llm_convert;
 pub use llm_convert::convert_to_llm;
+mod pi_ai_helpers;
+mod session_entry_messages;
+pub use session_entry_messages::session_entry_to_context_messages;
+mod stored_credential;
+pub use stored_credential::read_stored_credential;
+pub use pi_ai_helpers::{
+    DEFAULT_MAX_AGENT_RETRY_DELAY_MS, RetryPolicy, StringEnumOptions, TranscriptTools, calculate_cost, clamp_thinking_level, collapse_system_messages, content_text, create_initial_system_message,
+    env_api_key_auth, get_model_type, has_api, is_model_type, models_are_equal, get_current_system_message, get_current_system_prompt, get_current_tools, get_declared_tools, get_initial_system_message, get_supported_thinking_levels,
+    get_system_message_text, has_non_additive_tool_changes, is_context_overflow, is_recoverable_length, is_retryable_assistant_error, normalize_context, render_system_message_update,
+    resolve_transcript, resolve_transcript_tools, retry_delay_ms, string_enum, without_initial_system_message,
+};
 mod serialize_conversation;
 pub use serialize_conversation::{serialize_conversation, serialize_conversation_json};
 mod branch_summary;
 mod lossless_json;
 pub use branch_summary::{BranchPreparation, CollectEntriesResult, FileOperations, SessionReader, collect_entries_for_branch_summary, prepare_branch_entries, prepare_branch_entries_json};
 mod host_helpers;
-pub use host_helpers::{ParsedFrontmatter, parse_date, parse_frontmatter, strip_frontmatter};
+pub use host_helpers::{ConvertedImage, DiffString, ImageResizeOptions, ParsedFrontmatter, convert_to_png, copy_to_clipboard, generate_diff_string, generate_unified_patch, parse_date, parse_frontmatter, resize_image, strip_frontmatter};
 mod compaction_usage;
 pub use compaction_usage::{CompactionSettings, DEFAULT_COMPACTION_SETTINGS, calculate_context_tokens, get_last_assistant_usage, should_compact};
 mod session_skill_helpers;
@@ -116,30 +144,52 @@ mod truncate;
 pub use truncate::{DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH, TruncatedBy, TruncationOptions, TruncationResult, format_size, truncate_head, truncate_line, truncate_tail};
 mod extension;
 pub mod kit;
+pub mod tui;
 mod login;
 mod oauth;
 mod protocol;
+mod host_subscriptions;
 mod theme;
-mod theme_color;
+mod visual_truncate;
+pub use visual_truncate::{VisualKeep, VisualTruncateResult, truncate_to_visual_lines};
+mod keybinding_hints;
+pub use keybinding_hints::{KeyTextFormatOptions, format_key_text, key_display_text, key_hint, key_text, raw_key_hint};
+mod theme_helpers;
+pub use theme_helpers::{EditorTheme, HighlightFn, MarkdownTheme, SelectListTheme, SelectedStyleFn, SettingsListTheme, StyleFn, get_editor_theme, get_markdown_theme, get_select_list_theme, get_settings_list_theme, highlight_code, init_theme};
 mod tool_render;
+mod request_start_order;
 mod tool_start_order;
 mod transport;
 mod user_bash;
 pub use user_bash::{BashExecFn, BashExecOptions, BashOperations};
+mod builtin_tool;
+pub use builtin_tool::{
+    BashSpawnContext, BashSpawnHook, BashToolOptions, BuiltinTool, BuiltinToolDefinition, BuiltinToolExecutor, EditOperations, EditToolOptions, FindGlobOptions, FindOperations,
+    FindToolOptions, GrepOperations, GrepToolOptions, LocalBashOperationsOptions, LsOperations, LsStat, LsToolOptions, ModelImageResizeOptions, OperationResult, PathOperation,
+    PowerShellToolOptions, ReadOperations, ReadToolOptions, ToolsOptions, WriteOperation, WriteOperations, WriteToolOptions, create_bash_tool, create_bash_tool_definition,
+    create_coding_tools, create_edit_tool, create_edit_tool_definition, create_find_tool, create_find_tool_definition, create_grep_tool, create_grep_tool_definition,
+    create_local_bash_operations, create_local_powershell_operations, create_ls_tool, create_ls_tool_definition, create_powershell_tool, create_powershell_tool_definition,
+    create_read_only_tools, create_read_tool, create_read_tool_definition, create_write_tool, create_write_tool_definition,
+};
 
 mod js_string;
 pub use js_string::JsString;
-pub use editor_component::{EditorBase, EditorComponent, EditorCursor, EditorFactory, EditorMouseEvent};
+pub use editor_component::{
+    EditorActionHandlers, EditorBase, EditorComponent, EditorCursor, EditorFactory, EditorHook, EditorMouseEvent, EditorShortcutHook, EditorStatus,
+};
 
 pub use context::{
     CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,
-    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelFetchRequest, ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds, OverlayHandle, OverlayState, UnfocusTarget,
+    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, create_assistant_message_event_stream, ModelFetchRequest, ModelFetchResponse, ModelRegistry, ModelStreamCallbacks, MouseEvent, OverlayBounds, OverlayHandle, OverlayState, UnfocusTarget,
     RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult, SendMessageOptions,
     SourceInfo, UsageInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, ToolInfoReachesTools, ViewComponent, message_role,
     message_text, is_tool_call_event_type, is_bash_tool_result, is_powershell_tool_result, is_read_tool_result, is_edit_tool_result, is_write_tool_result, is_grep_tool_result, is_find_tool_result, is_ls_tool_result,
 };
 pub use before_agent_start::BeforeAgentStartEvent;
 pub use events::*;
+mod child_session;
+pub use child_session::{AgentSession, CreateAgentSessionOptions, PromptOptions, ResourceOptions, SessionSubscription};
+pub use host_subscriptions::HostSubscription;
 #[doc(hidden)]
 pub use extension::report_load_failure;
 pub use extension::{

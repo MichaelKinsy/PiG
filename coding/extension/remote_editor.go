@@ -127,12 +127,25 @@ type DelegatedRemoteEditor interface {
 	Delegated() bool
 }
 
+// RemoteEditorInvalidator is a [RemoteEditor] whose component hears the TUI's invalidate(), which Pi sends every component it holds
+// when the theme changes, so a component that caches styled rows drops them.
+type RemoteEditorInvalidator interface {
+	Invalidate()
+}
+
 // RemoteEditorBaseHost is implemented by the [RemoteEditorHost] bound to a
 // [DelegatedRemoteEditor]. EditorBase runs one of the base editor's operations
 // on the host's owner loop and returns its JSON result: handleInput, handleMouse,
 // render, getText, getExpandedText, getLines, getCursor, setText,
-// insertTextAtCursor, addToHistory, setPaddingX, setAutocompleteMaxVisible,
-// isShowingAutocomplete. An unknown operation is an error.
+// insertTextAtCursor, addToHistory, setPaddingX, getPaddingX,
+// setAutocompleteMaxVisible, getAutocompleteMaxVisible, isShowingAutocomplete,
+// borderColor, getDisableSubmit, setDisableSubmit, getFocused, setFocused,
+// setAutocompleteProvider, onSubmit and onChange. An unknown operation is an error.
+//
+// handleInput takes the app actions the component handles itself (its onEscape, onCtrlD,
+// onPasteImage and actionHandlers) as "hooks": when the key is one of them the host
+// answers {"hook": <action>} without running the action, and the component runs its handler,
+// in the order Pi's CustomEditor.handleInput gives them.
 type RemoteEditorBaseHost interface {
 	EditorBase(ctx context.Context, op string, args json.RawMessage) (json.RawMessage, error)
 }

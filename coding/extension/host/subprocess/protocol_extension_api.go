@@ -41,6 +41,25 @@ const CallCheckMcpServer = "mcpServers.check"
 // CallLoadingExec (ext→host) runs a child for a Node factory's pi.exec before its register frame, and for a call a factory's callback made after the factory returned and before the runtime had its registered connection, which the runtime sends right after the register frame. Upstream's loader gives the factory an exec that spawns the child directly, in the loader's working directory, with no session bound (loader.ts:411-414), so the host runs core/exec.ts's execCommand in its own working directory. Args and result are those of "exec". Once the runtime has its registered connection, pi.exec calls "exec", which runs in the bound session.
 const CallLoadingExec = "exec.loading"
 
+// ExecArgs is the argument of "exec" and CallLoadingExec: upstream's pi.exec(command, args, options). The AbortSignal of options.signal cannot cross the socket: an extension that passed one sets OwnSignal and names the call by ExecID, and sends CallExecCancel when the signal aborts.
+type ExecArgs struct {
+	Command string                 `json:"command"`
+	Args    []string               `json:"args"`
+	Options *extension.ExecOptions `json:"options,omitempty"`
+	// ExecID names this call for CallExecCancel. It is unique within the connection.
+	ExecID string `json:"execId,omitempty"`
+	// OwnSignal reports that the extension passed options.signal. The command then ends only when the signal aborts, the timeout fires or the connection closes: the call is not tied to a request, as Pi's exec has no signal but the one the caller passed (core/exec.ts).
+	OwnSignal bool `json:"ownSignal,omitempty"`
+}
+
+// CallExecCancel (ext→host) is the abort of options.signal for the exec call named by ExecCancel: the host terminates the child as core/exec.ts's abort listener does, and the call resolves with what the child wrote, killed set and code 0 (a child that the signal ended has none). The extension sends it after the call's own frame; a cancel for a call that already ended does nothing. A Node factory may send it before its register frame.
+const CallExecCancel = "exec.cancel"
+
+// ExecCancel is the CallExecCancel argument.
+type ExecCancel struct {
+	ExecID string `json:"execId"`
+}
+
 // ── Virtual models ───────────────────────────────────────────────────────────
 
 // VirtualModelDecl declares a virtual model. It carries every VirtualModelDefinition field except route, which the extension keeps and the host calls with RequestVirtualModelRoute.
@@ -220,6 +239,90 @@ const CallParseFrontmatter = "frontmatter.parse"
 // ParseDateArgs and the result a ParseDateResult. It may arrive before the register frame.
 const CallParseDate = "date.parse"
 
+// CallGenerateDiffString (ext→host) is Pi's generateDiffString (core/tools/edit-diff.ts): the line-numbered display diff of two texts and the first changed line of the new
+// one, from the host's byte-exact port. The args are a GenerateDiffStringArgs and the result a GenerateDiffStringResult. Like every pure helper it reads no session or
+// extension state and may arrive before the register frame.
+const CallGenerateDiffString = "diff.string"
+
+// CallGenerateUnifiedPatch (ext→host) is Pi's generateUnifiedPatch (core/tools/edit-diff.ts): a standard unified patch of two texts, from the host's port of jsdiff's
+// createTwoFilesPatch. The args are a GenerateUnifiedPatchArgs and the result a GenerateUnifiedPatchResult.
+const CallGenerateUnifiedPatch = "diff.patch"
+
+// CallCopyToClipboard (ext→host) is Pi's copyToClipboard (utils/clipboard.ts): the host copies text with the same strategy its own copy commands use. The args are a
+// CopyToClipboardArgs; the result is empty and a failed copy is the call's error.
+const CallCopyToClipboard = "clipboard.copy"
+
+// CallConvertToPng (ext→host) is Pi's convertToPng (utils/image-convert.ts): a base64 image as base64 PNG, or null when it does not decode. The args are a
+// ConvertToPngArgs and the result an ImageResult.
+const CallConvertToPng = "image.convertToPng"
+
+// CallResizeImage (ext→host) is Pi's resizeImage (utils/image-resize.ts): an image fitted within the option limits and the encoded size limit, or null when it cannot be.
+// The args are a ResizeImageArgs and the result an ImageResult.
+const CallResizeImage = "image.resize"
+
+// GenerateDiffStringArgs is the argument of CallGenerateDiffString; ContextLines is Pi's optional third parameter (default 4).
+type GenerateDiffStringArgs struct {
+	OldContent   string `json:"oldContent"`
+	NewContent   string `json:"newContent"`
+	ContextLines *int   `json:"contextLines,omitempty"`
+}
+
+// GenerateDiffStringResult is the result of CallGenerateDiffString: Pi's `{ diff, firstChangedLine }`, the line null when the texts do not differ.
+type GenerateDiffStringResult struct {
+	Diff             string `json:"diff"`
+	FirstChangedLine *int   `json:"firstChangedLine"`
+}
+
+// GenerateUnifiedPatchArgs is the argument of CallGenerateUnifiedPatch; ContextLines is Pi's optional fourth parameter (default 4).
+type GenerateUnifiedPatchArgs struct {
+	Path         string `json:"path"`
+	OldContent   string `json:"oldContent"`
+	NewContent   string `json:"newContent"`
+	ContextLines *int   `json:"contextLines,omitempty"`
+}
+
+// GenerateUnifiedPatchResult is the result of CallGenerateUnifiedPatch.
+type GenerateUnifiedPatchResult struct {
+	Patch string `json:"patch"`
+}
+
+// CopyToClipboardArgs is the argument of CallCopyToClipboard.
+type CopyToClipboardArgs struct {
+	Text string `json:"text"`
+}
+
+// ConvertToPngArgs is the argument of CallConvertToPng: Pi's `(base64Data, mimeType)`.
+type ConvertToPngArgs struct {
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+}
+
+// ResizeImageArgs is the argument of CallResizeImage: Pi's `(inputBytes, mimeType, options?)` with the bytes in base64.
+type ResizeImageArgs struct {
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+	Options  *struct {
+		MaxWidth    int `json:"maxWidth,omitempty"`
+		MaxHeight   int `json:"maxHeight,omitempty"`
+		MaxBytes    int `json:"maxBytes,omitempty"`
+		JPEGQuality int `json:"jpegQuality,omitempty"`
+	} `json:"options,omitempty"`
+}
+
+// ImageResult is the result of CallConvertToPng and CallResizeImage: the image, or null (Pi's null). A converted image has Data and MimeType only; a resized one also the
+// sizes Pi's ResizedImage carries.
+type ImageResult struct {
+	Image *struct {
+		Data           string `json:"data"`
+		MimeType       string `json:"mimeType"`
+		OriginalWidth  *int   `json:"originalWidth,omitempty"`
+		OriginalHeight *int   `json:"originalHeight,omitempty"`
+		Width          *int   `json:"width,omitempty"`
+		Height         *int   `json:"height,omitempty"`
+		WasResized     *bool  `json:"wasResized,omitempty"`
+	} `json:"image"`
+}
+
 // ParseFrontmatterArgs is the argument of CallParseFrontmatter.
 type ParseFrontmatterArgs struct {
 	Content string `json:"content"`
@@ -240,6 +343,39 @@ type ParseDateArgs struct {
 // ParseDateResult is the result of CallParseDate: the time value in milliseconds, null when Date.parse reads NaN.
 type ParseDateResult struct {
 	Ms *float64 `json:"ms"`
+}
+
+// CallHighlightCode (ext→host) is pi-coding-agent's highlightCode (theme.ts), or getMarkdownTheme().highlightCode when Markdown is set: the lines of code highlighted
+// for lang by the host's highlight.js port and drawn with a theme. The args are a HighlightCodeArgs and the result a HighlightCodeResult. It reads no session or extension
+// state, so it may arrive before the register frame.
+const CallHighlightCode = "highlight.code"
+
+// CallLoadTheme (ext→host) is the theme initTheme(name) installs as pi-coding-agent's process-global theme: the registered theme of that name, or the system theme
+// for an absent name or one no theme has, as initTheme falls back. The args are a LoadThemeArgs and the result a LoadThemeResult. It may arrive before the register frame.
+const CallLoadTheme = "theme.load"
+
+// HighlightCodeArgs is the argument of CallHighlightCode. Theme is the palette (the shape of ready.state.theme) of the theme to draw with: the one the extension
+// installed with initTheme. An absent Theme draws with the host's active theme, which the extension's own global theme replicates.
+type HighlightCodeArgs struct {
+	Code     string          `json:"code"`
+	Lang     string          `json:"lang,omitempty"`
+	Markdown bool            `json:"markdown,omitempty"`
+	Theme    json.RawMessage `json:"theme,omitempty"`
+}
+
+// HighlightCodeResult is the result of CallHighlightCode: Pi's array of highlighted lines.
+type HighlightCodeResult struct {
+	Lines []string `json:"lines"`
+}
+
+// LoadThemeArgs is the argument of CallLoadTheme. A null Name is initTheme(undefined).
+type LoadThemeArgs struct {
+	Name *string `json:"name"`
+}
+
+// LoadThemeResult is the result of CallLoadTheme: the theme's palette, in the shape of ready.state.theme.
+type LoadThemeResult struct {
+	Theme json.RawMessage `json:"theme"`
 }
 
 // ── File mutation queue ──────────────────────────────────────────────────────

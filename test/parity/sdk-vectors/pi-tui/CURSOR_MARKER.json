@@ -1,0 +1,13 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "CURSOR_MARKER",
+ "cases": [
+  {
+   "name": "case 0000",
+   "args": [],
+   "result": "\u001b_pi:c\u0007"
+  }
+ ]
+}

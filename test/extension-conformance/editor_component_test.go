@@ -24,6 +24,17 @@ type baseEditorHost struct {
 	// textArgs records the raw text argument of each text operation, by op.
 	textArgs map[string][]string
 	optIns   int
+	// paddingX and autocompleteMax record the last setPaddingX and setAutocompleteMaxVisible argument (-1 before any).
+	paddingX, autocompleteMax int
+	// handleInputs records each key that reached the host's handleInput with the hooks it listed; the other fields record
+	// the CustomEditor members' operations (editor_component_members_test.go).
+	handleInputs  []string
+	hooksSeen     [][]string
+	disableSubmit bool
+	focused       bool
+	provider      json.RawMessage
+	submits       []string
+	changes       []string
 }
 
 func (h *baseEditorHost) EditorEmbedWorkingStatusChanged() {
@@ -48,9 +59,13 @@ func (h *baseEditorHost) EditorClosed()                             {}
 
 func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawMessage) (json.RawMessage, error) {
 	var p struct {
-		Data  string `json:"data"`
-		Text  string `json:"text"`
-		Width int    `json:"width"`
+		Data     string          `json:"data"`
+		Text     string          `json:"text"`
+		Width    int             `json:"width"`
+		N        int             `json:"n"`
+		Value    bool            `json:"value"`
+		Hooks    []string        `json:"hooks"`
+		Provider json.RawMessage `json:"provider"`
 	}
 	_ = sdkjson.Unmarshal(args, &p)
 	h.mu.Lock()
@@ -68,6 +83,13 @@ func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawM
 	}
 	switch op {
 	case "handleInput":
+		h.handleInputs = append(h.handleInputs, p.Data)
+		h.hooksSeen = append(h.hooksSeen, slices.Clone(p.Hooks))
+		// The host answers a key whose app action the component handles itself with the hook (CustomEditor's own check of
+		// the editor being empty before exit is the host's, covered by internal/codingagent).
+		if id := baseEditorActions[p.Data]; id != "" && slices.Contains(p.Hooks, id) && (id != "app.exit" || h.text == "") {
+			return sdkjson.Marshal(map[string]string{"hook": id})
+		}
 		h.text += p.Data
 	case "setText":
 		h.text = p.Text
@@ -77,6 +99,34 @@ func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawM
 		return sdkjson.Marshal(map[string]string{"text": h.text})
 	case "getLines":
 		return sdkjson.Marshal(map[string]any{"lines": strings.Split(h.text, "\n")})
+	case "getCursor":
+		return sdkjson.Marshal(map[string]any{"line": 2, "col": 5})
+	case "isShowingAutocomplete":
+		return sdkjson.Marshal(map[string]any{"value": true})
+	case "setPaddingX":
+		h.paddingX = p.N
+	case "setAutocompleteMaxVisible":
+		h.autocompleteMax = p.N
+	case "getPaddingX":
+		return sdkjson.Marshal(map[string]any{"n": 4})
+	case "getAutocompleteMaxVisible":
+		return sdkjson.Marshal(map[string]any{"n": 9})
+	case "borderColor":
+		return sdkjson.Marshal(map[string]string{"text": "[" + p.Text + "]"})
+	case "getDisableSubmit":
+		return sdkjson.Marshal(map[string]any{"value": h.disableSubmit})
+	case "setDisableSubmit":
+		h.disableSubmit = p.Value
+	case "getFocused":
+		return sdkjson.Marshal(map[string]any{"value": h.focused})
+	case "setFocused":
+		h.focused = p.Value
+	case "setAutocompleteProvider":
+		h.provider = slices.Clone(p.Provider)
+	case "onSubmit":
+		h.submits = append(h.submits, p.Text)
+	case "onChange":
+		h.changes = append(h.changes, p.Text)
 	case "render":
 		return sdkjson.Marshal(map[string]any{"lines": []string{"base:" + h.text}})
 	case "addToHistory":
@@ -85,6 +135,9 @@ func (h *baseEditorHost) EditorBase(_ context.Context, op string, args json.RawM
 	}
 	return json.RawMessage(`{}`), nil
 }
+
+// baseEditorActions are the keys the stub host maps to the app actions it can answer as hooks.
+var baseEditorActions = map[string]string{"\x1b": "app.interrupt", "\x04": "app.exit", "\x16": "app.clipboard.pasteImage", "\x03": "app.clear"}
 
 func (h *baseEditorHost) snapshot() (string, [][]string) {
 	h.mu.Lock()
@@ -359,6 +412,101 @@ func TestEditorComponentCarriesLoneSurrogatesInRowsAndLines(t *testing.T) {
 			}
 			if got, _ := host.snapshot(); got != "raw:lines="+text {
 				t.Fatalf("text after getLines = %q; want %q", got, "raw:lines="+text)
+			}
+		})
+	}
+}
+
+// pi-tui's Editor.insertTextAtCursor and addToHistory are the host's calls on its editor: a component that overrides them sees the host's text and reaches the default editor through super. The fixture's override wraps an insert in angle brackets and prefixes a history entry with "history:", so a component the SDK never dispatches to leaves the plain text at the host.
+func TestEditorComponentOverridesReachSuper(t *testing.T) {
+	t.Parallel()
+	for _, tc := range delegatedEditorCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			cleanupHarness(t, h)
+			if !h.runner.ExecuteCommand(context.Background(), "editor-install", "") {
+				t.Fatal("fixture has no editor-install command")
+			}
+			editor := waitInstalledEditor(t, h)
+			host := &baseEditorHost{inputs: make(chan struct{}, 16)}
+			editor.Bind(host)
+			editor.Configure(extension.RemoteEditorConfig{Focused: true})
+			editor.InsertTextAtCursor("hi")
+			editor.AddToHistory("cmd")
+			deadline := time.Now().Add(20 * time.Second)
+			for {
+				host.mu.Lock()
+				inserted, history := slices.Clone(host.textArgs["insertTextAtCursor"]), slices.Clone(host.textArgs["addToHistory"])
+				host.mu.Unlock()
+				decode := func(raw []string) []string {
+					out := make([]string, len(raw))
+					for i, r := range raw {
+						_ = sdkjson.Unmarshal([]byte(r), &out[i])
+					}
+					return out
+				}
+				inserted, history = decode(inserted), decode(history)
+				if len(inserted) > 0 && len(history) > 0 {
+					if !slices.Equal(inserted, []string{"<hi>"}) || !slices.Equal(history, []string{"history:cmd"}) {
+						t.Fatalf("super saw insertTextAtCursor %v and addToHistory %v; want the override's \"<hi>\" and \"history:cmd\"", inserted, history)
+					}
+					if text, _ := host.snapshot(); text != "<hi>" {
+						t.Fatalf("editor text = %q; want %q", text, "<hi>")
+					}
+					return
+				}
+				if time.Now().After(deadline) {
+					t.Fatalf("the host saw insertTextAtCursor %v and addToHistory %v", inserted, history)
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+		})
+	}
+}
+
+// The Go SDK's Editor exposes the default editor's queries and setters: getCursor, getExpandedText, isShowingAutocomplete, setPaddingX and setAutocompleteMaxVisible each reach the host's editor with the host's answer, which the fixture's "K" key writes back as text. Rust and Python have no such members yet (gap: SdkTuiHelpers in test/parity/sdk-exports.toml).
+func TestEditorComponentGoBaseQueriesReachTheHost(t *testing.T) {
+	t.Parallel()
+	for _, tc := range delegatedEditorCases() {
+		if !strings.HasSuffix(tc.name, "go") {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			cleanupHarness(t, h)
+			if !h.runner.ExecuteCommand(context.Background(), "editor-install", "") {
+				t.Fatal("fixture has no editor-install command")
+			}
+			editor := waitInstalledEditor(t, h)
+			host := &baseEditorHost{inputs: make(chan struct{}, 16), paddingX: -1, autocompleteMax: -1}
+			editor.Bind(host)
+			editor.Configure(extension.RemoteEditorConfig{Focused: true})
+			editor.SetText("raw:expanded text")
+			deadline := time.Now().Add(20 * time.Second)
+			for {
+				if text, _ := host.snapshot(); text == "raw:expanded text" {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("setText never reached the host")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			editor.Input("K")
+			select {
+			case <-host.inputs:
+			case <-time.After(20 * time.Second):
+				t.Fatal("the component never finished the key")
+			}
+			want := "raw:cursor=2,5|expanded=raw:expanded text|autocomplete=true"
+			if got, _ := host.snapshot(); got != want {
+				t.Fatalf("text after the queries = %q; want %q", got, want)
+			}
+			host.mu.Lock()
+			padding, visible := host.paddingX, host.autocompleteMax
+			host.mu.Unlock()
+			if padding != 3 || visible != 7 {
+				t.Fatalf("setPaddingX saw %d and setAutocompleteMaxVisible saw %d; want 3 and 7", padding, visible)
 			}
 		})
 	}

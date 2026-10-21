@@ -6,8 +6,11 @@ import (
 	"strings"
 )
 
-// ResizedImage carries the dimensions of Pi's ResizedImage (utils/image-resize-core.ts) that FormatDimensionNote reads. Dimensions are JavaScript numbers.
+// ResizedImage is Pi's ResizedImage (utils/image-resize-core.ts): the image as base64 data and its MIME type, and the dimensions FormatDimensionNote reads. Dimensions are
+// JavaScript numbers. FormatDimensionNote reads only the dimensions, so a caller that has no image to hand it leaves Data and MimeType empty.
 type ResizedImage struct {
+	Data           string
+	MimeType       string
 	OriginalWidth  float64
 	OriginalHeight float64
 	Width          float64

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // ─── Message Types ────────────────────────────────────────────────────────────
@@ -371,6 +372,12 @@ type AgentTool interface {
 		onUpdate ToolUpdateCallback) (AgentToolResult, error)
 	// ExecutionMode returns the tool's parallelism preference.
 	ExecutionMode() ToolExecutionMode
+}
+
+// ExtensionTool is implemented by a tool whose Execute runs in an extension runtime, on an event loop of its own. Pi's loop turns during such a tool only if the tool awaits real work, which the host cannot tell, so the agent opens no wait for it (jsloop.Turns).
+type ExtensionTool interface {
+	// RunsInExtension reports whether the tool's Execute runs in an extension; a wrapper reports its wrapped tool's answer.
+	RunsInExtension() bool
 }
 
 // ArgumentPreparer is an optional interface tools may implement to
@@ -872,6 +879,8 @@ type Agent struct {
 	llm                llmMemo
 	stateMu            sync.RWMutex
 	forcedSystemPrompt *string
+	// loopTurns is the owner's model of Pi's event loop (jsloop.Turns), which the run's I/O and tools tell when the loop turns; nil for an owner that holds none.
+	loopTurns *jsloop.Turns
 	// messagesMu guards writes to messages and MessagesSnapshot reads, so
 	// other goroutines can observe the transcript while a run appends to it.
 	messagesMu sync.RWMutex
@@ -1101,7 +1110,7 @@ func (a *Agent) claimRun(ctx context.Context, busy error) error {
 	}
 	// Detach the parent's cancellation registration at settlement without
 	// aborting a successfully completed run's retained signal.
-	runContext, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	runContext, cancel := context.WithCancel(jsloop.WithTurns(context.WithoutCancel(ctx), a.loopTurns))
 	deadline, hasDeadline := ctx.Deadline()
 	signal := &runDeadlineContext{Context: ai.WithStreamContinuations(runContext), parent: ctx, deadline: deadline, hasDeadline: hasDeadline}
 	signal.active.Store(true)

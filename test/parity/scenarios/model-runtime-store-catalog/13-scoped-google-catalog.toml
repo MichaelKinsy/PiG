@@ -14,10 +14,14 @@ height = 35
 ready_pattern_pig = "gemini-2.5-flash"
 ready_pattern_pi = "$0.000"
 ready_timeout_seconds = 20
-keys = ["/scoped-models", "Enter"]
-settle_seconds = 2
 capture_start = "Model Configuration"
 capture_end = "all enabled"
+
+[[tmux.steps]]
+keys = ["/scoped-models", "Enter"]
+# The selector refreshes the catalogs asynchronously and publishes "Model catalogs refreshed." when the refresh settles; under load Pi's capture came first once ("pi output missing Model catalogs refreshed."), which a fixed settle cannot exclude. The visible screen is the barrier.
+wait_visible_contains = ["Model Configuration", "Model catalogs refreshed."]
+wait_timeout_seconds = 15
 
 [env]
 pig = ["PIG_CODING_AGENT_DIR=testdata/scoped-google-agent", "GEMINI_API_KEY=scoped-catalog-test-key"]

@@ -163,6 +163,9 @@ type UIBridge struct {
 	// OnRunSignalChanged is called when a run begins or ends. Set by the Host, which brings every runtime up to date with the active run's signal (see [UIBridge.RunSignalChanged]).
 	OnRunSignalChanged func()
 
+	// OnHostStateChanged is called when host state that runtimes replicate changed with no extension call or event to announce it. Set by the Host, which pushes the new state to every connected runtime off the caller's goroutine (see [UIBridge.HostStateChanged]).
+	OnHostStateChanged func()
+
 	// invalidateTUI triggers a TUI render cycle.
 	invalidateTUI func()
 	currentWidth  int
@@ -394,6 +397,9 @@ type HostCallbacks struct {
 	// catalogs. allowNetwork nil means the runtime default; providers nil
 	// means every provider. upstream: model-registry.ts refresh(options)
 	RefreshModelRegistry func(ctx context.Context, allowNetwork *bool, providers []string, force *bool) (map[string]any, error)
+
+	// CreateChildSession builds a child agent session for an extension: Pi's createAgentSession (core/sdk.ts). The session shares the model runtime of the Session the host serves, so providers the extensions registered are available to it. Nil refuses the call.
+	CreateChildSession ChildSessionFactory
 
 	// SessionRead answers a ReadonlySessionManager read computed from the
 	// host's session: the header facts (method "info"), and for the Go, Rust
@@ -1071,6 +1077,17 @@ func (b *UIBridge) RunSignalChanged() {
 	}
 }
 
+// HostStateChanged tells the Host that state the runtimes replicate (the model, the thinking level, the session name, the settings, the MCP server list, the theme palette) changed without an extension call or an event to the extension, so every runtime learns it without waiting for its next request.
+// Upstream's `ctx.model`, `pi.getSettings()`, `pi.getSessionName()`, `pi.getMcpServers()` and `ctx.ui.theme` read the live Session, the MCP registry and the global theme at every call (runner.ts:906, loader.ts:411-414 and 495-497, interactive-mode.ts:2665); a runtime replicates them, so a timer or thread that reads between two requests sees the host's value only when the host pushes it. The owner of the change reports it here, after the state changed. It returns at once: the push runs on a task the Host joins at Shutdown, because the owner may be the UI loop, which never waits for an extension.
+func (b *UIBridge) HostStateChanged() {
+	b.mu.RLock()
+	changed := b.OnHostStateChanged
+	b.mu.RUnlock()
+	if changed != nil {
+		changed()
+	}
+}
+
 // SetHostAction sets a single host callback by name. Thread-safe.
 // This allows the interactive mode to wire callbacks one-by-one without
 // importing the HostCallbacks type (avoiding circular deps).
@@ -1251,6 +1268,8 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.GenerateImages = fn.(func(context.Context, map[string]any, json.RawMessage, map[string]any) (json.RawMessage, error))
 	case "refreshModelRegistry":
 		b.actions.RefreshModelRegistry = fn.(func(context.Context, *bool, []string, *bool) (map[string]any, error))
+	case "createChildSession":
+		b.actions.CreateChildSession = fn.(ChildSessionFactory)
 	case "sessionRead":
 		b.actions.SessionRead = fn.(func(string, json.RawMessage) (any, error))
 	case "setSessionName":
@@ -1341,7 +1360,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 			"ui.setWorkingVisible", "ui.setHiddenThinkingLabel", "ui.setWidget", "ui.setFooter",
 			"ui.setHeader", "ui.setTitle", "ui.setEditorComponent", "ui.pasteToEditor",
 			"ui.setEditorText", "ui.setToolsExpanded", "ui.addAutocompleteProvider",
-			"ui.onTerminalInput", "ui.offTerminalInput":
+			"ui.onTerminalInput", "ui.offTerminalInput", CallUIBell:
 			return &CallResultPayload{}, nil
 		case CallUICustom:
 			extension.CallInitiated(ctx)
@@ -1372,6 +1391,12 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleSetHiddenThinkingLabel(ui, call.Args)
 	case "ui.setWidget":
 		return b.handleSetWidget(extName, owner, call.Args)
+	// pig additive (D19): a Pi extension rings the terminal bell by writing BEL to process.stdout, which a subprocess extension cannot reach.
+	case CallUIBell:
+		if beller, ok := ui.(extension.TerminalBeller); ok {
+			beller.Bell()
+		}
+		return &CallResultPayload{}, nil
 
 	// ── Category 2: User Interaction (blocking) ──────────────────────────
 	case "ui.select":
@@ -3637,11 +3662,7 @@ func (b *UIBridge) hasExecAction() bool {
 }
 
 func (b *UIBridge) handleExec(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
-	var p struct {
-		Command string                 `json:"command"`
-		Args    []string               `json:"args"`
-		Options *extension.ExecOptions `json:"options,omitempty"`
-	}
+	var p ExecArgs
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse exec args: %w", err)
 	}
@@ -3990,8 +4011,9 @@ func (b *UIBridge) handleGetModel(actions *HostCallbacks, args json.RawMessage) 
 	if err := json.Unmarshal(args, &request); err != nil {
 		return nil, fmt.Errorf("parse getModel args: %w", err)
 	}
+	// An unbound lookup is a failure, not "no such model": Pi's registry always answers find, and undefined means the model is absent.
 	if actions == nil || actions.GetModel == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("model lookup is not bound")
 	}
 	result := actions.GetModel(request.Provider, request.ModelID)
 	if result == nil {
@@ -4163,8 +4185,9 @@ func (b *UIBridge) handleSessionRead(actions *HostCallbacks, args json.RawMessag
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse sessionRead args: %w", err)
 	}
+	// An unbound read is a failure, not an empty session: Pi's ReadonlySessionManager always exists, and a null here would be believed as "no entry" or as a list-typed read with nothing in it.
 	if actions == nil || actions.SessionRead == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		return nil, errors.New("session reads are not bound")
 	}
 	value, err := actions.SessionRead(p.Method, p.Args)
 	if err != nil {
@@ -4279,8 +4302,18 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	if owner == nil {
 		return nil, errors.New("modelStream requires a live extension connection")
 	}
-	if actions == nil || actions.StreamModel == nil {
+	var streamModel func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error)
+	switch {
+	case request.Runtime != "":
+		streamer, err := graphStreamerOf(ctx, request.Runtime)
+		if err != nil {
+			return nil, err
+		}
+		streamModel = streamer.StreamModel
+	case actions == nil || actions.StreamModel == nil:
 		return nil, errors.New("model streaming is not available")
+	default:
+		streamModel = actions.StreamModel
 	}
 	decodedRequest, err := decodeModelStreamRequest(request.Request)
 	if err != nil {
@@ -4300,7 +4333,7 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	stream, err := actions.StreamModel(providerCtx, request.Model, decodedRequest)
+	stream, err := streamModel(providerCtx, request.Model, decodedRequest)
 	if err != nil {
 		return nil, err
 	}

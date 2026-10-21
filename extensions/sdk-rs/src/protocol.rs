@@ -2,6 +2,7 @@
 //! 4-byte big-endian length prefix + JSON payload.
 
 use crate::JsString;
+use crate::context::SourceInfo;
 use crate::transport::UnixStream;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -305,8 +306,6 @@ pub struct RendererDef {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReadyMsg {
     #[serde(default)]
-    pub session_name: String,
-    #[serde(default)]
     pub cwd: String,
     #[serde(default)]
     pub mode: String,
@@ -314,8 +313,9 @@ pub struct ReadyMsg {
     pub width: u32,
     #[serde(default)]
     pub height: u32,
-    #[serde(default)]
-    pub model: String,
+    /// The provenance the loader stamped on this extension (`Context::extension_source_info`).
+    #[serde(default, rename = "sourceInfo")]
+    pub source_info: Option<SourceInfo>,
     /// Initial state snapshot, including session entries.
     #[serde(default, deserialize_with = "deserialize_state_replica")]
     pub state: Option<serde_json::Value>,
@@ -338,11 +338,18 @@ pub struct RequestMsg {
     pub batch: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<Value>,
+    /// The child agent session whose customTools define `tool` (`tool_call`, `tool_prepare_arguments`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub child_session: Option<String>,
     pub terminal_input: Option<TerminalInputArgs>,
     /// Numbers one connection's payloads of an event name and key (`EventStream` in the host's protocol.go).
     pub stream: Option<EventStream>,
     /// Why `apply_event_stream` could not produce the payload.
     pub stream_error: Option<String>,
+    /// On `tool_call`: the call's position among the tool calls of the assistant message that issued it (the host's `tool_call_index`).
+    pub tool_call_index: Option<u32>,
+    /// On `tool_call`: the JSON text of `args` as the host wrote it.
+    pub args_raw: Option<String>,
 }
 
 /// The delta of an event payload: a request with args is a keyframe the extension keeps, one without applies `ops` to the payload numbered `base`.
@@ -386,8 +393,11 @@ struct RawRequestMsg {
     tool_call_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     batch: Option<String>,
+    tool_call_index: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     args: Option<Box<serde_json::value::RawValue>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    child_session: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     stream: Option<EventStream>,
 }
@@ -402,7 +412,8 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
         } else {
             raw.args.as_ref().map(|a| from_json_str(a.get())).transpose()?
         };
-        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, terminal_input, stream: raw.stream, stream_error: None })
+        let args_raw = if raw.method == "tool_call" { raw.args.as_ref().map(|a| a.get().to_string()) } else { None };
+        Ok(Self { method: raw.method, tool: raw.tool, event: raw.event, handler_id: raw.handler_id, tool_call_id: raw.tool_call_id, batch: raw.batch, args, child_session: raw.child_session, terminal_input, stream: raw.stream, stream_error: None, tool_call_index: raw.tool_call_index, args_raw })
     }
 }
 
@@ -412,7 +423,7 @@ impl From<RequestMsg> for RawRequestMsg {
             Some(args) => Some(serde_json::value::to_raw_value(&args).expect("terminal input is JSON")),
             None => req.args.map(|args| serde_json::value::to_raw_value(&args).expect("Value is JSON")),
         };
-        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, args, stream: req.stream }
+        Self { method: req.method, tool: req.tool, event: req.event, handler_id: req.handler_id, tool_call_id: req.tool_call_id, batch: req.batch, tool_call_index: req.tool_call_index, args, child_session: req.child_session, stream: req.stream }
     }
 }
 
@@ -515,6 +526,9 @@ pub struct CallMsg {
     pub args: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_request_id: Option<String>,
+    /// Set on a call made through a request's scope after its handler returned: deferred work, which the host runs once Pi's loop turns.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub timer: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -601,6 +615,8 @@ impl RequestParent {
 
 /// A thread-safe connection to the host over a Unix socket.
 pub struct Connection {
+    /// The child agent sessions this connection created and has not disposed (`child_session.rs`).
+    pub(crate) children: crate::child_session::ChildSessions,
     pub(crate) registered_tools: Mutex<HashMap<String, Arc<crate::extension::ToolDefinition>>>,
     pub(crate) tool_registration_lock: Mutex<()>,
     /// Commands, shortcuts and renderers registered after loading.
@@ -631,6 +647,8 @@ pub struct Connection {
     pub(crate) views: crate::kit::ViewLedger,
     /// The setup callbacks of this connection's newSession calls in flight.
     pub(crate) setups: crate::setup_session::SetupRegistry,
+    /// The functions passed in options of session graph objects (DefaultResourceLoader's overrides), by the name the host runs them under.
+    pub(crate) graph_callbacks: crate::graph::GraphCallbacks,
     reader: Mutex<UnixStream>,
     writer: Mutex<UnixStream>,
     // control ends the socket for every clone without waiting on a reader or writer lock.
@@ -639,7 +657,21 @@ pub struct Connection {
     pending_calls: Mutex<HashMap<String, PendingCallSender>>,
     request_parents: Mutex<HashMap<String, Arc<RequestParent>>>,
     closed: AtomicBool,
+    /// Set for a connection a factory opened before `run` (host_helpers.rs): no reader thread serves it yet, so a call made on it reads the frames itself, and only the host calls the host answers before the extension registers are sent. `run` clears it when it takes the connection.
+    loading: AtomicBool,
+    // One thread at a time reads a frame for a loading connection's calls; it does not hold the lock while a frame is served.
+    pump: Mutex<()>,
+    /// What serves the requests and notifies a loading connection receives while a call waits (event_bus.rs `serve_loading`); cleared when `run` takes the connection.
+    loading_server: Mutex<Option<LoadingServer>>,
     pub(crate) closed_signal: crate::provider::ProviderSignal,
+}
+
+/// Serves a frame the host sends a loading connection that is not the answer to a call: a listener dispatch, a release.
+pub(crate) type LoadingServer = Arc<dyn Fn(&Envelope<Box<serde_json::value::RawValue>>) + Send + Sync>;
+
+/// The host calls the host answers while a factory runs, before the extension registers: the shared event bus and the pure helpers that read no session state (Go's loadingBusCall).
+fn loading_host_call(method: &str) -> bool {
+    method.starts_with("events.") || matches!(method, "frontmatter.parse" | "date.parse" | "diff.string" | "diff.patch" | "clipboard.copy" | "image.convertToPng" | "image.resize" | "highlight.code" | "theme.load" | "builtinTool.definition")
 }
 
 struct PendingCallSender {
@@ -704,6 +736,9 @@ impl Connection {
             pending_calls: Mutex::new(HashMap::new()),
             request_parents: Mutex::new(HashMap::new()),
             closed: AtomicBool::new(false),
+            loading: AtomicBool::new(false),
+            pump: Mutex::new(()),
+            loading_server: Mutex::new(None),
             closed_signal: crate::provider::ProviderSignal::new(),
             provider_objects: std::sync::OnceLock::new(),
             provider_callbacks: std::sync::OnceLock::new(),
@@ -717,6 +752,8 @@ impl Connection {
             with_sessions: Default::default(),
             views: Default::default(),
             setups: Default::default(),
+            graph_callbacks: Default::default(),
+            children: Default::default(),
             registered_tools: Mutex::new(HashMap::new()),
             tool_registration_lock: Mutex::new(()),
             late_declarations: Default::default(),
@@ -730,6 +767,58 @@ impl Connection {
         let parent = Arc::new(RequestParent { id: id.to_owned(), state: AtomicU8::new(0), finished: AtomicBool::new(false), start: std::sync::OnceLock::new() });
         self.request_parents.lock().unwrap().insert(id.to_owned(), parent.clone());
         parent
+    }
+
+    /// Marks the connection as one a factory opened, or, with false, as one the extension serves.
+    pub(crate) fn set_loading(&self, loading: bool) {
+        self.loading.store(loading, Ordering::Release);
+        if !loading {
+            *self.loading_server.lock().unwrap() = None;
+        }
+    }
+
+    /// Sets what serves the host's dispatches on a loading connection while a call waits.
+    pub(crate) fn set_loading_server(&self, server: LoadingServer) {
+        *self.loading_server.lock().unwrap() = Some(server);
+    }
+
+    /// Whether the connection is a factory's, not yet taken by `run`.
+    pub(crate) fn is_loading(&self) -> bool {
+        self.loading.load(Ordering::Acquire)
+    }
+
+    /// Reads frames, completing the calls they answer and serving the host's dispatches, until `pending`'s reply arrives. A frame is served outside the pump lock, so a listener that makes a bus call of its own (its nested emit) pumps in turn, on the same thread, and the reply of the call it interrupted is waiting for it afterwards.
+    fn pump_until(&self, pending: &PendingCall) -> io::Result<CallResultMsg<Box<serde_json::value::RawValue>>> {
+        loop {
+            let env = {
+                let _reading = self.pump.lock().unwrap();
+                match pending.receiver.try_recv() {
+                    Ok(reply) => return Ok(reply),
+                    Err(mpsc::TryRecvError::Disconnected) => return Err(io::Error::new(io::ErrorKind::ConnectionAborted, format!("host call {} cancelled", pending.method))),
+                    Err(mpsc::TryRecvError::Empty) => {}
+                }
+                self.read_envelope()?
+            };
+            if self.complete_call(&env) {
+                continue;
+            }
+            if env.msg_type == "ping" {
+                if let Some(ping) = env.ping {
+                    self.write_envelope(&Envelope { msg_type: "pong".to_string(), pong: Some(PongMsg { nonce: ping.nonce }), ..Default::default() })?;
+                }
+                continue;
+            }
+            let server = self.loading_server.lock().unwrap().clone();
+            match server {
+                Some(server) => server(&env),
+                None if env.msg_type == "request" => {
+                    if let Some(id) = env.id.as_deref() {
+                        let _ = self.respond(id, None, Some(ErrorInfo { code: None, message: "the extension has not registered with the host yet".to_string() }));
+                    }
+                }
+                None => {}
+            }
+        }
     }
 
     pub(crate) fn is_closed(&self) -> bool { self.closed.load(Ordering::Acquire) }
@@ -930,11 +1019,17 @@ impl Connection {
         args: Option<A>,
         slot: Option<Arc<crate::tool_start_order::SettleSlot>>,
     ) -> io::Result<PendingCall> {
+        // The host answers only a few calls before the extension registers, and a call it does not answer would wait for ever.
+        if self.is_loading() && !loading_host_call(method) {
+            return Err(io::Error::new(io::ErrorKind::NotConnected, format!("{method}: the extension has not registered with the host yet")));
+        }
         let mut writer = self.writer.lock().unwrap();
         let mut pending_calls = self.pending_calls.lock().unwrap();
         if self.is_closed() || scope.is_some_and(RequestParent::cancelled) {
             return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "host call owner is cancelled or closed"));
         }
+        // pig additive (D189): a call made through a request's scope after its handler returned is deferred work, which Pi runs once its loop turns; the host holds it for that turn.
+        let timer = scope.is_some_and(RequestParent::completed);
         let parent_request_id = match scope {
             Some(parent) if parent.completed() => None,
             Some(parent) => Some(parent.id.as_str()),
@@ -956,10 +1051,10 @@ impl Connection {
         );
         drop(pending_calls);
         #[derive(Serialize)]
-        struct Call<'a, A> { method: &'a str, #[serde(skip_serializing_if = "Option::is_none")] args: Option<A>, #[serde(skip_serializing_if = "Option::is_none")] parent_request_id: Option<&'a str> }
+        struct Call<'a, A> { method: &'a str, #[serde(skip_serializing_if = "Option::is_none")] args: Option<A>, #[serde(skip_serializing_if = "Option::is_none")] parent_request_id: Option<&'a str>, #[serde(skip_serializing_if = "std::ops::Not::not")] timer: bool }
         #[derive(Serialize)]
         struct Request<'a, A> { #[serde(rename = "type")] kind: &'static str, id: &'a str, call: Call<'a, A> }
-        if let Err(err) = Self::write_envelope_to(&mut writer, &Request { kind: "call", id: &id, call: Call { method, args, parent_request_id } }) {
+        if let Err(err) = Self::write_envelope_to(&mut writer, &Request { kind: "call", id: &id, call: Call { method, args, parent_request_id, timer } }) {
             self.pending_calls.lock().unwrap().remove(&id);
             return Err(err);
         }
@@ -974,12 +1069,16 @@ impl Connection {
     }
 
     pub(crate) fn wait_call_typed<R: serde::de::DeserializeOwned + Send>(&self, pending: PendingCall) -> io::Result<CallResultMsg<R>> {
-        let reply = pending.receiver.recv().map_err(|_| {
-            io::Error::new(
-                io::ErrorKind::ConnectionAborted,
-                format!("host call {} cancelled", pending.method),
-            )
-        })?;
+        let reply = if self.is_loading() {
+            self.pump_until(&pending)?
+        } else {
+            pending.receiver.recv().map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::ConnectionAborted,
+                    format!("host call {} cancelled", pending.method),
+                )
+            })?
+        };
         let result = reply.result.map(|raw| from_json_str(raw.get())).transpose().map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(CallResultMsg { result, error: reply.error })
     }

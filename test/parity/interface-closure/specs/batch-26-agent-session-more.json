@@ -40,7 +40,7 @@
    "coding/session_transcript.go#Session.SystemPrompt"
   ],
   "production": [
-   "call:coding/cli/session_extension_actions.go#sessionExtensionActions"
+   "call:coding/session_extension_host.go#ExtensionHostSessionActions"
   ],
   "evidence": [
    "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",

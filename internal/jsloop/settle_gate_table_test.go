@@ -175,6 +175,102 @@ var settleGateBehaviors = []struct {
 			t.Fatalf("actions ran %v, want %v", rec.names(), want)
 		}
 	}},
+	{"every start order of the goroutines keeps the settle order of the starts", func(t *testing.T) {
+		const n = 6
+		for shift := range n {
+			for _, reverse := range []bool{false, true} {
+				var gate SettleGate
+				slots := make([]*SettleSlot, n)
+				for i := range slots {
+					slots[i] = gate.NewSlot()
+					slots[i].Settle()
+				}
+				var rec orderRecorder
+				var done sync.WaitGroup
+				for k := range n {
+					i := (k + shift) % n
+					if reverse {
+						i = n - 1 - i
+					}
+					done.Go(func() {
+						began := slots[i].Begin()
+						rec.action(fmt.Sprint(i))()
+						began()
+					})
+				}
+				done.Wait()
+				want := make([]string, n)
+				for i := range want {
+					want[i] = fmt.Sprint(i)
+				}
+				if !reflect.DeepEqual(rec.names(), want) {
+					t.Fatalf("shift %d reverse %v: slots began in order %v, want %v", shift, reverse, rec.names(), want)
+				}
+			}
+		}
+	}},
+	{"a slot's start waits for the earlier starts, not for the earlier actions", func(t *testing.T) {
+		var gate SettleGate
+		first, second := gate.NewSlot(), gate.NewSlot()
+		first.Settle()
+		second.Settle()
+		secondBegan := make(chan struct{})
+		go func() { second.Begin()(); close(secondBegan) }()
+		began := first.Begin()
+		select {
+		case <-secondBegan:
+			t.Fatal("the second slot began before the first reported its start")
+		default:
+		}
+		began()
+		awaitSignal(t, secondBegan, "the second slot begins once the first started")
+		// The first slot's action has not run yet, and the second slot's start did not wait for it.
+		ran := make(chan struct{})
+		first.Run(func() { close(ran) })
+		awaitSignal(t, ran, "the first slot's action")
+	}},
+	{"a settled slot closed without beginning releases the starts behind it", func(t *testing.T) {
+		var gate SettleGate
+		abandoned, waiting := gate.NewSlot(), gate.NewSlot()
+		abandoned.Settle()
+		waiting.Settle()
+		began := make(chan struct{})
+		go func() { waiting.Begin()(); close(began) }()
+		select {
+		case <-began:
+			t.Fatal("a slot began before the slot that settled first started")
+		default:
+		}
+		abandoned.Close()
+		awaitSignal(t, began, "the slot behind an abandoned one begins")
+	}},
+	{"a slot that no reader settled settles when it begins, behind the settled ones", func(t *testing.T) {
+		var gate SettleGate
+		settled, unsettled := gate.NewSlot(), gate.NewSlot()
+		settled.Settle()
+		began := make(chan struct{})
+		go func() { unsettled.Begin()(); close(began) }()
+		select {
+		case <-began:
+			t.Fatal("an unsettled slot began before the settled slot")
+		default:
+		}
+		settled.Begin()()
+		awaitSignal(t, began, "the unsettled slot begins after the settled one")
+	}},
+	{"began is idempotent and Begin after Close does not wait", func(t *testing.T) {
+		var gate SettleGate
+		first, second := gate.NewSlot(), gate.NewSlot()
+		first.Settle()
+		second.Settle()
+		began := first.Begin()
+		began()
+		began()
+		second.Begin()()
+		closed := gate.NewSlot()
+		closed.Close()
+		closed.Begin()()
+	}},
 	{"a slot knows its gate", func(t *testing.T) {
 		var gate SettleGate
 		if gate.NewSlot().Gate() != &gate {

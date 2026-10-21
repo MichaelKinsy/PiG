@@ -94,17 +94,39 @@ func (r *pushRig) nextState(t *testing.T) map[string]json.RawMessage {
 	t.Helper()
 	select {
 	case env := <-r.frames:
-		var payload struct {
-			State map[string]json.RawMessage `json:"state"`
-		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
-			t.Fatal(err)
-		}
-		return payload.State
+		return decodePushedState(t, env)
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for a state_update")
 		return nil
 	}
+}
+
+// settledState returns the last state_update the extension side received, after every push the host had queued has run. A host change that shares state with other extensions (an MCP registration changes the registry) queues a push to each of them, and it runs beside the push the test makes: it sends a lean update before the reply's bump of runtimeStateGen is visible to it, or the full snapshot after. Either order ends with the extension holding a full snapshot, so the last frame is the one that tells whether the next push was full. The host's pushes are drain tasks, joined here; a request sent after them is answered only once the extension side took every state_update written before it.
+func (r *pushRig) settledState(t *testing.T) map[string]json.RawMessage {
+	t.Helper()
+	r.h.drainTasks.Wait()
+	if _, err := r.conn.Request(t.Context(), &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: "command", Tool: "noop"}}); err != nil {
+		t.Fatal(err)
+	}
+	var last *Envelope
+	for len(r.frames) > 0 {
+		last = <-r.frames
+	}
+	if last == nil {
+		t.Fatal("no state_update was sent")
+	}
+	return decodePushedState(t, last)
+}
+
+func decodePushedState(t *testing.T, env *Envelope) map[string]json.RawMessage {
+	t.Helper()
+	var payload struct {
+		State map[string]json.RawMessage `json:"state"`
+	}
+	if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
+		t.Fatal(err)
+	}
+	return payload.State
 }
 
 // A push the recipient already holds is not sent; a catalog change goes out in full with the unchanged catalogs omitted; and the runtime-side merge of every lean push equals the full snapshot (the runtime's applyState keeps keys a state_update leaves out).

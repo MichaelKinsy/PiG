@@ -53,6 +53,19 @@ const (
 	ViewKindToolExecution    ViewKind = "tool-execution"
 	ViewKindBashExecution    ViewKind = "bash-execution"
 	ViewKindDiff             ViewKind = "diff"
+	// The widget kinds are pi-tui's scroll view, mouse region, input,
+	// editor and cancellable loader, and coding-agent's bordered loader and
+	// summary, custom and skill messages.
+	ViewKindScrollView        ViewKind = "scroll-view"
+	ViewKindMouseRegion       ViewKind = "mouse-region"
+	ViewKindInput             ViewKind = "input"
+	ViewKindEditor            ViewKind = "editor"
+	ViewKindCancellableLoader ViewKind = "cancellable-loader"
+	ViewKindBorderedLoader    ViewKind = "bordered-loader"
+	ViewKindBranchSummary     ViewKind = "branch-summary"
+	ViewKindCompactionSummary ViewKind = "compaction-summary"
+	ViewKindCustomMessage     ViewKind = "custom-message"
+	ViewKindSkillInvocation   ViewKind = "skill-invocation"
 )
 
 // ViewNode is one component and the lines it drew.
@@ -139,6 +152,37 @@ type ViewNode struct {
 	Transcript []Node
 	// Diff is a diff node's diff, Path its file path or "".
 	Diff *Diff
+
+	// Expanded is a summary, custom or skill message's state, which a click
+	// toggles on the host.
+	Expanded bool
+	// Value and Cursor are an input's or an editor's text and cursor (Line
+	// 0 for an input); Placeholder and Prompt an input's.
+	Value       string
+	Cursor      ViewCursor
+	Prompt      string
+	Placeholder string
+	// Name is a skill invocation's skill name or a custom message's
+	// customType; Tokens a compaction summary's tokensBefore.
+	Name   string
+	Tokens int
+	// Aborted is a cancellable loader's state after its cancel key.
+	Aborted bool
+	// Scroll is a scroll view's state, or nil elsewhere.
+	Scroll *ViewScroll
+}
+
+// ViewCursor is the cursor of an input or an editor: a logical line and a
+// UTF-16 column.
+type ViewCursor struct{ Line, Col int }
+
+// ViewScroll is a scroll view's state: the first row it shows, the rows it
+// shows, whether it follows the end of its content and whether its
+// scrollbar is drawn now.
+type ViewScroll struct {
+	Top, ViewportHeight int
+	FollowingEnd        bool
+	ScrollbarVisible    bool
 }
 
 // ViewTextStyle is a markdown node's default text style: foreground and

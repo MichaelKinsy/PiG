@@ -14,6 +14,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -386,8 +387,8 @@ type Extension struct {
 	toolOwners map[string]string
 	// serverTools are the tool names currently offered by each server.
 	serverTools map[string]*toolSet
-	// lanes keep the calls to each server in call order (see extension.CallLane).
-	lanes map[string]*extension.CallLane
+	// lanes keep the calls to each server in call order (see jsloop.Lane).
+	lanes map[string]*jsloop.Lane
 	// definitions is the last definition registered under each tool name, to re-register withdrawn tools as hidden.
 	definitions map[string]extension.ToolDefinition
 	// resourceToolsExposure is the exposure the resource tools were last registered with.
@@ -410,7 +411,7 @@ func New(host Host, options Options) *Extension {
 		tokensAtSignIn:     map[*Connection]string{},
 		toolOwners:         map[string]string{},
 		serverTools:        map[string]*toolSet{},
-		lanes:              map[string]*extension.CallLane{},
+		lanes:              map[string]*jsloop.Lane{},
 		definitions:        map[string]extension.ToolDefinition{},
 	}
 }
@@ -1875,10 +1876,10 @@ func (e *Extension) sessionShutdown(ctx context.Context) {
 }
 
 // lane returns the call lane of a server. The caller holds toolMu.
-func (e *Extension) lane(server string) *extension.CallLane {
+func (e *Extension) lane(server string) *jsloop.Lane {
 	lane := e.lanes[server]
 	if lane == nil {
-		lane = &extension.CallLane{}
+		lane = &jsloop.Lane{}
 		e.lanes[server] = lane
 	}
 	return lane

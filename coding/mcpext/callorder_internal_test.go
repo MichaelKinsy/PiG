@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 	"github.com/MichaelKinsy/PiG/mcp"
 )
 
@@ -51,7 +52,7 @@ func TestMcpToolCallsToOneServerReachTheClientInReservedOrder(t *testing.T) {
 	definition := CreateMcpToolDefinition(McpToolOptions{
 		Server: "docs", Tool: mcp.Tool{Name: "search"}, Name: "mcp__docs__search",
 		GetClient: func(context.Context) (McpToolCaller, error) { return caller, nil },
-		Lane:      &extension.CallLane{},
+		Lane:      &jsloop.Lane{},
 	})
 	failed := definition.ReserveCallOrder(nil)
 	first := definition.ReserveCallOrder(nil)

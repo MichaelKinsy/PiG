@@ -1,0 +1,342 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-ai@1.3.0",
+ "module": "pi-ai",
+ "export": "envApiKeyAuth",
+ "cases": [
+  {
+   "name": "resolve 01",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "$": "undefined"
+    },
+    {}
+   ],
+   "result": {
+    "result": null,
+    "seen": [
+     "FIRST",
+     "SECOND"
+    ]
+   }
+  },
+  {
+   "name": "resolve 02",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "$": "undefined"
+    },
+    {
+     "FIRST": "a"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "a"
+     },
+     "source": "FIRST"
+    },
+    "seen": [
+     "FIRST"
+    ]
+   }
+  },
+  {
+   "name": "resolve 03",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "$": "undefined"
+    },
+    {
+     "SECOND": "b"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "b"
+     },
+     "source": "SECOND"
+    },
+    "seen": [
+     "FIRST",
+     "SECOND"
+    ]
+   }
+  },
+  {
+   "name": "resolve 04",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "$": "undefined"
+    },
+    {
+     "FIRST": "a",
+     "SECOND": "b"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "a"
+     },
+     "source": "FIRST"
+    },
+    "seen": [
+     "FIRST"
+    ]
+   }
+  },
+  {
+   "name": "resolve 05",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "$": "undefined"
+    },
+    {
+     "FIRST": "",
+     "SECOND": "b"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "b"
+     },
+     "source": "SECOND"
+    },
+    "seen": [
+     "FIRST",
+     "SECOND"
+    ]
+   }
+  },
+  {
+   "name": "resolve 06",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "$": "undefined"
+    },
+    {
+     "FIRST": ""
+    }
+   ],
+   "result": {
+    "result": null,
+    "seen": [
+     "FIRST",
+     "SECOND"
+    ]
+   }
+  },
+  {
+   "name": "resolve 07",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "type": "api_key",
+     "key": "stored"
+    },
+    {
+     "FIRST": "a"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "stored"
+     },
+     "source": "stored credential"
+    },
+    "seen": []
+   }
+  },
+  {
+   "name": "resolve 08",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "type": "api_key",
+     "key": "stored",
+     "env": {
+      "X": "1"
+     }
+    },
+    {}
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "stored"
+     },
+     "env": {
+      "X": "1"
+     },
+     "source": "stored credential"
+    },
+    "seen": []
+   }
+  },
+  {
+   "name": "resolve 09",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "type": "api_key",
+     "key": ""
+    },
+    {
+     "FIRST": "a"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "a"
+     },
+     "source": "FIRST"
+    },
+    "seen": [
+     "FIRST"
+    ]
+   }
+  },
+  {
+   "name": "resolve 10",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "type": "api_key"
+    },
+    {
+     "SECOND": "b"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "b"
+     },
+     "source": "SECOND"
+    },
+    "seen": [
+     "FIRST",
+     "SECOND"
+    ]
+   }
+  },
+  {
+   "name": "resolve 11",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    {
+     "type": "api_key",
+     "key": "stored",
+     "env": {}
+    },
+    {
+     "FIRST": "a"
+    }
+   ],
+   "result": {
+    "result": {
+     "auth": {
+      "apiKey": "stored"
+     },
+     "env": {},
+     "source": "stored credential"
+    },
+    "seen": []
+   }
+  },
+  {
+   "name": "resolve 12",
+   "args": [
+    "None",
+    [],
+    null,
+    {}
+   ],
+   "result": {
+    "result": null,
+    "seen": []
+   }
+  },
+  {
+   "name": "login",
+   "args": [
+    "Name",
+    [
+     "FIRST",
+     "SECOND"
+    ],
+    "$login",
+    {}
+   ],
+   "result": {
+    "prompts": [
+     {
+      "type": "secret",
+      "message": "Enter Name"
+     }
+    ],
+    "result": {
+     "type": "api_key",
+     "key": "typed-key"
+    },
+    "hasCheck": false
+   }
+  }
+ ]
+}

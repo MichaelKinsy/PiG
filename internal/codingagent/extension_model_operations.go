@@ -70,9 +70,18 @@ func (o classifierWireOptions) options() ai.ModelsClassifierOptions {
 
 // extensionClassify classifies with the model object the extension passes. It never returns an error: a request it cannot read, a model that is not a classifier, and every failure of the runtime are error results, as ModelRuntime.classify reports them (model-runtime.ts:812).
 func extensionClassify(ctx context.Context, classify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult, model map[string]any, request json.RawMessage, options map[string]any) json.RawMessage {
-	var wire classifierWireModel
 	encodedModel, _ := json.Marshal(model)
-	_ = json.Unmarshal(encodedModel, &wire)
+	if options != nil {
+		encodedOptions, _ := json.Marshal(options)
+		return extensionClassifyJSON(ctx, classify, encodedModel, request, encodedOptions)
+	}
+	return extensionClassifyJSON(ctx, classify, encodedModel, request, nil)
+}
+
+// extensionClassifyJSON is extensionClassify for the JSON text of the model object and of the options (nil when the caller passed none).
+func extensionClassifyJSON(ctx context.Context, classify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult, model, request, options json.RawMessage) json.RawMessage {
+	var wire classifierWireModel
+	_ = json.Unmarshal(model, &wire)
 	target := &ai.ClassifierModel{ID: wire.ID, Name: wire.Name, API: wire.API, Provider: wire.Provider, BaseURL: wire.BaseURL, Headers: wire.Headers, Input: wire.Input, InputLimits: wire.InputLimits, Cost: wire.Cost, ContextWindow: wire.ContextWindow}
 	result := func() ai.ClassifierResult {
 		if wire.Type != ai.ModelTypeClassifier {
@@ -85,8 +94,7 @@ func extensionClassify(ctx context.Context, classify func(context.Context, *ai.C
 		}
 		var wireOptions classifierWireOptions
 		if options != nil {
-			encodedOptions, _ := json.Marshal(options)
-			if err := json.Unmarshal(encodedOptions, &wireOptions); err != nil {
+			if err := json.Unmarshal(options, &wireOptions); err != nil {
 				return ai.ClassifierErrorResult(target, fmt.Errorf("invalid classifier options: %w", err), ctx.Err() != nil)
 			}
 		}
@@ -142,9 +150,18 @@ func (o imagesWireOptions) options() ai.ModelsImagesOptions {
 
 // extensionGenerateImages generates images with the model object the extension passes. It never returns an error: a request it cannot read, a model that is not an image model, and every failure of the runtime are error results, as ModelRuntime.generateImages reports them (model-runtime.ts:783-798).
 func extensionGenerateImages(ctx context.Context, generate func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages, model map[string]any, request json.RawMessage, options map[string]any) json.RawMessage {
-	var wire imagesWireModel
 	encodedModel, _ := json.Marshal(model)
-	_ = json.Unmarshal(encodedModel, &wire)
+	if options != nil {
+		encodedOptions, _ := json.Marshal(options)
+		return extensionGenerateImagesJSON(ctx, generate, encodedModel, request, encodedOptions)
+	}
+	return extensionGenerateImagesJSON(ctx, generate, encodedModel, request, nil)
+}
+
+// extensionGenerateImagesJSON is extensionGenerateImages for the JSON text of the model object and of the options (nil when the caller passed none).
+func extensionGenerateImagesJSON(ctx context.Context, generate func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages, model, request, options json.RawMessage) json.RawMessage {
+	var wire imagesWireModel
+	_ = json.Unmarshal(model, &wire)
 	target := &ai.ImageModel{ID: wire.ID, Name: wire.Name, API: wire.API, Provider: wire.Provider, BaseURL: wire.BaseURL, Headers: wire.Headers, Input: wire.Input, InputLimits: wire.InputLimits, Output: wire.Output, Cost: wire.Cost}
 	result := func() ai.AssistantImages {
 		if wire.Type != ai.ModelTypeImage {
@@ -157,8 +174,7 @@ func extensionGenerateImages(ctx context.Context, generate func(context.Context,
 		}
 		var wireOptions imagesWireOptions
 		if options != nil {
-			encodedOptions, _ := json.Marshal(options)
-			if err := json.Unmarshal(encodedOptions, &wireOptions); err != nil {
+			if err := json.Unmarshal(options, &wireOptions); err != nil {
 				return ai.ImageErrorResult(target, fmt.Errorf("invalid images options: %w", err), ctx.Err() != nil)
 			}
 		}

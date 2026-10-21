@@ -12,8 +12,9 @@ Read these files before adding or changing extension behavior:
 6. `test/extension-conformance/conformance_test.go`: cross-SDK behavior gate.
 7. `test/extension-conformance/sdkscenarios/`: the scenario table. A scenario is data: the extension every SDK's scenario driver (`testdata/scenario-driver*`) registers, the host steps `TestSDKScenarios` runs against the real host, and the observation every SDK must produce. Add a capability as a scenario here, not as a copy per SDK. A row an SDK fails today goes in the scenario's `Red` map with the owner of the fix and the observation the SDK produces today (`Got`). `make test-sdk-conformance` runs the table. A red row must produce exactly its `Got`, and the entry must be deleted when the row passes.
 8. `docs/extension-sdk-consistency.md`: for every Pi extension API member and event, whether each SDK has it and whether a conformance fixture of that SDK reaches it. A member an SDK has and no fixture reaches is a hole: it needs an entry in `test/parity/sdk-conformance-gaps.toml` with an owner and the row that closes it, and `go run ./test/parity/cmd/sdksurface` fails on an unlisted hole and on an entry whose hole closed. Close a hole with a scenario row, not a per-SDK test.
-9. `docs/performance/extension-ipc.md`: the wire's framing, queue and stderr guarantees, the benchmarks, the open-loop round-trip test and the soak test (`TestExtensionSoak`, leak and latency budgets) with the commands that run them.
-10. `examples/extensions/`: one runnable example per SDK (`go-factory`, `rust-factory`, `python-factory`, `node-factory`) and `plan-mode`. `TestExamplesRunThroughTheHost` loads each example into a real host and calls its tool.
+9. `docs/extension-sdk-exports.md`: the disposition, per runtime, of every runtime export and class member of the packages Pi serves to extensions (`pi-tui` helpers, `createAgentSession`, `StringEnum`, ...). A `gap:<lane>` cell is an export a Node extension can import that this SDK cannot yet offer; `test/parity/sdk-exports.toml` names the lane that owns it. Check it before you assume an import has a native equivalent.
+10. `docs/performance/extension-ipc.md`: the wire's framing, queue and stderr guarantees, the benchmarks, the open-loop round-trip test and the soak test (`TestExtensionSoak`, leak and latency budgets) with the commands that run them.
+11. `examples/extensions/`: one runnable example per SDK (`go-factory`, `rust-factory`, `python-factory`, `node-factory`) and `plan-mode`. `TestExamplesRunThroughTheHost` loads each example into a real host and calls its tool.
 
 ## Hard rules
 
@@ -490,6 +491,30 @@ Sessions reach hundreds of megabytes and tens of thousands of entries, and the h
 Prefer the context branch (what the model will see, trimmed at the last compaction) over the full history. Read the whole history only when the feature truly needs it, and never do so inside `session_start` or a per-turn handler. Defer such work to a background goroutine or task and paint from retained state first.
 
 Compute incrementally: keep running totals and update them from each new entry instead of rescanning the branch. Stream or peek (read only the fields you need, skip entries you do not care about) rather than materializing every entry. Before shipping, measure the handler on a large synthetic session (hundreds of MB, tens of thousands of entries, many compactions) and check both latency and peak memory.
+
+## Child agent sessions (`createAgentSession`)
+
+Pi's `createAgentSession` builds an independent `AgentSession` an extension can prompt, observe and abort without touching the session that runs it. Node extensions call Pi's own implementation. Go, Python and Rust extensions call `ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{...})`, `ctx.create_agent_session(CreateAgentSessionOptions(...))` and `ctx.create_agent_session(CreateAgentSessionOptions { .. })`; the host builds the child `coding.Session` over the parent's model runtime, so every provider the extensions registered is available to it (`modelRuntime: ctx.modelRegistry.runtime` in Pi).
+
+```go
+session, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
+	Model:       model, // from ctx.ModelRegistry().Find(provider, id), as Pi takes a Model
+	Tools:       []string{"my_tool"},
+	InMemory:    true,
+	Settings:    map[string]any{"compaction": map[string]any{"enabled": false}},
+	CustomTools: []sdk.ToolDefinition{myTool}, // execute runs in this extension
+})
+if err != nil { return nil, err }
+defer session.Dispose()
+session.Subscribe(func(event map[string]any) { /* Pi's AgentSessionEvent JSON */ })
+err = session.Prompt(context.Background(), "text") // returns when the run settled and every listener saw its last event
+```
+
+The Promise contract is kept as blocking calls: creation returns once resources are loaded and the model resolved, and fails with Pi's message; `Prompt` returns when the run settled, after the listeners ran through the run's last event, and raises what Pi's rejects (for example `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`, or `No API key found for <provider>.` for a model without credentials); `Abort` returns once the session is idle and the pending `Prompt` then returns normally; `Dispose` is synchronous and idempotent. Listeners run in event order on one goroutine, thread or task of the session, never on the connection's reader, so a listener may call the session. A cancelled context passed to `Prompt` aborts the run in Go; Python and Rust call `abort()`.
+
+The session belongs to the extension's connection: closing the connection aborts the run, cancels the tools' contexts and disposes the session, as Node's `independent-session-owner.mjs` does. `message_update` events travel as a keyframe followed by operations (`child_session_delta.go`) and the listener receives the full event Pi's `subscribe` delivers (`message` and `assistantMessageEvent.partial`), so a long output costs wire bytes linear in its length.
+
+Differences from Pi, each tested: a `model` the host's registry does not hold raises `Model <provider>/<id> not found` (Pi uses the object as given; a wire object carries no stream function), and Pi's `sessionManager`, `settingsManager`, `resourceLoader` and `modelRuntime` objects are in-process handles that do not cross the wire (`settings` and `resources` select what they would). `Dispose` is Pi's: the session is disconnected and its listeners dropped, a later prompt still runs the agent, and the host releases the session when the connection closes. The expected observations (event order, the leading system message, error messages) come from running Pi's own `createAgentSession` (`test/extension-conformance/testdata/child-session-want.json`).
 
 ## Adding a new extension API surface
 

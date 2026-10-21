@@ -96,6 +96,7 @@ func TestConformance_HostParserHelpersAgreeAcrossSDKs(t *testing.T) {
 		},
 		"error": map[string]any{"error": true},
 		"date":  map[string]any{"ms": 1577934245678.0},
+		"strip": map[string]any{"body": "body text"},
 	}
 	if !reflect.DeepEqual(referenceFactory, wantFactory) {
 		t.Fatalf("the Node reference's factory-time results = %v, want %v", referenceFactory, wantFactory)

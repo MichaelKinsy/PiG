@@ -1,0 +1,118 @@
+{
+	"afterDrop": {
+		"entries": 7,
+		"fileEntries": 5,
+		"text": "hello"
+	},
+	"file": {
+		"created": {
+			"activeTools": [
+				"read",
+				"bash",
+				"edit",
+				"write"
+			],
+			"appendix": false,
+			"extensionErrors": 0,
+			"fallback": null,
+			"model": {
+				"id": "m1",
+				"provider": "mr-local"
+			},
+			"persisted": true,
+			"sessionFile": true,
+			"sessionId": true,
+			"thinkingLevel": "off"
+		},
+		"entries": [
+			"model_change",
+			"thinking_level_change",
+			"message:system",
+			"message:user",
+			"message:assistant"
+		],
+		"events": [
+			"agent_start",
+			"turn_start",
+			"message_start:system",
+			"message_end:system",
+			"message_start:user",
+			"message_end:user",
+			"message_start:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_end:assistant",
+			"turn_end",
+			"agent_end",
+			"agent_settled"
+		],
+		"final": "hello",
+		"onDisk": true,
+		"roles": [
+			"system",
+			"user",
+			"assistant"
+		],
+		"samePath": true,
+		"text": "hello"
+	},
+	"memory": {
+		"created": {
+			"activeTools": [
+				"read",
+				"bash",
+				"edit",
+				"write",
+				"probe_tool"
+			],
+			"appendix": true,
+			"extensionErrors": 0,
+			"fallback": null,
+			"model": {
+				"id": "m1",
+				"provider": "mr-local"
+			},
+			"persisted": false,
+			"sessionFile": true,
+			"sessionId": true,
+			"thinkingLevel": "off"
+		},
+		"entries": [
+			"model_change",
+			"thinking_level_change",
+			"message:system",
+			"message:user",
+			"message:assistant"
+		],
+		"events": [
+			"agent_start",
+			"turn_start",
+			"message_start:system",
+			"message_end:system",
+			"message_start:user",
+			"message_end:user",
+			"message_start:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_update:assistant",
+			"message_end:assistant",
+			"turn_end",
+			"agent_end",
+			"agent_settled"
+		],
+		"final": "hello",
+		"roles": [
+			"system",
+			"user",
+			"assistant"
+		],
+		"settings": {
+			"compaction": false,
+			"defaultModel": "m1"
+		},
+		"text": "hello"
+	}
+}
