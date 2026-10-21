@@ -27,7 +27,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	if runtime.GOOS == "windows" {
-		t.Skip("the cases run POSIX shell commands")
+		t.Skip("the cases run POSIX shell commands (arithmetic expansion, exec, printf) through Pi's bash tool, which on Windows needs a Git bash or WSL the Windows runners do not guarantee, and compare file paths as text; the test binary is compiled for windows in CI of this lane (GOOS=windows go test -c) and the PowerShell path (createLocalPowerShellOperations, the powershell tool) has no Windows runner to validate it on")
 	}
 	t.Parallel()
 
@@ -308,7 +308,7 @@ func TestConformance_BuiltinToolOverrideDelegatesAcrossSDKs(t *testing.T) {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	if runtime.GOOS == "windows" {
-		t.Skip("the cases run POSIX shell commands")
+		t.Skip("the cases run POSIX shell commands (arithmetic expansion, exec, printf) through Pi's bash tool, which on Windows needs a Git bash or WSL the Windows runners do not guarantee, and compare file paths as text; the test binary is compiled for windows in CI of this lane (GOOS=windows go test -c) and the PowerShell path (createLocalPowerShellOperations, the powershell tool) has no Windows runner to validate it on")
 	}
 	t.Parallel()
 	harnessCases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
