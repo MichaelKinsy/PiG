@@ -176,6 +176,20 @@ func helperConnection() (*conn, error) {
 	return c, nil
 }
 
+// runningConnectionsExcept are the connections of the running extensions other than c. It never dials: it is for a helper that must reach the host after the
+// connection it started on has gone.
+func runningConnectionsExcept(c *conn) []*conn {
+	helpers.mu.Lock()
+	defer helpers.mu.Unlock()
+	var others []*conn
+	for _, running := range helpers.running {
+		if running.c != c {
+			others = append(others, running.c)
+		}
+	}
+	return others
+}
+
 // helperSocketPath is the socket a helper dials: PIG_EXT_SOCKET, which a packed cell's runner sets to the member's socket while the member's factory runs.
 func helperSocketPath() string { return os.Getenv("PIG_EXT_SOCKET") }
 

@@ -213,7 +213,7 @@ func TestFileMutationTurnsAreReleasedWhenTheConnectionCloses(t *testing.T) {
 	if queueFree(first) || queueFree(second) {
 		t.Fatal("a file was free while its extension held it")
 	}
-	conn.fileMutations.releaseAll()
+	conn.turns().leave(conn)
 	if !queueFree(first) || !queueFree(second) {
 		t.Fatal("a turn survived its connection")
 	}
@@ -338,5 +338,56 @@ func TestFileMutationCallsAreRoutedLikeThePureHelperCalls(t *testing.T) {
 		if !loadingBusCall(method) {
 			t.Errorf("%s is not served while the factory loads", method)
 		}
+	}
+}
+
+// The connections of one packed process share their tickets: a ticket one of them was admitted to survives that connection closing while another still runs, and
+// any of the process's connections can exit it. The process's last connection to close releases what is still held.
+func TestFileMutationTurnsOfOneProcessOutliveAConnectionAndEndWithTheLast(t *testing.T) {
+	h := NewHost(t.TempDir())
+	defer h.Shutdown("test done")
+	var process fileMutationTurns
+	first, second := &Conn{}, &Conn{}
+	first.shareFileMutations(&process)
+	second.shareFileMutations(&process)
+	dir := t.TempDir()
+	kept, handedOver := filepath.Join(dir, "kept.txt"), filepath.Join(dir, "handed-over.txt")
+	enterOn := func(conn *Conn, file string) string {
+		t.Helper()
+		outcome, _ := enter(t, h, conn, t.Context(), file)
+		got := awaitEnter(t, outcome)
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		return got.ticket
+	}
+	keptTicket := enterOn(first, kept)
+	handedOverTicket := enterOn(first, handedOver)
+
+	first.turns().leave(first)
+	if queueFree(kept) || queueFree(handedOver) {
+		t.Fatal("a turn was released when one connection of its process closed while another still ran")
+	}
+	// A call that was in flight on the closed connection takes no turn, though the process still runs.
+	outcome, _ := enter(t, h, first, t.Context(), filepath.Join(dir, "late.txt"))
+	if got := awaitEnter(t, outcome); got.err == nil {
+		t.Fatalf("a closed connection was admitted: %+v", got)
+	}
+	// The process's other connection gives the turn back.
+	if err := exit(t, h, second, handedOverTicket); err != nil {
+		t.Fatal(err)
+	}
+	if !queueFree(handedOver) {
+		t.Fatal("the file stayed held after another connection of the process exited its turn")
+	}
+	if queueFree(kept) {
+		t.Fatal("the other file was released by the exit of the first")
+	}
+	second.turns().leave(second)
+	if !queueFree(kept) {
+		t.Fatal("a turn survived its process's last connection")
+	}
+	if err := exit(t, h, second, keptTicket); err == nil {
+		t.Fatal("a ticket released with the process's last connection was still redeemable")
 	}
 }
