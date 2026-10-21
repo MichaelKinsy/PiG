@@ -621,6 +621,8 @@ type wireCall struct {
 	args   json.RawMessage
 	// timer is the call's Timer mark (D5).
 	timer bool
+	// tick is the call's Tick mark.
+	tick bool
 }
 
 func observeWire(t *testing.T, host *subprocess.Host) *wireTap {
@@ -637,7 +639,7 @@ func (w *wireTap) observe(_ string, env *subprocess.Envelope) {
 	if !w.on.Load() || env.Call == nil {
 		return
 	}
-	call := wireCall{method: env.Call.Method, args: slices.Clone(env.Call.Args), timer: env.Call.Timer}
+	call := wireCall{method: env.Call.Method, args: slices.Clone(env.Call.Args), timer: env.Call.Timer, tick: env.Call.Tick}
 	w.mu.Lock()
 	w.calls = append(w.calls, call)
 	w.mu.Unlock()

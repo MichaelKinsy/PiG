@@ -41,6 +41,7 @@ func TestNodeTimerCallbackCallsWaitForTheLoopTurn(t *testing.T) {
 	write(t, entry, `export default function (pi: any) {
 	pi.registerCommand("defer", {
 		handler: (_args: string, ctx: any) => {
+			process.nextTick(() => ctx.ui.notify("tick", "info"));
 			setImmediate(() => ctx.ui.notify("immediate", "info"));
 			setTimeout(() => ctx.ui.notify("timeout", "info"), 0);
 			queueMicrotask(() => ctx.ui.notify("microtask", "info"));
@@ -73,13 +74,18 @@ func TestNodeTimerCallbackCallsWaitForTheLoopTurn(t *testing.T) {
 				t.Fatal(err)
 			}
 			// Both callbacks' calls reach the host and wait: nothing else is left to arrive, and the continuations of the handler wrote theirs.
-			pollUntil(t, testTimeout(t, 10*time.Second), "the timer callbacks' calls never reached the host", func() bool { return turns.Held() == 2 })
+			pollUntil(t, testTimeout(t, 10*time.Second), "the callbacks' calls never reached the host", func() bool { return turns.Held() == 3 })
 			if got, want := ui.notices(), []string{"sync", "microtask", "promise"}; !slices.Equal(got, want) {
 				t.Fatalf("before the loop turns the UI got %q, want %q", got, want)
 			}
+			// Pi runs the nextTick callback right after the tool_execution_end of the tool that queued it, before the timers.
+			turns.Ticked()
+			if got, want := ui.notices(), []string{"sync", "microtask", "promise", "tick"}; !slices.Equal(got, want) {
+				t.Fatalf("after the tick boundary the UI got %q, want %q", got, want)
+			}
 			end()
-			pollUntil(t, testTimeout(t, 10*time.Second), "the held calls never ran", func() bool { return len(ui.notices()) == 5 })
-			if got, want := ui.notices(), []string{"sync", "microtask", "promise", "immediate", "timeout"}; !slices.Equal(got, want) {
+			pollUntil(t, testTimeout(t, 10*time.Second), "the held calls never ran", func() bool { return len(ui.notices()) == 6 })
+			if got, want := ui.notices(), []string{"sync", "microtask", "promise", "tick", "immediate", "timeout"}; !slices.Equal(got, want) {
 				t.Fatalf("after the chain ended the UI got %q, want %q", got, want)
 			}
 		})

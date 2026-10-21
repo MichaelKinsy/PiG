@@ -2125,3 +2125,14 @@ func applyRequestSuspension(ctx context.Context, state RequestStatePayload) {
 		fn(true)
 	}
 }
+
+// dispatchBarrier queues a marker behind the frames the read loop has passed to the host and returns a channel that closes once the host dispatched them. It is called on the read loop, so every frame read before the caller's is ahead of the marker.
+func (c *Conn) dispatchBarrier(ctx context.Context) <-chan struct{} {
+	marker := make(chan struct{})
+	select {
+	case c.inCh <- &Envelope{barrier: marker}:
+	case <-ctx.Done():
+		close(marker)
+	}
+	return marker
+}

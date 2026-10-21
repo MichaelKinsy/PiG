@@ -15,7 +15,7 @@ export function installTimerOrigin() {
     const original = globalThis[name];
     const wrapped = function (callback, ...rest) {
       if (typeof callback !== "function") return Reflect.apply(original, this, [callback, ...rest]);
-      const fromTimer = (...args) => origin.run(true, callback, ...args);
+      const fromTimer = (...args) => origin.run("timer", callback, ...args);
       return Reflect.apply(original, this, [fromTimer, ...rest]);
     };
     // setTimeout and setImmediate carry util.promisify.custom, which promisify reads.
@@ -26,11 +26,18 @@ export function installTimerOrigin() {
     Object.defineProperty(wrapped, "name", { value: name, configurable: true });
     globalThis[name] = wrapped;
   }
+  // Pi runs process.nextTick callbacks between two steps of the agent's chain: after the tool_execution_end of the tool that queued them (agent-loop.ts), so the host releases the calls of a tick callback there.
+  const nextTick = process.nextTick;
+  process.nextTick = function (callback, ...rest) {
+    if (typeof callback !== "function") return Reflect.apply(nextTick, this, [callback, ...rest]);
+    return Reflect.apply(nextTick, this, [(...args) => origin.run("tick", callback, ...args), ...rest]);
+  };
 }
 
-// fromTimer reports whether the running code is a timer or immediate callback, or work one started.
-export function fromTimer() {
-  return origin.getStore() === true;
+// originKind is "timer" for a timer or immediate callback, or work one started, "tick" for a process.nextTick callback or work one started, and undefined elsewhere. Work started inside a callback of the other kind takes that callback's kind.
+export function originKind() {
+  const store = origin.getStore();
+  return store === "timer" || store === "tick" ? store : undefined;
 }
 
 // outsideTimer returns fn running outside any timer callback's store.

@@ -268,6 +268,7 @@ export default function (pi) {
       ctx.ui.notify("inline:sync", "info");
       queueMicrotask(() => ctx.ui.notify("inline:microtask", "info"));
       Promise.resolve().then(() => ctx.ui.notify("inline:promise", "info"));
+      process.nextTick(() => ctx.ui.notify("tick:nextTick", "info"));
       setImmediate(() => ctx.ui.notify("deferred:immediate", "info"));
       setTimeout(() => ctx.ui.notify("deferred:timeout", "info"), 0);
       return { content: [{ type: "text", text: "queued" }] };

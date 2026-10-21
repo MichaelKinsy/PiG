@@ -13,6 +13,17 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
+// tickNotices is how many notifications of process.nextTick callbacks the UI recorded.
+func tickNotices(h *harness) int {
+	n := 0
+	for _, notice := range h.ui.Recorded() {
+		if strings.HasPrefix(notice, "tick:") {
+			n++
+		}
+	}
+	return n
+}
+
 // deferredNotices is how many notifications of deferred work (a timer, an immediate, a thread or a goroutine the tool left running) the UI recorded.
 func deferredNotices(h *harness) int {
 	n := 0
@@ -26,11 +37,11 @@ func deferredNotices(h *harness) int {
 
 // timerDeferWant is how many deferred and inline notifications timer_defer makes in an SDK. Node's tool queues a setImmediate and a setTimeout(0) callback and
 // notifies from the handler, a microtask and a promise continuation; the others notify from the handler and, once timer_release lets it, from deferred work.
-func timerDeferWant(name string) (deferred, inline int) {
+func timerDeferWant(name string) (deferred, inline, tick int) {
 	if strings.HasPrefix(name, "subprocess-node") {
-		return 2, 3
+		return 2, 3, 1
 	}
-	return 1, 1
+	return 1, 1, 0
 }
 
 // D5: Pi runs the callback of a timer or an immediate once its event loop turns, which a chain of microtasks does not give it. An extension runtime that is another process runs
@@ -50,7 +61,7 @@ func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
 				}
 			})
 			h.wire.on.Store(true)
-			wantDeferred, wantInline := timerDeferWant(tc.name)
+			wantDeferred, wantInline, wantTick := timerDeferWant(tc.name)
 			results := dispatchToolCalls(t, h, []ai.FauxContentBlock{ai.FauxToolCall("timer_defer", map[string]any{}, &ai.FauxToolCallOptions{ID: "timer-defer-1"})})
 			if len(results) != 1 || results[0].IsError {
 				t.Fatalf("timer_defer: %s", describeToolResults(results))
@@ -70,7 +81,13 @@ func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
 						deferred++
 					}
 				}
-				if deferred >= wantDeferred {
+				ticks := 0
+				for _, call := range notices {
+					if strings.Contains(string(call.args), `"tick:`) {
+						ticks++
+					}
+				}
+				if deferred >= wantDeferred && ticks >= wantTick {
 					break
 				}
 				if time.Now().After(deadline) {
@@ -78,7 +95,7 @@ func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
 				}
 				time.Sleep(10 * time.Millisecond)
 			}
-			var deferred, inline int
+			var deferred, inline, tick int
 			for _, call := range notices {
 				var args struct {
 					Message string `json:"message"`
@@ -89,8 +106,13 @@ func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
 				switch {
 				case strings.HasPrefix(args.Message, "deferred:"):
 					deferred++
-					if !call.timer {
-						t.Errorf("%s was made by deferred work after the handler returned and carries no timer mark", args.Message)
+					if !call.timer || call.tick {
+						t.Errorf("%s was made by deferred work after the handler returned and carries timer=%t tick=%t, want timer only", args.Message, call.timer, call.tick)
+					}
+				case strings.HasPrefix(args.Message, "tick:"):
+					tick++
+					if !call.timer || !call.tick {
+						t.Errorf("%s was made by a process.nextTick callback after the handler returned and carries timer=%t tick=%t, want both", args.Message, call.timer, call.tick)
 					}
 				case strings.HasPrefix(args.Message, "inline:"):
 					inline++
@@ -99,8 +121,8 @@ func TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs(t *testing.T) {
 					}
 				}
 			}
-			if deferred != wantDeferred || inline != wantInline {
-				t.Fatalf("saw %d deferred and %d inline notifications, want %d and %d", deferred, inline, wantDeferred, wantInline)
+			if deferred != wantDeferred || inline != wantInline || tick != wantTick {
+				t.Fatalf("saw %d deferred, %d inline and %d tick notifications, want %d, %d and %d", deferred, inline, tick, wantDeferred, wantInline, wantTick)
 			}
 		})
 	}
@@ -137,10 +159,14 @@ func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
 			})
 			a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
 			a.SetLoopTurns(&turns)
-			deferredAtToolEnd := -1
+			deferredAtToolEnd, tickAtToolEnd, tickAfterTicked := -1, -1, -1
 			a.Subscribe(func(_ context.Context, event agent.AgentEvent) error {
 				if _, ok := event.(agent.ToolExecutionEndEvent); ok {
 					deferredAtToolEnd = deferredNotices(h)
+					tickAtToolEnd = tickNotices(h)
+					// The RPC mode releases the process.nextTick callbacks of the tool that ended here, as Pi runs them before the tool result message.
+					turns.Ticked()
+					tickAfterTicked = tickNotices(h)
 				}
 				return nil
 			})
@@ -154,6 +180,9 @@ func TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun(t *testing.T) {
 					t.Fatalf("held %d calls, want the 2 calls of the callbacks (the host ran them as they arrived: %d reached the UI)", turns.Held(), deferredNotices(h))
 				}
 				time.Sleep(10 * time.Millisecond)
+			}
+			if tickAtToolEnd != 0 || tickAfterTicked != 1 {
+				t.Fatalf("the process.nextTick notification reached the UI before tool_execution_end (%d) or not once the tool's ticks were released (%d), want 0 then 1", tickAtToolEnd, tickAfterTicked)
 			}
 			if deferredAtToolEnd != 0 || deferredNotices(h) != 0 {
 				t.Fatalf("deferred notifications reached the UI at tool_execution_end (%d) or before the chain ended (%d)", deferredAtToolEnd, deferredNotices(h))

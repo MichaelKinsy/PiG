@@ -17,7 +17,7 @@ import { inspect } from "node:util";
 import { flushCompileCache } from "node:module";
 import { runtimeRequire as requireModule } from "./runtime-modules.mjs";
 import { stringWidget } from "./widget-component.mjs";
-import { fromTimer, installTimerOrigin, outsideTimer } from "./timer-origin.mjs";
+import { installTimerOrigin, originKind, outsideTimer } from "./timer-origin.mjs";
 import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
 import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
 import { EditorComponentHost } from "./editor-component.mjs";
@@ -42,6 +42,16 @@ installTimerOrigin();
 // Host shares it: this process's listeners stay in its own heap, and
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
+
+// siblingToolPending reports whether a tool call is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does.
+function siblingToolPending() {
+  for (const runtime of liveRuntimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (request.toolCall && !request.settled) return true;
+    }
+  }
+  return false;
+}
 const xrefRealm = new Realm(() => {
   const preferred = currentRuntime();
   for (const runtime of preferred ? [preferred, ...liveRuntimes] : liveRuntimes) {
@@ -1204,13 +1214,16 @@ export class Connection {
     if (this.closed) return Promise.reject(new Error("extension connection closed"));
     const id = uuid();
     // pig additive (D5): a call made by a timer's or an immediate's callback after its request's handler returned (the call has no parent) says so, and the host holds it until Pi's loop would have run the callback. A callback that runs while the handler still awaits is a turn of Pi's loop already.
-    const timer = !parentRequestId && fromTimer();
+    const kind = parentRequestId ? undefined : originKind();
+    // Pi's loop turns while a sibling tool awaits real work, so a timer callback runs right after the tool that queued it ends, with its process.nextTick callbacks; the host releases a "tick" call there.
+    const timer = kind !== undefined;
+    const tick = kind === "tick" || (timer && siblingToolPending());
     return new Promise((resolve, reject) => {
       this.touchRequest(parentRequestId);
       this.pending.set(id, { resolve, reject, parentRequestId, method });
       refreshQuitDrain();
       try {
-        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}) } });
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}) } });
       } catch (error) {
         this.pending.delete(id);
         reject(error);
@@ -2695,7 +2708,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command" };
+    const request = { id: env.id, toolCall: env.request?.method === "tool_call", controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command" };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain();

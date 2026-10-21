@@ -3469,6 +3469,10 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				}
 				return nil, errors.New("connection closed before register")
 			}
+			if env.barrier != nil {
+				close(env.barrier)
+				continue
+			}
 			if env.Type == MsgRegister && env.Register != nil {
 				return env.Register, nil
 			}
@@ -3863,9 +3867,13 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 		reqCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		// upstream: agent-loop.ts executeToolCallsParallel: a call's tool_execution_end follows its own execute promise, which settles in the order the extension's runtime answers. The read loop reads the answers in that order, so it records the call's place before the goroutine that waits for the answer runs.
+		// The calls the extension made before it answered are dispatched before the result continues: a held call is then in the hold when the agent moves on to tool_execution_end, as its position in Pi's chain requires (jsloop.Turns).
+		var dispatched <-chan struct{}
+		arrived := func() { dispatched = conn.dispatchBarrier(reqCtx) }
 		if slot := agent.ToolSettleFromContext(ctx, toolCallID); slot != nil {
-			reqCtx = withRequestArrived(reqCtx, slot.Settle)
+			arrived = func() { dispatched = conn.dispatchBarrier(reqCtx); slot.Settle() }
 		}
+		reqCtx = withRequestArrived(reqCtx, arrived)
 		if err := h.pushStateTo(reqCtx, me, conn); err != nil {
 			return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
 		}
@@ -3886,6 +3894,12 @@ func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.To
 				ExecuteID:  executeID,
 			},
 		}, toolUpdateSink(onUpdate))
+		if dispatched != nil {
+			select {
+			case <-dispatched:
+			case <-conn.Done():
+			}
+		}
 		if errors.Is(err, ErrToolAborted) {
 			return extension.AgentToolResult{}, err
 		}
@@ -4438,6 +4452,10 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	}()
 	lanes := newCallLanes()
 	for env := range conn.Incoming() {
+		if env.barrier != nil {
+			close(env.barrier)
+			continue
+		}
 		if !h.acceptsNodeGeneration(me) {
 			// A reload's replaced generation still runs its command; runCall answers each of its calls with Pi's stale error instead of leaving a synchronous call blocked.
 			if env.Type == MsgCall && env.Call != nil && me.replaced.Load() {
@@ -4491,7 +4509,11 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			if call.Timer {
 				if turns := h.timerTurns.Load(); turns != nil {
 					if holdsForLoopTurn(call.Method) {
-						turns.Macrotask(func() { h.queueCall(me, conn, lanes, env.ID, call) })
+						if call.Tick {
+							turns.Tick(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
+						} else {
+							turns.Macrotask(func() { h.queueCall(me, conn, lanes, env.ID, call) })
+						}
 						continue
 					}
 					// The caller waits for the answer, so the call cannot wait; it runs behind the calls held before it.

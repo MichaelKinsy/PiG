@@ -47,6 +47,9 @@ func (c *rpcLoopChain) after(event agent.AgentEvent) {
 	case agent.AgentSettledEvent:
 		ends = append(ends, c.end)
 		c.end = nil
+	case agent.ToolExecutionEndEvent:
+		// Pi runs the process.nextTick callbacks a tool queued between its tool_execution_end and the tool result message.
+		defer c.turns.Ticked()
 	case agent.CompactionEndEvent:
 		ends = append(ends, c.compaction)
 		c.compaction = nil

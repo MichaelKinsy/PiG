@@ -78,6 +78,9 @@ const (
 type Envelope struct {
 	Type string `json:"type"`
 
+	// barrier, when set, is a host-side marker, not a frame: the dispatcher closes it when it reaches it, so everything the read loop read before the marker is dispatched.
+	barrier chan struct{}
+
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
 
@@ -1300,6 +1303,8 @@ type CallPayload struct {
 	ParentRequestID string          `json:"parent_request_id,omitempty"`
 	// Timer marks a call made by deferred work: from a callback of a timer or an immediate (setTimeout, setInterval, setImmediate) or from work such a callback started, and in the Go, Python and Rust SDKs from a context whose request already returned. The host runs such a call when Pi's loop would run the callback: not while the agent's run chains microtasks (jsloop.Turns, D5).
 	Timer bool `json:"timer,omitempty"`
+	// Tick marks a Timer call that Pi runs right after the tool_execution_end of the tool that queued it: the call of a process.nextTick callback, or of a timer callback that fires while a sibling tool still awaits, so Pi's loop is turning.
+	Tick bool `json:"tick,omitempty"`
 }
 
 // ── CallResult (host→ext) ────────────────────────────────────────────────────

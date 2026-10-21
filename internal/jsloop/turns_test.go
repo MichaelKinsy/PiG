@@ -120,3 +120,28 @@ func TestTurnsTravelInTheContext(t *testing.T) {
 		t.Fatal("a nil Turns is not stored")
 	}
 }
+
+func TestTurnsRunTicksAtTheTickBoundaryBeforeTimers(t *testing.T) {
+	var turns Turns
+	var got []string
+	end := turns.Chain()
+	done := turns.Wait()
+	tick := func(label string) {
+		turns.Tick(func(written func()) { got = append(got, label); written() })
+	}
+	// A wait is open, which releases timers but not ticks: they wait for the tool_execution_end that follows.
+	turns.Macrotask(func() { got = append(got, "timer-while-waiting") })
+	tick("tick-a")
+	turns.Macrotask(func() { got = append(got, "timer-b") })
+	turns.Ticked()
+	if want := []string{"timer-while-waiting", "tick-a", "timer-b"}; !slices.Equal(got, want) {
+		t.Fatalf("order %v, want %v", got, want)
+	}
+	done()
+	tick("tick-c")
+	turns.Macrotask(func() { got = append(got, "timer-d") })
+	end()
+	if want := []string{"timer-while-waiting", "tick-a", "timer-b", "tick-c", "timer-d"}; !slices.Equal(got, want) {
+		t.Fatalf("after the chain ended: order %v, want %v", got, want)
+	}
+}

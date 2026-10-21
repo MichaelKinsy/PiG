@@ -155,10 +155,18 @@ func (l *callLanes) barrier() {
 // The UI bridge marks initiation; a bare call handler has no initiation point,
 // so its call finishes before the lane advances.
 func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload) {
+	h.queueCallDone(me, conn, lanes, callID, call, nil)
+}
+
+// queueCallDone is queueCall that calls done, when it is not nil, once the call ran or started: its effect is written.
+func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func()) {
+	if done == nil {
+		done = func() {}
+	}
 	if slot := replaceOnlySlot(call.Method); slot != "" {
 		// The caller is the connection's read loop, so registration follows the order the extension sent the calls.
 		pending := h.slotCalls.register(slot, func() { h.runCall(me, conn, callID, call, nil) })
-		lanes.push(call.ParentRequestID, func() { h.runSlotCall(slot, pending) })
+		lanes.push(call.ParentRequestID, func() { h.runSlotCall(slot, pending); done() })
 		return
 	}
 	var initiated chan struct{}
@@ -175,6 +183,7 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 		if initiated == nil {
 			defer release()
 			h.runCall(me, conn, callID, call, nil)
+			done()
 			return
 		}
 		var once sync.Once
@@ -190,6 +199,7 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 		case <-initiated:
 		case <-finished:
 		}
+		done()
 	})
 }
 

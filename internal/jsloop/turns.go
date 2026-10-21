@@ -17,6 +17,7 @@ type Turns struct {
 	chains   int
 	waits    int
 	held     []func()
+	ticks    []func(done func())
 	flushing bool
 }
 
@@ -72,7 +73,7 @@ func (t *Turns) Macrotask(fn func()) {
 		return
 	}
 	t.mu.Lock()
-	if t.flushing || len(t.held) > 0 || (t.chains > 0 && t.waits == 0) {
+	if t.flushing || len(t.held)+len(t.ticks) > 0 || (t.chains > 0 && t.waits == 0) {
 		// A callback never overtakes one that arrived earlier: when the loop is free it runs behind the held ones.
 		t.held = append(t.held, fn)
 		t.flushLocked(false)
@@ -82,34 +83,96 @@ func (t *Turns) Macrotask(fn func()) {
 	fn()
 }
 
-// Held reports how many callbacks wait for a turn.
+// Tick runs fn, which must call done once its effect is written, as the work of a process.nextTick callback, or of a timer callback that runs while a sibling tool awaits, at the next Ticked: Pi runs such a callback right after the tool_execution_end of the tool that queued it, before the chain goes on. It runs at once when no chain runs or a wait is open. A callback that waits for Ticked also runs at the next turn, wait or end of the chain, behind the ticks already held.
+func (t *Turns) Tick(fn func(done func())) {
+	if t == nil {
+		fn(func() {})
+		return
+	}
+	t.mu.Lock()
+	if t.flushing || len(t.ticks) > 0 || t.chains > 0 {
+		t.ticks = append(t.ticks, fn)
+		t.flushLocked(false)
+		return
+	}
+	t.mu.Unlock()
+	fn(func() {})
+}
+
+// Ticked says the tick boundary passed: the held tick callbacks run. The held timer callbacks keep waiting for a turn.
+func (t *Turns) Ticked() {
+	if t == nil {
+		return
+	}
+	t.mu.Lock()
+	if t.flushing || len(t.ticks) == 0 {
+		t.mu.Unlock()
+		return
+	}
+	t.flushing = true
+	for len(t.ticks) > 0 {
+		batch := t.ticks
+		t.ticks = nil
+		t.mu.Unlock()
+		var written sync.WaitGroup
+		for _, fn := range batch {
+			written.Add(1)
+			fn(written.Done)
+		}
+		// The next step of Pi's chain follows the callbacks' output, so the output is written before Ticked returns.
+		written.Wait()
+		t.mu.Lock()
+	}
+	t.flushing = false
+	t.flushLocked(false)
+}
+
+// Held reports how many callbacks wait for a turn or a tick.
 func (t *Turns) Held() int {
 	if t == nil {
 		return 0
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return len(t.held)
+	return len(t.held) + len(t.ticks)
 }
 
-// flushLocked runs the held callbacks in order when the loop may turn (always for a turn), and unlocks. One goroutine flushes at a time and callbacks that arrive meanwhile queue behind it, so the order of arrival is the order of running.
+// flushLocked runs the held callbacks in order when the loop may turn (always for a turn), and unlocks. Tick callbacks wait for Ticked while a chain runs, whatever waits are open; timer callbacks wait while a chain runs and no wait is open. One goroutine flushes at a time and callbacks that arrive meanwhile queue behind it, so the order of arrival is the order of running.
 func (t *Turns) flushLocked(turn bool) {
-	if t.flushing || len(t.held) == 0 || (!turn && t.chains > 0 && t.waits == 0) {
+	if t.flushing {
 		t.mu.Unlock()
 		return
 	}
-	t.flushing = true
-	for len(t.held) > 0 {
-		batch := t.held
-		t.held = nil
+	for {
+		open := turn || t.chains == 0 || t.waits > 0
+		ticks := turn || t.chains == 0
+		if !ticks && len(t.ticks) > 0 {
+			// A timer callback runs behind the tick callbacks that arrived before it, as Pi's tick queue runs before the next timer.
+			open = false
+		}
+		var runTicks []func(done func())
+		var runHeld []func()
+		if ticks {
+			runTicks, t.ticks = t.ticks, nil
+		}
+		if open {
+			runHeld, t.held = t.held, nil
+		}
+		if len(runTicks)+len(runHeld) == 0 {
+			t.flushing = false
+			t.mu.Unlock()
+			return
+		}
+		t.flushing = true
 		t.mu.Unlock()
-		for _, fn := range batch {
+		for _, fn := range runTicks {
+			fn(func() {})
+		}
+		for _, fn := range runHeld {
 			fn()
 		}
 		t.mu.Lock()
 	}
-	t.flushing = false
-	t.mu.Unlock()
 }
 
 type turnsKey struct{}
