@@ -197,6 +197,9 @@ struct EventRegistryState {
 
 /// Event handlers registered with `pi.on`-style calls, shared by the [`Extension`] and every [`EventSubscriber`] clone so a
 /// handler can be added or removed after the extension runs.
+/// The error a `before_agent_start` handler registered through `on_event` returns on every emission.
+const BEFORE_AGENT_START_REGISTRATION: &str = "before_agent_start handlers register with on_before_agent_start: the event's system prompt options are shared with ctx.get_system_prompt() only through BeforeAgentStartEvent";
+
 #[derive(Clone, Default)]
 pub struct EventSubscriber {
     state: Arc<Mutex<EventRegistryState>>,
@@ -215,12 +218,40 @@ pub struct EventSubscription {
 impl EventSubscriber {
     /// Register `handler` for `event` and return its unsubscribe handle. Before the extension connects the handler is a
     /// declaration of the register frame; once connected the host is told with `event.subscribe`, as the Go SDK's `OnEvent` does.
+    ///
+    /// A `before_agent_start` handler registered here fails every emission with an error instead of running: its options are shared
+    /// with the context only through [`crate::BeforeAgentStartEvent`], so register it with [`EventSubscriber::on_before_agent_start`].
     pub fn on_event(
         &self,
         event: impl Into<String>,
         handler: impl Fn(&Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync + 'static,
     ) -> EventSubscription {
         let event = event.into();
+        if event == crate::EVENT_BEFORE_AGENT_START {
+            return self.register(event, |_, _| Err(BEFORE_AGENT_START_REGISTRATION.to_string()));
+        }
+        self.register(event, handler)
+    }
+
+    /// Register a `before_agent_start` handler (Pi's `pi.on("before_agent_start", ...)`). The handler receives a
+    /// [`crate::BeforeAgentStartEvent`] whose `systemPromptOptions` it edits and whose prompt it reads through the same shared
+    /// state as [`Context::get_system_prompt`], so a read sees the edits made before it.
+    pub fn on_before_agent_start(
+        &self,
+        handler: impl Fn(&Context, &crate::BeforeAgentStartEvent) -> Result<Option<Value>, String> + Send + Sync + 'static,
+    ) -> EventSubscription {
+        self.register(crate::EVENT_BEFORE_AGENT_START.to_string(), move |ctx, data| {
+            let state = ctx.system_prompt.clone().ok_or_else(|| "before_agent_start handler ran without its emission's options".to_string())?;
+            let event = crate::BeforeAgentStartEvent::new(ctx, std::mem::take(data), state);
+            handler(ctx, &event)
+        })
+    }
+
+    fn register(
+        &self,
+        event: String,
+        handler: impl Fn(&Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync + 'static,
+    ) -> EventSubscription {
         let (handler_id, conn) = {
             let mut state = self.state.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
             state.next_id += 1;
@@ -1270,7 +1301,8 @@ impl Extension {
 
     /// Register an event handler. Mutations to boundary entries are retained.
     /// Return `Some(value)` to pass data back to the host, `None` to ack. The returned handle's
-    /// [`EventSubscription::unsubscribe`] is Pi's `() => void`.
+    /// [`EventSubscription::unsubscribe`] is Pi's `() => void`. Register `before_agent_start` handlers with
+    /// [`Extension::on_before_agent_start`]: one registered here fails every emission with an error.
     pub fn on_event(
         &mut self,
         event: impl Into<String>,
@@ -1286,6 +1318,17 @@ impl Extension {
         handler: impl Fn(&Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync + 'static,
     ) -> EventSubscription {
         self.events.on_event(event, handler)
+    }
+
+    /// Register a `before_agent_start` handler. The handler edits the run's shared `systemPromptOptions` and reads the prompt they
+    /// render through the [`crate::BeforeAgentStartEvent`] it receives, or through [`crate::Context::get_system_prompt`]: both see
+    /// every edit made so far, as Pi's `event.systemPrompt` and `ctx.getSystemPrompt()` do. Return `Some(value)` for the event's
+    /// result (`message`, `systemPrompt`), `None` to ack.
+    pub fn on_before_agent_start(
+        &mut self,
+        handler: impl Fn(&Context, &crate::BeforeAgentStartEvent) -> Result<Option<Value>, String> + Send + Sync + 'static,
+    ) -> EventSubscription {
+        self.events.on_before_agent_start(handler)
     }
 
     /// A clonable handle on this extension's event registrations, usable after `run` has consumed the extension: a handler
@@ -2421,10 +2464,13 @@ impl Extension {
                 let tool_call_input_before = (req.event.as_deref() == Some("tool_call")).then(|| data.get("input").cloned());
                 // A reply for a list the handler left as it was omits the list: the host already holds it.
                 let context_messages_before = matches!(req.event.as_deref(), Some("context" | "context_with_system")).then(|| data.get("messages").cloned());
+                // The emission's shared options: a before_agent_start handler edits them through its event, and the reply carries them.
+                let mut prompt_state: Option<Arc<crate::context::SystemPromptState>> = None;
                 let result = if let Some(handler) = self.events.handler(handler_id) {
                     let mut ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                     if req.event.as_deref() == Some("before_agent_start") {
-                        ctx.system_prompt = Some(Arc::new(crate::context::SystemPromptState::new(&data)));
+                        prompt_state = Some(Arc::new(crate::context::SystemPromptState::new(&data)));
+                        ctx.system_prompt = prompt_state.clone();
                     }
                     match catch_unwind(AssertUnwindSafe(|| handler(&ctx, &mut data))) {
                         Ok(result) => result,
@@ -2481,11 +2527,11 @@ impl Extension {
                         });
                     }
                 }
-                if req.event.as_deref() == Some("before_agent_start") {
+                if let Some(options) = prompt_state.as_ref().map(|state| state.options()) {
                     value = Some(serde_json::json!({
-                        "_pigPromptSections": data.get("systemPromptOptions").and_then(|options| options.get("sections")),
-                        "_pigPromptSelectedTools": data.get("systemPromptOptions").and_then(|options| options.get("selectedTools")),
-                        "_pigPromptOptions": data.get("systemPromptOptions"),
+                        "_pigPromptSections": options.get("sections"),
+                        "_pigPromptSelectedTools": options.get("selectedTools"),
+                        "_pigPromptOptions": options,
                         "_pigPromptResult": value,
                     }));
                 }

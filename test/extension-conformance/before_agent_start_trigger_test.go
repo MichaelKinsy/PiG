@@ -170,14 +170,17 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
- e.on_event_result("before_agent_start",|_,data| {
+ e.on_before_agent_start(|_,event| {
+  let data=event.payload();
   let mut suffix=format!("|{}",data["messageType"].as_str().unwrap_or("?"));
   if data["message"]["customType"].as_str().is_some() {
    suffix+=&format!("|{}|{}",data["message"]["customType"].as_str().unwrap_or("?"),data["message"]["content"].as_str().unwrap_or("?"));
    if data["prompt"].as_str().is_none() { suffix+="|prompt-absent"; }
   } else { suffix+=&format!("|{}",data["prompt"].as_str().unwrap_or("?")); }
-  let appended=format!("{}{}",data["systemPromptOptions"]["appendSystemPrompt"].as_str().unwrap_or(""),suffix);
-  data["systemPromptOptions"]["appendSystemPrompt"]=Schema::String(appended);
+  event.edit_system_prompt_options(|options| {
+   let appended=format!("{}{}",options["appendSystemPrompt"].as_str().unwrap_or(""),suffix);
+   options["appendSystemPrompt"]=Schema::String(appended);
+  });
   Ok(None)
  });
  e
