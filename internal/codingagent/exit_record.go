@@ -187,8 +187,8 @@ func BeginSessionMarker(agentDir, version, cwd string) {
 	if err != nil {
 		return
 	}
-	//portlint:allow clock the exit record stamps the real wall clock of this process; the package's clock seams belong to the logo animation and the Radius login selector, and Pi has no counterpart (D102)
 	host, pidns := sessionHostIdentity()
+	//portlint:allow clock the exit record stamps the real wall clock of this process; the package's clock seams belong to the logo animation and the Radius login selector, and Pi has no counterpart (D102)
 	header, _ := json.Marshal(sessionMarkerHeader{PID: os.Getpid(), PPID: os.Getppid(), Release: version, CWD: cwd, Started: time.Now().Format(time.RFC3339), Host: host, PIDNS: pidns})
 	if _, err := file.Write(append(header, '\n')); err != nil {
 		_ = file.Close()
