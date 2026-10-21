@@ -15,7 +15,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 
 ## Summary
 
-936 bugs. 886 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
+937 bugs. 887 own defects, 29 fixed ahead of Pi, 21 Pi fixes ported. 139 bugs have no recorded test.
 
 | ID | Bug | Source | Platform | Fixed in |
 |---|---|---|---|---|
@@ -955,6 +955,7 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 | [BF-d988f58](#bf-d988f58) | `pig update --extensions` no longer fails when two Git Packages come from one repository | PiG's own defect | All platforms | Unreleased |
 | [BF-6b381a3](#bf-6b381a3) | The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit | PiG's own defect | All platforms | Unreleased |
 | [BF-f086ba5](#bf-f086ba5) | fix(extension/node): load the virtual-model routing modules of the ModelRuntime on first use | PiG's own defect | All platforms | Unreleased |
+| [BF-3853a96](#bf-3853a96) | `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again | PiG's own defect | All platforms | Unreleased |
 
 ## Entries
 
@@ -14002,6 +14003,20 @@ This page lists every bug fixed since PiG 0.4.1: what users saw, why it happened
 - **Fixed in:** Unreleased
 - **Fix commits:** `f086ba5ce8` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/node_cold_start_test.go::TestNodeColdStartLoadsSDKOnlyOnImport`, `coding/extension/host/subprocess/node_startup_dependencies_test.go::TestNodeStartupDefersPresentationDependencies`
+
+### BF-3853a96
+
+**`go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again**
+
+- **Source:** PiG's own defect
+- **Symptom:** `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again.
+- **Root cause:** piglets/standard and piglets/aot require the same version, because a fused member cannot require a newer SDK than the Pig source pins and a pseudo-version sorts below v0.5.0. check-module-publication.py accepts a pseudo-version for a nested requirement: it has no tag, and its download into an empty cache with the committed checksums proves the commit is public. module-tags.sh 0.5.2 still refuses the pin until make set-version --release-modules replaces it with the tag.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3853a96b00` (2026-10-20)
+- **Tests:** `test/gomodule/gomodule_test.go::TestModuleTagsScriptRefusesAPseudoVersionPin`
+- **Release note:** `go install github.com/MichaelKinsy/PiG/cmd/pig@main` builds again. The root `go.mod` required `extensions/sdk v0.5.0`, which lacks `Result.Drift`, `FileChange.Created` and `Skipped.Suggest` that `pig extension upgrade` uses, so building the module outside the workspace failed, and `make module-size` failed on every pull request. Between releases the root `go.mod` (and `piglets/standard` and `piglets/aot`) now require the SDK at the pseudo-version of the `main` commit that holds the API the root uses; the release replaces it with the tag. `make module-publication` accepts such a pseudo-version, and proves by downloading it into an empty cache, with the committed checksums, that the commit is public.
 
 ## Divergences from Pi added in this release
 
