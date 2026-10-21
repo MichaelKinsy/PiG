@@ -21,6 +21,7 @@ import (
 	"maps"
 	"math"
 	"net/http"
+	"os"
 	"reflect"
 	"slices"
 	"strconv"
@@ -364,6 +365,38 @@ func Extension() *sdk.Extension {
 				ctx.Notify("resolved:"+strconv.Itoa(result.ExitCode), "info")
 			}
 		}
+		return nil
+	})
+	ext.Command("exec-abort-probe", "Abort a running exec through its signal", func(ctx sdk.Context, args string) error {
+		var probe struct {
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+			PidFile string   `json:"pidFile"`
+			Pre     bool     `json:"pre"`
+		}
+		if err := json.Unmarshal([]byte(args), &probe); err != nil {
+			return err
+		}
+		signal, abort := context.WithCancel(context.Background())
+		defer abort()
+		if probe.Pre {
+			abort()
+		} else {
+			go func() {
+				for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+					if _, err := os.Stat(probe.PidFile); err == nil {
+						break
+					}
+				}
+				abort()
+			}()
+		}
+		result, err := ctx.ExecWithOptions(probe.Command, probe.Args, sdk.ExecOptions{Signal: signal})
+		if err != nil {
+			ctx.Notify("rejected:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("exec-abort:killed=%t;code=%d;stdout=%s", result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout)), "info")
 		return nil
 	})
 	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {

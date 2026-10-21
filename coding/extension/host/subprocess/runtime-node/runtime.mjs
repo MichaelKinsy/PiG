@@ -1868,6 +1868,7 @@ export class Runtime {
     this.bashOperations = new Map();
     this.bashOperationsSeq = 0;
     this.nextExecuteId = 1;
+    this.nextExecId = 1;
     // Raw terminal-input handlers, consulted synchronously while the host
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
@@ -2220,11 +2221,41 @@ export class Runtime {
   }
 
   // loader.ts:411-414: pi.exec spawns the child whenever it is called. A callback the factory scheduled can call it after the factory returned and before the registered connection exists, while connect() opens it. That call waits for the register frame and runs as the loader's exec; opening a second connection would leave the call or the registration on a socket the Host does not read.
+  //
+  // core/exec.ts:46-52 kills the child when options.signal aborts, and the call has no other signal. An AbortSignal cannot cross the process boundary: the call names itself by an exec id and carries ownSignal, which detaches it from the calling request, and the abort reaches the Host as exec.cancel.
   exec(request) {
-    if (this.conn) return this.call("exec", request);
-    if (this.loadState === "loading") return this.loadingExec(request);
-    if (this.connecting) return this.connecting.then(() => this.call("exec.loading", request));
-    return this.call("exec", request);
+    const signal = request.options?.signal;
+    if (!signal || typeof signal.addEventListener !== "function") return this.execCall(request, false, () => {});
+    const { signal: _signal, ...options } = request.options;
+    const execId = `x${this.nextExecId++}`;
+    let stopListening;
+    // After the call is sent: the Host applies a cancel only after the call it names started the child, so a signal that aborted already still spawns the child and then kills it, as exec.ts does.
+    const sent = () => {
+      const cancel = () => { this.cancelExec(execId); };
+      if (signal.aborted) cancel();
+      else {
+        signal.addEventListener("abort", cancel, { once: true });
+        stopListening = () => signal.removeEventListener("abort", cancel);
+      }
+    };
+    return this.execCall({ ...request, options, execId, ownSignal: true }, true, sent).finally(() => stopListening?.());
+  }
+
+  execCall(request, detached, sent) {
+    if (this.conn) { const result = this.call("exec", request, { detached }); sent(); return result; }
+    if (this.loadState === "loading") { const result = this.loadingExec(request); sent(); return result; }
+    if (this.connecting) return this.connecting.then(() => { const result = this.call("exec.loading", request, { detached }); sent(); return result; });
+    const result = this.call("exec", request, { detached });
+    sent();
+    return result;
+  }
+
+  // The abort of an exec call's signal. It has no failure path, as exec.ts's abort listener has none: a call that ended or a connection that closed leaves nothing to cancel.
+  cancelExec(execId) {
+    const connection = this.conn ?? this.earlyConn;
+    if (!connection || connection.closed) return;
+    const cancelled = connection === this.conn ? connection.call("exec.cancel", { execId }, "") : connection.callAppliedOnReceipt("exec.cancel", { execId });
+    cancelled.catch(() => {});
   }
 
   // loader.ts:411-414 gives a loading factory an exec that spawns the child itself, with no session bound. The Host runs it in the loader's working directory over the connection the factory opened. The Host's reply is applied when it arrives: nothing reads this connection's queue before the register frame, and the factory awaits the call.

@@ -3567,11 +3567,7 @@ func (b *UIBridge) hasExecAction() bool {
 }
 
 func (b *UIBridge) handleExec(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
-	var p struct {
-		Command string                 `json:"command"`
-		Args    []string               `json:"args"`
-		Options *extension.ExecOptions `json:"options,omitempty"`
-	}
+	var p ExecArgs
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse exec args: %w", err)
 	}

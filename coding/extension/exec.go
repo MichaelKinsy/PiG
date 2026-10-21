@@ -40,7 +40,7 @@ import (
 // so a descendant that keeps a pipe open does not block it, and output the
 // descendant writes while the pipes stay active is kept.
 //
-// Timeout and context cancellation signal the child alone with SIGTERM
+// Timeout, context cancellation and opts.Signal signal the child alone with SIGTERM
 // (Process.Kill on Windows, where Node's kill terminates the process). Like
 // upstream, nothing follows it: Node sets proc.killed once SIGTERM is
 // delivered, so upstream's SIGKILL after 5 seconds never runs, and no
@@ -53,6 +53,13 @@ import (
 func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *ExecOptions) (ExecResult, error) {
 	if opts == nil {
 		opts = &ExecOptions{}
+	}
+	// options.signal ends the command like the call's own cancellation (exec.ts:46-52 has no other kind).
+	if opts.Signal != nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
+		defer cancel()
+		defer context.AfterFunc(opts.Signal, cancel)()
 	}
 
 	dir := cwd

@@ -171,11 +171,10 @@ python = "Context.exec"
 [[row]]
 key = "pi.exec(options.signal)"
 node = "api.exec"
-go = "Context.Done"
-rust = "Context::is_cancelled"
-python = "Context.is_cancelled"
-wire = "none"
-partial = "the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary"
+go = "ExecOptions.Signal"
+rust = "ExecOptions.signal"
+python = "Context.exec(signal)"
+wire = "subprocess.ExecArgs.ownSignal"
 
 [[row]]
 key = "pi.exec(options.timeout)"

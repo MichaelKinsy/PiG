@@ -172,6 +172,31 @@ await runtime.requestContext.run(request, async () => {
   assert.deepEqual(asyncCalls.at(-1), ["executeTool", { callerId: "call-1", name: "echo", args: {}, executeId: "e5" }, "req-1"]);
 });
 
+// pi.exec's options.signal (core/exec.ts:46-52) is the only signal of the call: an exec with one is independent of the calling request, names itself by an exec id, and its abort sends exec.cancel after the call. Without one the call stays tied to the request.
+runtime.nextResult = { stdout: "", stderr: "", code: 0, killed: false };
+await runtime.requestContext.run(request, async () => {
+  await api.exec("echo", []);
+  assert.deepEqual(asyncCalls.at(-1), ["exec", { command: "echo", args: [], options: undefined }, "req-1"]);
+  const controller = new AbortController();
+  const pending = api.exec("sleep", ["30"], { signal: controller.signal, timeout: 5 });
+  assert.deepEqual(asyncCalls.at(-1), ["exec", { command: "sleep", args: ["30"], options: { timeout: 5 }, execId: "x1", ownSignal: true }, ""]);
+  controller.abort();
+  await pending;
+  assert.deepEqual(asyncCalls.at(-1), ["exec.cancel", { execId: "x1" }, ""]);
+  // A signal that is aborted already cancels once the call is sent.
+  await api.exec("sleep", [], { signal: AbortSignal.abort() });
+  assert.deepEqual(asyncCalls.at(-1), ["exec.cancel", { execId: "x2" }, ""]);
+  // The listener ends with the call: an abort afterwards sends nothing.
+  const late = new AbortController();
+  await api.exec("echo", [], { signal: late.signal });
+  const sent = asyncCalls.length;
+  late.abort();
+  assert.equal(asyncCalls.length, sent);
+  // A null signal is no signal.
+  await api.exec("echo", [], { signal: null });
+  assert.equal(asyncCalls.at(-1)[2], "req-1");
+});
+
 // Partial results reach onUpdate in order before the outcome, each as a request the Host waits on; a throwing callback answers its request with the error, still sees every later partial result, and the call rejects with the error it threw (nested-tool-calls.ts:219-231, agent-loop.ts:833-845).
 const responses = [];
 runtime.respond = async (id, result, error) => { responses.push([id, result, error]); };

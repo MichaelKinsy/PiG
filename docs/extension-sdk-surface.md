@@ -25,10 +25,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 475 | 32 | 11 |
-| Go | 480 | 27 | 11 |
-| Rust | 480 | 27 | 11 |
-| Python | 480 | 27 | 11 |
+| Node runtime | 476 | 31 | 11 |
+| Go | 481 | 26 | 11 |
+| Rust | 481 | 26 | 11 |
+| Python | 481 | 26 | 11 |
 
 31 PiG-only surfaces:
 
@@ -128,7 +128,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python |
 |---|---|---|---|---|---|
-| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | stand-in/partial `api.exec`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.Done`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the command is killed when the calling request is cancelled (Context.Done/Err, is_cancelled); an AbortSignal of its own cannot cross the process boundary |
+| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | implemented `api.exec` | implemented `ExecOptions.Signal` | implemented `ExecOptions.signal` | implemented `Context.exec(signal)` |
 | `pi.exec(options.timeout)` | `ExtensionAPI.exec(options.timeout)` | implemented `api.exec` | implemented `ExecOptions.Timeout` | implemented `ExecOptions.timeout` | implemented `Context.exec(timeout)` |
 | `pi.exec(options.cwd)` | `ExtensionAPI.exec(options.cwd)` | implemented `api.exec` | implemented `ExecOptions.Cwd` | implemented `ExecOptions.cwd` | implemented `Context.exec(cwd)` |
 | `pi.exec → stdout` | `ExtensionAPI.exec → stdout` | implemented `api.exec` | implemented `ExecResult.Stdout` | implemented `ExecResult.stdout` | implemented `ExecResult.stdout` |

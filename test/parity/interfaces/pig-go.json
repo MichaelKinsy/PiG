@@ -113824,6 +113824,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallExecCancel",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CallExecCancel",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CallExecuteTool",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "CallExecuteTool",
@@ -115342,6 +115353,28 @@
       "shapeHash": "sha256:8362d11dc7fc495bd0646cf1f8746ec9a902035911f4b75640a3018ab5fe93eb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ExecArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ExecArgs",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ExecArgs"
+      },
+      "shapeHash": "sha256:49e2ea944f5383153c1a49b84cca6bcd46c42b2f424d96db6e781dd98244acd0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ExecCancel",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ExecCancel",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ExecCancel"
+      },
+      "shapeHash": "sha256:7604bc2bb4c134bc2a9cd57120f935421f7b6731e7077e0547619270d2c982ba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ExecuteToolArgs",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ExecuteToolArgs",
@@ -116717,6 +116750,17 @@
       "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.execSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.execSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, conn *Conn, call *CallPayload) (context.Context, func())"
+      },
+      "shapeHash": "sha256:29e08688fa2fbfaf3aba76fb4a6832c6f302b838949fa947749551c33e95de51"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.extensionSourceInfo",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.extensionSourceInfo",
@@ -116836,6 +116880,17 @@
         "type": "func(me *managedExt, call *CallPayload) (*CallResultPayload, error)"
       },
       "shapeHash": "sha256:63ab3540920f263214dcbabc32a708b9792224cba7e413c8ea25697b09b822b3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleExecCancel",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.handleExecCancel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn, call *CallPayload) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:ab22fb77f27adc25104c55e6ca74f0eff8ba7a5c7893f306c2f44db05d86c772"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.handleExecuteToolCall",
@@ -126670,6 +126725,17 @@
         "type": "func(event any, swap func(*github.com/MichaelKinsy/PiG/ai.AssistantMessage) *github.com/MichaelKinsy/PiG/ai.AssistantMessage) (any, bool)"
       },
       "shapeHash": "sha256:6e0dd6935f1c114bc602a4be2fdb5f1214abe33a0b85bd2da676eaafdcf450e7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#execCallKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "execCallKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(execID string) string"
+      },
+      "shapeHash": "sha256:9e17844616bcfc06583b872260e66155372946ea0240c1f62b1b1d9267e73f1f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#expiredDeadline",
@@ -175642,6 +175708,17 @@
         "type": "func(value float64) (int64, bool)"
       },
       "shapeHash": "sha256:168ecd2fdd91972470d295df572127fc6caa67c54388476bf987d2791fb47798"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#execResult",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "execResult",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(result *callResultMsg, err error) (*ExecResult, error)"
+      },
+      "shapeHash": "sha256:2d79257458a68d7485e2703e028375ab682616e29ff0c3cdcafb4ea85cd90723"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#expiresNumberJSON",

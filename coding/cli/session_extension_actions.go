@@ -317,12 +317,12 @@ func bindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 	// the same implementation instead of each mode wiring its own; interactive
 	// mode binds the identical extension.ExecCommand call directly against its
 	// session in wireSubprocessHostCallbacks.
-	bridge.SetHostAction("exec", func(command string, args []string, opts *extension.ExecOptions) (extension.ExecResult, error) {
+	bridge.SetHostAction("exec", func(ctx context.Context, command string, args []string, opts *extension.ExecOptions) (extension.ExecResult, error) {
 		cwd := ""
 		if sess := current(); sess != nil {
 			cwd = sess.CWD()
 		}
-		return extension.ExecCommand(context.Background(), cwd, command, args, opts)
+		return extension.ExecCommand(ctx, cwd, command, args, opts)
 	})
 	bridge.BindCommandActions(extension.CommandActions{
 		NewSessionContext: func(ctx context.Context, opts *extension.NewSessionOptions) (extension.CancelledResult, error) {

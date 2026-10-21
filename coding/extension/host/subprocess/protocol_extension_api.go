@@ -41,6 +41,25 @@ const CallCheckMcpServer = "mcpServers.check"
 // CallLoadingExec (ext→host) runs a child for a Node factory's pi.exec before its register frame, and for a call a factory's callback made after the factory returned and before the runtime had its registered connection, which the runtime sends right after the register frame. Upstream's loader gives the factory an exec that spawns the child directly, in the loader's working directory, with no session bound (loader.ts:411-414), so the host runs core/exec.ts's execCommand in its own working directory. Args and result are those of "exec". Once the runtime has its registered connection, pi.exec calls "exec", which runs in the bound session.
 const CallLoadingExec = "exec.loading"
 
+// ExecArgs is the argument of "exec" and CallLoadingExec: upstream's pi.exec(command, args, options). The AbortSignal of options.signal cannot cross the socket: an extension that passed one sets OwnSignal and names the call by ExecID, and sends CallExecCancel when the signal aborts.
+type ExecArgs struct {
+	Command string                 `json:"command"`
+	Args    []string               `json:"args"`
+	Options *extension.ExecOptions `json:"options,omitempty"`
+	// ExecID names this call for CallExecCancel. It is unique within the connection.
+	ExecID string `json:"execId,omitempty"`
+	// OwnSignal reports that the extension passed options.signal. The command then ends only when the signal aborts, the timeout fires or the connection closes: the call is not tied to a request, as Pi's exec has no signal but the one the caller passed (core/exec.ts).
+	OwnSignal bool `json:"ownSignal,omitempty"`
+}
+
+// CallExecCancel (ext→host) is the abort of options.signal for the exec call named by ExecCancel: the host terminates the child as core/exec.ts's abort listener does, and the call resolves with what the child wrote, killed set and code 0 (a child that the signal ended has none). The extension sends it after the call's own frame; a cancel for a call that already ended does nothing. A Node factory may send it before its register frame.
+const CallExecCancel = "exec.cancel"
+
+// ExecCancel is the CallExecCancel argument.
+type ExecCancel struct {
+	ExecID string `json:"execId"`
+}
+
 // ── Virtual models ───────────────────────────────────────────────────────────
 
 // VirtualModelDecl declares a virtual model. It carries every VirtualModelDefinition field except route, which the extension keeps and the host calls with RequestVirtualModelRoute.

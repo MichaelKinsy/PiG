@@ -1820,6 +1820,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				Handler: func(context.Context, string) error { return nil },
 			},
 			// The in-process reference for exec_rejection_test.go's SDK rows: the host's own ExecCommand.
+			// The in-process reference for exec_abort_test.go's SDK rows: the host's own ExecCommand under a cancelled context, which that test runs itself.
+			"exec-abort-probe": {
+				Name: "exec-abort-probe", Description: "Abort a running exec through its signal",
+				Handler: func(context.Context, string) error { return nil },
+			},
 			"exec-reject-probe": {
 				Name: "exec-reject-probe", Description: "Report exec outcomes",
 				Handler: func(ctx context.Context, args string) error {
