@@ -427,3 +427,22 @@ func TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader(t *testing.T)
 		t.Fatalf("the extension's context = %s, want hasUI false, model fake-1, scopedModels [fake-1@high], idle, the session's tools", raw)
 	}
 }
+
+// A child session's excludeTools travels as an omitted member when it is empty (ChildSessionCreate), so an empty denylist must select what an absent one does.
+func TestResolveSDKToolSelectionEmptyExcludeToolsIsAbsent(t *testing.T) {
+	settings := servicesWithDefaultTools(t, []string{"read", "bash"}).SettingsManager()
+	for _, tools := range [][]string{nil, {"read"}} {
+		absent := resolveSDKToolSelection(settings, tools, nil, "")
+		empty := resolveSDKToolSelection(settings, tools, []string{}, "")
+		if !slices.Equal(absent.initialActive, empty.initialActive) {
+			t.Errorf("tools %v: active %v with no denylist, %v with an empty one", tools, absent.initialActive, empty.initialActive)
+		}
+		absentFilter := extension.NewToolFilter(absent.allowed, absent.excluded)
+		emptyFilter := extension.NewToolFilter(empty.allowed, empty.excluded)
+		for _, name := range []string{"read", "bash", "edit", "mcp__server__tool"} {
+			if absentFilter.Allows(name) != emptyFilter.Allows(name) {
+				t.Errorf("tools %v: %s is kept differently by an empty denylist", tools, name)
+			}
+		}
+	}
+}

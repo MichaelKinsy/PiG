@@ -75,3 +75,50 @@ func TestBuiltinToolContextCarriesTheSession(t *testing.T) {
 		t.Fatalf("cwd = %q, %v", cwd, err)
 	}
 }
+
+// BuiltinToolDefinitionResult drops an empty promptGuidelines: Pi's built-in definitions carry none or a non-empty list, so nothing is lost.
+func TestBuiltinToolDefinitionsHaveNoEmptyPromptGuidelines(t *testing.T) {
+	for _, name := range []string{"read", "write", "edit", "grep", "find", "ls", "bash", "powershell"} {
+		for _, exposeEnvironment := range []bool{false, true} {
+			args, err := stdjson.Marshal(BuiltinToolDefinitionArgs{Name: name, Cwd: t.TempDir(), Options: &BuiltinToolOptions{ExposeSessionEnvironment: &exposeEnvironment}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			reply, err := BuiltinToolDefinitionJSON(args)
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			var definition struct {
+				PromptGuidelines []string `json:"promptGuidelines"`
+			}
+			if err := stdjson.Unmarshal(reply, &definition); err != nil {
+				t.Fatal(err)
+			}
+			var members map[string]stdjson.RawMessage
+			if err := stdjson.Unmarshal(reply, &members); err != nil {
+				t.Fatal(err)
+			}
+			if _, present := members["promptGuidelines"]; !present {
+				continue
+			}
+			if len(definition.PromptGuidelines) == 0 {
+				t.Errorf("%s (exposeSessionEnvironment %v): promptGuidelines is present and empty", name, exposeEnvironment)
+			}
+		}
+	}
+}
+
+// An operations object with no member is not an absent one: the host builds the tool's callbacks for it.
+func TestBuiltinToolOptionsKeepAnEmptyOperationsList(t *testing.T) {
+	encoded, err := stdjson.Marshal(BuiltinToolOptions{Operations: []string{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded BuiltinToolOptions
+	if err := stdjson.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Operations == nil {
+		t.Fatalf("an empty operations list decoded as absent: %s", encoded)
+	}
+}

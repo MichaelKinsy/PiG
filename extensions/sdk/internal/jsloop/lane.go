@@ -34,6 +34,17 @@ func (l *Lane) Reserve() *Place {
 	return p
 }
 
+// ReserveInto is Reserve for a caller that holds the place's storage, such as a field of a struct it allocates anyway: p must be the zero Place, and it is the new place.
+func (l *Lane) ReserveInto(p *Place) *Place {
+	l.mu.Lock()
+	if l.tail != nil && !l.tail.released.Load() {
+		p.previous.Store(l.tail)
+	}
+	l.tail = p
+	l.mu.Unlock()
+	return p
+}
+
 // After returns a place that waits for previous, which may be nil. It is Reserve for a caller that keeps the tail itself, for example one lane per key in a map it already guards: the call must run in source order, under the caller's own lock.
 func After(previous *Place) *Place {
 	p := new(Place)

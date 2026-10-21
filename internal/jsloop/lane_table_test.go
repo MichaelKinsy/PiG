@@ -11,6 +11,27 @@ var laneBehaviors = []struct {
 	name string
 	run  func(t *testing.T)
 }{
+	{"a place reserved into caller storage orders like one Reserve made", func(t *testing.T) {
+		var lane Lane
+		var first, second Place
+		p1, p2 := lane.ReserveInto(&first), lane.ReserveInto(&second)
+		if p1 != &first || p2 != &second {
+			t.Fatal("ReserveInto must return the storage it was given")
+		}
+		var rec orderRecorder
+		var done sync.WaitGroup
+		done.Go(func() {
+			p2.Wait()
+			rec.action("second")()
+			p2.Release()
+		})
+		rec.action("first")()
+		p1.Release()
+		done.Wait()
+		if got := rec.names(); !reflect.DeepEqual(got, []string{"first", "second"}) {
+			t.Fatalf("order %v", got)
+		}
+	}},
 	{"a place waits for every earlier place to release, whatever order the goroutines start in", func(t *testing.T) {
 		const n = 6
 		for shift := range n {
