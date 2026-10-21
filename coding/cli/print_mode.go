@@ -560,15 +560,17 @@ func sendPrintPrompt(ctx context.Context, sess *coding.Session, commands headles
 	if err != nil || handled {
 		return handled, err
 	}
+	// Skill commands and prompt templates expand before the model and auth checks (agent-session.ts:2095-2100, then 2118-2136), so an unreadable /skill: reports its skill_expansion error ahead of a missing-auth error.
+	text = commands.expandPrompt(text)
 	// An absent startup selection becomes Pi's Agent DEFAULT_MODEL. Its unknown provider fails credential preflight, not the lower-level SendContent model guard; commands and handled input above do not need credentials.
 	if model := sess.Model(); model == nil || model.Provider == nil && model.ProviderMeta.ProviderID == "unknown" {
 		return false, errors.New(codingagent.FormatNoAPIKeyFoundMessage("unknown"))
 	}
-	// AgentSession.prompt (agent-session.ts:2033-2052) rejects a prompt whose provider has no usable auth before it reaches the provider.
+	// AgentSession.prompt (agent-session.ts:2118-2136) rejects a prompt whose provider has no usable auth before it reaches the provider.
 	if err := sess.ValidatePromptModelAuth(ctx); err != nil {
 		return false, err
 	}
-	_, err = sess.SendContent(ctx, coding.BuildUserContent(commands.expandPrompt(text), images))
+	_, err = sess.SendContent(ctx, coding.BuildUserContent(text, images))
 	return false, err
 }
 
