@@ -20,7 +20,7 @@ func timerDeferHost(t *testing.T) (*Host, *Conn, *Conn) {
 	conn.Start(t.Context())
 	peer := NewConn("node-peer", peerEnd)
 	peer.Start(t.Context())
-	me := withConn(&managedExt{config: ExtConfig{Name: "node"}, host: h, nodeRealm: true}, conn)
+	me := withConn(&managedExt{config: ExtConfig{Name: "node"}, host: h, nodeRuntime: true}, conn)
 	h.mu.Lock()
 	h.exts["node"] = me
 	h.mu.Unlock()
