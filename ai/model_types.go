@@ -58,7 +58,9 @@ type ClassifierModel struct {
 	InputLimits   *ModelInputLimits
 	Cost          ModelCost
 	ContextWindow int
-	catalog       *catalogShape
+	// Compat holds the System One settings of typesafe-system-one and cloudflare-workers-ai-system-one models.
+	Compat  *SystemOneCompat
+	catalog *catalogShape
 }
 
 func (*Model) anyModel()           {}

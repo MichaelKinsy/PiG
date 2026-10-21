@@ -37,6 +37,10 @@ func anyModelFromDefinition(providerID string, prov providerConfig, md modelDefi
 		if md.ContextWindow != nil {
 			model.ContextWindow = *md.ContextWindow
 		}
+		if md.Compat != nil {
+			compat := overlaySystemOneCompat(nil, md.Compat)
+			model.Compat = &compat
+		}
 		return model
 	}
 	return nativeModelFromEntry(modelDefinitionEntry(providerID, prov, md))

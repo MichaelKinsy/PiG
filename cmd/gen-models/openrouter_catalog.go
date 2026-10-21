@@ -54,6 +54,8 @@ type openRouterClassifierModel struct {
 	Input         []string `json:"input"`
 	Cost          jsonCost `json:"cost"`
 	ContextWindow int      `json:"contextWindow"`
+	// Compat is how the service takes classifier images (openrouter-catalog.ts).
+	Compat *ModelCompat `json:"compat,omitempty"`
 }
 
 type openRouterCatalog struct {
@@ -168,7 +170,9 @@ func buildOpenRouterCatalog(listed, imageListed, decisionListed []openRouterMode
 		if len(input) == 0 {
 			input = []string{"text"}
 		}
-		catalog.Classifiers = append(catalog.Classifiers, openRouterClassifierModel{Type: "classifier", ID: model.ID, Name: model.Name, API: "typesafe-system-one", Provider: "openrouter", BaseURL: openRouterBaseURL, Input: input, Cost: openRouterCost(model), ContextWindow: openRouterContextWindow(model)})
+		catalog.Classifiers = append(catalog.Classifiers, openRouterClassifierModel{Type: "classifier", ID: model.ID, Name: model.Name, API: "typesafe-system-one", Provider: "openrouter", BaseURL: openRouterBaseURL, Input: input, Cost: openRouterCost(model), ContextWindow: openRouterContextWindow(model),
+			// OpenRouter answers TypeSafe assets with 200 but drops the images.
+			Compat: &ModelCompat{ImageInput: "state-image-urls", SendImageOptInHeader: new(false)}})
 	}
 	return catalog
 }
