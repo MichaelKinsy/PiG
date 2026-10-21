@@ -13,12 +13,36 @@ sends the frame when it changed.
 
 from __future__ import annotations
 
+import dataclasses
 import queue
 import threading
 from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from . import Extension
+    from .kit import Autocomplete
+
+# The app actions Pi's CustomEditor.handleInput dispatches to a handler of its own (custom-editor.ts).
+_ACTION_INTERRUPT = "app.interrupt"
+_ACTION_EXIT = "app.exit"
+_ACTION_PASTE_IMAGE = "app.clipboard.pasteImage"
+# The hooks entry of a component that sets its own on_extension_shortcut.
+_HOOK_SHORTCUT = "extensionShortcut"
+
+
+@dataclasses.dataclass(frozen=True)
+class EditorStatus:
+    """The working, compaction, summarization or retry status the host shows while the editor embeds it
+    (:attr:`EditorComponent.embed_working_status`): Pi's StatusIndicator as the host snapshots it. The host advances the
+    animation and sends a snapshot with each frame (D94), so ``frame`` is the current frame of ``frames``."""
+
+    kind: str
+    message: str
+    frames: tuple[str, ...]
+    frame: int
+    spinner_color: str
+    message_color: str
+    indicator_verbatim: bool
 
 
 class EditorBase:
@@ -27,14 +51,70 @@ class EditorBase:
     def __init__(self, extension: "Extension", key: str) -> None:
         self._extension = extension
         self._key = key
+        #: CustomEditor's onEscape: the handler of the interrupt key while no autocomplete shows, in place of the host's.
+        #: None keeps the host's.
+        self.on_escape: Callable[[], None] | None = None
+        #: CustomEditor's onCtrlD: the handler of the exit key on an empty editor, in place of the host's.
+        self.on_ctrl_d: Callable[[], None] | None = None
+        #: CustomEditor's onPasteImage: the handler of the paste-image key, in place of the host's.
+        self.on_paste_image: Callable[[], None] | None = None
+        #: CustomEditor's onExtensionShortcut: it runs first for every key, and a key it reports handled (returns true)
+        #: goes no further. It replaces the host's, which runs the extensions' shortcuts.
+        self.on_extension_shortcut: Callable[[str], bool] | None = None
+        #: CustomEditor's actionHandlers: the handlers of the app actions the component handles itself, by Pi's action
+        #: id ("app.clear"), replacing the host's handler for the action. The dict is live.
+        self.action_handlers: dict[str, Callable[[], None]] = {}
 
     def _op(self, op: str, args: dict[str, Any] | None = None) -> dict[str, Any]:
         reply = self._extension._call("ui.editor.base", {"key": self._key, "op": op, "args": args or {}})
         return reply.get("result") or {}
 
+    def on_action(self, action: str, handler: Callable[[], None]) -> None:
+        """CustomEditor's onAction: register ``handler`` for an app action."""
+        self.action_handlers[action] = handler
+
+    def _hooked(self) -> list[str]:
+        """The app actions whose handler the component set, for the host to answer instead of running. Pi's handleInput
+        consults onEscape or the interrupt entry, onCtrlD or the exit entry, onPasteImage alone, and every other entry."""
+        ids: list[str] = []
+        if self.on_escape is not None or self.action_handlers.get(_ACTION_INTERRUPT) is not None:
+            ids.append(_ACTION_INTERRUPT)
+        if self.on_ctrl_d is not None or self.action_handlers.get(_ACTION_EXIT) is not None:
+            ids.append(_ACTION_EXIT)
+        if self.on_paste_image is not None:
+            ids.append(_ACTION_PASTE_IMAGE)
+        for action in sorted(self.action_handlers):
+            if self.action_handlers[action] is not None and action not in (_ACTION_INTERRUPT, _ACTION_EXIT, _ACTION_PASTE_IMAGE):
+                ids.append(action)
+        if self.on_extension_shortcut is not None:
+            ids.append(_HOOK_SHORTCUT)
+        return ids
+
+    def _handler(self, action: str) -> Callable[[], None] | None:
+        if action == _ACTION_INTERRUPT and self.on_escape is not None:
+            return self.on_escape
+        if action == _ACTION_EXIT and self.on_ctrl_d is not None:
+            return self.on_ctrl_d
+        if action == _ACTION_PASTE_IMAGE:
+            return self.on_paste_image
+        return self.action_handlers.get(action)
+
     def handle_input(self, data: str) -> None:
-        """The default editor's handleInput: extension shortcuts, then the app actions, then editing."""
-        self._op("handleInput", {"data": data})
+        """The default editor's handleInput, CustomEditor's: the component's on_extension_shortcut first, then the host's
+        extension shortcuts, the paste-image, interrupt and exit actions and the other app actions, each through the
+        handler the component set for it when it set one, then the editing."""
+        shortcut = self.on_extension_shortcut
+        if shortcut is not None and shortcut(data):
+            return
+        args: dict[str, Any] = {"data": data}
+        hooks = self._hooked()
+        if hooks:
+            args["hooks"] = hooks
+        hook = self._op("handleInput", args).get("hook")
+        if hook:
+            handler = self._handler(str(hook))
+            if handler is not None:
+                handler()
 
     def handle_mouse(self, event: dict[str, Any]) -> None:
         self._op("handleMouse", {"event": event})
@@ -75,6 +155,56 @@ class EditorBase:
     def set_autocomplete_max_visible(self, max_visible: int) -> None:
         self._op("setAutocompleteMaxVisible", {"n": max_visible})
 
+    def get_padding_x(self) -> int:
+        return int(self._op("getPaddingX").get("n", 0))
+
+    def get_autocomplete_max_visible(self) -> int:
+        return int(self._op("getAutocompleteMaxVisible").get("n", 0))
+
+    def border_color(self, text: str) -> str:
+        """The default editor's borderColor called on ``text``: the editor's border color for its thinking level or bash mode."""
+        return str(self._op("borderColor", {"text": text}).get("text", ""))
+
+    @property
+    def disable_submit(self) -> bool:
+        """The default editor's disableSubmit."""
+        return bool(self._op("getDisableSubmit").get("value", False))
+
+    @disable_submit.setter
+    def disable_submit(self, disabled: bool) -> None:
+        self._op("setDisableSubmit", {"value": bool(disabled)})
+
+    @property
+    def focused(self) -> bool:
+        """The default editor's focused, which the TUI sets as the editor takes and loses the focus."""
+        return bool(self._op("getFocused").get("value", False))
+
+    @focused.setter
+    def focused(self, focused: bool) -> None:
+        self._op("setFocused", {"value": bool(focused)})
+
+    def set_autocomplete_provider(self, provider: "Autocomplete | None") -> None:
+        """The default editor's setAutocompleteProvider with Pi's CombinedAutocompleteProvider(commands, basePath) (a
+        :class:`pig_sdk.kit.Autocomplete`); None leaves the editor without a provider."""
+        self._op("setAutocompleteProvider", {"provider": None if provider is None else provider._wire()})
+
+    def on_submit(self, text: str) -> None:
+        """Call the host's onSubmit callback with ``text``, as an editor does when the user submits it."""
+        self._op("onSubmit", {"text": text})
+
+    def on_change(self, text: str) -> None:
+        """Call the host's onChange callback with ``text``, as an editor does when its text changed."""
+        self._op("onChange", {"text": text})
+
+    def set_working_status_indicator(self, status: "EditorStatus | None") -> None:
+        """CustomEditor's setWorkingStatusIndicator, which the host calls when an editor that embeds the status gets a new
+        status, a new frame of it, or none (None). The host draws the status in the rows :meth:`render` returns; override
+        this to read it."""
+
+    def invalidate(self) -> None:
+        """The editor's invalidate, which the host calls when the theme changes. Pi's Editor has no cached state to drop;
+        override this to drop the component's."""
+
 
 class EditorComponent:
     """The editor an extension installs with ``set_editor_component``. Every method defaults to the host's default editor through :attr:`base`."""
@@ -82,7 +212,7 @@ class EditorComponent:
     #: Whether the component draws the working, compaction, summarization and retry status in its top border, as Pi's
     #: CustomEditor does with ``embedWorkingStatus: true``. The host then renders the status into the rows that
     #: :meth:`EditorBase.render` returns instead of showing it above the editor. Read once, after the factory returns.
-    embed_working_status = False
+    embed_working_status: bool = False
 
     def __init__(self, base: EditorBase) -> None:
         self.base = base
@@ -105,6 +235,12 @@ class EditorComponent:
     def add_to_history(self, text: str) -> None:
         self.base.add_to_history(text)
 
+    def set_working_status_indicator(self, status: "EditorStatus | None") -> None:
+        self.base.set_working_status_indicator(status)
+
+    def invalidate(self) -> None:
+        self.base.invalidate()
+
 
 EditorFactory = Callable[[EditorBase], EditorComponent]
 
@@ -123,6 +259,9 @@ class _EditorSession:
         self.events: "queue.Queue[Any]" = queue.Queue()
         self.last_frame: tuple[int, list[str]] | None = None
         self.seq = 0
+        # The working status the component was last told, and whether it was told one.
+        self.last_status: EditorStatus | None = None
+        self.status_sent = False
         self.thread = threading.Thread(target=self._run, name=f"pig-{key}", daemon=True)
 
     def post(self, event: Any) -> None:
@@ -140,6 +279,24 @@ class _EditorSession:
         except Exception as exc:  # noqa: BLE001 - an extension's error is reported, never fatal to the worker
             self._fail(what, exc)
             return None
+
+    def _configure(self, raw: Any) -> None:
+        """Apply the host's configuration: a changed working status goes to the component's set_working_status_indicator."""
+        status = None
+        if isinstance(raw, dict):
+            status = EditorStatus(
+                kind=str(raw.get("kind", "")),
+                message=str(raw.get("message", "")),
+                frames=tuple(str(frame) for frame in raw.get("frames") or ()),
+                frame=int(raw.get("frame", 0)),
+                spinner_color=str(raw.get("spinnerColor", "")),
+                message_color=str(raw.get("messageColor", "")),
+                indicator_verbatim=bool(raw.get("indicatorVerbatim", False)),
+            )
+        if (self.status_sent and status == self.last_status) or (not self.status_sent and status is None):
+            return
+        self.status_sent, self.last_status = True, status
+        self._guard("setWorkingStatusIndicator", lambda: self.component.set_working_status_indicator(status))
 
     def _render_now(self) -> None:
         with self.extension._state_lock:
@@ -175,6 +332,10 @@ class _EditorSession:
                 self._guard("insertTextAtCursor", lambda: component.insert_text_at_cursor(payload))
             elif kind == "addToHistory":
                 self._guard("addToHistory", lambda: component.add_to_history(payload))
+            elif kind == "configure":
+                self._configure(payload)
+            elif kind == "invalidate":
+                self._guard("invalidate", component.invalidate)
             self._render_now()
 
 
@@ -184,7 +345,8 @@ _EDITOR_EVENTS = {
     "ui.editor.setText": ("setText", "text"),
     "ui.editor.insertText": ("insertText", "text"),
     "ui.editor.addToHistory": ("addToHistory", "text"),
-    "ui.editor.configure": ("render", None),
+    "ui.editor.configure": ("configure", "workingStatus"),
+    "ui.editor.invalidate": ("invalidate", None),
 }
 
 

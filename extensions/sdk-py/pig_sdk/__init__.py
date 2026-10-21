@@ -33,7 +33,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, NotRequired, Protocol, TypeAlias, TypedDict
 from . import editor_component as _editor_component
-from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory
+from .editor_component import EditorBase as EditorBase, EditorComponent as EditorComponent, EditorFactory as EditorFactory, EditorStatus as EditorStatus
 from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
 from .session_manager import SessionManager, SetupSessionManager
 from .host_info import HostInfoUnavailable as HostInfoUnavailable, get_agent_dir as get_agent_dir, get_config_dir_name as get_config_dir_name, get_version as get_version

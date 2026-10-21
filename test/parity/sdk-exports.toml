@@ -63,11 +63,6 @@ owner = "SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and render
 opened = "0.5.2"
 closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK"
 
-[lane.SdkTuiHost]
-owner = "SdkTuiHost lane (host-backed pi-tui/theme surface: kit conversation views, scroll/mouse, input/editor/loader kinds, Theme.sourceInfo)"
-opened = "0.5.2"
-closing = "New kit view kinds with a host renderer in all four SDKs and a conformance row per SDK, one native or kit cell per class and member row"
-
 [export]
 "pi-coding-agent: AgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.abort" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions" }
@@ -240,36 +235,36 @@ closing = "New kit view kinds with a host renderer in all four SDKs and a confor
 "pi-coding-agent: CredentialSynchronizationError.providerId" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: CredentialSynchronizationError.stack" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph" }
 "pi-coding-agent: CustomEditor" = { go = "native:EditorComponent", rust = "native:EditorComponent", python = "native:EditorComponent" }
-"pi-coding-agent: CustomEditor.actionHandlers" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
+"pi-coding-agent: CustomEditor.actionHandlers" = { go = "native:Editor.ActionHandlers", rust = "native:EditorBase::action_handlers", python = "native:EditorBase.action_handlers" }
 "pi-coding-agent: CustomEditor.addToHistory" = { go = "native:EditorComponent.AddToHistory", rust = "native:EditorComponent::add_to_history", python = "native:EditorComponent.add_to_history" }
-"pi-coding-agent: CustomEditor.borderColor" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.disableSubmit" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.embedWorkingStatus" = { go = "gap:SdkTuiHost", rust = "native:EditorComponent::embed_working_status", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.focused" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.getAutocompleteMaxVisible" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
+"pi-coding-agent: CustomEditor.borderColor" = { go = "native:Editor.BorderColor", rust = "native:EditorBase::border_color", python = "native:EditorBase.border_color" }
+"pi-coding-agent: CustomEditor.disableSubmit" = { go = "native:Editor.DisableSubmit", rust = "native:EditorBase::disable_submit", python = "native:EditorBase.disable_submit" }
+"pi-coding-agent: CustomEditor.embedWorkingStatus" = { go = "native:EditorStatusEmbedder.EmbedWorkingStatus", rust = "native:EditorComponent::embed_working_status", python = "native:EditorComponent.embed_working_status" }
+"pi-coding-agent: CustomEditor.focused" = { go = "native:Editor.Focused", rust = "native:EditorBase::focused", python = "native:EditorBase.focused" }
+"pi-coding-agent: CustomEditor.getAutocompleteMaxVisible" = { go = "native:Editor.GetAutocompleteMaxVisible", rust = "native:EditorBase::get_autocomplete_max_visible", python = "native:EditorBase.get_autocomplete_max_visible" }
 "pi-coding-agent: CustomEditor.getCursor" = { go = "native:Editor.GetCursor", rust = "native:EditorBase::get_cursor", python = "native:EditorBase.get_cursor" }
 "pi-coding-agent: CustomEditor.getExpandedText" = { go = "native:Editor.GetExpandedText", rust = "native:EditorBase::get_expanded_text", python = "native:EditorBase.get_expanded_text" }
 "pi-coding-agent: CustomEditor.getLines" = { go = "native:Editor.GetLines", rust = "native:EditorBase::get_lines", python = "native:EditorBase.get_lines" }
-"pi-coding-agent: CustomEditor.getPaddingX" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
+"pi-coding-agent: CustomEditor.getPaddingX" = { go = "native:Editor.GetPaddingX", rust = "native:EditorBase::get_padding_x", python = "native:EditorBase.get_padding_x" }
 "pi-coding-agent: CustomEditor.getText" = { go = "native:Editor.GetText", rust = "native:EditorBase::get_text", python = "native:EditorBase.get_text" }
 "pi-coding-agent: CustomEditor.handleInput" = { go = "native:EditorComponent.HandleInput", rust = "native:EditorComponent::handle_input", python = "native:EditorComponent.handle_input" }
 "pi-coding-agent: CustomEditor.handleMouse" = { go = "native:EditorComponent.HandleMouse", rust = "native:EditorComponent::handle_mouse", python = "native:EditorComponent.handle_mouse" }
 "pi-coding-agent: CustomEditor.insertTextAtCursor" = { go = "native:EditorComponent.InsertTextAtCursor", rust = "native:EditorComponent::insert_text_at_cursor", python = "native:EditorComponent.insert_text_at_cursor" }
-"pi-coding-agent: CustomEditor.invalidate" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
+"pi-coding-agent: CustomEditor.invalidate" = { go = "native:Editor.Invalidate", rust = "native:EditorComponent::invalidate", python = "native:EditorComponent.invalidate" }
 "pi-coding-agent: CustomEditor.isShowingAutocomplete" = { go = "native:Editor.IsShowingAutocomplete", rust = "native:EditorBase::is_showing_autocomplete", python = "native:EditorBase.is_showing_autocomplete" }
-"pi-coding-agent: CustomEditor.onAction" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.onChange" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.onCtrlD" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.onEscape" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.onExtensionShortcut" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.onPasteImage" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
-"pi-coding-agent: CustomEditor.onSubmit" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
+"pi-coding-agent: CustomEditor.onAction" = { go = "native:Editor.OnAction", rust = "native:EditorBase::on_action", python = "native:EditorBase.on_action" }
+"pi-coding-agent: CustomEditor.onChange" = { go = "native:Editor.OnChange", rust = "native:EditorBase::on_change", python = "native:EditorBase.on_change" }
+"pi-coding-agent: CustomEditor.onCtrlD" = { go = "native:Editor.SetOnCtrlD", rust = "native:EditorBase::set_on_ctrl_d", python = "native:EditorBase.on_ctrl_d" }
+"pi-coding-agent: CustomEditor.onEscape" = { go = "native:Editor.SetOnEscape", rust = "native:EditorBase::set_on_escape", python = "native:EditorBase.on_escape" }
+"pi-coding-agent: CustomEditor.onExtensionShortcut" = { go = "native:Editor.SetOnExtensionShortcut", rust = "native:EditorBase::set_on_extension_shortcut", python = "native:EditorBase.on_extension_shortcut" }
+"pi-coding-agent: CustomEditor.onPasteImage" = { go = "native:Editor.SetOnPasteImage", rust = "native:EditorBase::set_on_paste_image", python = "native:EditorBase.on_paste_image" }
+"pi-coding-agent: CustomEditor.onSubmit" = { go = "native:Editor.OnSubmit", rust = "native:EditorBase::on_submit", python = "native:EditorBase.on_submit" }
 "pi-coding-agent: CustomEditor.render" = { go = "native:EditorComponent.Render", rust = "native:EditorComponent::render", python = "native:EditorComponent.render" }
 "pi-coding-agent: CustomEditor.setAutocompleteMaxVisible" = { go = "native:Editor.SetAutocompleteMaxVisible", rust = "native:EditorBase::set_autocomplete_max_visible", python = "native:EditorBase.set_autocomplete_max_visible" }
-"pi-coding-agent: CustomEditor.setAutocompleteProvider" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
+"pi-coding-agent: CustomEditor.setAutocompleteProvider" = { go = "native:Editor.SetAutocompleteProvider", rust = "native:EditorBase::set_autocomplete_provider", python = "native:EditorBase.set_autocomplete_provider" }
 "pi-coding-agent: CustomEditor.setPaddingX" = { go = "native:Editor.SetPaddingX", rust = "native:EditorBase::set_padding_x", python = "native:EditorBase.set_padding_x" }
 "pi-coding-agent: CustomEditor.setText" = { go = "native:EditorComponent.SetText", rust = "native:EditorComponent::set_text", python = "native:EditorComponent.set_text" }
-"pi-coding-agent: CustomEditor.setWorkingStatusIndicator" = { go = "gap:SdkTuiHost", rust = "gap:SdkTuiHost", python = "gap:SdkTuiHost" }
+"pi-coding-agent: CustomEditor.setWorkingStatusIndicator" = { go = "native:Editor.SetWorkingStatusIndicator", rust = "native:EditorComponent::set_working_status_indicator", python = "native:EditorComponent.set_working_status_indicator" }
 "pi-coding-agent: CustomMessageComponent" = { go = "kit:CustomMessage", rust = "kit:CustomMessage", python = "kit:CustomMessage" }
 "pi-coding-agent: CustomMessageComponent.addChild" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107" }
 "pi-coding-agent: CustomMessageComponent.children" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107" }

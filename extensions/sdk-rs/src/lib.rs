@@ -136,7 +136,9 @@ pub use user_bash::{BashExecFn, BashExecOptions, BashOperations};
 
 mod js_string;
 pub use js_string::JsString;
-pub use editor_component::{EditorBase, EditorComponent, EditorCursor, EditorFactory, EditorMouseEvent};
+pub use editor_component::{
+    EditorActionHandlers, EditorBase, EditorComponent, EditorCursor, EditorFactory, EditorHook, EditorMouseEvent, EditorShortcutHook, EditorStatus,
+};
 
 pub use context::{
     CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,

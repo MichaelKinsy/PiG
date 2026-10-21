@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
 |---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 305 | 910 | 668 | 667 | 668 |
+| `pi-coding-agent` | 920 | 305 | 910 | 651 | 651 | 651 |
 | `pi-tui` | 364 | 85 | 363 | 146 | 146 | 146 |
 | `pi-ai` | 87 | 190 | 87 | 86 | 87 | 87 |
 | `pi-ai/compat` | 146 | 197 | 146 | 142 | 143 | 143 |
@@ -26,7 +26,6 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 301 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 1041 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 249 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
-| SdkTuiHost | SdkTuiHost lane (host-backed pi-tui/theme surface: kit conversation views, scroll/mouse, input/editor/loader kinds, Theme.sourceInfo) | 0.5.2 | 50 | New kit view kinds with a host renderer in all four SDKs and a conformance row per SDK, one native or kit cell per class and member row |
 
 ## High-use gaps (block the release gate)
 
@@ -271,36 +270,36 @@ None.
 | `CredentialSynchronizationError.providerId` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `CredentialSynchronizationError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `CustomEditor` | 13 | served | native:EditorComponent | native:EditorComponent | native:EditorComponent |
-| `CustomEditor.actionHandlers` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
+| `CustomEditor.actionHandlers` | 0 | served | native:Editor.ActionHandlers | native:EditorBase::action_handlers | native:EditorBase.action_handlers |
 | `CustomEditor.addToHistory` | 0 | served | native:EditorComponent.AddToHistory | native:EditorComponent::add_to_history | native:EditorComponent.add_to_history |
-| `CustomEditor.borderColor` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.disableSubmit` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.embedWorkingStatus` | 0 | served | gap:SdkTuiHost | native:EditorComponent::embed_working_status | gap:SdkTuiHost |
-| `CustomEditor.focused` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.getAutocompleteMaxVisible` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
+| `CustomEditor.borderColor` | 0 | served | native:Editor.BorderColor | native:EditorBase::border_color | native:EditorBase.border_color |
+| `CustomEditor.disableSubmit` | 0 | served | native:Editor.DisableSubmit | native:EditorBase::disable_submit | native:EditorBase.disable_submit |
+| `CustomEditor.embedWorkingStatus` | 0 | served | native:EditorStatusEmbedder.EmbedWorkingStatus | native:EditorComponent::embed_working_status | native:EditorComponent.embed_working_status |
+| `CustomEditor.focused` | 0 | served | native:Editor.Focused | native:EditorBase::focused | native:EditorBase.focused |
+| `CustomEditor.getAutocompleteMaxVisible` | 0 | served | native:Editor.GetAutocompleteMaxVisible | native:EditorBase::get_autocomplete_max_visible | native:EditorBase.get_autocomplete_max_visible |
 | `CustomEditor.getCursor` | 0 | served | native:Editor.GetCursor | native:EditorBase::get_cursor | native:EditorBase.get_cursor |
 | `CustomEditor.getExpandedText` | 0 | served | native:Editor.GetExpandedText | native:EditorBase::get_expanded_text | native:EditorBase.get_expanded_text |
 | `CustomEditor.getLines` | 0 | served | native:Editor.GetLines | native:EditorBase::get_lines | native:EditorBase.get_lines |
-| `CustomEditor.getPaddingX` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
+| `CustomEditor.getPaddingX` | 0 | served | native:Editor.GetPaddingX | native:EditorBase::get_padding_x | native:EditorBase.get_padding_x |
 | `CustomEditor.getText` | 0 | served | native:Editor.GetText | native:EditorBase::get_text | native:EditorBase.get_text |
 | `CustomEditor.handleInput` | 0 | served | native:EditorComponent.HandleInput | native:EditorComponent::handle_input | native:EditorComponent.handle_input |
 | `CustomEditor.handleMouse` | 0 | served | native:EditorComponent.HandleMouse | native:EditorComponent::handle_mouse | native:EditorComponent.handle_mouse |
 | `CustomEditor.insertTextAtCursor` | 0 | served | native:EditorComponent.InsertTextAtCursor | native:EditorComponent::insert_text_at_cursor | native:EditorComponent.insert_text_at_cursor |
-| `CustomEditor.invalidate` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
+| `CustomEditor.invalidate` | 0 | served | native:Editor.Invalidate | native:EditorComponent::invalidate | native:EditorComponent.invalidate |
 | `CustomEditor.isShowingAutocomplete` | 0 | served | native:Editor.IsShowingAutocomplete | native:EditorBase::is_showing_autocomplete | native:EditorBase.is_showing_autocomplete |
-| `CustomEditor.onAction` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.onChange` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.onCtrlD` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.onEscape` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.onExtensionShortcut` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.onPasteImage` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
-| `CustomEditor.onSubmit` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
+| `CustomEditor.onAction` | 0 | served | native:Editor.OnAction | native:EditorBase::on_action | native:EditorBase.on_action |
+| `CustomEditor.onChange` | 0 | served | native:Editor.OnChange | native:EditorBase::on_change | native:EditorBase.on_change |
+| `CustomEditor.onCtrlD` | 0 | served | native:Editor.SetOnCtrlD | native:EditorBase::set_on_ctrl_d | native:EditorBase.on_ctrl_d |
+| `CustomEditor.onEscape` | 0 | served | native:Editor.SetOnEscape | native:EditorBase::set_on_escape | native:EditorBase.on_escape |
+| `CustomEditor.onExtensionShortcut` | 0 | served | native:Editor.SetOnExtensionShortcut | native:EditorBase::set_on_extension_shortcut | native:EditorBase.on_extension_shortcut |
+| `CustomEditor.onPasteImage` | 0 | served | native:Editor.SetOnPasteImage | native:EditorBase::set_on_paste_image | native:EditorBase.on_paste_image |
+| `CustomEditor.onSubmit` | 0 | served | native:Editor.OnSubmit | native:EditorBase::on_submit | native:EditorBase.on_submit |
 | `CustomEditor.render` | 0 | served | native:EditorComponent.Render | native:EditorComponent::render | native:EditorComponent.render |
 | `CustomEditor.setAutocompleteMaxVisible` | 0 | served | native:Editor.SetAutocompleteMaxVisible | native:EditorBase::set_autocomplete_max_visible | native:EditorBase.set_autocomplete_max_visible |
-| `CustomEditor.setAutocompleteProvider` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
+| `CustomEditor.setAutocompleteProvider` | 0 | served | native:Editor.SetAutocompleteProvider | native:EditorBase::set_autocomplete_provider | native:EditorBase.set_autocomplete_provider |
 | `CustomEditor.setPaddingX` | 0 | served | native:Editor.SetPaddingX | native:EditorBase::set_padding_x | native:EditorBase.set_padding_x |
 | `CustomEditor.setText` | 0 | served | native:EditorComponent.SetText | native:EditorComponent::set_text | native:EditorComponent.set_text |
-| `CustomEditor.setWorkingStatusIndicator` | 0 | served | gap:SdkTuiHost | gap:SdkTuiHost | gap:SdkTuiHost |
+| `CustomEditor.setWorkingStatusIndicator` | 0 | served | native:Editor.SetWorkingStatusIndicator | native:EditorComponent::set_working_status_indicator | native:EditorComponent.set_working_status_indicator |
 | `CustomMessageComponent` | 0 | served | kit:CustomMessage | kit:CustomMessage | kit:CustomMessage |
 | `CustomMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
 | `CustomMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |

@@ -1017,6 +1017,12 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         }
     });
+    ext.command("editor-install-hooks", "Install a custom editor that sets CustomEditor's handlers", |ctx, _args| {
+        match ctx.set_editor_component(|base| Box::new(HooksEditor::new(base))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
     ext.flag("flag-true", pig_sdk::FlagOptions::boolean("", true));
     ext.flag("flag-false", pig_sdk::FlagOptions::boolean("", false));
     ext.flag("flag-string", pig_sdk::FlagOptions::string("", "default"));
@@ -3323,6 +3329,83 @@ impl EditorComponent for EmbeddingEditor {
     }
     fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
         self.0.render(width)
+    }
+}
+
+/// A CustomEditor subclass that sets the handlers Pi's CustomEditor keeps as public fields (on_escape, on_ctrl_d, on_paste_image,
+/// action_handlers through on_action, on_extension_shortcut), reads and sets the members it inherits from Pi's Editor on its base ("M"),
+/// and hears the host's working status and invalidate. Each handler writes what ran into the host's text
+/// (TestEditorComponentAppHandlersRunInTheExtension, TestEditorComponentInheritedMembersReachTheHost,
+/// TestEditorComponentHearsTheWorkingStatusAndInvalidate).
+struct HooksEditor(ConformanceEditor);
+
+fn io_message(err: std::io::Error) -> String {
+    err.to_string()
+}
+
+impl HooksEditor {
+    fn new(base: EditorBase) -> Self {
+        let say = |what: &'static str| -> pig_sdk::EditorHook {
+            let base = base.clone();
+            Arc::new(move || base.set_text(&JsString::from(format!("raw:hook={what}"))).map_err(io_message))
+        };
+        base.set_on_escape(Some(say("escape")));
+        base.set_on_ctrl_d(Some(say("ctrl-d")));
+        base.set_on_paste_image(Some(say("paste-image")));
+        base.on_action("app.clear", say("clear"));
+        // action_handlers is the live map: an entry removed from it is no longer the component's.
+        base.on_action("app.unused", say("unused"));
+        let _ = base.action_handlers().remove("app.unused");
+        let shortcut_base = base.clone();
+        base.set_on_extension_shortcut(Some(Arc::new(move |data: &JsString| {
+            if data != "S" {
+                return Ok(false);
+            }
+            shortcut_base.set_text(&JsString::from("raw:hook=shortcut")).map_err(io_message)?;
+            Ok(true)
+        })));
+        HooksEditor(ConformanceEditor { base })
+    }
+}
+
+impl EditorComponent for HooksEditor {
+    fn base(&self) -> &EditorBase {
+        self.0.base()
+    }
+    fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        if data != "M" {
+            return self.0.handle_input(data);
+        }
+        let base = &self.0.base;
+        let padding = base.get_padding_x().map_err(io_message)?;
+        let visible = base.get_autocomplete_max_visible().map_err(io_message)?;
+        let border = base.border_color(&JsString::from("x")).map_err(io_message)?;
+        base.set_disable_submit(true).map_err(io_message)?;
+        let disabled = base.disable_submit().map_err(io_message)?;
+        base.set_focused(true).map_err(io_message)?;
+        let focused = base.focused().map_err(io_message)?;
+        let provider = pig_sdk::kit::Autocomplete::new([pig_sdk::kit::SlashCommand::new("help").description("Show help")]).base_path("/work");
+        base.set_autocomplete_provider(Some(&provider)).map_err(io_message)?;
+        base.on_submit(&JsString::from("sub")).map_err(io_message)?;
+        base.on_change(&JsString::from("chg")).map_err(io_message)?;
+        let text = format!("raw:members=padding={padding},max={visible},border={},disable={disabled},focused={focused}", border.to_string_lossy());
+        base.set_text(&JsString::from(text)).map_err(io_message)
+    }
+    fn set_text(&mut self, text: &JsString) -> Result<(), String> {
+        self.0.set_text(text)
+    }
+    fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
+        self.0.render(width)
+    }
+    fn set_working_status_indicator(&mut self, status: Option<&pig_sdk::EditorStatus>) -> Result<(), String> {
+        let text = match status {
+            None => "raw:status=none".to_string(),
+            Some(status) => format!("raw:status={}/{}/{}", status.kind, status.message, status.frame),
+        };
+        self.0.base.set_text(&JsString::from(text)).map_err(io_message)
+    }
+    fn invalidate(&mut self) -> Result<(), String> {
+        self.0.base.set_text(&JsString::from("raw:invalidated")).map_err(io_message)
     }
 }
 

@@ -139,23 +139,7 @@ impl Widget {
                     put(map, "history", Value::Array(n.history.iter().map(|h| Value::String(h.clone())).collect()));
                 }
                 if let Some(a) = &n.autocomplete {
-                    let mut auto = Map::new();
-                    if !a.commands.is_empty() {
-                        let commands = a
-                            .commands
-                            .iter()
-                            .map(|c| {
-                                let mut command = Map::new();
-                                put(&mut command, "name", c.name.as_str());
-                                put_nonempty(&mut command, "description", &c.description);
-                                put_nonempty(&mut command, "argumentHint", &c.argument_hint);
-                                Value::Object(command)
-                            })
-                            .collect();
-                        put(&mut auto, "commands", Value::Array(commands));
-                    }
-                    put_nonempty(&mut auto, "basePath", &a.base_path);
-                    put(map, "autocomplete", Value::Object(auto));
+                    put(map, "autocomplete", a.wire());
                 }
             }
             Widget::ScrollView(n) => {
@@ -660,6 +644,27 @@ impl Autocomplete {
     pub fn base_path(mut self, base_path: impl Into<String>) -> Self {
         self.base_path = base_path.into();
         self
+    }
+
+    /// The provider as the wire carries it: an editor node's `autocomplete` field and `setAutocompleteProvider`'s argument.
+    pub(crate) fn wire(&self) -> Value {
+        let mut auto = Map::new();
+        if !self.commands.is_empty() {
+            let commands = self
+                .commands
+                .iter()
+                .map(|c| {
+                    let mut command = Map::new();
+                    put(&mut command, "name", c.name.as_str());
+                    put_nonempty(&mut command, "description", &c.description);
+                    put_nonempty(&mut command, "argumentHint", &c.argument_hint);
+                    Value::Object(command)
+                })
+                .collect();
+            put(&mut auto, "commands", Value::Array(commands));
+        }
+        put_nonempty(&mut auto, "basePath", &self.base_path);
+        Value::Object(auto)
     }
 }
 
