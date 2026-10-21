@@ -35,7 +35,7 @@ func text(content any) string {
 	return out.String()
 }
 
-func conversation(manager sdk.SessionManager) string {
+func conversation(manager sdk.ReadonlySessionManager) string {
 	branch, err := manager.GetBranch(nil)
 	if err != nil {
 		return "error:" + err.Error()
@@ -59,7 +59,7 @@ func marks() map[string]string {
 	return values
 }
 
-func sessionFile(manager sdk.SessionManager) string {
+func sessionFile(manager sdk.ReadonlySessionManager) string {
 	file, err := manager.GetSessionFile()
 	if err != nil || file == nil {
 		return ""
