@@ -2,7 +2,6 @@
 """Build the current CJK dictionary index from ICU 78.3's exact source data."""
 import hashlib
 import pathlib
-import gzip
 import struct
 import sys
 
@@ -37,6 +36,6 @@ encoded += struct.pack("<" + "I" * len(offsets), *offsets)
 encoded += bytes(cost for _, cost in rows)
 encoded += b"".join(word for word, _ in rows)
 root = pathlib.Path(__file__).resolve().parent
-(root / "cjk_dictionary.bin.gz").write_bytes(gzip.compress(encoded, compresslevel=9, mtime=0))
+(root / "cjk_dictionary.bin").write_bytes(encoded)
 (root.parent.parent / "LICENSES" / "LicenseRef-ICU-CJK.txt").write_text("\n".join(license_lines).strip() + "\n", encoding="utf-8")
 print(f"{len(rows)} dictionary entries, {len(encoded)} bytes, source sha256:{SOURCE_HASH}")

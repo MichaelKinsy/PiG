@@ -25,7 +25,7 @@ func TestStripWordDictionariesBuildOmitsDictionaryEmbeds(t *testing.T) {
 		}
 		return strings.Fields(string(out))
 	}
-	want := []string{"burmese_dictionary.bin.gz", "cjk_dictionary.bin.gz", "khmer_dictionary.bin.gz", "lao_dictionary.bin.gz", "thai_dictionary.bin.gz"}
+	want := []string{"burmese_dictionary.bin", "cjk_dictionary.bin", "khmer_dictionary.bin", "lao_dictionary.bin", "thai_dictionary.bin"}
 	if got := embeds(); !slices.Equal(got, want) {
 		t.Fatalf("stock embeds %v, want %v", got, want)
 	}

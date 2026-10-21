@@ -27,7 +27,7 @@ ICU sources are under <https://github.com/unicode-org/icu/tree/release-78.3/icu4
 
 Dictionary sources are in `data/brkitr/dictionaries/`:
 
-| File | SHA256 | Index bytes (inflated) |
+| File | SHA256 | Embedded index bytes |
 |---|---|---:|
 | `cjdict.txt` | `e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0` | 4,212,243 |
 | `thaidict.txt` | `3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274` | 260,897 |
@@ -51,7 +51,7 @@ The CJK index has one current unversioned shape: a little-endian uint32 entry co
 
 The Southeast Asian indexes have one current unversioned shape: a little-endian uint32 entry count, `count + 1` uint32 offsets, and concatenated offset-transformed word bytes in lexical order. They preserve the byte transforms in ICU's `data/BUILDRULES.py`, including the ZWNJ/ZWJ reserved bytes. They need no weights. The four indexes total 2,108,721 bytes.
 
-The indexes are embedded gzip-compressed (`*_dictionary.bin.gz`, 2,654,497 bytes against 6,320,964 inflated). A dictionary is inflated once, by the first segmentation of text in its script, on the caller's goroutine: about 4.2 MB for CJK, the first CJK segmentation on the input loop pays for it (`BenchmarkFirstUseInflate` measures each script), and a session that never segments such text never inflates anything. Lookup then borrows the inflated string: it narrows a sorted prefix range without constructing a runtime dictionary map. `PossibleWord` caches have fixed size. Per-call temporary storage scales with the supplied text, not Session history. No worker, retained cache, IPC, network call or file descriptor is created.
+Lookup borrows the embedded strings. It narrows a sorted prefix range without constructing a runtime dictionary map or decompressing the data on the input loop. `PossibleWord` caches have fixed size. Per-call temporary storage scales with the supplied text, not Session history. No worker, retained cache, IPC, network call or file descriptor is created.
 
 The generators copy the complete dictionary notices to `LICENSES/LicenseRef-ICU-CJK.txt` and `LICENSES/LicenseRef-ICU-SEA.txt`. See those files, `LICENSES/Unicode-3.0.txt`, `REUSE.toml`, and `THIRD_PARTY_NOTICES.md` for redistribution terms.
 

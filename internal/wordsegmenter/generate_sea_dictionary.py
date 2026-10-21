@@ -2,7 +2,6 @@
 """Build ICU 78.3's four byte dictionaries and Unicode 17 complex-context sets."""
 import hashlib
 import pathlib
-import gzip
 import struct
 import sys
 
@@ -47,7 +46,7 @@ for name, file, digest, base in DICTIONARIES:
         raise SystemExit("dictionary offsets exceed uint32")
     # Current unversioned byte index: uint32 count, count+1 uint32 offsets, word bytes.
     encoded = struct.pack("<I", len(rows)) + struct.pack("<" + "I" * len(offsets), *offsets) + b"".join(rows)
-    (ROOT / (name + "_dictionary.bin.gz")).write_bytes(gzip.compress(encoded, compresslevel=9, mtime=0))
+    (ROOT / (name + "_dictionary.bin")).write_bytes(encoded)
     notices.append(file + ".txt (ICU release-78.3)\n\n" + "\n".join(notice).strip())
     print(f"{name}: {len(rows)} entries, {len(encoded)} bytes, sha256:{digest}")
 (ROOT.parent.parent / "LICENSES/LicenseRef-ICU-SEA.txt").write_text("\n\n".join(notices) + "\n", encoding="utf8")
