@@ -52,7 +52,7 @@ type NodeSqliteStorageOptions struct {
 
 // OpenNodeSqliteStorage opens or creates file-backed durable storage, optionally under a table prefix. An invalid
 // prefix fails before the database or its directory is created. A store at an older schema version is copied to
-// <path>.schema-v<N>.bak before it is upgraded (D188).
+// <path>.schema-<N>.bak before it is upgraded (D188).
 func OpenNodeSqliteStorage(path string, options NodeSqliteStorageOptions) (*durablesqlite.SqliteStorage, error) {
 	schema, err := durablesqlite.CreateSqliteSchema(options.Prefix)
 	if err != nil {
