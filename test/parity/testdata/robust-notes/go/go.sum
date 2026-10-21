@@ -1,4 +1,4 @@
-github.com/MichaelKinsy/PiG/extensions/sdk v0.5.0 h1:CDDQ2IK5k7CK9XV7f8nA/l65Tm0y7OvqSOM5Gq3Vink=
-github.com/MichaelKinsy/PiG/extensions/sdk v0.5.0/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.5.1 h1:dG2V5jJdrXaIjgO+iNIX93uEVHerNWIdgclYahYVbm4=
+github.com/MichaelKinsy/PiG/extensions/sdk v0.5.1/go.mod h1:4j0XhCW0EPOBWvqYE7XKjTvIAahI7K1VyyW3KpjTKj8=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=

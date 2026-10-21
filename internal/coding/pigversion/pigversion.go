@@ -6,7 +6,7 @@ package pigversion
 
 // PigVersion is PiG's release line. It advances independently of the upstream
 // Pi target.
-const PigVersion = "0.5.0"
+const PigVersion = "0.5.1"
 
 // UpstreamRef is the pinned tag or commit of Pi.
 const UpstreamRef = "1402973a9dbe8c627341e04c9744c54953e285ca"
