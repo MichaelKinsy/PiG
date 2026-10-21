@@ -1438,15 +1438,22 @@ func (c *Conn) endRequestWindowByReport(requestID string) {
 	window := c.startWindows[requestID]
 	c.pendingMu.Unlock()
 	if window == nil {
+		// A call that holds no start window (a tool outside the dispatcher's parallel batch) has no write waiting for one: the runtime's next fileMutation.enter holds until it hears so.
+		c.sendToolWindowSettled(requestID)
 		return
 	}
 	window.Close()
 	go func() {
 		window.AwaitSettled()
-		// A request id is the host's own "r" and a number, or the id of the request it nests in: plain ASCII, so strconv's quoting is JSON's.
-		args := []byte(`{"request_id":` + strconv.Quote(requestID) + `}`)
-		_ = c.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyToolWindowSettled, Args: args}})
+		c.sendToolWindowSettled(requestID)
 	}()
+}
+
+// sendToolWindowSettled tells the runtime that the writes that waited for the start window of the tool_call request requestID registered, or that none waited.
+func (c *Conn) sendToolWindowSettled(requestID string) {
+	// A request id is the host's own "r" and a number, or the id of the request it nests in: plain ASCII, so strconv's quoting is JSON's.
+	args := []byte(`{"request_id":` + strconv.Quote(requestID) + `}`)
+	_ = c.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyToolWindowSettled, Args: args}})
 }
 
 // writeBatchFrames and writeBatchBytes bound the encoded frames the writer coalesces into one socket write.
