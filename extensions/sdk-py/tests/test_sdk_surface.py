@@ -178,9 +178,41 @@ def test_dialog_timeout_sends_opts() -> None:
         ("ui.select", {"title": "Pick", "options": ["a", "b"], "opts": {"timeout": 1000}}),
         ("ui.confirm", {"title": "Sure?", "message": "really", "opts": {"timeout": 2000}}),
         ("ui.input", {"title": "Name", "placeholder": "who", "opts": {"timeout": 3000}}),
-        ("ui.input", {"title": "Plain", "placeholder": ""}),
+        ("ui.input", {"title": "Plain"}),
     ]
     assert seen == [("b", True), True, ("pi", True), ("pi", True)]
+
+
+def test_empty_and_unset_ui_members_stay_distinct_on_the_wire() -> None:
+    """Pi's rpc-mode writes "" and [] where an extension passes them and omits `undefined`: set_status("") and clear_status differ, and so do an omitted placeholder/prefill and an empty one."""
+
+    def handler(ctx: pig_sdk.Context) -> None:
+        ctx.set_status("k", "")
+        ctx.clear_status("k")
+        ctx.notify("")
+        ctx.set_title("")
+        ctx.set_editor_text("")
+        ctx.select("T", [])
+        ctx.confirm("", "")
+        ctx.input("T")
+        ctx.input("T", "")
+        ctx.editor("E")
+        ctx.editor("E", "")
+
+    calls, _ = _run_command(handler, {})
+    assert [(c["call"]["method"], c["call"]["args"]) for c in calls] == [
+        ("ui.setStatus", {"key": "k", "text": ""}),
+        ("ui.setStatus", {"key": "k"}),
+        ("ui.notify", {"message": "", "level": ""}),
+        ("ui.setTitle", {"title": ""}),
+        ("ui.setEditorText", {"text": ""}),
+        ("ui.select", {"title": "T", "options": []}),
+        ("ui.confirm", {"title": "", "message": ""}),
+        ("ui.input", {"title": "T"}),
+        ("ui.input", {"title": "T", "placeholder": ""}),
+        ("ui.editor", {"title": "E"}),
+        ("ui.editor", {"title": "E", "prefill": ""}),
+    ]
 
 
 def test_set_footer_and_header_send_lines() -> None:

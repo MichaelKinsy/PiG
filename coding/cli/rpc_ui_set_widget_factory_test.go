@@ -24,7 +24,7 @@ func TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory(t *testing.T
 		t.Fatalf("a nil factory sent %d requests, want 1 setWidget removal", len(sent))
 	}
 	got := sent[0]
-	if got.Method != RPCUIMethodSetWidget || got.WidgetKey != "w" || got.WidgetLines != nil || got.WidgetPlacement != string(extension.WidgetPlacementBelowEditor) {
+	if got.Method != RPCUIMethodSetWidget || got.WidgetKey == nil || *got.WidgetKey != "w" || got.WidgetLines != nil || got.WidgetPlacement != string(extension.WidgetPlacementBelowEditor) {
 		t.Fatalf("nil factory request = %+v, want setWidget w without widgetLines, placement belowEditor", got)
 	}
 }
