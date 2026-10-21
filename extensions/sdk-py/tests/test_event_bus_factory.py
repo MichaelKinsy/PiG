@@ -1,6 +1,7 @@
-"""A factory's ``pi.events.emit`` is Pi's synchronous EventEmitter emit (event-bus.ts:13-34): the listeners of the extensions loaded before hear it at
-once, then the factory's own, each before ``emit`` returns, and an emit on ``"error"`` that nobody hears raises. A native SDK has no connection while its
-factory runs, so the first factory-time bus call dials the host (as ``parse_frontmatter`` does) and ``run`` takes that connection.
+"""A listener a factory subscribes joins Pi's shared emitter at once (event-bus.ts:13-34), so it hears an emit another extension makes while the factory
+runs, and a factory's emit is delivered by the host to every listener in order. A native SDK has no connection while its factory runs, so the first
+factory-time bus call dials the host (as ``parse_frontmatter`` does), ``run`` takes that connection, and a factory-time call answers the host's
+``events.dispatch`` requests on it while it waits.
 
 The Go SDK's tests for the same contract are extensions/sdk/event_bus_factory_test.go."""
 
@@ -80,70 +81,137 @@ def host(monkeypatch: pytest.MonkeyPatch):
     host_helpers._State.dialled.clear()
 
 
-def test_emit_reaches_the_host_and_own_listeners_before_it_returns(host) -> None:
-    heard: list[Any] = []
+def _dispatch(fake: _FactoryHost, request_id: str, handler_id: str, channel: str, payload: Any) -> dict[str, Any]:
+    """Send the host's events.dispatch request and return the response the extension answers with, serving a bus call the listener makes meanwhile."""
+    assert fake.conn is not None
+    _write_frame(fake.conn, {"type": "request", "id": request_id, "request": {"method": "events.dispatch", "args": {"handlerId": handler_id, "channel": channel, "json": payload}}})
+    while True:
+        env = _read_frame_raw(fake.conn)
+        if env["type"] == "response" and env["id"] == request_id:
+            return env["response"]
+        if env["type"] == "call":
+            fake.calls.append(env["call"])
+            _write_frame(fake.conn, {"type": "call_result", "id": env["id"], "call_result": {"result": None}})
+
+
+def test_on_registers_with_the_host_at_once(host) -> None:
     ext = pig_sdk.Extension("bus")
-    ext.events.on("ch", lambda ctx, data: heard.append(data))
     fake = host(None)
     worker = fake.serve(1)
-    assert ext.events.emit("ch", {"n": 1}) is None
+    ext.events.on("ch", lambda ctx, data: None)
     worker.join(timeout=5)
     call = fake.calls[0]
-    assert call["method"] == "events.emit"
-    assert call["args"] == {"channel": "ch", "json": {"n": 1}, "value": True}
+    assert call["method"] == "events.on"
+    assert call["args"]["channel"] == "ch" and call["args"]["value"] is True and call["args"]["handlerId"]
     assert "parent_request_id" not in call
-    # The host does not hold this extension's listener yet: it ran inline, and has finished when emit returned.
-    assert heard == [{"n": 1}]
 
 
-def test_listeners_run_in_order_and_a_failure_reaches_neither_the_emitter_nor_the_rest(host, capsys) -> None:
-    order: list[str] = []
+def test_the_host_dispatches_to_a_factory_listener_while_a_call_waits_and_run_does_not_register_it_again(host) -> None:
+    heard: list[Any] = []
     ext = pig_sdk.Extension("bus")
-    bus = ext.events
-    bus.on("ch", lambda ctx, data: order.append("first"))
+    fake = host(None, None)
+    worker = fake.serve(1)
+    ext.events.on("ack", lambda ctx, data: heard.append(data))
+    worker.join(timeout=5)
+    handler_id = fake.calls[0]["args"]["handlerId"]
+
+    # An earlier extension's listener answers the factory's emit on cross with an emit on ack: the host dispatches ack to the factory's listener before it answers cross.
+    def emit_cross() -> None:
+        ext.events.emit("cross", "ping")
+
+    emitter = threading.Thread(target=emit_cross, daemon=True)
+    emitter.start()
+    call = _read_frame_raw(fake.conn)
+    assert call["type"] == "call" and call["call"]["method"] == "events.emit"
+    response = _dispatch(fake, "d1", handler_id, "ack", "pong")
+    assert response["error"] is None
+    assert heard == ["pong"]
+    _write_frame(fake.conn, {"type": "call_result", "id": call["id"], "call_result": {"result": None}})
+    emitter.join(timeout=5)
+    assert not emitter.is_alive()
+
+    runner = threading.Thread(target=ext.run_with_socket, args=(fake.path,), daemon=True)
+    runner.start()
+    # The first frame Run sends is the register frame: the listener is not registered a second time.
+    assert _read_frame_raw(fake.conn)["type"] == "register"
+    _write_frame(fake.conn, {"type": "ready", "ready": {"cwd": fake.dir, "width": 80}})
+    _write_frame(fake.conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
+    runner.join(timeout=5)
+    assert fake.accepted == 1
+
+
+def test_a_listener_failure_fails_only_its_dispatch(host) -> None:
+    ext = pig_sdk.Extension("bus")
+    fake = host(None, None, None)
+    worker = fake.serve(2)
 
     def boom(ctx, data):
         raise ValueError("boom")
 
-    bus.on("ch", boom)
-    off = bus.on("ch", lambda ctx, data: order.append("unsubscribed"))
-    off()
-    bus.on("ch", lambda ctx, data: order.append("last"))
-    fake = host(None)
-    worker = fake.serve(1)
-    bus.emit("ch", None)
-    bus.on("ch", lambda ctx, data: order.append("late"))
+    ext.events.on("fail", boom)
+    ext.events.on("ok", lambda ctx, data: None)
     worker.join(timeout=5)
-    assert order == ["first", "last"]
-    assert "Event handler error (ch): boom" in capsys.readouterr().err
+    failing, fine = (call["args"]["handlerId"] for call in fake.calls)
+    emitter = threading.Thread(target=lambda: ext.events.emit("x", None), daemon=True)
+    emitter.start()
+    call = _read_frame_raw(fake.conn)
+    assert _dispatch(fake, "d1", failing, "fail", None)["error"] == {"message": "boom"}
+    assert _dispatch(fake, "d2", fine, "ok", None)["error"] is None
+    _write_frame(fake.conn, {"type": "call_result", "id": call["id"], "call_result": {"result": None}})
+    emitter.join(timeout=5)
 
 
-def test_an_error_emit_nobody_hears_raises_and_an_own_listener_hears_it(host) -> None:
+def test_a_request_the_extension_cannot_serve_yet_is_refused(host) -> None:
     ext = pig_sdk.Extension("bus")
-    fake = host({"unhandledError": True}, {"unhandledError": True})
+    fake = host(None, None)
+    worker = fake.serve(1)
+    ext.events.on("ch", lambda ctx, data: None)
+    worker.join(timeout=5)
+    emitter = threading.Thread(target=lambda: ext.events.emit("x", None), daemon=True)
+    emitter.start()
+    call = _read_frame_raw(fake.conn)
+    _write_frame(fake.conn, {"type": "request", "id": "t1", "request": {"method": "tool_call", "args": {}}})
+    refused = _read_frame_raw(fake.conn)
+    assert refused["type"] == "response" and "not registered" in refused["response"]["error"]["message"]
+    _write_frame(fake.conn, {"type": "call_result", "id": call["id"], "call_result": {"result": None}})
+    emitter.join(timeout=5)
+
+
+def test_unsubscribe_reaches_the_host_over_the_factory_connection(host) -> None:
+    ext = pig_sdk.Extension("bus")
+    fake = host(None, None)
     worker = fake.serve(2)
+    off = ext.events.on("ch", lambda ctx, data: None)
+    off()
+    worker.join(timeout=5)
+    assert [call["method"] for call in fake.calls] == ["events.on", "events.off"]
+    assert fake.calls[1]["args"]["handlerId"] == fake.calls[0]["args"]["handlerId"]
+
+
+def test_an_error_emit_raises_when_the_host_reports_nobody_heard(host) -> None:
+    ext = pig_sdk.Extension("bus")
+    fake = host({"unhandledError": True})
+    worker = fake.serve(1)
     with pytest.raises(RuntimeError, match="unhandled error event"):
         ext.events.emit("error", {"x": 1})
-    heard: list[Any] = []
-    own = pig_sdk.Extension("own")
-    own.events.on("error", lambda ctx, data: heard.append(data))
-    own.events.emit("error", "bad")
     worker.join(timeout=5)
-    assert heard == ["bad"]
 
 
-def test_without_a_host_a_factory_emit_fails(monkeypatch) -> None:
+def test_without_a_host_a_factory_emit_fails_and_a_listener_waits_for_run(monkeypatch) -> None:
     monkeypatch.delenv("PIG_EXT_SOCKET", raising=False)
     host_helpers._State.running[:] = []
+    ext = pig_sdk.Extension("bus")
     with pytest.raises(RuntimeError, match="PIG_EXT_SOCKET"):
-        pig_sdk.Extension("bus").events.emit("ch", None)
+        ext.events.emit("ch", None)
+    ext.events.on("ch", lambda ctx, data: None)
+    assert len(ext._bus._pending) == 1
 
 
 def test_a_factory_listener_context_serves_only_the_bus(host) -> None:
-    heard: list[str] = []
     seen: dict[str, Any] = {}
     ext = pig_sdk.Extension("bus")
-    ext.events.on("inner", lambda ctx, data: heard.append("inner"))
+    fake = host(None, None)
+    worker = fake.serve(1)
 
     def outer(ctx, data):
         ctx.events.emit("inner", None)
@@ -153,32 +221,13 @@ def test_a_factory_listener_context_serves_only_the_bus(host) -> None:
             seen["error"] = str(exc)
 
     ext.events.on("outer", outer)
-    fake = host(None, None)
-    worker = fake.serve(2)
-    ext.events.emit("outer", None)
     worker.join(timeout=5)
-    assert [call["args"]["channel"] for call in fake.calls] == ["outer", "inner"]
-    assert heard == ["inner"]
+    handler_id = fake.calls[0]["args"]["handlerId"]
+    emitter = threading.Thread(target=lambda: ext.events.emit("x", None), daemon=True)
+    emitter.start()
+    call = _read_frame_raw(fake.conn)
+    assert _dispatch(fake, "d1", handler_id, "outer", None)["error"] is None
+    _write_frame(fake.conn, {"type": "call_result", "id": call["id"], "call_result": {"result": None}})
+    emitter.join(timeout=5)
+    assert [call["method"] + ":" + str(call["args"].get("channel")) for call in fake.calls[1:]] == ["events.emit:inner"]
     assert "not registered" in seen["error"]
-
-
-def test_run_takes_the_connection_the_factory_dialled_and_registers_the_listener(host) -> None:
-    heard: list[Any] = []
-    ext = pig_sdk.Extension("bus")
-    ext.events.on("ch", lambda ctx, data: heard.append(data))
-    fake = host(None)
-    worker = fake.serve(1)
-    ext.events.emit("ch", 1)
-    worker.join(timeout=5)
-    runner = threading.Thread(target=ext.run_with_socket, args=(fake.path,), daemon=True)
-    runner.start()
-    on = _read_frame_raw(fake.conn)
-    assert on["call"]["method"] == "events.on" and on["call"]["args"]["channel"] == "ch"
-    _write_frame(fake.conn, {"type": "call_result", "id": on["id"], "call_result": {"result": None}})
-    assert _read_frame_raw(fake.conn)["type"] == "register"
-    _write_frame(fake.conn, {"type": "ready", "ready": {"cwd": fake.dir, "width": 80}})
-    _write_frame(fake.conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
-    runner.join(timeout=5)
-    # One connection served the emit and the run, and the emit was not delivered a second time.
-    assert fake.accepted == 1
-    assert heard == [1]

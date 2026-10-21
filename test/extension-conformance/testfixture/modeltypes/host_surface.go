@@ -21,6 +21,9 @@ func registerHostSurface(e *sdk.Extension) {
 		errorEmitFailed bool
 		// crossOwnAt is when the factory's own c3:cross listener ran and crossReturnedAt when the factory's emit on c3:cross returned, in Unix milliseconds: an extension loaded before this one that listens on c3:cross runs first and finishes before emit returns.
 		crossOwnAt, crossReturnedAt int64
+		// ackHeard are the c3:ack emits the factory's listener heard: an extension loaded before this one answers the factory's c3:cross emit, from inside its listener, with a c3:ack emit, which Pi's shared emitter delivers to the listener this factory subscribed before it emitted. ackAtCross is how many it had heard when the c3:cross emit returned.
+		ackHeard   = []any{}
+		ackAtCross int
 		loaded                      any
 		themeOff                    func()
 		expandedOff                 func()
@@ -46,6 +49,14 @@ func registerHostSurface(e *sdk.Extension) {
 	heardAtEmit = len(heardFactory)
 	mu.Unlock()
 	errorEmitFailed = e.Events().Emit("error", map[string]any{"from": "factory"}) != nil
+	if _, err := e.Events().On("c3:ack", func(_ sdk.Context, data any) error {
+		mu.Lock()
+		ackHeard = append(ackHeard, data)
+		mu.Unlock()
+		return nil
+	}); err != nil {
+		panic(err)
+	}
 	if _, err := e.Events().On("c3:cross", func(sdk.Context, any) error {
 		mu.Lock()
 		crossOwnAt = time.Now().UnixMilli()
@@ -58,6 +69,9 @@ func registerHostSurface(e *sdk.Extension) {
 		panic(err)
 	}
 	crossReturnedAt = time.Now().UnixMilli()
+	mu.Lock()
+	ackAtCross = len(ackHeard)
+	mu.Unlock()
 	// The handler takes its time; a request that ran before it finished would read nil.
 	e.OnLoaded(func(ctx sdk.Context) {
 		time.Sleep(300 * time.Millisecond)
@@ -171,6 +185,6 @@ func registerHostSurface(e *sdk.Extension) {
 	tool("c3_loaded", func(sdk.Context, map[string]any) (any, error) {
 		mu.Lock()
 		defer mu.Unlock()
-		return text(map[string]any{"loaded": loaded, "factoryHeard": heardFactory, "heardAtEmit": heardAtEmit, "errorEmitFailed": errorEmitFailed, "crossOwnAt": crossOwnAt, "crossReturnedAt": crossReturnedAt})
+		return text(map[string]any{"loaded": loaded, "factoryHeard": heardFactory, "heardAtEmit": heardAtEmit, "errorEmitFailed": errorEmitFailed, "crossOwnAt": crossOwnAt, "crossReturnedAt": crossReturnedAt, "ackHeard": ackHeard, "ackAtCross": ackAtCross})
 	})
 }

@@ -2302,7 +2302,7 @@ class Context:
     _replacement: "_ReplacementState | None" = None
     # A before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).
     _system_prompt: _SystemPrompt | None = None
-    # A context the factory's own pi.events emit made for a listener of this extension (event_bus._run_factory_listeners): the extension has not connected yet, so its host calls use the connection the factory opened, and only pi.events calls are answered.
+    # A context made for a listener of this extension that the host dispatched while the factory runs (host_helpers.loading_call): the extension has not registered yet, so its host calls use the connection the factory opened, and only pi.events calls and the parse helpers are answered.
     _loading: bool = False
 
     @property
@@ -2368,7 +2368,7 @@ class Context:
                 raise RuntimeError(f"{method}: the extension has not registered with the host yet")
             from . import host_helpers
 
-            return {"result": host_helpers.loading_call(method, args)}
+            return {"result": host_helpers.loading_call(method, args, self.extension)}
         # An RPC UI effect is no suspension of the handler, as the Node runtime sends it (_RPC_SYNCHRONOUS_UI_EFFECTS).
         reports = bool(self.request_id) and not (method in _RPC_SYNCHRONOUS_UI_EFFECTS and self._rpc_mode())
         if reports and method not in {"ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"}:

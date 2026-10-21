@@ -247,7 +247,7 @@ type Context struct {
 	requestID string
 	parent    *requestParent
 	ctx       context.Context
-	// loading is the connection of a Context the factory's own pi.events emit made for a listener of this extension (runFactoryListeners): the extension has not connected yet, so the Context's host calls use the connection the factory opened.
+	// loading is the connection of a Context made for a listener of this extension that the Host dispatched while the factory runs (the factory pump, serveLoadingEnvelope): the extension has not registered yet, so the Context's host calls use the connection the factory opened.
 	loading *conn
 	start   *toolStart // set for a tool_call request: its place in the order the handlers start
 	// systemPrompt is set for a before_agent_start request: the prompt its shared options render now (runner.ts:1430-1433).

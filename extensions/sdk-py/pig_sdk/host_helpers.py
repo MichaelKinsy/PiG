@@ -23,7 +23,13 @@ class ParsedFrontmatter:
 
 
 class _State:
-    lock = threading.Lock()
+    # Re-entrant: a listener the host dispatches while a factory-time call waits makes bus calls of its own on the same thread (``loading_call``).
+    lock = threading.RLock()
+    # The extension whose factory-time bus calls dialled each socket, by path: the owner of the listeners the host dispatches on that connection before ``run``.
+    owners: dict = {}
+    # The call results a ``loading_call`` read for an outer call that is still waiting, by call id.
+    results: dict = {}
+    call_seq: int = 0
     # The connections helpers opened before ``run``, by socket path; ``run`` takes its own.
     dialled: dict = {}
     # The extensions that are running (a packed cell runs several), each with the socket it serves in ``_served_socket``: the first that is still running
@@ -76,9 +82,13 @@ def _helper_call(method: str, args: Any) -> Any:
     return loading_call(method, args)
 
 
-def loading_call(method: str, args: Any) -> Any:
+def loading_call(method: str, args: Any, owner: Any = None) -> Any:
     """A host call made while a factory runs, over the connection this extension's first such call dials and ``run`` later takes. It never rides a running
-    extension's connection: the host attributes what a call carries (a ``pi.events`` listener) to the extension of the connection it arrives on."""
+    extension's connection: the host attributes what a call carries (a ``pi.events`` listener) to the extension of the connection it arrives on.
+
+    While it waits for the result it answers what the host sends the connection: pings, and the ``events.dispatch`` requests of ``owner``'s listeners (the
+    extension that made a bus call on this connection), as a Node runtime serves a dispatch during its factory. The wait is re-entrant: a listener that makes a
+    bus call of its own waits for its result on the same thread, and the result of an outer call that arrives meanwhile is kept for it."""
     with _State.lock:
         path = _socket_path()
         if not path:
@@ -88,7 +98,45 @@ def loading_call(method: str, args: Any) -> Any:
             from . import _connect_unix
 
             sock = _State.dialled[path] = _connect_unix(path)
-        return _roundtrip(sock, method, args)
+        if owner is not None:
+            _State.owners[path] = owner
+        _State.call_seq += 1
+        call_id = f"h{_State.call_seq}"
+        _send_frame(sock, {"type": "call", "id": call_id, "call": {"method": method, "args": args}})
+        while call_id not in _State.results:
+            env = _read_frame(sock)
+            kind = env.get("type")
+            if kind == "call_result":
+                _State.results[env.get("id")] = env.get("call_result") or {}
+            elif kind == "ping":
+                _send_frame(sock, {"type": "pong", "pong": {"nonce": (env.get("ping") or {}).get("nonce", "")}})
+            elif kind == "request":
+                _answer_loading_request(sock, _State.owners.get(path), env)
+            elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release" and _State.owners.get(path) is not None:
+                _State.owners[path]._bus.release(str(((env.get("notify") or {}).get("args") or {}).get("handlerId") or ""))
+        result = _State.results.pop(call_id)
+        error = result.get("error")
+        if error:
+            from . import HostCallError
+
+            raise HostCallError(error.get("message", "host call failed"), error.get("code"))
+        return result.get("result") or {}
+
+
+def _answer_loading_request(sock: Any, owner: Any, env: dict) -> None:
+    """Answer a request the host made of a connection whose extension has not registered: a listener dispatch runs the listener (its error or panic is its dispatch's failure), anything else is refused so the host does not wait for it."""
+    request = env.get("request") or {}
+    error = None
+    if request.get("method") == "events.dispatch" and owner is not None:
+        from . import Context
+
+        try:
+            owner._bus.dispatch(Context(owner, _loading=True), request.get("args") or {})
+        except Exception as exc:  # noqa: BLE001 - the dispatch's failure, reported to the host as an ordinary listener's is
+            error = {"message": str(exc)}
+    else:
+        error = {"message": f"{request.get('method', '')}: the extension has not registered with the host yet"}
+    _send_frame(sock, {"type": "response", "id": env.get("id"), "response": {"result": None, "error": error}})
 
 
 def _running_for(path: str) -> Any:
@@ -108,21 +156,14 @@ def _socket_path() -> str:
     return os.environ.get("PIG_EXT_SOCKET", "")
 
 
-def _roundtrip(sock: Any, method: str, args: Any) -> Any:
-    data = json.dumps({"type": "call", "id": "h1", "call": {"method": method, "args": args}}, separators=(",", ":")).encode()
+def _send_frame(sock: Any, env: dict) -> None:
+    data = json.dumps(env, separators=(",", ":")).encode()
     sock.sendall(struct.pack(">I", len(data)) + data)
-    while True:
-        header = _read_exact(sock, 4)
-        env = json.loads(_read_exact(sock, struct.unpack(">I", header)[0]))
-        if env.get("type") != "call_result" or env.get("id") != "h1":
-            continue
-        result = env.get("call_result") or {}
-        error = result.get("error")
-        if error:
-            from . import HostCallError
 
-            raise HostCallError(error.get("message", "host call failed"), error.get("code"))
-        return result.get("result") or {}
+
+def _read_frame(sock: Any) -> dict:
+    header = _read_exact(sock, 4)
+    return json.loads(_read_exact(sock, struct.unpack(">I", header)[0]))
 
 
 def _read_exact(sock: Any, count: int) -> bytes:
@@ -138,4 +179,5 @@ def _read_exact(sock: Any, count: int) -> bytes:
 def take_helper_socket(path: str) -> Any:
     """The connection a helper opened to ``path``, for ``run`` to serve on; None when there is none."""
     with _State.lock:
+        _State.owners.pop(path, None)
         return _State.dialled.pop(path, None)

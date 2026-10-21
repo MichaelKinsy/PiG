@@ -562,7 +562,7 @@ impl WidthDeliveries {
 }
 
 impl Context {
-    /// The Context of a listener the factory's own `pi.events` emit runs (event_bus.rs `run_factory_listeners`): the extension has not connected, so it carries the connection the factory opened (a loading one, which answers only the host calls made before the extension registers) and no session state.
+    /// The Context of a listener the Host dispatches on the factory's connection while the factory runs (event_bus.rs `loading_server`): the extension has not registered, so it carries the connection the factory opened (a loading one, which answers only the host calls made before the extension registers) and no session state.
     pub(crate) fn for_factory(conn: Arc<Connection>, bus: Arc<crate::event_bus::BusRegistry>) -> Self {
         Self {
             request_parent: None,
@@ -1385,6 +1385,7 @@ impl Extension {
         let _=conn.provider_objects.set(self.provider_objects.clone());
         let _=conn.provider_callbacks.set(self.provider_callbacks.clone());
         let bus = self.bus.clone();
+        bus.adopt(&conn);
         self.events.connect(&conn);
         // A node factory's pi.events.on runs before its runtime registers; a native listener subscribed before run does the same.
         let mut early_dispatches: std::collections::VecDeque<crate::protocol::Envelope<Box<serde_json::value::RawValue>>> = std::collections::VecDeque::new();

@@ -506,7 +506,7 @@ def route(ctx, request):
 
 def register_host_surface(ext):
     # The tools of the host-surface rows (host_surface_test.go): on_theme_change, on_tools_expanded_change, set_widget_renderer, bell, tool_call_index, tool_input and tool_params, extension_source_info, on_loaded and a factory-time events.emit. testfixture/modeltypes (Go), testdata/modeltypes-rust and testdata/model-types.mjs carry the same tools.
-    log = {"theme": [], "expanded": [], "heard": [], "loaded": None, "theme_off": None, "expanded_off": None, "heard_at_emit": None, "error_emit_failed": None, "cross_own_at": None, "cross_returned_at": None}
+    log = {"theme": [], "expanded": [], "heard": [], "loaded": None, "theme_off": None, "expanded_off": None, "heard_at_emit": None, "error_emit_failed": None, "cross_own_at": None, "cross_returned_at": None, "ack_heard": [], "ack_at_cross": None}
     # A factory's pi.events.emit reaches the listeners subscribed before it, its own included.
     ext.events.on("c3:factory", lambda ctx, data: log["heard"].append(data))
     ext.events.emit("c3:factory", {"n": 1, "from": "factory"})
@@ -518,9 +518,12 @@ def register_host_surface(ext):
     except RuntimeError:
         log["error_emit_failed"] = True
     # An extension loaded before this one that listens on c3:cross runs first and finishes before emit returns (milliseconds, as the other fixtures report them).
+    # An extension loaded before this one answers the c3:cross emit, from inside its listener, with a c3:ack emit: the listener subscribed here, before the emit, hears it.
+    ext.events.on("c3:ack", lambda ctx, data: log["ack_heard"].append(data))
     ext.events.on("c3:cross", lambda ctx, data: log.__setitem__("cross_own_at", int(time.time() * 1000)))
     ext.events.emit("c3:cross", {"from": "factory"})
     log["cross_returned_at"] = int(time.time() * 1000)
+    log["ack_at_cross"] = len(log["ack_heard"])
 
     def loaded(ctx):
         # The handler takes its time; a request that ran before it finished would read None.
@@ -568,7 +571,7 @@ def register_host_surface(ext):
         "c3_expanded_arm": expanded_arm, "c3_expanded_disarm": expanded_disarm, "c3_expanded_log": lambda ctx, args: json.dumps({"log": log["expanded"]}),
         "c3_widget_arm": widget_arm, "c3_widget_clear": widget_clear, "c3_bell": bell, "c3_tool_call": tool_call,
         "c3_source": lambda ctx, args: json.dumps({"info": ctx.extension_source_info()}),
-        "c3_loaded": lambda ctx, args: json.dumps({"loaded": log["loaded"], "factoryHeard": log["heard"], "heardAtEmit": log["heard_at_emit"], "errorEmitFailed": log["error_emit_failed"], "crossOwnAt": log["cross_own_at"], "crossReturnedAt": log["cross_returned_at"]}),
+        "c3_loaded": lambda ctx, args: json.dumps({"loaded": log["loaded"], "factoryHeard": log["heard"], "heardAtEmit": log["heard_at_emit"], "errorEmitFailed": log["error_emit_failed"], "crossOwnAt": log["cross_own_at"], "crossReturnedAt": log["cross_returned_at"], "ackHeard": log["ack_heard"], "ackAtCross": log["ack_at_cross"]}),
     }
     for name, handler in handlers.items():
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))

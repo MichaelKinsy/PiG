@@ -630,10 +630,15 @@ pub struct Connection {
     closed: AtomicBool,
     /// Set for a connection a factory opened before `run` (host_helpers.rs): no reader thread serves it yet, so a call made on it reads the frames itself, and only the host calls the host answers before the extension registers are sent. `run` clears it when it takes the connection.
     loading: AtomicBool,
-    // One thread at a time reads frames for a loading connection's calls.
+    // One thread at a time reads a frame for a loading connection's calls; it does not hold the lock while a frame is served.
     pump: Mutex<()>,
+    /// What serves the requests and notifies a loading connection receives while a call waits (event_bus.rs `serve_loading`); cleared when `run` takes the connection.
+    loading_server: Mutex<Option<LoadingServer>>,
     pub(crate) closed_signal: crate::provider::ProviderSignal,
 }
+
+/// Serves a frame the host sends a loading connection that is not the answer to a call: a listener dispatch, a release.
+pub(crate) type LoadingServer = Arc<dyn Fn(&Envelope<Box<serde_json::value::RawValue>>) + Send + Sync>;
 
 /// The host calls the host answers while a factory runs, before the extension registers: the shared event bus and the helpers that need the host's parsers (Go's loadingBusCall).
 fn loading_host_call(method: &str) -> bool {
@@ -702,6 +707,7 @@ impl Connection {
             closed: AtomicBool::new(false),
             loading: AtomicBool::new(false),
             pump: Mutex::new(()),
+            loading_server: Mutex::new(None),
             closed_signal: crate::provider::ProviderSignal::new(),
             provider_objects: std::sync::OnceLock::new(),
             provider_callbacks: std::sync::OnceLock::new(),
@@ -733,6 +739,14 @@ impl Connection {
     /// Marks the connection as one a factory opened, or, with false, as one the extension serves.
     pub(crate) fn set_loading(&self, loading: bool) {
         self.loading.store(loading, Ordering::Release);
+        if !loading {
+            *self.loading_server.lock().unwrap() = None;
+        }
+    }
+
+    /// Sets what serves the host's dispatches on a loading connection while a call waits.
+    pub(crate) fn set_loading_server(&self, server: LoadingServer) {
+        *self.loading_server.lock().unwrap() = Some(server);
     }
 
     /// Whether the connection is a factory's, not yet taken by `run`.
@@ -740,17 +754,37 @@ impl Connection {
         self.loading.load(Ordering::Acquire)
     }
 
-    /// Reads frames, completing the calls they answer, until `pending`'s reply arrives.
+    /// Reads frames, completing the calls they answer and serving the host's dispatches, until `pending`'s reply arrives. A frame is served outside the pump lock, so a listener that makes a bus call of its own (its nested emit) pumps in turn, on the same thread, and the reply of the call it interrupted is waiting for it afterwards.
     fn pump_until(&self, pending: &PendingCall) -> io::Result<CallResultMsg<Box<serde_json::value::RawValue>>> {
-        let _reading = self.pump.lock().unwrap();
         loop {
-            match pending.receiver.try_recv() {
-                Ok(reply) => return Ok(reply),
-                Err(mpsc::TryRecvError::Disconnected) => return Err(io::Error::new(io::ErrorKind::ConnectionAborted, format!("host call {} cancelled", pending.method))),
-                Err(mpsc::TryRecvError::Empty) => {}
+            let env = {
+                let _reading = self.pump.lock().unwrap();
+                match pending.receiver.try_recv() {
+                    Ok(reply) => return Ok(reply),
+                    Err(mpsc::TryRecvError::Disconnected) => return Err(io::Error::new(io::ErrorKind::ConnectionAborted, format!("host call {} cancelled", pending.method))),
+                    Err(mpsc::TryRecvError::Empty) => {}
+                }
+                self.read_envelope()?
+            };
+            if self.complete_call(&env) {
+                continue;
             }
-            let env = self.read_envelope()?;
-            self.complete_call(&env);
+            if env.msg_type == "ping" {
+                if let Some(ping) = env.ping {
+                    self.write_envelope(&Envelope { msg_type: "pong".to_string(), pong: Some(PongMsg { nonce: ping.nonce }), ..Default::default() })?;
+                }
+                continue;
+            }
+            let server = self.loading_server.lock().unwrap().clone();
+            match server {
+                Some(server) => server(&env),
+                None if env.msg_type == "request" => {
+                    if let Some(id) = env.id.as_deref() {
+                        let _ = self.respond(id, None, Some(ErrorInfo { code: None, message: "the extension has not registered with the host yet".to_string() }));
+                    }
+                }
+                None => {}
+            }
         }
     }
 

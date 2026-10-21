@@ -190,7 +190,7 @@ func factoryConnection() (*conn, error) {
 	}
 	path := helperSocketPath()
 	if path == "" {
-		return nil, errors.New("PIG_EXT_SOCKET is not set, so this extension was not launched by pig")
+		return nil, errNoFactoryHost
 	}
 	return dialLocked(path)
 }

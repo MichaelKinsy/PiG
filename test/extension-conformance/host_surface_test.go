@@ -270,11 +270,12 @@ func TestOnLoadedAndFactoryEmitAcrossSDKs(t *testing.T) {
 	})
 }
 
-// earlierListener is an extension loaded before the fixture, the host's listener a factory-time emit reaches first. Its c3:cross listener takes its time and then stamps the moment, so an emit that returned before the listener finished reads an earlier stamp than the listener's; its "error" listener handles the factory's emit on "error".
+// earlierListener is an extension loaded before the fixture, the host's listener a factory-time emit reaches first. Its c3:cross listener takes its time, answers with a c3:ack emit, which Pi's shared emitter delivers to the listener the factory subscribed before it emitted, and then stamps the moment, so an emit that returned before the listener finished reads an earlier stamp than the listener's; its "error" listener handles the factory's emit on "error".
 type earlierListener struct {
 	mu         sync.Mutex
 	cross      []any
 	crossAt    int64
+	ackErr     error
 	errorsSeen []any
 }
 
@@ -285,9 +286,11 @@ func loadEarlierListener(t *testing.T, r *modelTypesRig) *earlierListener {
 	serve := func(conn net.Conn) error {
 		return sdk.ServeFactory(conn, func() *sdk.Extension {
 			e := sdk.New("c3-earlier")
-			if _, err := e.Events().On("c3:cross", func(_ sdk.Context, data any) error {
+			if _, err := e.Events().On("c3:cross", func(ctx sdk.Context, data any) error {
 				time.Sleep(250 * time.Millisecond)
+				ackErr := ctx.Events().Emit("c3:ack", map[string]any{"from": "c3-earlier"})
 				earlier.mu.Lock()
+				earlier.ackErr = ackErr
 				earlier.cross = append(earlier.cross, data)
 				earlier.crossAt = time.Now().UnixMilli()
 				earlier.mu.Unlock()
@@ -312,7 +315,7 @@ func loadEarlierListener(t *testing.T, r *modelTypesRig) *earlierListener {
 	return earlier
 }
 
-// A factory's emit reaches the listeners of the extensions loaded before it, at once and in order: the earlier extension's listener ran and finished before the factory's own listener ran, which ran before emit returned, and the earlier extension's "error" listener handled the factory's emit on "error", which therefore did not fail. The earlier listener sleeps before it stamps the time, so an SDK whose emit is queued or does not wait for the host's listeners reads a return time before the earlier stamp.
+// A factory's emit reaches the listeners of the extensions loaded before it, at once and in order, and the nested reply (the earlier listener's c3:ack emit, made while the factory's emit runs) reaches the listener the factory subscribed before it emitted, which Pi's shared emitter holds from the moment the factory subscribes it: the earlier extension's listener ran and finished before the factory's own listener ran, which ran before emit returned, and the earlier extension's "error" listener handled the factory's emit on "error", which therefore did not fail. The earlier listener sleeps before it stamps the time, so an SDK whose emit is queued or does not wait for the host's listeners reads a return time before the earlier stamp.
 func TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs(t *testing.T) {
 	var earlier *earlierListener
 	eachModelTypesPlacementAfter(t, nil, func(t *testing.T, r *modelTypesRig) {
@@ -331,6 +334,16 @@ func TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs(t *testing.T) {
 		}
 		if report["errorEmitFailed"] != false {
 			t.Errorf("the factory's emit on \"error\" failed although an earlier extension listens: errorEmitFailed = %v", report["errorEmitFailed"])
+		}
+		if earlier.ackErr != nil {
+			t.Errorf("the earlier extension's c3:ack emit failed: %v", earlier.ackErr)
+		}
+		wantAck := []any{map[string]any{"from": "c3-earlier"}}
+		if got, _ := report["ackHeard"].([]any); !reflect.DeepEqual(got, wantAck) {
+			t.Errorf("the factory's listener heard %v on c3:ack, want %v", report["ackHeard"], wantAck)
+		}
+		if report["ackAtCross"] != float64(1) {
+			t.Errorf("the factory's listener had heard %v c3:ack emits when its c3:cross emit returned, want 1", report["ackAtCross"])
 		}
 		own, _ := report["crossOwnAt"].(float64)
 		returned, _ := report["crossReturnedAt"].(float64)

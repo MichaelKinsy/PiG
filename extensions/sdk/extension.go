@@ -136,6 +136,9 @@ type Extension struct {
 	eventNextID int
 	// loading is the connection the factory's first pi.events call opened before Run (loadingConnection), guarded by eventMu. Run adopts that connection and clears this.
 	loading *conn
+	// pump answers the host's dispatches on loading until Run takes the connection over; running is set from then until Run ends. Both are guarded by eventMu.
+	pump    *factoryPump
+	running bool
 
 	// run is the replicated signal of the run in progress (Context.Signal).
 	run runSignal
@@ -1092,6 +1095,7 @@ func (e *Extension) RunWithConn(nc net.Conn) error { return e.runWithConn(nc, ni
 func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) error {
 	defer func() { _ = nc.Close() }()
 
+	e.stopFactoryPump()
 	e.runCtx, e.runCancel = context.WithCancel(context.Background())
 	defer e.runCancel()
 	e.eventMu.Lock()
@@ -1102,6 +1106,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 	}
 	conn := e.conn
 	e.loading = nil
+	e.running = true
 	e.eventMu.Unlock()
 	if started == nil {
 		conn.start()

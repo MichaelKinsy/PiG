@@ -8,6 +8,14 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::Duration;
 
+/// Holds the environment lock with no host named: a listener subscribed before `run` connects to the host `PIG_EXT_SOCKET` names, so a test that subscribes without one must not run while another test sets it.
+fn without_host() -> std::sync::MutexGuard<'static, ()> {
+    let guard = crate::extension::registration_tests::env_lock().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    unsafe { std::env::remove_var("PIG_EXT_SOCKET") };
+    unsafe { std::env::remove_var("GOPI_EXT_SOCKET") };
+    guard
+}
+
 struct Host {
     conn: Connection,
     thread: Option<thread::JoinHandle<std::io::Result<()>>>,
@@ -109,6 +117,7 @@ impl Host {
 // A listener declared while the factory runs is registered before the register message, as a node factory's pi.events.on is (loader.ts runs the factory before the runtime registers), and carries the by-value flag.
 #[test]
 fn factory_listener_is_registered_before_register() {
+    let _no_host = without_host();
     let ext = Extension::new("bus");
     ext.events().on("ch", |_, _| Ok(())).unwrap();
     let host = Host::start("factory", ext);
@@ -124,6 +133,7 @@ fn factory_listener_is_registered_before_register() {
 // Dispatch runs the handler with the payload decoded from the JSON the Host sends and answers after the handler returns (event-bus.ts:19-25).
 #[test]
 fn dispatch_runs_handler_then_answers() {
+    let _no_host = without_host();
     let seen = Arc::new(Mutex::new(Vec::new()));
     let ext = Extension::new("bus");
     let sink = seen.clone();
@@ -141,6 +151,7 @@ fn dispatch_runs_handler_then_answers() {
 // A handler's error or panic is the dispatch's failure and nothing else: the extension keeps serving (event-bus.ts:19-25 catches and prints, and never rethrows).
 #[test]
 fn handler_error_and_panic_fail_only_their_dispatch() {
+    let _no_host = without_host();
     let ext = Extension::new("bus");
     ext.events().on("fail", |_, _| Err("listener-failed".to_string())).unwrap();
     ext.events().on("panic", |_, _| panic!("listener-panicked")).unwrap();
@@ -214,6 +225,7 @@ fn unsubscribe_sends_one_off() {
 // A listener the Host dispatches to while the extension is still loading (after register, before ready) is answered once the extension is ready, in dispatch order; the emitter waits either way.
 #[test]
 fn dispatch_during_load_is_served_after_ready() {
+    let _no_host = without_host();
     let seen = Arc::new(Mutex::new(Vec::new()));
     let ext = Extension::new("bus");
     let sink = seen.clone();
@@ -231,19 +243,75 @@ fn dispatch_during_load_is_served_after_ready() {
     host.stop();
 }
 
-// A factory's pi.events.emit is Pi's synchronous EventEmitter emit (event-bus.ts:13-34): the listeners of the extensions loaded before hear it at once, then the
-// factory's own, each before emit returns, and an emit on "error" that nobody hears fails. The SDK has no connection while the factory runs, so the first
-// factory-time bus call dials the host (as parse_frontmatter does) and run takes that connection. The Go SDK's tests state the same rows
-// (extensions/sdk/event_bus_factory_test.go).
+// A listener a factory subscribes joins Pi's shared emitter at once (event-bus.ts:13-34), so it hears an emit another extension makes while the factory runs,
+// and a factory's emit is delivered by the Host to every listener in order. The SDK has no connection while the factory runs, so the first factory-time bus call
+// dials the host (as parse_frontmatter does), run takes that connection, and a factory-time call answers the host's events.dispatch requests on it while it
+// waits. The Go SDK's tests state the same rows (extensions/sdk/event_bus_factory_test.go).
 mod factory_emit {
     use super::*;
 
-    /// A host that accepts the one connection the factory dials and answers each call it reads with the next scripted result. PIG_EXT_SOCKET names its socket for the test, under the lock every test that sets the environment shares.
+    /// A host that accepts the one connection the factory dials. PIG_EXT_SOCKET names its socket for the test, under the lock every test that sets the environment shares.
     struct FactoryHost {
         _guard: std::sync::MutexGuard<'static, ()>,
         _dir: tempfile_dir::Dir,
         path: String,
         listener: UnixListener,
+    }
+
+    /// The host's end of the factory's connection, with what it saw.
+    struct Peer {
+        conn: Connection,
+        calls: Vec<(String, Value)>,
+    }
+
+    impl Peer {
+        /// Reads until the next call and returns its envelope, unanswered.
+        fn next_call(&mut self) -> Envelope<Box<serde_json::value::RawValue>> {
+            loop {
+                let env = self.conn.read_envelope().unwrap();
+                if env.msg_type == "call" {
+                    let call = env.call.as_ref().unwrap();
+                    let args = call.args.clone().unwrap_or(Value::Null);
+                    self.calls.push((call.method.clone(), args));
+                    return env;
+                }
+            }
+        }
+
+        fn reply(&self, call: &Envelope<Box<serde_json::value::RawValue>>, result: Option<Value>) {
+            self.conn.write_envelope(&Envelope { msg_type: "call_result".into(), id: call.id.clone(), call_result: Some(CallResultMsg { result, error: None }), ..Default::default() }).unwrap();
+        }
+
+        /// Answers the next call with `result`.
+        fn answer(&mut self, result: Option<Value>) -> (String, Value) {
+            let call = self.next_call();
+            self.reply(&call, result);
+            self.calls.last().unwrap().clone()
+        }
+
+        /// Sends the host's events.dispatch request and returns the error message the extension answers with, serving any call the listener makes meanwhile.
+        fn dispatch(&mut self, id: &str, handler_id: &str, channel: &str, payload: Value) -> Option<String> {
+            self.conn
+                .write_envelope(&Envelope {
+                    msg_type: "request".into(),
+                    id: Some(id.into()),
+                    request: Some(serde_json::from_value(json!({"method": "events.dispatch", "args": {"handlerId": handler_id, "channel": channel, "json": payload}})).unwrap()),
+                    ..Default::default()
+                })
+                .unwrap();
+            loop {
+                let env = self.conn.read_envelope().unwrap();
+                match env.msg_type.as_str() {
+                    "call" => {
+                        let call = env.call.as_ref().unwrap();
+                        self.calls.push((call.method.clone(), call.args.clone().unwrap_or(Value::Null)));
+                        self.reply(&env, None);
+                    }
+                    "response" if env.id.as_deref() == Some(id) => return env.response.unwrap().error.map(|error| error.message),
+                    _ => {}
+                }
+            }
+        }
     }
 
     impl FactoryHost {
@@ -257,26 +325,15 @@ mod factory_emit {
             Self { _guard: guard, _dir: dir, path, listener }
         }
 
-        /// Accepts the connection and serves `results.len()` calls on a thread; the thread returns the calls it saw and the connection.
-        fn serve(&self, results: Vec<Option<Value>>) -> thread::JoinHandle<(Vec<(String, Value, Option<String>)>, Connection)> {
+        /// Accepts the connection the factory dials and runs `script` on it on a thread; the thread returns what the script saw and the peer.
+        fn serve<F: FnOnce(&mut Peer) + Send + 'static>(&self, script: F) -> thread::JoinHandle<Peer> {
             let listener = self.listener.try_clone().unwrap();
             thread::spawn(move || {
                 let (stream, _) = listener.accept().unwrap();
                 stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-                let conn = Connection::new(stream);
-                let mut seen = Vec::new();
-                for result in results {
-                    let env = loop {
-                        let env = conn.read_envelope().unwrap();
-                        if env.msg_type == "call" {
-                            break env;
-                        }
-                    };
-                    let call = env.call.unwrap();
-                    seen.push((call.method, call.args.unwrap_or(Value::Null), call.parent_request_id));
-                    conn.write_envelope(&Envelope { msg_type: "call_result".into(), id: env.id, call_result: Some(CallResultMsg { result, error: None }), ..Default::default() }).unwrap();
-                }
-                (seen, conn)
+                let mut peer = Peer { conn: Connection::new(stream), calls: Vec::new() };
+                script(&mut peer);
+                peer
             })
         }
     }
@@ -289,76 +346,117 @@ mod factory_emit {
     }
 
     #[test]
-    fn emit_reaches_the_host_and_own_listeners_before_it_returns() {
-        let host = FactoryHost::new("fe-own");
+    fn on_registers_with_the_host_at_once() {
+        let host = FactoryHost::new("fe-on");
+        let ext = Extension::new("bus");
+        let served = host.serve(|peer| {
+            peer.answer(None);
+        });
+        ext.events().on("ch", |_, _| Ok(())).unwrap();
+        let peer = served.join().unwrap();
+        let (method, args) = &peer.calls[0];
+        assert_eq!(method, "events.on");
+        assert_eq!((args["channel"].as_str(), args["value"].as_bool()), (Some("ch"), Some(true)));
+        assert!(args["handlerId"].as_str().is_some_and(|id| !id.is_empty()), "{args}");
+    }
+
+    /// The reply to a factory's own emit: the host dispatches the second emit's listener, the factory's, on the factory's connection while the first emit's call is in flight, and the thread that is blocked in emit serves it.
+    #[test]
+    fn the_host_dispatches_to_a_factory_listener_while_its_emit_waits() {
+        let host = FactoryHost::new("fe-nested");
         let heard = Arc::new(Mutex::new(Vec::new()));
         let ext = Extension::new("bus");
         let sink = heard.clone();
-        ext.events().on("ch", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
-        let served = host.serve(vec![None]);
-        ext.events().emit("ch", json!({"n": 1})).unwrap();
-        let (seen, _conn) = served.join().unwrap();
-        assert_eq!(seen, vec![("events.emit".to_string(), json!({"channel": "ch", "value": true, "json": {"n": 1}}), None)]);
-        // The Host does not hold this extension's listener yet: it ran inline, and has finished when emit returned.
-        assert_eq!(*heard.lock().unwrap(), vec![json!({"n": 1})]);
+        let served = host.serve(|peer| {
+            let (_, on) = peer.answer(None);
+            let handler_id = on["handlerId"].as_str().unwrap().to_string();
+            let cross = peer.next_call();
+            assert_eq!(peer.dispatch("d1", &handler_id, "ack", json!("pong")), None);
+            peer.reply(&cross, None);
+        });
+        ext.events().on("ack", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
+        ext.events().emit("cross", json!("ping")).unwrap();
+        let peer = served.join().unwrap();
+        assert_eq!(peer.calls.iter().map(|(method, _)| method.as_str()).collect::<Vec<_>>(), vec!["events.on", "events.emit"]);
+        assert_eq!(*heard.lock().unwrap(), vec![json!("pong")]);
     }
 
+    /// A listener's error or panic is the dispatch's failure and nothing else: the connection keeps serving the next dispatch.
     #[test]
-    fn listeners_run_in_order_and_a_failure_reaches_neither_the_emitter_nor_the_rest() {
-        let host = FactoryHost::new("fe-order");
-        let order = Arc::new(Mutex::new(Vec::new()));
+    fn a_listener_failure_fails_only_its_dispatch() {
+        let host = FactoryHost::new("fe-fail");
         let ext = Extension::new("bus");
+        let failures = Arc::new(Mutex::new(Vec::new()));
+        let sink = failures.clone();
+        let served = host.serve(move |peer| {
+            let ids: Vec<String> = (0..3).map(|_| peer.answer(None).1["handlerId"].as_str().unwrap().to_string()).collect();
+            let emit = peer.next_call();
+            let outcomes = vec![peer.dispatch("d1", &ids[0], "fail", Value::Null), peer.dispatch("d2", &ids[1], "panic", Value::Null), peer.dispatch("d3", &ids[2], "ok", Value::Null)];
+            *sink.lock().unwrap() = outcomes;
+            peer.reply(&emit, None);
+        });
         let bus = ext.events();
-        let record = |name: &'static str| {
-            let sink = order.clone();
-            move |_: &crate::Context, _: &Value| { sink.lock().unwrap().push(name); Ok(()) }
-        };
-        bus.on("ch", record("first")).unwrap();
-        bus.on("ch", |_, _| Err("boom".to_string())).unwrap();
-        bus.on("ch", |_, _| panic!("kaboom")).unwrap();
-        bus.on("ch", record("unsubscribed")).unwrap().unsubscribe();
-        bus.on("ch", record("last")).unwrap();
-        let served = host.serve(vec![None]);
-        bus.emit("ch", Value::Null).unwrap();
-        bus.on("ch", record("late")).unwrap();
+        bus.on("fail", |_, _| Err("boom".to_string())).unwrap();
+        bus.on("panic", |_, _| panic!("kaboom")).unwrap();
+        bus.on("ok", |_, _| Ok(())).unwrap();
+        bus.emit("x", Value::Null).unwrap();
         served.join().unwrap();
-        assert_eq!(*order.lock().unwrap(), vec!["first", "last"]);
+        assert_eq!(*failures.lock().unwrap(), vec![Some("boom".to_string()), Some("kaboom".to_string()), None]);
     }
 
+    /// An unsubscribe before run reaches the host over the factory's connection.
     #[test]
-    fn an_error_emit_nobody_hears_fails_and_an_own_listener_hears_it() {
+    fn unsubscribe_reaches_the_host_over_the_factory_connection() {
+        let host = FactoryHost::new("fe-off");
+        let ext = Extension::new("bus");
+        let served = host.serve(|peer| {
+            peer.answer(None);
+            peer.answer(None);
+        });
+        ext.events().on("ch", |_, _| Ok(())).unwrap().unsubscribe();
+        let peer = served.join().unwrap();
+        assert_eq!(peer.calls.iter().map(|(method, _)| method.as_str()).collect::<Vec<_>>(), vec!["events.on", "events.off"]);
+        assert_eq!(peer.calls[0].1["handlerId"], peer.calls[1].1["handlerId"]);
+    }
+
+    /// An emit on "error" that the host reports nobody heard fails, as EventEmitter throws it. The host holds the factory's own listeners too, so its flag is the only verdict.
+    #[test]
+    fn an_error_emit_fails_when_the_host_reports_nobody_heard() {
         let host = FactoryHost::new("fe-error");
         let ext = Extension::new("bus");
-        let served = host.serve(vec![Some(json!({"unhandledError": true})), Some(json!({"unhandledError": true}))]);
+        let served = host.serve(|peer| {
+            peer.answer(Some(json!({"unhandledError": true})));
+        });
         let err = ext.events().emit("error", json!({"x": 1})).unwrap_err();
         assert!(err.to_string().contains("unhandled error event"), "{err}");
-        let heard = Arc::new(Mutex::new(Vec::new()));
-        let sink = heard.clone();
-        let own = Extension::new("own");
-        own.events().on("error", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
-        own.events().emit("error", json!("bad")).unwrap();
         served.join().unwrap();
-        assert_eq!(*heard.lock().unwrap(), vec![json!("bad")]);
     }
 
     #[test]
-    fn without_a_host_a_factory_emit_fails() {
+    fn without_a_host_a_factory_emit_fails_and_a_listener_waits_for_run() {
         let _guard = crate::extension::registration_tests::env_lock().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         unsafe { std::env::remove_var("PIG_EXT_SOCKET") };
         unsafe { std::env::remove_var("GOPI_EXT_SOCKET") };
-        let err = Extension::new("bus").events().emit("ch", Value::Null).unwrap_err();
+        let ext = Extension::new("bus");
+        let err = ext.events().emit("ch", Value::Null).unwrap_err();
         assert!(err.to_string().contains("PIG_EXT_SOCKET"), "{err}");
+        ext.events().on("ch", |_, _| Ok(())).unwrap();
     }
 
+    /// A listener the host dispatches before the extension registers gets a Context whose host calls are the bus's: a nested emit reaches the host, and any other call fails at once instead of waiting for a host that serves only the bus until the extension registers.
     #[test]
     fn a_factory_listener_context_serves_only_the_bus() {
         let host = FactoryHost::new("fe-ctx");
-        let heard = Arc::new(Mutex::new(Vec::new()));
         let failure = Arc::new(Mutex::new(None));
         let ext = Extension::new("bus");
-        let sink = heard.clone();
-        ext.events().on("inner", move |_, _| { sink.lock().unwrap().push("inner"); Ok(()) }).unwrap();
         let slot = failure.clone();
+        let served = host.serve(|peer| {
+            let (_, on) = peer.answer(None);
+            let handler_id = on["handlerId"].as_str().unwrap().to_string();
+            let emit = peer.next_call();
+            assert_eq!(peer.dispatch("d1", &handler_id, "outer", Value::Null), None);
+            peer.reply(&emit, None);
+        });
         ext.events()
             .on("outer", move |ctx, _| {
                 ctx.events().emit("inner", Value::Null).map_err(|err| err.to_string())?;
@@ -366,51 +464,30 @@ mod factory_emit {
                 Ok(())
             })
             .unwrap();
-        let served = host.serve(vec![None, None]);
-        ext.events().emit("outer", Value::Null).unwrap();
-        let (seen, _conn) = served.join().unwrap();
-        assert_eq!(seen.iter().map(|(_, args, _)| args["channel"].clone()).collect::<Vec<_>>(), vec![json!("outer"), json!("inner")]);
-        assert_eq!(*heard.lock().unwrap(), vec!["inner"]);
+        ext.events().emit("x", Value::Null).unwrap();
+        let peer = served.join().unwrap();
+        assert_eq!(peer.calls.iter().map(|(_, args)| args["channel"].clone()).collect::<Vec<_>>()[1..], [json!("x"), json!("inner")]);
         assert!(failure.lock().unwrap().as_deref().is_some_and(|message| message.contains("not registered")), "{:?}", failure.lock().unwrap());
     }
 
+    /// run takes the connection the factory's first call dialled, and the listener the factory registered is not registered a second time: the first frame run sends is the register frame.
     #[test]
-    fn run_takes_the_connection_the_factory_dialled_and_registers_the_listener() {
+    fn run_takes_the_connection_the_factory_dialled_and_does_not_register_the_listener_again() {
         let host = FactoryHost::new("fe-run");
-        let heard = Arc::new(Mutex::new(Vec::new()));
         let ext = Extension::new("bus");
-        let sink = heard.clone();
-        ext.events().on("ch", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
-        let listener = host.listener.try_clone().unwrap();
-        let accepted = Arc::new(Mutex::new(0));
-        let counter = accepted.clone();
-        let served = thread::spawn(move || {
-            let (stream, _) = listener.accept().unwrap();
-            *counter.lock().unwrap() += 1;
-            stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-            let conn = Connection::new(stream);
-            let answer = |conn: &Connection, method: &str| {
-                let env = loop {
-                    let env = conn.read_envelope().unwrap();
-                    if env.msg_type == "call" {
-                        break env;
-                    }
-                };
-                assert_eq!(env.call.unwrap().method, method);
-                conn.write_envelope(&Envelope { msg_type: "call_result".into(), id: env.id, call_result: Some(CallResultMsg { result: None, error: None }), ..Default::default() }).unwrap();
-            };
-            answer(&conn, "events.emit");
-            answer(&conn, "events.on");
-            while conn.read_envelope().unwrap().msg_type != "register" {}
-            conn.write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"session_name": "", "cwd": "/tmp", "mode": "print", "width": 80, "model": ""})).unwrap()), ..Default::default() }).unwrap();
-            conn.write_envelope(&Envelope { msg_type: "shutdown".into(), shutdown: Some(serde_json::from_value(json!({"reason": "test"})).unwrap()), ..Default::default() }).unwrap();
+        let served = host.serve(|peer| {
+            peer.answer(None);
+            let first = peer.conn.read_envelope().unwrap();
+            assert_eq!(first.msg_type, "register", "run must not register the factory's listener again");
+            peer.conn.write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"session_name": "", "cwd": "/tmp", "mode": "print", "width": 80, "model": ""})).unwrap()), ..Default::default() }).unwrap();
+            peer.conn.write_envelope(&Envelope { msg_type: "shutdown".into(), shutdown: Some(serde_json::from_value(json!({"reason": "test"})).unwrap()), ..Default::default() }).unwrap();
         });
-        ext.events().emit("ch", json!(1)).unwrap();
+        ext.events().on("ch", |_, _| Ok(())).unwrap();
         let path = host.path.clone();
         ext.run_with_socket(&path).unwrap();
         served.join().unwrap();
-        // One connection served the emit and the run, and the emit was not delivered a second time.
-        assert_eq!(*accepted.lock().unwrap(), 1);
-        assert_eq!(*heard.lock().unwrap(), vec![json!(1)]);
+        // One connection served the subscription and the run.
+        host.listener.set_nonblocking(true).unwrap();
+        assert!(host.listener.accept().is_err(), "run dialled a second connection");
     }
 }

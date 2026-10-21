@@ -336,6 +336,9 @@ fn register_host_surface(ext: &mut Extension) {
     // When the factory's own c3:cross listener ran and when the factory's emit on c3:cross returned, in Unix milliseconds: an extension loaded before this one that listens on c3:cross runs first and finishes before emit returns.
     static CROSS_OWN_AT: Mutex<Option<u128>> = Mutex::new(None);
     static CROSS_RETURNED_AT: Mutex<Option<u128>> = Mutex::new(None);
+    // The c3:ack emits the factory's listener heard (an extension loaded before this one answers the c3:cross emit, from inside its listener, with a c3:ack emit), and how many it had heard when the c3:cross emit returned.
+    static ACK_HEARD: Mutex<Vec<Value>> = Mutex::new(Vec::new());
+    static ACK_AT_CROSS: Mutex<Option<usize>> = Mutex::new(None);
     fn now_ms() -> u128 {
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis()
     }
@@ -354,6 +357,12 @@ fn register_host_surface(ext: &mut Extension) {
     *HEARD_AT_EMIT.lock().unwrap() = Some(FACTORY_HEARD.lock().unwrap().len());
     *ERROR_EMIT_FAILED.lock().unwrap() = Some(ext.events().emit("error", json!({"from": "factory"})).is_err());
     ext.events()
+        .on("c3:ack", |_, data| {
+            ACK_HEARD.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .expect("subscribe c3:ack");
+    ext.events()
         .on("c3:cross", |_, _| {
             *CROSS_OWN_AT.lock().unwrap() = Some(now_ms());
             Ok(())
@@ -361,6 +370,7 @@ fn register_host_surface(ext: &mut Extension) {
         .expect("subscribe c3:cross");
     ext.events().emit("c3:cross", json!({"from": "factory"})).expect("emit c3:cross");
     *CROSS_RETURNED_AT.lock().unwrap() = Some(now_ms());
+    *ACK_AT_CROSS.lock().unwrap() = Some(ACK_HEARD.lock().unwrap().len());
     // The handler takes its time; a request that ran before it finished would read null.
     ext.on_loaded(|ctx| {
         std::thread::sleep(Duration::from_millis(300));
@@ -420,6 +430,6 @@ fn register_host_surface(ext: &mut Extension) {
     });
     ext.tool("c3_source", "c3_source", empty_schema(), |ctx, _| ToolResult::text(json!({"info": ctx.extension_source_info()}).to_string()));
     ext.tool("c3_loaded", "c3_loaded", empty_schema(), |_, _| {
-        ToolResult::text(json!({"loaded": *LOADED.lock().unwrap(), "factoryHeard": *FACTORY_HEARD.lock().unwrap(), "heardAtEmit": *HEARD_AT_EMIT.lock().unwrap(), "errorEmitFailed": *ERROR_EMIT_FAILED.lock().unwrap(), "crossOwnAt": (*CROSS_OWN_AT.lock().unwrap()).map(|ms| ms as u64), "crossReturnedAt": (*CROSS_RETURNED_AT.lock().unwrap()).map(|ms| ms as u64)}).to_string())
+        ToolResult::text(json!({"loaded": *LOADED.lock().unwrap(), "factoryHeard": *FACTORY_HEARD.lock().unwrap(), "heardAtEmit": *HEARD_AT_EMIT.lock().unwrap(), "errorEmitFailed": *ERROR_EMIT_FAILED.lock().unwrap(), "crossOwnAt": (*CROSS_OWN_AT.lock().unwrap()).map(|ms| ms as u64), "crossReturnedAt": (*CROSS_RETURNED_AT.lock().unwrap()).map(|ms| ms as u64), "ackHeard": *ACK_HEARD.lock().unwrap(), "ackAtCross": *ACK_AT_CROSS.lock().unwrap()}).to_string())
     });
 }
