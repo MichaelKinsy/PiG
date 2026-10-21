@@ -211,8 +211,7 @@ func TestSnapshotDecoderStringsSpanTextChunks(t *testing.T) {
 
 // Each mode's "contains" list is a window of one shared array, clipped so that growing one list can never write into the next.
 func TestRegistryContainsListsHaveNoSpareCapacity(t *testing.T) {
-	r := NewRegistry()
-	r.LoadAllLanguages()
+	r := eagerRegistry()
 	lists := 0
 	for _, node := range r.nodes {
 		if mode, ok := node.(*Mode); ok && mode.contains != nil {
