@@ -1002,6 +1002,29 @@ export default function (pi) {
       return { root: node };
     };
   }
+  {
+    const compaction = (tokens, expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.CompactionSummaryMessageComponent({ summary: "Compacted the first **forty** turns:\n\n1. the build setup\n2. the failing test\n\nThe fix is pending.", tokensBefore: tokens }, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const prefix = "pi-coding-agent/CompactionSummaryMessageComponent/";
+    kitWidgetCases[`${prefix}collapsed`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}click toggles`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}right click ignored`] = compaction(123456, false);
+    kitWidgetCases[`${prefix}expanded`] = compaction(123456, true);
+    kitWidgetCases[`${prefix}outputPad 0 collapsed`] = compaction(123456, false, 0);
+    kitWidgetCases[`${prefix}outputPad 0 expanded`] = compaction(123456, true, 0);
+    kitWidgetCases[`${prefix}tokens 999`] = compaction(999, false);
+    kitWidgetCases[`${prefix}tokens 1234567 expanded`] = compaction(1234567, true);
+    kitWidgetCases[`${prefix}empty summary tokens 0 expanded`] = () => {
+      const node = new piCodingAgent.CompactionSummaryMessageComponent({ summary: "", tokensBefore: 0 }, undefined, 1);
+      node.setExpanded(true);
+      return { root: node };
+    };
+  }
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
     description: "Show a widget kind's Pi vector case (D107)",

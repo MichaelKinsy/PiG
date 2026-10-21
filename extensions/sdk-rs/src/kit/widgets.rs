@@ -11,6 +11,8 @@ use serde_json::{Map, Value};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Widget {
     BranchSummary(BranchSummary),
+    CompactionSummary(CompactionSummary),
+    // widget-variants
 }
 
 macro_rules! widget_from {
@@ -22,12 +24,14 @@ macro_rules! widget_from {
         }
     )*};
 }
-widget_from!(BranchSummary);
+widget_from!(BranchSummary , CompactionSummary /* widget-from */);
 
 impl Widget {
     pub(super) fn kind(&self) -> &'static str {
         match self {
             Widget::BranchSummary(_) => "branch-summary",
+            Widget::CompactionSummary(_) => "compaction-summary",
+            // widget-kinds
         }
     }
 
@@ -42,6 +46,16 @@ impl Widget {
                 }
                 put_nonempty(map, "summary", &n.summary);
             }
+            Widget::CompactionSummary(n) => {
+                put_opt(map, "id", &n.id);
+                put_pad(map, n.output_pad);
+                if n.expanded {
+                    put(map, "expanded", true);
+                }
+                put_nonempty(map, "summary", &n.summary);
+                put(map, "tokensBefore", n.tokens_before);
+            }
+            // widget-encode
         }
         Ok(())
     }
@@ -148,3 +162,44 @@ impl BranchSummary {
         self.output_pad = output_pad;
     }
 }
+
+/// Coding-agent's `CompactionSummaryMessageComponent(message,
+/// getMarkdownTheme(), outputPad)`: the marker of a compaction ("Compacted
+/// from 12,345 tokens"), with the summary's markdown behind a click or
+/// [`CompactionSummary::set_expanded`]. It draws with the active theme, and a
+/// node with an id keeps its host component across frames, as
+/// [`BranchSummary`] does.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompactionSummary {
+    id: Option<String>,
+    summary: String,
+    tokens_before: u64,
+    output_pad: u32,
+    expanded: bool,
+}
+
+impl CompactionSummary {
+    /// A collapsed summary of a context of `tokens_before` tokens with
+    /// upstream's outputPad 1.
+    pub fn new(summary: impl Into<String>, tokens_before: u64) -> Self {
+        Self { id: None, summary: summary.into(), tokens_before, output_pad: 1, expanded: false }
+    }
+
+    /// Keeps the host component across frames.
+    pub fn id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    /// Upstream `setExpanded`.
+    pub fn set_expanded(&mut self, expanded: bool) {
+        self.expanded = expanded;
+    }
+
+    /// Upstream `setOutputPad`.
+    pub fn set_output_pad(&mut self, output_pad: u32) {
+        self.output_pad = output_pad;
+    }
+}
+
+// widget-structs

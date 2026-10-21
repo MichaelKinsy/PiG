@@ -1285,3 +1285,45 @@ class BranchSummary(_Node):
 
 
 __all__ += ["BranchSummary"]
+
+
+class CompactionSummary(_Node):
+    """Coding-agent's ``CompactionSummaryMessageComponent(message,
+    getMarkdownTheme(), outputPad)``: the marker of a compaction ("Compacted
+    from 12,345 tokens"), with the summary's markdown behind a click or
+    ``set_expanded``. It draws with the active theme, and a node with an
+    ``id`` keeps its host component across frames, as
+    :class:`BranchSummary` does."""
+
+    kind = "compaction-summary"
+
+    def __init__(self, summary: str, tokens_before: int, *, output_pad: int = 1, id: str = "") -> None:  # noqa: A002 - upstream's field name
+        self.id = str(id)
+        self.summary = str(summary)
+        self.tokens_before = int(tokens_before)
+        self.output_pad = int(output_pad)
+        self.expanded = False
+
+    def set_expanded(self, expanded: bool) -> None:
+        """Upstream ``setExpanded``."""
+        self.expanded = bool(expanded)
+
+    def set_output_pad(self, output_pad: int) -> None:
+        """Upstream ``setOutputPad``."""
+        self.output_pad = int(output_pad)
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.id:
+            out["id"] = self.id
+        if self.output_pad != 1:
+            out["outputPad"] = self.output_pad
+        if self.expanded:
+            out["expanded"] = True
+        if self.summary:
+            out["summary"] = self.summary
+        out["tokensBefore"] = self.tokens_before
+        return out
+
+
+__all__ += ["CompactionSummary"]

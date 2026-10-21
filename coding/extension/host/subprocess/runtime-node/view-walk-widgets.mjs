@@ -6,7 +6,7 @@
 // so this module imports nothing from it.
 
 // The coding-agent classes the walk loads the coding-agent bundle for.
-export const WIDGET_CODING_AGENT_CLASSES = ["BranchSummaryMessageComponent"];
+export const WIDGET_CODING_AGENT_CLASSES = ["BranchSummaryMessageComponent" , "CompactionSummaryMessageComponent" /* widget-classes */];
 
 // The pi-tui widget classes by render function: none are drawn by their
 // base class's render alone.
@@ -40,5 +40,14 @@ export function widgetClassHandlers(codingAgent, h) {
     if (node && c.message.summary) node.summary = c.message.summary;
     return node;
   });
+  add(codingAgent.CompactionSummaryMessageComponent, (walk, c) => {
+    if (typeof c.message?.summary !== "string" || !h.isInt(c.message.tokensBefore) || c.message.tokensBefore < 0) return undefined;
+    const node = message(walk, c, "compaction-summary");
+    if (!node) return undefined;
+    if (c.message.summary) node.summary = c.message.summary;
+    node.tokensBefore = c.message.tokensBefore;
+    return node;
+  });
+  // widget-walkers
   return entries;
 }

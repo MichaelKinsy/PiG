@@ -24,6 +24,7 @@ import (
 // kitWidgetExports are the Pi exports whose vectors are rendered widget cases.
 var kitWidgetExports = []struct{ dir, export string }{
 	{"pi-coding-agent", "BranchSummaryMessageComponent"},
+	{"pi-coding-agent", "CompactionSummaryMessageComponent"},
 }
 
 type kitWidgetCase struct {
