@@ -4687,7 +4687,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 				if turns := h.timerTurns.Load(); turns != nil {
 					// A Go, Rust or Python extension marks every call made through a context whose request returned, whoever makes it. A request of the connection that is still in flight may be awaiting this very call (a handler that keeps an earlier request's context), and the loop turn the hold waits for waits for that handler, so such a call runs on arrival: while a handler is pending, Pi's loop is turning. Only a Node runtime knows a callback from a handler's own call (timer-origin.mjs).
 					native := !me.hostsNodeRuntime()
-					if holdsForLoopTurn(call.Method) && !(native && conn.requestsInFlight()) {
+					if holdsForLoopTurn(call.Method) && (!native || !conn.requestsInFlight()) {
 						switch {
 						case call.Tick:
 							turns.Tick(func(done func()) { h.queueCallDone(me, conn, lanes, env.ID, call, done) })
