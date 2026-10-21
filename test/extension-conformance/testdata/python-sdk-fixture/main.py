@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import zlib
+from typing import Any
 
 # kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
 KIT_KINDS_PNG = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082"
@@ -83,6 +84,74 @@ class MouseProbe:
             f"{event.width}x{event.height}/w{event.wheel_delta}/c{event.click_count}/{mods}"
         )
         if event.type == "click":
+            return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
+        return pig_sdk.RemoteComponentResult()
+
+
+KIT_WIDGET_CASES: dict[str, Any] = {}
+"""The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
+§10), built with the SDK's own constructors; the key is
+"<module>/<export>/<case name>" and the case's wire node is its vector's
+``root``."""
+
+KIT_BRANCH_SUMMARY = "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`."
+
+
+def _kit_branch_view(expanded: bool = False, output_pad: int = 1) -> kit.View:
+    node = kit.BranchSummary(KIT_BRANCH_SUMMARY, output_pad=output_pad, id="b")
+    node.set_expanded(expanded)
+    return kit.View(kit.Container([node]))
+
+
+def _kit_branch_empty() -> kit.View:
+    node = kit.BranchSummary("")
+    node.set_expanded(True)
+    return kit.View(node)
+
+
+_BRANCH = "pi-coding-agent/BranchSummaryMessageComponent/"
+KIT_WIDGET_CASES[_BRANCH + "collapsed"] = lambda: _kit_branch_view()
+KIT_WIDGET_CASES[_BRANCH + "click toggles"] = lambda: _kit_branch_view()
+KIT_WIDGET_CASES[_BRANCH + "right click ignored"] = lambda: _kit_branch_view()
+KIT_WIDGET_CASES[_BRANCH + "expanded"] = lambda: _kit_branch_view(expanded=True)
+KIT_WIDGET_CASES[_BRANCH + "outputPad 0 collapsed"] = lambda: _kit_branch_view(output_pad=0)
+KIT_WIDGET_CASES[_BRANCH + "outputPad 0 expanded"] = lambda: _kit_branch_view(expanded=True, output_pad=0)
+KIT_WIDGET_CASES[_BRANCH + "empty summary expanded"] = _kit_branch_empty
+
+# kit-widget-cases
+
+
+class KitWidgetProbe:
+    """kit-widget's component: logs the keys and mouse events the view leaves
+    to the extension and the callbacks its nodes fire, and closes with the log
+    after ``want`` callbacks (never when ``want`` is 0)."""
+
+    def __init__(self, view: kit.View, want: int) -> None:
+        self.view_ = view
+        self.want = want
+        self.count = 0
+        self.log: list[str] = []
+
+    def view(self, _width: int) -> kit.View:
+        return self.view_
+
+    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+        self.log.append("input:" + data)
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_mouse(self, event: pig_sdk.MouseEvent) -> pig_sdk.RemoteComponentResult:
+        self.log.append(f"rawmouse:{event.type}/{event.button}/{event.x},{event.y}")
+        return pig_sdk.RemoteComponentResult()
+
+    def handle_view_event(self, event: kit.Event) -> pig_sdk.RemoteComponentResult:
+        if event.type == kit.MOUSE and event.mouse is not None:
+            m = event.mouse
+            self.log.append(f"mouse:{m['type']}/{m['button']}/{m['x']},{m['y']}")
+        else:
+            self.log.append(f"{event.type}:{event.value}")
+        if event.type != kit.CHANGE:
+            self.count += 1
+        if self.want > 0 and self.count >= self.want:
             return pig_sdk.RemoteComponentResult(done=True, value=",".join(self.log))
         return pig_sdk.RemoteComponentResult()
 
@@ -1414,6 +1483,16 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"kit={'' if result is None else result}", "info")
 
     ext.command("kit-probe", "Exercise the component kit (D107)", kit_probe)
+
+    def kit_widget(ctx: pig_sdk.Context, args: str) -> None:
+        key, _, count = args.partition(" ")
+        build = KIT_WIDGET_CASES.get(key)
+        if build is None:
+            raise RuntimeError(f"kit-widget: unknown case {key!r}")
+        result = ctx.custom(KitWidgetProbe(build(), int(count or 0)), {"overlay": True})
+        ctx.notify(f"kit-widget={'' if result is None else result}", "info")
+
+    ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", kit_widget)
 
     # mouse-probe opens the mouse row's component: the host hands it
     # fullscreen mouse events, and it closes on a click with what it got.

@@ -7,6 +7,14 @@ const (
 	EventCancel          = "cancel"
 	EventSelectionChange = "selectionChange"
 	EventChange          = "change"
+	// The widget kinds' callbacks: Input's and Editor's onSubmit, Input's
+	// onEscape, CancellableLoader's onAbort and the mouse event a
+	// MouseRegion took. EventChange also reports the value an Input or an
+	// Editor holds after a key.
+	EventSubmit = "submit"
+	EventEscape = "escape"
+	EventAbort  = "abort"
+	EventMouse  = "mouse"
 )
 
 // Event is a callback an interactive node of a ui.custom view fired on the
@@ -26,4 +34,9 @@ type Event struct {
 	// ID and Value are the setting and its new value of EventChange.
 	ID    string
 	Value string
+	// Cursor is the cursor of an input or an editor after EventChange,
+	// EventSubmit and EventEscape.
+	Cursor *Cursor
+	// Mouse is the event of EventMouse.
+	Mouse *Mouse
 }

@@ -47,8 +47,12 @@ __all__ = [
     "Markdown",
     "Message",
     "Node",
+    "ABORT",
+    "ESCAPE",
+    "MOUSE",
     "SELECT",
     "SELECTION_CHANGE",
+    "SUBMIT",
     "SelectItem",
     "SelectLayout",
     "SelectList",
@@ -82,7 +86,13 @@ SELECT = "select"
 CANCEL = "cancel"
 SELECTION_CHANGE = "selectionChange"
 CHANGE = "change"
-_EVENT_TYPES = (SELECT, CANCEL, SELECTION_CHANGE, CHANGE)
+# The widget kinds' callbacks: Input's and Editor's onSubmit, Input's onEscape,
+# CancellableLoader's onAbort and the mouse event a MouseRegion took.
+SUBMIT = "submit"
+ESCAPE = "escape"
+ABORT = "abort"
+MOUSE = "mouse"
+_EVENT_TYPES = (SELECT, CANCEL, SELECTION_CHANGE, CHANGE, SUBMIT, ESCAPE, ABORT, MOUSE)
 
 # The host's depth bound: deeper trees are invalid, and encoding stops there,
 # so a tree that contains itself fails instead of recursing without end.
@@ -1118,6 +1128,10 @@ class Event:
     item: SelectItem | None = None
     id: str = ""
     value: str = ""
+    #: ``{"line", "col"}`` of an input or an editor after change, submit and escape.
+    cursor: dict[str, int] | None = None
+    #: The mouse event (``type``, ``button``, ``x``, ``y``, ``screenX``, ...) of a mouse event.
+    mouse: dict[str, Any] | None = None
 
     @staticmethod
     def _from_wire(args: dict[str, Any]) -> tuple[str, Event] | None:
@@ -1138,6 +1152,8 @@ class Event:
             item=item,
             id=str(args.get("id") or ""),
             value=str(args.get("value") or ""),
+            cursor=dict(args["cursor"]) if isinstance(args.get("cursor"), dict) else None,
+            mouse=dict(args["mouse"]) if isinstance(args.get("mouse"), dict) else None,
         )
         return str(args.get("key") or ""), event
 
@@ -1226,3 +1242,46 @@ class _ViewLedger:
         if view:
             return {"view": self.wire(self.encode(value))}
         return {"lines": value}
+
+
+# ── widget kinds (docs/plan/extension-component-kit.md §2.2) ──────────────────
+
+
+class BranchSummary(_Node):
+    """Coding-agent's ``BranchSummaryMessageComponent(message,
+    getMarkdownTheme(), outputPad)``: the marker of a summarized branch, with
+    the summary's markdown behind a click or ``set_expanded``. It draws with
+    the active theme, as Pi's conversation components do. A node with an
+    ``id`` keeps its host component across frames, so a click's toggle lives
+    as long as the node."""
+
+    kind = "branch-summary"
+
+    def __init__(self, summary: str, *, output_pad: int = 1, id: str = "") -> None:  # noqa: A002 - upstream's field name
+        self.id = str(id)
+        self.summary = str(summary)
+        self.output_pad = int(output_pad)
+        self.expanded = False
+
+    def set_expanded(self, expanded: bool) -> None:
+        """Upstream ``setExpanded``."""
+        self.expanded = bool(expanded)
+
+    def set_output_pad(self, output_pad: int) -> None:
+        """Upstream ``setOutputPad``."""
+        self.output_pad = int(output_pad)
+
+    def _fields(self, enc: _Encoder, depth: int) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.id:
+            out["id"] = self.id
+        if self.output_pad != 1:
+            out["outputPad"] = self.output_pad
+        if self.expanded:
+            out["expanded"] = True
+        if self.summary:
+            out["summary"] = self.summary
+        return out
+
+
+__all__ += ["BranchSummary"]

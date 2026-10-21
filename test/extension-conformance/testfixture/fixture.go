@@ -1383,6 +1383,8 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	registerKitWidgets(ext)
+
 	ext.Command("kit-probe", "Exercise the component kit (D107)", func(ctx sdk.Context, args string) error {
 		result, err := ctx.Custom(&kitProbe{}, sdk.RemoteOverlayOptions{Title: "Kit"})
 		if err != nil {

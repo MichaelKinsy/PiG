@@ -209,6 +209,7 @@ impl ViewComponent for KitProbe {
             EventKind::Cancel => "cancel",
             EventKind::SelectionChange => "selectionChange",
             EventKind::Change => "change",
+            other => kit_event_name(other),
         };
         let value = event.item.map(|item| item.value).unwrap_or_default();
         self.log.push(format!("{kind}:{}:{value}", event.index));
@@ -296,6 +297,101 @@ fn kit_image_png(n: u32) -> Vec<u8> {
 
 /// kit-kinds' image, a 1×1 PNG every SDK fixture embeds byte for byte.
 const KIT_KINDS_PNG: &str = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082";
+
+const KIT_BRANCH_SUMMARY: &str = "The branch explored **two** options:\n\n- keep the cache\n- drop the cache\n\nIt chose `drop`.";
+
+fn kit_branch_view(set: impl FnOnce(&mut kit::BranchSummary)) -> kit::View {
+    let mut node = kit::BranchSummary::new(KIT_BRANCH_SUMMARY).id("b");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
+/// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
+/// §10), built with the SDK's own constructors; the key is
+/// "<module>/<export>/<case name>" and the case's wire node is its vector's
+/// `root`.
+fn kit_widget_case(key: &str) -> Option<kit::View> {
+    Some(match key {
+        "pi-coding-agent/BranchSummaryMessageComponent/collapsed"
+        | "pi-coding-agent/BranchSummaryMessageComponent/click toggles"
+        | "pi-coding-agent/BranchSummaryMessageComponent/right click ignored" => kit_branch_view(|_| {}),
+        "pi-coding-agent/BranchSummaryMessageComponent/expanded" => kit_branch_view(|n| n.set_expanded(true)),
+        "pi-coding-agent/BranchSummaryMessageComponent/outputPad 0 collapsed" => kit_branch_view(|n| n.set_output_pad(0)),
+        "pi-coding-agent/BranchSummaryMessageComponent/outputPad 0 expanded" => kit_branch_view(|n| {
+            n.set_output_pad(0);
+            n.set_expanded(true);
+        }),
+        "pi-coding-agent/BranchSummaryMessageComponent/empty summary expanded" => {
+            let mut node = kit::BranchSummary::new("");
+            node.set_expanded(true);
+            kit::View::new(node)
+        }
+        // kit-widget-cases
+        _ => return None,
+    })
+}
+
+/// kit-widget's component: it logs the keys and mouse events the view leaves
+/// to the extension and the callbacks its nodes fire, and closes with the log
+/// after `want` callbacks (never when `want` is 0).
+struct KitWidgetProbe {
+    view: kit::View,
+    want: usize,
+    count: usize,
+    log: Vec<String>,
+}
+
+impl ViewComponent for KitWidgetProbe {
+    fn view(&self, _width: u32) -> kit::View {
+        self.view.clone()
+    }
+
+    fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+        self.log.push(format!("input:{}", data.to_string_lossy()));
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handles_mouse(&self) -> bool {
+        true
+    }
+
+    fn handle_mouse(&mut self, event: &MouseEvent) -> Result<RemoteComponentResult, String> {
+        self.log.push(format!("rawmouse:{}/{}/{},{}", event.kind, event.button, event.x, event.y));
+        Ok(RemoteComponentResult::pending())
+    }
+
+    fn handle_view_event(&mut self, event: kit::Event) -> Result<RemoteComponentResult, String> {
+        let entry = match event.kind {
+            EventKind::Mouse => match &event.mouse {
+                Some(m) => format!("mouse:{}/{}/{},{}", m.kind, m.button, m.x, m.y),
+                None => "mouse:".to_string(),
+            },
+            kind => format!("{}:{}", kit_event_name(kind), event.value),
+        };
+        self.log.push(entry);
+        if event.kind != EventKind::Change {
+            self.count += 1;
+        }
+        if self.want > 0 && self.count >= self.want {
+            return Ok(RemoteComponentResult::done(Some(Value::from(self.log.join(",")))));
+        }
+        Ok(RemoteComponentResult::pending())
+    }
+}
+
+fn kit_event_name(kind: EventKind) -> &'static str {
+    match kind {
+        EventKind::Select => "select",
+        EventKind::Cancel => "cancel",
+        EventKind::SelectionChange => "selectionChange",
+        EventKind::Change => "change",
+        EventKind::Submit => "submit",
+        EventKind::Escape => "escape",
+        EventKind::Abort => "abort",
+        EventKind::Mouse => "mouse",
+    }
+}
 
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
@@ -2163,6 +2259,23 @@ fn main() {
             }
         },
     );
+    // kit-widget "<case key> [<callbacks>]" opens a widget kind's Pi vector
+    // case in an overlay and notifies "kit-widget=<log>" when it closes.
+    ext.command("kit-widget", "Show a widget kind's Pi vector case (D107)", |ctx, args| {
+        let (key, count) = args.split_once(' ').unwrap_or((args, ""));
+        let Some(view) = kit_widget_case(key) else {
+            return CommandResult::Error(format!("kit-widget: unknown case {key:?}"));
+        };
+        let probe = KitWidgetProbe { view, want: count.parse().unwrap_or(0), count: 0, log: Vec::new() };
+        match ctx.custom_view(probe, json!({"overlay": true})) {
+            Ok(result) => {
+                let text = result.map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_string)).unwrap_or_default();
+                ctx.notify(&format!("kit-widget={text}"), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
     ext.command("kit-probe", "Exercise the component kit (D107)", |ctx, _args| {
         match ctx.custom_view(KitProbe { log: Vec::new() }, json!({"title": "Kit"})) {
             Ok(result) => {
