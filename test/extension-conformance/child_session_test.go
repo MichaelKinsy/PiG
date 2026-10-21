@@ -91,9 +91,7 @@ func newChildSessionHostWith(t *testing.T, sentinel bool, wrap func(subprocess.C
 		if err := services.Registry().RegisterExtensionProvider(childSentinelProvider, extension.ProviderConfig{
 			API: ai.APIOpenAICompletions, BaseURL: "https://sentinel.invalid", APIKey: "sentinel-key",
 			Models: []extension.ProviderModelConfig{{ID: "echo", Name: "Echo"}},
-			StreamSimple: func(model extension.Model, in extension.AIContext, options extension.SimpleStreamOptions) extension.AssistantMessageEventStream {
-				return childSentinelStream(model, in, options)
-			},
+			StreamSimple: childSentinelStream,
 		}); err != nil {
 			t.Fatal(err)
 		}
