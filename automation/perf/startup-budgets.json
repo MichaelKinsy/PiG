@@ -1,5 +1,5 @@
 {
-  "runtime_archive_max_bytes": 7864320,
+  "runtime_archive_max_bytes": 4700000,
   "word_dictionaries_max_bytes": 6320964,
   "no_extensions_over_baseline": 1.05,
   "extension_over_pi": 1.15

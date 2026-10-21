@@ -139,6 +139,30 @@ type sessionMarkerHeader struct {
 	Release string `json:"release"`
 	CWD     string `json:"cwd"`
 	Started string `json:"started"`
+	// Host and PIDNS say where PID names a process: the machine's host name and, where the OS has them, its PID namespace. An agent directory on a shared home or a container bind mount holds the markers of sessions that run elsewhere; their PIDs mean nothing here.
+	Host  string `json:"host"`
+	PIDNS string `json:"pidns,omitempty"`
+}
+
+// sessionHostIdentity names the machine and PID namespace this process runs in; a test replaces it.
+var sessionHostIdentity = func() (host, pidns string) {
+	host, _ = os.Hostname()
+	return host, pidNamespace()
+}
+
+// markerOwnedElsewhere reports whether the marker at path was written by a session on another host or in another PID namespace, whose liveness this process cannot judge from the PID. A marker without a host (written before the header named one) or that cannot be read is judged by its PID as before.
+func markerOwnedElsewhere(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	headerLine, _, _ := strings.Cut(string(data), "\n")
+	var header sessionMarkerHeader
+	if json.Unmarshal([]byte(headerLine), &header) != nil || header.Host == "" {
+		return false
+	}
+	host, pidns := sessionHostIdentity()
+	return header.Host != host || (header.PIDNS != "" && pidns != "" && header.PIDNS != pidns)
 }
 
 var (
@@ -163,8 +187,9 @@ func BeginSessionMarker(agentDir, version, cwd string) {
 	if err != nil {
 		return
 	}
+	host, pidns := sessionHostIdentity()
 	//portlint:allow clock the exit record stamps the real wall clock of this process; the package's clock seams belong to the logo animation and the Radius login selector, and Pi has no counterpart (D102)
-	header, _ := json.Marshal(sessionMarkerHeader{PID: os.Getpid(), PPID: os.Getppid(), Release: version, CWD: cwd, Started: time.Now().Format(time.RFC3339)})
+	header, _ := json.Marshal(sessionMarkerHeader{PID: os.Getpid(), PPID: os.Getppid(), Release: version, CWD: cwd, Started: time.Now().Format(time.RFC3339), Host: host, PIDNS: pidns})
 	if _, err := file.Write(append(header, '\n')); err != nil {
 		_ = file.Close()
 		_ = os.Remove(path)
@@ -195,7 +220,7 @@ func EndSessionMarker() {
 	_ = os.Remove(path)
 }
 
-// ReconcileSessionMarkers reports every session whose marker file outlived its process. A marker with a Go crash report
+// ReconcileSessionMarkers reports every session whose marker file outlived its process. A marker that another host or PID namespace wrote is left alone: that session may be running. A marker with a Go crash report
 // becomes a crash record, shown at this start and attached by /bug. A marker without one became an exit.log line: the
 // session was killed from outside (SIGKILL, memory pressure, power loss) or died where Go could not write.
 func ReconcileSessionMarkers(agentDir string, now time.Time) {
@@ -212,7 +237,11 @@ func ReconcileSessionMarkers(agentDir string, now time.Time) {
 		if !ok || convErr != nil || pid == os.Getpid() || processAlive(pid) {
 			continue
 		}
-		reconcileSessionMarker(agentDir, filepath.Join(CrashOutputDir(agentDir), entry.Name()), pid, now)
+		path := filepath.Join(CrashOutputDir(agentDir), entry.Name())
+		if markerOwnedElsewhere(path) {
+			continue
+		}
+		reconcileSessionMarker(agentDir, path, pid, now)
 	}
 }
 

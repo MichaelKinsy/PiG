@@ -70,6 +70,8 @@ type builder struct {
 	lanes  map[string][]laneCommit
 	// files caches the number of files each commit touches.
 	files map[string]int
+	// replaced maps the full sha a Fix-Commit trailer of HEAD's history names to the commit that carries it; see replacedCommits.
+	replaced map[string]string
 }
 
 // inHistory reports whether the commit named by a short hash is reachable from HEAD.
@@ -485,10 +487,63 @@ func classOf(note string, fixMessages []string) string {
 	return ClassOwn
 }
 
+// fixTrailerRE is the trailer a squash commit carries for each commit it replaced: "Fix-Commit: <full sha>". Only the 40 hex digits name one commit; an abbreviation does not.
+var fixTrailerRE = regexp.MustCompile(`(?m)^Fix-Commit: ([0-9a-f]{40})[ \t]*$`)
+
+// replacedCommits maps the full sha each Fix-Commit trailer of HEAD's history names to the commit that carries the trailer.
+func (b *builder) replacedCommits() (map[string]string, error) {
+	if b.replaced != nil {
+		return b.replaced, nil
+	}
+	out, err := b.r.git("log", "HEAD", "--grep=^Fix-Commit: ", "--format=%H%x00%B%x01")
+	if err != nil {
+		return nil, err
+	}
+	b.replaced = map[string]string{}
+	for entry := range strings.SplitSeq(out, "\x01") {
+		commit, body, ok := strings.Cut(strings.TrimSpace(entry), "\x00")
+		if !ok {
+			continue
+		}
+		for _, m := range fixTrailerRE.FindAllStringSubmatch(body, -1) {
+			if _, taken := b.replaced[m[1]]; !taken {
+				b.replaced[m[1]] = commit
+			}
+		}
+	}
+	return b.replaced, nil
+}
+
+// resolveFix returns the commit a fix marker names. A commit HEAD reaches is itself. A commit a squash removed from the history is the squash commit whose "Fix-Commit: <full sha>" trailer names it, so the ledger attributes the squash's diff to the entry; a marker whose prefix fits the trailers of two different commits resolves to neither. A commit that exists in the clone but is neither reachable nor named by a trailer resolves as it did before, to itself.
+func (b *builder) resolveFix(name string) (string, bool) {
+	full, ok := b.r.resolve(name)
+	if ok && b.inHistory(full) {
+		return full, true
+	}
+	if len(name) >= 7 {
+		if replaced, err := b.replacedCommits(); err == nil {
+			found := ""
+			for sha := range replaced {
+				if strings.HasPrefix(sha, name) {
+					if found != "" && found != sha {
+						found = ""
+						break
+					}
+					found = sha
+				}
+			}
+			if found != "" {
+				return replaced[found], true
+			}
+		}
+	}
+	return full, ok
+}
+
 // explicitFix records the commits a release note names as its fix, with the tests each adds or names.
 func (b *builder) explicitFix(e *Entry, names []string, messages *[]string, rank *int) error {
 	for _, name := range names {
-		full, ok := b.r.resolve(name)
+		full, ok := b.resolveFix(name)
 		if !ok {
 			return fmt.Errorf("release note %q: the fix marker names %s, which is not a commit", e.Title, name)
 		}

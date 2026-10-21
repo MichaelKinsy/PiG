@@ -19,14 +19,24 @@ concurrency:
 
 jobs:
   race:
-    name: Race / ${{ matrix.os }} / ${{ matrix.group }}
+    name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
+    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as four shards of its tests (PIG_RACE_SHARD).
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
-        group: [ai, rest]
+        group: [ai, rest, host, coding, libs]
+        include:
+          - {os: ubuntu-24.04, group: cli, shard: 1/4}
+          - {os: ubuntu-24.04, group: cli, shard: 2/4}
+          - {os: ubuntu-24.04, group: cli, shard: 3/4}
+          - {os: ubuntu-24.04, group: cli, shard: 4/4}
+          - {os: macos-15, group: cli, shard: 1/4}
+          - {os: macos-15, group: cli, shard: 2/4}
+          - {os: macos-15, group: cli, shard: 3/4}
+          - {os: macos-15, group: cli, shard: 4/4}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -35,7 +45,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -70,6 +80,7 @@ jobs:
         env:
           CI: '1'
           PIG_RACE_GROUP: ${{ matrix.group }}
+          PIG_RACE_SHARD: ${{ matrix.shard }}
         run: make test-race-nightly
 
   fuzz:
@@ -91,7 +102,7 @@ jobs:
         run: make fuzz-nightly
       - name: Keep failing inputs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fuzz-failures-${{ github.sha }}
           path: '**/testdata/fuzz/**'
@@ -111,7 +122,7 @@ jobs:
           cache: true
       # The Node-cell, Node-host and clipboard benchmarks start node; Pi requires Node >= 22.19.0 and the runner image's Node is not pinned, so the job uses .node-version like the other Node jobs.
       # The subprocess host benchmarks start Node extension runtimes; their baseline entries were measured on the pinned Node.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
       - name: Compare allocs/op with the committed baseline

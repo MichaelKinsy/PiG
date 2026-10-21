@@ -7,8 +7,7 @@ import (
 
 // The language and compiled properties sit behind pointers. inherit must copy them into the new mode's own properties, a mode without them must read them as absent, and no write may reach the shared zero values.
 func TestModePropertiesStayWithTheirMode(t *testing.T) {
-	r := NewRegistry()
-	r.LoadAllLanguages()
+	r := eagerRegistry()
 
 	modes, withLanguage := 0, 0
 	for _, node := range r.nodes {

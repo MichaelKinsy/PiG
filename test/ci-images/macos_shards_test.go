@@ -30,7 +30,7 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	}
 	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "packages")
 	var gotUnits []string
-	for _, entry := range job.Strategy.Matrix.Shard {
+	for _, entry := range planFor(t, "merge_group", "").shards("macos") {
 		units := strings.Fields(entry)
 		if slices.Contains(units, "native") && len(units) != 1 {
 			t.Errorf("macos job %q groups native with other units; native has its own setup", entry)
@@ -42,7 +42,7 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	if !slices.Equal(gotUnits, wantUnits) {
 		t.Fatalf("macos units = %v, want each of %v exactly once", gotUnits, wantUnits)
 	}
-	if n := len(job.Strategy.Matrix.Shard); n > 5 {
+	if n := len(planFor(t, "merge_group", "").shards("macos")); n > 5 {
 		t.Errorf("macos has %d jobs; GitHub runs at most 5 macOS jobs at a time", n)
 	}
 	if job.Strategy.FailFast == nil || *job.Strategy.FailFast {

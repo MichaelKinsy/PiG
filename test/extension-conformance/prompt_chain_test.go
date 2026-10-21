@@ -195,9 +195,12 @@ def new_extension():
 		source = fmt.Sprintf(`use pig_sdk::{Extension,Schema};
 pub fn new_extension()->Extension {
  let mut e=Extension::new(%q);
- e.on_event_result("before_agent_start",|_,data| {
-  let appended=format!("{}|%s={}",data["systemPromptOptions"]["appendSystemPrompt"].as_str().unwrap_or(""),data["systemPrompt"].as_str().unwrap_or("").len());
-  data["systemPromptOptions"]["appendSystemPrompt"]=Schema::String(appended);
+ e.on_before_agent_start(|_,event| {
+  let len=event.system_prompt().map_err(|e| e.to_string())?.len();
+  event.edit_system_prompt_options(|options| {
+   let appended=format!("{}|%s={}",options["appendSystemPrompt"].as_str().unwrap_or(""),len);
+   options["appendSystemPrompt"]=Schema::String(appended);
+  });
   Ok(None)
  });
  e

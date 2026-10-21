@@ -10,13 +10,13 @@
 package rssdk
 
 import (
-	"embed"
 	"io/fs"
 	"slices"
 )
 
-//go:embed LICENSE Cargo.toml Cargo.lock src
-var Source embed.FS
+// bundle_embed.go lists the crate's files without its unit-test modules (src/*tests.rs, each declared under #[cfg(test)], which cargo does not load in a build): go:embed cannot leave files out of a directory, so the list is generated. TestBundledFilesMatchRustSourceTree fails when it and the source tree disagree.
+//
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg rssdk -out bundle_embed.go -skip tests.rs -skip bundle.go -skip bundle_embed.go -walk src LICENSE Cargo.toml Cargo.lock
 
 // BundledFiles lists the embedded files, relative to the crate root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories.

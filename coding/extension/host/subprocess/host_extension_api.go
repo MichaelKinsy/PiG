@@ -38,8 +38,11 @@ type nestedCall struct {
 	cancel context.CancelFunc
 }
 
-// reserveNestedCall reserves call when it is an executeTool, builtinTool.execute or builtinTool.localExec call, or an exec call whose signal the extension owns, and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op. An exec call is named in its own key space, so an exec id never meets an executeTool id.
+// reserveNestedCall reserves call when it is a dialog that carries a dialogId, an executeTool, builtinTool.execute or builtinTool.localExec call, or an exec call whose signal the extension owns, and returns the function that ends the reservation after the call ran or was dropped. Other calls get a no-op. An exec call is named in its own key space, so an exec id never meets an executeTool id.
 func (h *Host) reserveNestedCall(conn *Conn, call *CallPayload) (release func()) {
+	if id := dialogIDOf(call); id != "" {
+		return h.nested.reserve(conn, dialogSignalKey(id))
+	}
 	switch call.Method {
 	case CallExecuteTool, CallBuiltinToolExecute, CallBuiltinToolLocalExec:
 		var named struct {
@@ -93,6 +96,22 @@ func (h *Host) handleExecCancel(conn *Conn, call *CallPayload) (*CallResultPaylo
 	}
 	h.nested.cancel(conn, execCallKey(cancel.ExecID))
 	return &CallResultPayload{}, nil
+}
+
+// dialogIDOf returns the dialogId of a ui.select, ui.confirm or ui.input call whose extension passed an options.signal, or "".
+func dialogIDOf(call *CallPayload) string {
+	switch call.Method {
+	case "ui.select", "ui.confirm", "ui.input":
+	default:
+		return ""
+	}
+	var named struct {
+		DialogID string `json:"dialogId"`
+	}
+	if json.Unmarshal(call.Args, &named) != nil {
+		return ""
+	}
+	return named.DialogID
 }
 
 func (n *nestedCalls) reserve(conn *Conn, id string) (release func()) {

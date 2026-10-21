@@ -1164,6 +1164,14 @@ function awaitHostStep(conn) {
   }
 }
 
+// awaitsWaitForIdle reports whether the request's handler waits on a waitForIdle host call. Pi's returns at once while the Session is idle (agent-session.ts waitForIdle: `if (this.isIdle) return`), so the handler goes on in microtasks and is not suspended; the host knows whether the call waits and reports the suspension then (Conn.settleBlockedCall).
+function awaitsWaitForIdle(conn, requestId) {
+  for (const pending of conn.pending.values()) {
+    if (pending.parentRequestId === requestId && pending.method === "waitForIdle") return true;
+  }
+  return false;
+}
+
 export class Connection {
   constructor(socket) {
     this.socket = socket;
@@ -1511,7 +1519,13 @@ class RuntimeContext {
   isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.isIdle; }
   isProjectTrusted() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.projectTrusted; }
   abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.abortRun(); }
-  hasPendingMessages() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.hasPendingMessages; }
+  // Pi's hasPendingMessages is a live getter (agent-session.js:2728, `pendingMessageCount > 0`),
+  // so a cached snapshot would hide a queue transition that happens while a handler is awaited.
+  hasPendingMessages() {
+    this.runtime.extensionRuntime.assertActive();
+    const pending = this.runtime.callSync("hasPendingMessages");
+    return pending?.pending === true;
+  }
   // Pi's shutdown() stops the TUI only after the frame the current input
   // produced is painted (it drains input first), so a shutdown requested
   // from an editor's handleInput reaches the host after that frame.
@@ -1534,10 +1548,28 @@ class RuntimeContext {
       (err) => { if (typeof onError === "function") onError(err instanceof Error ? err : new Error(String(err))); },
     );
   }
-  getSystemPrompt() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPrompt; }
-  getSystemPromptOptions() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.systemPromptOptions ?? {}; }
+  // agent-session.ts:1474-1476, 3495-3496 read the Session. The replicated prompt state lags this extension's own writes to the loadout, so once it has made one a read asks the Host (see Runtime.promptWritten).
+  getSystemPrompt() {
+    this.runtime.extensionRuntime.assertActive();
+    return this.runtime.promptWritten ? this.runtime.callSync("getSystemPrompt")?.prompt ?? "" : this.runtime.state.systemPrompt;
+  }
+  getSystemPromptOptions() {
+    this.runtime.extensionRuntime.assertActive();
+    return this.runtime.promptWritten ? this.runtime.callSync("getSystemPromptOptions") ?? {} : this.runtime.state.systemPromptOptions ?? {};
+  }
   // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
-  waitForIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.call("waitForIdle", {}); }
+  waitForIdle() {
+    this.runtime.extensionRuntime.assertActive();
+    const operation = this.runtime.call("waitForIdle", {});
+    // The command's acknowledgment waits for the call like any other host call of the handler, so a handler that goes on in microtasks once it returned is not taken for suspended (acknowledgeInvocation).
+    const owner = this.runtime.activeRequest();
+    if (owner) {
+      const tracked = operation.then(() => {}, () => {});
+      owner.pendingHostCalls.add(tracked);
+      void tracked.then(() => owner.pendingHostCalls.delete(tracked));
+    }
+    return operation;
+  }
   newSession(options = {}) {
     this.runtime.extensionRuntime.assertActive();
     const { withSession, setup, ...rest } = options ?? {};
@@ -1605,18 +1637,23 @@ class RuntimeUI {
     this.theme = new ThemeShim();
   }
   async select(title, options, opts = {}) {
+    if (opts?.signal?.aborted) return undefined;
     this.runtime.blockForUser();
-    const result = await this.runtime.call("ui.select", { title, options, opts });
+    const result = await this.runtime.dialogCall("ui.select", { title, options, opts });
     return result?.ok ? result.selected : undefined;
   }
   async confirm(title, message, opts = {}) {
+    if (opts?.signal?.aborted) return false;
     this.runtime.blockForUser();
-    const result = await this.runtime.call("ui.confirm", { title, message, opts });
-    return Boolean(result?.confirmed);
+    const result = await this.runtime.dialogCall("ui.confirm", { title, message, opts });
+    // Pi's RPC confirm resolves `"confirmed" in r ? r.confirmed : false`: whatever JSON the client sent, `null` and non-booleans included.
+    return result && "confirmed" in result ? result.confirmed : false;
   }
-  async input(title, placeholder = "", opts = {}) {
+  // An omitted placeholder stays omitted, and an empty one is sent: RPC writes the member for the second only (rpc-mode.ts input).
+  async input(title, placeholder, opts = {}) {
+    if (opts?.signal?.aborted) return undefined;
     this.runtime.blockForUser();
-    const result = await this.runtime.call("ui.input", { title, placeholder, opts });
+    const result = await this.runtime.dialogCall("ui.input", { title, placeholder, opts });
     return result?.ok ? result.text : undefined;
   }
   // ExtensionUIContext.notify has an optional type; an omitted one stays omitted (RPC writes no notifyType, rpc-mode.ts notify).
@@ -1625,6 +1662,8 @@ class RuntimeUI {
     if (typeof handler !== "function") {
       throw new TypeError("onTerminalInput requires a handler function");
     }
+    // rpc-mode.ts onTerminalInput: raw terminal input is not supported in RPC mode; nothing is registered and no host call is made.
+    if (this.runtime.contextValues.mode === "rpc") return () => {};
     return this.runtime.addTerminalInputHandler(handler);
   }
   // Upstream Pi installs headers and footers as component factories whose
@@ -1668,10 +1707,11 @@ class RuntimeUI {
     this.runtime.fireAndForget("ui.setStatus", { key, text });
     if (this.runtime.footerFactory) this.runtime.renderSpecialSurface("footer");
   }
-  setWorkingMessage(message) { this.runtime.fireAndForget("ui.setWorkingMessage", { message }); }
-  setWorkingIndicator(options = {}) { this.runtime.fireAndForget("ui.setWorkingIndicator", options); }
-  setWorkingVisible(visible) { this.runtime.fireAndForget("ui.setWorkingVisible", { visible }); }
-  setHiddenThinkingLabel(label) { this.runtime.fireAndForget("ui.setHiddenThinkingLabel", { label }); }
+  // rpc-mode.ts: working message, indicator, visibility and the hidden thinking label need the TUI loader and message rendering, so RPC mode makes no host call.
+  setWorkingMessage(message) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setWorkingMessage", { message }); }
+  setWorkingIndicator(options = {}) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setWorkingIndicator", options); }
+  setWorkingVisible(visible) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setWorkingVisible", { visible }); }
+  setHiddenThinkingLabel(label) { if (this.runtime.contextValues.mode !== "rpc") this.runtime.fireAndForget("ui.setHiddenThinkingLabel", { label }); }
   setWidget(key, content, options = {}) {
     if (content === undefined || content === null) {
       this.runtime.clearWidget(key);
@@ -1694,7 +1734,9 @@ class RuntimeUI {
     }
     throw new Error("setWidget content must be a component factory, string array, or undefined");
   }
+  // rpc-mode.ts setFooter/setHeader: a custom footer or header needs the TUI, so RPC mode ignores the factory without calling or keeping it.
   setFooter(factory) {
+    if (this.runtime.contextValues.mode === "rpc") return;
     this.runtime.specialSurfaceComponents.get("footer")?.component?.dispose?.();
     this.runtime.footerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("footer");
@@ -1702,6 +1744,7 @@ class RuntimeUI {
     else this.runtime.fireAndForget("ui.setFooter", { clear: true });
   }
   setHeader(factory) {
+    if (this.runtime.contextValues.mode === "rpc") return;
     this.runtime.specialSurfaceComponents.get("header")?.component?.dispose?.();
     this.runtime.headerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("header");
@@ -1726,7 +1769,8 @@ class RuntimeUI {
   pasteToEditor(text) { this.runtime.fireAndForget("ui.pasteToEditor", { text }); }
   setEditorText(text) { this.runtime.fireAndForget("ui.setEditorText", { text }); }
   getEditorText() { return this.runtime.state.editorText ?? ""; }
-  async editor(title, prefill = "") {
+  // An omitted prefill stays omitted, and an empty one is sent: RPC writes the member for the second only (rpc-mode.ts editor).
+  async editor(title, prefill) {
     this.runtime.blockForUser();
     const result = await this.runtime.call("ui.editor", { title, prefill });
     return result?.ok ? result.text : undefined;
@@ -1735,7 +1779,9 @@ class RuntimeUI {
   // 0.3.0: replaced by Pi runner wiring
   // Pi's setEditorComponent: the factory's editor replaces the host's editor
   // (editor-component.mjs); undefined restores it.
+  // rpc-mode.ts: RPC mode has no custom editor, so setEditorComponent is a no-op and getEditorComponent answers undefined.
   setEditorComponent(factory) {
+    if (this.runtime.contextValues.mode === "rpc") return;
     if (typeof factory !== "function") {
       this.runtime.editorFactory = undefined;
       this.runtime.editorHost.clear();
@@ -1744,12 +1790,14 @@ class RuntimeUI {
     this.runtime.editorFactory = factory;
     this.runtime.editorHost.install(factory);
   }
-  getEditorComponent() { return this.runtime.editorFactory; }
+  getEditorComponent() { return this.runtime.contextValues.mode === "rpc" ? undefined : this.runtime.editorFactory; }
   getAllThemes() { return this.runtime.state.allThemes ?? []; }
   getTheme(name) {
     return themeFromPalette(this.runtime.callSync("ui.getTheme", { name })?.theme);
   }
   setTheme(name) {
+    // rpc-mode.ts setTheme: RPC mode cannot switch themes, for a name or a Theme object alike, and never throws.
+    if (this.runtime.contextValues.mode === "rpc") return { success: false, error: "Theme switching not supported in RPC mode" };
     const result = this.runtime.callSync("ui.setTheme", { theme: name });
     const palette = this.runtime.callSync("ui.theme")?.theme;
     if (palette) this.runtime.applyThemePalette(palette);
@@ -2005,6 +2053,7 @@ export class Runtime {
     this.bashOperationsSeq = 0;
     this.nextExecuteId = 1;
     this.nextExecId = 1;
+    this.nextDialogId = 1;
     // Raw terminal-input handlers, consulted synchronously while the host
     // waits for a consume decision. Empty means the host never round-trips.
     this.terminalInputHandlers = [];
@@ -2088,6 +2137,8 @@ export class Runtime {
     this.sessionLogRequested = false;
     this.sessionLogGeneration = 0;
     this.sessionLogSync = undefined;
+    // Whether this extension has changed the active tools or registered a tool since it loaded. The Host pushes the system prompt and its options with the next event, after the handler that wrote them, so from the first write on a read asks the Host instead of the push (Pi's getters read the Session, agent-session.ts:1474-1476, 3495-3496).
+    this.promptWritten = false;
     this.state = {
       commands: [],
       thinkingLevel: "",
@@ -2161,7 +2212,7 @@ export class Runtime {
       sendMessage: action((message, options = {}) => {
         this.reportCommandYield();
         if (options?.deliverAs === "nextTurn") return this.fireAndForget("sendMessage", { message, options });
-        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session.
+        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session, unless the Session holds the message back: one sent while the agent_settled handlers run waits for them (agent-session.ts:2344-2349) and the session stays idle. In such a handler the answer is the Host's. Elsewhere the run is in progress, and asking would race a run that has already ended.
         if (options?.triggerTurn) {
           const idle = this.state.isIdle;
           try { this.writeSync("sendMessage", { message, options }); }
@@ -2171,7 +2222,8 @@ export class Runtime {
             }
             return;
           }
-          if (idle) this.state.isIdle = false;
+          if (this.activeRequest()?.event === "agent_settled") this.state.isIdle = this.callSync("isIdle")?.idle === true;
+          else if (idle) this.state.isIdle = false;
           return;
         }
         try { this.writeSync("sendMessage", { message, options }); }
@@ -2232,6 +2284,7 @@ export class Runtime {
       }),
       setActiveTools: action((tools) => {
         this.fireAndForget("setActiveTools", { tools });
+        this.promptWritten = true;
       }),
       setModel: async (model) => {
         if (!this.conn || !this.hostReady) throw new Error("Extension runtime not initialized");
@@ -2364,7 +2417,10 @@ export class Runtime {
       throw new Error(`Tool "${definition.name}" registered by extension "${this.entry}" must define an object parameter schema.`);
     }
     this.tools.set(definition.name, definition);
-    if (this.conn) this.callSync("registerTool", this.toolDeclaration(definition));
+    if (this.conn) {
+      this.callSync("registerTool", this.toolDeclaration(definition));
+      this.promptWritten = true;
+    }
   }
 
   // A host call the factory may make before the extension registers: it opens the connection a loading factory needs, as the shared event bus does.
@@ -2416,6 +2472,17 @@ export class Runtime {
   loadingExec(args) {
     this.ensureConnectionSync();
     return this.earlyConn.callAppliedOnReceipt("exec.loading", args);
+  }
+
+  // pig additive (D19): a file mutation queue call (shims/file-mutation-queue-bridge.mjs). Pi's queue is a module-level map every extension shares, so a factory may use it while it loads: like exec, the call opens the loading connection and is applied when its reply arrives. The call is detached from the request that makes it: an aborted request does not end the wait for the file or the release of its turn, as Pi's queue does not.
+  fileMutation(method, args) {
+    if (this.conn) return this.call(method, args, { detached: true });
+    if (this.loadState === "loading") {
+      this.ensureConnectionSync();
+      return this.earlyConn.callAppliedOnReceipt(method, args);
+    }
+    if (this.connecting) return this.connecting.then(() => this.call(method, args, { detached: true }));
+    return this.call(method, args, { detached: true });
   }
 
   // loader.ts:456-468. The Host validates the config with Pi's own rules and refuses a name another extension owns, and Pi does both when the call is made: the throw reaches the factory, which may catch it. A registration the factory makes is queued once it passed, and reaches the Host in the register frame, as Pi commits it when the factory returns; later ones apply at once.
@@ -2884,7 +2951,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command" };
+    const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain();
@@ -5115,7 +5182,7 @@ export class Runtime {
     // notify and LoginOptions.getDeviceId are synchronous in Pi (auth/types.ts:160, 208).
     const providerCallback = method === "provider.callback" && (args.method === "notify" || args.method === "getDeviceId");
     const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
-    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
       throw new Error(`Host method ${method} is not a synchronous bridge operation`);
     }
     if (!this.conn) throw new Error("runtime not connected");
@@ -5151,6 +5218,25 @@ export class Runtime {
     } finally {
       if (reportedRequestId && !owner?.responded && !connection.closed) connection.requestState(reportedRequestId, "progress");
     }
+  }
+
+  // A dialog whose options carry a signal (rpc-mode.ts createDialogPromise, which a pre-aborted signal never reaches because the dialogs return the default first): an abort
+  // settles the dialog with the default at once, and the host dismisses it. The signal does not cross the process boundary, so the call names the dialog by id.
+  async dialogCall(method, args) {
+    const { signal, ...opts } = args.opts ?? {};
+    if (!signal) return this.call(method, args);
+    const dialogId = `d${this.nextDialogId++}`;
+    const outcome = this.call(method, { ...args, opts, dialogId });
+    let onAbort;
+    const aborted = new Promise(resolve => {
+      onAbort = () => {
+        this.conn?.call("ui.cancelDialog", { dialogId }, "").catch(() => {});
+        resolve(undefined);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+    try { return await Promise.race([outcome, aborted]); }
+    finally { signal.removeEventListener("abort", onAbort); }
   }
 
   // A withSession callback (types.ts:410-430) cannot cross the process boundary: the call names it by handle, and the host runs it with a with_session request before the call settles. A callback that throws rejects the call with its own error, as Pi's awaited callback does.
@@ -5345,7 +5431,7 @@ export class Runtime {
     await Promise.resolve();
     const owner = this.requestContext.getStore();
     while (owner?.pendingHostCalls.size) await Promise.all([...owner.pendingHostCalls]);
-    if (!settled) this.conn.requestState(id, "blocked", "external_io");
+    if (!settled && !awaitsWaitForIdle(this.conn, id)) this.conn.requestState(id, "blocked", "external_io");
   }
 
   // writeSync is a synchronous host write whose events may start nested in the wait (Connection.nestedEvent).
@@ -5411,7 +5497,8 @@ export class Runtime {
     const conn = this.conn;
     if (!owner?.command || this.contextValues.mode !== "rpc" || !conn) return;
     setImmediate(() => {
-      if (!owner.handlerSettled && !owner.settled && !conn.closed) conn.requestState(owner.id, "blocked", "external_io");
+      if (owner.handlerSettled || owner.settled || conn.closed || awaitsWaitForIdle(conn, owner.id)) return;
+      conn.requestState(owner.id, "blocked", "external_io");
     });
   }
 

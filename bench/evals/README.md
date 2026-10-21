@@ -73,7 +73,7 @@ A run fails if `/etc/claude-code`, `/etc/codex` or `/etc/copilot` (or the macOS 
 | Go, packed cell | `extensions-go/factory/bench-ext-NN` (`func Extension() *sdk.Extension`) | one generated Go runner |
 | Go, fused | `extensions-go/pig-ext10.yaml` (`pig piglet build --format binary`, set `PIG_SOURCE_ROOT` to a PiG checkout) | compiled into the PiG executable: no extension process, no IPC |
 
-PiG has no setting that isolates a TypeScript or Go *factory*: factories pack, and only an exact standalone is isolated. All three Go sets share one body (`extensions-go/benchext`). `TestBenchExt10GoPortsRegisterWhatTheTypeScriptOriginalsRegister` (`coding/cli`) checks, through `pig install --validate-only`, that each Go set registers what the TypeScript set registers; the arena (`pi-arena`, arms `pig-ts-node`, `pig-ts-bun`, `pig-go-*`) also compares the tool results of every arm before it times anything.
+PiG has no setting that isolates a TypeScript or Go *factory*: factories pack, and only an exact standalone is isolated. All three Go sets share one body (`extensions-go/benchext`). `TestBenchExt10GoPortsRegisterWhatTheTypeScriptOriginalsRegister` (`coding/cli`) checks, through `pig install --validate-only`, that each Go set registers what the TypeScript set registers; Buffon ([github.com/MichaelKinsy/buffon](https://github.com/MichaelKinsy/buffon), arms `pig-ts-node`, `pig-ts-bun`, `pig-go-*`) also compares the tool results of every arm before it times anything.
 
 ## Rust arm and metric endpoints
 

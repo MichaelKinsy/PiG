@@ -76,6 +76,8 @@ type processShare struct {
 	// tier is the executable of the ahead-of-time host the process runs, or "" for any other runtime. Such a process holds compiled copies of its extensions, so it cannot run an edited extension again.
 	tier string
 	kill func()
+	// turns holds the file mutation queue tickets of the connections of a packed Go, Rust or Python process (host_file_mutation.go); a Node process keeps its tickets per connection.
+	turns fileMutationTurns
 	// admitMu serializes control lines on the process's stdin.
 	admitMu sync.Mutex
 	admit   io.WriteCloser
@@ -858,6 +860,9 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 
 	h.markExtension(me.config.Name, "handshake-start")
 	conn := NewConn(me.config.Name, rawConn)
+	if turns := me.processFileMutations(); turns != nil {
+		conn.shareFileMutations(turns)
+	}
 	if me.packedProcess.node {
 		conn.onDispatch = func() { me.packedProcess.lastOwner.Store(&me.config.Name) }
 	}

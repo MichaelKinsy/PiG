@@ -349,6 +349,9 @@ func (s *Session) prepareNextTurn(ctx context.Context, turn agent.PrepareNextTur
 		next.Options = run.NextTurnOptions(*s.GetSystemPromptOptions())
 		s.runPrompt.CompareAndSwap(run, &next)
 	}
+	// _preparePromptAndToolLoadout applies the whole loadout before each later turn, so prepareLoadout hooks and the hidden declarations they set follow the state they read (agent-session.ts:1743-1755); the turn's tools are the ones it declares.
+	s.applyPromptToolLoadout(s.ActiveToolNames())
+	update.Context = s.executableContext(projected)
 	system, err := s.promptSectionUpdate(projected)
 	if err != nil {
 		return nil, err

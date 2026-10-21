@@ -4,6 +4,7 @@ package runner
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -138,5 +139,21 @@ func TestSessionStatsIdentityAliasesPreserveSystemSections(t *testing.T) {
 				t.Fatal("identity aliases hid substantive drift")
 			}
 		})
+	}
+}
+
+// A session leases its docs bundle with a file beside the bundle directory (bundle-<hash>.lease); the docs identity root is still that one bundle directory.
+func TestResultIdentityRootsDocsIgnoresTheBundleLeaseFile(t *testing.T) {
+	home := t.TempDir()
+	bundle := filepath.Join(home, "docs", "bundle-0123456789abcdef")
+	if err := os.MkdirAll(bundle, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bundle+".lease", nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	roots := resultIdentityRoots("", "", []string{"PIG_HOME=" + home})
+	if got, want := roots["docs"], filepath.ToSlash(bundle); got != want {
+		t.Fatalf("docs root = %q, want %q", got, want)
 	}
 }

@@ -8,6 +8,8 @@ The helpers Pi exports to extensions keep their names in Go case and behave like
 
 `Context.SetWorkingMessage("")` shows an empty working label, as Pi does; `Context.ClearWorkingMessage()` restores the default label (Pi's `setWorkingMessage()` with no argument).  `Context.ClearHiddenThinkingLabel()` does the same for `SetHiddenThinkingLabel`.
 
+`Context.SetStatus(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context.ClearStatus(key)` is Pi's `setStatus(key, undefined)`. An empty placeholder or prefill of `Input` and `Editor` is the unset member (Pi's `placeholder?`, `prefill?`; a Go string cannot be undefined), so RPC mode writes no such member for it.
+
 ## Upgrading an older extension
 
 `pig extension upgrade` applies the rewrite rules in the `upgrade` package of this module to an extension written for an earlier SDK. Add a rule there, with an old-extension fixture under `upgrade/testdata/fixtures`, for every breaking change; `make sdk-apidiff` fails a break without a rule and a release note. See the upgrade section of the extensions guide.

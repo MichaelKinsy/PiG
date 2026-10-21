@@ -278,6 +278,17 @@ function classify(messages: any[]) {
       ],
     };
   }
+  // Extension tool and built-in write and edit on one file in one parallel batch: file-mutation-queue.ts is shared by the built-in tools and every extension.
+  if (lastText.includes("Run: parallel extension file mutation")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "write", toolArgs: { path: "parity-parallel-mutation-target.txt", content: "base\n" } },
+        { toolName: "patch_file", toolArgs: { path: "parity-parallel-mutation-target.txt", line: "patched-A" } },
+        { toolName: "edit", toolArgs: { path: "parity-parallel-mutation-target.txt", edits: [{ oldText: "base", newText: "BASE" }] } },
+      ],
+    };
+  }
   // MCP tool card parity.
   if (lastText.includes("Run: mcp search cards")) {
     return { kind: "tool", toolCalls: [{ toolName: "mcp__docs__search", toolArgs: { query: "cards" } }] };
@@ -414,6 +425,14 @@ function classify(messages: any[]) {
     if (currentUserText.includes("Run: noncanonical read") || currentUserText.includes("Run: extension argument coercion")) return { kind: last.isError ? "error" : "text", text: lastText };
     if (currentUserText.includes("Run: read parity-read-target.txt")) return { kind: "text", text: "done" };
     if (currentUserText.includes("Run: write parity-write-output.txt")) return { kind: "text", text: "wrote" };
+    if (currentUserText.includes("Run: parallel extension file mutation")) {
+      // The batch's results (write, patch_file, edit) lead to a read of the file; the read's result decides.
+      if (lastText.includes("Successfully") || lastText.includes("patch-file: appended")) {
+        return { kind: "tool", toolCalls: [{ toolName: "read", toolArgs: { path: "parity-parallel-mutation-target.txt" } }] };
+      }
+      if (lastText.includes("BASE") && lastText.includes("patched-A")) return { kind: "text", text: "parallel-mutation-done" };
+      return { kind: "error", text: "test-faux: lost update: " + lastText };
+    }
     if (currentUserText.includes("Run: write then edit parity-batched-target.txt")) {
       if (historyText.includes("Successfully wrote") && historyText.includes("Successfully replaced 1 block(s) in parity-batched-target.txt.")) {
         return { kind: "text", text: "batched-done" };

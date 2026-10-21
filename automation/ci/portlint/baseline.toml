@@ -399,12 +399,6 @@ count = 2
 
 [[hit]]
 check = "clock"
-file = "internal/codingagent/interactive_extensions.go"
-func = "InteractiveMode.wireSubprocessHostCallbacks"
-snippet = "\"timestamp\":  time.Now().UnixMilli(),"
-
-[[hit]]
-check = "clock"
 file = "internal/codingagent/interactive_helpers.go"
 func = "debugLog"
 snippet = "_, _ = fmt.Fprintf(f, \"[%s] \", time.Now().Format(\"15:04:05.000\"))"
@@ -511,12 +505,6 @@ check = "clock"
 file = "internal/codingagent/remote_catalog_provider.go"
 func = "refreshRemoteCatalog"
 snippet = "now := func() float64 { return float64(time.Now().UnixMilli()) }"
-
-[[hit]]
-check = "clock"
-file = "internal/codingagent/session.go"
-func = "NewSession"
-snippet = "Timestamp:     time.Now().UTC().Format(\"2006-01-02T15:04:05.000Z\"),"
 
 [[hit]]
 check = "clock"
@@ -1397,12 +1385,6 @@ file = "coding/cli/rpc_types.go"
 func = "(decl)"
 snippet = "Images  []RPCImageContent `json:\"images,omitempty\"`"
 count = 2
-
-[[hit]]
-check = "emptydrop"
-file = "coding/cli/rpc_ui.go"
-func = "(decl)"
-snippet = "Options         []string    `json:\"options,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
@@ -2751,39 +2733,18 @@ check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleSelect"
 snippet = "result, _ := json.Marshal(map[string]any{\"selected\": \"\", \"ok\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleSelect"
-snippet = "result, _ := json.Marshal(map[string]any{\"selected\": selected, \"ok\": true})"
 
 [[hit]]
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleConfirm"
 snippet = "result, _ := json.Marshal(map[string]any{\"confirmed\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleConfirm"
-snippet = "result, _ := json.Marshal(map[string]any{\"confirmed\": confirmed})"
 
 [[hit]]
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleInput"
 snippet = "result, _ := json.Marshal(map[string]any{\"text\": \"\", \"ok\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleInput"
-snippet = "result, _ := json.Marshal(map[string]any{\"text\": text, \"ok\": true})"
 
 [[hit]]
 check = "mapkeyorder"
@@ -2796,13 +2757,6 @@ check = "mapkeyorder"
 file = "coding/extension/host/subprocess/ui_bridge.go"
 func = "UIBridge.handleEditor"
 snippet = "result, _ := json.Marshal(map[string]any{\"text\": \"\", \"ok\": false})"
-count = 2
-
-[[hit]]
-check = "mapkeyorder"
-file = "coding/extension/host/subprocess/ui_bridge.go"
-func = "UIBridge.handleEditor"
-snippet = "result, _ := json.Marshal(map[string]any{\"text\": text, \"ok\": true})"
 
 [[hit]]
 check = "mapkeyorder"

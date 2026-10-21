@@ -84,7 +84,7 @@ ext.OnEvent("before_agent_start", func(_ sdk.Context, data map[string]any) (any,
 })
 ```
 
-Node and Python handlers edit the section object or dictionary. Rust handlers edit the ordered JSON value and can use `on_event_result` to return an error. Native Go reference handlers use `extension.BeforeAgentStartOptions(ctx)` to access the shared per-run options and mutate its `Sections`, an `*ai.OrderedSections`. `BeforeAgentStartEvent.SystemPromptOptions` remains a value for source compatibility; assign collection replacements through the accessor. This transport carries section values, not cross-process object aliases.
+Node and Python handlers edit the section object or dictionary. Rust handlers register with `Extension::on_before_agent_start` and edit the ordered JSON value with `event.edit_system_prompt_options(|options| ...)`, returning an `Err` to report an error. Native Go reference handlers use `extension.BeforeAgentStartOptions(ctx)` to access the shared per-run options and mutate its `Sections`, an `*ai.OrderedSections`. `BeforeAgentStartEvent.SystemPromptOptions` remains a value for source compatibility; assign collection replacements through the accessor. This transport carries section values, not cross-process object aliases.
 
 `context` handlers: Pi keeps every system message in place when a handler returns the conversation it received (the same message objects, edited or not) and replaces them with one leading system message when it returns anything else. Node, Python and Go decide this by object identity. A Rust handler holds values, so it states it: return `None` for a conversation left as received, return `pig_sdk::context_unchanged()` after editing messages in place, and any list it returns, even an equal one, is a replacement.
 
@@ -96,7 +96,7 @@ In a `before_agent_start` handler, `event.systemPrompt` and `ctx.getSystemPrompt
 - Python reads `data["systemPrompt"]` and `ctx.get_system_prompt()`.
 - Go reads `data["systemPrompt"].(*sdk.SystemPrompt).Get()` and `ctx.GetSystemPrompt()`. A Go map cannot run a getter, so the value is an `*sdk.SystemPrompt`, not a string; it encodes as the current prompt string.
 - A host-process Go extension reads `evt.SystemPrompt.Get()` and `extension.FromContext(ctx).GetSystemPrompt()`, and edits the shared options through `extension.BeforeAgentStartOptions(ctx)`. `BeforeAgentStartEvent.SystemPrompt` is an `*extension.SystemPrompt`, not a string.
-- Rust reads `ctx.current_system_prompt(data)` for both. The handler holds `data` mutably, so `ctx` cannot read it: `ctx.get_system_prompt()` returns the prompt last rendered, for the options the handler received or those `current_system_prompt` last read.
+- Rust reads `event.system_prompt()` and `ctx.get_system_prompt()`. A Rust handler borrows its event exclusively, so `Extension::on_before_agent_start` hands it a `BeforeAgentStartEvent` with no `data` to edit: `event.payload()` is what the host sent without `systemPrompt` and `systemPromptOptions`, `event.system_prompt_options()` copies the shared options, and `event.set_system_prompt_options(options)` and `event.edit_system_prompt_options(|options| ...)` write them. The event and the context share one cell, so a `ctx.get_system_prompt()` after an edit renders the edit, and `event.snapshot()` is the whole event as Pi's object. Registering `before_agent_start` through `on_event` or `on_event_result` fails every emission with an error that names `on_before_agent_start`.
 
 ### Per-run tool loadout
 
@@ -112,7 +112,7 @@ ext.OnEvent("before_agent_start", func(_ sdk.Context, data map[string]any) (any,
 })
 ```
 
-Node handlers use the array (`event.systemPromptOptions.selectedTools.push("my_tool")`), Python handlers the list, and Rust handlers the JSON array. Native Go reference handlers assign `extension.BeforeAgentStartOptions(ctx).SelectedTools`. Duplicate names are removed in first-seen order before admission. Non-string entries cannot select registered tools. A final `null` list rejects the prompt after the handler chain; a later handler can repair it. An invalid section name also rejects the prompt, but only after the deduplicated loadout is admitted, so the loadout stays active as in Pi. Rejection emits no `agent_start` or `agent_settled`. The idle system prompt returns to the base options even though the edited loadout stays active.
+Node handlers use the array (`event.systemPromptOptions.selectedTools.push("my_tool")`), Python handlers the list, and Rust handlers the JSON array inside `event.edit_system_prompt_options`. Native Go reference handlers assign `extension.BeforeAgentStartOptions(ctx).SelectedTools`. Duplicate names are removed in first-seen order before admission. Non-string entries cannot select registered tools. A final `null` list rejects the prompt after the handler chain; a later handler can repair it. An invalid section name also rejects the prompt, but only after the deduplicated loadout is admitted, so the loadout stays active as in Pi. Rejection emits no `agent_start` or `agent_settled`. The idle system prompt returns to the base options even though the edited loadout stays active.
 
 ### Parallel work: start together, then join
 

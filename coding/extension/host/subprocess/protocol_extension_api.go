@@ -154,6 +154,19 @@ type ExecuteToolCancel struct {
 	ExecuteID string `json:"executeId"`
 }
 
+// CallUICancelDialog (ext→host) dismisses the ui.select, ui.confirm or ui.input call that carried the same dialogId: the extension's options.signal aborted
+// (rpc-mode.ts createDialogPromise). The dialog answers as a cancelled one, which the extension ignores because its own promise settled with the default
+// when the signal aborted.
+const CallUICancelDialog = "ui.cancelDialog"
+
+// UICancelDialog is the CallUICancelDialog argument.
+type UICancelDialog struct {
+	DialogID string `json:"dialogId"`
+}
+
+// dialogSignalKey names the dialog dialogID in the nested-call table, apart from the execute ids of nested tool calls.
+func dialogSignalKey(dialogID string) string { return "dialog:" + dialogID }
+
 // RequestExecuteToolUpdate (host→ext) delivers one partial result of a nested call, in order and before the call's result, and the host waits for the answer. Args is an ExecuteToolUpdate. An error response is the callback's throw: the update raises no `tool_execution_update` event, the later updates are still sent, and the call rejects with the first error once the tool returned (nested-tool-calls.ts:219-231, agent-loop.ts:820-849). The request is not cancelled with the nested call: Pi's callback has no cancellation.
 const RequestExecuteToolUpdate = "execute_tool_update"
 
@@ -363,4 +376,35 @@ type LoadThemeArgs struct {
 // LoadThemeResult is the result of CallLoadTheme: the theme's palette, in the shape of ready.state.theme.
 type LoadThemeResult struct {
 	Theme json.RawMessage `json:"theme"`
+}
+
+// ── File mutation queue ──────────────────────────────────────────────────────
+
+// CallFileMutationEnter (ext→host) is the registration and wait of Pi's withFileMutationQueue (core/tools/file-mutation-queue.ts), served by the one queue the
+// host's edit and write tools use, so a mutation an extension process wraps in the queue is serialised with the built-in tools and with every other extension
+// process, as in Pi's single process. The args are a FileMutationEnterArgs and the result a FileMutationEnterResult, sent once the path's earlier mutations have
+// completed. The call takes its place in the queue when the host reads it (the call lane advances then, so calls made after it are not held up), and the
+// reply is the extension's admission. A path that cannot be resolved fails the call, and the task does not run. The ticket stays held until CallFileMutationExit
+// or until the connection closes (for the extensions of a packed Go, Rust or Python cell, which share one process and its tickets, until the last connection of the process closes: an extension that is replaced or stops while another one's task holds a turn does not release it, and the exit may arrive on any of the process's connections); an admitted ticket is never released by the call's own context, as Pi holds the file while the task runs. A detached call (no
+// parent request), so it may arrive before the register frame.
+const CallFileMutationEnter = "fileMutation.enter"
+
+// CallFileMutationExit (ext→host) releases the ticket a CallFileMutationEnter returned, after the task finished (whatever its outcome). The args are a
+// FileMutationExitArgs; the reply is empty. A ticket the connection (or its process) does not hold fails the call.
+const CallFileMutationExit = "fileMutation.exit"
+
+// FileMutationEnterArgs is the argument of CallFileMutationEnter. Path is absolute and lexically clean: the extension resolves it against its own working
+// directory, as Pi's `resolve(filePath)` does; the host takes its real path as the queue key (a missing path or one below a regular file keys by itself).
+type FileMutationEnterArgs struct {
+	Path string `json:"path"`
+}
+
+// FileMutationEnterResult is the result of CallFileMutationEnter.
+type FileMutationEnterResult struct {
+	Ticket string `json:"ticket"`
+}
+
+// FileMutationExitArgs is the argument of CallFileMutationExit.
+type FileMutationExitArgs struct {
+	Ticket string `json:"ticket"`
 }

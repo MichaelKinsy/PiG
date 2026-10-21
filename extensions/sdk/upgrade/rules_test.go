@@ -716,3 +716,24 @@ func inDir(dir string) upgrade.FileSource {
 		return os.ReadFile(path)
 	}
 }
+
+// A dialog's result is an any: a use that still treats it as a string or a bool fails to compile, and the plan names the dialog method with its old and new shape; the
+// change has no mechanical rewrite because the extension chooses what to do with a non-string answer.
+func TestDialogResultChangesAreNamed(t *testing.T) {
+	result, _ := planSource(t, `func handler(ctx sdk.Context) error {
+	choice, ok, err := ctx.Select("Pick", []string{"a"})
+	if err != nil || !ok {
+		return err
+	}
+	var label string = choice
+	return ctx.AppendEntry("picked", label)
+}
+`)
+	if result.Changed() || len(result.Remaining) != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	drift := result.Remaining[0]
+	if drift.Rule != upgrade.RuleDialogResults || drift.Symbol != "Context.Select" || drift.Rewrites || drift.New != "func(...) (any, bool, error)" {
+		t.Fatalf("drift = %+v", drift)
+	}
+}

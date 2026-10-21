@@ -1558,17 +1558,44 @@ pub struct Context {
     pub(crate) system_prompt: Option<Arc<SystemPromptState>>,
 }
 
-/// A before_agent_start request's prompt: the options it was last rendered for, as JSON text, and the prompt. It starts
-/// as the options the handler received and the prompt the host rendered for them.
+/// A before_agent_start emission's shared options and the prompt they last rendered to (Pi's one `systemPromptOptions` object, runner.ts:1426-1450). The
+/// [`crate::BeforeAgentStartEvent`] a handler edits and the [`Context`] it reads share this cell, so a read sees an edit made before it. It starts as the options the
+/// handler received and the prompt the host rendered for them.
 pub(crate) struct SystemPromptState {
-    rendered: Mutex<(String, String)>,
+    cell: Mutex<PromptCell>,
+}
+
+struct PromptCell {
+    options: serde_json::Value,
+    /// The options as JSON text when `prompt` was rendered for them, and that prompt.
+    rendered: (String, String),
 }
 
 impl SystemPromptState {
     pub(crate) fn new(event: &serde_json::Value) -> Self {
-        let options = event.get("systemPromptOptions").map(|options| options.to_string()).unwrap_or_default();
+        let options = event.get("systemPromptOptions").cloned().unwrap_or(serde_json::Value::Null);
         let prompt = event.get("systemPrompt").and_then(serde_json::Value::as_str).unwrap_or_default().to_string();
-        Self { rendered: Mutex::new((options, prompt)) }
+        Self { cell: Mutex::new(PromptCell { rendered: (options.to_string(), prompt), options }) }
+    }
+
+    pub(crate) fn options(&self) -> serde_json::Value {
+        self.lock().options.clone()
+    }
+
+    pub(crate) fn set_options(&self, options: serde_json::Value) {
+        self.lock().options = options;
+    }
+
+    /// Runs `edit` on a copy of the options and stores the result, so the closure holds no lock and may read the prompt through the context.
+    pub(crate) fn edit_options<R>(&self, edit: impl FnOnce(&mut serde_json::Value) -> R) -> R {
+        let mut options = self.options();
+        let result = edit(&mut options);
+        self.set_options(options);
+        result
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, PromptCell> {
+        self.cell.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
@@ -2236,12 +2263,28 @@ impl Context {
         );
     }
 
-    /// Set status text in the footer.
+    /// Set status text in the footer. An empty text is a text, as in Pi (RPC mode writes it); [`Context::clear_status`] removes the entry, as Pi's
+    /// `setStatus(key, undefined)` does.
     pub fn set_status(&self, key: &str, text: &str) {
         let _ = self.call_wire(
             "ui.setStatus",
             Some(serde_json::json!({"key": key, "text": text})),
         );
+    }
+
+    /// Remove the status entry for `key`: Pi's `setStatus(key, undefined)`.
+    pub fn clear_status(&self, key: &str) {
+        let _ = self.call_wire("ui.setStatus", Some(serde_json::json!({"key": key})));
+    }
+
+    /// Set `args[key]` to `value` unless it is empty. An optional dialog member (Pi's `placeholder?`, `prefill?`) is undefined when the extension passes
+    /// none, and a Rust `&str` cannot be undefined: an empty one is the unset member, as in every native SDK that has no `None`. The host then writes no
+    /// such member to an RPC client, as Pi does, where it writes `placeholder: ""` for the empty string a Node extension can pass.
+    fn with_non_empty(mut args: serde_json::Value, key: &str, value: &str) -> serde_json::Value {
+        if !value.is_empty() {
+            args[key] = serde_json::Value::from(value);
+        }
+        args
     }
 
     /// Set the working/loading message shown during tool execution. An empty string is a message, shown as an empty label, as in
@@ -2292,67 +2335,64 @@ impl Context {
 
     // ─── User Interaction ────────────────────────────────────────────────
 
-    /// Show a selection list. Returns the chosen option and whether the
-    /// user confirmed (false = cancelled).
-    pub fn select(&self, title: &str, options: &[&str]) -> io::Result<(String, bool)> {
+    /// Show a selection list. Returns Pi's result and whether it was defined.
+    ///
+    /// The value is the JSON the user's client answered with, as Pi's `select()`
+    /// resolves it: a string for every client that follows Pi's protocol, and in
+    /// RPC mode whatever JSON the client sent (a number, `null`, a boolean, an
+    /// object or an array). The flag is false when Pi's result is `undefined`
+    /// (cancelled, timed out, an answer without a value), with `Value::Null` as
+    /// the value; a `null` answer is `(Value::Null, true)`.
+    pub fn select(&self, title: &str, options: &[&str]) -> io::Result<(serde_json::Value, bool)> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.select",
             Some(serde_json::json!({"title": title, "options": options})),
         )?)?;
-        let selected = v
-            .get("selected")
-            .and_then(|s| s.as_str())
-            .unwrap_or("")
-            .to_string();
-        let ok = v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false);
-        Ok((selected, ok))
+        Ok(dialog_value(&v, "selected"))
     }
 
-    /// Show a yes/no confirmation dialog.
-    pub fn confirm(&self, title: &str, message: &str) -> io::Result<bool> {
+    /// Show a yes/no confirmation dialog. Returns the JSON the client answered
+    /// with in `confirmed`, as Pi's `confirm()` resolves it: a boolean for every
+    /// client that follows Pi's protocol, `false` when cancelled or unanswered,
+    /// and in RPC mode whatever JSON the client sent.
+    pub fn confirm(&self, title: &str, message: &str) -> io::Result<serde_json::Value> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.confirm",
             Some(serde_json::json!({"title": title, "message": message})),
         )?)?;
         Ok(v.get("confirmed")
-            .and_then(|c| c.as_bool())
-            .unwrap_or(false))
+            .cloned()
+            .unwrap_or(serde_json::Value::Bool(false)))
     }
 
-    /// Show a text input prompt. Returns the entered text and whether the
-    /// user confirmed.
-    pub fn input(&self, title: &str, placeholder: &str) -> io::Result<(String, bool)> {
+    /// Show a text input prompt. The result is typed as for [`Context::select`].
+    pub fn input(&self, title: &str, placeholder: &str) -> io::Result<(serde_json::Value, bool)> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.input",
-            Some(serde_json::json!({"title": title, "placeholder": placeholder})),
+            Some(Self::with_non_empty(
+                serde_json::json!({"title": title}),
+                "placeholder",
+                placeholder,
+            )),
         )?)?;
-        let text = v
-            .get("text")
-            .and_then(|s| s.as_str())
-            .unwrap_or("")
-            .to_string();
-        let ok = v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false);
-        Ok((text, ok))
+        Ok(dialog_value(&v, "text"))
     }
 
-    /// Show a multi-line editor. Returns the edited text and whether the
-    /// user confirmed.
-    pub fn editor(&self, title: &str, prefill: &str) -> io::Result<(String, bool)> {
+    /// Show a multi-line editor. The result is typed as for [`Context::select`].
+    pub fn editor(&self, title: &str, prefill: &str) -> io::Result<(serde_json::Value, bool)> {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.editor",
-            Some(serde_json::json!({"title": title, "prefill": prefill})),
+            Some(Self::with_non_empty(
+                serde_json::json!({"title": title}),
+                "prefill",
+                prefill,
+            )),
         )?)?;
-        let text = v
-            .get("text")
-            .and_then(|s| s.as_str())
-            .unwrap_or("")
-            .to_string();
-        let ok = v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false);
-        Ok((text, ok))
+        Ok(dialog_value(&v, "text"))
     }
 
     // ─── Message injection ───────────────────────────────────────────────
@@ -2590,8 +2630,14 @@ impl Context {
     /// host applies in arrival order and never answers: Pi's `setWidget`
     /// returns nothing, so it may be called from an
     /// [`Self::on_width_change`] handler, and the error reports only a failure
-    /// to send. [`Self::set_widget_value`] waits for the host.
+    /// to send. In RPC mode, where the width never changes and Pi writes one
+    /// request per call, in call order and before the handler's response, the
+    /// list waits for the host like [`Self::set_widget_value`]: an unanswered
+    /// frame has no place in that order.
     pub fn set_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
+        if self.mode == "rpc" {
+            return self.set_widget_value(key, serde_json::json!(lines), None);
+        }
         self.conn.views.widgets.lock().unwrap().remove(key);
         self.replace_surface_id(widget_renderer_id(key), None);
         self.conn.push_widget(key, lines)
@@ -2736,8 +2782,18 @@ impl Context {
         if !self.has_ui() {
             return Ok(None);
         }
+        if self.mode() == "rpc" {
+            return self.custom_ignored_in_rpc();
+        }
         self.block_for_user();
         self.call_host("ui.custom", Some(options))
+    }
+
+    /// rpc-mode.ts custom() resolves undefined and never runs the component. The host call keeps the dialog scope, as the Node runtime's does.
+    fn custom_ignored_in_rpc(&self) -> io::Result<Option<serde_json::Value>> {
+        let key = format!("custom-{}", self.overlay_seq.fetch_add(1, Ordering::Relaxed) + 1);
+        self.call_host("ui.custom", Some(serde_json::json!({ "key": key })))?;
+        Ok(None)
     }
 
     /// Open a focused subprocess component. Input reaches the component only
@@ -2791,6 +2847,9 @@ impl Context {
     ) -> io::Result<Option<serde_json::Value>> {
         if !self.has_ui() {
             return Ok(None);
+        }
+        if self.mode() == "rpc" {
+            return self.custom_ignored_in_rpc();
         }
         self.block_for_user();
         let mut args = options.as_object().cloned().ok_or_else(|| {
@@ -3162,38 +3221,25 @@ impl Context {
         }))
     }
 
-    /// Get the current system prompt text. In a before_agent_start handler it is the prompt the emission's shared options
-    /// rendered when last read: the options the handler received, or those [`Context::current_system_prompt`] last read.
-    /// The handler's own `data` cannot be read through `ctx` while the handler holds it mutably, so after an edit to
-    /// `data["systemPromptOptions"]` read Pi's `event.systemPrompt` / `ctx.getSystemPrompt()` with
-    /// `ctx.current_system_prompt(data)`.
+    /// Get the current system prompt text. In a `before_agent_start` handler it is Pi's `ctx.getSystemPrompt()` (runner.ts:1426-1450,
+    /// `renderCurrentSystemPrompt`): the prompt the emission's shared options render now, including the edits this handler and the
+    /// handlers before it made through [`crate::BeforeAgentStartEvent`]. Options unchanged since the last read return that prompt;
+    /// others are rendered by the host, and an invalid custom section is an error, as Pi's builder throws.
     pub fn get_system_prompt(&self) -> io::Result<String> {
-        if let Some(state) = &self.system_prompt {
-            self.assert_active();
-            return Ok(state.rendered.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).1.clone());
-        }
-        self.required_field("getSystemPrompt", None, "prompt")
-    }
-
-    /// Pi's before_agent_start `event.systemPrompt` and `ctx.getSystemPrompt()` (runner.ts:1426-1450,
-    /// renderCurrentSystemPrompt): the prompt `event["systemPromptOptions"]` render now, including this handler's own edits.
-    /// Options unchanged since the last read return that prompt; others are rendered by the host. An invalid custom section
-    /// is an error, as Pi's builder throws. Only a before_agent_start handler's context has an emission to render.
-    pub fn current_system_prompt(&self, event: &serde_json::Value) -> io::Result<String> {
         let Some(state) = &self.system_prompt else {
-            return Err(io::Error::other("current_system_prompt is only available in a before_agent_start handler"));
+            return self.required_field("getSystemPrompt", None, "prompt");
         };
         self.assert_active();
-        let options = event
-            .get("systemPromptOptions")
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "before_agent_start event has no systemPromptOptions"))?;
-        let key = options.to_string();
-        let mut rendered = state.rendered.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        if rendered.0 != key {
-            let prompt = self.required_field("renderSystemPrompt", Some(serde_json::json!({ "options": options })), "prompt")?;
-            *rendered = (key, prompt);
-        }
-        Ok(rendered.1.clone())
+        let (options, key) = {
+            let cell = state.lock();
+            if cell.rendered.0 == cell.options.to_string() {
+                return Ok(cell.rendered.1.clone());
+            }
+            (cell.options.clone(), cell.options.to_string())
+        };
+        let prompt: String = self.required_field("renderSystemPrompt", Some(serde_json::json!({ "options": options })), "prompt")?;
+        state.lock().rendered = (key, prompt.clone());
+        Ok(prompt)
     }
 
     /// Get the base inputs pi currently uses to build the system prompt
@@ -3719,11 +3765,11 @@ impl Context {
         self.block_for_user();
         let v = call_result_value(self.call_wire(
             "ui.input",
-            Some(serde_json::json!({
-                "title": title,
-                "placeholder": placeholder,
-                "opts": Self::dialog_opts(opts),
-            })),
+            Some(Self::with_non_empty(
+                serde_json::json!({"title": title, "opts": Self::dialog_opts(opts)}),
+                "placeholder",
+                placeholder,
+            )),
         )?)?;
         let text = v
             .get("text")
@@ -4656,6 +4702,10 @@ impl Context {
         let Some(render) = render else {
             return self.set_surface(method, None);
         };
+        // upstream: rpc-mode.ts setFooter/setHeader ignore the factory and runner.ts noOpUIContext does too: Pi calls a footer or header factory only in the TUI.
+        if !self.has_ui() || self.mode() == "rpc" {
+            return Ok(());
+        }
         let renderer = Arc::new(SurfaceRenderer {
             method,
             widget: None,
@@ -5499,6 +5549,43 @@ mod sdk_surface_call_tests {
     }
 
     #[test]
+    fn empty_and_unset_ui_members_stay_distinct_on_the_wire() {
+        // Pi's rpc-mode writes "" where an extension passes it and omits `undefined`: set_status("") and clear_status differ, and an empty placeholder or
+        // prefill is the unset member, as no Rust string is undefined.
+        let (call, ()) = roundtrip(|ctx| ctx.set_status("k", ""), ok(None));
+        assert_eq!(call.method, "ui.setStatus");
+        assert_eq!(call.args.unwrap(), json!({"key": "k", "text": ""}));
+
+        let (call, ()) = roundtrip(|ctx| ctx.clear_status("k"), ok(None));
+        assert_eq!(call.method, "ui.setStatus");
+        assert_eq!(call.args.unwrap(), json!({"key": "k"}));
+
+        let (call, result) = roundtrip(
+            |ctx| ctx.input("T", ""),
+            ok(Some(json!({"text": "", "ok": false}))),
+        );
+        result.unwrap();
+        assert_eq!(call.method, "ui.input");
+        assert_eq!(call.args.unwrap(), json!({"title": "T"}));
+
+        let (call, result) = roundtrip(
+            |ctx| ctx.editor("E", ""),
+            ok(Some(json!({"text": "", "ok": false}))),
+        );
+        result.unwrap();
+        assert_eq!(call.method, "ui.editor");
+        assert_eq!(call.args.unwrap(), json!({"title": "E"}));
+
+        let (call, result) = roundtrip(
+            |ctx| ctx.select("T", &[]),
+            ok(Some(json!({"selected": "", "ok": false}))),
+        );
+        result.unwrap();
+        assert_eq!(call.method, "ui.select");
+        assert_eq!(call.args.unwrap(), json!({"title": "T", "options": []}));
+    }
+
+    #[test]
     fn set_footer_and_header_send_lines() {
         let (call, result) = roundtrip(
             |ctx| ctx.set_footer(vec!["f1".to_string(), "f2".to_string()]),
@@ -5876,5 +5963,32 @@ mod tool_result_guard_tests {
                 assert!(!guard(&payload), "guard {other} accepted {payload}");
             }
         }
+    }
+}
+
+/// The member of a select, input or editor reply as Pi's result: the JSON value and whether it was defined.
+fn dialog_value(reply: &serde_json::Value, member: &str) -> (serde_json::Value, bool) {
+    if reply.get("ok").and_then(|b| b.as_bool()) != Some(true) {
+        return (serde_json::Value::Null, false);
+    }
+    (
+        reply.get(member).cloned().unwrap_or(serde_json::Value::Null),
+        true,
+    )
+}
+
+#[cfg(test)]
+mod dialog_value_tests {
+    use super::dialog_value;
+    use serde_json::{Value, json};
+
+    /// Pi's RPC mode resolves a dialog with whatever JSON the client sent: the member is returned unchanged, and undefined (ok false) stays apart from `null`.
+    #[test]
+    fn dialog_value_keeps_the_clients_json_and_tells_undefined_from_null() {
+        assert_eq!(dialog_value(&json!({"selected": 5, "ok": true}), "selected"), (json!(5), true));
+        assert_eq!(dialog_value(&json!({"selected": null, "ok": true}), "selected"), (Value::Null, true));
+        assert_eq!(dialog_value(&json!({"text": {"a": [1, "x"]}, "ok": true}), "text"), (json!({"a": [1, "x"]}), true));
+        assert_eq!(dialog_value(&json!({"selected": "", "ok": false}), "selected"), (Value::Null, false));
+        assert_eq!(dialog_value(&json!({}), "text"), (Value::Null, false));
     }
 }

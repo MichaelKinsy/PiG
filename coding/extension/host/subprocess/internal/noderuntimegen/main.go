@@ -60,6 +60,9 @@ func generate(root, archive, metadata string) error {
 		if !entry.Type().IsRegular() {
 			return fmt.Errorf("runtime source is not a regular file: %s", path)
 		}
+		if noderuntimepack.UnreadAtRuntime(relative) {
+			return nil
+		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err

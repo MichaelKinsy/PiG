@@ -16,9 +16,9 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
-	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
+	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
 
 // ToolAbortGrace is how long an aborted extension tool call waits for the tool to settle after its AbortSignal fires.
@@ -137,6 +137,10 @@ type Conn struct {
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
 	onClosed func()
+	// fileMutations holds the file mutation queue tickets this connection was admitted to and has not exited; sharedTurns replaces it for a connection of a process several extensions run in. turnsLeft is guarded by the registry's mutex (host_file_mutation.go).
+	fileMutations fileMutationTurns
+	sharedTurns   *fileMutationTurns
+	turnsLeft     bool
 	// viewImages holds the image bytes this connection's views sent (D107).
 	viewImagesOnce sync.Once
 	viewImages     *viewImageStore
@@ -176,7 +180,7 @@ type Conn struct {
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
-	dialogOrder agent.SettleGate
+	dialogOrder jsloop.SettleGate
 	// arrived runs on the read loop when the response of a request is read, before the response reaches its waiter.
 	arrived map[string]func()
 	// hostCalls counts, per request, the host calls the host applies for it.
@@ -197,8 +201,10 @@ type Conn struct {
 	// writeResults pools the channels that carry a frame's write result (writeResult).
 	writeResults sync.Pool
 	// suspending counts the suspension frames of a request that the read loop queued for the host and the host has not yet delivered. suspensionsSettled is closed and replaced whenever a count drops.
-	suspending         map[string]int
-	suspendedRequests  map[string]bool
+	suspending        map[string]int
+	suspendedRequests map[string]bool
+	// provisionalBlocks holds the requests whose runtime reported blocked on a host call that the read loop has not yet seen: the suspension is reported once the call frame names the call, because a waitForIdle that finds the Session idle suspends nothing (settleBlockedCall).
+	provisionalBlocks  map[string]struct{}
 	suspensionsSettled chan struct{}
 	// eventLoopTurns holds the channel of each RequestEventLoopTurn awaiting its NotifyEventLoopTurned, by turn number; lastEventLoopTurn numbers them.
 	eventLoopTurns    map[uint64]chan struct{}
@@ -279,6 +285,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 	}
 	parts, _ := c.(framePartsWriter)
 	return &Conn{
+		fileMutations:      fileMutationTurns{live: 1},
 		name:               name,
 		conn:               c,
 		parts:              parts,
@@ -1019,6 +1026,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		close(c.inCh)
 		c.settleAllAbandoned()
 		c.stopAbortForwards()
+		c.turns().leave(c)
 		if c.onClosed != nil {
 			c.onClosed()
 		}
@@ -1078,8 +1086,21 @@ func (c *Conn) readLoop(ctx context.Context) {
 			c.inbound(&env)
 		}
 		if env.Type == MsgRequestState && env.RequestState != nil {
-			if env.RequestState.State == "blocked" || env.RequestState.State == "suspended" {
+			switch {
+			case env.RequestState.State == "blocked" && env.RequestState.Reason == "host_call":
+				// The call that follows names what the handler awaits.
+				c.stateMu.Lock()
+				if c.provisionalBlocks == nil {
+					c.provisionalBlocks = make(map[string]struct{})
+				}
+				c.provisionalBlocks[env.RequestState.RequestID] = struct{}{}
+				c.stateMu.Unlock()
+			case env.RequestState.State == "blocked" || env.RequestState.State == "suspended":
 				c.reportRequestPhase(env.RequestState.RequestID, invocation.Suspended)
+			case env.RequestState.State == "progress":
+				c.stateMu.Lock()
+				delete(c.provisionalBlocks, env.RequestState.RequestID)
+				c.stateMu.Unlock()
 			}
 			if env.RequestState.State == "suspended" {
 				// A suspension reports that the calls sent before it are in flight. The host loop delivers it after those calls applied their synchronous parts.
@@ -1160,6 +1181,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
+			c.reportProvisionalBlocks(env.Call)
 			c.reserveHostCall(env.Call.ParentRequestID, env.ID)
 			if startsRun(env.Call.Method) && env.Call.ParentRequestID != "" {
 				c.reportRequestPhase(env.Call.ParentRequestID, invocation.Resumed)
@@ -1172,6 +1194,42 @@ func (c *Conn) readLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// reportProvisionalBlocks reports the suspension of each request whose blocked report awaits this call frame (the call of that request, or one no request owns), in frame order: a runtime reports the suspension before it sends the call, because its handler waits for the answer. A waitForIdle call keeps its request's report for the host action (settleBlockedCall), which knows whether the Session is idle: Pi's `await ctx.waitForIdle()` returns at once then (agent-session.ts waitForIdle), so the handler is not suspended and the run its command sent starts after the command's response.
+func (c *Conn) reportProvisionalBlocks(call *CallPayload) {
+	c.stateMu.Lock()
+	if len(c.provisionalBlocks) == 0 {
+		c.stateMu.Unlock()
+		return
+	}
+	var report []string
+	for id := range c.provisionalBlocks {
+		// A call of another request is not the call this request's handler awaits; a call no request owns may be, for a detached call.
+		if call.ParentRequestID != "" && call.ParentRequestID != id {
+			continue
+		}
+		if call.Method == "waitForIdle" && id == call.ParentRequestID {
+			continue
+		}
+		report = append(report, id)
+		delete(c.provisionalBlocks, id)
+	}
+	c.stateMu.Unlock()
+	for _, id := range report {
+		c.reportRequestPhase(id, invocation.Suspended)
+	}
+}
+
+// settleBlockedCall ends the provisional block a waitForIdle call kept: the handler is suspended if the call waits, and is not if the Session was idle.
+func (c *Conn) settleBlockedCall(requestID string, waits bool) {
+	c.stateMu.Lock()
+	_, provisional := c.provisionalBlocks[requestID]
+	delete(c.provisionalBlocks, requestID)
+	c.stateMu.Unlock()
+	if provisional && waits {
+		c.reportRequestPhase(requestID, invocation.Suspended)
 	}
 }
 

@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: MIT
+#
+# Which CI jobs run when. automation/ci/ci-plan.sh turns this table into the job matrices of .github/workflows/ci.yml.
+#
+#   pr     runs on every event, in the light pull-request run and in the full run.
+#   queue  runs only in the full run: merge_group, schedule, workflow_dispatch, and a pull_request while the
+#          repository variable PIG_PR_CI_LIGHT is empty or the pull request asked for the full run (the ci:full label,
+#          or ready for review).
+#
+# The full run is every row. The light pull-request run is the pr rows, and only when PIG_PR_CI_LIGHT is "queue" or "label".
+# Neither mode lets a change land on a light run alone: "queue" leaves the full run to the merge queue, and "label" makes
+# the pull request's CI result fail until the full run has run on its head. A row's check name is its job name plus
+# its shard, in both runs. The optional fourth column names the make target a linux row runs in the light run when that
+# is a subset of the full run's (default: ci-<shard>). .github/AGENTS.md renders this table.
+#
+# job | shard | tier | light-run make target
+linux | portmap-1 | queue
+linux | portmap-2 | queue
+linux | portmap-3 | queue
+linux | test-fast-sharded | pr
+linux | test-fast | pr
+linux | test-conformance | queue
+linux | build | pr | ci-build-pr
+linux | test-cli-1 | pr
+linux | test-cli-2 | pr
+linux | test-subprocess | pr
+linux | parity-2 | queue
+linux | parity-1 | pr
+linux | toolchains | queue
+linux | checks | pr | ci-checks-pr
+linux | contracts | pr
+windows | cli-2 cli-5 | queue
+windows | cli-1 cli-3 | queue
+windows | cli-4 cli-7 | queue
+windows | cli-6 cli-8 | queue
+windows | extension-conformance-2 | queue
+windows | native-3 | queue
+windows | native-2 | queue
+windows | native-1 | pr
+windows | extension-conformance-1 | queue
+windows | extension-host-1 | queue
+windows | native-4 | queue
+windows | extension-host-2 | queue
+windows | extension-host-3 | queue
+macos | native | pr
+macos | cli-1 extension-host-3 packages | queue
+macos | cli-2 cli-8 extension-host-2 | queue
+macos | cli-4 cli-7 extension-host-1 | queue
+macos | cli-3 cli-5 cli-6 | queue
+# Jobs that are not a matrix: the shard column is "-".
+single | node-runtime | queue
+single | durable-cf-host | queue
+single | android | pr
+single | node-loader | pr

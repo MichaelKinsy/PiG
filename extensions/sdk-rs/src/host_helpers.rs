@@ -290,6 +290,25 @@ pub(crate) fn dial_loading() -> io::Result<Arc<Connection>> {
     Ok(conn)
 }
 
+/// The result of a host call over the first running extension's connection that answers; the last failure when none does. It never dials: it is for a call that
+/// must reach the host after the connection it started on has gone.
+pub(crate) fn helper_call_each_running(method: &str, args: Value) -> io::Result<Option<Value>> {
+    let connections: Vec<Arc<Connection>> = locked(&RUNNING).iter().filter_map(|(_, weak)| weak.upgrade()).collect();
+    first_answer(&connections, |conn| conn.begin_call_for(None, method, Some(args.clone())).and_then(|pending| conn.wait_call(pending)).and_then(finish))
+}
+
+/// The first answer `call` gets from `connections`, tried in order; the last failure when none answers, `NotConnected` when there are none.
+fn first_answer<C>(connections: &[C], mut call: impl FnMut(&C) -> io::Result<Option<Value>>) -> io::Result<Option<Value>> {
+    let mut failure = io::Error::new(io::ErrorKind::NotConnected, "no extension is running");
+    for conn in connections {
+        match call(conn) {
+            Ok(result) => return Ok(result),
+            Err(error) => failure = error,
+        }
+    }
+    Err(failure)
+}
+
 fn finish(result: crate::protocol::CallResultMsg) -> io::Result<Option<Value>> {
     if let Some(err) = result.error {
         return Err(io::Error::other(crate::context::host_error_message(err)));
@@ -371,5 +390,21 @@ mod tests {
         add_running(&mut running, &first, "/s/e-0.sock");
         assert!(Arc::ptr_eq(&running_for(&running, Some("/s/e-0.sock")).unwrap(), &first));
         assert!(Arc::ptr_eq(&running_for(&running, Some("")).unwrap(), &second), "an empty name is no name");
+    }
+
+    // The turn of the file mutation queue belongs to the process: an exit whose connection is stopping goes to the next running extension's.
+    #[test]
+    fn a_call_that_must_reach_the_host_tries_each_running_connection_until_one_answers() {
+        let tried = std::cell::RefCell::new(Vec::new());
+        let answer = first_answer(&["stopped", "running", "never reached"], |name| {
+            tried.borrow_mut().push(*name);
+            if *name == "stopped" { Err(io::Error::other("extension connection is closed")) } else { Ok(Some(json!({"from": name}))) }
+        });
+        assert_eq!(answer.unwrap(), Some(json!({"from": "running"})));
+        assert_eq!(*tried.borrow(), vec!["stopped", "running"]);
+        let none: [&str; 0] = [];
+        assert_eq!(first_answer(&none, |_| Ok(None)).unwrap_err().kind(), io::ErrorKind::NotConnected);
+        let failure = first_answer(&["a", "b"], |name| Err(io::Error::other(format!("{name} failed")))).unwrap_err();
+        assert_eq!(failure.to_string(), "b failed");
     }
 }

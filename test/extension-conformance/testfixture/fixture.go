@@ -956,6 +956,63 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// rw_prompt_state registers two tools and activates one, reading the system prompt state after each write. Pi's getters read the Session, so every read answers the writes before it.
+	ext.Command("rw_prompt_state", "Read the system prompt state after registering and activating tools", func(ctx sdk.Context, _ string) error {
+		tool := func(name string) sdk.ToolDefinition {
+			return sdk.ToolDefinition{Name: name, Label: name, Description: name, PromptSnippet: name + "-snippet", Parameters: sdk.Schema{"type": "object"}, Execute: func(sdk.Context, map[string]any) (any, error) { return "ok", nil }}
+		}
+		ctx.RegisterTool(tool("rw-alpha"))
+		ctx.RegisterTool(tool("rw-beta"))
+		registered, err := ctx.GetSystemPromptOptions()
+		if err != nil {
+			return err
+		}
+		ctx.SetActiveTools([]string{"rw-beta"})
+		options, err := ctx.GetSystemPromptOptions()
+		if err != nil {
+			return err
+		}
+		prompt, err := ctx.GetSystemPrompt()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_prompt_state=registered:%s;selected:%s;beta:%t;alpha:%t", registered.ToolSnippets["rw-alpha"], strings.Join(options.SelectedTools, ","), strings.Contains(prompt, "rw-beta-snippet"), strings.Contains(prompt, "rw-alpha-snippet")), "info")
+		return nil
+	})
+
+	// rw_idle_after_trigger sends a message that starts a run and reads isIdle at once; rw_idle_in_settled does the same, once, from an agent_settled handler, where the Session holds the message back until the handlers return.
+	ext.Command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		idle, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_after_trigger=%t", idle), "info")
+		return nil
+	})
+	settledOnce := &atomic.Bool{}
+	ext.Command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", func(sdk.Context, string) error {
+		ext.OnEvent("agent_settled", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			if !settledOnce.CompareAndSwap(false, true) {
+				return nil, nil
+			}
+			trigger := true
+			if err := hctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+				return nil, err
+			}
+			idle, err := hctx.IsIdle()
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify(fmt.Sprintf("rw_idle_in_settled=%t", idle), "info")
+			return nil, nil
+		})
+		return nil
+	})
+
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
 		ok, err := ctx.SetModel(args)
 		if err != nil {
@@ -1190,7 +1247,7 @@ func Extension() *sdk.Extension {
 				return err
 			}
 		}
-		return ctx.AppendEntry("ui-availability", fmt.Sprintf("hasUI=%t selected=%s", ctx.HasUI(), selected))
+		return ctx.AppendEntry("ui-availability", fmt.Sprintf("hasUI=%t selected=%s", ctx.HasUI(), dialogText(selected)))
 	})
 
 	ext.Command("ui-state-barrier", "Read UI state after a dialog", func(ctx sdk.Context, _ string) error {
@@ -1211,7 +1268,7 @@ func Extension() *sdk.Extension {
 		if err != nil {
 			return err
 		}
-		ctx.Notify(fmt.Sprintf("selected=%s expanded=%t named=%s missing=%t success=%t error=%s", selected, expanded, named.(map[string]any)["name"], missing == nil, success, message), "info")
+		ctx.Notify(fmt.Sprintf("selected=%s expanded=%t named=%s missing=%t success=%t error=%s", dialogText(selected), expanded, named.(map[string]any)["name"], missing == nil, success, message), "info")
 		return nil
 	})
 
@@ -1409,7 +1466,7 @@ func Extension() *sdk.Extension {
 			return errors.Join(selectErr, inputErr, editorErr, confirmErr)
 		}
 		ctx.Notify(fmt.Sprintf("select=%s input=%s editor=%s confirm=%t",
-			selected, input, edited, confirmed), "info")
+			dialogText(selected), dialogText(input), dialogText(edited), confirmed == true), "info")
 		return nil
 	})
 
@@ -2379,6 +2436,46 @@ func Extension() *sdk.Extension {
 		ctx.Notify("host_info:"+string(wire)+":end", "info")
 		return nil
 	})
+	// ui_dialog_values_probe reports the value each dialog resolves with (TestConformance_UIDialogValuesAgreeAcrossSDKs): `<undefined>` for Pi's undefined, else the JSON of the value.
+	ext.Command("ui_dialog_values_probe", "Report the typed result of each dialog", func(ctx sdk.Context, args string) error {
+		report := func(name string, value any, ok bool) {
+			text := "<undefined>"
+			if ok {
+				encoded, _ := json.Marshal(value)
+				text = string(encoded)
+			}
+			ctx.Notify(name+"="+text, "info")
+		}
+		for _, title := range []string{"S1", "S2", "S3", "S4"} {
+			value, ok, err := ctx.Select(title, []string{"a", "b"})
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		for _, title := range []string{"C1", "C2", "C3", "C4"} {
+			value, err := ctx.Confirm(title, "m")
+			if err != nil {
+				return err
+			}
+			report(title, value, true)
+		}
+		for _, title := range []string{"I1", "I2"} {
+			value, ok, err := ctx.Input(title, "p")
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		for _, title := range []string{"E1", "E2"} {
+			value, ok, err := ctx.Editor(title, "p")
+			if err != nil {
+				return err
+			}
+			report(title, value, ok)
+		}
+		return nil
+	})
 	// ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
 	ext.Command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", func(ctx sdk.Context, args string) error {
 		ctx.SetWorkingMessage("Thinking hard")
@@ -2395,6 +2492,23 @@ func Extension() *sdk.Extension {
 		ctx.PasteToEditor("pasted \U0001F600")
 		ctx.SetEditorText("draft")
 		ctx.SetToolsExpanded(true)
+		return nil
+	})
+	// ui_wire_empties_probe calls the UI members Pi's RPC mode writes with empty strings and lists, and the optional members it omits, in this SDK's own spelling of
+	// each (TestConformance_UIEmptyMembersAgreeAcrossSDKs).
+	ext.Command("ui_wire_empties_probe", "Call the UI members with empty and unset arguments", func(ctx sdk.Context, args string) error {
+		ctx.SetStatus("k", "")
+		ctx.ClearStatus("k")
+		ctx.Notify("", "")
+		ctx.Notify("typed", "warning")
+		ctx.SetTitle("")
+		ctx.SetEditorText("")
+		_, _, _ = ctx.Select("T", []string{})
+		_, _ = ctx.Confirm("", "")
+		_, _, _ = ctx.Input("T1", "")
+		_, _, _ = ctx.Input("T3", "ph")
+		_, _, _ = ctx.Editor("E1", "")
+		_, _, _ = ctx.Editor("E3", "pre")
 		return nil
 	})
 	// tool_call_guard_probe reports which tool names isToolCallEventType accepts for each tool_call event it receives (TestConformance_ToolCallGuardAgreesAcrossSDKs).
@@ -2432,6 +2546,7 @@ func Extension() *sdk.Extension {
 	ext.Command("editor-install-embed", "Install a custom editor that embeds the working status", func(ctx sdk.Context, args string) error {
 		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent { return &embeddingEditor{conformanceEditor{Editor: base}} })
 	})
+	registerHeadlessUIProbe(ext)
 
 	ext.Command("ui-probe", "Exercise SDK UI wrappers", func(ctx sdk.Context, args string) error {
 		_ = ctx.SetWorkingIndicator(sdk.WorkingIndicatorOptions{"frames": []string{"*"}})
@@ -3146,4 +3261,10 @@ func registerSignalAbort(ext *sdk.Extension) {
 		ctx.Notify("abort:"+state(held)+":"+state(ctx.Signal()), "info")
 		return nil
 	})
+}
+
+// dialogText is a dialog's string answer: a select, input or editor result is whatever JSON the client sent (Pi's RPC mode does not check its type), and undefined is nil.
+func dialogText(value any) string {
+	text, _ := value.(string)
+	return text
 }

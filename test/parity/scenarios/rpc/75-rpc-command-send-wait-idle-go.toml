@@ -1,0 +1,55 @@
+# Behavior family: rpc
+# Surface: the Go SDK twin of 74-rpc-command-send-wait-idle (testdata/command-send-wait-idle/go), whose pig side runs the same command through the Go runtime.
+#
+# Pi: agent-session.ts waitForIdle returns at once while the run has not begun (`if (this.isIdle) return`), and the run begins after the awaits of its preparation (prompt, checkAuth, before_agent_start), so the handler returns, the prompt's response is written, and agent_start follows (rpc-mode.ts prompt case, agent-session.ts:2064-2072). 60-rpc-command-send-user-message-order asserts the same order for a command that does not wait; 75-rpc-command-send-wait-idle-go asserts it for the Go SDK.
+
+name = "75-rpc-command-send-wait-idle-go"
+description = "A Go SDK command that sends a user message and awaits WaitForIdle answers before agent_start, as Pi does"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"cmd","type":"prompt","message":"/ask"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../testdata/command-send-wait-idle/go"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/command-send-wait-idle.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 5
+both_contain = ['"id":"cmd","type":"response","command":"prompt","success":true', '"type":"agent_settled"']
+both_not_contain = ['"success":false', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id", "/**/sessionId"]
+kind = "id"
+group = "runtime"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+
+[[assert.json_aliases]]
+paths = ["/**/durationMs"]
+kind = "duration"
+reason = "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
