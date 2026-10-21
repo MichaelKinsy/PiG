@@ -141166,7 +141166,8 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
+        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
     },
     {
@@ -141186,7 +141187,8 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
+        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
     },
     {
@@ -169500,7 +169502,8 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
+        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
     },
     {
@@ -169520,7 +169523,8 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
+        "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
     },
     {
