@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Pi starts shutdown() for stdin's end in an event-loop iteration after the line, so the microtasks of earlier commands and of a published agent_end finish first (rpc-mode.ts:355-360,726-742,802-805). Stdin end therefore settles before it removes the signal handlers, and a settle that reports the mode ended abandons the shutdown.
@@ -101,7 +103,7 @@ func TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus(t *testing.T) 
 			close(release)
 			select {
 			case <-signalDone:
-			case <-time.After(5 * time.Second):
+			case <-time.After(testbudget.Wait(t)):
 				t.Error("the signal's shutdown did not finish after its dispose completed")
 			}
 		}
