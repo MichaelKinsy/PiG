@@ -3,6 +3,7 @@ package extension
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 )
 
 // ErrUIUnavailable reports that a UI-only operation cannot run in the current mode.
@@ -259,6 +260,27 @@ type noopUIContext struct{}
 // upstream: runner.ts:188 (`const noOpUIContext: ExtensionUIContext = ...`)
 var NoopUIContext UIContext = &noopUIContext{}
 
+// noopThemeProvider is the active-theme source for [NoopUIContext.Theme]. The theme lives in a package that imports this one, so that package registers it
+// with [SetNoopUITheme] at init; until then no theme exists to hand out.
+var noopThemeProvider atomic.Pointer[func() Theme]
+
+// SetNoopUITheme registers the function [NoopUIContext].Theme answers from. Pi's no-op UI context (runner.ts noOpUIContext) and its RPC UI both hand an
+// extension the global theme as `ctx.ui.theme`, so an in-process extension running headless reads the same palette the TUI would. A nil provider unregisters.
+func SetNoopUITheme(provider func() Theme) {
+	if provider == nil {
+		noopThemeProvider.Store(nil)
+		return
+	}
+	noopThemeProvider.Store(&provider)
+}
+
+func noopUITheme() Theme {
+	if provider := noopThemeProvider.Load(); provider != nil {
+		return (*provider)()
+	}
+	return nil
+}
+
 func (*noopUIContext) Select(context.Context, string, []string, ExtensionUIDialogOptions) (string, error) {
 	return "", nil
 }
@@ -291,7 +313,7 @@ func (*noopUIContext) Editor(context.Context, string, string) (string, error)   
 func (*noopUIContext) AddAutocompleteProvider(AutocompleteProviderFactory) error { return nil }
 func (*noopUIContext) SetEditorComponent(EditorFactory)                          {}
 func (*noopUIContext) GetEditorComponent() EditorFactory                         { return nil }
-func (*noopUIContext) Theme() Theme                                              { return nil }
+func (*noopUIContext) Theme() Theme                                              { return noopUITheme() }
 func (*noopUIContext) GetAllThemes() []ThemeMeta                                 { return nil }
 func (*noopUIContext) GetTheme(string) (Theme, error)                            { return nil, nil }
 func (*noopUIContext) SetTheme(ThemeSelection) SetThemeResult {
