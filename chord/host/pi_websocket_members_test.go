@@ -333,6 +333,10 @@ func TestPiWebSocketServerLikeOnConnection(t *testing.T) {
 	if !reflect.DeepEqual(got, []any{`{"t":"bye","reason":"unauthorized"}`}) {
 		t.Fatalf("refused client received %q", got)
 	}
+	// The link sends the bye and closes its socket after it (TestWebSocketLinkSendsByeBeforeItClosesTheSocket). In
+	// Node the client's message event comes in a later tick than the server's whole close(); here the client end
+	// can have received the bye before the server end recorded the close, so the test waits for it.
+	waitFor(t, "the refused client's socket close", func() bool { return len(serverEnd.closeCodes()) > 0 })
 	if codes := serverEnd.closeCodes(); !slices.Equal(codes, []int{1000}) {
 		t.Fatalf("refused client's socket close codes = %v, want [1000]", codes)
 	}
@@ -424,5 +428,33 @@ func TestPiWebSocketAcceptOptionsMaxCallsAnswersCallsBeyondItWithTooManyCalls(t 
 	}
 	if got := addOne(t, counter); got != 1 {
 		t.Fatalf("add = %v, want 1", got)
+	}
+}
+
+// closeCountSocket records how many times its socket was closed when each message was sent.
+type closeCountSocket struct {
+	*fakeWebSocket
+	closesAtSend []int
+}
+
+func (socket *closeCountSocket) Send(data any) error {
+	socket.closesAtSend = append(socket.closesAtSend, len(socket.closes))
+	return socket.fakeWebSocket.Send(data)
+}
+
+// Pi packages/chord/src/link.ts close(): the link sends its bye and then closes its socket with 1000 (shutdown), so a
+// peer that has received the bye may not have seen the close yet.
+func TestWebSocketLinkSendsByeBeforeItClosesTheSocket(t *testing.T) {
+	socket := &closeCountSocket{fakeWebSocket: newFakeWebSocket(webSocketOpen)}
+	link := NewWebSocketLink(socket, WebSocketLinkOptions{})
+	link.Close("unauthorized")
+	if want := []string{`{"t":"bye","reason":"unauthorized"}`}; !slices.Equal(socket.sent, want) {
+		t.Fatalf("sent = %q, want %q", socket.sent, want)
+	}
+	if !slices.Equal(socket.closesAtSend, []int{0}) {
+		t.Fatalf("closes when the bye was sent = %v, want none yet", socket.closesAtSend)
+	}
+	if !slices.Equal(socket.closes, []int{1000}) {
+		t.Fatalf("close codes = %v, want [1000] after the bye", socket.closes)
 	}
 }
