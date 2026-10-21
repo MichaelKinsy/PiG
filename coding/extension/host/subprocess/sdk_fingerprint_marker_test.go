@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The collector reads the SDK fingerprint marker of a published entry and expires the entry when the marker names an SDK no staged
@@ -58,9 +59,7 @@ func TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker(t *testing.T) {
 	// A dangling link stands where the marker goes: a write through the path creates its target, a replacement does not.
 	marker := filepath.Join(entryDir, sdkFingerprintFile)
 	through := filepath.Join(t.TempDir(), "through")
-	if err := os.Symlink(through, marker); err != nil {
-		t.Skipf("symbolic links are unavailable: %v", err)
-	}
+	testenv.Symlink(t, through, marker)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

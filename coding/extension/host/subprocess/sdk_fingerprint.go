@@ -33,7 +33,9 @@ func recordSDKFingerprint(entryDir, fp string) {
 	if err := tmp.Close(); err != nil {
 		return
 	}
-	_ = os.Rename(name, marker)
+	if err := os.Rename(name, marker); err != nil {
+		return // the entry stays unfingerprinted, which only costs the collector its proof
+	}
 }
 
 // StagedSDKFingerprint hashes the source files that define one staged SDK. The digest is memoized per directory (sdkSourceDigest), so the
