@@ -231,7 +231,6 @@ func TestExportLedgerRejectsBadAndNearMissCases(t *testing.T) {
 		{"name only in a longer identifier is not reached", func(in *ledgerInput) { in.Corpus["go"] = "NotTruncateHeadAtAll(); kit.Text(1)" }, false, "go (native:TruncateHead) is reached by no"},
 		{"kit view reached only by a bare word", func(in *ledgerInput) { in.Corpus["python"] = "truncate_head(); print('Text')" }, false, "python (kit:Text) is reached by no"},
 		{"reached hole is stale", func(in *ledgerInput) {
-			in.File.Lane["SdkTuiHelpers"] = in.File.Lane["SdkTuiHelpers"]
 			in.File.Unreached = []unreachedSpec{{Key: "pi-coding-agent: truncateHead", SDKs: []string{"go"}, Lane: "SdkTuiHelpers", Row: "r"}}
 		}, false, "is stale"},
 		{"listed hole passes", func(in *ledgerInput) {
@@ -349,5 +348,34 @@ func TestVectorFilesAreChecked(t *testing.T) {
 				t.Fatalf("want %q, got:\n%s", c.want, got)
 			}
 		})
+	}
+}
+
+// TestReachOfGenericMemberNames pins the rule for member names common to unrelated objects (set, abort, get): a bare
+// mention does not reach a cell, a class-qualified call does, and so does a call on a variable when the class is named.
+func TestReachOfGenericMemberNames(t *testing.T) {
+	cases := []struct {
+		name   string
+		cell   string
+		corpus string
+		want   bool
+	}{
+		{"class-qualified Python call", "native:ProjectTrustStore.set", "ProjectTrustStore.set(store, cwd, True)", true},
+		{"class-qualified Rust call", "native:ProjectTrustStore::set", "ProjectTrustStore::set(&store, cwd, Some(true))?;", true},
+		{"variable call, class named", "native:ProjectTrustStore.set", "store = ProjectTrustStore.open(p)\nstore.set(other, False)", true},
+		{"variable call, class not named", "native:ProjectTrustStore.set", "cache.set(key, value)", false},
+		{"class named, no call", "native:ProjectTrustStore.set", "ProjectTrustStore(p) # settings set", false},
+		{"unrelated word", "native:ProjectTrustStore.set", "the set of paths", false},
+		{"known receiver still works", "native:AgentSession.abort", "ctx.abort()", true},
+		{"free function with a generic name", "native:tui.set", "x.set(1)", false},
+	}
+	for _, c := range cases {
+		cell, err := parseCell(c.cell)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := reached(cell, c.corpus); got != c.want {
+			t.Errorf("%s: reached(%s) = %v, want %v", c.name, c.cell, got, c.want)
+		}
 	}
 }

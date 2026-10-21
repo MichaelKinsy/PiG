@@ -46,8 +46,8 @@ func registryProbeRefresh() map[string]any {
 func registryProbeReference() (map[string]any, error) {
 	view := registryProbeView()
 	out := map[string]any{}
-	for key, method := range map[string]string{"cwd": "getCwd", "dir": "getSessionDir", "id": "getSessionId", "name": "getSessionName", "leaf": "getLeafId", "entry": "getEntry", "missing": "getEntry", "label": "getLabel", "entries": "getEntries", "branch": "getBranch", "tree": "getTree", "contextEntries": "buildContextEntries", "projection": "buildSessionProjection"} {
-		args := json.RawMessage(`{"id":"one","fromId":"one"}`)
+	for key, method := range map[string]string{"cwd": "getCwd", "dir": "getSessionDir", "id": "getSessionId", "name": "getSessionName", "leaf": "getLeafId", "entry": "getEntry", "missing": "getEntry", "label": "getLabel", "entries": "getEntries", "branch": "getBranch", "tree": "getTree", "contextEntries": "buildContextEntries", "projection": "buildSessionProjection", "persisted": "isPersisted", "usesDefaultDir": "usesDefaultSessionDir", "children": "getChildren", "sessionContext": "buildSessionContext"} {
+		args := json.RawMessage(`{"id":"one","fromId":"one","parentId":"one"}`)
 		if key == "missing" {
 			args = json.RawMessage(`{"id":"missing"}`)
 		}
