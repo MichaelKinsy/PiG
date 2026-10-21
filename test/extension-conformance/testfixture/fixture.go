@@ -21,6 +21,7 @@ import (
 	"maps"
 	"math"
 	"net/http"
+	"os"
 	"reflect"
 	"slices"
 	"strconv"
@@ -667,6 +668,21 @@ func Extension() *sdk.Extension {
 			return nil, err
 		}
 		return map[string]string{"content": fmt.Sprintf("order-done n=%v", params["n"])}, nil
+	})
+
+	// mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs): Pi registers it in the queue
+	// before the edit or write call that follows it in a batch.
+	ext.Tool("mutation_order_probe", "Take the file mutation queue in the first statement and append a tag to the file", sdk.Schema{"type": "object", "properties": map[string]any{"file": map[string]any{"type": "string"}, "tag": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		file, _ := params["file"].(string)
+		tag, _ := params["tag"].(string)
+		_, err := sdk.WithFileMutationQueue(file, func() (struct{}, error) {
+			before, _ := os.ReadFile(file)
+			return struct{}{}, os.WriteFile(file, append(before, tag+"\n"...), 0o600)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "mutated " + tag}, nil
 	})
 
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {

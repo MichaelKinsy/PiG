@@ -1064,6 +1064,24 @@ fn main() {
             ToolResult::text(format!("order-done n={n}"))
         },
     );
+    // mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+    ext.tool(
+        "mutation_order_probe",
+        "Take the file mutation queue and append a tag to the file",
+        json!({"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}),
+        |_, params: Value| {
+            let file = params["file"].as_str().unwrap_or_default().to_string();
+            let tag = params["tag"].as_str().unwrap_or_default().to_string();
+            let result = pig_sdk::with_file_mutation_queue(&file, || {
+                let before = std::fs::read_to_string(&file).unwrap_or_default();
+                std::fs::write(&file, format!("{before}{tag}\n"))
+            });
+            match result {
+                Ok(Ok(())) => ToolResult::text(format!("mutated {tag}")),
+                Ok(Err(err)) | Err(err) => ToolResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.tool(
         "throw_probe",
         "Throw a value of the requested kind",

@@ -787,6 +787,17 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": f"order-done n={params.get('n')}"}
 
     ext.tool("order_probe", "Make a host call and an update in the first tick", {"type": "object", "properties": {"n": {"type": "number"}}}, order_probe)
+    # mutation_order_probe takes the file mutation queue in its first statement and appends its tag to the file (TestFileMutationOrderAcrossSDKs).
+    def mutation_order_probe(ctx, params):
+        def body():
+            path = pathlib.Path(params["file"])
+            before = path.read_text() if path.exists() else ""
+            path.write_text(before + params["tag"] + "\n")
+
+        pig_sdk.with_file_mutation_queue(params["file"], body)
+        return {"content": "mutated " + params["tag"]}
+
+    ext.tool("mutation_order_probe", "Take the file mutation queue and append a tag to the file", {"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}, mutation_order_probe)
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
     ext.tool("tool_error", "Return a thrown tool error", {"type": "object"}, tool_error)
     ext.tool("tool_is_error", "Return a structured tool error result", {"type": "object"}, tool_is_error)
