@@ -142,8 +142,7 @@ func TestNodeTickCallsOfAToolRunAfterItsEndWhenTheyArriveLate(t *testing.T) {
 	}
 	end := turns.Chain()
 	defer end()
-	// The slow tool is the sibling that keeps the run awaiting: the loop turns while it does.
-	defer turns.Wait()()
+	// The slow tool is the sibling that keeps the run awaiting. The host sees no wait in an extension tool's own await: the runtime marks the call tick because a sibling still runs.
 	slowCtx, cancelSlow := context.WithCancel(ctx)
 	slowDone := make(chan error, 1)
 	go func() {

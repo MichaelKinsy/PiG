@@ -179,18 +179,21 @@ func TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst(t *testing.T) {
 	end()
 }
 
-func TestTurnsHoldALateTickWhileTheChainAwaitsNothing(t *testing.T) {
+// A tick the runtime made while a sibling tool awaited says the loop turns, which the host cannot see for an extension tool's own await: no wait is open, and the late tick still runs at once, with the timer callbacks held before it.
+func TestTurnsRunALateTickAtOnceWhileNoWaitIsOpen(t *testing.T) {
 	var turns Turns
 	var got []string
 	end := turns.Chain()
 	turns.Ticked("tool-1")
+	turns.Macrotask(func() { got = append(got, "timer") })
 	turns.Tick("tool-1", func(written func()) { got = append(got, "late"); written() })
-	if len(got) != 0 || turns.Held() != 1 {
-		t.Fatalf("a late tick ran %v with %d held while no wait is open, want it held for the loop's turn", got, turns.Held())
+	if want := []string{"timer", "late"}; !slices.Equal(got, want) || turns.Held() != 0 {
+		t.Fatalf("ran %v with %d held, want %v and none held", got, turns.Held(), want)
 	}
-	turns.Turn()
-	if want := []string{"late"}; !slices.Equal(got, want) {
-		t.Fatalf("after a turn ran %v, want %v", got, want)
+	// A tick of a tool call that has not ended still waits for its end.
+	turns.Tick("tool-2", func(written func()) { got = append(got, "tool-2"); written() })
+	if want := []string{"timer", "late"}; !slices.Equal(got, want) || turns.Held() != 1 {
+		t.Fatalf("ran %v with %d held, want %v and the tick of tool-2 held", got, turns.Held(), want)
 	}
 	end()
 }
