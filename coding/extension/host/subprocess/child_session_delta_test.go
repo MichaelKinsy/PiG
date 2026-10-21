@@ -89,14 +89,14 @@ func TestChildUpdateStreamReproducesEveryEvent(t *testing.T) {
 			t.Fatal(err)
 		}
 		seq := uint64(index + 10)
-		base, ops, ok := stream.frame(encoded, seq)
+		base, ops, patch, ok := stream.frame(encoded, seq)
 		switch {
 		case !ok:
 			if err := json.Unmarshal(encoded, &replica); err != nil {
 				t.Fatal(err)
 			}
 			replicaSeq = 0
-		case ops == nil:
+		case !patch:
 			if err := json.Unmarshal(encoded, &replica); err != nil {
 				t.Fatal(err)
 			}
@@ -105,7 +105,7 @@ func TestChildUpdateStreamReproducesEveryEvent(t *testing.T) {
 			if base != replicaSeq {
 				t.Fatalf("event %d: base %d, replica %d", index, base, replicaSeq)
 			}
-			replica = applyChildOps(t, replica, ops)
+			replica = applyChildOps(t, replica, append(append([]byte{'['}, ops...), ']'))
 			replicaSeq = seq
 		}
 		var want any
@@ -123,11 +123,11 @@ func TestChildUpdateStreamSendsAGrownTextAsItsTail(t *testing.T) {
 	var stream childUpdateStream
 	text := strings.Repeat("x", 200)
 	first := fmt.Sprintf(`{"type":"message_update","t":%q}`, text)
-	if _, ops, ok := stream.frame([]byte(first), 1); !ok || ops != nil {
+	if _, ops, patch, ok := stream.frame([]byte(first), 1); !ok || patch {
 		t.Fatalf("the first update is a keyframe: ok=%v ops=%s", ok, ops)
 	}
-	base, ops, ok := stream.frame([]byte(fmt.Sprintf(`{"type":"message_update","t":%q}`, text+"yz")), 2)
-	if !ok || base != 1 || string(ops) != `[{"op":"append","path":["t"],"value":"yz"}]` {
+	base, ops, _, ok := stream.frame([]byte(fmt.Sprintf(`{"type":"message_update","t":%q}`, text+"yz")), 2)
+	if !ok || base != 1 || string(ops) != `{"op":"append","path":["t"],"value":"yz"}` {
 		t.Fatalf("base=%d ops=%s ok=%v", base, ops, ok)
 	}
 }

@@ -216,20 +216,32 @@ func diffChild(ops, path []byte, old, next *childNode) []byte {
 		}
 	}
 	for index := range next.items {
-		var element []byte
+		member := pushPath(path)
 		if next.kind == deltaObject {
-			element = next.keys[index]
+			member = append(member, next.keys[index]...)
 		} else {
-			element = strconv.AppendInt(nil, int64(index), 10)
+			member = strconv.AppendInt(member, int64(index), 10)
 		}
-		member := appendPath(path, element)
+		member = append(member, ']')
 		if index < len(old.items) {
 			ops = diffChild(ops, member, old.items[index], next.items[index])
 		} else {
 			ops = appendOp(ops, "set", member, next.items[index].src)
 		}
+		if len(path) > 0 {
+			path[len(path)-1] = ']'
+		}
 	}
 	return ops
+}
+
+// pushPath returns path, a JSON array of path elements, opened for one more element: the closing bracket becomes a comma in place, so the caller appends the element and the bracket, and puts the bracket back in path when it is done with the member. A path costs no allocation while it fits the capacity path has.
+func pushPath(path []byte) []byte {
+	if len(path) == 0 {
+		return append(path, '[')
+	}
+	path[len(path)-1] = ','
+	return path
 }
 
 // retainChild returns the node for next that owns its bytes, reusing old where they agree: the event buffer is reused, and a grown text extends the buffer its old token held, so keeping a payload costs what it added.
@@ -299,26 +311,29 @@ type childUpdateStream struct {
 	seq    uint64
 	base   *childNode
 	parser childParser
+	// ops and path are the scratch of the operations and of the path being walked.
+	ops, path []byte
 }
 
 // messageUpdatePrefix is how a session's message_update event begins: Pi's JSON writes `type` first.
 var messageUpdatePrefix = []byte(`{"type":"message_update"`)
 
-// frame returns the stream member of a message_update event's notification, and the ops that replace the event when the notification is a patch (nil for a keyframe, which carries the event). seq numbers the event. ok is false when the event travels whole, outside the stream.
-func (s *childUpdateStream) frame(event []byte, seq uint64) (base uint64, ops []byte, ok bool) {
+// frame returns what a message_update's notification carries beyond the event: for a keyframe (patch false) the event itself; for a patch, base, the number of the payload the operations apply to, and ops, the operations without their enclosing brackets, valid until the next frame. seq numbers the event. ok is false when the event travels whole, outside the stream.
+func (s *childUpdateStream) frame(event []byte, seq uint64) (base uint64, ops []byte, patch, ok bool) {
 	next, parsed := s.parser.parse(event)
 	if !parsed {
 		s.base = nil
-		return 0, nil, false
+		return 0, nil, false, false
 	}
 	previous, previousSeq := s.base, s.seq
 	if previous != nil {
 		// The operations come first: retaining next changes previous in place.
-		changes := diffChild(nil, nil, previous, next)
-		ops = make([]byte, 0, len(changes)+2)
-		ops = append(append(append(ops, '['), changes...), ']')
-		base = previousSeq
+		if cap(s.path) < 256 {
+			s.path = make([]byte, 0, 256)
+		}
+		s.ops = diffChild(s.ops[:0], s.path[:0], previous, next)
+		ops, base, patch = s.ops, previousSeq, true
 	}
 	s.base, s.seq = retainChild(previous, next), seq
-	return base, ops, true
+	return base, ops, patch, true
 }

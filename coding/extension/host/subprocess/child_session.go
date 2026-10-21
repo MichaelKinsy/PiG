@@ -90,8 +90,8 @@ func (e *childSessionEntry) forward(event json.RawMessage) {
 	seq := e.seq.Add(1)
 	var args []byte
 	if bytes.HasPrefix(event, messageUpdatePrefix) {
-		if base, ops, ok := e.updates.frame(event, seq); ok {
-			args = e.updateFrame(seq, base, ops, event)
+		if base, ops, patch, ok := e.updates.frame(event, seq); ok {
+			args = e.updateFrame(seq, base, ops, patch, event)
 		}
 	}
 	if args == nil {
@@ -106,16 +106,16 @@ func (e *childSessionEntry) forward(event json.RawMessage) {
 	_ = e.conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: NotifyChildSessionEvent, Args: args}})
 }
 
-// updateFrame is the notification of a message_update that travels in the stream: a keyframe carries the event, a patch (base set) the operations that turn the payload numbered base into it.
-func (e *childSessionEntry) updateFrame(seq, base uint64, ops, event []byte) []byte {
+// updateFrame is the notification of a message_update that travels in the stream: a keyframe carries the event, a patch the operations that turn the payload numbered base into it.
+func (e *childSessionEntry) updateFrame(seq, base uint64, ops []byte, patch bool, event []byte) []byte {
 	size := len(e.prefix) + 80 + len(ops)
-	if ops == nil {
+	if !patch {
 		size += len(event)
 	}
 	args := make([]byte, 0, size)
 	args = append(args, e.prefix...)
 	args = strconv.AppendUint(args, seq, 10)
-	if ops == nil {
+	if !patch {
 		args = append(args, `,"event":`...)
 		args = append(args, event...)
 		args = append(args, `,"stream":{"seq":`...)
@@ -123,11 +123,12 @@ func (e *childSessionEntry) updateFrame(seq, base uint64, ops, event []byte) []b
 		args = append(args, `,"stream":{"seq":`...)
 	}
 	args = strconv.AppendUint(args, seq, 10)
-	if ops != nil {
+	if patch {
 		args = append(args, `,"base":`...)
 		args = strconv.AppendUint(args, base, 10)
-		args = append(args, `,"ops":`...)
+		args = append(args, `,"ops":[`...)
 		args = append(args, ops...)
+		args = append(args, ']')
 	}
 	return append(args, '}', '}')
 }
