@@ -69329,6 +69329,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.AvailableModelSnapshot",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.AvailableModelSnapshot",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []*github.com/MichaelKinsy/PiG/ai.Model"
+      },
+      "shapeHash": "sha256:a95c9ef5a386eb34889a84008da3e8d3eeba642418182d5c523794885294cb79"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.AvailableThinkingLevels",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.AvailableThinkingLevels",
@@ -202693,6 +202704,17 @@
       "shapeHash": "sha256:a1f78067d6bf94106f4f459095d4ab4bb753f6db550f1e37d5c4f8cb382a07ef"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.scopeSourceModels",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.scopeSourceModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []*github.com/MichaelKinsy/PiG/ai.Model"
+      },
+      "shapeHash": "sha256:a95c9ef5a386eb34889a84008da3e8d3eeba642418182d5c523794885294cb79"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.scopedModelItems",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.scopedModelItems",
@@ -244282,6 +244304,17 @@
         "type": "func(ctx context.Context, inputPath string, cwdOverride string) (github.com/MichaelKinsy/PiG/coding/extension.CancelledResult, error)"
       },
       "shapeHash": "sha256:98a2838e322f57fa4bc3bc810c299f63d54de8dfd2e8819998c4c5c854407507"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#runtimeModelSnapshot",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "runtimeModelSnapshot",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "runtimeModelSnapshot"
+      },
+      "shapeHash": "sha256:f36cc70087612857f6aaa4e33d9dada8cb08ae283a8f9f0ddebe7931b8877f41"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#safePrefix",
