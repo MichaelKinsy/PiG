@@ -34,12 +34,13 @@ capture_end = "all enabled"
 
 [[tmux.steps]]
 keys = ["/scoped-models", "Enter"]
-wait_visible_contains = ["Model Configuration"]
+# Both binaries refresh the catalogs asynchronously after the selector opens (interactive-mode.ts showScopedModelsSelector: the selector shows "Refreshing model catalogs…" until refreshModelCatalogs settles, then "Model catalogs refreshed."). under load Pi's capture came first once ("pi output missing Model catalogs refreshed."): a step that is done at "> mtw" does not wait for the refresh. Typing starts after the status is published, so the captured screen does not depend on which of the two came first.
+wait_visible_contains = ["Model Configuration", "Model catalogs refreshed."]
 wait_timeout_seconds = 15
 
 [[tmux.steps]]
 keys = ["mtw"]
-wait_visible_contains = ["> mtw", "model-two", "Model Name: Model Two"]
+wait_visible_contains = ["> mtw", "model-two", "Model Name: Model Two", "Model catalogs refreshed."]
 wait_not_contains = ["model-one"]
 wait_timeout_seconds = 15
 
