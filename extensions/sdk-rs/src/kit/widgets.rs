@@ -13,6 +13,7 @@ pub enum Widget {
     BranchSummary(BranchSummary),
     CompactionSummary(CompactionSummary),
     SkillInvocation(SkillInvocation),
+    CustomMessage(CustomMessage),
     // widget-variants
 }
 
@@ -25,7 +26,7 @@ macro_rules! widget_from {
         }
     )*};
 }
-widget_from!(BranchSummary , CompactionSummary , SkillInvocation /* widget-from */);
+widget_from!(BranchSummary , CompactionSummary , SkillInvocation , CustomMessage /* widget-from */);
 
 impl Widget {
     pub(super) fn kind(&self) -> &'static str {
@@ -33,6 +34,7 @@ impl Widget {
             Widget::BranchSummary(_) => "branch-summary",
             Widget::CompactionSummary(_) => "compaction-summary",
             Widget::SkillInvocation(_) => "skill-invocation",
+            Widget::CustomMessage(_) => "custom-message",
             // widget-kinds
         }
     }
@@ -67,6 +69,15 @@ impl Widget {
                 put_nonempty(&mut skill, "name", &n.name);
                 put_nonempty(&mut skill, "content", &n.content);
                 put(map, "skill", Value::Object(skill));
+            }
+            Widget::CustomMessage(n) => {
+                put_opt(map, "id", &n.id);
+                put_pad(map, n.output_pad);
+                if n.expanded {
+                    put(map, "expanded", true);
+                }
+                put_nonempty(map, "customType", &n.custom_type);
+                put_nonempty(map, "text", &n.text);
             }
             // widget-encode
         }
@@ -244,6 +255,45 @@ impl SkillInvocation {
     }
 
     /// Upstream `setExpanded`.
+    pub fn set_expanded(&mut self, expanded: bool) {
+        self.expanded = expanded;
+    }
+
+    /// Upstream `setOutputPad`.
+    pub fn set_output_pad(&mut self, output_pad: u32) {
+        self.output_pad = output_pad;
+    }
+}
+
+/// Coding-agent's `CustomMessageComponent(message, undefined,
+/// getMarkdownTheme(), outputPad)`: the default rendering of an extension's
+/// message, "[customType]" over the content's text in a customMessageBg box. A
+/// message's custom renderer is a closure upstream and has no kind here; the
+/// message-renderer surfaces draw it. It draws with the active theme, and a
+/// node with an id keeps its host component across frames.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CustomMessage {
+    id: Option<String>,
+    custom_type: String,
+    text: String,
+    output_pad: u32,
+    expanded: bool,
+}
+
+impl CustomMessage {
+    /// A message of `custom_type` with `text` (a content array's text blocks
+    /// joined with newlines) and upstream's outputPad 1.
+    pub fn new(custom_type: impl Into<String>, text: impl Into<String>) -> Self {
+        Self { id: None, custom_type: custom_type.into(), text: text.into(), output_pad: 1, expanded: false }
+    }
+
+    /// Keeps the host component across frames.
+    pub fn id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    /// Upstream `setExpanded`; the default rendering does not draw it.
     pub fn set_expanded(&mut self, expanded: bool) {
         self.expanded = expanded;
     }

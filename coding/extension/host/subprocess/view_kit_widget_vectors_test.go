@@ -18,6 +18,7 @@ var widgetVectorExports = []struct{ dir, export string }{
 	{"pi-coding-agent", "BranchSummaryMessageComponent"},
 	{"pi-coding-agent", "CompactionSummaryMessageComponent"},
 	{"pi-coding-agent", "SkillInvocationMessageComponent"},
+	{"pi-coding-agent", "CustomMessageComponent"},
 }
 
 // widgetVectorSpec is a case's argument: the wire node, the steps delivered to the focused node or the pointer, and the

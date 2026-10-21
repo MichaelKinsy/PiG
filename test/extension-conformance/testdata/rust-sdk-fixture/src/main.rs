@@ -325,6 +325,13 @@ fn kit_skill_view(set: impl FnOnce(&mut kit::SkillInvocation)) -> kit::View {
 }
 
 
+fn kit_custom_message_view(text: &str, set: impl FnOnce(&mut kit::CustomMessage)) -> kit::View {
+    let mut node = kit::CustomMessage::new("ci-status", text).id("m");
+    set(&mut node);
+    kit::View::new(Container::new().child(node))
+}
+
+
 /// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 /// §10), built with the SDK's own constructors; the key is
 /// "<module>/<export>/<case name>" and the case's wire node is its vector's
@@ -375,6 +382,17 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
             node.set_expanded(true);
             kit::View::new(node)
         }
+        "pi-coding-agent/CustomMessageComponent/default" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |_| {})
+        }
+        "pi-coding-agent/CustomMessageComponent/outputPad 0" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |n| n.set_output_pad(0))
+        }
+        "pi-coding-agent/CustomMessageComponent/expanded changes nothing" => {
+            kit_custom_message_view("Build **passed** in 12s\n\n- 214 tests\n- 0 failures", |n| n.set_expanded(true))
+        }
+        "pi-coding-agent/CustomMessageComponent/empty text" => kit_custom_message_view("", |_| {}),
+        "pi-coding-agent/CustomMessageComponent/no id" => kit::View::new(kit::CustomMessage::new("note", "plain")),
         // kit-widget-cases
         _ => return None,
     })

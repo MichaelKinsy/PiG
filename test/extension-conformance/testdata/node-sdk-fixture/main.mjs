@@ -1046,6 +1046,22 @@ export default function (pi) {
       return { root: node };
     };
   }
+  {
+    const custom = (text, expanded, outputPad = 1) => () => {
+      const node = new piCodingAgent.CustomMessageComponent({ customType: "ci-status", content: text }, undefined, undefined, outputPad);
+      if (expanded) node.setExpanded(true);
+      const root = new Container();
+      root.addChild(node);
+      return { root };
+    };
+    const body = "Build **passed** in 12s\n\n- 214 tests\n- 0 failures";
+    const prefix = "pi-coding-agent/CustomMessageComponent/";
+    kitWidgetCases[`${prefix}default`] = custom(body, false);
+    kitWidgetCases[`${prefix}outputPad 0`] = custom(body, false, 0);
+    kitWidgetCases[`${prefix}expanded changes nothing`] = custom(body, true);
+    kitWidgetCases[`${prefix}empty text`] = custom("", false);
+    kitWidgetCases[`${prefix}no id`] = () => ({ root: new piCodingAgent.CustomMessageComponent({ customType: "note", content: "plain" }, undefined, undefined, 1) });
+  }
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
     description: "Show a widget kind's Pi vector case (D107)",
