@@ -19,7 +19,7 @@
 #   output: "parallel-mutation-done"
 #   exit: 0
 
-name = "85-parallel-extension-file-mutation"
+name = "86-parallel-extension-file-mutation"
 description = "An extension tool under withFileMutationQueue and built-in write and edit on one file keep every edit"
 covers = [
   "packages/coding-agent/src/core/tools/file-mutation-queue.ts",
