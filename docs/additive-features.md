@@ -1425,13 +1425,15 @@ What: the interactive spinner ticker parks when a tick finds the session idle wi
 
 Before it collects, the idle collection releases the request encoding caches (D112, `ai.ReleaseRequestCaches`).
 
+Once at start, the background task that registers the remaining highlight languages calls `debug.FreeOSMemory()` after it has queued the repaint: the first frame and the startup loads allocate several times what they keep, and the runtime's background scavenger returns that free heap slowly. The call is on that task, never on the owner loop, and runs once per interactive session.
+
 Pi source: `tui/src/components/loader.ts` holds its `setInterval` only while a Loader exists; Pi-Bolt 4ee61e8a runs the idle collection; `packages/coding-agent/src/core/idle-gc.ts` (`IDLE_GC_DELAY_MS = 500`; Bolt also requires 32 MiB of growth, which PiG does not).
 
 Why: an idle terminal session should cost about zero CPU and give back memory a long run used.
 
-Call-site markers: `internal/codingagent/interactive_layout.go` (`tickSpinner`, `idleHeapCollector`, which calls `ai.ReleaseRequestCaches`), `internal/codingagent/interactive_turn.go` (`startTurn` run-end arm), `internal/codingagent/interactive.go` (`postUITask`, `runScheduledRender` and the other `wakeSpinner` callers, `routeInputSequence` input restart).
+Call-site markers: `internal/codingagent/interactive_layout.go` (`tickSpinner`, `idleHeapCollector`, which calls `ai.ReleaseRequestCaches`; `releaseStartupHeap`, called by `loadRemainingHighlightLanguages` in `interactive.go`), `internal/codingagent/interactive_turn.go` (`startTurn` run-end arm), `internal/codingagent/interactive.go` (`postUITask`, `runScheduledRender` and the other `wakeSpinner` callers, `routeInputSequence` input restart).
 
-Locked by: `TestSpinnerTickerParksWhileIdle` (red at 4cfaf24153: 25 fires in 2 s idle), `TestIdleHeapCollectionAfterRun`, `TestIdleCollectionAfterRunShorterThanOneSpinnerTick` (red at 1166362571: 0 collections after a 10ms run), `TestIdleCollectionRunsHalfASecondAfterRunEnd` (red: ran 2.08s after the run ended), `TestIdleCollectionWaitRestartsOnInput` (red: 0 collections in 3.3s after input; red at c149776dc9 with a typed key on the main-loop and modal routes: 1 collection 300ms after the key), `TestIdleCollectionFreesPoolVictims` (red with one forced cycle: the `sync.Pool` entry stays live), and the ratchet `process.mem_tmux_idle.heap_live_bytes` (`TestTmuxIdleMemoryGate`).
+Locked by: `TestSpinnerTickerParksWhileIdle` (red at 4cfaf24153: 25 fires in 2 s idle), `TestIdleHeapCollectionAfterRun`, `TestIdleCollectionAfterRunShorterThanOneSpinnerTick` (red at 1166362571: 0 collections after a 10ms run), `TestIdleCollectionRunsHalfASecondAfterRunEnd` (red: ran 2.08s after the run ended), `TestIdleCollectionWaitRestartsOnInput` (red: 0 collections in 3.3s after input; red at c149776dc9 with a typed key on the main-loop and modal routes: 1 collection 300ms after the key), `TestIdleCollectionFreesPoolVictims` (red with one forced cycle: the `sync.Pool` entry stays live), `TestLoadRemainingHighlightLanguagesReturnsTheStartupHeap` (red with the call removed: 1.6 MB of 64 MiB returned), and the ratchet `process.mem_tmux_idle.heap_live_bytes` (`TestTmuxIdleMemoryGate`).
 
 Not shipped: a higher GOGC (measured within noise). The GOMAXPROCS default is D174; the print, json and rpc GC target is D175.
 
