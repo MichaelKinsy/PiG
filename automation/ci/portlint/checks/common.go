@@ -100,7 +100,8 @@ type Pass struct {
 var allowRe = regexp.MustCompile(`^//\s*portlint:allow\s+(\S+)(?:\s+(.*\S))?\s*$`)
 
 // Reportf reports a finding at pos unless the line, or the line above, carries
-// `//portlint:allow <check> <reason>`. A marker with no reason is itself a finding.
+// `//portlint:allow <check> <reason>`. A marker with no reason is itself a finding,
+// and so is a marker on an ordering check whose reason names no class.
 func (p *Pass) Reportf(pos token.Pos, format string, args ...any) {
 	file := p.fileOf(pos)
 	if file == nil || isGenerated(file) {
@@ -119,6 +120,10 @@ func (p *Pass) Reportf(pos token.Pos, format string, args ...any) {
 			}
 			if m[2] == "" {
 				p.Report(analysis.Diagnostic{Pos: c.Slash, Category: p.check, Message: "portlint:allow " + m[1] + " needs a reason"})
+				return
+			}
+			if classedChecks[p.check] && !markerClassRe.MatchString(m[2]) {
+				p.Report(analysis.Diagnostic{Pos: c.Slash, Category: p.check, Message: "portlint:allow " + m[1] + " needs a class: executor:, joined:, lifecycle:, upstream: <file>:<symbol>, or pig divergence (D<N>)"})
 				return
 			}
 			return

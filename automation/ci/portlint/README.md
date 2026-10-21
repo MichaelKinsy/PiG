@@ -44,6 +44,7 @@ The JSON checks (`mapkeyorder`, `nilslicenull`, `jsonescape`) cover `encoding/js
 | `asyncorder` | HIGH | `go` statement with no join in a file ported from an upstream file whose `test/parity/async-contracts.toml` contract is `microtask-ordering` | TaskAbort `setTimeout(0)` precondition; durable reservation order |
 | `golifetime` | MED | `time.After` in a loop, a looping `select` with no stop case, a goroutine with no context, WaitGroup, errgroup or channel | catalog refreshes after Close |
 | `gorecover` | MED | fan-out goroutine with no deferred `recover` | websearch fan-outs |
+| `boundarygoroutine` | HIGH | in the extension-boundary packages (below), a `go` statement whose body, or the body of a package function it calls up to three levels down, invokes a func-typed variable, field or parameter with at least one argument (not a `context.CancelFunc`) or a method of an interface declared in `agent` or `coding/extension`, and every `go` statement in a `new*`/`New*` function. A goroutine cannot reproduce Pi's one-thread order for what it calls; use `jsloop.Loop`, `Lane` or `SettleGate`, or mark a lifecycle or executor site. Markers need a class (below) | #249: `newNodeChannel` started its IPC reader before the consumer registered, so an early message was dropped |
 | `doubleclose` | MED | `close` of a field channel in a function with no Once, lock or CAS guard | double close flake |
 | `ctxmapping` | MED | `context.Background()`, `http.NewRequest`, `exec.Command` inside a function that has a context | `AbortSignal` not mapped to context |
 | `ctxbackground` | LOW | `context.Background()`/`TODO()` in a library function with no context parameter, outside `main`, `init` and package initializers | go-idioms: 284 root contexts in library code |
@@ -61,6 +62,21 @@ The JSON checks (`mapkeyorder`, `nilslicenull`, `jsonescape`) cover `encoding/js
 | `testisolation` | HIGH | `os.UserHomeDir`, `os.Setenv` of a home or agent-directory variable, or a partial `t.Setenv` set before starting a child, in a package whose `TestMain` does not call `testenv.ScopeTempDir` | 2026-10-06 `auth.json` wipe; #163 |
 | `hotpathjson` | MED | `encoding/json`, `extensions/sdk/json` and `orderedjson` Marshal/Unmarshal/NewEncoder/NewDecoder, and a `map[string]any` literal or `make`, inside a function whose doc comment carries `//pig:hotpath` (a function that runs once per event, frame, token or turn; sweep pattern P3) | complexity-audit hotpath-sweep: rpcAgentEvent and makeEventHandler marshal by reflection per event |
 | `hotpathalloc` | LOW | `fmt.Sprint*`, `slices.Clone`/`maps.Clone`/`bytes.Clone`, `append([]T(nil), x...)` and `time.After`/`NewTimer`/`Tick` inside a `//pig:hotpath` function (sweep pattern P5) | complexity-audit hotpath-sweep: three clones of every published message per event, a timer per wait |
+
+
+### Ordering checks
+
+`boundarygoroutine` guards the extension boundary, where Pi's single event loop order has to be re-created by hand (AGENTS.md, "Extension boundary ordering"). It reads production files only (not `_test.go`, not generated) in `agent`, the `coding` root package, `coding/cli/rpc*.go`, `coding/extension/**`, `coding/mcpext`, `internal/codingagent/ext_*.go` and `extension_*.go`, `chord/host`, and the Go SDK module; `internal/jsloop` implements the primitives and is exempt. It is HIGH and starts with a baseline of reviewed sites.
+
+An ordering check's `//portlint:allow` reason must start with a class; a marker with no class is itself a finding:
+
+| class | the site is |
+|---|---|
+| `executor: <name>` | the implementation of `jsloop` or of a writer |
+| `joined: <what joins it>` | owned and joined, so its order is unobservable |
+| `lifecycle: <what>` | a cancel, close, wait or heartbeat that shows no callback order |
+| `upstream: <file>:<symbol>` | Pi itself is unordered here; the reviewer checks the citation |
+| `pig divergence (D<N>): <reason>` | a numbered divergence owns the order |
 
 Mark a hot function with `//pig:hotpath` in its doc comment; the two `hotpath*` passes then flag what it allocates per call. A hit is fixed at the source or recorded in `baseline.toml` until it is.
 

@@ -21,8 +21,45 @@ func TestAnalyzers(t *testing.T) {
 		name := c.Analyzer.Name
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			analysistest.Run(t, testdata, c.Analyzer, name)
+			analysistest.Run(t, testdata, c.Analyzer, append([]string{name}, scopePackages[name]...)...)
 		})
+	}
+}
+
+const fixtureModule = "github.com/MichaelKinsy/PiG/"
+
+// scopePackages are fixtures that sit at a real package path, to pin which packages and files an ordering check reads. The shared ai and internal/jsloop fixtures hold the shapes of every ordering check and expect no finding: ai is out of scope and internal/jsloop is exempt.
+var scopePackages = map[string][]string{
+	"boundarygoroutine": {fixtureModule + "internal/codingagent", fixtureModule + "ai", fixtureModule + "internal/jsloop"},
+}
+
+// An ordering check needs a class on its marker: no reason, no class and a reason that names none each leave one finding at the marker and drop the one the marker covers.
+func TestOrderingMarkerNeedsAClass(t *testing.T) {
+	testdata, err := filepath.Abs("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var check *Check
+	for _, c := range All() {
+		if c.Analyzer.Name == "boundarygoroutine" {
+			check = &c
+		}
+	}
+	var reasons, classes int
+	for _, r := range analysistest.Run(&recorder{TB: t}, testdata, check.Analyzer, "boundarymarker") {
+		for _, d := range r.Diagnostics {
+			switch {
+			case strings.Contains(d.Message, "needs a reason"):
+				reasons++
+			case strings.Contains(d.Message, "needs a class"):
+				classes++
+			default:
+				t.Errorf("unexpected finding: %s", d.Message)
+			}
+		}
+	}
+	if reasons != 1 || classes != 2 {
+		t.Fatalf("needs-a-reason = %d, needs-a-class = %d; want 1 and 2 (noClass and wrongClass)", reasons, classes)
 	}
 }
 
