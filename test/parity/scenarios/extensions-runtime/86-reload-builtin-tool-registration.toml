@@ -36,11 +36,10 @@ pi_extensions = [
 
 [tmux]
 width = 120
-height = 40
+height = 400
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
-capture_history = true
 
 [[tmux.steps]]
 keys = ["/reload", "Enter"]
