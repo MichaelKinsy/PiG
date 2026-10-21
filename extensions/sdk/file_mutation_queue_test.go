@@ -44,7 +44,7 @@ func adoptScriptedQueueHost(t *testing.T, socket string) *scriptedQueueHost {
 	clientNet, hostNet := net.Pipe()
 	client := newConn(clientNet)
 	client.start()
-	adoptHelperConn(client, socket)
+	adoptHelperConn(client, socket, nil)
 	var once sync.Once
 	stop := func() {
 		once.Do(func() {
