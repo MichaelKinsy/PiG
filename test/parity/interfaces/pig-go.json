@@ -68273,6 +68273,28 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PreparedPrompt.startingMessages",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PreparedPrompt.startingMessages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []github.com/MichaelKinsy/PiG/agent.AgentMessage"
+      },
+      "shapeHash": "sha256:d60bc5152d6dcb12ddb6c19b10a5a050804dc9e45a0fcc20acd75276ddb5a741"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PreparedPrompt.takeNextTurn",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PreparedPrompt.takeNextTurn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#PreparedPromptRun",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "PreparedPromptRun",
@@ -198150,6 +198172,17 @@
       "shapeHash": "sha256:ab4c1160e5dee47450c9b744ff11aaae0fa2dde9adf126f04cc388fb8cee04f9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.appendExtensionEntry",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.appendExtensionEntry",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(customType string, data any) error"
+      },
+      "shapeHash": "sha256:27fe9d27b3258f24fc30d6b92e186b58e16d77bad86f4efeb5d69c3cfd1887b2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.appendToChat",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.appendToChat",
@@ -199580,6 +199613,17 @@
       "shapeHash": "sha256:ed48b6407cec1e3c66a118688fe656c532c785aacd933279479eb1ee4176a2eb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.extensionSessionName",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.extensionSessionName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.extensionSessionUIOnMain",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.extensionSessionUIOnMain",
@@ -199622,6 +199666,17 @@
         "type": "func() context.Context"
       },
       "shapeHash": "sha256:a670f80d9d343290c72d955f9b551785e49cb0b898c60c1c710e194570222157"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.extensionThinkingLevel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.extensionThinkingLevel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() github.com/MichaelKinsy/PiG/coding/extension.ThinkingLevel"
+      },
+      "shapeHash": "sha256:3a28f21b1243511ffa922732b11cb71906ab1bd71b9f9eed99be0c0326e6f5d3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.externalEditorCommand",
@@ -200524,6 +200579,17 @@
         "type": "func(reason string)"
       },
       "shapeHash": "sha256:a91f5da78c7cf287305fc5d2791b56e167e37b6e8b76f09a87a1ea1d53f3ad45"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.limitsModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.limitsModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/ai.Model"
+      },
+      "shapeHash": "sha256:781d3741ab39a99760c7ab43e327965b98fb62b2e76835227d231b071507a8a2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.loadPromptTemplates",
@@ -201448,6 +201514,28 @@
         "type": "func() *ProgramStatusReporter"
       },
       "shapeHash": "sha256:0243313299445c262ff566aa13727700a2449ab55ce237625c2935547fb2fac6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.projectRunPrompt",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.projectRunPrompt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string, forced bool)"
+      },
+      "shapeHash": "sha256:c7723b763dbfb86bb13dbb11be3f071b90cf417992ab4e5138213f54592b932c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.projectRunPromptOn",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.projectRunPromptOn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(target *github.com/MichaelKinsy/PiG/agent.Agent, text string, forced bool)"
+      },
+      "shapeHash": "sha256:85e23d713c82e27ffd849653fcbe7d81c95d54e75db26960df3561319848e0a3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.projectTrustUI",
@@ -202825,6 +202913,17 @@
       "shapeHash": "sha256:781d3741ab39a99760c7ab43e327965b98fb62b2e76835227d231b071507a8a2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.sessionRecordsPrompt",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.sessionRecordsPrompt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.sessionToolActions",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.sessionToolActions",
@@ -202911,6 +203010,39 @@
         "type": "func(on bool, dialogLines int)"
       },
       "shapeHash": "sha256:4a99cbc30280128dc18b4f2b7ca6bae7f74c62764563dba0f5e959c2f51c2232"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setExtensionModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setExtensionModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, model github.com/MichaelKinsy/PiG/coding/extension.Model) (bool, error)"
+      },
+      "shapeHash": "sha256:3950b4a980f6bfc15a9588b6cc415bb9901251079ebfef09f5ee60da81f87b8c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setExtensionSessionName",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setExtensionSessionName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) error"
+      },
+      "shapeHash": "sha256:b25caf8938e1b7dbb025b9cd153e92ba2446e1a67795a0284d2ace2f0d3cae4a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setExtensionThinkingLevel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setExtensionThinkingLevel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(level github.com/MichaelKinsy/PiG/ai.ModelThinkingLevel)"
+      },
+      "shapeHash": "sha256:72def1a5610a353deb21f39780e1e947bf9d050ad06ee9af7910a5774fa56724"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setExtensionWidget",
@@ -203758,6 +203890,17 @@
         "type": "func() suspendOperations"
       },
       "shapeHash": "sha256:1a2db8b13ac784728a668f000584b4ab2db79682c0502080715076605b7d3c76"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.switchExtensionModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.switchExtensionModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, model *github.com/MichaelKinsy/PiG/ai.Model) (bool, error)"
+      },
+      "shapeHash": "sha256:4e89d8d23a8a4a4b66575ba4cd852dd348841c4c6e9a410649f720b7254d5aad"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.switchModel",
