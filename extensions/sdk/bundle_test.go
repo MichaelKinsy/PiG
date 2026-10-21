@@ -23,7 +23,7 @@ func TestBundledFilesCoversModule(t *testing.T) {
 		if entry.IsDir() && entry.Name() == "testdata" {
 			return filepath.SkipDir
 		}
-		if entry.IsDir() || path == "bundle.go" || strings.HasSuffix(path, "_test.go") {
+		if entry.IsDir() || path == "bundle.go" || path == "bundle_embed.go" || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
 		if path == "go.mod" || entry.Name() == "LICENSE" || strings.HasSuffix(path, ".go") {
@@ -39,7 +39,7 @@ func TestBundledFilesCoversModule(t *testing.T) {
 	gotSorted := slices.Clone(got)
 	slices.Sort(gotSorted)
 	if !slices.Equal(want, gotSorted) {
-		t.Fatalf("BundledFiles() out of sync with module sources:\n  embedded: %v\n  on disk:  %v\nadd/remove files in bundle.go's //go:embed and BundledFiles()", gotSorted, want)
+		t.Fatalf("BundledFiles() out of sync with module sources:\n  embedded: %v\n  on disk:  %v\nrun go generate in extensions/sdk to rewrite bundle_embed.go", gotSorted, want)
 	}
 }
 
