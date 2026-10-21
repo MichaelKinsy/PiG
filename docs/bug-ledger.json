@@ -31452,9 +31452,9 @@
       ]
     },
     {
-      "id": "BF-dca5763",
-      "title": "A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool n…",
-      "symptom": "A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool n…",
+      "id": "BF-df5b682",
+      "title": "A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a…",
+      "symptom": "A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as in Pi, instead of before `tool_execution_end`.",
       "rootCause": "Pi runs a timer or immediate callback on the thread that runs the agent, so it runs only when the run awaits real work or is idle. The Node runtime is another process and ran the callback as soon as the tool answered; the host wrote its host call at once, ahead of the run's own output.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong output or ordering",
@@ -31465,7 +31465,112 @@
       "origin": "release note",
       "commits": [
         {
+          "hash": "2ab79ce358",
+          "date": "2026-10-06",
+          "pr": "166"
+        },
+        {
+          "hash": "56c3f85350",
+          "date": "2026-10-06",
+          "pr": "172"
+        },
+        {
+          "hash": "65b7c13e09",
+          "date": "2026-10-06",
+          "pr": "168"
+        },
+        {
+          "hash": "a4753ec61e",
+          "date": "2026-10-06",
+          "pr": "170"
+        },
+        {
+          "hash": "ba9c37b247",
+          "date": "2026-10-06",
+          "pr": "171"
+        },
+        {
+          "hash": "165cf5884d",
+          "date": "2026-10-07",
+          "pr": "180"
+        },
+        {
+          "hash": "3094ee00ca",
+          "date": "2026-10-07",
+          "pr": "185"
+        },
+        {
+          "hash": "3499c2bea7",
+          "date": "2026-10-07",
+          "pr": "181"
+        },
+        {
+          "hash": "9b63b2bc4e",
+          "date": "2026-10-07",
+          "pr": "176"
+        },
+        {
+          "hash": "ce8587ef40",
+          "date": "2026-10-07",
+          "pr": "179"
+        },
+        {
+          "hash": "3452432f8b",
+          "date": "2026-10-08",
+          "pr": "190"
+        },
+        {
+          "hash": "4610c9f4a1",
+          "date": "2026-10-08",
+          "pr": "189"
+        },
+        {
+          "hash": "b5ebeb58d1",
+          "date": "2026-10-08",
+          "pr": "191"
+        },
+        {
+          "hash": "f680b9591a",
+          "date": "2026-10-08",
+          "pr": "197"
+        },
+        {
+          "hash": "74f806c799",
+          "date": "2026-10-10",
+          "pr": "203"
+        },
+        {
+          "hash": "6af0806f7a",
+          "date": "2026-10-19",
+          "pr": "213"
+        },
+        {
+          "hash": "212a506e3e",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "3ee123c6d5",
+          "date": "2026-10-20",
+          "pr": "255"
+        },
+        {
+          "hash": "be541d2224",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "c02ca868b5",
+          "date": "2026-10-20"
+        },
+        {
+          "hash": "6ba6adbd5e",
+          "date": "2026-10-21"
+        },
+        {
           "hash": "dca5763ac5",
+          "date": "2026-10-21"
+        },
+        {
+          "hash": "df5b682228",
           "date": "2026-10-21"
         }
       ],
