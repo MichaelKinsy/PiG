@@ -502,3 +502,28 @@ func TestWebSocketLinkPacksLargePayloadsAsBinaryMessages(t *testing.T) {
 		t.Fatalf("refused binary: reasons = %q", got)
 	}
 }
+
+// answeringTransport is a transport whose peer answers a bye at once, from another goroutine in a real one: the answer
+// ends this link ("peer closed") while Close is still sending the bye.
+type answeringTransport struct{ link *baseLink }
+
+func (transport *answeringTransport) transmit(Frame) (int, error) {
+	transport.link.ended("peer closed")
+	return 0, nil
+}
+
+func (transport *answeringTransport) shutdown() {}
+
+// link.ts close(): the bye and the end of the link are one synchronous block, so the peer's answer cannot come first
+// and Close's handlers hear Close's reason. TestLinkOnCloseCallsAReRegisteredHandlerOnce saw "peer closed" instead of
+// "done" about once in 1300 package iterations, when the pump delivering the bye ended the link before Close did.
+func TestLinkCloseReportsItsOwnReasonWhenThePeerAnswersTheByeAtOnce(t *testing.T) {
+	link := &baseLink{}
+	link.transport = &answeringTransport{link: link}
+	var reasons reasonLog
+	link.OnClose(reasons.add)
+	link.Close("done")
+	if got := reasons.list(); !slices.Equal(got, []string{"done"}) {
+		t.Fatalf("close handlers saw %q, want [done]", got)
+	}
+}
