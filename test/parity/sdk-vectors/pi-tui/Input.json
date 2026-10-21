@@ -1,0 +1,3240 @@
+{
+ "pin": "1.3.0+1402973a",
+ "package": "pi-tui@1.3.0",
+ "module": "pi-tui",
+ "export": "Input",
+ "cases": [
+  {
+   "name": "empty",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     }
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "empty focused",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i"
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "placeholder",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "placeholder": "type here"
+       }
+      ]
+     }
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007t\u001b_pi:/fc\u0007ype here                   "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007t\u001b_pi:/fc\u0007ype here                                                             "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007t\u001b_pi:/fc\u0007ype here                                                                                                             "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "placeholder focused colored",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "placeholder": "type here",
+        "placeholderColor": "dim"
+       }
+      ]
+     },
+     "focus": "i"
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007\u001b[38;2;126;136;142mt\u001b[39m\u001b_pi:/fc\u0007\u001b[38;2;126;136;142mype here\u001b[39m                   "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007\u001b[38;2;126;136;142mt\u001b[39m\u001b_pi:/fc\u0007\u001b[38;2;126;136;142mype here\u001b[39m                                                             "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007\u001b[38;2;126;136;142mt\u001b[39m\u001b_pi:/fc\u0007\u001b[38;2;126;136;142mype here\u001b[39m                                                                                                             "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "custom prompt",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "prompt": "$ ",
+        "value": "ls -la"
+       }
+      ]
+     },
+     "focus": "i"
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "$ \u001b_pi:c\u0007\u001b_pi:fc\u0007l\u001b_pi:/fc\u0007s -la                      "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "$ \u001b_pi:c\u0007\u001b_pi:fc\u0007l\u001b_pi:/fc\u0007s -la                                                                "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "$ \u001b_pi:c\u0007\u001b_pi:fc\u0007l\u001b_pi:/fc\u0007s -la                                                                                                                "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "value",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "value": "hello world"
+       }
+      ]
+     }
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                 "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                           "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                                                                           "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "value focused",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "value": "hello world"
+       }
+      ]
+     },
+     "focus": "i"
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                 "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                           "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                                                                           "
+       ]
+      ],
+      "events": [],
+      "changes": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "wide characters",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "value": "漢字 and 😀 text"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "\u001b[C"
+      },
+      {
+       "keys": "\u001b[C"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007漢\u001b_pi:/fc\u0007字 and 😀 text            "
+       ],
+       [
+        "> 漢\u001b_pi:c\u0007\u001b_pi:fc\u0007字\u001b_pi:/fc\u0007 and 😀 text            "
+       ],
+       [
+        "> 漢字\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007and 😀 text            "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "漢字 and 😀 text@1",
+       "漢字 and 😀 text@2"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007漢\u001b_pi:/fc\u0007字 and 😀 text                                                      "
+       ],
+       [
+        "> 漢\u001b_pi:c\u0007\u001b_pi:fc\u0007字\u001b_pi:/fc\u0007 and 😀 text                                                      "
+       ],
+       [
+        "> 漢字\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007and 😀 text                                                      "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "漢字 and 😀 text@1",
+       "漢字 and 😀 text@2"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007漢\u001b_pi:/fc\u0007字 and 😀 text                                                                                                      "
+       ],
+       [
+        "> 漢\u001b_pi:c\u0007\u001b_pi:fc\u0007字\u001b_pi:/fc\u0007 and 😀 text                                                                                                      "
+       ],
+       [
+        "> 漢字\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007and 😀 text                                                                                                      "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "漢字 and 😀 text@1",
+       "漢字 and 😀 text@2"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "typing",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "a"
+      },
+      {
+       "keys": "b"
+      },
+      {
+       "keys": "c"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                        "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                  "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                  "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "left then insert",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "a"
+      },
+      {
+       "keys": "b"
+      },
+      {
+       "keys": "c"
+      },
+      {
+       "keys": "\u001b[D"
+      },
+      {
+       "keys": "X"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                        "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> abX\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007                        "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abc@2",
+       "abXc@3"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                  "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> abX\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007                                                                  "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abc@2",
+       "abXc@3"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                  "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> abX\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007                                                                                                                  "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abc@2",
+       "abXc@3"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "backspace and delete",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "a"
+      },
+      {
+       "keys": "b"
+      },
+      {
+       "keys": "c"
+      },
+      {
+       "keys": "d"
+      },
+      {
+       "keys": "\u001b[D"
+      },
+      {
+       "keys": "\u001b[D"
+      },
+      {
+       "keys": ""
+      },
+      {
+       "keys": "\u001b[3~"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                        "
+       ],
+       [
+        "> abcd\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                       "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007d\u001b_pi:/fc\u0007                        "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007d                        "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007d                         "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007d\u001b_pi:/fc\u0007                          "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abcd@4",
+       "abcd@3",
+       "abcd@2",
+       "acd@1",
+       "ad@1"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                  "
+       ],
+       [
+        "> abcd\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                 "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007d\u001b_pi:/fc\u0007                                                                  "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007d                                                                  "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007d                                                                   "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007d\u001b_pi:/fc\u0007                                                                    "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abcd@4",
+       "abcd@3",
+       "abcd@2",
+       "acd@1",
+       "ad@1"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                  "
+       ],
+       [
+        "> abcd\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                 "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007d\u001b_pi:/fc\u0007                                                                                                                  "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007d                                                                                                                  "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007c\u001b_pi:/fc\u0007d                                                                                                                   "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007d\u001b_pi:/fc\u0007                                                                                                                    "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abcd@4",
+       "abcd@3",
+       "abcd@2",
+       "acd@1",
+       "ad@1"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "home and end",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "a"
+      },
+      {
+       "keys": "b"
+      },
+      {
+       "keys": "c"
+      },
+      {
+       "keys": "\u0001"
+      },
+      {
+       "keys": "Z"
+      },
+      {
+       "keys": "\u0005"
+      },
+      {
+       "keys": "Y"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                        "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bc                         "
+       ],
+       [
+        "> Z\u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bc                        "
+       ],
+       [
+        "> Zabc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                       "
+       ],
+       [
+        "> ZabcY\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                      "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abc@0",
+       "Zabc@1",
+       "Zabc@4",
+       "ZabcY@5"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                  "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bc                                                                   "
+       ],
+       [
+        "> Z\u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bc                                                                  "
+       ],
+       [
+        "> Zabc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                 "
+       ],
+       [
+        "> ZabcY\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abc@0",
+       "Zabc@1",
+       "Zabc@4",
+       "ZabcY@5"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                  "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bc                                                                                                                   "
+       ],
+       [
+        "> Z\u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bc                                                                                                                  "
+       ],
+       [
+        "> Zabc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                 "
+       ],
+       [
+        "> ZabcY\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abc@0",
+       "Zabc@1",
+       "Zabc@4",
+       "ZabcY@5"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "kill word and yank",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "o"
+      },
+      {
+       "keys": "n"
+      },
+      {
+       "keys": "e"
+      },
+      {
+       "keys": " "
+      },
+      {
+       "keys": "t"
+      },
+      {
+       "keys": "w"
+      },
+      {
+       "keys": "o"
+      },
+      {
+       "keys": "\u0017"
+      },
+      {
+       "keys": "\u0019"
+      },
+      {
+       "keys": "\u0019"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        "> o\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ],
+       [
+        "> on\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> one\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                        "
+       ],
+       [
+        "> one \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                       "
+       ],
+       [
+        "> one t\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                      "
+       ],
+       [
+        "> one tw\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                     "
+       ],
+       [
+        "> one two\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                    "
+       ],
+       [
+        "> one \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                       "
+       ],
+       [
+        "> one two\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                    "
+       ],
+       [
+        "> one twotwo\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                 "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "o@1",
+       "on@2",
+       "one@3",
+       "one @4",
+       "one t@5",
+       "one tw@6",
+       "one two@7",
+       "one @4",
+       "one two@7",
+       "one twotwo@10"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> o\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ],
+       [
+        "> on\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> one\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                  "
+       ],
+       [
+        "> one \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                 "
+       ],
+       [
+        "> one t\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                "
+       ],
+       [
+        "> one tw\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                               "
+       ],
+       [
+        "> one two\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                              "
+       ],
+       [
+        "> one \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                 "
+       ],
+       [
+        "> one two\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                              "
+       ],
+       [
+        "> one twotwo\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                           "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "o@1",
+       "on@2",
+       "one@3",
+       "one @4",
+       "one t@5",
+       "one tw@6",
+       "one two@7",
+       "one @4",
+       "one two@7",
+       "one twotwo@10"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> o\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ],
+       [
+        "> on\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> one\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                  "
+       ],
+       [
+        "> one \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                 "
+       ],
+       [
+        "> one t\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                "
+       ],
+       [
+        "> one tw\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                               "
+       ],
+       [
+        "> one two\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                              "
+       ],
+       [
+        "> one \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                 "
+       ],
+       [
+        "> one two\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                              "
+       ],
+       [
+        "> one twotwo\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                           "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "o@1",
+       "on@2",
+       "one@3",
+       "one @4",
+       "one t@5",
+       "one tw@6",
+       "one two@7",
+       "one @4",
+       "one two@7",
+       "one twotwo@10"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "kill to end",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "a"
+      },
+      {
+       "keys": "b"
+      },
+      {
+       "keys": "c"
+      },
+      {
+       "keys": "d"
+      },
+      {
+       "keys": "e"
+      },
+      {
+       "keys": "f"
+      },
+      {
+       "keys": "\u0001"
+      },
+      {
+       "keys": "\u001b[C"
+      },
+      {
+       "keys": "\u000b"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                        "
+       ],
+       [
+        "> abcd\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                       "
+       ],
+       [
+        "> abcde\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                      "
+       ],
+       [
+        "> abcdef\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                     "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bcdef                      "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007b\u001b_pi:/fc\u0007cdef                      "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abcd@4",
+       "abcde@5",
+       "abcdef@6",
+       "abcdef@0",
+       "abcdef@1",
+       "a@1"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                  "
+       ],
+       [
+        "> abcd\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                 "
+       ],
+       [
+        "> abcde\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                "
+       ],
+       [
+        "> abcdef\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                               "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bcdef                                                                "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007b\u001b_pi:/fc\u0007cdef                                                                "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abcd@4",
+       "abcde@5",
+       "abcdef@6",
+       "abcdef@0",
+       "abcdef@1",
+       "a@1"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> abc\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                  "
+       ],
+       [
+        "> abcd\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                 "
+       ],
+       [
+        "> abcde\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                "
+       ],
+       [
+        "> abcdef\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                               "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007a\u001b_pi:/fc\u0007bcdef                                                                                                                "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007b\u001b_pi:/fc\u0007cdef                                                                                                                "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "abc@3",
+       "abcd@4",
+       "abcde@5",
+       "abcdef@6",
+       "abcdef@0",
+       "abcdef@1",
+       "a@1"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "paste scrolls",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "\u001b[200~0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ\u001b[201~"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        ">  ABCDEFGHIJKLMNOPQRSTUVWXYZ\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007"
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ@75"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> 6789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007"
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ@75"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> 0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                          "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "0123456789 abcdefghijklmnopqrstuvwxyz 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ@75"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "submit",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "a"
+      },
+      {
+       "keys": "b"
+      },
+      {
+       "keys": "\r"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                           "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                          "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                         "
+       ]
+      ],
+      "events": [
+       "submit:ab"
+      ],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "ab@2"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                   "
+       ]
+      ],
+      "events": [
+       "submit:ab"
+      ],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "ab@2"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                     "
+       ],
+       [
+        "> a\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                    "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ],
+       [
+        "> ab\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007                                                                                                                   "
+       ]
+      ],
+      "events": [
+       "submit:ab"
+      ],
+      "changes": [
+       "a@1",
+       "ab@2",
+       "ab@2"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "submit newline key",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "value": "preset"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "\n"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007p\u001b_pi:/fc\u0007reset                      "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007p\u001b_pi:/fc\u0007reset                      "
+       ]
+      ],
+      "events": [
+       "submit:preset"
+      ],
+      "changes": [
+       "preset@0"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007p\u001b_pi:/fc\u0007reset                                                                "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007p\u001b_pi:/fc\u0007reset                                                                "
+       ]
+      ],
+      "events": [
+       "submit:preset"
+      ],
+      "changes": [
+       "preset@0"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007p\u001b_pi:/fc\u0007reset                                                                                                                "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007p\u001b_pi:/fc\u0007reset                                                                                                                "
+       ]
+      ],
+      "events": [
+       "submit:preset"
+      ],
+      "changes": [
+       "preset@0"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "escape",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "value": "keep"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "keys": "\u001b"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007k\u001b_pi:/fc\u0007eep                        "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007k\u001b_pi:/fc\u0007eep                        "
+       ]
+      ],
+      "events": [
+       "escape:keep"
+      ],
+      "changes": [
+       "keep@0"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007k\u001b_pi:/fc\u0007eep                                                                  "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007k\u001b_pi:/fc\u0007eep                                                                  "
+       ]
+      ],
+      "events": [
+       "escape:keep"
+      ],
+      "changes": [
+       "keep@0"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007k\u001b_pi:/fc\u0007eep                                                                                                                  "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007k\u001b_pi:/fc\u0007eep                                                                                                                  "
+       ]
+      ],
+      "events": [
+       "escape:keep"
+      ],
+      "changes": [
+       "keep@0"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "click moves the cursor",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "value": "hello world"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "mouse": {
+        "type": "press",
+        "button": "left",
+        "x": 7,
+        "y": 0
+       }
+      },
+      {
+       "keys": "X"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                 "
+       ],
+       [
+        "> hello\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007world                 "
+       ],
+       [
+        "> helloX\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007world                "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "hello world@5",
+       "helloX world@6"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                           "
+       ],
+       [
+        "> hello\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007world                                                           "
+       ],
+       [
+        "> helloX\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007world                                                          "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "hello world@5",
+       "helloX world@6"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                                                                           "
+       ],
+       [
+        "> hello\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007world                                                                                                           "
+       ],
+       [
+        "> helloX\u001b_pi:c\u0007\u001b_pi:fc\u0007 \u001b_pi:/fc\u0007world                                                                                                          "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "hello world@5",
+       "helloX world@6"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "right click ignored",
+   "args": [
+    {
+     "root": {
+      "kind": "container",
+      "children": [
+       {
+        "kind": "input",
+        "id": "i",
+        "value": "hello world"
+       }
+      ]
+     },
+     "focus": "i",
+     "steps": [
+      {
+       "mouse": {
+        "type": "press",
+        "button": "right",
+        "x": 7,
+        "y": 0
+       }
+      },
+      {
+       "keys": "X"
+      }
+     ]
+    }
+   ],
+   "result": {
+    "palette": {
+     "name": "dark",
+     "foregrounds": {
+      "accent": "\u001b[38;2;167;152;215m",
+      "border": "\u001b[38;2;95;168;204m",
+      "borderAccent": "\u001b[38;2;160;142;213m",
+      "borderMuted": "\u001b[38;2;118;129;134m",
+      "success": "\u001b[38;2;104;183;141m",
+      "error": "\u001b[38;2;234;127;129m",
+      "warning": "\u001b[38;2;205;154;34m",
+      "muted": "\u001b[38;2;157;165;169m",
+      "dim": "\u001b[38;2;126;136;142m",
+      "text": "\u001b[38;2;222;224;225m",
+      "thinkingText": "\u001b[38;2;150;160;164m",
+      "scrollbarTrack": "\u001b[38;2;72;78;82m",
+      "scrollbarThumb": "\u001b[38;2;151;160;165m",
+      "searchMatchText": "\u001b[38;2;157;165;169m",
+      "userMessageText": "\u001b[38;2;222;224;225m",
+      "customMessageText": "\u001b[38;2;157;165;169m",
+      "customMessageLabel": "\u001b[38;2;167;152;215m",
+      "toolTitle": "\u001b[38;2;222;224;225m",
+      "toolOutput": "\u001b[38;2;157;165;169m",
+      "mdHeading": "\u001b[38;2;205;154;34m",
+      "mdLink": "\u001b[38;2;105;173;208m",
+      "mdLinkUrl": "\u001b[38;2;157;165;169m",
+      "mdCode": "\u001b[38;2;167;152;215m",
+      "mdCodeBlock": "\u001b[38;2;104;183;141m",
+      "mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+      "mdQuote": "\u001b[38;2;157;165;169m",
+      "mdQuoteBorder": "\u001b[38;2;157;165;169m",
+      "mdHr": "\u001b[38;2;157;165;169m",
+      "mdListBullet": "\u001b[38;2;167;152;215m",
+      "toolDiffAdded": "\u001b[38;2;104;183;141m",
+      "toolDiffRemoved": "\u001b[38;2;234;127;129m",
+      "toolDiffContext": "\u001b[38;2;157;165;169m",
+      "syntaxComment": "\u001b[38;2;157;165;169m",
+      "syntaxKeyword": "\u001b[38;2;105;173;208m",
+      "syntaxFunction": "\u001b[38;2;205;154;34m",
+      "syntaxVariable": "\u001b[38;2;93;179;186m",
+      "syntaxString": "\u001b[38;2;222;141;90m",
+      "syntaxNumber": "\u001b[38;2;104;183;141m",
+      "syntaxType": "\u001b[38;2;167;152;215m",
+      "syntaxOperator": "\u001b[38;2;157;165;169m",
+      "syntaxPunctuation": "\u001b[38;2;157;165;169m",
+      "thinkingOff": "\u001b[38;2;108;118;123m",
+      "thinkingMinimal": "\u001b[38;2;104;128;141m",
+      "thinkingLow": "\u001b[38;2;84;137;164m",
+      "thinkingMedium": "\u001b[38;2;97;133;204m",
+      "thinkingHigh": "\u001b[38;2;151;118;229m",
+      "thinkingXhigh": "\u001b[38;2;222;84;193m",
+      "thinkingMax": "\u001b[38;2;254;84;98m",
+      "bashMode": "\u001b[38;2;94;178;134m"
+     },
+     "backgrounds": {
+      "selectedBg": "\u001b[48;2;33;59;73m",
+      "searchMatchBg": "\u001b[48;2;78;47;27m",
+      "userMessageBg": "\u001b[48;2;33;59;73m",
+      "customMessageBg": "\u001b[48;2;58;48;85m",
+      "toolPendingBg": "\u001b[48;2;52;56;58m",
+      "toolSuccessBg": "\u001b[48;2;37;65;49m",
+      "toolErrorBg": "\u001b[48;2;91;40;42m"
+     },
+     "modifiers": true,
+     "mode": "truecolor"
+    },
+    "frames": [
+     {
+      "width": 30,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                 "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                 "
+       ],
+       [
+        "> X\u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "hello world@0",
+       "Xhello world@1"
+      ]
+     },
+     {
+      "width": 72,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                           "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                           "
+       ],
+       [
+        "> X\u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                          "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "hello world@0",
+       "Xhello world@1"
+      ]
+     },
+     {
+      "width": 120,
+      "states": [
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                                                                           "
+       ],
+       [
+        "> \u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                                                                           "
+       ],
+       [
+        "> X\u001b_pi:c\u0007\u001b_pi:fc\u0007h\u001b_pi:/fc\u0007ello world                                                                                                          "
+       ]
+      ],
+      "events": [],
+      "changes": [
+       "hello world@0",
+       "Xhello world@1"
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

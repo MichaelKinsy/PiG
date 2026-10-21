@@ -343,6 +343,12 @@ fn kit_bordered_view(message: &str, set: impl FnOnce(kit::BorderedLoader) -> kit
 }
 
 
+fn kit_input_view(focus: bool, set: impl FnOnce(kit::Input) -> kit::Input) -> kit::View {
+    let view = kit::View::new(Container::new().child(set(kit::Input::new("i"))));
+    if focus { view.focus("i") } else { view }
+}
+
+
 /// The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 /// §10), built with the SDK's own constructors; the key is
 /// "<module>/<export>/<case name>" and the case's wire node is its vector's
@@ -432,6 +438,26 @@ fn kit_widget_case(key: &str) -> Option<kit::View> {
         "pi-coding-agent/BorderedLoader/wide message" => {
             kit_bordered_view("Fetching the models of every configured provider, one after another", |l| l)
         }
+        "pi-tui/Input/empty" => kit_input_view(false, |n| n),
+        "pi-tui/Input/empty focused"
+        | "pi-tui/Input/typing"
+        | "pi-tui/Input/left then insert"
+        | "pi-tui/Input/backspace and delete"
+        | "pi-tui/Input/home and end"
+        | "pi-tui/Input/kill word and yank"
+        | "pi-tui/Input/kill to end"
+        | "pi-tui/Input/paste scrolls"
+        | "pi-tui/Input/submit" => kit_input_view(true, |n| n),
+        "pi-tui/Input/placeholder" => kit_input_view(false, |n| n.placeholder("type here")),
+        "pi-tui/Input/placeholder focused colored" => kit_input_view(true, |n| n.placeholder("type here").placeholder_color("dim")),
+        "pi-tui/Input/custom prompt" => kit_input_view(true, |n| n.prompt("$ ").value("ls -la")),
+        "pi-tui/Input/value" => kit_input_view(false, |n| n.value("hello world")),
+        "pi-tui/Input/value focused" | "pi-tui/Input/click moves the cursor" | "pi-tui/Input/right click ignored" => {
+            kit_input_view(true, |n| n.value("hello world"))
+        }
+        "pi-tui/Input/wide characters" => kit_input_view(true, |n| n.value("漢字 and 😀 text")),
+        "pi-tui/Input/submit newline key" => kit_input_view(true, |n| n.value("preset")),
+        "pi-tui/Input/escape" => kit_input_view(true, |n| n.value("keep")),
         // kit-widget-cases
         _ => return None,
     })

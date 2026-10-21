@@ -1104,6 +1104,29 @@ export default function (pi) {
     kitWidgetCases[`${b}frame 4`] = framed(bordered("Fetching models"), 4);
     kitWidgetCases[`${b}wide message`] = bordered("Fetching the models of every configured provider, one after another");
   }
+  {
+    const input = ({ value, focused = true, options = {}, token } = {}) => ({ theme, note }) => {
+      const component = new piTui.Input(token ? { ...options, placeholderStyle: (text) => theme.fg(token, text) } : options);
+      if (value) component.setValue(value);
+      component.focused = focused;
+      component.onSubmit = (text) => note(`submit:${text}`);
+      component.onEscape = () => note(`escape:${component.getValue()}`);
+      const root = new Container();
+      root.addChild(component);
+      return { root, focus: component };
+    };
+    const i = "pi-tui/Input/";
+    kitWidgetCases[`${i}empty`] = input({ focused: false });
+    for (const name of ["empty focused", "typing", "left then insert", "backspace and delete", "home and end", "kill word and yank", "kill to end", "paste scrolls", "submit"]) kitWidgetCases[i + name] = input();
+    kitWidgetCases[`${i}placeholder`] = input({ focused: false, options: { placeholder: "type here" } });
+    kitWidgetCases[`${i}placeholder focused colored`] = input({ options: { placeholder: "type here" }, token: "dim" });
+    kitWidgetCases[`${i}custom prompt`] = input({ options: { prompt: "$ " }, value: "ls -la" });
+    kitWidgetCases[`${i}value`] = input({ focused: false, value: "hello world" });
+    for (const name of ["value focused", "click moves the cursor", "right click ignored"]) kitWidgetCases[i + name] = input({ value: "hello world" });
+    kitWidgetCases[`${i}wide characters`] = input({ value: "漢字 and 😀 text" });
+    kitWidgetCases[`${i}submit newline key`] = input({ value: "preset" });
+    kitWidgetCases[`${i}escape`] = input({ value: "keep" });
+  }
   // kit-widget-cases
   pi.registerCommand("kit-widget", {
     description: "Show a widget kind's Pi vector case (D107)",

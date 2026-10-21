@@ -10,8 +10,26 @@ export const WIDGET_CODING_AGENT_CLASSES = ["BranchSummaryMessageComponent" , "C
 
 // The pi-tui widget classes by render function: none are drawn by their
 // base class's render alone.
-export function widgetRenderHandlers(_tui, _h) {
-  return [];
+export function widgetRenderHandlers(tui, h) {
+  return [
+    // An Input draws what its value, cursor, focus, prompt and placeholder say. The Node component owns the keys, so the
+    // node names the cursor and the focus it holds, and the host applies them (§2.2).
+    [tui.Input.prototype.render, (walk, c) => {
+      if (typeof c.value !== "string" || !h.isInt(c.cursor) || c.cursor < 0 || c.cursor > c.value.length) return undefined;
+      if (typeof c.prompt !== "string" || typeof c.placeholder !== "string" || typeof c.focused !== "boolean") return undefined;
+      const color = walk.probe.token(c.placeholderStyle, "fg");
+      if (color === h.FAIL) return undefined;
+      const node = { kind: "input", id: h.conversationId(c, "input") };
+      if (c.value) node.value = c.value;
+      if (c.prompt !== "> ") node.prompt = c.prompt;
+      if (c.placeholder) node.placeholder = c.placeholder;
+      if (color) node.placeholderColor = color;
+      node.cursor = { line: 0, col: c.cursor };
+      if (c.focused) node.focused = true;
+      return node;
+    }],
+    // widget-render-walkers
+  ];
 }
 
 // The coding-agent widget classes by prototype: each draws as a Box or a

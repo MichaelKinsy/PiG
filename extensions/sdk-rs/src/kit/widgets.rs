@@ -16,6 +16,7 @@ pub enum Widget {
     CustomMessage(CustomMessage),
     CancellableLoader(CancellableLoader),
     BorderedLoader(BorderedLoader),
+    Input(Input),
     // widget-variants
 }
 
@@ -28,7 +29,7 @@ macro_rules! widget_from {
         }
     )*};
 }
-widget_from!(BranchSummary , CompactionSummary , SkillInvocation , CustomMessage , CancellableLoader , BorderedLoader /* widget-from */);
+widget_from!(BranchSummary , CompactionSummary , SkillInvocation , CustomMessage , CancellableLoader , BorderedLoader , Input /* widget-from */);
 
 impl Widget {
     pub(super) fn kind(&self) -> &'static str {
@@ -39,6 +40,7 @@ impl Widget {
             Widget::CustomMessage(_) => "custom-message",
             Widget::CancellableLoader(_) => "cancellable-loader",
             Widget::BorderedLoader(_) => "bordered-loader",
+            Widget::Input(_) => "input",
             // widget-kinds
         }
     }
@@ -94,6 +96,13 @@ impl Widget {
                     put(map, "cancellable", false);
                 }
                 put_opt(map, "frame", &n.frame);
+            }
+            Widget::Input(n) => {
+                put(map, "id", n.id.as_str());
+                put_nonempty(map, "value", &n.value);
+                put_opt(map, "prompt", &n.prompt);
+                put_nonempty(map, "placeholder", &n.placeholder);
+                put_opt(map, "placeholderColor", &n.placeholder_color);
             }
             // widget-encode
         }
@@ -384,6 +393,55 @@ impl BorderedLoader {
     /// The spinner's upstream `currentFrame`; absent starts at 0.
     pub fn frame(mut self, frame: u32) -> Self {
         self.frame = Some(frame);
+        self
+    }
+}
+
+/// Pi-tui's `Input({prompt, placeholder, placeholderStyle})`: a one-line text
+/// field. The host owns its value and cursor and runs Input's own key and
+/// mouse handling once the view's focus names it, as the focused component of
+/// Pi's TUI takes every key. The extension receives Input's callbacks as
+/// [`super::EventKind::Submit`] (`onSubmit`) and [`super::EventKind::Escape`]
+/// (`onEscape`) events of the node, and a [`super::EventKind::Change`] with the
+/// value and cursor after each key or press that changed either.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Input {
+    id: String,
+    value: String,
+    prompt: Option<String>,
+    placeholder: String,
+    placeholder_color: Option<String>,
+}
+
+impl Input {
+    /// An empty input named `id` (required, unique within the view) with
+    /// upstream's defaults.
+    pub fn new(id: impl Into<String>) -> Self {
+        Self { id: id.into(), value: String::new(), prompt: None, placeholder: String::new(), placeholder_color: None }
+    }
+
+    /// `setValue`'s argument, applied when it differs from the value the
+    /// previous frame sent; the cursor stays where the input left it.
+    pub fn value(mut self, value: impl Into<String>) -> Self {
+        self.value = value.into();
+        self
+    }
+
+    /// The options' prompt; absent takes upstream's `"> "`.
+    pub fn prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.prompt = Some(prompt.into());
+        self
+    }
+
+    /// The text drawn while the value is empty.
+    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
+        self.placeholder = placeholder.into();
+        self
+    }
+
+    /// A theme foreground token for `placeholderStyle`.
+    pub fn placeholder_color(mut self, token: impl Into<String>) -> Self {
+        self.placeholder_color = Some(token.into());
         self
     }
 }

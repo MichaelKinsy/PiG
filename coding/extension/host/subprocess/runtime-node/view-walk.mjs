@@ -58,7 +58,7 @@ export const VIEW_WALK_FIELDS = Object.freeze({
   DynamicBorder: ["color"],
   SelectList: ["items", "filteredItems", "selectedIndex", "maxVisible", "theme", "layout"],
   SettingsList: ["items", "filteredItems", "theme", "selectedIndex", "maxVisible", "searchEnabled", "searchInput", "submenuComponent"],
-  Input: ["value", "cursor", "focused", "prompt", "placeholder"],
+  Input: ["value", "cursor", "focused", "prompt", "placeholder", "placeholderStyle"],
   Image: ["base64Data", "mimeType", "theme", "options", "dimensions", "imageId"],
   Loader: ["text", "paddingX", "paddingY", "customBgFn", "frames", "intervalMs", "currentFrame", "renderIndicatorVerbatim", "spinnerColorFn", "messageColorFn", "message"],
   HStack: ["entries", "gap", "align"],
@@ -132,6 +132,7 @@ const widgetHelpers = {
   conversationId: (c, kind) => conversationId(c, kind),
   maxListItems: MAX_LIST_ITEMS,
   walkLoader: (walk, c) => walkLoader(walk, c),
+  FAIL,
   get tui() { return runtimeRequire("./shims/pi-dist/pi-tui/sdk-bundle/index.js"); },
 };
 

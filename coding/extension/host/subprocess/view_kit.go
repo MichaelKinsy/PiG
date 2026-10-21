@@ -49,6 +49,9 @@ type viewSurface struct {
 	// report reports a rejected frame (nil: an in-memory surface, reported
 	// on stderr).
 	report func(surface string, err error)
+	// terminalRows is the terminal's height in rows, 0 when unknown; an
+	// editor's visible line count follows it (nil: an in-memory surface).
+	terminalRows func() int
 
 	frame     *viewFrame
 	instances map[string]*viewInstance
@@ -728,7 +731,7 @@ func (s *viewSurface) buildLocked(f *viewFrame, base *tui.Theme) error {
 	}
 	for _, inst := range s.instances {
 		if inst.widget != nil {
-			inst.widget.setFocused(inst == f.focus)
+			inst.widget.setFocused(inst == f.focus || inst.sent != nil && inst.sent.Focused)
 		}
 	}
 	return nil

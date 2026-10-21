@@ -43,7 +43,7 @@ const registry = {
     if (n.value) input.setValue(n.value);
     input.focused = lib.focus === n.id;
     input.onSubmit = (value) => lib.events.push(`submit:${value}`);
-    input.onEscape = () => lib.events.push("escape:");
+    input.onEscape = () => lib.events.push(`escape:${input.getValue()}`);
     lib.ids[n.id] = input;
     lib.probe = () => `${input.getValue()}@${input.cursor}`;
     return input;
