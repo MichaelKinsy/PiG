@@ -3,6 +3,12 @@
 
 No record fields are discarded. Random entry identities are aliased injectively
 only after validating their wire format; imported identities and times are fixed.
+
+Waits end on the event they wait for or on the death of the process under test; no probe carries a wall-clock deadline
+of its own. How long pig takes to start or to shut down is the CPU time it needs divided by the share of a CPU the host
+gives it (about one CPU-second to reach the readiness barrier), so a fixed bound fails on a loaded host without finding
+a defect. The caller owns the hang bound and ends a hung probe with SIGTERM, which raises Hung here after the probe's
+cleanup has run; the probe then reports what it was waiting for and the terminal output it had read.
 """
 import argparse
 import contextlib
@@ -23,6 +29,14 @@ import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+class Hung(BaseException):
+    """The caller's hang bound ended the probe. BaseException, so no probe's own `except Exception` can swallow it."""
+
+
+def hang_bound_reached(signum, _frame):
+    raise Hung(signal.Signals(signum).name)
 
 
 def emit(value):
@@ -58,7 +72,7 @@ def child(command, **kwargs):
     finally:
         if proc.poll() is None:
             os.killpg(proc.pid, signal.SIGKILL)
-        proc.wait(timeout=10)
+        proc.wait()
         for stream in (proc.stdin, proc.stdout, proc.stderr):
             if stream:
                 stream.close()
@@ -75,7 +89,6 @@ def session_probe(binary, root):
             proc.stdin.write((json.dumps({"id": str(counter), "type": kind, **fields}) + "\n").encode())
             proc.stdin.flush()
             while True:
-                assert select.select([proc.stdout], [], [], 15)[0], f"{kind}: timeout"
                 line = proc.stdout.readline()
                 assert line, f"{kind}: EOF"
                 record = json.loads(line)
@@ -135,7 +148,7 @@ def session_probe(binary, root):
         result["data"]["leafId"] = aliases.get(result["data"]["leafId"], result["data"]["leafId"])
         emit({"case": "clone", "record": result})
         proc.stdin.close()
-        assert proc.wait(timeout=10) == 0
+        assert proc.wait() == 0
 
 
 def signal_probe(binary, root, mode):
@@ -144,7 +157,7 @@ def signal_probe(binary, root, mode):
         def do_POST(self):
             self.rfile.read(int(self.headers["Content-Length"]))
             begun.set()
-            release.wait(15)
+            release.wait()
         def log_message(self, *_):
             pass
     server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
@@ -156,9 +169,10 @@ def signal_probe(binary, root, mode):
         with open(root / "stdout", "wb") as stdout, open(root / "stderr", "wb") as stderr, child(
                 [*binary, *args, *mode_args, "hold"], cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                 stdout=stdout, stderr=stderr) as proc:
-            assert begun.wait(15), "provider request did not begin"
+            while not begun.wait(0.02):
+                assert proc.poll() is None, f"pig exited before its provider request began: {proc.returncode}"
             proc.send_signal(signal.SIGINT)
-            status = proc.wait(timeout=10)
+            status = proc.wait()
             emit({"case": mode + "-SIGINT", "returncode": status})
             assert status == -signal.SIGINT, f"expected signal termination, got {status}"
     finally:
@@ -191,12 +205,15 @@ def command_ready_fixture(root, env, busy=False):
 
 
 def wait_command_ready(master, proc, ready):
+    """Reads the terminal until the extension's command wrote its marker; only pig's exit or the hang bound ends it early."""
     output = bytearray()
-    end = time.monotonic() + 15
-    while not ready.exists():
-        assert time.monotonic() < end and proc.poll() is None, ("command-ready barrier not reached", bytes(output))
-        if select.select([master], [], [], 0.02)[0]:
-            output.extend(os.read(master, 65536))
+    try:
+        while not ready.exists():
+            assert proc.poll() is None, ("pig exited before the command-ready barrier", proc.returncode, bytes(output))
+            if select.select([master], [], [], 0.02)[0]:
+                output.extend(os.read(master, 65536))
+    except Hung as hung:
+        raise AssertionError(("command-ready barrier not reached before the hang bound", str(hung), bytes(output))) from None
     return output
 
 
@@ -230,9 +247,7 @@ def terminal_probe(binary, root, case):
             else:
                 proc.send_signal(signal.SIGHUP)
             # Continue draining the live terminal while Pi restores it.
-            end = time.monotonic() + 10
             while proc.poll() is None:
-                assert time.monotonic() < end, "terminal shutdown did not finish"
                 if master is not None and select.select([master], [], [], 0.02)[0]:
                     os.read(master, 65536)
                 else:
@@ -262,17 +277,17 @@ def modal_shutdown_probe(binary, root):
                 # Pi interactive-mode.ts:1029,1164-1179 installs submit handling before dispatching initial commands. A footer is not that acknowledgement.
                 output = wait_command_ready(master, proc, ready)
                 def wait_output(marker):
-                    end = time.monotonic() + 15
-                    while marker not in output:
-                        assert time.monotonic() < end and proc.poll() is None, (marker, bytes(output))
-                        if select.select([master], [], [], 0.02)[0]:
-                            output.extend(os.read(master, 65536))
+                    try:
+                        while marker not in output:
+                            assert proc.poll() is None, (marker, proc.returncode, bytes(output))
+                            if select.select([master], [], [], 0.02)[0]:
+                                output.extend(os.read(master, 65536))
+                    except Hung as hung:
+                        raise AssertionError((marker, str(hung), bytes(output))) from None
                 os.write(master, b"/scoped-models\r")
                 wait_output(b"Model catalogs refreshed.")
                 proc.send_signal(getattr(signal, action))
-                end = time.monotonic() + 10
                 while proc.poll() is None:
-                    assert time.monotonic() < end, f"{action}: selector blocked shutdown"
                     if master is not None and select.select([master], [], [], 0.02)[0]:
                         output.extend(os.read(master, 65536))
                     else:
@@ -341,19 +356,18 @@ def tool_signal_probe(binary, root, sig, shutdown=None, mode="json"):
         with open(root / "stdout", "wb") as stdout, open(root / "stderr", "wb") as stderr, child(
                 [*binary, *args, *extension_args, "--session-dir", str(sessions), "--mode", mode, "run it"], cwd=cwd, env=env,
                 stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr) as proc:
-            deadline = time.monotonic() + 15
             if shutdown is None:
                 while b'"type":"tool_execution_update"' not in (root / "stdout").read_bytes():
-                    assert time.monotonic() < deadline, "the bash tool did not start"
+                    assert proc.poll() is None, f"pig exited before the bash tool started: {proc.returncode}"
                     time.sleep(0.02)
             else:
                 while not started.exists():
-                    assert time.monotonic() < deadline, "the bash tool did not start"
+                    assert proc.poll() is None, f"pig exited before the bash tool started: {proc.returncode}"
                     time.sleep(0.02)
                 # The shell has run its first command; let it reach sleep, the child the signal's kill ends.
                 time.sleep(0.2)
             proc.send_signal(sig)
-            status = proc.wait(timeout=10)
+            status = proc.wait()
         stdout_text = (root / "stdout").read_text()
         records = []
         for path in sorted(sessions.glob("*.jsonl")):
@@ -385,6 +399,7 @@ def main():
     options = parser.parse_args()
     if not options.bin:
         parser.error("--bin or PIG_PARITY_PIG_BIN is required")
+    signal.signal(signal.SIGTERM, hang_bound_reached)
     path = Path(options.bin).resolve()
     binary = [str(path)]
     if path.suffix in (".js", ".mjs", ".cjs"):
