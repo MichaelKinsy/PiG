@@ -3,7 +3,7 @@ on:
   push:
     branches: [scratch/fifo-macos-probe]
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: fifo-probe-${{ github.ref }}
   cancel-in-progress: true
@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          persist-credentials: false
+          persist-credentials: true
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: .go-version
@@ -37,14 +37,31 @@ jobs:
           go test -c -o /tmp/env.test ./env
           cd env
           for i in $(seq 1 ${{ matrix.burners }}); do (while :; do :; done) & done
+          mkdir -p /tmp/results; res=/tmp/results/${{ matrix.id }}.txt
+          { sw_vers; sysctl -n hw.ncpu; } > $res 2>&1
           fails=0; runs=0
-          end=$((SECONDS + 1200))
+          end=$((SECONDS + 900))
           while [ $SECONDS -lt $end ]; do
             runs=$((runs+1))
             if ! /tmp/env.test -test.run '^TestProbeReadFIFO$' -test.v > /tmp/out.$runs 2>&1; then
-              fails=$((fails+1)); echo "=== FAIL run $runs"; cat /tmp/out.$runs
+              fails=$((fails+1)); echo "=== FAIL run $runs"; cat /tmp/out.$runs; { echo "=== FAIL run $runs"; cat /tmp/out.$runs; } >> $res
             else
-              grep -h 'rounds=' /tmp/out.$runs
+              grep -h 'rounds=' /tmp/out.$runs; grep -h 'rounds=' /tmp/out.$runs >> $res
             fi
           done
           echo "SUMMARY burners=${{ matrix.burners }} signals=${{ matrix.signals }} runs=$runs fails=$fails"
+
+          echo "SUMMARY burners=${{ matrix.burners }} signals=${{ matrix.signals }} runs=$runs fails=$fails" >> $res
+      - name: publish results
+        if: always()
+        shell: bash
+        run: |
+          set -x
+          cd "$GITHUB_WORKSPACE"
+          git config user.name probe; git config user.email probe@example.invalid
+          git checkout --orphan results-${{ matrix.id }}
+          git rm -rf -q . 
+          cp /tmp/results/${{ matrix.id }}.txt result.txt || echo none > result.txt
+          git add result.txt
+          git commit -q -m "probe result ${{ matrix.id }} run ${{ github.run_id }}"
+          git push -f origin HEAD:refs/heads/scratch/fifo-probe-results-${{ matrix.id }}
